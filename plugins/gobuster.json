@@ -1,0 +1,80 @@
+{
+  "id": "gobuster",
+  "name": "Gobuster",
+  "version": "1.0.0",
+  "category": "enumeration",
+  "description": "URI, DNS, S3, and vhost brute-forcing tool",
+  "metadata": {
+    "ai_description": "Gobuster is a fast directory and file brute-forcing tool. Use it to discover hidden directories, files, subdomains, and virtual hosts. Unlike ffuf, it's simpler but equally effective for basic directory enumeration. Supports multiple modes: dir (directories), dns (subdomains), vhost (virtual hosts), and s3 (S3 buckets).",
+    "capabilities": [
+      "directory_brute",
+      "subdomain_enum",
+      "vhost_discovery"
+    ],
+    "supported_targets": [
+      "url",
+      "domain"
+    ],
+    "risk_level": "low",
+    "tags": [
+      "web",
+      "brute-force",
+      "directories",
+      "enumeration",
+      "fuzzing"
+    ],
+    "use_cases": [
+      "Discovering hidden directories and files",
+      "Finding backup files and admin panels",
+      "Subdomain enumeration via DNS brute-forcing",
+      "Virtual host discovery",
+      "S3 bucket enumeration"
+    ],
+    "limitations": [
+      "Wordlist-dependent - effectiveness varies with wordlist quality",
+      "Can be slow on large wordlists",
+      "May be blocked by rate limiting"
+    ],
+    "complements": [
+      "ffuf",
+      "nuclei",
+      "nikto"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y gobuster"
+    ],
+    "verification_command": "gobuster --help",
+    "verification_regex": "Usage:",
+    "uninstall_commands": [
+      "apt-get remove -y gobuster",
+      "apt-get autoremove -y"
+    ]
+  },
+  "execution": {
+    "command": "gobuster",
+    "args_template": "dir -u {target} -w /usr/share/seclists/Discovery/Web-Content/common.txt {extensions} -q -o {output_file} {flags}",
+    "timeout": 600,
+    "arg_modifiers": {
+      "extensions": {
+        "prefix": "-x ",
+        "separator": ","
+      }
+    }
+  },
+  "parsing": {
+    "format": "text",
+    "mapping": {}
+  },
+  "ui": {
+    "icon": "folder-open",
+    "color": "green"
+  },
+  "signature": "6b7702acb5b5433047bf9a5c2bb81cb4acbc909a72d8939e7182055f670f8e5e3ca339c55019baf20e5ce12badc9faeb9df478ef53b0765b942ec49476685406"
+}

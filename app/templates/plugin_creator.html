@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white tracking-tight">Plugin Creator</h1>
+            <p class="text-slate-400 text-sm mt-1">Design, test, and sign new security tool plugins</p>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="loadExample()" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-colors">
+                Load Example
+            </button>
+            <a href="/toolbox" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-sm transition-colors">
+                Cancel
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
+        
+        <!-- Form Section -->
+        <div class="col-span-7 overflow-y-auto pr-2 space-y-6 pb-10">
+            
+            <!-- Basic Info -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-info-circle text-violet-400"></i> Basic Information
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tool ID</label>
+                        <input type="text" id="tool-id" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none font-mono text-sm" placeholder="e.g., nmap-scanner">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Name</label>
+                        <input type="text" id="tool-name" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none" placeholder="e.g., Nmap Scanner">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Version</label>
+                        <input type="text" id="tool-version" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none" placeholder="1.0.0">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
+                        <textarea id="tool-desc" rows="2" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none" placeholder="Brief description of what the tool does..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
+                        <select id="tool-category" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none">
+                            <option value="recon">Reconnaissance</option>
+                            <option value="exploitation">Exploitation</option>
+                            <option value="post_exploitation">Post-Exploitation</option>
+                            <option value="utility">Utility</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Author</label>
+                        <input type="text" id="tool-author" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none" placeholder="Your Name">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Execution -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-terminal text-emerald-400"></i> Execution
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Command</label>
+                        <input type="text" id="exec-command" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:outline-none font-mono text-sm" placeholder="e.g., nmap">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Arguments Template</label>
+                        <input type="text" id="exec-args" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:outline-none font-mono text-sm" placeholder="e.g., -sV -p {port} {target}">
+                        <p class="text-xs text-slate-500 mt-1">Use {placeholder} for dynamic arguments.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Timeout (seconds)</label>
+                            <input type="number" id="exec-timeout" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" value="300">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Installation -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-download text-blue-400"></i> Installation
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Method</label>
+                        <select id="install-method" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                            <option value="apt">APT (Debian/Ubuntu)</option>
+                            <option value="pip">Pip (Python)</option>
+                            <option value="go">Go Install</option>
+                            <option value="script">Shell Script</option>
+                            <option value="none">Pre-installed / None</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Installation Commands</label>
+                        <div id="install-cmds-container" class="space-y-2">
+                            <div class="flex gap-2">
+                                <input type="text" class="install-cmd w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-sm" placeholder="Command 1">
+                                <button onclick="addInstallCmd()" class="px-3 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Verification Command</label>
+                        <input type="text" id="verify-cmd" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-sm" placeholder="e.g., nmap --version">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metadata -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-tags text-amber-400"></i> Metadata
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Risk Level</label>
+                        <select id="meta-risk" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none">
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">UI Icon (Phosphor)</label>
+                        <input type="text" id="ui-icon" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none" placeholder="e.g., radar">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">UI Color</label>
+                        <select id="ui-color" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-amber-500 focus:outline-none">
+                            <option value="violet">Violet</option>
+                            <option value="emerald">Emerald</option>
+                            <option value="amber">Amber</option>
+                            <option value="rose">Rose</option>
+                            <option value="blue">Blue</option>
+                            <option value="cyan">Cyan</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Preview & Actions -->
+        <div class="col-span-5 flex flex-col gap-6 h-full">
+            
+            <!-- JSON Preview -->
+            <div class="glass-panel p-6 rounded-xl flex-1 flex flex-col min-h-0">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                    <span><i class="fa-solid fa-code text-slate-400 mr-2"></i> Config Preview</span>
+                    <button onclick="updatePreview()" class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-slate-300">Refresh</button>
+                </h3>
+                <div class="flex-1 relative">
+                    <textarea id="json-preview" class="w-full h-full bg-slate-950/50 border border-white/10 rounded-lg p-4 font-mono text-xs text-emerald-400 focus:outline-none resize-none" readonly></textarea>
+                </div>
+            </div>
+
+            <!-- Signing Options -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-key text-amber-400"></i> Plugin Signing
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex items-center gap-2">
+                        <input type="radio" id="sign-server" name="sign-method" value="server" checked class="text-violet-500">
+                        <label for="sign-server" class="text-sm text-slate-300">Use server key (default)</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="radio" id="sign-custom" name="sign-method" value="custom" class="text-violet-500">
+                        <label for="sign-custom" class="text-sm text-slate-300">Upload custom key (official/dev)</label>
+                    </div>
+                    <div id="custom-key-section" class="hidden mt-3 p-3 bg-slate-900/50 rounded-lg border border-white/10">
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Private Key (Ed25519 PEM)</label>
+                        <input type="file" id="private-key-file" accept=".pem,.key" class="w-full text-sm text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-violet-600 file:text-white hover:file:bg-violet-500">
+                        <p class="text-xs text-slate-500 mt-2">Upload your Ed25519 private key to sign plugins officially.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="glass-panel p-6 rounded-xl">
+                <div class="flex flex-col gap-3">
+                    <button onclick="validatePlugin()" class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check-circle"></i> Validate Config
+                    </button>
+                    <button onclick="saveWithoutSigning()" class="w-full py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-save"></i> Save Without Signing
+                    </button>
+                    <button onclick="signAndSave()" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-signature"></i> Sign & Save Plugin
+                    </button>
+                </div>
+                <div id="action-status" class="mt-4 text-center text-sm hidden"></div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', path='/js/plugin_creator.js') }}"></script>
+<script>
+    // Toggle custom key section visibility
+    document.querySelectorAll('input[name="sign-method"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const customSection = document.getElementById('custom-key-section');
+            if (document.getElementById('sign-custom').checked) {
+                customSection.classList.remove('hidden');
+            } else {
+                customSection.classList.add('hidden');
+            }
+        });
+    });
+</script>
+{% endblock %}

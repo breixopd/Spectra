@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex items-center justify-center min-h-screen py-12">
+    <div class="glass p-8 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-shield-check text-3xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-white">System Setup</h1>
+            <p class="text-gray-400 mt-2">Configure your admin account, AI provider, and infrastructure.</p>
+        </div>
+
+        <form id="setup-form" class="space-y-6">
+            <!-- Admin Account Section -->
+            <div class="space-y-4 border-b border-white/10 pb-6">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <i class="ph ph-user"></i> Admin Account
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Username</label>
+                        <input type="text" name="username" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
+                        <input type="email" name="email" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Password</label>
+                    <input type="password" name="password" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                </div>
+            </div>
+
+            <!-- AI Configuration Section -->
+            <div class="space-y-4 border-b border-white/10 pb-6">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <i class="ph ph-brain"></i> AI Configuration
+                </h2>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Provider</label>
+                    <select name="llm_provider" id="provider-select" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="api">OpenAI Compatible API (Cloud)</option>
+                    </select>
+                </div>
+
+                <!-- Ollama Settings -->
+                <div id="ollama-settings" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Ollama Host</label>
+                        <input type="text" name="ollama_host" value="http://localhost:11434" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    </div>
+                </div>
+
+                <!-- API Settings -->
+                <div id="api-settings" class="space-y-4 hidden">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">API Base URL</label>
+                        <input type="text" name="llm_api_base" placeholder="https://api.openai.com/v1" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">API Key</label>
+                        <input type="password" name="llm_api_key" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Model Name</label>
+                    <input type="text" name="llm_model" value="qwen2.5:3b" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    <p class="text-xs text-gray-500 mt-1">e.g., qwen2.5:3b, gpt-4o, deepseek-coder</p>
+                </div>
+
+                <div class="flex items-center gap-4 pt-2">
+                    <button type="button" id="test-llm-btn" class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors border border-white/10">
+                        Test Connection
+                    </button>
+                    <span id="test-status" class="text-sm"></span>
+                </div>
+            </div>
+
+            <!-- Infrastructure Section (Advanced) -->
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                        <i class="ph ph-gear"></i> Infrastructure (Advanced)
+                    </h2>
+                    <button type="button" id="toggle-infra" class="text-sm text-violet-400 hover:text-violet-300">
+                        Show Options
+                    </button>
+                </div>
+                
+                <div id="infra-settings" class="space-y-4 hidden">
+                    <p class="text-xs text-gray-500">Leave blank to use Docker containers (recommended).</p>
+                    
+                    <!-- Database Settings -->
+                    <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="custom-db" name="use_custom_db" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
+                            <label for="custom-db" class="text-sm text-gray-300">Use external PostgreSQL database</label>
+                        </div>
+                        <div id="db-fields" class="space-y-3 hidden">
+                            <input type="text" name="database_url" placeholder="postgresql+asyncpg://user:pass@host:5432/dbname" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                        </div>
+                    </div>
+
+                    <!-- Redis Settings -->
+                    <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="custom-redis" name="use_custom_redis" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
+                            <label for="custom-redis" class="text-sm text-gray-300">Use external Redis instance</label>
+                        </div>
+                        <div id="redis-fields" class="space-y-3 hidden">
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="text" name="redis_host" placeholder="Host (e.g., redis.example.com)" class="bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
+                                <input type="text" name="redis_port" placeholder="Port (default: 6379)" class="bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
+                            </div>
+                            <input type="password" name="redis_password" placeholder="Password" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold transition-colors mt-6 shadow-lg shadow-violet-500/20">
+                Complete Setup
+            </button>
+        </form>
+        
+        <div id="error-msg" class="mt-4 text-center text-red-400 text-sm hidden bg-red-500/10 border border-red-500/20 p-3 rounded-lg"></div>
+    </div>
+</div>
+
+<script>
+    const providerSelect = document.getElementById('provider-select');
+    const ollamaSettings = document.getElementById('ollama-settings');
+    const apiSettings = document.getElementById('api-settings');
+    const modelInput = document.querySelector('input[name="llm_model"]');
+
+    // Toggle settings based on provider
+    providerSelect.addEventListener('change', (e) => {
+        if (e.target.value === 'ollama') {
+            ollamaSettings.classList.remove('hidden');
+            apiSettings.classList.add('hidden');
+            modelInput.value = 'qwen2.5:3b';
+        } else {
+            ollamaSettings.classList.add('hidden');
+            apiSettings.classList.remove('hidden');
+            modelInput.value = 'gpt-4o-mini';
+        }
+    });
+
+    // Infrastructure toggle
+    document.getElementById('toggle-infra').addEventListener('click', function() {
+        const infraSettings = document.getElementById('infra-settings');
+        infraSettings.classList.toggle('hidden');
+        this.textContent = infraSettings.classList.contains('hidden') ? 'Show Options' : 'Hide Options';
+    });
+
+    // Custom DB toggle
+    document.getElementById('custom-db').addEventListener('change', function() {
+        document.getElementById('db-fields').classList.toggle('hidden', !this.checked);
+    });
+
+    // Custom Redis toggle
+    document.getElementById('custom-redis').addEventListener('change', function() {
+        document.getElementById('redis-fields').classList.toggle('hidden', !this.checked);
+    });
+
+    // Test LLM Connection
+    document.getElementById('test-llm-btn').addEventListener('click', async () => {
+        const statusEl = document.getElementById('test-status');
+        const btn = document.getElementById('test-llm-btn');
+        
+        statusEl.textContent = 'Testing...';
+        statusEl.className = 'text-sm text-gray-400';
+        btn.disabled = true;
+
+        const formData = new FormData(document.getElementById('setup-form'));
+        const data = Object.fromEntries(formData.entries());
+        
+        const payload = {
+            provider: data.llm_provider,
+            model: data.llm_model,
+            api_key: data.llm_api_key,
+            base_url: data.llm_api_base,
+            ollama_host: data.ollama_host
+        };
+
+        try {
+            const res = await fetch('/api/ui/test-llm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const result = await res.json();
+            
+            if (result.success) {
+                statusEl.innerHTML = '<i class="ph ph-check-circle text-green-400"></i> Connected';
+                statusEl.className = 'text-sm text-green-400 flex items-center gap-1';
+            } else {
+                statusEl.innerHTML = '<i class="ph ph-x-circle text-red-400"></i> Failed: ' + result.error;
+                statusEl.className = 'text-sm text-red-400 flex items-center gap-1';
+            }
+        } catch (err) {
+            statusEl.textContent = 'Error: ' + err.message;
+            statusEl.className = 'text-sm text-red-400';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    document.getElementById('setup-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const rawData = Object.fromEntries(formData.entries());
+        
+        const data = {
+            user: {
+                username: rawData.username,
+                email: rawData.email,
+                password: rawData.password
+            },
+            llm_provider: rawData.llm_provider,
+            llm_model: rawData.llm_model,
+            llm_api_key: rawData.llm_api_key || null,
+            llm_api_base: rawData.llm_api_base || null,
+            ollama_host: rawData.ollama_host || null,
+            use_custom_db: rawData.use_custom_db === 'on',
+            database_url: rawData.database_url || null,
+            use_custom_redis: rawData.use_custom_redis === 'on',
+            redis_host: rawData.redis_host || null,
+            redis_port: rawData.redis_port || null,
+            redis_password: rawData.redis_password || null
+        };
+        
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Setting up...';
+        
+        try {
+            const res = await fetch('/api/auth/setup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (!res.ok) throw new Error((await res.json()).detail);
+            
+            const loginRes = await fetch('/api/auth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    username: data.user.username,
+                    password: data.user.password
+                })
+            });
+            
+            if (!loginRes.ok) throw new Error('Login failed after setup');
+            
+            const tokenData = await loginRes.json();
+            localStorage.setItem('token', tokenData.access_token);
+            window.location.href = '/dashboard';
+            
+        } catch (err) {
+            const msg = document.getElementById('error-msg');
+            msg.textContent = err.message;
+            msg.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,102 @@
+{
+  "id": "nmap",
+  "name": "Nmap",
+  "version": "1.0.0",
+  "category": "discovery",
+  "description": "Network exploration tool and security/port scanner. Discovers hosts and services on a network.",
+  "metadata": {
+    "ai_description": "Nmap is the industry-standard network scanner. Use it for initial host discovery, port scanning, service version detection, and OS fingerprinting. It's the first tool to run in most assessments to map the network attack surface. Supports TCP/UDP scans, script scanning (NSE), and various timing options for stealth.",
+    "capabilities": [
+      "port_scan",
+      "service_detection",
+      "os_detection",
+      "host_discovery",
+      "vuln_scan"
+    ],
+    "supported_targets": [
+      "ip",
+      "ip_range",
+      "cidr",
+      "domain",
+      "host"
+    ],
+    "risk_level": "low",
+    "tags": [
+      "network",
+      "ports",
+      "services",
+      "fingerprinting",
+      "recon",
+      "discovery"
+    ],
+    "use_cases": [
+      "Initial network reconnaissance to identify live hosts",
+      "Port scanning to find open services",
+      "Service version detection to identify software and versions",
+      "OS fingerprinting to determine target operating system",
+      "Script scanning (NSE) for vulnerability checks"
+    ],
+    "limitations": [
+      "Can be slow on large networks without rate limiting",
+      "May trigger IDS/IPS alerts",
+      "Requires raw socket access for SYN scans"
+    ],
+    "complements": [
+      "nuclei",
+      "nikto",
+      "masscan"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y nmap"
+    ],
+    "verification_command": "nmap --version",
+    "verification_regex": "Nmap version (\\d+\\.\\d+)",
+    "uninstall_commands": [
+      "apt-get remove -y nmap",
+      "apt-get autoremove -y"
+    ]
+  },
+  "execution": {
+    "command": "nmap",
+    "args_template": "-sV -sC -T4 {ports} {flags} -oX {output_file} {target}",
+    "timeout": 600,
+    "timeout_per_host": 120,
+    "min_timeout": 60,
+    "max_timeout": 1800,
+    "arg_modifiers": {
+      "ports": {
+        "prefix": "-p",
+        "separator": ","
+      }
+    }
+  },
+  "parsing": {
+    "format": "xml",
+    "mapping": {
+      "name": "service",
+      "port": "portid",
+      "protocol": "protocol",
+      "state": "state",
+      "product": "product",
+      "version": "version"
+    }
+  },
+  "stealth": {
+    "rate_limit": null,
+    "delay_ms": 1000,
+    "extra_args": {
+      "-T": "2",
+      "--scan-delay": "1s"
+    }
+  },
+  "ui": {
+    "icon": "network",
+    "color": "blue"
+  },
+  "signature": "b25c829185d984b203efd5e9014c7235dee5173e80a65acb9e199e1970b115b03c28c868c1df4311b0ec716d84cac7e33ec6d2a2859a6591f56589878671230d"
+}

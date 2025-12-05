@@ -1,0 +1,199 @@
+# Spectra Security Assessment Platform - Docker Compose
+# Usage:
+#   docker compose up -d
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: spectra-db
+    environment:
+      POSTGRES_USER: spectra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spectra_dev}
+      POSTGRES_DB: spectra
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spectra -d spectra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+    networks:
+      - spectra-network
+
+  # Redis (with RediSearch for RAG)
+  redis:
+    image: redis/redis-stack:latest
+    container_name: spectra-redis
+    volumes:
+      - redis_data:/data
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-prod_redis_password}
+      REDIS_ARGS: "--requirepass ${REDIS_PASSWORD:-prod_redis_password} --maxmemory 2gb --maxmemory-policy allkeys-lru --appendonly yes --appendfsync everysec --save 60 1"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-prod_redis_password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+    networks:
+      - spectra-network
+
+  # Ollama (Local LLM Inference)
+  ai:
+    image: ollama/ollama:latest
+    container_name: spectra-ai
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - spectra-network
+
+  # Spectra App (FastAPI Backend)
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    container_name: spectra-app
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Connection details that depend on other services
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password}
+      
+      # Security (Explicitly set secrets, but let others default)
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-prod_secret_key_change_in_real_prod}
+      
+      # AI/LLM Configuration
+      - AI_PROVIDER=api
+      - LLM_API_KEY=${LLM_API_KEY:-4df9d751ee58488ba4cb0db4ddb988b7.35J2q7fELSJgYSvU}
+      - LLM_API_BASE_URL=${LLM_API_BASE_URL:-https://api.z.ai/api/coding/paas/v4}
+      - LLM_MODEL=${LLM_MODEL:-glm-4.6}
+      
+      # Defaults from code are sufficient for:
+      - LOG_LEVEL=DEBUG
+      - DEBUG=True
+      # - PLUGIN_SAFE_MODE (True) - uses default
+      # - CORS_ORIGINS (['http://localhost:5000', 'http://127.0.0.1:5000'])
+      # - TOOL_CONTAINER_NAME (spectra-tools)
+    volumes:
+      - ../app:/app/app
+      - ../tests:/app/tests
+      - ../plugins:/app/plugins
+      - ../keys:/app/keys:ro
+      - ../scripts:/app/scripts:ro
+      - ../pytest.ini:/app/pytest.ini:ro
+      - ../.env.test:/app/.env.test:ro
+      - ../reports:/app/reports
+      - ../alembic:/app/alembic
+      - ../alembic.ini:/app/alembic.ini
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    networks:
+      - spectra-network
+    develop:
+      watch:
+        - action: sync
+          path: ../app
+          target: /app/app
+        - action: rebuild
+          path: ../requirements.txt
+
+  # Spectra Tools (Worker & Security Tools)
+  tools:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.tools
+    container_name: spectra-tools
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-prod_secret_key_change_in_real_prod}
+      # Mark this as the tools container so commands run locally (no docker exec wrapping)
+      - IS_TOOLS_CONTAINER=true
+      # Disable safe mode for tools container (it runs install commands)
+      - PLUGIN_SAFE_MODE=false
+    volumes:
+      - ../app:/app/app:ro
+      - ../tests:/app/tests:ro
+      - ../reports:/app/reports
+      - ../plugins:/app/plugins
+      - ../keys:/app/keys:ro
+      - spectra_tools_data:/opt/spectra_tools
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: ["arq", "app.worker.WorkerSettings"]
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    restart: unless-stopped
+    networks:
+      - spectra-network
+    develop:
+      watch:
+        - action: sync
+          path: ../app
+          target: /app/app
+
+# Networks
+networks:
+  spectra-network:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+  redis_data:
+  ollama_data:
+  spectra_tools_data:

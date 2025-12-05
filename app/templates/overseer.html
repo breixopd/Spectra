@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-white tracking-tight">Agent Overseer</h1>
+            <p class="text-slate-400 text-sm mt-1">Real-time monitoring and control of autonomous agents</p>
+        </div>
+        <div class="flex items-center space-x-3">
+            <span class="px-2 py-1 rounded text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <i class="fa-solid fa-circle text-[8px] mr-1.5 animate-pulse"></i>
+                LIVE
+            </span>
+        </div>
+    </div>
+
+    <!-- Consensus Monitor (Hidden by default) -->
+    <div id="consensus-monitor" class="hidden mb-6 glass-panel rounded-xl p-4 border-l-4 border-amber-500 animate-pulse">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <div class="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                    <i class="fa-solid fa-gavel text-amber-400"></i>
+                </div>
+                <div>
+                    <h3 class="text-white font-medium">Consensus Vote in Progress</h3>
+                    <p class="text-sm text-slate-400" id="consensus-action">Evaluating high-risk action...</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="text-xs font-mono text-slate-500">MAKER Protocol Active</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agent Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-1 overflow-y-auto pb-6">
+        
+        <!-- Mission Controller -->
+        <div class="glass-panel rounded-xl p-5 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i class="fa-solid fa-chess-king text-6xl text-violet-500"></i>
+            </div>
+            <div class="flex items-center justify-between mb-4 relative z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center border border-violet-500/30">
+                        <i class="fa-solid fa-chess-king text-violet-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-medium">Mission Controller</h3>
+                        <span class="text-xs text-slate-400 font-mono" id="status-mission-controller">Idle</span>
+                    </div>
+                </div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-mission-controller"></div>
+            </div>
+            <div class="flex-1 space-y-3 relative z-10">
+                <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-500 font-mono block mb-1">Current Plan</span>
+                    <p class="text-sm text-slate-300 line-clamp-3" id="plan-mission-controller">No active plan</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scope Agent -->
+        <div class="glass-panel rounded-xl p-5 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i class="fa-solid fa-crosshairs text-6xl text-blue-500"></i>
+            </div>
+            <div class="flex items-center justify-between mb-4 relative z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                        <i class="fa-solid fa-crosshairs text-blue-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-medium">Scope Agent</h3>
+                        <span class="text-xs text-slate-400 font-mono" id="status-scope-agent">Idle</span>
+                    </div>
+                </div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-scope-agent"></div>
+            </div>
+            <div class="flex-1 space-y-3 relative z-10">
+                <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-500 font-mono block mb-1">Target Scope</span>
+                    <p class="text-sm text-slate-300 line-clamp-3" id="scope-details">No active scope</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tool Selector -->
+        <div class="glass-panel rounded-xl p-5 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i class="fa-solid fa-screwdriver-wrench text-6xl text-amber-500"></i>
+            </div>
+            <div class="flex items-center justify-between mb-4 relative z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center border border-amber-500/30">
+                        <i class="fa-solid fa-screwdriver-wrench text-amber-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-medium">Tool Selector</h3>
+                        <span class="text-xs text-slate-400 font-mono" id="status-tool-selector">Idle</span>
+                    </div>
+                </div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-tool-selector"></div>
+            </div>
+            <div class="flex-1 space-y-3 relative z-10">
+                <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-500 font-mono block mb-1">Last Action</span>
+                    <p class="text-sm text-slate-300 line-clamp-3" id="last-tool-action">None</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vector Generator (New) -->
+        <div class="glass-panel rounded-xl p-5 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i class="fa-solid fa-bolt text-6xl text-yellow-500"></i>
+            </div>
+            <div class="flex items-center justify-between mb-4 relative z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center border border-yellow-500/30">
+                        <i class="fa-solid fa-bolt text-yellow-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-medium">Vector Gen</h3>
+                        <span class="text-xs text-slate-400 font-mono" id="status-vector-generator">Idle</span>
+                    </div>
+                </div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-vector-generator"></div>
+            </div>
+            <div class="flex-1 space-y-3 relative z-10">
+                <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-500 font-mono block mb-1">Generated</span>
+                    <p class="text-sm text-slate-300 line-clamp-3" id="vector-stats">0 vectors</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exploit Crafter -->
+        <div class="glass-panel rounded-xl p-5 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i class="fa-solid fa-bug text-6xl text-rose-500"></i>
+            </div>
+            <div class="flex items-center justify-between mb-4 relative z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+                        <i class="fa-solid fa-bug text-rose-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-medium">Exploit Crafter</h3>
+                        <span class="text-xs text-slate-400 font-mono" id="status-exploit-crafter">Idle</span>
+                    </div>
+                </div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-exploit-crafter"></div>
+            </div>
+            <div class="flex-1 space-y-3 relative z-10">
+                <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-500 font-mono block mb-1">Current Vector</span>
+                    <p class="text-sm text-slate-300 line-clamp-3" id="exploit-vector">No active exploitation</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post Exploitation (New) -->
+        <div class="glass-panel rounded-xl p-5 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i class="fa-solid fa-flag-checkered text-6xl text-purple-500"></i>
+            </div>
+            <div class="flex items-center justify-between mb-4 relative z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
+                        <i class="fa-solid fa-flag-checkered text-purple-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-medium">Post Exploit</h3>
+                        <span class="text-xs text-slate-400 font-mono" id="status-post-exploitation">Idle</span>
+                    </div>
+                </div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-post-exploitation"></div>
+            </div>
+            <div class="flex-1 space-y-3 relative z-10">
+                <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-500 font-mono block mb-1">Loot</span>
+                    <p class="text-sm text-slate-300 line-clamp-3" id="post-exploit-stats">No loot yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reporter -->
+        <div class="glass-panel rounded-xl p-5 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i class="fa-solid fa-file-signature text-6xl text-emerald-500"></i>
+            </div>
+            <div class="flex items-center justify-between mb-4 relative z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                        <i class="fa-solid fa-file-signature text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-medium">Reporter</h3>
+                        <span class="text-xs text-slate-400 font-mono" id="status-reporter">Idle</span>
+                    </div>
+                </div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-reporter"></div>
+            </div>
+            <div class="flex-1 space-y-3 relative z-10">
+                <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-500 font-mono block mb-1">Report Status</span>
+                    <p class="text-sm text-slate-300 line-clamp-3" id="report-status">No report generating</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Safety Supervisor -->
+        <div class="glass-panel rounded-xl p-5 flex flex-col relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i class="fa-solid fa-shield-halved text-6xl text-cyan-500"></i>
+            </div>
+            <div class="flex items-center justify-between mb-4 relative z-10">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30">
+                        <i class="fa-solid fa-shield-halved text-cyan-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-medium">Safety Supervisor</h3>
+                        <span class="text-xs text-slate-400 font-mono" id="status-safety-supervisor">Monitoring</span>
+                    </div>
+                </div>
+                <div class="w-2 h-2 rounded-full bg-emerald-500" id="led-safety-supervisor"></div>
+            </div>
+            <div class="flex-1 space-y-3 relative z-10">
+                <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-500 font-mono block mb-1">Commands Reviewed</span>
+                    <p class="text-sm text-slate-300" id="safety-stats">0 allowed / 0 blocked</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Attack Surface Panel -->
+    <div class="mt-6 glass-panel rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center border border-violet-500/30">
+                    <i class="fa-solid fa-radar text-violet-400"></i>
+                </div>
+                <div>
+                    <h3 class="text-white font-medium">Attack Surface</h3>
+                    <span class="text-xs text-slate-400">Discovered assets and attack vectors</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attack Surface Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
+            <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5 text-center">
+                <span class="text-2xl font-bold text-blue-400 font-mono" id="as-services">0</span>
+                <span class="text-[10px] uppercase tracking-wider text-slate-500 block mt-1">Services</span>
+            </div>
+            <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5 text-center">
+                <span class="text-2xl font-bold text-emerald-400 font-mono" id="as-domains">0</span>
+                <span class="text-[10px] uppercase tracking-wider text-slate-500 block mt-1">Domains</span>
+            </div>
+            <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5 text-center">
+                <span class="text-2xl font-bold text-amber-400 font-mono" id="as-webapps">0</span>
+                <span class="text-[10px] uppercase tracking-wider text-slate-500 block mt-1">Web Apps</span>
+            </div>
+            <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5 text-center">
+                <span class="text-2xl font-bold text-rose-400 font-mono" id="as-vulns">0</span>
+                <span class="text-[10px] uppercase tracking-wider text-slate-500 block mt-1">Vulns</span>
+            </div>
+            <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5 text-center">
+                <span class="text-2xl font-bold text-violet-400 font-mono" id="as-vectors">0</span>
+                <span class="text-[10px] uppercase tracking-wider text-slate-500 block mt-1">Vectors</span>
+            </div>
+            <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5 text-center">
+                <span class="text-2xl font-bold text-emerald-400 font-mono" id="as-success">0%</span>
+                <span class="text-[10px] uppercase tracking-wider text-slate-500 block mt-1">Success Rate</span>
+            </div>
+        </div>
+
+        <!-- Attack Vectors List -->
+        <div class="bg-slate-900/50 rounded-lg border border-white/5 overflow-hidden">
+            <div class="px-4 py-2 border-b border-white/5 flex items-center justify-between">
+                <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Attack Vectors</span>
+                <div class="flex items-center space-x-2">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-500/20 text-rose-400" id="vectors-critical">0 Critical</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-400" id="vectors-high">0 High</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-500/20 text-blue-400" id="vectors-medium">0 Med</span>
+                </div>
+            </div>
+            <div class="max-h-48 overflow-y-auto" id="vectors-list">
+                <div class="px-4 py-3 text-sm text-slate-500 text-center">
+                    No attack vectors discovered yet
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Track safety stats
+    let safetyAllowed = 0;
+    let safetyBlocked = 0;
+
+    // WebSocket handler for Overseer
+    const originalOnMessage = window.onSocketMessage;
+    
+    window.onSocketMessage = (data) => {
+        // Call original handler first (for logs/toasts)
+        if (originalOnMessage) originalOnMessage(data);
+        
+        try {
+            const msg = JSON.parse(data);
+            if (msg.type === 'agent_state') {
+                updateAgentState(msg.data);
+            } else if (msg.type === 'attack_surface') {
+                updateAttackSurface(msg.data);
+            } else if (msg.type === 'exploit_success') {
+                showExploitSuccess(msg.data);
+            } else if (msg.type === 'vector_update') {
+                updateVectorStatus(msg.data);
+            } else if (msg.type === 'consensus_vote_start') {
+                showConsensusMonitor(msg.data);
+            } else if (msg.type === 'consensus_vote_result') {
+                hideConsensusMonitor(msg.data);
+            }
+        } catch (e) {
+            console.error("Overseer parse error", e);
+        }
+    };
+
+    function updateAgentState(state) {
+        const agentId = state.agent_id;
+        const normalizedId = agentId.replace(/_/g, '-');
+        const statusEl = document.getElementById(`status-${normalizedId}`);
+        const ledEl = document.getElementById(`led-${normalizedId}`);
+        
+        if (statusEl) statusEl.textContent = state.status;
+        
+        if (ledEl) {
+            ledEl.className = `w-2 h-2 rounded-full ${state.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`;
+        }
+        
+        // Update specific fields based on agent
+        if (agentId === 'mission_controller' && state.plan) {
+            document.getElementById('plan-mission-controller').textContent = state.plan;
+        }
+        if (agentId === 'exploit_crafter' && state.vector) {
+            document.getElementById('exploit-vector').textContent = state.vector;
+        }
+    }
+
+    function updateAttackSurface(data) {
+        document.getElementById('as-services').textContent = data.services || 0;
+        document.getElementById('as-domains').textContent = data.domains || 0;
+        document.getElementById('as-webapps').textContent = data.web_apps || 0;
+        document.getElementById('as-vulns').textContent = data.vulnerabilities || 0;
+        document.getElementById('as-vectors').textContent = data.vectors_total || 0;
+        
+        const successRate = Math.round((data.exploitation_success_rate || 0) * 100);
+        document.getElementById('as-success').textContent = successRate + '%';
+        
+        // Update priority counts
+        if (data.vectors_by_priority) {
+            document.getElementById('vectors-critical').textContent = (data.vectors_by_priority.critical || 0) + ' Critical';
+            document.getElementById('vectors-high').textContent = (data.vectors_by_priority.high || 0) + ' High';
+            document.getElementById('vectors-medium').textContent = (data.vectors_by_priority.medium || 0) + ' Med';
+        }
+    }
+
+    function updateVectorStatus(data) {
+        const listEl = document.getElementById('vectors-list');
+        
+        // Find or create vector element
+        let vectorEl = document.getElementById(`vector-${data.id}`);
+        if (!vectorEl) {
+            vectorEl = document.createElement('div');
+            vectorEl.id = `vector-${data.id}`;
+            vectorEl.className = 'px-4 py-2 border-b border-white/5 flex items-center justify-between';
+            listEl.appendChild(vectorEl);
+            
+            // Remove "no vectors" message if present
+            const emptyMsg = listEl.querySelector('.text-center');
+            if (emptyMsg) emptyMsg.remove();
+        }
+        
+        const statusColors = {
+            'pending': 'text-slate-400',
+            'in_progress': 'text-amber-400 animate-pulse',
+            'success': 'text-emerald-400',
+            'failed': 'text-rose-400',
+            'skipped': 'text-slate-500'
+        };
+        
+        const priorityColors = {
+            'critical': 'bg-rose-500/20 text-rose-400',
+            'high': 'bg-amber-500/20 text-amber-400',
+            'medium': 'bg-blue-500/20 text-blue-400',
+            'low': 'bg-slate-500/20 text-slate-400'
+        };
+        
+        vectorEl.innerHTML = `
+            <div class="flex items-center space-x-3">
+                <span class="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase ${priorityColors[data.priority] || 'bg-slate-500/20'}">${data.priority}</span>
+                <span class="text-sm text-white">${data.name}</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <span class="text-xs font-mono ${statusColors[data.status] || 'text-slate-400'}">${data.status}</span>
+                ${data.attempts ? `<span class="text-xs text-slate-500">(${data.attempts}/${data.max_attempts})</span>` : ''}
+            </div>
+        `;
+    }
+
+    function showExploitSuccess(data) {
+        // Flash the exploit crafter card green
+        const card = document.querySelector('#led-exploit-crafter').closest('.glass-panel');
+        if (card) {
+            card.classList.add('ring-2', 'ring-emerald-500');
+            setTimeout(() => card.classList.remove('ring-2', 'ring-emerald-500'), 3000);
+        }
+        
+        // Update exploit vector text
+        document.getElementById('exploit-vector').textContent = `${data.vector}`;
+    }
+
+    function showConsensusMonitor(data) {
+        const monitor = document.getElementById('consensus-monitor');
+        const actionText = document.getElementById('consensus-action');
+        
+        actionText.textContent = `Evaluating ${data.risk} risk action: ${data.action}`;
+        monitor.classList.remove('hidden');
+    }
+
+    function hideConsensusMonitor(data) {
+        const monitor = document.getElementById('consensus-monitor');
+        const actionText = document.getElementById('consensus-action');
+        
+        if (data.status === 'approved') {
+            actionText.textContent = `Approved (Confidence: ${data.average_confidence.toFixed(2)})`;
+            monitor.classList.remove('border-amber-500', 'animate-pulse');
+            monitor.classList.add('border-emerald-500');
+        } else {
+            actionText.textContent = `Rejected: ${data.escalation_reason}`;
+            monitor.classList.remove('border-amber-500', 'animate-pulse');
+            monitor.classList.add('border-rose-500');
+        }
+        
+        setTimeout(() => {
+            monitor.classList.add('hidden');
+            monitor.classList.remove('border-emerald-500', 'border-rose-500');
+            monitor.classList.add('border-amber-500', 'animate-pulse');
+        }, 5000);
+    }
+</script>
+{% endblock %}

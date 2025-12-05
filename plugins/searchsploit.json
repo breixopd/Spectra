@@ -1,0 +1,76 @@
+{
+  "id": "searchsploit",
+  "name": "SearchSploit",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "Command line search tool for Exploit-DB",
+  "metadata": {
+    "ai_description": "SearchSploit searches the local Exploit-DB database for known exploits matching software names and versions. Use it after service detection (Nmap) to find potential exploits for discovered services. ALWAYS run this before attempting exploitation to check if public exploits exist. Returns Metasploit modules, standalone scripts, and proof-of-concepts.",
+    "capabilities": [
+      "cve_detection",
+      "exploit_framework"
+    ],
+    "supported_targets": [
+      "any"
+    ],
+    "risk_level": "passive",
+    "tags": [
+      "exploits",
+      "exploit-db",
+      "cve",
+      "research",
+      "reconnaissance"
+    ],
+    "use_cases": [
+      "Finding exploits for known software versions",
+      "Researching CVEs for discovered services",
+      "Identifying Metasploit modules for vulnerabilities",
+      "Checking if exploits exist before manual testing"
+    ],
+    "limitations": [
+      "Only searches local database (needs updates)",
+      "May return outdated or non-working exploits",
+      "Requires exact version matching for best results",
+      "Doesn't execute exploits, only searches"
+    ],
+    "complements": [
+      "metasploit",
+      "nmap"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y exploitdb"
+    ],
+    "verification_command": "which searchsploit",
+    "verification_regex": "searchsploit",
+    "uninstall_commands": [
+      "apt-get remove -y exploitdb",
+      "apt-get autoremove -y"
+    ]
+  },
+  "execution": {
+    "command": "searchsploit",
+    "args_template": "{target} --json",
+    "timeout": 60
+  },
+  "parsing": {
+    "format": "json",
+    "mapping": {
+      "title": "Title",
+      "type": "Type",
+      "platform": "Platform",
+      "path": "Path"
+    }
+  },
+  "ui": {
+    "icon": "bug",
+    "color": "red"
+  },
+  "signature": "a00d77ac971fce83e56b9c9e8c64f1f90140f105fc3e98c15e169479a1b633f7e37d71a15487c652ba670b36275e2cbee2aab57c5cbe7936890f3b27a5f35904"
+}

@@ -1,0 +1,699 @@
+{% extends "base.html" %}
+
+{% block title %}Observability - Spectra{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stat-card {
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #8b5cf6;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .stat-value.error {
+        color: #f43f5e;
+    }
+    
+    .stat-value.success {
+        color: #10b981;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #94a3b8;
+        margin-top: 0.25rem;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: white;
+    }
+    
+    .service-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+    
+    .service-card {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        padding: 1rem;
+    }
+    
+    .service-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .service-name {
+        font-weight: 600;
+        color: white;
+    }
+    
+    .service-status {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.875rem;
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    
+    .status-dot.healthy {
+        background: #10b981;
+        box-shadow: 0 0 8px #10b981;
+    }
+    
+    .status-dot.unhealthy {
+        background: #f43f5e;
+        box-shadow: 0 0 8px #f43f5e;
+    }
+    
+    .service-metrics {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.875rem;
+        color: #94a3b8;
+    }
+    
+    .traces-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .traces-table th,
+    .traces-table td {
+        padding: 0.5rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .traces-table th {
+        background: rgba(15, 23, 42, 0.6);
+        font-weight: 600;
+        color: #94a3b8;
+        font-size: 0.875rem;
+    }
+    
+    .trace-name {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.875rem;
+    }
+    
+    .trace-duration {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.875rem;
+    }
+    
+    .trace-duration.slow {
+        color: #f59e0b;
+    }
+    
+    .trace-duration.very-slow {
+        color: #f43f5e;
+    }
+    
+    .trace-status {
+        padding: 2px 8px;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .trace-status.ok {
+        background: rgba(34, 197, 94, 0.1);
+        color: #10b981;
+    }
+    
+    .trace-status.error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #f43f5e;
+    }
+    
+    .circuit-breaker-card {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .cb-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .cb-name {
+        font-weight: 600;
+    }
+    
+    .cb-state {
+        padding: 2px 8px;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .cb-state.closed {
+        background: rgba(34, 197, 94, 0.1);
+        color: #10b981;
+    }
+    
+    .cb-state.open {
+        background: rgba(239, 68, 68, 0.1);
+        color: #f43f5e;
+    }
+    
+    .cb-state.half_open {
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+    }
+    
+    .cb-stats {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        color: #94a3b8;
+    }
+    
+    .metrics-chart {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+    }
+    
+    .latency-bar {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 0.25rem;
+    }
+    
+    .latency-fill {
+        height: 100%;
+        background: #8b5cf6;
+        transition: width 0.3s ease;
+    }
+    
+    .events-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .event-item {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        font-size: 0.875rem;
+    }
+    
+    .event-time {
+        color: #94a3b8;
+        font-family: 'JetBrains Mono', monospace;
+        white-space: nowrap;
+    }
+    
+    .event-type {
+        font-weight: 600;
+        color: #8b5cf6;
+    }
+    
+    .refresh-btn {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        cursor: pointer;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        transition: background 0.2s;
+    }
+    
+    .refresh-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .refresh-btn.loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    
+    .tab-container {
+        margin-bottom: 1.5rem;
+    }
+    
+    .tab-buttons {
+        display: flex;
+        gap: 0.25rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        margin-bottom: 1rem;
+    }
+    
+    .tab-btn {
+        padding: 0.5rem 1rem;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        color: #94a3b8;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .tab-btn:hover {
+        color: white;
+    }
+    
+    .tab-btn.active {
+        color: #8b5cf6;
+        border-bottom-color: #8b5cf6;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Observability</h1>
+    <p class="page-description">Monitor system health, traces, and metrics</p>
+</div>
+
+<!-- Overview Stats -->
+<div class="stats-grid" id="overview-stats">
+    <div class="stat-card">
+        <div class="stat-value" id="total-requests">-</div>
+        <div class="stat-label">Total Requests</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value error" id="error-rate">-</div>
+        <div class="stat-label">Error Rate</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" id="avg-latency">-</div>
+        <div class="stat-label">Avg Latency</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value success" id="healthy-services">-</div>
+        <div class="stat-label">Healthy Services</div>
+    </div>
+</div>
+
+<!-- Tabs -->
+<div class="tab-container">
+    <div class="tab-buttons">
+        <button class="tab-btn active" data-tab="services">Services</button>
+        <button class="tab-btn" data-tab="traces">Traces</button>
+        <button class="tab-btn" data-tab="circuit-breakers">Circuit Breakers</button>
+        <button class="tab-btn" data-tab="events">Events</button>
+        <button class="tab-btn" data-tab="cache">Cache</button>
+    </div>
+    
+    <!-- Services Tab -->
+    <div class="tab-content active" id="tab-services">
+        <div class="section-header">
+            <h2 class="section-title">Service Health</h2>
+            <button class="refresh-btn" onclick="refreshData()">
+                <i data-lucide="refresh-cw" class="icon-sm"></i>
+                Refresh
+            </button>
+        </div>
+        <div class="service-grid" id="services-grid">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+    
+    <!-- Traces Tab -->
+    <div class="tab-content" id="tab-traces">
+        <div class="section-header">
+            <h2 class="section-title">Recent Traces</h2>
+            <div style="display: flex; gap: 0.5rem;">
+                <select id="trace-filter" onchange="filterTraces()">
+                    <option value="all">All Traces</option>
+                    <option value="error">Errors Only</option>
+                    <option value="slow">Slow (>1s)</option>
+                </select>
+                <button class="refresh-btn" onclick="refreshData()">
+                    <i data-lucide="refresh-cw" class="icon-sm"></i>
+                </button>
+            </div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table class="traces-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Operation</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody id="traces-body">
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Circuit Breakers Tab -->
+    <div class="tab-content" id="tab-circuit-breakers">
+        <div class="section-header">
+            <h2 class="section-title">Circuit Breakers</h2>
+            <button class="refresh-btn" onclick="refreshData()">
+                <i data-lucide="refresh-cw" class="icon-sm"></i>
+                Refresh
+            </button>
+        </div>
+        <div id="circuit-breakers-list">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+    
+    <!-- Events Tab -->
+    <div class="tab-content" id="tab-events">
+        <div class="section-header">
+            <h2 class="section-title">Recent Events</h2>
+            <button class="refresh-btn" onclick="refreshData()">
+                <i data-lucide="refresh-cw" class="icon-sm"></i>
+                Refresh
+            </button>
+        </div>
+        <div class="events-list" id="events-list">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+    
+    <!-- Cache Tab -->
+    <div class="tab-content" id="tab-cache">
+        <div class="section-header">
+            <h2 class="section-title">Cache Statistics</h2>
+            <button class="refresh-btn" onclick="refreshData()">
+                <i data-lucide="refresh-cw" class="icon-sm"></i>
+                Refresh
+            </button>
+        </div>
+        <div class="stats-grid" id="cache-stats">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+</div>
+
+<!-- Latency Percentiles -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="section-header">
+        <h2 class="section-title">Latency Distribution</h2>
+    </div>
+    <div id="latency-chart">
+        <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span>P50</span>
+                    <span id="p50-value" class="font-mono">-</span>
+                </div>
+                <div class="latency-bar">
+                    <div class="latency-fill" id="p50-bar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span>P90</span>
+                    <span id="p90-value" class="font-mono">-</span>
+                </div>
+                <div class="latency-bar">
+                    <div class="latency-fill" id="p90-bar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span>P99</span>
+                    <span id="p99-value" class="font-mono">-</span>
+                </div>
+                <div class="latency-bar">
+                    <div class="latency-fill" id="p99-bar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentData = {};
+    
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            btn.classList.add('active');
+            document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        });
+    });
+    
+    async function refreshData() {
+        const btns = document.querySelectorAll('.refresh-btn');
+        btns.forEach(btn => btn.classList.add('loading'));
+        
+        try {
+            const response = await fetch('/api/observability/stats');
+            currentData = await response.json();
+            updateUI(currentData);
+        } catch (error) {
+            console.error('Failed to fetch stats:', error);
+        } finally {
+            btns.forEach(btn => btn.classList.remove('loading'));
+        }
+    }
+    
+    function updateUI(data) {
+        // Overview stats
+        document.getElementById('total-requests').textContent = data.overview?.total_requests || 0;
+        document.getElementById('error-rate').textContent = `${data.overview?.error_rate_percent || 0}%`;
+        document.getElementById('avg-latency').textContent = `${data.overview?.avg_latency_ms || 0}ms`;
+        document.getElementById('healthy-services').textContent = 
+            `${data.overview?.healthy_services || 0}/${data.overview?.active_services || 0}`;
+        
+        // Latency percentiles
+        const latency = data.overview?.latency_percentiles || {};
+        const maxLatency = Math.max(latency.p99_ms || 100, 100);
+        
+        document.getElementById('p50-value').textContent = `${latency.p50_ms || 0}ms`;
+        document.getElementById('p90-value').textContent = `${latency.p90_ms || 0}ms`;
+        document.getElementById('p99-value').textContent = `${latency.p99_ms || 0}ms`;
+        
+        document.getElementById('p50-bar').style.width = `${((latency.p50_ms || 0) / maxLatency) * 100}%`;
+        document.getElementById('p90-bar').style.width = `${((latency.p90_ms || 0) / maxLatency) * 100}%`;
+        document.getElementById('p99-bar').style.width = `${((latency.p99_ms || 0) / maxLatency) * 100}%`;
+        
+        // Services
+        updateServices(data.services || {});
+        
+        // Traces
+        updateTraces(data.traces || []);
+        
+        // Circuit breakers
+        updateCircuitBreakers(data.circuit_breakers || {});
+        
+        // Events
+        updateEvents(data.events || []);
+        
+        // Cache
+        updateCache(data.cache || {});
+    }
+    
+    function updateServices(services) {
+        const grid = document.getElementById('services-grid');
+        
+        if (Object.keys(services).length === 0) {
+            grid.innerHTML = '<p style="color: #94a3b8">No services reporting</p>';
+            return;
+        }
+        
+        grid.innerHTML = Object.entries(services).map(([name, info]) => `
+            <div class="service-card">
+                <div class="service-header">
+                    <span class="service-name">${name}</span>
+                    <div class="service-status">
+                        <span class="status-dot ${info.healthy ? 'healthy' : 'unhealthy'}"></span>
+                        ${info.healthy ? 'Healthy' : 'Unhealthy'}
+                    </div>
+                </div>
+                <div class="service-metrics">
+                    ${info.latency_ms ? `<span>Latency: ${info.latency_ms}ms</span>` : ''}
+                    ${info.last_check ? `<span>Last check: ${new Date(info.last_check).toLocaleTimeString()}</span>` : ''}
+                </div>
+                ${info.error ? `<div style="color: #f43f5e; font-size: 0.875rem; margin-top: 0.25rem;">${info.error}</div>` : ''}
+            </div>
+        `).join('');
+    }
+    
+    function updateTraces(traces) {
+        const tbody = document.getElementById('traces-body');
+        
+        if (traces.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8">No traces recorded</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = traces.slice(-50).reverse().map(trace => {
+            const durationClass = trace.duration_ms > 5000 ? 'very-slow' : trace.duration_ms > 1000 ? 'slow' : '';
+            return `
+                <tr>
+                    <td>${new Date(trace.start_time).toLocaleTimeString()}</td>
+                    <td class="trace-name">${trace.name}</td>
+                    <td class="trace-duration ${durationClass}">${trace.duration_ms.toFixed(2)}ms</td>
+                    <td><span class="trace-status ${trace.status}">${trace.status}</span></td>
+                    <td>
+                        ${trace.attributes?.error?.message ? `<span style="color: #f43f5e">${trace.attributes.error.message}</span>` : '-'}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    function updateCircuitBreakers(breakers) {
+        const container = document.getElementById('circuit-breakers-list');
+        
+        if (Object.keys(breakers).length === 0) {
+            container.innerHTML = '<p style="color: #94a3b8">No circuit breakers configured</p>';
+            return;
+        }
+        
+        container.innerHTML = Object.entries(breakers).map(([name, info]) => `
+            <div class="circuit-breaker-card">
+                <div class="cb-header">
+                    <span class="cb-name">${name}</span>
+                    <span class="cb-state ${info.state}">${info.state}</span>
+                </div>
+                <div class="cb-stats">
+                    <span>Calls: ${info.total_calls}</span>
+                    <span>Failures: ${info.total_failures}</span>
+                    <span>Failure Rate: ${info.failure_rate.toFixed(1)}%</span>
+                    <span>Times Opened: ${info.times_opened}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function updateEvents(events) {
+        const container = document.getElementById('events-list');
+        
+        if (events.length === 0) {
+            container.innerHTML = '<p style="color: #94a3b8; padding: 1rem;">No events recorded</p>';
+            return;
+        }
+        
+        container.innerHTML = events.slice(-100).reverse().map(event => `
+            <div class="event-item">
+                <span class="event-time">${new Date(event.timestamp).toLocaleTimeString()}</span>
+                <span class="event-type">${event.type}</span>
+                <span>${event.source}</span>
+            </div>
+        `).join('');
+    }
+    
+    function updateCache(cache) {
+        const container = document.getElementById('cache-stats');
+        
+        const hitRate = cache.hit_rate_percent || 0;
+        
+        container.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-value">${cache.hits || 0}</div>
+                <div class="stat-label">Cache Hits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${cache.misses || 0}</div>
+                <div class="stat-label">Cache Misses</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success">${hitRate}%</div>
+                <div class="stat-label">Hit Rate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${cache.sets || 0}</div>
+                <div class="stat-label">Cache Sets</div>
+            </div>
+        `;
+    }
+    
+    function filterTraces() {
+        const filter = document.getElementById('trace-filter').value;
+        let filtered = currentData.traces || [];
+        
+        if (filter === 'error') {
+            filtered = filtered.filter(t => t.status === 'error');
+        } else if (filter === 'slow') {
+            filtered = filtered.filter(t => t.duration_ms > 1000);
+        }
+        
+        updateTraces(filtered);
+    }
+    
+    // Initial load
+    refreshData();
+    
+    // Auto-refresh every 10 seconds
+    setInterval(refreshData, 10000);
+    
+    // Re-init icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+# =============================================================================
+# Spectra Tools - Worker Dockerfile
+# =============================================================================
+# Based on Kali Linux with security tools pre-installed.
+# Used by the Arq worker for running scans.
+# =============================================================================
+
+FROM kalilinux/kali-rolling:latest
+
+WORKDIR /app
+
+# Install system dependencies (minimal base)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Python
+    python3 \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    pkg-config \
+    libffi-dev \
+    # Build tools
+    gcc \
+    libpq-dev \
+    golang \
+    libpcap-dev \
+    # Base utilities
+    curl \
+    wget \
+    git \
+    jq \
+    unzip \
+    # Network utils
+    iputils-ping \
+    iproute2 \
+    # Wordlists for fuzzing tools
+    seclists \
+    wordlists \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Setup Go environment (still needed for some tools or custom scripts)
+ENV GOPATH=/root/go
+ENV PATH=$PATH:/root/go/bin:/usr/local/go/bin
+
+# Create virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"
+
+# Create persistent tools directory
+RUN mkdir -p /opt/spectra_tools
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir arq
+
+# Copy application code
+COPY app/ ./app/
+
+# Health check (simple script check)
+HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
+    CMD python -c "import app.worker" || exit 1
+
+# Default command: Run Arq worker
+CMD ["arq", "app.worker.WorkerSettings"]

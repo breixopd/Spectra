@@ -1,0 +1,47 @@
+"""
+Mission model for storing mission execution history.
+
+Tracks security assessment missions, their status, logs, and results.
+"""
+
+from enum import Enum
+from typing import Optional
+
+from sqlalchemy import JSON, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.core.enums import MissionStatus
+from app.models.base import Base
+
+
+class Mission(Base):
+    """
+    Represents a security assessment mission execution.
+
+    Attributes:
+        target: The target address (IP, domain, or URL).
+        directive: The user's high-level goal for the assessment.
+        status: Current status of the mission.
+        logs: List of log entries from mission execution.
+        summary: Final mission summary and report data.
+    """
+
+    __tablename__ = "missions"
+
+    target: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    directive: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(50),
+        default=MissionStatus.CREATED.value,
+        nullable=False,
+        index=True,
+    )
+    logs: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
+    summary: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
+    attack_surface: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True, default=dict
+    )
+
+    def __repr__(self) -> str:
+        """String representation of the mission."""
+        return f"<Mission(id={self.id}, target={self.target}, status={self.status})>"

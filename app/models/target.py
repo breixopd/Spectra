@@ -1,0 +1,60 @@
+"""
+Target model for storing scan targets.
+
+Provides the central entity that findings and exploits reference.
+"""
+
+from __future__ import annotations
+
+from enum import Enum
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.enums import EntityStatus as TargetStatus
+from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.exploit import Exploit
+    from app.models.finding import Finding
+
+
+class Target(Base):
+    """
+    Represents a scan target (host, domain, IP range).
+
+    Attributes:
+        address: The actual target value (IP, domain, CIDR).
+        description: Optional notes or description.
+        status: Current status in the pipeline.
+        os: Operating system of the target (if known).
+        findings: Related vulnerability findings.
+        exploits: Related exploit attempts.
+    """
+
+    __tablename__ = "targets"
+
+    address: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[TargetStatus] = mapped_column(
+        SQLEnum(TargetStatus),
+        default=TargetStatus.PENDING,
+        nullable=False,
+    )
+    os: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    # Relationships
+    findings: Mapped[list["Finding"]] = relationship(
+        "Finding",
+        back_populates="target",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    exploits: Mapped[list["Exploit"]] = relationship(
+        "Exploit",
+        back_populates="target",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )

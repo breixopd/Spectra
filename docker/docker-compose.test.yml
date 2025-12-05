@@ -1,0 +1,180 @@
+version: '3.8'
+
+# Test environment for E2E testing as specified in testplan.md
+# Includes Metasploitable2 as a vulnerable target
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d
+#   docker compose -f docker-compose.test.yml run --rm test-runner
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: spectra
+      POSTGRES_PASSWORD: spectra_test
+      POSTGRES_DB: spectra_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spectra -d spectra_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spectra_test
+
+  redis:
+    image: redis:alpine
+    command: redis-server --requirepass spectra_test
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "spectra_test", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spectra_test
+
+  # Ollama for AI capabilities in tests
+  ai:
+    image: ollama/ollama:latest
+    container_name: spectra-test-ai
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h
+    networks:
+      - spectra_test
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    env_file:
+      - ../.env.test
+    environment:
+      # Override database/redis for container network
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=spectra_test
+      - TEST_TARGET_IP=metasploitable
+      - TEST_TARGET_URL=http://metasploitable
+      - PLUGIN_SAFE_MODE=false
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../app:/app/app:ro
+      - ../alembic:/app/alembic:ro
+      - ../alembic.ini:/app/alembic.ini:ro
+      - ../plugins:/app/plugins
+      - ../reports:/app/reports
+      - ../tests:/app/tests:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # ai:
+        # condition: service_started
+    networks:
+      - spectra_test
+
+  tools:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.tools
+    env_file:
+      - ../.env.test
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=spectra_test
+    volumes:
+      - ../plugins:/app/plugins
+      - ../reports:/app/reports
+      - ../app:/app/app:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - spectra_test
+
+  # Vulnerable target for E2E testing
+  metasploitable:
+    image: tleemcjr/metasploitable2
+    tty: true
+    networks:
+      spectra_test:
+        ipv4_address: 172.21.0.5
+
+  # DVWA - Damn Vulnerable Web Application
+  dvwa:
+    image: vulnerables/web-dvwa
+    environment:
+      - MYSQL_ROOT_PASSWORD=dvwa
+    networks:
+      spectra_test:
+        ipv4_address: 172.21.0.6
+    # DVWA exposes HTTP on port 80
+
+  # Test runner service
+  test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.tools
+    user: root
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    security_opt:
+      - seccomp:unconfined
+    entrypoint: ["python3", "-m", "pytest"]
+    command: ["tests/", "-v", "--tb=short", "-x"]
+    env_file:
+      - ../.env.test
+    environment:
+      # Override for test environment
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=spectra_test
+      - TEST_TARGET_IP=172.21.0.5
+      - TEST_TARGET_URL=http://172.21.0.5
+      - METASPLOITABLE_AVAILABLE=true
+      - DVWA_URL=http://172.21.0.6
+      - WEB_TARGET_URL=http://testphp.vulnweb.com
+      - PLUGIN_SAFE_MODE=false
+      - SAFE_MODE=true
+      - PERMISSION_BOUNDARY=172.21.0.0/24
+    volumes:
+      - ../app:/app/app:ro
+      - ../tests:/app/tests:ro
+      - ../plugins:/app/plugins
+      - ../reports:/app/reports
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # ai:
+        # condition: service_started
+      metasploitable:
+        condition: service_started
+      dvwa:
+        condition: service_started
+      tools:
+        condition: service_started
+    networks:
+      - spectra_test
+
+networks:
+  spectra_test:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+          gateway: 172.21.0.1

@@ -1,0 +1,33 @@
+import pytest
+import json
+import uuid
+from datetime import datetime
+from enum import Enum
+from app.core.websocket import ConnectionManager
+
+class TestEnum(str, Enum):
+    TEST = "test"
+
+@pytest.mark.asyncio
+async def test_broadcast_event_serialization():
+    # Setup
+    manager = ConnectionManager()
+    
+    # Data with complex types
+    complex_data = {
+        "id": uuid.uuid4(),
+        "timestamp": datetime.now(),
+        "status": TestEnum.TEST,
+        "nested": {"id": uuid.uuid4()}
+    }
+    
+    # Action
+    # This should fail if standard json.dumps is used without defaults
+    try:
+        await manager.broadcast_event("test_event", complex_data)
+    except TypeError as e:
+        pytest.fail(f"Serialization failed: {e}")
+    except Exception:
+        # Other errors (like connection loop stuff) are ignored for this unit test
+        # purely checking json.dumps inside
+        pass
