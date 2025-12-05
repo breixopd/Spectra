@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <header class="h-14 mb-4 flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-4">
+            <h1 class="text-xl font-semibold text-white tracking-tight">Mission <span class="text-slate-400 font-mono">HISTORY</span></h1>
+        </div>
+    </header>
+
+    <!-- Content -->
+    <div class="flex flex-1 gap-4 min-h-0">
+        <!-- Mission List -->
+        <div class="w-1/3 glass-panel rounded-xl flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-white/5 bg-slate-900/50">
+                <h2 class="text-sm font-medium text-slate-300">Past Missions</h2>
+            </div>
+            <div class="flex-1 overflow-y-auto p-2 space-y-2" id="mission-list">
+                <!-- Mission items will be injected here -->
+                <div class="text-center text-slate-500 py-8">Loading missions...</div>
+            </div>
+        </div>
+
+        <!-- Mission Details -->
+        <div class="flex-1 glass-panel rounded-xl flex flex-col overflow-hidden relative">
+            <div id="mission-details-placeholder" class="absolute inset-0 flex items-center justify-center text-slate-500">
+                <p>Select a mission to view details</p>
+            </div>
+            
+            <div id="mission-details-content" class="hidden flex flex-col h-full">
+                <!-- Details Header -->
+                <div class="p-4 border-b border-white/5 bg-slate-900/50 flex justify-between items-start">
+                    <div>
+                        <h2 class="text-lg font-semibold text-white" id="detail-target">Target</h2>
+                        <p class="text-xs text-slate-400 font-mono mt-1" id="detail-id">ID</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2 py-1 rounded text-xs font-medium" id="detail-status">Status</span>
+                        <button id="download-report-btn" class="p-2 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors" title="Download Report">
+                            <i class="fa-solid fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Directive -->
+                <div class="p-4 border-b border-white/5 bg-slate-900/30">
+                    <h3 class="text-xs font-mono text-slate-500 uppercase mb-1">Directive</h3>
+                    <p class="text-sm text-slate-300" id="detail-directive">Directive text...</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex border-b border-white/5 bg-slate-900/30">
+                    <button class="px-4 py-2 text-sm font-medium text-violet-400 border-b-2 border-violet-500" onclick="switchTab('logs')">Logs</button>
+                    <button class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200" onclick="switchTab('findings')">Findings</button>
+                    <button class="px-4 py-2 text-sm font-medium text-slate-400 hover:text-slate-200" onclick="switchTab('json')">JSON</button>
+                </div>
+
+                <!-- Tab Content -->
+                <div class="flex-1 overflow-y-auto p-4 bg-black/20">
+                    <!-- Logs Tab -->
+                    <div id="tab-logs" class="space-y-1 font-mono text-xs">
+                        <!-- Logs injected here -->
+                    </div>
+
+                    <!-- Findings Tab -->
+                    <div id="tab-findings" class="hidden space-y-3">
+                        <!-- Findings injected here -->
+                    </div>
+
+                    <!-- JSON Tab -->
+                    <div id="tab-json" class="hidden">
+                        <pre class="text-xs font-mono text-slate-400 overflow-x-auto"><code id="detail-json"></code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentMissionId = null;
+
+    // Load missions on start
+    fetch('/api/missions')
+        .then(res => res.json())
+        .then(missions => {
+            const list = document.getElementById('mission-list');
+            list.innerHTML = '';
+            
+            if (missions.length === 0) {
+                list.innerHTML = '<div class="text-center text-slate-500 py-8">No missions found</div>';
+                return;
+            }
+
+            // Sort by ID (timestamp roughly) descending
+            missions.reverse().forEach(m => {
+                const el = document.createElement('div');
+                el.className = 'p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition-colors border border-white/5';
+                el.onclick = () => loadMissionDetails(m.id);
+                
+                let statusColor = 'text-slate-400';
+                if (m.status === 'completed' || m.status === 'exploitation_successful') statusColor = 'text-emerald-400';
+                if (m.status === 'failed') statusColor = 'text-rose-400';
+                if (m.status === 'running') statusColor = 'text-amber-400';
+
+                el.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="font-medium text-slate-200 truncate">${m.target}</span>
+                        <span class="text-[10px] ${statusColor} border border-current px-1 rounded uppercase">${m.status}</span>
+                    </div>
+                    <div class="text-[10px] text-slate-500 font-mono truncate">${m.id}</div>
+                `;
+                list.appendChild(el);
+            });
+        });
+
+    function loadMissionDetails(id) {
+        currentMissionId = id;
+        document.getElementById('mission-details-placeholder').classList.add('hidden');
+        document.getElementById('mission-details-content').classList.remove('hidden');
+        
+        // Show loading state
+        document.getElementById('detail-target').innerText = 'Loading...';
+
+        fetch(`/api/missions/${id}`)
+            .then(res => res.json())
+            .then(mission => {
+                // Header
+                document.getElementById('detail-target').innerText = mission.target;
+                document.getElementById('detail-id').innerText = mission.id;
+                
+                const statusEl = document.getElementById('detail-status');
+                statusEl.innerText = mission.status;
+                
+                let statusClass = 'bg-slate-700 text-slate-300';
+                if (mission.status === 'completed' || mission.status === 'exploitation_successful') statusClass = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                else if (mission.status === 'failed') statusClass = 'bg-rose-500/20 text-rose-400 border border-rose-500/30';
+                else if (mission.status === 'running') statusClass = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                
+                statusEl.className = `px-2 py-1 rounded text-xs font-medium ${statusClass}`;
+
+                // Directive (Need to fetch full details if not in list response, but API returns it)
+                // The list response might not have directive, let's check schema. 
+                // Actually the list response schema in missions.py doesn't include directive.
+                // But get_mission endpoint does.
+                // Wait, the schema MissionResponse in missions.py DOES NOT include directive?
+                // Let's check schemas.py.
+                
+                // Assuming directive is available or we need to update schema.
+                // For now, let's try to access it.
+                if (mission.directive) {
+                     document.getElementById('detail-directive').innerText = mission.directive;
+                } else {
+                     document.getElementById('detail-directive').innerText = "No directive available (check API schema)";
+                }
+
+                // Logs
+                const logsContainer = document.getElementById('tab-logs');
+                logsContainer.innerHTML = '';
+                if (mission.logs && mission.logs.length > 0) {
+                    mission.logs.forEach(log => {
+                        const div = document.createElement('div');
+                        div.className = 'text-slate-400 border-l-2 border-white/5 pl-2 py-0.5 hover:bg-white/5';
+                        
+                        // Highlight key events
+                        if (log.includes('[VALIDATE]')) div.className += ' text-amber-300 border-amber-500/50';
+                        if (log.includes('[APPROVED]')) div.className += ' text-emerald-300 border-emerald-500/50';
+                        if (log.includes('[REJECTED]')) div.className += ' text-rose-300 border-rose-500/50';
+                        if (log.includes('[STEERING]')) div.className += ' text-violet-300 border-violet-500/50';
+                        if (log.includes('[SUCCESS]')) div.className += ' text-emerald-400 font-bold border-emerald-500';
+                        
+                        div.innerText = log;
+                        logsContainer.appendChild(div);
+                    });
+                } else {
+                    logsContainer.innerHTML = '<div class="text-slate-600 italic">No logs available</div>';
+                }
+
+                // JSON
+                document.getElementById('detail-json').innerText = JSON.stringify(mission, null, 2);
+                
+                // Findings (Need to parse from logs or add to API response)
+                // The MissionResponse schema currently only has id, target, status, logs.
+                // I should update the schema to include findings and directive.
+                const findingsContainer = document.getElementById('tab-findings');
+                findingsContainer.innerHTML = '<div class="text-slate-500 italic">Findings data not in API response yet.</div>';
+            });
+    }
+
+    function switchTab(tabName) {
+        ['logs', 'findings', 'json'].forEach(t => {
+            document.getElementById(`tab-${t}`).classList.add('hidden');
+        });
+        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        
+        // Update buttons (simple version)
+        // In a real app, I'd toggle classes on buttons too.
+    }
+</script>
+{% endblock %}

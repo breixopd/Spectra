@@ -1,0 +1,87 @@
+{
+  "id": "metasploit",
+  "name": "Metasploit Framework",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "The world's most used penetration testing framework. Supports running modules directly.",
+  "metadata": {
+    "ai_description": "Metasploit is the industry-standard exploitation framework. Use it when you have confirmed vulnerabilities (CVEs) and need to gain access to a system. Contains thousands of exploits, payloads, and auxiliary modules. Supports meterpreter for advanced post-exploitation. Use searchsploit first to find applicable modules, then run them via Metasploit.",
+    "capabilities": [
+      "exploit_framework",
+      "command_injection",
+      "privilege_escalation",
+      "lateral_movement",
+      "persistence"
+    ],
+    "supported_targets": [
+      "ip",
+      "host",
+      "url"
+    ],
+    "risk_level": "critical",
+    "tags": [
+      "exploitation",
+      "framework",
+      "rce",
+      "meterpreter",
+      "post-exploitation",
+      "payloads"
+    ],
+    "use_cases": [
+      "Exploiting known CVEs to gain system access",
+      "Generating reverse shell payloads",
+      "Post-exploitation activities (privilege escalation, persistence)",
+      "Pivoting through compromised systems",
+      "Auxiliary scanning (SMB, SSH enumeration)"
+    ],
+    "limitations": [
+      "Requires careful configuration of LHOST/LPORT",
+      "Exploits may crash services if not applicable",
+      "Detectable by most AV/EDR solutions",
+      "Requires understanding of the target system"
+    ],
+    "complements": [
+      "searchsploit",
+      "nmap"
+    ],
+    "prerequisites": [
+      "nmap",
+      "nuclei"
+    ]
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y metasploit-framework"
+    ],
+    "verification_command": "msfconsole -v",
+    "verification_regex": "Framework Version",
+    "uninstall_commands": [
+      "apt-get remove -y metasploit-framework",
+      "apt-get autoremove -y"
+    ]
+  },
+  "execution": {
+    "command": "msfconsole",
+    "args_template": "-q -x 'use {module}; set RHOSTS {target}; set RPORT {rport}; set LHOST {lhost}; set LPORT {lport}; set PAYLOAD {payload}; run; exit'",
+    "timeout": 600,
+    "timeout_per_host": 300,
+    "min_timeout": 120,
+    "max_timeout": 1800
+  },
+  "parsing": {
+    "format": "text",
+    "mapping": {}
+  },
+  "stealth": {
+    "rate_limit": null,
+    "delay_ms": 5000,
+    "extra_args": {}
+  },
+  "ui": {
+    "icon": "terminal",
+    "color": "red"
+  },
+  "signature": "288386a555a5639de7c20b102a2ff4bbac33c80b159257e126ccc0524a9b4366b986da43014826e71ad8076e2988678f93ba72de8b8bed0010001b2932026208"
+}

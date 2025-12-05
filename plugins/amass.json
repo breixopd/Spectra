@@ -1,0 +1,74 @@
+{
+  "id": "amass",
+  "name": "OWASP Amass",
+  "version": "3.23.3",
+  "category": "discovery",
+  "description": "In-depth Attack Surface Mapping and Asset Discovery",
+  "metadata": {
+    "ai_description": "Amass is the gold standard for subdomain enumeration and attack surface mapping. Use it when targeting domains to discover subdomains, related infrastructure, and IP addresses. It combines passive techniques (certificate transparency, DNS, web archives) with active techniques (DNS brute-forcing, zone transfers). Essential for expanding scope during reconnaissance.",
+    "capabilities": [
+      "subdomain_enum",
+      "dns_enum",
+      "host_discovery"
+    ],
+    "supported_targets": [
+      "domain"
+    ],
+    "risk_level": "passive",
+    "tags": [
+      "subdomain",
+      "dns",
+      "recon",
+      "osint",
+      "attack-surface"
+    ],
+    "use_cases": [
+      "Discovering all subdomains of a target domain",
+      "Mapping the attack surface before deeper scanning",
+      "Finding related IP addresses and infrastructure",
+      "Identifying acquisition targets or related companies"
+    ],
+    "limitations": [
+      "Only works on domains, not IPs",
+      "Passive mode may miss some subdomains",
+      "Active mode may trigger alerts"
+    ],
+    "complements": [
+      "nmap",
+      "nuclei",
+      "ffuf"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y amass"
+    ],
+    "verification_command": "amass -help",
+    "verification_regex": "Usage:",
+    "uninstall_commands": [
+      "apt-get remove -y amass",
+      "apt-get autoremove -y"
+    ]
+  },
+  "execution": {
+    "command": "amass",
+    "args_template": "enum -d {target} -json {output_file}",
+    "timeout": 600
+  },
+  "parsing": {
+    "format": "ndjson",
+    "mapping": {
+      "domain": "name",
+      "ip": "addresses.0.ip",
+      "source": "sources.0"
+    }
+  },
+  "ui": {
+    "icon": "globe",
+    "color": "blue"
+  },
+  "signature": "98ae7420d80169a8e4818edffe0dfa4431f1805aa7da9254f005dfd7494b19c7aacbc7e6e3217746ad20bdcbbd4d65409fae32093f587183ad3755f4a5454006"
+}

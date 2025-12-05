@@ -1,0 +1,217 @@
+"""Spectra Security Assessment Platform - Main FastAPI Application."""
+
+import json
+import logging
+from pathlib import Path
+
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from slowapi.errors import RateLimitExceeded
+from sqlalchemy import select
+
+from app.api.routers import (
+    auth,
+    exploits,
+    findings,
+    health,
+    missions,
+    observability,
+    system,
+    targets,
+    tools,
+    ui,
+)
+from app.core.config import settings
+from app.core.database import async_session_maker
+from app.core.lifespan import lifespan
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
+from app.core.websocket import manager
+from app.models.user import User
+from app.core.bridge import EventWebSocketBridge
+
+# Initialize event bridge
+event_bridge = EventWebSocketBridge()
+
+# Patch lifespan to include bridge
+# Note: In a cleaner implementation, we would add this to app/core/lifespan.py
+# but to keep changes focused, we'll wrap the lifespan here or rely on the fact 
+# that lifespan imports are used.
+# Ideally, we should add startup/shutdown events.
+
+
+
+# --- Logging Setup ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("spectra")
+
+# --- Path Configuration ---
+APP_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = APP_DIR / "templates"
+STATIC_DIR = APP_DIR / "static"
+
+# --- Swagger UI Customization ---
+swagger_ui_params = {
+    "syntaxHighlight.theme": "obsidian",
+    "tryItOutEnabled": True,
+    "displayRequestDuration": True,
+    "defaultModelsExpandDepth": -1,
+    "docExpansion": "none",
+    "filter": True,
+    "persistAuthorization": True,
+    "deepLinking": True,
+}
+
+# --- FastAPI Application ---
+app = FastAPI(
+    title="Spectra Security Assessment API",
+    description="AI-driven security assessment platform with MAKER Framework.",
+    version="1.0.0",
+    lifespan=lifespan,
+    swagger_ui_parameters=swagger_ui_params,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
+)
+
+@app.on_event("startup")
+async def startup_event():
+    event_bridge.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    event_bridge.stop()
+
+# --- Rate Limiting ---
+from slowapi.middleware import SlowAPIMiddleware
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore
+app.add_middleware(SlowAPIMiddleware)
+
+# --- CORS Middleware ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# --- Middleware ---
+from app.core.middleware import SecurityHeadersMiddleware
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# --- Static Files ---
+app.mount(
+    "/static",
+    StaticFiles(directory=str(STATIC_DIR), html=True),
+    name="static",
+)
+
+# --- Templates ---
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+# --- Include Routers ---
+app.include_router(health.router, prefix="/api", tags=["Health"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(tools.router, prefix="/api", tags=["Tools"])
+app.include_router(missions.router, prefix="/api", tags=["Missions"])
+app.include_router(targets.router, prefix="/api", tags=["Targets"])
+app.include_router(findings.router, prefix="/api", tags=["Findings"])
+app.include_router(exploits.router, prefix="/api", tags=["Exploits"])
+app.include_router(observability.router, prefix="/api", tags=["Observability"])
+app.include_router(system.router, prefix="/api", tags=["System"])
+app.include_router(ui.router, tags=["UI"])
+
+
+# --- WebSocket Endpoint ---
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> None:
+    """
+    WebSocket endpoint for real-time communication.
+
+    Handles bidirectional messaging between the server and connected clients.
+
+    Authentication: Pass JWT token as query parameter ?token=<jwt>
+    If no token provided or invalid, connection is rejected.
+    """
+    from app.api.dependencies import validate_websocket_token
+
+    # Validate authentication
+    user = await validate_websocket_token(token)
+    if not user:
+        await websocket.close(code=4001, reason="Authentication required")
+        logger.warning("WebSocket connection rejected: invalid or missing token")
+        return
+
+    await manager.connect(websocket)
+    logger.debug("WebSocket connected for user: %s", user.username)
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Validate message size (DoS protection)
+            if len(data) > 65536:  # 64KB max message size
+                logger.warning(
+                    "WebSocket message too large from %s, ignoring", user.username
+                )
+                continue
+
+            try:
+                message_json = json.loads(data)
+                if not isinstance(message_json, dict) or "type" not in message_json:
+                    logger.warning(
+                        "Invalid WebSocket message format from %s", user.username
+                    )
+                    continue
+
+                msg_type = message_json.get("type")
+                if msg_type == "ping":
+                    await websocket.send_text(json.dumps({"type": "pong"}))
+                else:
+                    logger.debug("Received WS message type: %s", msg_type)
+            except json.JSONDecodeError:
+                logger.warning(
+                    "Invalid JSON in WebSocket message from %s", user.username
+                )
+
+    except WebSocketDisconnect:
+        await manager.disconnect(websocket)
+        logger.debug("WebSocket client %s disconnected normally", user.username)
+    except Exception as e:
+        logger.warning("WebSocket error for %s: %s", user.username, e)
+        await manager.disconnect(websocket)
+
+
+# --- Root Redirect ---
+@app.get("/", include_in_schema=False)
+async def root():
+    """Redirect to appropriate page based on setup status."""
+    from fastapi.responses import RedirectResponse
+
+    async with async_session_maker() as session:
+        is_setup = (
+            await session.execute(select(User).limit(1))
+        ).scalar_one_or_none() is not None
+
+    return RedirectResponse(url="/dashboard" if is_setup else "/setup")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=5000,
+        reload=settings.DEBUG,
+        log_level="info",
+    )

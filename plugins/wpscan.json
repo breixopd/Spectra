@@ -1,0 +1,85 @@
+{
+  "id": "wpscan",
+  "name": "WPScan",
+  "version": "1.0.0",
+  "category": "web",
+  "description": "WordPress vulnerability scanner",
+  "metadata": {
+    "ai_description": "WPScan is the definitive WordPress security scanner. Use it ONLY when WordPress is detected (by Nuclei tech-detect, Nmap, or Nikto). It enumerates users, plugins, themes, and checks for known vulnerabilities using its extensive database. Can also brute-force WordPress logins. Essential for any WordPress target.",
+    "capabilities": [
+      "vuln_scan",
+      "cve_detection",
+      "cms_detection",
+      "brute_force"
+    ],
+    "supported_targets": [
+      "url"
+    ],
+    "risk_level": "low",
+    "tags": [
+      "wordpress",
+      "cms",
+      "web",
+      "plugins",
+      "themes",
+      "vulnerability"
+    ],
+    "use_cases": [
+      "Enumerating WordPress users",
+      "Finding vulnerable plugins and themes",
+      "Detecting WordPress version and vulnerabilities",
+      "Brute-forcing wp-admin credentials",
+      "Checking for known CVEs in WordPress installations"
+    ],
+    "limitations": [
+      "Only works on WordPress sites",
+      "API token required for full vulnerability database",
+      "May miss custom vulnerabilities"
+    ],
+    "complements": [
+      "nuclei",
+      "sqlmap"
+    ],
+    "prerequisites": [
+      "nmap",
+      "nuclei"
+    ]
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y wpscan"
+    ],
+    "verification_command": "wpscan --version",
+    "verification_regex": "\\d+\\.\\d+\\.\\d+",
+    "uninstall_commands": [
+      "apt-get remove -y wpscan",
+      "apt-get autoremove -y"
+    ]
+  },
+  "execution": {
+    "command": "wpscan",
+    "args_template": "--url {target} --format json -o {output_file} {flags}",
+    "timeout": 600,
+    "arg_modifiers": {
+      "enumerate": {
+        "prefix": "--enumerate ",
+        "separator": ","
+      }
+    }
+  },
+  "parsing": {
+    "format": "json",
+    "mapping": {
+      "name": "type",
+      "description": "title",
+      "severity": "severity"
+    }
+  },
+  "ui": {
+    "icon": "globe-hemisphere-west",
+    "color": "blue"
+  },
+  "signature": "351ec655ad05bb9d19626610b68a86f60247593e8d218bb5be51825dd37b5b995e7a97bdd794361a8a11cf16d8c35539bc04fb52703e668f3f476ebcddd5e608"
+}

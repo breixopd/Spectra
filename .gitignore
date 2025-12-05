@@ -1,0 +1,17 @@
+cve_data/**
+__pycache__/**
+*.py[cod]
+*.pyo
+*.log
+*.cpython
+
+.env.test
+.env
+.vscode
+.venv
+keys/plugin_signing.pem
+.coverage
+reports/missions/
+reports/findings/
+reports/knowledge_base/
+logs/

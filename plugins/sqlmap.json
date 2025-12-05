@@ -1,0 +1,91 @@
+{
+  "id": "sqlmap",
+  "name": "SQLMap",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "Automatic SQL injection and database takeover tool",
+  "metadata": {
+    "ai_description": "SQLMap is the de-facto standard for automated SQL injection detection and exploitation. Use it when you suspect SQL injection vulnerabilities (e.g., from Nuclei findings or manual testing). It can detect, exploit, and dump databases from various DBMS including MySQL, PostgreSQL, MSSQL, Oracle, and SQLite. Supports various injection techniques including blind, error-based, and time-based.",
+    "capabilities": [
+      "sql_injection",
+      "exploit_framework"
+    ],
+    "supported_targets": [
+      "url"
+    ],
+    "risk_level": "high",
+    "tags": [
+      "sqli",
+      "database",
+      "exploitation",
+      "injection",
+      "web"
+    ],
+    "use_cases": [
+      "Confirming SQL injection vulnerabilities",
+      "Automated database enumeration",
+      "Extracting database contents",
+      "Privilege escalation via SQL injection",
+      "WAF bypass testing for SQL injection"
+    ],
+    "limitations": [
+      "Only targets SQL injection vulnerabilities",
+      "Can be slow on blind injection",
+      "May cause database errors visible to users",
+      "Requires a vulnerable parameter to be effective"
+    ],
+    "complements": [
+      "nuclei",
+      "burp"
+    ],
+    "prerequisites": [
+      "nmap",
+      "nuclei"
+    ]
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y sqlmap"
+    ],
+    "verification_command": "sqlmap --version",
+    "verification_regex": "1\\.\\d+",
+    "uninstall_commands": [
+      "apt-get remove -y sqlmap",
+      "apt-get autoremove -y"
+    ]
+  },
+  "execution": {
+    "command": "sqlmap",
+    "args_template": "-u {target} --batch {flags} > {output_file}",
+    "timeout": 600,
+    "arg_modifiers": {
+      "tamper": {
+        "prefix": "--tamper=",
+        "separator": ","
+      },
+      "p": {
+        "prefix": "-p ",
+        "separator": ","
+      }
+    }
+  },
+  "parsing": {
+    "format": "text",
+    "mapping": {}
+  },
+  "stealth": {
+    "rate_limit": 1,
+    "delay_ms": 2000,
+    "extra_args": {
+      "--delay": "2",
+      "--random-agent": "true"
+    }
+  },
+  "ui": {
+    "icon": "database",
+    "color": "red"
+  },
+  "signature": "459900aec3b06592e68c6bfa673fd5c739d49c509b3eba57f17c75ad3c1cf6d38ee963c4ab20f6e4b5eb9f69da3a882073a53286651d388445e4ebda93da7d02"
+}

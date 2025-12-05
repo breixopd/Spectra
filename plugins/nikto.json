@@ -1,0 +1,83 @@
+{
+  "id": "nikto",
+  "name": "Nikto",
+  "version": "1.0.0",
+  "category": "web",
+  "description": "Web server scanner which performs comprehensive tests against web servers",
+  "metadata": {
+    "ai_description": "Nikto is a comprehensive web server scanner that checks for dangerous files, outdated software versions, server misconfigurations, and known vulnerabilities. It performs over 6700 tests. Use it after nmap identifies web servers to get a detailed vulnerability assessment. Good for finding low-hanging fruit like exposed admin panels, backup files, and server misconfigurations.",
+    "capabilities": [
+      "vuln_scan",
+      "web_fingerprint",
+      "misconfig_detection"
+    ],
+    "supported_targets": [
+      "url",
+      "ip",
+      "domain"
+    ],
+    "risk_level": "low",
+    "tags": [
+      "web",
+      "scanner",
+      "vulnerability",
+      "misconfiguration",
+      "server"
+    ],
+    "use_cases": [
+      "Scanning web servers for known vulnerabilities",
+      "Finding dangerous files and backup files",
+      "Detecting outdated software versions",
+      "Identifying server misconfigurations",
+      "Checking for default credentials on web interfaces"
+    ],
+    "limitations": [
+      "Can be noisy and trigger WAF/IDS",
+      "Signature-based, may miss custom vulnerabilities",
+      "Not as comprehensive as modern tools like Nuclei for CVEs"
+    ],
+    "complements": [
+      "nuclei",
+      "nmap",
+      "ffuf"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y nikto"
+    ],
+    "verification_command": "nikto -Version",
+    "verification_regex": "Nikto",
+    "uninstall_commands": [
+      "apt-get remove -y nikto",
+      "apt-get autoremove -y"
+    ]
+  },
+  "execution": {
+    "command": "nikto",
+    "args_template": "-h {target} -Format json -o {output_file} {flags}",
+    "timeout": 900,
+    "success_exit_codes": [
+      0,
+      1
+    ]
+  },
+  "parsing": {
+    "format": "json",
+    "mapping": {
+      "name": "id",
+      "description": "msg",
+      "url": "url"
+    }
+  },
+  "ui": {
+    "icon": "globe",
+    "color": "cyan"
+  },
+  "signature": "3b9e268809d5908d5f2f28a35270be4c89e53913cb1b1f371b528c2443eef6ec6eb27fd2de64db824dd091ca27fb31c2653f0557b1e7c6e8aab7e22deb88b809"
+}

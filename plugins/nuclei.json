@@ -1,0 +1,112 @@
+{
+  "id": "nuclei",
+  "name": "Nuclei",
+  "version": "1.0.0",
+  "category": "vulnerability",
+  "description": "Fast and customizable vulnerability scanner based on YAML templates.",
+  "metadata": {
+    "ai_description": "Nuclei is a template-based vulnerability scanner that can detect misconfigurations, CVEs, exposed panels, default credentials, and more. It uses community-maintained templates covering thousands of vulnerabilities. Best used after initial discovery to systematically check for known vulnerabilities. Very effective for web applications and APIs.",
+    "capabilities": [
+      "vuln_scan",
+      "cve_detection",
+      "misconfig_detection",
+      "web_fingerprint",
+      "cms_detection",
+      "waf_detection"
+    ],
+    "supported_targets": [
+      "url",
+      "domain",
+      "ip"
+    ],
+    "risk_level": "low",
+    "tags": [
+      "vulnerability",
+      "web",
+      "cve",
+      "templates",
+      "automation",
+      "scanner"
+    ],
+    "use_cases": [
+      "Automated vulnerability scanning with templates",
+      "CVE detection on web applications",
+      "Finding misconfigurations and exposed panels",
+      "Technology fingerprinting and detection",
+      "Checking for default credentials",
+      "WAF detection and bypass testing"
+    ],
+    "limitations": [
+      "Template-based - only finds known vulnerabilities",
+      "May produce false positives that need manual verification",
+      "Not effective for business logic flaws"
+    ],
+    "complements": [
+      "nmap",
+      "ffuf",
+      "nikto"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "binary",
+    "commands": [
+      "curl -sL -o /tmp/nuclei.zip https://github.com/projectdiscovery/nuclei/releases/download/v3.3.7/nuclei_3.3.7_linux_amd64.zip",
+      "unzip -o /tmp/nuclei.zip -d /opt/spectra_tools",
+      "rm -f /tmp/nuclei.zip",
+      "chmod +x /opt/spectra_tools/nuclei",
+      "ln -sf /opt/spectra_tools/nuclei /usr/local/bin/nuclei || true",
+      "nuclei -update-templates || true"
+    ],
+    "verification_command": "nuclei -version",
+    "verification_regex": "Nuclei Engine Version: v(\\d+\\.\\d+\\.\\d+)",
+    "uninstall_commands": [
+      "rm -f /opt/spectra_tools/nuclei /usr/local/bin/nuclei"
+    ]
+  },
+  "execution": {
+    "command": "nuclei",
+    "args_template": "-u {target} {tags} {templates} {flags} -jsonl -o {output_file}",
+    "timeout": 900,
+    "timeout_per_host": 180,
+    "min_timeout": 120,
+    "max_timeout": 3600,
+    "arg_modifiers": {
+      "tags": {
+        "prefix": "-tags ",
+        "separator": ","
+      },
+      "templates": {
+        "prefix": "-t ",
+        "separator": ","
+      }
+    }
+  },
+  "parsing": {
+    "format": "ndjson",
+    "mapping": {
+      "name": "template-id",
+      "severity": "info.severity",
+      "description": "info.description",
+      "matched_at": "matched-at",
+      "request": "request",
+      "response": "response",
+      "curl_command": "curl-command"
+    }
+  },
+  "stealth": {
+    "rate_limit": 10,
+    "delay_ms": 500,
+    "extra_args": {
+      "-rl": "10",
+      "-c": "5"
+    }
+  },
+  "ui": {
+    "icon": "shield-warning",
+    "color": "amber"
+  },
+  "signature": "5cc5a198b501d1d1b8bdffe3c97dd94452209875e5e531757fd4b0857ac3692638d8a722acda29bd4f0953a82563c7ba047b6053d6604fffe51b6518c4bcf202"
+}

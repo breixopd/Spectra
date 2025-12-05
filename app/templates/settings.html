@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold text-white tracking-tight">System Settings</h1>
+    <button class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+        Save Changes
+    </button>
+</div>
+
+<div class="grid grid-cols-12 gap-6">
+    <!-- Sidebar Navigation -->
+    <div class="col-span-3">
+        <nav class="space-y-1">
+            <a href="#general" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
+                <i class="fa-solid fa-sliders mr-3 text-violet-400"></i>
+                General
+            </a>
+            <a href="#plugins" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+                <i class="fa-solid fa-plug mr-3 text-slate-500"></i>
+                Plugins
+            </a>
+            <a href="#api" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+                <i class="fa-solid fa-key mr-3 text-slate-500"></i>
+                API Keys
+            </a>
+            <a href="#system" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+                <i class="fa-solid fa-server mr-3 text-slate-500"></i>
+                System Status
+            </a>
+        </nav>
+    </div>
+
+    <!-- Content Area -->
+    <div class="col-span-9 space-y-6">
+        
+        <!-- General Settings -->
+        <div class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4">General Configuration</h2>
+            <form id="settings-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">AI Provider</label>
+                        <select name="ai_provider" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <option value="ollama">Ollama (Local)</option>
+                            <option value="api">Cloud API (OpenAI, OpenRouter, etc.)</option>
+                            <option value="mock">Mock (Testing)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Log Level</label>
+                        <select name="log_level" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Cloud API Settings -->
+                <div class="border border-white/10 rounded-lg p-4 mt-4">
+                    <h3 class="text-sm font-medium text-white mb-3">Cloud API Settings</h3>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">API Key</label>
+                        <input type="password" name="llm_api_key" placeholder="sk-..." class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Works with OpenAI, OpenRouter, vLLM, LocalAI, etc.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mt-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">API Base URL</label>
+                            <input type="text" name="llm_api_base_url" placeholder="https://openrouter.ai/api/v1" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">Leave empty for OpenAI default</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Model</label>
+                            <input type="text" name="llm_model" placeholder="gpt-4o-mini" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        </div>
+                    </div>
+                    <div class="mt-3 flex justify-end">
+                        <button type="button" id="test-api-btn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
+                            Test Connection
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ollama Settings -->
+                <div class="border border-white/10 rounded-lg p-4 mt-4">
+                    <h3 class="text-sm font-medium text-white mb-3">Ollama Settings</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Ollama Host</label>
+                            <input type="text" name="ollama_host" placeholder="http://ai:11434" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Ollama Model</label>
+                            <input type="text" name="ollama_model" placeholder="qwen2.5:3b" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        </div>
+                    </div>
+                    <div class="mt-3 flex justify-end">
+                        <button type="button" id="test-ollama-btn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
+                            Test Connection
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between py-2 border-t border-white/5 mt-4 pt-4">
+                    <div>
+                        <p class="text-sm font-medium text-white">Plugin Safe Mode</p>
+                        <p class="text-xs text-slate-500">Require valid signatures for all plugins</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="plugin_safe_mode" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                    </label>
+                </div>
+
+                <!-- Advanced Configuration -->
+                <div class="border border-white/10 rounded-lg p-4 mt-4">
+                    <h3 class="text-sm font-medium text-white mb-3">Advanced Configuration</h3>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Connect Back Host (LHOST)</label>
+                            <input type="text" name="connect_back_host" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">IP/Hostname for reverse shells</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Tool Container Name</label>
+                            <input type="text" name="tool_container_name" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">Optional: Execute tools in separate container</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between py-2 mt-4">
+                        <div>
+                            <p class="text-sm font-medium text-white">Require Approval</p>
+                            <p class="text-xs text-slate-500">Wait for user approval on high-risk actions</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="require_approval" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end mt-4">
+                    <button type="submit" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                        Save Configuration
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Data Management Section -->
+        <div class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-database text-rose-400"></i>
+                Data Management
+            </h2>
+            <p class="text-sm text-slate-400 mb-4">Clear stored data and caches. These actions cannot be undone.</p>
+            
+            <div class="space-y-4">
+                <!-- Clear Tool Stats -->
+                <div class="flex items-center justify-between py-3 border-b border-white/5">
+                    <div>
+                        <p class="text-sm font-medium text-white">Tool Statistics</p>
+                        <p class="text-xs text-slate-500">Clear execution counts, timings, and success rates</p>
+                    </div>
+                    <button onclick="clearToolStats()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
+                        <i class="fa-solid fa-broom mr-1"></i> Clear Stats
+                    </button>
+                </div>
+
+                <!-- Clear Missions -->
+                <div class="flex items-center justify-between py-3 border-b border-white/5">
+                    <div>
+                        <p class="text-sm font-medium text-white">Mission History</p>
+                        <p class="text-xs text-slate-500">Delete all mission data, findings, and reports</p>
+                    </div>
+                    <button onclick="showClearMissionsConfirm()" class="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs font-medium transition-colors">
+                        <i class="fa-solid fa-trash mr-1"></i> Clear Missions
+                    </button>
+                </div>
+
+                <!-- Clear Cache -->
+                <div class="flex items-center justify-between py-3 border-b border-white/5">
+                    <div>
+                        <p class="text-sm font-medium text-white">Redis Cache</p>
+                        <p class="text-xs text-slate-500">Clear cached data (RAG embeddings, tool configs)</p>
+                    </div>
+                    <button onclick="clearCache()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
+                        <i class="fa-solid fa-broom mr-1"></i> Clear Cache
+                    </button>
+                </div>
+
+                <!-- Reinstall All Tools -->
+                <div class="flex items-center justify-between py-3">
+                    <div>
+                        <p class="text-sm font-medium text-white">Reinstall Tools</p>
+                        <p class="text-xs text-slate-500">Force reinstall all security tools</p>
+                    </div>
+                    <button onclick="reinstallTools()" class="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs font-medium transition-colors">
+                        <i class="fa-solid fa-rotate mr-1"></i> Reinstall
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-server text-cyan-400"></i>
+                System Status
+            </h2>
+            <div id="system-status-content" class="space-y-3">
+                <div class="animate-pulse flex items-center gap-2 text-slate-500">
+                    <i class="fa-solid fa-spinner fa-spin"></i> Loading status...
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Clear Missions Confirmation Modal -->
+<div id="clear-missions-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
+    <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold text-white mb-2">
+            <i class="fa-solid fa-exclamation-triangle text-rose-400 mr-2"></i>
+            Confirm Delete All Missions
+        </h3>
+        <p class="text-slate-400 text-sm mb-4">
+            This will permanently delete all mission data, findings, exploits, and reports.
+            This action cannot be undone.
+        </p>
+        <div class="flex gap-3 justify-end">
+            <button onclick="hideClearMissionsConfirm()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+                Cancel
+            </button>
+            <button onclick="confirmClearMissions()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
+                <i class="fa-solid fa-trash mr-1"></i> Delete All
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/settings.js"></script>
+<script>
+    // Data Management Functions
+    async function clearToolStats() {
+        if (!confirm('Clear all tool statistics?')) return;
+        try {
+            const res = await fetch('/api/system/clear/tools', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`Cleared ${data.cleared_count || 0} tool stat entries`);
+            } else {
+                alert('Error: ' + (data.detail || 'Failed to clear'));
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    function showClearMissionsConfirm() {
+        document.getElementById('clear-missions-modal').classList.remove('hidden');
+    }
+
+    function hideClearMissionsConfirm() {
+        document.getElementById('clear-missions-modal').classList.add('hidden');
+    }
+
+    async function confirmClearMissions() {
+        hideClearMissionsConfirm();
+        try {
+            const res = await fetch('/api/system/clear/missions?confirm=true', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`Deleted ${data.deleted_count || 0} missions`);
+            } else {
+                alert('Error: ' + (data.detail || 'Failed to clear'));
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function clearCache() {
+        if (!confirm('Clear Redis cache? This may affect performance temporarily.')) return;
+        try {
+            const res = await fetch('/api/system/clear/cache', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`Cleared ${data.cleared_count || 0} cache entries`);
+            } else {
+                alert('Error: ' + (data.detail || 'Failed to clear'));
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    async function reinstallTools() {
+        if (!confirm('Reinstall all tools? This may take several minutes.')) return;
+        try {
+            const res = await fetch('/api/tools/install-all', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                alert('Tool installation queued. Check system status for progress.');
+            } else {
+                alert('Error: ' + (data.detail || 'Failed to queue'));
+            }
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
+
+    // Load system status on page load
+    async function loadSystemStatus() {
+        const container = document.getElementById('system-status-content');
+        try {
+            const res = await fetch('/api/system/status');
+            const data = await res.json();
+            
+            const dbStatus = data.database?.status === 'connected' ? 
+                '<span class="text-emerald-400"><i class="fa-solid fa-check-circle"></i> Connected</span>' :
+                '<span class="text-rose-400"><i class="fa-solid fa-times-circle"></i> Error</span>';
+            
+            const redisStatus = data.redis?.status === 'connected' ?
+                '<span class="text-emerald-400"><i class="fa-solid fa-check-circle"></i> Connected</span>' :
+                '<span class="text-rose-400"><i class="fa-solid fa-times-circle"></i> Error</span>';
+
+            const ts = data.tool_stats || {};
+            
+            container.innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-400">Database</span>
+                        ${dbStatus}
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-400">Redis</span>
+                        ${redisStatus}
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-400">Tools Ready</span>
+                        <span class="text-white">${ts.ready || 0} / ${ts.total || 0}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-400">Tools Installing</span>
+                        <span class="${ts.installing > 0 ? 'text-amber-400' : 'text-slate-500'}">${ts.installing || 0}</span>
+                    </div>
+                </div>
+                <div class="mt-4 pt-3 border-t border-white/5">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full ${data.status === 'ready' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}"></div>
+                        <span class="text-sm ${data.status === 'ready' ? 'text-emerald-400' : 'text-amber-400'}">${data.message}</span>
+                    </div>
+                </div>
+            `;
+        } catch (e) {
+            container.innerHTML = '<span class="text-rose-400">Failed to load status</span>';
+        }
+    }
+
+    loadSystemStatus();
+    setInterval(loadSystemStatus, 10000);
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-semibold text-white tracking-tight">Target Management</h1>
+    <button onclick="openAddTargetModal()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center">
+        <i class="fa-solid fa-plus mr-2"></i>
+        Add Target
+    </button>
+</div>
+
+<!-- Targets Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="targets-grid">
+    <!-- Target Card Template (Hidden) -->
+    <template id="target-card-template">
+        <div class="glass-panel rounded-xl p-4 group relative overflow-hidden">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-lg font-mono font-medium text-white target-name">10.10.10.5</h3>
+                    <p class="text-xs text-slate-500 target-desc">Legacy Web Server</p>
+                </div>
+                <div class="flex space-x-2">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">OWNED</span>
+                </div>
+            </div>
+            
+            <div class="space-y-2 mb-4">
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-500">OS</span>
+                    <span class="text-slate-300 font-mono">Linux 5.4</span>
+                </div>
+                <div class="flex justify-between text-xs">
+                    <span class="text-slate-500">Open Ports</span>
+                    <span class="text-slate-300 font-mono">22, 80, 443</span>
+                </div>
+            </div>
+
+            <div class="flex space-x-2 mt-4">
+                <button class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-crosshairs mr-2 text-violet-400"></i>
+                    Scan
+                </button>
+                <button class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors flex items-center justify-center" onclick="openShell(this)">
+                    <i class="fa-solid fa-terminal mr-2 text-emerald-400"></i>
+                    Shell
+                </button>
+            </div>
+        </div>
+    </template>
+</div>
+
+<!-- Add Target Modal -->
+<div id="add-target-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeAddTargetModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-xl p-6 border border-white/10 shadow-2xl">
+        <h2 class="text-lg font-semibold text-white mb-4">Add New Target</h2>
+        <form id="add-target-form" onsubmit="handleAddTarget(event)">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Target Address (IP/Domain)</label>
+                    <input type="text" name="address" required class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Description</label>
+                    <input type="text" name="description" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="closeAddTargetModal()" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">Add Target</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Shell Modal -->
+<div id="shell-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/90 backdrop-blur-sm"></div>
+    <div class="absolute inset-4 glass-panel rounded-xl flex flex-col overflow-hidden border border-white/10 shadow-2xl">
+        <div class="h-10 bg-slate-900 border-b border-white/10 flex items-center justify-between px-4">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-terminal text-emerald-400"></i>
+                <span class="text-sm font-mono text-white">root@10.10.10.5:~#</span>
+            </div>
+            <button onclick="closeShell()" class="text-slate-500 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="flex-1 bg-black p-4 font-mono text-sm text-slate-300 overflow-y-auto" id="shell-output">
+            <p>Connected to reverse shell listener...</p>
+            <p class="text-emerald-500">root@target:~# <span class="animate-pulse">_</span></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/targets.js"></script>
+{% endblock %}

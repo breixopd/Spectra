@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title | default("Spectra | War Room") }}</title>
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 950: '#020617' },
+                        emerald: { 400: '#34d399', 500: '#10b981' },
+                        violet: { 400: '#a78bfa', 500: '#8b5cf6' },
+                        rose: { 400: '#fb7185', 500: '#f43f5e' },
+                        amber: { 400: '#fbbf24', 500: '#f59e0b' }
+                    },
+                    fontFamily: {
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Icons (FontAwesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Cytoscape.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+
+    <!-- Leaflet (Maps) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <style>
+        /* Cinematic Noise Texture */
+        .bg-noise {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 50; opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass-sidebar { background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(16px); border-right: 1px solid rgba(255, 255, 255, 0.05); }
+        .scanlines { background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; pointer-events: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+    <!-- Auth Check -->
+    <script>
+        // Check if user is authenticated
+        const publicPaths = ['/login', '/setup'];
+        const token = localStorage.getItem('token');
+        
+        if (!token && !publicPaths.includes(window.location.pathname)) {
+            // Check if setup is needed
+            fetch('/api/auth/setup/status')
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.is_setup) {
+                        window.location.href = '/setup';
+                    } else {
+                        window.location.href = '/login';
+                    }
+                })
+                .catch(() => window.location.href = '/login');
+        }
+        
+        // Add token to all fetch requests
+        const originalFetch = window.fetch;
+        window.fetch = async function(url, options = {}) {
+            if (token && !url.includes('/token')) {
+                options.headers = {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                };
+            }
+            
+            const response = await originalFetch(url, options);
+            
+            if (response.status === 401 && !publicPaths.includes(window.location.pathname)) {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+            }
+            
+            return response;
+        };
+    </script>
+</head>
+<body class="bg-slate-950 text-slate-300 font-sans antialiased overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
+
+    <!-- Noise Overlay -->
+    <div class="bg-noise"></div>
+
+    <!-- Global Status Bar (shown when setup in progress) -->
+    <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-900/90 to-slate-900/90 backdrop-blur-sm border-b border-violet-500/30">
+        <div class="flex items-center justify-between px-4 py-2">
+            <div class="flex items-center gap-3">
+                <div class="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></div>
+                <span id="status-message" class="text-sm text-violet-200 font-medium">System initializing...</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div id="status-details" class="text-xs text-slate-400"></div>
+                <div id="status-progress" class="hidden">
+                    <div class="w-32 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full bg-violet-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex h-full relative z-10">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 glass-sidebar flex flex-col justify-between h-full shrink-0">
+            <div>
+                <div class="h-16 flex items-center px-6 border-b border-white/5">
+                    <div class="w-3 h-3 rounded-full bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.5)] mr-3 animate-pulse-slow"></div>
+                    <span class="font-mono font-bold text-lg tracking-wider text-white">SPECTRA</span>
+                </div>
+                <nav class="p-4 space-y-1">
+                    <a href="/dashboard" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/dashboard' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-crosshairs text-lg mr-3 {% if request.path == '/dashboard' %}text-violet-400{% else %}group-hover:text-violet-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">War Room</span>
+                    </a>
+                    <a href="/history" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/history' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-clock-rotate-left text-lg mr-3 {% if request.path == '/history' %}text-blue-400{% else %}group-hover:text-blue-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">History</span>
+                    </a>
+                    <a href="/targets" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/targets' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-bullseye text-lg mr-3 {% if request.path == '/targets' %}text-emerald-400{% else %}group-hover:text-emerald-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Targets</span>
+                    </a>
+                    <a href="/reports" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/reports' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-file-lines text-lg mr-3 {% if request.path == '/reports' %}text-amber-400{% else %}group-hover:text-amber-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Reports</span>
+                    </a>
+                    <a href="/overseer" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/overseer' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-eye text-lg mr-3 {% if request.path == '/overseer' %}text-cyan-400{% else %}group-hover:text-cyan-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Overseer</span>
+                    </a>
+                    <a href="/toolbox" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/toolbox' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-toolbox text-lg mr-3 {% if request.path == '/toolbox' %}text-rose-400{% else %}group-hover:text-rose-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Toolbox</span>
+                    </a>
+                    <a href="/observability" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-chart-line text-lg mr-3 {% if request.path == '/observability' %}text-teal-400{% else %}group-hover:text-teal-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Observability</span>
+                    </a>
+                    <a href="/settings" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/settings' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-gear text-lg mr-3 {% if request.path == '/settings' %}text-slate-200{% else %}group-hover:text-slate-200{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Settings</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="p-4 border-t border-white/5">
+                <div class="flex items-center">
+                    <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-xs font-mono text-slate-400 border border-white/5">OP</div>
+                    <div class="ml-3">
+                        <p class="text-xs font-medium text-white">Operator</p>
+                        <p class="text-[10px] text-emerald-400 flex items-center mt-0.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                            System Online
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 h-full overflow-hidden flex flex-col">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Native WebSocket (for real-time updates) -->
+    <script>
+        // Initialize WebSocket connection with authentication
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsToken = localStorage.getItem('token');
+        const wsUrl = `${protocol}//${window.location.host}/ws${wsToken ? '?token=' + encodeURIComponent(wsToken) : ''}`;
+        let socket;
+        let wsReconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        function connectWebSocket() {
+            // Don't connect if no token (except on public pages)
+            const publicPaths = ['/login', '/setup'];
+            if (!wsToken && !publicPaths.includes(window.location.pathname)) {
+                console.warn('WebSocket: No auth token, skipping connection');
+                return;
+            }
+            
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                console.log('Connected to Spectra');
+                wsReconnectAttempts = 0;  // Reset on successful connection
+                if (window.onSocketConnect) window.onSocketConnect();
+            };
+
+            socket.onclose = (event) => {
+                console.log('Disconnected from Spectra', event.code, event.reason);
+                
+                // Handle authentication rejection (4001)
+                if (event.code === 4001) {
+                    console.error('WebSocket auth failed - redirecting to login');
+                    localStorage.removeItem('token');
+                    if (!publicPaths.includes(window.location.pathname)) {
+                        window.location.href = '/login';
+                    }
+                    return;
+                }
+                
+                // Exponential backoff for reconnection
+                if (wsReconnectAttempts < maxReconnectAttempts) {
+                    const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), 30000);
+                    wsReconnectAttempts++;
+                    console.log(`Reconnecting in ${delay/1000}s (attempt ${wsReconnectAttempts}/${maxReconnectAttempts})`);
+                    setTimeout(connectWebSocket, delay);
+                } else {
+                    console.error('WebSocket: Max reconnection attempts reached');
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+
+            socket.onmessage = (event) => {
+                if (window.onSocketMessage) {
+                    window.onSocketMessage(event.data);
+                }
+            };
+        }
+
+        connectWebSocket();
+
+        // --- Global System Status Polling ---
+        let statusPollingInterval = null;
+        let systemReady = false;
+
+        async function checkSystemStatus() {
+            const statusBar = document.getElementById('global-status-bar');
+            const statusMsg = document.getElementById('status-message');
+            const statusDetails = document.getElementById('status-details');
+            const statusProgress = document.getElementById('status-progress');
+            const progressBar = document.getElementById('progress-bar');
+            
+            if (!statusBar) return;
+
+            try {
+                const response = await fetch('/api/system/status');
+                if (!response.ok) {
+                    // Server might be starting up
+                    statusBar.classList.remove('hidden');
+                    statusMsg.textContent = 'Connecting to server...';
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (data.status === 'ready' && !data.tools_installing && !data.embeddings_loading) {
+                    // System is ready - hide bar and stop frequent polling
+                    statusBar.classList.add('hidden');
+                    if (!systemReady) {
+                        systemReady = true;
+                        // Slow down polling once ready
+                        if (statusPollingInterval) {
+                            clearInterval(statusPollingInterval);
+                            statusPollingInterval = setInterval(checkSystemStatus, 30000);
+                        }
+                    }
+                } else {
+                    // System is initializing
+                    systemReady = false;
+                    statusBar.classList.remove('hidden');
+                    statusMsg.textContent = data.message || 'System initializing...';
+                    
+                    // Show details
+                    const detailParts = [];
+                    if (data.tool_stats) {
+                        const ts = data.tool_stats;
+                        if (ts.installing > 0) {
+                            detailParts.push(`Installing: ${ts.installing}/${ts.total}`);
+                        } else {
+                            detailParts.push(`Tools: ${ts.ready}/${ts.total} ready`);
+                        }
+                    }
+                    if (data.embeddings_loading) {
+                        detailParts.push('Loading AI models...');
+                    }
+                    statusDetails.textContent = detailParts.join(' | ');
+                    
+                    // Show progress if we have operations
+                    if (data.operations && data.operations.length > 0) {
+                        const op = data.operations[0];
+                        if (op.progress != null) {
+                            statusProgress.classList.remove('hidden');
+                            progressBar.style.width = `${Math.round(op.progress * 100)}%`;
+                        } else {
+                            statusProgress.classList.add('hidden');
+                        }
+                    } else if (data.tool_stats && data.tool_stats.total > 0) {
+                        // Calculate progress from tool stats
+                        const ts = data.tool_stats;
+                        const progress = (ts.ready + ts.failed) / ts.total;
+                        if (progress < 1) {
+                            statusProgress.classList.remove('hidden');
+                            progressBar.style.width = `${Math.round(progress * 100)}%`;
+                        } else {
+                            statusProgress.classList.add('hidden');
+                        }
+                    } else {
+                        statusProgress.classList.add('hidden');
+                    }
+                }
+            } catch (err) {
+                // Network error or server not ready
+                statusBar.classList.remove('hidden');
+                statusMsg.textContent = 'Connecting to Spectra...';
+                statusDetails.textContent = '';
+            }
+        }
+
+        // Start status polling (frequent at first)
+        checkSystemStatus();
+        statusPollingInterval = setInterval(checkSystemStatus, 3000);
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

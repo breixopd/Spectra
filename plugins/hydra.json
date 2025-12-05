@@ -1,0 +1,84 @@
+{
+  "id": "hydra",
+  "name": "Hydra",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "Fast and flexible online password cracking tool",
+  "metadata": {
+    "ai_description": "Hydra is the premier online password brute-forcing tool. Use it when you need to test authentication on services like SSH, FTP, HTTP, SMB, RDP, MySQL, and 50+ other protocols. Best used after discovering open services with nmap. Can perform both brute-force attacks and credential spraying (one password against many users).",
+    "capabilities": [
+      "brute_force",
+      "credential_spray"
+    ],
+    "supported_targets": [
+      "ip",
+      "host",
+      "url"
+    ],
+    "risk_level": "medium",
+    "tags": [
+      "passwords",
+      "brute-force",
+      "authentication",
+      "credentials",
+      "ssh",
+      "ftp",
+      "http",
+      "smb"
+    ],
+    "use_cases": [
+      "Brute-forcing SSH, FTP, Telnet logins",
+      "Testing web form authentication",
+      "SMB/Windows credential testing",
+      "Database authentication testing (MySQL, PostgreSQL)",
+      "Credential spraying across services"
+    ],
+    "limitations": [
+      "Account lockout policies may block attempts",
+      "Can be very slow without good wordlists",
+      "May trigger security alerts and IP bans",
+      "Not effective against MFA"
+    ],
+    "complements": [
+      "nmap",
+      "crackmapexec"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y hydra"
+    ],
+    "verification_command": "hydra -h",
+    "verification_regex": "Hydra",
+    "uninstall_commands": [
+      "apt-get remove -y hydra",
+      "apt-get autoremove -y"
+    ]
+  },
+  "execution": {
+    "command": "hydra",
+    "args_template": "-L {userlist} -P {passlist} {target} {service} -o {output_file} {flags}",
+    "timeout": 1800,
+    "timeout_per_host": 600,
+    "min_timeout": 300,
+    "max_timeout": 7200,
+    "success_exit_codes": [
+      0,
+      255
+    ]
+  },
+  "parsing": {
+    "format": "text",
+    "mapping": {}
+  },
+  "ui": {
+    "icon": "key",
+    "color": "orange"
+  },
+  "signature": "96d88963b022cb8e14d08985bf5edc30207927b575b73e29adae6e1ed403bdae14f89f348d290c3ddd6abfdbb52a0a407b369bd707e30ce076ee26d18d0cb90a"
+}

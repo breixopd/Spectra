@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Header / Mission Control -->
+<header class="h-14 mb-4 flex items-center justify-between shrink-0">
+    <div class="flex items-center space-x-4">
+        <h1 class="text-xl font-semibold text-white tracking-tight">Operation: <span class="text-slate-400 font-mono">ALPHA_PROTOCOL</span></h1>
+        <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>
+    </div>
+
+    <!-- Mission Control Input -->
+    <div class="flex-1 max-w-xl mx-8 relative group">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fa-solid fa-terminal text-slate-500 group-focus-within:text-violet-400 transition-colors"></i>
+        </div>
+        <input type="text" id="mission-control-input"
+            class="block w-full pl-10 pr-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
+            placeholder="Enter target and directive... (e.g., '192.168.1.1 Full scan')">
+        <div class="absolute inset-y-0 right-0 pr-2 flex items-center">
+            <kbd class="inline-flex items-center border border-slate-700 rounded px-1.5 text-[10px] font-sans font-medium text-slate-500">⌘K</kbd>
+        </div>
+    </div>
+
+    <div class="flex items-center space-x-3">
+        <!-- Model Selector -->
+        <div class="relative group">
+            <button class="flex items-center space-x-2 px-3 py-1.5 bg-slate-800/50 border border-white/10 rounded-lg text-xs text-slate-300 hover:bg-white/5 transition-colors">
+                <i class="fa-solid fa-brain text-violet-400"></i>
+                <span id="current-model">Qwen-2.5-3B</span>
+                <i class="fa-solid fa-chevron-down text-[10px] text-slate-500"></i>
+            </button>
+            <!-- Dropdown -->
+            <div class="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <div class="p-2 space-y-1">
+                    <div class="px-2 py-1 text-[10px] font-mono text-slate-500 uppercase tracking-wider">Local Models</div>
+                    <button onclick="switchModel('qwen2.5:3b')" class="w-full text-left px-2 py-1.5 text-xs text-slate-300 hover:bg-white/5 rounded flex items-center justify-between group/item">
+                        <span>Qwen-2.5-3B</span>
+                        <i class="fa-solid fa-check text-emerald-400 opacity-100"></i>
+                    </button>
+                    <button onclick="switchModel('deepseek-r1')" class="w-full text-left px-2 py-1.5 text-xs text-slate-300 hover:bg-white/5 rounded flex items-center justify-between group/item">
+                        <span>DeepSeek-R1</span>
+                        <i class="fa-solid fa-check text-emerald-400 opacity-0"></i>
+                    </button>
+                    <div class="h-px bg-white/5 my-1"></div>
+                    <div class="px-2 py-1 text-[10px] font-mono text-slate-500 uppercase tracking-wider">Cloud Providers</div>
+                    <button onclick="switchModel('gpt-4-turbo')" class="w-full text-left px-2 py-1.5 text-xs text-slate-300 hover:bg-white/5 rounded flex items-center justify-between group/item">
+                        <span>GPT-4 Turbo</span>
+                        <i class="fa-solid fa-check text-emerald-400 opacity-0"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Steering Controls -->
+        <button onclick="pauseMission()" class="p-2 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-white/5 transition-colors" title="Pause Mission">
+            <i class="fa-solid fa-pause"></i>
+        </button>
+        <button onclick="stopMission()" class="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-white/5 transition-colors" title="Abort Mission">
+            <i class="fa-solid fa-stop"></i>
+        </button>
+        <div class="w-px h-6 bg-white/10 mx-2"></div>
+        <button class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors">
+            <i class="fa-solid fa-bell"></i>
+        </button>
+    </div>
+</header>
+
+<!-- Status Bar -->
+<div class="mb-4 flex items-center space-x-4 px-1">
+    <div class="flex-1 bg-slate-800/50 rounded-full h-2 overflow-hidden">
+        <div class="bg-violet-500 h-full w-[0%] relative" id="progress-bar">
+            <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+        </div>
+    </div>
+    <span class="text-xs font-mono text-slate-400" id="status-text">Ready</span>
+</div>
+
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 grid-rows-6 gap-4 flex-1 min-h-0">
+    
+    <!-- Tile 1: Network Graph (Large) -->
+    <div class="col-span-8 row-span-4 glass-panel rounded-xl p-4 relative overflow-hidden group">
+        <div class="absolute top-4 left-4 z-10 flex items-center space-x-2">
+            <i class="fa-solid fa-diagram-project text-violet-400"></i>
+            <span class="text-xs font-mono tracking-widest text-slate-500 uppercase">Network Topology</span>
+        </div>
+        <div id="network-graph" class="absolute inset-0 flex items-center justify-center">
+            <p class="text-slate-500 text-sm">Network graph will render here</p>
+        </div>
+        <div class="absolute bottom-4 right-4 z-10">
+            <div class="flex items-center space-x-2 text-xs font-mono text-slate-400">
+                <span class="w-2 h-2 rounded-full bg-violet-500"></span>
+                <span id="node-count">0 Nodes Active</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tile 2: Threat Map -->
+    <div class="col-span-4 row-span-2 glass-panel rounded-xl p-0 relative overflow-hidden flex flex-col">
+        <div class="absolute top-4 left-4 z-[400] flex items-center space-x-2 pointer-events-none">
+            <i class="fa-solid fa-earth-americas text-emerald-400"></i>
+            <span class="text-xs font-mono tracking-widest text-slate-900 bg-emerald-400/90 px-1 rounded uppercase font-bold">Threat Map</span>
+        </div>
+        <div id="threat-map" class="w-full h-full bg-slate-900"></div>
+    </div>
+
+    <!-- Tile 3: Findings Summary -->
+    <div class="col-span-4 row-span-2 glass-panel rounded-xl p-4">
+        <span class="text-xs font-mono tracking-widest text-slate-500 uppercase block mb-3">Vulnerabilities</span>
+        <div class="grid grid-cols-2 gap-3 h-[calc(100%-1.5rem)]">
+            <div class="bg-rose-500/10 border border-rose-500/20 rounded flex flex-col items-center justify-center p-2">
+                <span class="text-2xl font-bold text-rose-500 font-mono" id="count-critical">0</span>
+                <span class="text-[10px] text-rose-400 uppercase tracking-wide mt-1">Critical</span>
+            </div>
+            <div class="bg-amber-500/10 border border-amber-500/20 rounded flex flex-col items-center justify-center p-2">
+                <span class="text-2xl font-bold text-amber-500 font-mono" id="count-high">0</span>
+                <span class="text-[10px] text-amber-400 uppercase tracking-wide mt-1">High</span>
+            </div>
+            <div class="bg-blue-500/10 border border-blue-500/20 rounded flex flex-col items-center justify-center p-2">
+                <span class="text-2xl font-bold text-blue-500 font-mono" id="count-medium">0</span>
+                <span class="text-[10px] text-blue-400 uppercase tracking-wide mt-1">Medium</span>
+            </div>
+            <div class="bg-slate-700/20 border border-slate-700/30 rounded flex flex-col items-center justify-center p-2">
+                <span class="text-2xl font-bold text-slate-400 font-mono" id="count-info">0</span>
+                <span class="text-[10px] text-slate-500 uppercase tracking-wide mt-1">Info</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tile 4: Terminal -->
+    <div class="col-span-12 row-span-2 bg-black rounded-xl border border-white/10 relative overflow-hidden font-mono text-xs p-3">
+        <div class="absolute inset-0 scanlines z-20 opacity-30"></div>
+        <div class="flex items-center justify-between mb-2 border-b border-white/10 pb-2 relative z-30">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-terminal text-slate-400"></i>
+                <span class="text-slate-400">Console Output</span>
+            </div>
+            <div class="flex space-x-1.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+            </div>
+        </div>
+        <div id="terminal-output" class="text-slate-300 space-y-1 relative z-10 h-full overflow-y-auto pb-8">
+            <p><span class="text-emerald-500">➜</span> <span class="text-violet-400">spectra</span> Waiting for commands...</p>
+            <p><span class="text-emerald-500">➜</span> <span class="animate-pulse">_</span></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

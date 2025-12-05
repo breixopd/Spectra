@@ -1,0 +1,76 @@
+"""
+Finding model for storing vulnerability findings.
+
+Represents security findings discovered during assessments.
+"""
+
+from __future__ import annotations
+
+from enum import Enum
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import JSON
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.enums import Severity
+from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.target import Target
+
+
+class FindingStatus(str, Enum):
+    """Verification status of a finding."""
+
+    POTENTIAL = "potential"  # AI detected, not verified
+    VERIFIED = "verified"  # Consensus reached (K-threshold)
+    EXPLOITED = "exploited"  # Successfully exploited
+    FALSE_POSITIVE = "false_positive"
+
+
+class Finding(Base):
+    """
+    Represents a security finding (vulnerability, misconfiguration).
+
+    Attributes:
+        target_id: Foreign key to the Target.
+        title: Short description of the finding.
+        description: Detailed explanation.
+        severity: CVSS-based severity level.
+        status: Verification status.
+        cvss_score: Optional CVSS v3.1 score.
+        cve_id: Optional CVE identifier.
+        tool_source: The tool that discovered this finding.
+        evidence: JSON blob with raw evidence data.
+        target: Reference to the parent Target.
+    """
+
+    __tablename__ = "findings"
+
+    target_id: Mapped[str] = mapped_column(
+        ForeignKey("targets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    severity: Mapped[Severity] = mapped_column(
+        SQLEnum(Severity),
+        default=Severity.INFO,
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[FindingStatus] = mapped_column(
+        SQLEnum(FindingStatus),
+        default=FindingStatus.POTENTIAL,
+        nullable=False,
+    )
+    cvss_score: Mapped[Optional[float]] = mapped_column(nullable=True)
+    cve_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    tool_source: Mapped[str] = mapped_column(String(100), nullable=False)
+    evidence: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Relationship
+    target: Mapped["Target"] = relationship("Target", back_populates="findings")
