@@ -414,7 +414,7 @@ class TaskDispatcher:
         self._broadcast_agent_state("reporter", "running")
         agent = self.agents["reporter"]
         try:
-            mission.log("📝 Generating assessment report...")
+            mission.log("[INFO] Generating assessment report...")
 
             from app.services.ai.agents.reporter import ReporterInput, ReportOutput
 
@@ -430,7 +430,7 @@ class TaskDispatcher:
                 # Save report path to mission
                 if report.report_path:
                     mission.report_path = report.report_path
-                    mission.log(f"📄 Report saved to: {report.report_path}")
+                    mission.log(f"[REPORT] Report saved to: {report.report_path}")
 
                 # Log summary statistics
                 total = (
@@ -441,13 +441,13 @@ class TaskDispatcher:
                     + report.info_count
                 )
                 mission.log(
-                    f"📊 Report Summary: {total} findings "
+                    f"[STATS] Report Summary: {total} findings "
                     f"(Critical: {report.critical_count}, High: {report.high_count}, "
                     f"Medium: {report.medium_count}, Low: {report.low_count}, Info: {report.info_count})"
                 )
-                mission.log("✅ Report generated successfully")
+                mission.log("[SUCCESS] Report generated successfully")
             else:
-                mission.log(f"❌ Report generation failed: {result.error}")
+                mission.log(f"[ERROR] Report generation failed: {result.error}")
         finally:
             self._broadcast_agent_state("reporter", "idle")
 
@@ -520,7 +520,6 @@ class TaskDispatcher:
                     mission.attack_surface.add_vector(vector)
                     mission.log(f"Generated vector: {vector.name} ({vector.priority})")
                     # Broadcast vector update? Mission handles it internally via add_vector logging?
-                    # Mission.add_vector doesn't broadcast event "vector_update" but "log".
                     # Executor used _broadcast("vector_update").
                     # We can leave it for now or implement _broadcast method in Dispatcher (it has one).
                     # self._broadcast("vector_update", vector.model_dump(mode="json"))
@@ -528,4 +527,3 @@ class TaskDispatcher:
 
         except Exception as e:
             logger.error("Dynamic vector generation failed: %s", e)
-

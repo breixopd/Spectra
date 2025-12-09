@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import shlex
 from pathlib import Path
+from typing import Any
 
 from app.services.tools.models import ToolConfig, ToolExecutionRequest
 
@@ -57,8 +58,11 @@ class CommandBuilder:
         else:
             substitutions["output_file"] = ""
 
+        # Process conditional blocks first
+        # Blocks like [set PORT {port}] are removed if {port} is missing/empty
+        args = self._process_conditional_blocks(args_template, substitutions)
+
         # Substitute provided values
-        args = args_template
         for key, value in substitutions.items():
             placeholder = "{" + key + "}"
             if value is None:
@@ -146,3 +150,27 @@ class CommandBuilder:
             result[arg_name] = value
 
         return result
+
+    def _process_conditional_blocks(self, template: str, substitutions: dict[str, Any]) -> str:
+        """Process conditional blocks in the template.
+
+        Format: [content {placeholder} content]
+        If all placeholders in the block are present in substitutions and non-empty,
+        the block is kept (without brackets). Otherwise, it is removed.
+        """
+        def replace_block(match):
+            block_content = match.group(1)
+            # Find all placeholders in the block
+            placeholders = re.findall(r"\{([a-zA-Z0-9_]+)\}", block_content)
+
+            # Check if all placeholders have valid values
+            for key in placeholders:
+                val = substitutions.get(key)
+                if val is None or str(val).strip() == "":
+                    return ""
+
+            return block_content
+
+        # Match [...] blocks
+        # Regex: \[([^\]]+)\]
+        return re.sub(r"\[([^\]]+)\]", replace_block, template)
