@@ -145,9 +145,15 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             # Get all registered tools (not just available - they auto-install)
             all_tools = registry.list_tools()
 
-            # Filter out already-run tools
+            # Filter out already-run tools, but keep the preferred tool if specified
             candidates = [
-                t for t in all_tools if t.config.id not in input_data.tools_already_run
+                t
+                for t in all_tools
+                if t.config.id not in input_data.tools_already_run
+                or (
+                    input_data.user_preference
+                    and t.config.id == input_data.user_preference
+                )
             ]
 
             if not candidates:
@@ -282,7 +288,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         # Build preferred tool info with strong emphasis
         preferred_tool_info = ""
         if input_data.user_preference:
-            preferred_tool_info = f"\n**⚠️ REQUIRED TOOL: {input_data.user_preference}** - You MUST select this tool if available.\n"
+            preferred_tool_info = f"\n**[IMPORTANT] REQUIRED TOOL: {input_data.user_preference}** - You MUST select this tool if available.\n"
 
         # Get RAG context using centralized service
         rag_context = await get_tool_usage_context(input_data.current_phase, input_data.known_services)
