@@ -33,6 +33,7 @@ Spectra decomposes complex security tasks into specialized agents:
 4. **Strategic Swarm:**
     - `MissionController`: High-level planning and steering.
     - `PostExploitation`: Plans privilege escalation, persistence, and lateral movement.
+    - `POCDeveloper`: **(New)** Specialized agent for generating custom exploit scripts (Python/Go/Bash) when standard tools fail.
 
 ### Quality Gates (Consensus Validation)
 
@@ -67,6 +68,12 @@ All plugins are cryptographically signed using Ed25519. The system enforces sign
 
 - **Safe Mode:** Enabled by default. Only signed plugins can be loaded.
 - **Hot Loading:** Drop a new `.json` file into `plugins/` to instantly register a new tool.
+
+**Custom Exploits (POCs):**
+Spectra can now generate and execute custom Proof-of-Concept scripts if no suitable tool is found. These scripts are validated by the consensus engine and executed in a sandboxed worker.
+
+**Interactive Web Shell:**
+Connect to compromised targets directly through the browser using the integrated Web Shell (xterm.js), supported by a WebSocket backend.
 
 **Default Tools:**
 
