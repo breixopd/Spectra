@@ -80,6 +80,25 @@ class Vulnerability(BaseModel):
     exploitable: bool = True
 
 
+class ExploitAttempt(BaseModel):
+    """Record of a single exploitation attempt."""
+
+    timestamp: datetime = Field(default_factory=_utc_now)
+    tool_used: str
+    payload: str | None = None
+    encoding: str | None = None
+    waf_bypass: str | None = None
+    configuration: dict[str, Any] = Field(default_factory=dict) # Added for storing config
+
+    success: bool
+    output: str = ""
+    error: str | None = None
+
+    # What we learned
+    blocked_by: str | None = None  # "waf", "av", "timeout", "firewall", "rate_limit"
+    suggestion: str | None = None  # What to try next
+
+
 class AttackVector(BaseModel):
     """A potential attack vector to try."""
 
@@ -98,7 +117,7 @@ class AttackVector(BaseModel):
     payloads: list[str] = Field(default_factory=list)  # Payload options to try
 
     # Attempt tracking
-    attempts: list["ExploitAttempt"] = Field(default_factory=list)
+    attempts: list[ExploitAttempt] = Field(default_factory=list)
     max_attempts: int = 3
 
     # Dependencies
@@ -114,24 +133,6 @@ class AttackVector(BaseModel):
     def attempts_remaining(self) -> int:
         """Number of attempts remaining."""
         return max(0, self.max_attempts - len(self.attempts))
-
-
-class ExploitAttempt(BaseModel):
-    """Record of a single exploitation attempt."""
-
-    timestamp: datetime = Field(default_factory=_utc_now)
-    tool_used: str
-    payload: str | None = None
-    encoding: str | None = None
-    waf_bypass: str | None = None
-
-    success: bool
-    output: str = ""
-    error: str | None = None
-
-    # What we learned
-    blocked_by: str | None = None  # "waf", "av", "timeout", "firewall", "rate_limit"
-    suggestion: str | None = None  # What to try next
 
 
 class RetryStrategy(BaseModel):

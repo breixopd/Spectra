@@ -17,7 +17,7 @@
             class="block w-full pl-10 pr-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
             placeholder="Enter target and directive... (e.g., '192.168.1.1 Full scan')">
         <div class="absolute inset-y-0 right-0 pr-2 flex items-center">
-            <kbd class="inline-flex items-center border border-slate-700 rounded px-1.5 text-[10px] font-sans font-medium text-slate-500">⌘K</kbd>
+            <kbd class="inline-flex items-center border border-slate-700 rounded px-1.5 text-[10px] font-sans font-medium text-slate-500">K</kbd>
         </div>
     </div>
 
@@ -127,8 +127,17 @@
         </div>
     </div>
 
-    <!-- Tile 4: Terminal -->
-    <div class="col-span-12 row-span-2 bg-black rounded-xl border border-white/10 relative overflow-hidden font-mono text-xs p-3">
+    <!-- Tile 4: Active Shells (New) -->
+    <div class="col-span-4 row-span-2 glass-panel rounded-xl p-4 flex flex-col">
+        <span class="text-xs font-mono tracking-widest text-emerald-400 uppercase block mb-3">Active Shells</span>
+        <div id="shell-list" class="flex-1 overflow-y-auto space-y-2">
+            <!-- Shell Items will be injected here -->
+            <div class="text-center text-slate-600 text-xs py-4">No active sessions</div>
+        </div>
+    </div>
+
+    <!-- Tile 5: Terminal -->
+    <div class="col-span-8 row-span-2 bg-black rounded-xl border border-white/10 relative overflow-hidden font-mono text-xs p-3">
         <div class="absolute inset-0 scanlines z-20 opacity-30"></div>
         <div class="flex items-center justify-between mb-2 border-b border-white/10 pb-2 relative z-30">
             <div class="flex items-center space-x-2">

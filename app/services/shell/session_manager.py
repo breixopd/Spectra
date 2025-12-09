@@ -17,9 +17,11 @@ logger = logging.getLogger("spectra.shell.manager")
 class ShellSession:
     """Represents an active shell session."""
 
-    def __init__(self, session_id: str, target: str):
+    def __init__(self, session_id: str, target: str, mission_id: str = None):
         self.session_id = session_id
         self.target = target
+        self.mission_id = mission_id
+        self.missions_survived = 0
         self.socket: Optional[socket.socket] = None
         self.websocket: Optional[WebSocket] = None
         self.active = False
@@ -86,11 +88,49 @@ class ShellSessionManager:
         self.listeners: Dict[int, socket.socket] = {}
         self.loop = None
 
-    def start_listener(self, port: int, session_id: str, target: str) -> None:
-        """Start a TCP listener for a reverse shell on a background thread."""
+        # Range for dynamic port allocation
+        self.port_range_start = 4444
+        self.port_range_end = 4500
+        self.next_port = self.port_range_start
+
+    def allocate_port(self) -> int:
+        """Find a free port in the range."""
+        start = self.next_port
+        while True:
+            port = self.next_port
+            self.next_port += 1
+            if self.next_port > self.port_range_end:
+                self.next_port = self.port_range_start
+
+            # Check if port is in use by us
+            if port in self.listeners:
+                if self.next_port == start:
+                    raise RuntimeError("No free ports available for shell listeners")
+                continue
+
+            # Check if port is actually free on system
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                sock.bind(("0.0.0.0", port))
+                sock.close()
+                return port
+            except OSError:
+                if self.next_port == start:
+                    raise RuntimeError("No free ports available for shell listeners")
+                continue
+
+    def start_listener(self, session_id: str, target: str, mission_id: str = None, port: int = 0) -> int:
+        """Start a TCP listener for a reverse shell on a background thread.
+
+        If port is 0, allocates a dynamic port.
+        Returns the port number.
+        """
+        if port == 0:
+            port = self.allocate_port()
+
         if port in self.listeners:
             logger.warning(f"Listener already active on port {port}")
-            return
+            return port
 
         # Ensure we have the loop captured
         if not self.loop:
@@ -112,7 +152,7 @@ class ShellSessionManager:
                 conn, addr = server.accept()
                 logger.info(f"Connection received from {addr} on port {port}")
 
-                session = ShellSession(session_id, target)
+                session = ShellSession(session_id, target, mission_id)
                 session.socket = conn
                 session.active = True
                 session._loop = self.loop
@@ -148,20 +188,60 @@ class ShellSessionManager:
         t = threading.Thread(target=_listen, daemon=True)
         t.start()
 
+        return port
+
     async def get_session(self, session_id: str) -> Optional[ShellSession]:
         return self.sessions.get(session_id)
 
     def list_sessions(self) -> list[dict]:
         return [
-            {"id": s.session_id, "target": s.target, "active": s.active}
+            {
+                "id": s.session_id,
+                "target": s.target,
+                "active": s.active,
+                "mission_id": s.mission_id,
+                "missions_survived": s.missions_survived
+            }
             for s in self.sessions.values()
         ]
 
     async def kill_session(self, session_id: str):
         if session_id in self.sessions:
             session = self.sessions[session_id]
+            logger.info(f"Killing shell session {session_id}")
             if session.socket:
-                session.socket.close()
+                try:
+                    session.socket.shutdown(socket.SHUT_RDWR)
+                    session.socket.close()
+                except Exception as e:
+                    logger.warning(f"Error closing socket for session {session_id}: {e}")
             del self.sessions[session_id]
+
+    def notify_mission_complete(self, finished_mission_id: str):
+        """Notify that a mission has completed, to update shell TTLs."""
+        logger.info(f"Updating shell TTLs after mission {finished_mission_id} complete")
+
+        # We need to iterate over a copy of items because we might delete some
+        for session_id, session in list(self.sessions.items()):
+            # Only increment counter if the shell belongs to a DIFFERENT mission
+            # or if it was created in a previous run.
+            # If it belongs to the current finished mission, we keep it alive (count=0)
+            # until *other* missions pass.
+
+            if session.mission_id != finished_mission_id:
+                session.missions_survived += 1
+                logger.info(f"Session {session_id} survived {session.missions_survived} missions")
+
+                if session.missions_survived >= 2:
+                    logger.info(f"Session {session_id} TTL expired (survived 2 missions). Killing.")
+                    # Run kill_session in the event loop since it's async (or just close socket)
+                    # Since this method might be called from sync code, we can just close the socket
+                    # which will trigger the listener thread to cleanup.
+                    if session.socket:
+                        try:
+                            session.socket.shutdown(socket.SHUT_RDWR)
+                            session.socket.close()
+                        except Exception:
+                            pass
 
 shell_manager = ShellSessionManager()
