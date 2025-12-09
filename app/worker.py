@@ -459,6 +459,102 @@ async def run_command_job(
     }
 
 
+async def execute_script_job(
+    ctx: dict[str, Any],
+    content: str,
+    language: str,
+    target: str,
+    args: list[str] | None = None,
+    timeout: int = 300,
+) -> dict[str, Any]:
+    """
+    Execute a custom script (Python/Go/Bash).
+
+    Args:
+        ctx: ARQ context.
+        content: Script content.
+        language: Language (python, go, bash).
+        target: Target IP/Domain (passed as arg).
+        args: Additional arguments.
+        timeout: Timeout in seconds.
+
+    Returns:
+        Dict with execution result.
+    """
+    # Create temp file
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_id = f"script_{timestamp}_{uuid.uuid4().hex[:4]}"
+    work_dir = Path(f"/tmp/spectra_scripts/{run_id}")
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if language.lower() in ("python", "python3"):
+            script_path = work_dir / "exploit.py"
+            script_path.write_text(content)
+            cmd = f"python3 {script_path} {target}"
+
+        elif language.lower() == "go":
+            script_path = work_dir / "exploit.go"
+            script_path.write_text(content)
+            # Compile then run
+            compile_cmd = f"go build -o {work_dir}/exploit {script_path}"
+            r_code, r_out, r_err = await _run_command(compile_cmd, 60, str(work_dir))
+            if r_code != 0:
+                return {
+                    "success": False,
+                    "exit_code": r_code,
+                    "stdout": r_out,
+                    "stderr": f"Compilation failed: {r_err}",
+                }
+            cmd = f"{work_dir}/exploit {target}"
+
+        elif language.lower() in ("bash", "sh"):
+            script_path = work_dir / "exploit.sh"
+            script_path.write_text(content)
+            await _run_command(f"chmod +x {script_path}", 5)
+            cmd = f"{script_path} {target}"
+
+        else:
+            return {
+                "success": False,
+                "exit_code": -1,
+                "stdout": "",
+                "stderr": f"Unsupported language: {language}",
+            }
+
+        # Add extra args
+        if args:
+            cmd += " " + " ".join(args)
+
+        logger.info(f"Executing custom script ({language}) against {target}")
+
+        # Run
+        wrapped = f"timeout -k 10s {timeout}s {cmd}"
+        returncode, stdout, stderr = await _run_command(wrapped, timeout + 30, str(work_dir))
+
+        return {
+            "success": returncode == 0,
+            "exit_code": returncode,
+            "stdout": stdout,
+            "stderr": stderr,
+        }
+
+    except Exception as e:
+        logger.error(f"Script execution failed: {e}")
+        return {
+            "success": False,
+            "exit_code": -1,
+            "stdout": "",
+            "stderr": str(e),
+        }
+    finally:
+        # Cleanup
+        try:
+            shutil.rmtree(work_dir)
+        except Exception:
+            pass
+
+
 # =============================================================================
 # Helper Functions
 # =============================================================================
@@ -710,6 +806,7 @@ class WorkerSettings:
         sync_all_status_job,
         # Generic command
         run_command_job,
+        execute_script_job,
     ]
 
     on_startup = startup

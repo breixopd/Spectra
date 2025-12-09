@@ -60,34 +60,103 @@ function addTargetToGrid(target) {
     clone.querySelector('.target-name').textContent = target.address;
     clone.querySelector('.target-desc').textContent = target.description || 'No description';
     
+    // Pass session ID if available (assuming target object has session info)
+    const sessionId = target.session_id || null;
+    const shellBtn = clone.querySelector('.shell-btn');
+    if (shellBtn) {
+        shellBtn.onclick = () => openShell(shellBtn, sessionId);
+        if (!sessionId) {
+            shellBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            shellBtn.title = "No active shell session";
+        }
+    }
+
     grid.appendChild(clone);
 }
 
 // --- Shell Handler ---
 
-function openShell(btn) {
+let term = null;
+let socket = null;
+let fitAddon = null;
+
+function openShell(btn, sessionId) {
     document.getElementById('shell-modal').classList.remove('hidden');
-    // In a real app, we'd connect to a specific WebSocket channel for this shell
+    document.getElementById('shell-title').textContent = sessionId ? `Session: ${sessionId}` : 'Connecting...';
+
+    // Initialize xterm.js
+    const container = document.getElementById('terminal-container');
+    container.innerHTML = ''; // Clear previous
+
+    term = new Terminal({
+        cursorBlink: true,
+        theme: {
+            background: '#000000',
+            foreground: '#d4d4d4'
+        }
+    });
+
+    // Load Fit Addon if available (from CDN in HTML)
+    if (typeof FitAddon !== 'undefined') {
+        fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+    }
+
+    term.open(container);
+    if (fitAddon) fitAddon.fit();
+
+    term.writeln('\x1b[33mConnecting to shell session...\x1b[0m');
+
+    // Connect WebSocket
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/shell/${sessionId}`;
+
+    socket = new WebSocket(wsUrl);
+
+    socket.onopen = () => {
+        term.writeln('\x1b[32mConnected!\x1b[0m');
+        term.focus();
+    };
+
+    socket.onmessage = (event) => {
+        term.write(event.data);
+    };
+
+    socket.onclose = () => {
+        term.writeln('\r\n\x1b[31mConnection closed.\x1b[0m');
+    };
+
+    socket.onerror = (error) => {
+        term.writeln('\r\n\x1b[31mConnection error.\x1b[0m');
+    };
+
+    // Send input to server
+    term.onData(data => {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(data);
+        }
+    });
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+        if (fitAddon) fitAddon.fit();
+    });
 }
 
 function closeShell() {
     document.getElementById('shell-modal').classList.add('hidden');
+    if (socket) {
+        socket.close();
+        socket = null;
+    }
+    if (term) {
+        term.dispose();
+        term = null;
+    }
 }
 
 // Initialize with some dummy data
 document.addEventListener('DOMContentLoaded', () => {
-    addTargetToGrid({
-        address: '10.10.10.5',
-        description: 'Legacy Web Server',
-        status: 'owned',
-        os: 'Linux 5.4',
-        ports: '22, 80, 443'
-    });
-    addTargetToGrid({
-        address: '192.168.1.15',
-        description: 'Domain Controller',
-        status: 'scanned',
-        os: 'Windows Server 2019',
-        ports: '53, 88, 135, 139, 389, 445'
-    });
+    // These calls are placeholders. In a real scenario, fetch from API.
+    // addTargetToGrid(...)
 });

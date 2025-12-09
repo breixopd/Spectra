@@ -117,7 +117,10 @@
                                 <input type="text" name="redis_host" placeholder="Host (e.g., redis.example.com)" class="bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
                                 <input type="text" name="redis_port" placeholder="Port (default: 6379)" class="bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
                             </div>
-                            <input type="password" name="redis_password" placeholder="Password" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
+                            <div>
+                                <input type="password" name="redis_password" placeholder="Password" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
+                                <p id="redis-pwd-warning" class="text-xs text-yellow-400 mt-1 hidden"><i class="ph ph-warning"></i> Warning: Using default password is insecure.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -166,6 +169,19 @@
     // Custom Redis toggle
     document.getElementById('custom-redis').addEventListener('change', function() {
         document.getElementById('redis-fields').classList.toggle('hidden', !this.checked);
+    });
+
+    // Redis Password Check
+    const redisPwdInput = document.querySelector('input[name="redis_password"]');
+    const redisWarning = document.getElementById('redis-pwd-warning');
+
+    redisPwdInput.addEventListener('input', function() {
+        const val = this.value;
+        if (val === 'changeme' || val === 'default') {
+            redisWarning.classList.remove('hidden');
+        } else {
+            redisWarning.classList.add('hidden');
+        }
     });
 
     // Test LLM Connection
