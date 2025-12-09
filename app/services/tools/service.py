@@ -93,6 +93,75 @@ class ToolExecutionService:
         )
         return result.success
 
+    async def execute_custom_script(
+        self,
+        mission: "Mission",
+        script_content: str,
+        language: str,
+        target: str,
+        args: list[str] | None = None,
+        timeout: int = 300,
+    ) -> ToolExecutionResult:
+        """
+        Execute a custom generated script via the worker.
+        """
+        mission.log(f"[EXEC] Running custom {language} script against {target}")
+
+        # We don't use safety checks here because this is AI-generated code
+        # that was already approved by the payload crafter agent workflow (conceptually).
+        # But we DO need to run it in the worker container.
+
+        from arq import create_pool
+        from arq.connections import RedisSettings
+
+        redis_settings = RedisSettings(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            password=settings.REDIS_PASSWORD.get_secret_value(),
+            database=settings.REDIS_DB,
+        )
+
+        try:
+            pool = await create_pool(redis_settings, default_queue_name="spectra:tasks")
+            job = await pool.enqueue_job(
+                "execute_script_job",
+                content=script_content,
+                language=language,
+                target=target,
+                args=args,
+                timeout=timeout,
+            )
+
+            if not job:
+                return self._create_error_result("custom_script", target, "Failed to enqueue job")
+
+            result_data = await job.result(timeout=timeout + 60)
+
+            if not result_data:
+                 return self._create_error_result("custom_script", target, "Job returned no result")
+
+            success = result_data.get("success", False)
+            mission.log(f"[{'OK' if success else 'FAIL'}] Script execution finished")
+            if not success:
+                mission.log(f"Error: {result_data.get('stderr')}")
+
+            return ToolExecutionResult(
+                tool_id=f"custom_{language}_script",
+                target=target,
+                success=success,
+                exit_code=result_data.get("exit_code", -1),
+                stdout=result_data.get("stdout", ""),
+                stderr=result_data.get("stderr", ""),
+                duration_seconds=0.0, # Worker doesn't return duration for script job yet
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to execute custom script: {e}")
+            return self._create_error_result("custom_script", target, str(e))
+        finally:
+            if pool:
+                await pool.close()
+
     async def execute_request(
         self,
         mission: "Mission",

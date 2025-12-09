@@ -96,6 +96,7 @@ class TaskDispatcher:
             "scope": self._handle_scope,
             "scope_agent": self._handle_scope,  # Alias for LLM consistency
             "reporter": self._handle_reporter,
+            "script_runner": self._handle_script_runner,
         }
         handler = handlers.get(agent_type)
         if not handler:
@@ -314,6 +315,45 @@ class TaskDispatcher:
                     mission.log(f"Payload crafting failed: {result.error}")
         finally:
             self._broadcast_agent_state("payload_crafter", "idle")
+
+    async def _handle_script_runner(
+        self,
+        mission: Mission,
+        task: Task,
+        context: AgentContext,
+    ) -> None:
+        """Handle custom script execution."""
+        self._broadcast_agent_state("script_runner", "running")
+        try:
+            content = task.parameters.get("content")
+            language = task.parameters.get("language", "python")
+            target = task.parameters.get("target", mission.target)
+
+            if not content:
+                mission.log("Script execution failed: No content provided")
+                return
+
+            # Execute
+            result = await self.tool_service.execute_custom_script(
+                mission, content, language, target
+            )
+
+            if result.success:
+                mission.log(f"Custom script executed successfully.")
+                if result.stdout:
+                    mission.log(f"Output: {result.stdout[:200]}...")
+
+                # If we have exploit metadata, we should save this attempt
+                # Note: Real validation usually happens in verification phase,
+                # but for custom scripts, successful execution is step 1.
+
+                # We can update the mission findings/attack surface here if the script output implies success
+                # For now, we rely on the subsequent Verification task (if any) or just log it.
+            else:
+                mission.log(f"Script execution failed: {result.stderr}")
+
+        finally:
+            self._broadcast_agent_state("script_runner", "idle")
 
     async def _handle_exploit_verifier(
         self,

@@ -40,7 +40,6 @@ class PayloadCrafterOutput(ToolAction):
 
     exploit_name: str = Field(..., description="Name/ID of the exploit to use")
     payload_type: str = Field(..., description="Type of payload (reverse_shell, bind_shell, etc)")
-    custom_script: str | None = Field(None, description="Custom script content if needed")
 
 
 class PayloadCrafterAgent(Agent[PayloadCrafterInput, PayloadCrafterOutput]):
