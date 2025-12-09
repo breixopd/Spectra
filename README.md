@@ -8,7 +8,6 @@ Spectra is a next-generation **Multi-Agent System (MAS)** for automated security
 
 - **[Penetration Testing Workflow](docs/pentest.md)** - Complete guide to how Spectra executes pentests
 - **[Plugin Configuration Guide](docs/plugins.md)** - Documentation for creating and configuring tool plugins
-- **[Design System](docs/design_system.md)** - Architecture and component design
 - **[API Reference](docs/api_reference.md)** - Detailed API documentation
 - **[Deployment Guide](docs/deployment.md)** - Deployment and scaling instructions
 

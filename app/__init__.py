@@ -22,3 +22,6 @@ Key Features:
 
 __version__ = "1.0.0"
 __author__ = "Spectra Team"
+
+# Import core explicitly to help with pytest resolution issues
+import app.core
