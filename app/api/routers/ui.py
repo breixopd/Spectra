@@ -4,7 +4,7 @@ UI router for serving the frontend dashboard.
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
 from app.models.user import User
 from app.services.ai.llm import get_llm_client
+from app.services.shell.session_manager import shell_manager
 
 router = APIRouter()
 
@@ -140,6 +141,23 @@ async def observability_page(request: Request):
         {"request": request, "title": "Spectra | Observability"},
     )
 
+@router.get("/shell/{session_id}", response_class=HTMLResponse)
+async def shell_page(request: Request, session_id: str):
+    """Serve the interactive shell page."""
+    # Verify session exists
+    session = await shell_manager.get_session(session_id)
+    if not session:
+        return HTMLResponse("Session not found or inactive", status_code=404)
+
+    return templates.TemplateResponse(
+        "shell.html",
+        {
+            "request": request,
+            "title": f"Shell | {session.target}",
+            "session_id": session_id,
+            "target": session.target
+        },
+    )
 
 
 # Global lock for settings updates to prevent race conditions

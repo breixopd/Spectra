@@ -139,6 +139,12 @@ Previous Error: {previous_error}
 Determine the best payload type (e.g., reverse_tcp, bind_tcp) and configuration options (LHOST, LPORT, RHOST, RPORT).
 If using Metasploit, you MUST specify the 'module' name in the configuration (e.g., 'exploit/unix/ftp/vsftpd_234_backdoor').
 If there was a previous error, adjust the configuration to avoid it (e.g., change encoding, port, or payload type).
+
+**Reverse Shell Instructions:**
+If you choose a reverse shell payload:
+- Set 'LHOST' to 'CONNECT_BACK_HOST' (literal string).
+- Set 'LPORT' to 'AUTO' (literal string).
+The system will automatically replace these with the correct IP and an allocated port.
 """
 
 # --- Payload Crafter Agent ---

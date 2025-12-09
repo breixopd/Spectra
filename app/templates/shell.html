@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spectra Shell | {{ session_id }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm-addon-fit/0.8.0/xterm-addon-fit.min.js"></script>
+    <style>
+        body { background-color: #0f172a; margin: 0; height: 100vh; display: flex; flex-direction: column; }
+        #terminal { flex: 1; padding: 10px; }
+        .xterm-viewport { overflow-y: auto !important; }
+    </style>
+</head>
+<body>
+    <div class="bg-slate-900 border-b border-white/10 p-2 flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-slate-300 font-mono text-sm">Session: {{ session_id }}</span>
+        </div>
+        <span class="text-slate-500 text-xs">Target: {{ target }}</span>
+    </div>
+    <div id="terminal"></div>
+
+    <script>
+        const term = new Terminal({
+            cursorBlink: true,
+            theme: {
+                background: '#0f172a',
+                foreground: '#e2e8f0',
+                cursor: '#10b981'
+            },
+            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+            fontSize: 14
+        });
+
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(document.getElementById('terminal'));
+        fitAddon.fit();
+
+        window.onresize = () => fitAddon.fit();
+
+        // WebSocket Connection
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/api/shell/{{ session_id }}`;
+        const ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+            term.write('\r\n\x1b[32m[SYSTEM] Connected to Spectra Relay...\x1b[0m\r\n');
+        };
+
+        ws.onmessage = (event) => {
+            term.write(event.data);
+        };
+
+        ws.onclose = () => {
+            term.write('\r\n\x1b[31m[SYSTEM] Connection closed.\x1b[0m\r\n');
+        };
+
+        ws.onerror = (error) => {
+            term.write(`\r\n\x1b[31m[SYSTEM] Error: ${error}\x1b[0m\r\n`);
+        };
+
+        term.onData(data => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(data);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -43,13 +43,13 @@ async def cleanup_redis():
         
         if keys_to_delete:
             await r.delete(*keys_to_delete)
-            print(f"✅ Deleted {len(keys_to_delete)} Redis keys")
+            print(f"Deleted {len(keys_to_delete)} Redis keys")
         else:
-            print("ℹ️  No Redis keys to delete")
+            print("No Redis keys to delete")
         
         await r.aclose()
     except Exception as e:
-        print(f"⚠️  Redis cleanup failed: {e}")
+        print(f"Redis cleanup failed: {e}")
 
 
 async def cleanup_database():
@@ -65,25 +65,25 @@ async def cleanup_database():
             try:
                 # Delete findings first (foreign key constraint)
                 await session.execute(delete(Finding))
-                print("✅ Deleted all findings")
+                print("Deleted all findings")
                 
                 # Delete missions
                 await session.execute(delete(Mission))
-                print("✅ Deleted all missions")
+                print("Deleted all missions")
                 
                 # Optionally delete targets
                 # await session.execute(delete(Target))
-                # print("✅ Deleted all targets")
+                # print("Deleted all targets")
                 
                 await session.commit()
             except Exception as e:
-                print(f"⚠️  Database cleanup error: {e}")
+                print(f"Database cleanup error: {e}")
                 await session.rollback()
             finally:
                 await session.close()
             break
     except Exception as e:
-        print(f"⚠️  Database cleanup failed: {e}")
+        print(f"Database cleanup failed: {e}")
 
 
 def cleanup_reports():
@@ -95,13 +95,13 @@ def cleanup_reports():
         for d in mission_dirs:
             if d.is_dir():
                 shutil.rmtree(d)
-        print(f"✅ Deleted {len(mission_dirs)} mission report directories")
+        print(f"Deleted {len(mission_dirs)} mission report directories")
     else:
-        print("ℹ️  No mission reports to delete")
+        print("No mission reports to delete")
 
 
 async def main():
-    print("🧹 Cleaning up missions and data (preserving config)...\n")
+    print("Cleaning up missions and data (preserving config)...\n")
     
     # Clean up Redis
     await cleanup_redis()
@@ -112,7 +112,7 @@ async def main():
     # Clean up file system reports
     cleanup_reports()
     
-    print("\n✨ Cleanup complete! Ready for fresh mission.")
+    print("\nCleanup complete! Ready for fresh mission.")
 
 
 if __name__ == "__main__":
