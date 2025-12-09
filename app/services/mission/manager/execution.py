@@ -196,7 +196,7 @@ class MissionExecutionManager:
 
             mission.current_task_index = i
             mission.log(
-                f"📋 Executing task [{i + 1}/{len(mission.plan.tasks)}]: {task.description}"
+                f"[TASK] Executing task [{i + 1}/{len(mission.plan.tasks)}]: {task.description}"
             )
             context.phase = task.phase.value
 
@@ -227,14 +227,16 @@ class MissionExecutionManager:
     ) -> None:
         """Adapt mission plan based on new findings (PTES/MAKER methodology)."""
         mission.log(
-            f"🔄 [ADAPT] {new_findings_count} new findings discovered. Evaluating plan adaptation..."
+            f"[ADAPT] {new_findings_count} new findings discovered. Evaluating plan adaptation..."
         )
 
         try:
             # Summarize recent findings for context
             recent_findings = mission.findings[-new_findings_count:]
             critical_high = [
-                f for f in recent_findings if f.get("severity") in ("critical", "high")
+                f
+                for f in recent_findings
+                if str(f.get("severity", "")).lower() in ("critical", "high")
             ]
 
             if not critical_high:

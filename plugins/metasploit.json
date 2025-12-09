@@ -64,7 +64,7 @@
   },
   "execution": {
     "command": "msfconsole",
-    "args_template": "-q -x 'use {module}; set RHOSTS {target}; set RPORT {rport}; set LHOST {lhost}; set LPORT {lport}; set PAYLOAD {payload}; run; exit'",
+    "args_template": "-q -x 'use {module}; set RHOSTS {target}; [set RPORT {rport};] [set LHOST {lhost};] [set LPORT {lport};] [set PAYLOAD {payload};] run; exit'",
     "timeout": 600,
     "timeout_per_host": 300,
     "min_timeout": 120,

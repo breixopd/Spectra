@@ -180,10 +180,10 @@ class ToolExecutionService:
                 else "default"
             )
             mission.log(
-                f"🔧 Executing: {tool_name} | Target: {target} | Args: {args_str}"
+                f"[EXEC] Executing: {tool_name} | Target: {target} | Args: {args_str}"
             )
             mission.log(
-                f"📋 Command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}"
+                f"[CMD] Command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}"
             )
 
             # Safety check with auto-fix retry
@@ -208,7 +208,7 @@ class ToolExecutionService:
                     request, output_dir=str(output_dir)
                 )
                 mission.log(
-                    f"📋 Fixed command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}"
+                    f"[CMD] Fixed command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}"
                 )
 
             # 4. Consensus Check (High Risk)
@@ -280,13 +280,13 @@ class ToolExecutionService:
                         last_error = (
                             result.stderr[:500] if result.stderr else "No error message"
                         )
-                        mission.log(f"❌ {request.tool_id} failed: {last_error[:200]}")
+                        mission.log(f"[ERROR] {request.tool_id} failed: {last_error[:200]}")
 
                         # Provide detailed error for LLM learning
                         if result.stderr:
-                            mission.log(f"📝 Error details: {result.stderr[:500]}")
+                            mission.log(f"[INFO] Error details: {result.stderr[:500]}")
                         if result.stdout:
-                            mission.log(f"📝 Output preview: {result.stdout[:300]}")
+                            mission.log(f"[INFO] Output preview: {result.stdout[:300]}")
 
                         if result.stderr and (
                             "command not found" in result.stderr
@@ -296,7 +296,7 @@ class ToolExecutionService:
                             
                 except Exception as e:
                     last_error = str(e)
-                    mission.log(f"❌ Execution error: {e}")
+                    mission.log(f"[ERROR] Execution error: {e}")
                     last_result = self._create_error_result(request.tool_id, request.target, str(e))
                 
                 if attempt < max_retries:
@@ -458,7 +458,7 @@ class ToolExecutionService:
             
             if safety_result.success and isinstance(safety_result.action, SafetyAction):
                 if not safety_result.action.allowed:
-                    mission.log(f"🛑 Safety check blocked: {safety_result.action.reason}")
+                    mission.log(f"[BLOCK] Safety check blocked: {safety_result.action.reason}")
                     return False, safety_result.action.reason
             return True, "Safe"
         except Exception as e:
@@ -496,7 +496,7 @@ class ToolExecutionService:
 
             if attempt < max_retries:
                 mission.log(
-                    f"🔄 Attempting to fix command (attempt {attempt + 1}/{max_retries})..."
+                    f"[ADAPT] Attempting to fix command (attempt {attempt + 1}/{max_retries})..."
                 )
 
                 # Try to fix the command using LLM
@@ -518,7 +518,7 @@ class ToolExecutionService:
                     current_command = builder.build_command(
                         fixed_request, output_dir=str(output_dir)
                     )
-                    mission.log(f"📝 Retrying with fixed args: {fixed_args}")
+                    mission.log(f"[INFO] Retrying with fixed args: {fixed_args}")
                 else:
                     # Couldn't fix, break out
                     break
@@ -581,7 +581,7 @@ Example response format:
 
             fixed_args = json.loads(response_text)
             if isinstance(fixed_args, dict):
-                mission.log(f"✅ LLM suggested fix: {fixed_args}")
+                mission.log(f"[INFO] LLM suggested fix: {fixed_args}")
                 return fixed_args
 
         except Exception as e:
