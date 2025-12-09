@@ -39,9 +39,9 @@ window.onSocketMessage = (data) => {
         } else if (msg.type === 'agent_state') {
             handleAgentState(msg.data);
         } else if (msg.type === 'consensus_vote_start') {
-            addTerminalLine(`[CONSENSUS] 🗳️ Voting on ${msg.data.risk} risk action: ${msg.data.action}`, 'warning');
+            addTerminalLine(`[CONSENSUS] Voting on ${msg.data.risk} risk action: ${msg.data.action}`, 'warning');
         } else if (msg.type === 'consensus_vote_result') {
-            const status = msg.data.status === 'approved' ? '✅ Approved' : '⛔ Rejected';
+            const status = msg.data.status === 'approved' ? 'Approved' : 'Rejected';
             addTerminalLine(`[CONSENSUS] ${status} (Confidence: ${msg.data.average_confidence.toFixed(2)})`, msg.data.status === 'approved' ? 'success' : 'error');
         }
     } catch (e) {
@@ -93,11 +93,14 @@ function handleAttackSurface(data) {
 }
 
 function handleExploitSuccess(data) {
-    addTerminalLine(`[SUCCESS] ✅ Exploitation successful: ${data.vector}`, 'success');
+    addTerminalLine(`[SUCCESS] Exploitation successful: ${data.vector}`, 'success');
     
     // Flash the screen border green briefly
     document.body.classList.add('ring-2', 'ring-emerald-500');
     setTimeout(() => document.body.classList.remove('ring-2', 'ring-emerald-500'), 2000);
+
+    // Refresh shell list
+    updateShellList();
 }
 
 function handleAgentState(data) {
@@ -107,6 +110,49 @@ function handleAgentState(data) {
         statusText.textContent = `${data.agent_id.replace(/_/g, ' ')} running...`;
     }
 }
+
+// --- Shell Management ---
+function updateShellList() {
+    const container = document.getElementById('shell-list');
+    if (!container) return;
+
+    fetch('/api/sessions')
+        .then(res => res.json())
+        .then(sessions => {
+            container.innerHTML = '';
+            if (sessions.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-600 text-xs py-4">No active sessions</div>';
+                return;
+            }
+
+            sessions.forEach(session => {
+                const el = document.createElement('div');
+                el.className = 'bg-slate-800/50 border border-white/5 rounded p-2 flex items-center justify-between group hover:border-emerald-500/30 transition-colors';
+                el.innerHTML = `
+                    <div class="flex items-center space-x-2 overflow-hidden">
+                        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                        <div class="flex flex-col">
+                            <span class="text-xs text-slate-300 font-mono truncate" title="${session.id}">${session.target}</span>
+                            <span class="text-[10px] text-slate-500">ID: ${session.id.substring(0, 8)}...</span>
+                        </div>
+                    </div>
+                    <button onclick="connectShell('${session.id}')" class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] rounded hover:bg-emerald-500/20 transition-colors border border-emerald-500/20">
+                        CONNECT
+                    </button>
+                `;
+                container.appendChild(el);
+            });
+        })
+        .catch(err => console.error('Failed to fetch sessions:', err));
+}
+
+function connectShell(sessionId) {
+    window.open(`/shell/${sessionId}`, '_blank', 'width=800,height=600');
+}
+
+// Poll for shell updates every 5 seconds
+setInterval(updateShellList, 5000);
+
 
 // --- Mission Control ---
 let currentMissionId = null;
@@ -367,5 +413,6 @@ function updateNodeCount() {
 document.addEventListener('DOMContentLoaded', () => {
     initGraph();
     initMap();
+    updateShellList(); // Initial fetch
     addTerminalLine('[SYSTEM] Spectra Dashboard Initialized', 'success');
 });

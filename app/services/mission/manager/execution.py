@@ -20,6 +20,7 @@ from app.services.mission.executor import MissionExecutor
 from app.services.mission.mission import Mission
 from app.services.mission.manager.lifecycle import MissionLifecycleManager
 from app.services.mission.manager.steering import MissionSteeringManager
+from app.services.shell.session_manager import shell_manager
 
 logger = logging.getLogger("spectra.mission.manager.execution")
 
@@ -86,6 +87,12 @@ class MissionExecutionManager:
             logger.error("Mission %s failed: %s", mission.id, e, exc_info=True)
             self._broadcast_state("mission_controller", "failed")
             await self.lifecycle.update_db_status(mission)
+        finally:
+            # Notify shell manager to update TTLs for active shells from other missions
+            try:
+                shell_manager.notify_mission_complete(str(mission.id))
+            except Exception as e:
+                logger.error(f"Failed to notify shell manager of mission completion: {e}")
 
     async def _run_scope_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run scope definition phase."""
