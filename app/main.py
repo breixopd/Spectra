@@ -22,6 +22,7 @@ from app.api.routers import (
     targets,
     tools,
     ui,
+    shell,
 )
 from app.core.config import settings
 from app.core.database import async_session_maker
@@ -129,6 +130,7 @@ app.include_router(findings.router, prefix="/api", tags=["Findings"])
 app.include_router(exploits.router, prefix="/api", tags=["Exploits"])
 app.include_router(observability.router, prefix="/api", tags=["Observability"])
 app.include_router(system.router, prefix="/api", tags=["System"])
+app.include_router(shell.router, prefix="/api", tags=["Shell"])
 app.include_router(ui.router, tags=["UI"])
 
 

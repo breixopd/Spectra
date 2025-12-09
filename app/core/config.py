@@ -194,10 +194,6 @@ def get_settings() -> Settings:
     # Load runtime settings (overrides env vars for non-sensitive fields)
     settings_instance.load_runtime_settings()
 
-    # Warn about default passwords
-    if settings_instance.REDIS_PASSWORD.get_secret_value() == "changeme":
-        logger.warning("Using default Redis password - change this in production!")
-
     # Generate random secret key if not set
     if not settings_instance.JWT_SECRET_KEY.get_secret_value():
         if not settings_instance.DEBUG:

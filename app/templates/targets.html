@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+
 <div class="flex items-center justify-between mb-6">
     <h1 class="text-2xl font-semibold text-white tracking-tight">Target Management</h1>
     <button onclick="openAddTargetModal()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center">
@@ -40,7 +42,7 @@
                     <i class="fa-solid fa-crosshairs mr-2 text-violet-400"></i>
                     Scan
                 </button>
-                <button class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors flex items-center justify-center" onclick="openShell(this)">
+                <button class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors flex items-center justify-center shell-btn">
                     <i class="fa-solid fa-terminal mr-2 text-emerald-400"></i>
                     Shell
                 </button>
@@ -80,20 +82,21 @@
         <div class="h-10 bg-slate-900 border-b border-white/10 flex items-center justify-between px-4">
             <div class="flex items-center space-x-2">
                 <i class="fa-solid fa-terminal text-emerald-400"></i>
-                <span class="text-sm font-mono text-white">root@10.10.10.5:~#</span>
+                <span class="text-sm font-mono text-white" id="shell-title">Disconnected</span>
             </div>
             <button onclick="closeShell()" class="text-slate-500 hover:text-white transition-colors">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-        <div class="flex-1 bg-black p-4 font-mono text-sm text-slate-300 overflow-y-auto" id="shell-output">
-            <p>Connected to reverse shell listener...</p>
-            <p class="text-emerald-500">root@target:~# <span class="animate-pulse">_</span></p>
+        <div class="flex-1 bg-black font-mono text-sm text-slate-300" id="terminal-container">
+            <!-- Xterm.js will be mounted here -->
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 <script src="/static/js/targets.js"></script>
 {% endblock %}
