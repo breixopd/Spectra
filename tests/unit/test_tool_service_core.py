@@ -52,13 +52,10 @@ async def test_execute_tool_success(mock_service_context):
     mock_adapter_instance = MockAdapter.return_value
     mock_adapter_instance.build_command.return_value = "nmap -p 80 127.0.0.1"
     
-    
     result_obj = ToolExecutionResult(
         tool_id="nmap", target="127.0.0.1", success=True, 
         exit_code=0, stdout="ok", stderr="", duration_seconds=1.0
     )
-    # Make execute an AsyncMock so it can be awaited
-    mock_adapter_instance.execute = AsyncMock(return_value=result_obj)
     
     # Config Safety
     safety_result = MagicMock()
@@ -73,19 +70,21 @@ async def test_execute_tool_success(mock_service_context):
     )
     service.safety_supervisor.execute.return_value = safety_result
 
+    # Mock the ARQ worker execution path
+    service._execute_via_worker = AsyncMock(return_value=result_obj)
+
     result = await service.execute_request(
         mission=mission,
         tool_name="nmap",
         target="127.0.0.1"
     )
     
-    # Debug output if failed
     if not result.success:
         print(f"FAILED stderr: {result.stderr}")
 
     assert result.success is True
     assert result.tool_id == "nmap"
-    mock_adapter_instance.execute.assert_called_once()
+    service._execute_via_worker.assert_called_once()
     service.safety_supervisor.execute.assert_called()
 
 @pytest.mark.asyncio
