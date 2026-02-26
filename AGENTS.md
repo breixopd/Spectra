@@ -52,7 +52,7 @@ ruff check app/
 
 ### Key gotchas
 
-- The `.env.test` file referenced in `pytest.ini` does not exist in the repo; tests still work because `conftest.py` mocks DB and Redis.
+- The `.env.test` file is loaded by `pytest-dotenv` via `pytest.ini`. It configures `DATABASE_URL` (SQLite/aiosqlite), `AI_PROVIDER=mock`, and other test defaults.
 - `pytest-asyncio` mode is `strict` — all async tests need `@pytest.mark.asyncio`.
 - Docker socket (`/var/run/docker.sock`) is mounted read-only into containers; ensure it exists before `docker compose up`.
 - The app auto-runs Alembic migrations on startup via `scripts/start.sh`.
