@@ -437,5 +437,29 @@
     ],
     "notes": "",
     "timestamp": "2026-02-26T14:11:17.537087"
+  },
+  {
+    "tool_id": "nuclei",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": null,
+    "args_used": {
+      "RHOST": "172.18.0.8",
+      "RPORT": 22,
+      "username_list": "common_users.txt",
+      "password_list": "common_passwords.txt",
+      "service": "ssh",
+      "threads": 4,
+      "timing": "3"
+    },
+    "success": false,
+    "findings_count": 5,
+    "finding_types": [
+      "javascript",
+      "tcp"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:16:31.699122"
   }
 ]

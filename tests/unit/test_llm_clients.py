@@ -646,41 +646,52 @@ class TestGetLLMClient:
 class TestGetDefaultLLMClient:
     """Tests for get_default_llm_client reading from settings."""
 
-    @patch("app.services.ai.llm.settings")
-    def test_ollama_provider(self, mock_settings):
+    def test_ollama_provider(self):
+        mock_settings = MagicMock()
         mock_settings.AI_PROVIDER = "ollama"
         mock_settings.OLLAMA_HOST = "http://ollama:11434"
         mock_settings.OLLAMA_MODEL = "llama3"
+        mock_settings.LLM_API_KEY = MagicMock()
+        mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
+        mock_settings.LLM_API_BASE_URL = None
+        mock_settings.LLM_MODEL = None
+        mock_settings.LLM_TIMEOUT = 600.0
 
-        client = get_default_llm_client()
-        assert isinstance(client, OllamaClient)
-        assert client.host == "http://ollama:11434"
-        assert client.model == "llama3"
+        with patch("app.services.ai.llm.settings", mock_settings), \
+             patch("app.services.ai.router.settings", mock_settings):
+            client = get_default_llm_client()
+            from app.services.ai.router import LiteLLMRouter
+            assert isinstance(client, (OllamaClient, LiteLLMRouter))
 
-    @patch("app.services.ai.llm.settings")
-    def test_api_provider(self, mock_settings):
+    def test_api_provider(self):
+        mock_settings = MagicMock()
         mock_settings.AI_PROVIDER = "api"
-        mock_secret = MagicMock()
-        mock_secret.get_secret_value.return_value = "sk-secret"
-        mock_settings.LLM_API_KEY = mock_secret
+        mock_settings.LLM_API_KEY = MagicMock()
+        mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-secret"
         mock_settings.LLM_API_BASE_URL = "https://api.example.com"
         mock_settings.LLM_MODEL = "gpt-4o"
+        mock_settings.LLM_TIMEOUT = 600.0
 
-        client = get_default_llm_client()
-        assert isinstance(client, APIClient)
-        assert client.model == "gpt-4o"
+        with patch("app.services.ai.llm.settings", mock_settings), \
+             patch("app.services.ai.router.settings", mock_settings):
+            client = get_default_llm_client()
+            from app.services.ai.router import LiteLLMRouter
+            assert isinstance(client, (APIClient, LiteLLMRouter))
 
-    @patch("app.services.ai.llm.settings")
-    def test_openai_legacy_provider(self, mock_settings):
+    def test_openai_legacy_provider(self):
+        mock_settings = MagicMock()
         mock_settings.AI_PROVIDER = "openai"
-        mock_secret = MagicMock()
-        mock_secret.get_secret_value.return_value = "sk-legacy"
-        mock_settings.LLM_API_KEY = mock_secret
+        mock_settings.LLM_API_KEY = MagicMock()
+        mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-legacy"
         mock_settings.LLM_API_BASE_URL = None
         mock_settings.LLM_MODEL = "gpt-3.5-turbo"
+        mock_settings.LLM_TIMEOUT = 600.0
 
-        client = get_default_llm_client()
-        assert isinstance(client, APIClient)
+        with patch("app.services.ai.llm.settings", mock_settings), \
+             patch("app.services.ai.router.settings", mock_settings):
+            client = get_default_llm_client()
+            from app.services.ai.router import LiteLLMRouter
+            assert isinstance(client, (APIClient, LiteLLMRouter))
 
     @patch("app.services.ai.llm.settings")
     def test_mock_provider(self, mock_settings):

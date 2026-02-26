@@ -548,21 +548,28 @@ def get_default_llm_client() -> LLMClient:
     """
     Get the LLM client configured in settings.
 
-    Returns:
-        LLMClient instance based on app configuration.
+    Uses LiteLLM smart router when available, falls back to direct clients.
     """
+    try:
+        from app.services.ai.router import create_smart_router
+        client = create_smart_router()
+        logger.info("Using LiteLLM smart router (provider=%s)", settings.AI_PROVIDER)
+        return client
+    except ImportError:
+        logger.info("LiteLLM not available, using direct clients")
+    except Exception as e:
+        logger.warning("Smart router init failed, falling back to direct: %s", e)
+
+    # Fallback to direct clients
     provider = settings.AI_PROVIDER
 
     if provider == "ollama":
-        # For Ollama, we strictly use OLLAMA_HOST and OLLAMA_MODEL
-        # ignoring any LLM_* settings which are for the API provider
         return get_llm_client(
             provider="ollama",
             host=settings.OLLAMA_HOST,
             model=settings.OLLAMA_MODEL,
         )
-    elif provider in ("api", "openai"):  # Support both
-        # For API, we strictly use LLM_* settings
+    elif provider in ("api", "openai"):
         return get_llm_client(
             provider="api",
             api_key=settings.LLM_API_KEY.get_secret_value(),
@@ -572,7 +579,6 @@ def get_default_llm_client() -> LLMClient:
     elif provider == "mock":
         return get_llm_client(provider="mock")
     else:
-        # Fallback or error
         logger.warning("Unknown provider %s, falling back to mock", provider)
         return get_llm_client(provider="mock")
 
