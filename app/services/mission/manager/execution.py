@@ -210,7 +210,12 @@ class MissionExecutionManager:
     async def _execute_mission_tasks(
         self, mission: Mission, context: AgentContext
     ) -> None:
-        """Execute all mission tasks with dynamic plan adaptation."""
+        """Execute all mission tasks with dynamic plan adaptation.
+
+        Tasks are grouped by phase and independent tasks within the same phase
+        run in parallel via ``asyncio.gather``.  Tasks with unmet dependencies
+        execute sequentially after the independent batch completes.
+        """
         if mission.plan is None:
             return
 
@@ -218,44 +223,141 @@ class MissionExecutionManager:
         last_findings_count = len(mission.findings)
         last_adaptation_index = -1
 
+        # Group tasks by phase while preserving order
+        phase_groups: dict[str, list[tuple[int, Any]]] = {}
         for i, task in enumerate(mission.plan.tasks):
+            phase = task.phase.value
+            if phase not in phase_groups:
+                phase_groups[phase] = []
+            phase_groups[phase].append((i, task))
+
+        global_task_counter = 0
+
+        for phase, indexed_tasks in phase_groups.items():
             if mission.is_stopped():
                 mission.log("Mission stopped by user")
                 break
 
             await mission.wait_if_paused()
 
-            if task.phase.value in mission.skipped_phases:
-                mission.log(f"Skipping task '{task.description}' (phase skipped)")
+            # Skip entire phase if requested
+            if phase in mission.skipped_phases:
+                for _, task in indexed_tasks:
+                    mission.log(f"Skipping task '{task.description}' (phase skipped)")
+                global_task_counter += len(indexed_tasks)
                 continue
 
-            mission.current_task_index = i
-            mission.log(
-                f"[TASK] Executing task [{i + 1}/{len(mission.plan.tasks)}]: {task.description}"
-            )
-            context.phase = task.phase.value
+            # Track completed task IDs within this mission
+            completed_task_ids: set[str] = set()
 
-            try:
-                if not self.executor:
-                    raise RuntimeError("Executor not initialized")
-                await self.executor.execute_task(mission, task, context)
+            # Partition into independent and dependent tasks
+            independent = [
+                (i, t)
+                for i, t in indexed_tasks
+                if not t.dependencies
+                or all(d in completed_task_ids for d in t.dependencies)
+            ]
+            dependent = [
+                (i, t) for i, t in indexed_tasks if (i, t) not in independent
+            ]
 
-                # Check if we should adapt the plan based on new findings
-                current_findings = len(mission.findings)
-                new_findings = current_findings - last_findings_count
+            # --- Run independent tasks in parallel ---
+            if independent:
+                async def _run_task(
+                    idx: int,
+                    task: Any,
+                    _context: AgentContext = context,
+                ) -> None:
+                    """Execute a single task with full lifecycle handling."""
+                    mission.current_task_index = idx
+                    total = len(mission.plan.tasks) if mission.plan else 0
+                    mission.log(
+                        f"[TASK] Executing task [{idx + 1}/{total}]: {task.description}"
+                    )
+                    _context_copy = AgentContext(
+                        mission_id=_context.mission_id,
+                        session_id=_context.session_id,
+                        target=_context.target,
+                        mission=_context.mission,
+                    )
+                    _context_copy.phase = task.phase.value
 
-                # Adapt plan if significant new findings discovered (PTES/MAKER methodology)
-                if new_findings >= 3 and i > last_adaptation_index + 2:
-                    await self._adapt_plan_to_findings(mission, context, new_findings)
-                    last_adaptation_index = i
-                    last_findings_count = current_findings
+                    if not self.executor:
+                        raise RuntimeError("Executor not initialized")
+                    await self.executor.execute_task(mission, task, _context_copy)
 
-                # Persist state after each task
-                await self.lifecycle.update_db_status(mission)
-            except Exception as e:
-                await self._handle_task_failure(mission, task, str(e), context)
-                # Persist state after failure handling
-                await self.lifecycle.update_db_status(mission)
+                results = await asyncio.gather(
+                    *[_run_task(idx, t) for idx, t in independent],
+                    return_exceptions=True,
+                )
+
+                for (idx, task), result in zip(independent, results):
+                    if isinstance(result, Exception):
+                        await self._handle_task_failure(
+                            mission, task, str(result), context
+                        )
+                        await self.lifecycle.update_db_status(mission)
+                    else:
+                        completed_task_ids.add(task.task_id)
+                        # Check plan adaptation after each successful task
+                        current_findings = len(mission.findings)
+                        new_findings = current_findings - last_findings_count
+                        effective_idx = global_task_counter + independent.index(
+                            (idx, task)
+                        )
+                        if (
+                            new_findings >= 3
+                            and effective_idx > last_adaptation_index + 2
+                        ):
+                            await self._adapt_plan_to_findings(
+                                mission, context, new_findings
+                            )
+                            last_adaptation_index = effective_idx
+                            last_findings_count = current_findings
+                        await self.lifecycle.update_db_status(mission)
+
+            # --- Run dependent tasks sequentially ---
+            for idx, task in dependent:
+                if mission.is_stopped():
+                    mission.log("Mission stopped by user")
+                    break
+
+                await mission.wait_if_paused()
+
+                mission.current_task_index = idx
+                total = len(mission.plan.tasks) if mission.plan else 0
+                mission.log(
+                    f"[TASK] Executing task [{idx + 1}/{total}]: {task.description}"
+                )
+                context.phase = task.phase.value
+
+                try:
+                    if not self.executor:
+                        raise RuntimeError("Executor not initialized")
+                    await self.executor.execute_task(mission, task, context)
+                    completed_task_ids.add(task.task_id)
+
+                    current_findings = len(mission.findings)
+                    new_findings = current_findings - last_findings_count
+                    effective_idx = global_task_counter + len(independent) + dependent.index(
+                        (idx, task)
+                    )
+                    if (
+                        new_findings >= 3
+                        and effective_idx > last_adaptation_index + 2
+                    ):
+                        await self._adapt_plan_to_findings(
+                            mission, context, new_findings
+                        )
+                        last_adaptation_index = effective_idx
+                        last_findings_count = current_findings
+
+                    await self.lifecycle.update_db_status(mission)
+                except Exception as e:
+                    await self._handle_task_failure(mission, task, str(e), context)
+                    await self.lifecycle.update_db_status(mission)
+
+            global_task_counter += len(indexed_tasks)
 
     async def _adapt_plan_to_findings(
         self, mission: Mission, context: AgentContext, new_findings_count: int
