@@ -223,6 +223,61 @@ async def resume_mission(
     return {"message": "Mission resumed"}
 
 
+@router.get("/{mission_id}/diff/{other_mission_id}")
+async def diff_missions(
+    mission_id: str,
+    other_mission_id: str,
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Compare two missions and return a structured diff.
+
+    Returns changed services, findings, and vulnerabilities between
+    the *old* mission (``mission_id``) and the *new* mission
+    (``other_mission_id``).
+    """
+    from app.services.mission.target_diff import compare_missions, generate_diff_report
+
+    repo = MissionRepository(db)
+
+    old_db = await repo.get_by_id(mission_id)
+    if not old_db:
+        raise HTTPException(status_code=404, detail=f"Mission {mission_id} not found")
+
+    new_db = await repo.get_by_id(other_mission_id)
+    if not new_db:
+        raise HTTPException(
+            status_code=404, detail=f"Mission {other_mission_id} not found"
+        )
+
+    old_dict = {
+        "id": old_db.id,
+        "target": old_db.target,
+        "status": old_db.status,
+        "findings": (old_db.summary or {}).get("findings", []),
+        "attack_surface": old_db.attack_surface or {},
+        "summary": old_db.summary or {},
+    }
+    new_dict = {
+        "id": new_db.id,
+        "target": new_db.target,
+        "status": new_db.status,
+        "findings": (new_db.summary or {}).get("findings", []),
+        "attack_surface": new_db.attack_surface or {},
+        "summary": new_db.summary or {},
+    }
+
+    diff = compare_missions(old_dict, new_dict)
+    report = generate_diff_report(diff)
+
+    return {
+        "old_mission_id": mission_id,
+        "new_mission_id": other_mission_id,
+        "diff": diff,
+        "report": report,
+    }
+
+
 @router.post("/{mission_id}/steer")
 @limiter.limit("30/minute")
 async def steer_mission(
