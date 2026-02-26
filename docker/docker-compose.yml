@@ -103,7 +103,7 @@ services:
       - AI_PROVIDER=api
       - LLM_API_KEY=${LLM_API_KEY:-4df9d751ee58488ba4cb0db4ddb988b7.35J2q7fELSJgYSvU}
       - LLM_API_BASE_URL=${LLM_API_BASE_URL:-https://api.z.ai/api/coding/paas/v4}
-      - LLM_MODEL=${LLM_MODEL:-glm-4.6}
+      - LLM_MODEL=${LLM_MODEL:-glm-4.7-flash}
       
       # Defaults from code are sufficient for:
       - LOG_LEVEL=DEBUG
