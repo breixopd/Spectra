@@ -10,6 +10,7 @@ dependencies so they work offline / air-gapped.
 import logging
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from jinja2 import BaseLoader, Environment
@@ -282,3 +283,46 @@ def save_report(mission_id: str, html_content: str) -> str:
         fh.write(html_content)
     logger.info("Report saved → %s", path)
     return path
+
+
+def generate_pdf_report(mission_data: dict) -> bytes | None:
+    """Generate a PDF report from mission data.
+
+    Uses xhtml2pdf to convert the HTML report to PDF.
+    Returns PDF bytes or None on failure.
+    """
+    try:
+        from io import BytesIO
+
+        from xhtml2pdf import pisa
+
+        html = generate_html_report(mission_data)
+        pdf_buffer = BytesIO()
+
+        pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+
+        if pisa_status.err:
+            logger.error("PDF generation failed: %d errors", pisa_status.err)
+            return None
+
+        return pdf_buffer.getvalue()
+    except ImportError:
+        logger.warning("xhtml2pdf not installed, PDF export unavailable")
+        return None
+    except Exception as e:
+        logger.error("PDF generation error: %s", e)
+        return None
+
+
+def save_pdf_report(mission_id: str, pdf_bytes: bytes) -> str | None:
+    """Save PDF report to disk."""
+    output_dir = Path("reports/missions") / mission_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+    try:
+        output_path.write_bytes(pdf_bytes)
+        return str(output_path)
+    except Exception as e:
+        logger.error("Failed to save PDF: %s", e)
+        return None
