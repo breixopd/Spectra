@@ -204,10 +204,16 @@ class UniversalParser:
     def _xml_to_findings(self, root: ET.Element) -> list[dict[str, Any]]:
         """Convert XML to findings generically.
 
-        Extracts all leaf elements with their attributes as findings.
-        Uses mapping config to translate field names.
+        Handles special cases for common security tool XML formats (nmap, etc.)
+        and falls back to generic element-to-dict conversion.
         """
         findings: list[dict[str, Any]] = []
+
+        # Special handling for nmap XML (nmaprun root)
+        if root.tag == "nmaprun":
+            findings = self._parse_nmap_xml(root)
+            if findings:
+                return [self._apply_mapping(f) for f in findings]
 
         # Look for common result container patterns
         result_containers = [
@@ -233,6 +239,12 @@ class UniversalParser:
                 findings.append(self._apply_mapping(finding))
 
         return findings
+
+    def _parse_nmap_xml(self, root: ET.Element) -> list[dict[str, Any]]:
+        """Parse nmap XML output into structured findings."""
+        from app.services.tools.parsers import parse_nmap_xml
+
+        return parse_nmap_xml(root)
 
     def _element_to_dict(self, elem: ET.Element) -> dict[str, Any]:
         """Convert XML element to dict, flattening nested structures."""

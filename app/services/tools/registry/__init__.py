@@ -82,14 +82,12 @@ class ToolRegistry:
         # Actually Validator needs the key object, let's load it if possible or pass path
         # The Validator takes `public_key`.
         self._public_key = self._load_public_key()
-        
+
         self.validator = PluginValidator(
-            public_key=self._public_key,
-            safe_mode=safe_mode
+            public_key=self._public_key, safe_mode=safe_mode
         )
         self.loader = PluginLoader(
-            plugins_dir=self.plugins_dir,
-            validator=self.validator
+            plugins_dir=self.plugins_dir, validator=self.validator
         )
         self.installer = PluginInstaller()
 
@@ -99,7 +97,7 @@ class ToolRegistry:
         paths_to_check = []
         if self.public_key_path:
             paths_to_check.append(Path(self.public_key_path))
-        
+
         # Add default locations (Docker inside /app, and local relative)
         paths_to_check.append(Path("/app/keys/plugin_signing.pub"))
         paths_to_check.append(Path("keys/plugin_signing.pub"))
@@ -110,17 +108,24 @@ class ToolRegistry:
                 found_path = path
                 logger.debug("Found signing key at %s", path)
                 break
-        
+
         if not found_path:
-            logger.warning("No plugin signing key found. Searched: %s", [str(p) for p in paths_to_check])
+            logger.warning(
+                "No plugin signing key found. Searched: %s",
+                [str(p) for p in paths_to_check],
+            )
             if self.safe_mode:
-                logger.warning("Safe mode is enabled but no key found. Plugin loading will likely fail.")
+                logger.warning(
+                    "Safe mode is enabled but no key found. Plugin loading will likely fail."
+                )
             return None
 
         # Determine if crypto is available
         try:
-            from cryptography.hazmat.primitives import serialization as crypto_serialization
-            
+            from cryptography.hazmat.primitives import (
+                serialization as crypto_serialization,
+            )
+
             with found_path.open("rb") as f:
                 key = crypto_serialization.load_pem_public_key(f.read())
             logger.info("Successfully loaded plugin signing key from %s", found_path)
@@ -139,8 +144,8 @@ class ToolRegistry:
     async def load_plugins(self) -> dict[str, RegisteredTool]:
         """Scan the plugins directory and load all valid plugins."""
         async with self._lock:
-           self._tools = await self.loader.load_plugins(self._tools)
-           return self._tools
+            self._tools = await self.loader.load_plugins(self._tools)
+            return self._tools
 
     def validate_plugin(self, data: dict[str, Any]) -> ToolConfig:
         """Validate a plugin configuration."""
@@ -154,7 +159,7 @@ class ToolRegistry:
         """Install a tool by executing its installation commands."""
         if tool_id not in self._tools:
             raise PluginInstallationError(f"Unknown tool: {tool_id}")
-            
+
         tool = self._tools[tool_id]
         return await self.installer.install_tool(tool, progress_callback)
 
@@ -168,10 +173,10 @@ class ToolRegistry:
             return False
 
         tool = self._tools[tool_id]
-        
+
         # Run uninstall commands
         await self.installer.uninstall_tool(tool, self.plugins_dir, progress_callback)
-        
+
         # Remove plugin file and entry (Registry responsibility)
         path = self.plugins_dir / f"{tool_id}.json"
         try:
@@ -294,7 +299,9 @@ class ToolRegistry:
         if config.id in self._tools:
             existing = self._tools[config.id]
             if existing.config.is_system:
-                raise PluginValidationError(f"Cannot overwrite system tool: {config.id}")
+                raise PluginValidationError(
+                    f"Cannot overwrite system tool: {config.id}"
+                )
             existing.config = config
             existing.status = ToolStatus.PENDING
         else:
@@ -386,4 +393,3 @@ async def initialize_registry(
         )
         await _registry_instance.load_plugins()
     return _registry_instance
-

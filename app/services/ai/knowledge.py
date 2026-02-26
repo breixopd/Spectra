@@ -9,7 +9,7 @@ Centralized module for:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import timezone
 from typing import Any
 
 from redis.asyncio import Redis
@@ -107,7 +107,9 @@ PTES_METHODOLOGY = {
 
 def get_methodology_guidance(phase: str) -> str:
     """Get PTES methodology guidance for a specific phase."""
-    return PTES_METHODOLOGY.get(phase, "Follow standard penetration testing methodology.")
+    return PTES_METHODOLOGY.get(
+        phase, "Follow standard penetration testing methodology."
+    )
 
 
 def get_full_methodology() -> str:
@@ -256,7 +258,9 @@ async def get_available_tools_context(grouped: bool = True) -> str:
             # Detailed list with descriptions
             tool_descriptions = []
             for tool in tools[:15]:  # Limit to avoid prompt overflow
-                caps = ", ".join([c.value for c in tool.config.metadata.capabilities[:3]])
+                caps = ", ".join(
+                    [c.value for c in tool.config.metadata.capabilities[:3]]
+                )
                 status = "installed" if tool.is_available else "auto-install"
                 tool_descriptions.append(
                     f"- {tool.config.name} [{status}]: {tool.config.description[:100]}... (Capabilities: {caps})"

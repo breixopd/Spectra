@@ -10,7 +10,9 @@ def detect_target_type(target: str) -> str:
         return "url"
 
     # CIDR pattern
-    if "/" in target and re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}$", target):
+    if "/" in target and re.match(
+        r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/\d{1,2}$", target
+    ):
         return "cidr"
 
     # IP address pattern

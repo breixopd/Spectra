@@ -215,21 +215,21 @@ Immediate attention is required for critical and high severity findings.
         # Group findings by severity
         by_severity = {}
         verified_exploits = []
-        
+
         for finding in findings:
             # Check if this is a verified exploit
             if finding.get("source") == "exploitation" or finding.get("confirmed"):
                 verified_exploits.append(finding)
-                continue # Skip adding to general severity groups to avoid duplication, OR keep it. 
+                continue  # Skip adding to general severity groups to avoid duplication, OR keep it.
                 # Let's keep it in severity groups too, but have a dedicated section at the top.
-            
+
             severity = finding.get("severity", "info").lower()
             if severity not in by_severity:
                 by_severity[severity] = []
             by_severity[severity].append(finding)
 
         # Create sections
-        
+
         # 1. Verified Exploits (Top Priority)
         if verified_exploits:
             content = "\n\n".join(
@@ -244,7 +244,7 @@ Immediate attention is required for critical and high severity findings.
                 ReportSection(
                     title="Verified Exploits (Proof of Concept)",
                     content=content,
-                    severity="critical"
+                    severity="critical",
                 )
             )
 

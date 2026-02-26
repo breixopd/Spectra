@@ -71,7 +71,9 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
 
     role: ClassVar[AgentRole] = AgentRole.SCOPE
     name: ClassVar[str] = "ScopeAgent"
-    description: ClassVar[str] = "Parses user input to define strict assessment boundaries (IPs, domains, CIDRs)"
+    description: ClassVar[str] = (
+        "Parses user input to define strict assessment boundaries (IPs, domains, CIDRs)"
+    )
 
     # Regex patterns for common target types
     IP_PATTERN = re.compile(

@@ -9,26 +9,31 @@ async function refreshTools() {
     const grid = document.getElementById('tools-grid');
     try {
         const res = await fetch('/api/tools');
-        const tools = await res.json();
+        const data = await res.json();
+        const tools = data.tools || data;
+
+        if (!tools || tools.length === 0) {
+            grid.innerHTML = '<div class="empty-state glass-panel rounded-xl"><i class="fa-solid fa-toolbox text-rose-400/40"></i><h3>No tools registered</h3><p>Upload a plugin JSON file to get started.</p></div>';
+            return;
+        }
         
-        grid.innerHTML = tools.map(tool => `
-            <div onclick="selectTool('${tool.config.id}')" class="glass p-5 rounded-xl hover:bg-white/5 transition-all cursor-pointer group border border-transparent hover:border-violet-500/30 relative overflow-hidden">
+        grid.innerHTML = tools.map((tool, i) => `
+            <div onclick="selectTool('${tool.id}')" class="glass-panel p-5 rounded-xl hover:bg-white/5 cursor-pointer group border border-transparent hover:border-violet-500/30 relative overflow-hidden card-hover animate-fade-in-up" style="animation-delay: ${i * 0.04}s">
                 <div class="flex justify-between items-start mb-3">
-                    <div class="p-2 rounded-lg bg-${tool.config.ui.color}-500/20 text-${tool.config.ui.color}-400">
-                        <i class="ph ph-${tool.config.ui.icon} text-xl"></i>
+                    <div class="w-9 h-9 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center">
+                        <i class="fa-solid fa-wrench"></i>
                     </div>
-                    <span class="px-2 py-1 rounded text-xs font-medium ${getStatusColor(tool.status)}">
-                        ${tool.status.toUpperCase()}
+                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium ${getStatusColor(tool.status)}">
+                        ${(tool.status || 'pending').toUpperCase()}
                     </span>
                 </div>
-                <h3 class="text-white font-semibold text-lg mb-1">${tool.config.name}</h3>
-                <p class="text-gray-400 text-sm line-clamp-2">${tool.config.description}</p>
-                
-                <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-${tool.config.ui.color}-500 to-transparent opacity-0 group-hover:opacity-50 transition-opacity"></div>
+                <h3 class="text-white font-semibold mb-1">${tool.name}</h3>
+                <p class="text-slate-400 text-xs line-clamp-2">${tool.description}</p>
+                <div class="mt-2 text-[10px] text-slate-500 font-mono">${tool.category} · v${tool.version}</div>
             </div>
         `).join('');
     } catch (e) {
-        grid.innerHTML = `<div class="text-red-400">Failed to load tools: ${e}</div>`;
+        grid.innerHTML = `<div class="text-red-400 p-4">Failed to load tools: ${e}</div>`;
     }
 }
 
@@ -46,7 +51,7 @@ let currentTool = null;
 
 async function selectTool(id) {
     const container = document.getElementById('tool-details');
-    container.innerHTML = '<div class="text-center"><i class="ph ph-spinner animate-spin"></i></div>';
+    container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading...</div>';
     
     try {
         const [toolRes, statsRes] = await Promise.all([
@@ -62,87 +67,65 @@ async function selectTool(id) {
             : 0;
 
         container.innerHTML = `
-            <div class="flex items-center gap-4 mb-6">
-                <div class="p-3 rounded-xl bg-${tool.config.ui.color}-500/20 text-${tool.config.ui.color}-400">
-                    <i class="ph ph-${tool.config.ui.icon} text-3xl"></i>
+            <div class="flex items-center gap-4 mb-6 animate-fade-in-up">
+                <div class="w-12 h-12 rounded-xl bg-violet-500/20 text-violet-400 flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-wrench"></i>
                 </div>
                 <div>
-                    <h2 class="text-2xl font-bold text-white">${tool.config.name}</h2>
-                    <p class="text-gray-400 text-sm">v${tool.config.version} - ${tool.config.author || 'Unknown'}</p>
+                    <h2 class="text-xl font-bold text-white">${tool.name}</h2>
+                    <p class="text-slate-400 text-sm">v${tool.version} · ${tool.category}</p>
                 </div>
             </div>
             
-            <!-- Stats Bar -->
-            <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="grid grid-cols-3 gap-3 mb-4 animate-fade-in-up stagger-1">
                 <div class="bg-black/30 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-white">${stats.total_count || 0}</div>
-                    <div class="text-xs text-gray-500 uppercase">Total Runs</div>
+                    <div class="text-2xl font-bold font-mono text-white">${stats.total_count || 0}</div>
+                    <div class="text-[10px] text-slate-500 uppercase">Runs</div>
                 </div>
                 <div class="bg-black/30 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-green-400">${stats.success_count || 0}</div>
-                    <div class="text-xs text-gray-500 uppercase">Successes</div>
+                    <div class="text-2xl font-bold font-mono text-emerald-400">${stats.success_count || 0}</div>
+                    <div class="text-[10px] text-slate-500 uppercase">Pass</div>
                 </div>
                 <div class="bg-black/30 rounded-lg p-3 text-center">
-                    <div class="text-2xl font-bold text-red-400">${stats.fail_count || 0}</div>
-                    <div class="text-xs text-gray-500 uppercase">Failures</div>
+                    <div class="text-2xl font-bold font-mono text-rose-400">${stats.fail_count || 0}</div>
+                    <div class="text-[10px] text-slate-500 uppercase">Fail</div>
                 </div>
             </div>
-            
+
             ${stats.total_count > 0 ? `
             <div class="mb-4">
-                <div class="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Success Rate</span>
-                    <span>${successRate}%</span>
+                <div class="flex justify-between text-xs text-slate-500 mb-1"><span>Success Rate</span><span>${successRate}%</span></div>
+                <div class="h-1.5 bg-black/30 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500" style="width: ${successRate}%"></div>
                 </div>
-                <div class="h-2 bg-black/30 rounded-full overflow-hidden">
-                    <div class="h-full bg-gradient-to-r from-green-500 to-emerald-400" style="width: ${successRate}%"></div>
-                </div>
-            </div>
-            ` : ''}
+            </div>` : ''}
             
-            <div class="space-y-4">
+            <div class="space-y-4 animate-fade-in-up stagger-2">
                 <div>
-                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Description</label>
-                    <p class="text-gray-300 mt-1">${tool.config.description}</p>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Description</label>
+                    <p class="text-slate-300 text-sm mt-1">${tool.description}</p>
                 </div>
-                
                 <div>
-                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Category</label>
-                    <div class="mt-1 flex gap-2">
-                        <span class="px-2 py-1 rounded bg-white/10 text-xs">${tool.config.category}</span>
-                    </div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Command</label>
+                    <code class="block mt-1 p-3 rounded-lg bg-black/40 font-mono text-xs text-violet-300 overflow-x-auto">${tool.execution_command} ${tool.args_template}</code>
                 </div>
-
-                <div>
-                    <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Execution</label>
-                    <code class="block mt-1 p-3 rounded bg-black/30 font-mono text-sm text-violet-300">
-                        ${tool.config.execution.command} ${tool.config.execution.args_template}
-                    </code>
-                </div>
-
                 <div class="pt-4 border-t border-white/10 flex gap-3">
-                    <!-- Test Button -->
-                    <button onclick="showTestModal('${tool.config.id}')" class="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors">
-                        <i class="ph ph-play"></i> Test
+                    <button onclick="showTestModal('${tool.id}')" class="flex-1 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white text-sm font-medium transition-all">
+                        <i class="fa-solid fa-play mr-1"></i> Run Test
                     </button>
-                    
                     ${tool.status !== 'ready' && tool.status !== 'installing' ? `
-                        <button onclick="installTool('${tool.config.id}')" class="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white font-medium transition-colors">
-                            Install Tool
+                        <button onclick="installTool('${tool.id}')" class="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors">
+                            <i class="fa-solid fa-download mr-1"></i> Install
                         </button>
                     ` : ''}
-                    
-                    ${!tool.config.is_system ? `
-                        <button onclick="deleteTool('${tool.config.id}')" class="px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors">
-                            <i class="ph ph-trash"></i>
-                        </button>
-                    ` : ''}
+                    <button onclick="deleteTool('${tool.id}')" class="px-4 py-2.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
                 </div>
             </div>
-        `;
         `;
     } catch (e) {
-        container.innerHTML = `<div class="text-red-400">Error: ${e}</div>`;
+        container.innerHTML = `<div class="text-red-400 p-4">Error: ${e}</div>`;
     }
 }
 

@@ -1,0 +1,79 @@
+{
+  "id": "feroxbuster",
+  "name": "Feroxbuster",
+  "version": "1.0.0",
+  "category": "enumeration",
+  "description": "Fast, recursive content discovery tool written in Rust. Finds hidden directories and files.",
+  "metadata": {
+    "ai_description": "Feroxbuster is a fast recursive content discovery tool. Unlike gobuster, it automatically recurses into discovered directories. Written in Rust for high performance. Excellent for finding deeply nested files and directories. Use when you need thorough directory enumeration.",
+    "capabilities": [
+      "directory_brute",
+      "web_crawl"
+    ],
+    "supported_targets": [
+      "url"
+    ],
+    "risk_level": "low",
+    "tags": [
+      "web",
+      "directories",
+      "recursive",
+      "brute-force",
+      "rust"
+    ],
+    "use_cases": [
+      "Recursive directory discovery on web servers",
+      "Find deeply nested files and admin panels",
+      "High-performance scanning of large targets"
+    ],
+    "limitations": [
+      "URL targets only",
+      "Can be noisy - sends many requests"
+    ],
+    "complements": [
+      "gobuster",
+      "ffuf",
+      "nuclei"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update -qq",
+      "apt-get install -y -qq feroxbuster || (curl -sL https://github.com/epi052/feroxbuster/releases/latest/download/feroxbuster_amd64.deb.zip -o /tmp/ferox.zip && cd /tmp && unzip -o ferox.zip && dpkg -i feroxbuster_*_amd64.deb)"
+    ],
+    "verification_command": "feroxbuster --version",
+    "verification_regex": "feroxbuster"
+  },
+  "execution": {
+    "command": "feroxbuster",
+    "args_template": "--url {target} --output {output_file} --json --quiet --no-state {flags}",
+    "timeout": 600,
+    "min_timeout": 60,
+    "max_timeout": 1800
+  },
+  "parsing": {
+    "format": "ndjson",
+    "mapping": {
+      "url": "url",
+      "status": "status",
+      "content_length": "content_length"
+    }
+  },
+  "stealth": {
+    "rate_limit": 20,
+    "delay_ms": 100,
+    "extra_args": {
+      "--threads": "5",
+      "--rate-limit": "20"
+    }
+  },
+  "ui": {
+    "icon": "crosshair",
+    "color": "orange"
+  },
+  "signature": "20bd01d6b9730fb9f66e9123448d474cf71936f5028a581def779dea711b5e8e29aa5adb2ada7920d772052122344b5e9845f2129026b5301ae56c78c8636906"
+}

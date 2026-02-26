@@ -1,7 +1,6 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 import aiofiles
 
@@ -10,7 +9,6 @@ from app.services.tools.models import (
     ToolStatus,
 )
 from app.services.tools.registry.validator import PluginValidator
-from app.services.tools.registry.exceptions import PluginValidationError
 
 logger = logging.getLogger("spectra.tools.registry.loader")
 
@@ -22,7 +20,9 @@ class PluginLoader:
         self.plugins_dir = plugins_dir
         self.validator = validator
 
-    async def load_plugins(self, existing_tools: dict[str, RegisteredTool]) -> dict[str, RegisteredTool]:
+    async def load_plugins(
+        self, existing_tools: dict[str, RegisteredTool]
+    ) -> dict[str, RegisteredTool]:
         """Scan the plugins directory and load all valid plugins.
 
         Args:
@@ -63,7 +63,9 @@ class PluginLoader:
 
         return tools
 
-    async def _load_plugin_file(self, path: Path, tools: dict[str, RegisteredTool]) -> str:
+    async def _load_plugin_file(
+        self, path: Path, tools: dict[str, RegisteredTool]
+    ) -> str:
         """Load a single plugin file."""
         async with aiofiles.open(path, "r", encoding="utf-8") as f:
             content = await f.read()

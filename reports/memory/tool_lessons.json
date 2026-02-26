@@ -1,0 +1,465 @@
+[
+  {
+    "tool_id": "nmap",
+    "target_service": "http",
+    "target_product": "Apache httpd",
+    "target_version": "2.4.25",
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "open"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:49:18.886000"
+  },
+  {
+    "tool_id": "naabu",
+    "target_service": "http",
+    "target_product": "Apache httpd",
+    "target_version": "2.4.25",
+    "target_os": "linux",
+    "args_used": {},
+    "success": false,
+    "findings_count": 0,
+    "finding_types": [],
+    "notes": "",
+    "timestamp": "2026-02-26T13:49:24.098352"
+  },
+  {
+    "tool_id": "ffuf",
+    "target_service": "http",
+    "target_product": "Apache httpd",
+    "target_version": "2.4.25",
+    "target_os": "linux",
+    "args_used": {},
+    "success": false,
+    "findings_count": 0,
+    "finding_types": [],
+    "notes": "",
+    "timestamp": "2026-02-26T13:49:26.651649"
+  },
+  {
+    "tool_id": "nikto",
+    "target_service": "http",
+    "target_product": "Apache httpd",
+    "target_version": "2.4.25",
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:49:37.619243"
+  },
+  {
+    "tool_id": "nuclei",
+    "target_service": "http",
+    "target_product": "Apache httpd",
+    "target_version": "2.4.25",
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 22,
+    "finding_types": [
+      "javascript",
+      "http"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:51:27.548220"
+  },
+  {
+    "tool_id": "searchsploit",
+    "target_service": "http",
+    "target_product": "Apache httpd",
+    "target_version": "2.4.25",
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:51:31.136949"
+  },
+  {
+    "tool_id": "searchsploit",
+    "target_service": "http",
+    "target_product": "Apache httpd",
+    "target_version": "2.4.25",
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:51:55.448496"
+  },
+  {
+    "tool_id": "nikto",
+    "target_service": "http",
+    "target_product": "Apache httpd",
+    "target_version": "2.4.25",
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:52:11.931075"
+  },
+  {
+    "tool_id": "gobuster",
+    "target_service": "http",
+    "target_product": "Apache httpd",
+    "target_version": "2.4.25",
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:52:35.821246"
+  },
+  {
+    "tool_id": "nmap",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "open"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:55:55.603597"
+  },
+  {
+    "tool_id": "naabu",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": false,
+    "findings_count": 0,
+    "finding_types": [],
+    "notes": "",
+    "timestamp": "2026-02-26T13:55:58.723128"
+  },
+  {
+    "tool_id": "gobuster",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": false,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:56:02.313053"
+  },
+  {
+    "tool_id": "ffuf",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": false,
+    "findings_count": 0,
+    "finding_types": [],
+    "notes": "",
+    "timestamp": "2026-02-26T13:56:05.265349"
+  },
+  {
+    "tool_id": "nikto",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": false,
+    "findings_count": 0,
+    "finding_types": [],
+    "notes": "",
+    "timestamp": "2026-02-26T13:56:15.657271"
+  },
+  {
+    "tool_id": "nuclei",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": false,
+    "findings_count": 0,
+    "finding_types": [],
+    "notes": "",
+    "timestamp": "2026-02-26T13:56:44.209152"
+  },
+  {
+    "tool_id": "searchsploit",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:56:48.332816"
+  },
+  {
+    "tool_id": "nmap",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:57:06.431607"
+  },
+  {
+    "tool_id": "gobuster",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": false,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:57:16.187218"
+  },
+  {
+    "tool_id": "nuclei",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 21,
+    "finding_types": [
+      "http",
+      "javascript"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T13:59:37.353924"
+  },
+  {
+    "tool_id": "sqlmap",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:00:23.702651"
+  },
+  {
+    "tool_id": "nuclei",
+    "target_service": "ppp",
+    "target_product": null,
+    "target_version": null,
+    "target_os": "linux",
+    "args_used": {},
+    "success": true,
+    "findings_count": 21,
+    "finding_types": [
+      "http",
+      "javascript"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:02:40.712021"
+  },
+  {
+    "tool_id": "nmap",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": "unknown",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "open"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:04:55.173816"
+  },
+  {
+    "tool_id": "nmap",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": "unknown",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "open"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:04:58.040998"
+  },
+  {
+    "tool_id": "nmap",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": "unknown",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "open"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:05:03.652387"
+  },
+  {
+    "tool_id": "gobuster",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": null,
+    "args_used": {},
+    "success": false,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:05:11.240776"
+  },
+  {
+    "tool_id": "nuclei",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": null,
+    "args_used": {},
+    "success": false,
+    "findings_count": 0,
+    "finding_types": [],
+    "notes": "",
+    "timestamp": "2026-02-26T14:05:38.013975"
+  },
+  {
+    "tool_id": "hydra",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": null,
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:05:55.136306"
+  },
+  {
+    "tool_id": "searchsploit",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": null,
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:06:00.149740"
+  },
+  {
+    "tool_id": "nuclei",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": null,
+    "args_used": {},
+    "success": false,
+    "findings_count": 4,
+    "finding_types": [
+      "javascript"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:11:09.732254"
+  },
+  {
+    "tool_id": "nmap",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": "unknown",
+    "args_used": {},
+    "success": true,
+    "findings_count": 1,
+    "finding_types": [
+      "info"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:11:17.537087"
+  },
+  {
+    "tool_id": "nuclei",
+    "target_service": "ssh",
+    "target_product": "OpenSSH",
+    "target_version": "9.3",
+    "target_os": null,
+    "args_used": {
+      "RHOST": "172.18.0.8",
+      "RPORT": 22,
+      "username_list": "common_users.txt",
+      "password_list": "common_passwords.txt",
+      "service": "ssh",
+      "threads": 4,
+      "timing": "3"
+    },
+    "success": false,
+    "findings_count": 5,
+    "finding_types": [
+      "javascript",
+      "tcp"
+    ],
+    "notes": "",
+    "timestamp": "2026-02-26T14:16:31.699122"
+  }
+]

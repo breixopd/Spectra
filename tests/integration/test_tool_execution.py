@@ -45,6 +45,7 @@ def get_plugins_dir() -> Path:
 def tool_is_available(tool_name: str) -> bool:
     """Check if a tool is available on the system."""
     import shutil
+
     return shutil.which(tool_name) is not None
 
 
@@ -59,6 +60,7 @@ class TestToolRegistry:
     def reset_registry(self):
         """Reset registry singleton before each test."""
         import app.services.tools.registry as registry_module
+
         registry_module._registry_instance = None
         yield
         registry_module._registry_instance = None
@@ -69,7 +71,7 @@ class TestToolRegistry:
         # This handles cases where CWD might vary or tests run from subdirs
         root_dir = Path(__file__).parent.parent.parent
         plugins_dir = root_dir / "plugins"
-        
+
         registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
 
         # Should have loaded some plugins
@@ -112,7 +114,8 @@ class TestToolRegistry:
 
         # Get discovery tools
         discovery_tools = [
-            t for t in registry.list_tools()
+            t
+            for t in registry.list_tools()
             if t.config.category == ToolCategory.DISCOVERY
         ]
 
@@ -129,7 +132,8 @@ class TestToolRegistry:
         # Get all tools and filter by capability
         all_tools = registry.list_tools()
         port_scanners = [
-            t for t in all_tools
+            t
+            for t in all_tools
             if ToolCapability.PORT_SCAN in t.config.metadata.capabilities
         ]
 
@@ -323,10 +327,7 @@ class TestToolAdapter:
 class TestRealToolExecution:
     """Test execution of real security tools (if available)."""
 
-    @pytest.mark.skipif(
-        not tool_is_available("nmap"),
-        reason="nmap not installed"
-    )
+    @pytest.mark.skipif(not tool_is_available("nmap"), reason="nmap not installed")
     async def test_nmap_localhost_scan(self):
         """Test nmap scan of localhost."""
         registry = get_registry()
@@ -350,14 +351,12 @@ class TestRealToolExecution:
         assert result.duration_seconds < 60
         assert result.tool_id == "nmap"
 
-    @pytest.mark.skipif(
-        not tool_is_available("nuclei"),
-        reason="nuclei not installed"
-    )
+    @pytest.mark.skipif(not tool_is_available("nuclei"), reason="nuclei not installed")
     async def test_nuclei_version(self):
         """Test nuclei can report version."""
         # Just test that nuclei runs
         import subprocess
+
         result = subprocess.run(
             ["nuclei", "-version"],
             capture_output=True,
@@ -374,7 +373,10 @@ class TestToolIntegrationWithMission:
 
     async def test_tool_selector_uses_registry(self):
         """Test that tool selector uses the registry."""
-        from app.services.ai.agents.tool_selector import ToolSelectorAgent, ToolSelectorInput
+        from app.services.ai.agents.tool_selector import (
+            ToolSelectorAgent,
+            ToolSelectorInput,
+        )
         from app.services.ai.agents.base import AgentContext
         from app.services.ai.llm import MockLLMClient
 
@@ -398,6 +400,7 @@ class TestToolIntegrationWithMission:
         agent = ToolSelectorAgent(mock_llm)
 
         context = AgentContext(
+            mission_id="test-mission-1",
             session_id="test",
             target="192.168.1.1",
             mission="Test",
@@ -516,13 +519,14 @@ class TestPluginLoading:
             assert "metadata" in data, f"{plugin_file.name} missing 'metadata'"
 
             metadata = data["metadata"]
-            assert "capabilities" in metadata, f"{plugin_file.name} missing 'capabilities'"
+            assert "capabilities" in metadata, (
+                f"{plugin_file.name} missing 'capabilities'"
+            )
             assert "risk_level" in metadata, f"{plugin_file.name} missing 'risk_level'"
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
-        os.geteuid() != 0,
-        reason="Tool installation requires root privileges"
+        os.geteuid() != 0, reason="Tool installation requires root privileges"
     )
     async def test_all_tools_verification(self):
         """Test that all registered tools can be verified (installed and runnable)."""
@@ -547,6 +551,7 @@ class TestPluginLoading:
             import subprocess
             import shlex
             import re
+
             try:
                 # Use shlex.split for safe command parsing, shell=False for security
                 # Wrap in shell for complex commands (pipes, etc.) but with explicit /bin/sh
@@ -564,30 +569,42 @@ class TestPluginLoading:
                 success = result.returncode == 0
                 if not success and tool.config.installation.verification_regex:
                     # Check regex if provided
-                    if re.search(tool.config.installation.verification_regex, result.stdout + result.stderr):
+                    if re.search(
+                        tool.config.installation.verification_regex,
+                        result.stdout + result.stderr,
+                    ):
                         success = True
 
                 if not success:
                     # Try to install if verification fails
-                    print(f"  Verification failed for {tool.config.id}, attempting install...")
+                    print(
+                        f"  Verification failed for {tool.config.id}, attempting install..."
+                    )
                     try:
                         await registry.install_tool(tool.config.id)
                         # Verify again with same safe approach
                         result = subprocess.run(
                             args, capture_output=True, text=True, timeout=10
                         )
-                        
+
                         success = result.returncode == 0
                         if not success and tool.config.installation.verification_regex:
-                            if re.search(tool.config.installation.verification_regex, result.stdout + result.stderr):
+                            if re.search(
+                                tool.config.installation.verification_regex,
+                                result.stdout + result.stderr,
+                            ):
                                 success = True
-                                
+
                         if not success:
-                             failed_tools.append(f"{tool.config.id} (exit code {result.returncode}): {result.stderr.strip()}")
+                            failed_tools.append(
+                                f"{tool.config.id} (exit code {result.returncode}): {result.stderr.strip()}"
+                            )
                         else:
-                             print(f"  OK (after install): {tool.config.id}")
+                            print(f"  OK (after install): {tool.config.id}")
                     except Exception as e:
-                        failed_tools.append(f"{tool.config.id} (install failed): {str(e)}")
+                        failed_tools.append(
+                            f"{tool.config.id} (install failed): {str(e)}"
+                        )
                 else:
                     print(f"  OK: {tool.config.id}")
 
@@ -596,4 +613,6 @@ class TestPluginLoading:
             except Exception as e:
                 failed_tools.append(f"{tool.config.id}: {str(e)}")
 
-        assert not failed_tools, f"Tool verification failed for: {', '.join(failed_tools)}"
+        assert not failed_tools, (
+            f"Tool verification failed for: {', '.join(failed_tools)}"
+        )

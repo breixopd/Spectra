@@ -83,17 +83,10 @@ class TestMissionServiceTracking:
         mission = Mission("192.168.1.1", "test")
 
         mission.add_service(
-            host="192.168.1.1",
-            port=22,
-            service="ssh",
-            product="OpenSSH",
-            version="8.9"
+            host="192.168.1.1", port=22, service="ssh", product="OpenSSH", version="8.9"
         )
         mission.add_service(
-            host="192.168.1.1",
-            port=80,
-            service="http",
-            product="nginx"
+            host="192.168.1.1", port=80, service="http", product="nginx"
         )
 
         services = mission.get_known_services()
@@ -122,7 +115,7 @@ class TestMissionVulnTracking:
             vuln_id="vuln-001",
             title="SQL Injection",
             severity="high",
-            cve_id="CVE-2023-1234"
+            cve_id="CVE-2023-1234",
         )
 
         vulns = mission.get_known_vulns()
@@ -179,8 +172,7 @@ class TestAttackSurfaceIntegration:
         mission = Mission("https://example.com", "Web assessment")
 
         webapp = mission.add_webapp(
-            url="https://example.com",
-            technologies=["WordPress", "PHP", "nginx"]
+            url="https://example.com", technologies=["WordPress", "PHP", "nginx"]
         )
 
         assert webapp.url == "https://example.com"
@@ -191,11 +183,13 @@ class TestAttackSurfaceIntegration:
         """add_finding should store and (conceptually) broadcast."""
         mission = Mission("target.com", "test")
 
-        mission.add_finding({
-            "name": "XSS Vulnerability",
-            "severity": "medium",
-            "url": "https://target.com/search"
-        })
+        mission.add_finding(
+            {
+                "name": "XSS Vulnerability",
+                "severity": "medium",
+                "url": "https://target.com/search",
+            }
+        )
 
         assert len(mission.findings) == 1
         assert mission.findings[0]["name"] == "XSS Vulnerability"
@@ -215,7 +209,7 @@ class TestAttackVectorManagement:
             description="A low priority vector",
             priority=VectorPriority.LOW,
             target_type="service",
-            target_ref="target.com:80"
+            target_ref="target.com:80",
         )
         critical_vector = AttackVector(
             id="vec-2",
@@ -223,7 +217,7 @@ class TestAttackVectorManagement:
             description="A critical vector",
             priority=VectorPriority.CRITICAL,
             target_type="vulnerability",
-            target_ref="CVE-2023-1234"
+            target_ref="CVE-2023-1234",
         )
 
         mission.attack_surface.add_vector(low_vector)
@@ -245,7 +239,7 @@ class TestAttackVectorManagement:
             description="Attack on SSH",
             priority=VectorPriority.LOW,
             target_type="service",
-            target_ref="ssh:22"
+            target_ref="ssh:22",
         )
         mission.attack_surface.add_vector(vector)
 

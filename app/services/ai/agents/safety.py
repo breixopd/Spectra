@@ -58,7 +58,6 @@ class SafetySupervisorAgent(Agent[SafetyInput, SafetyAction]):
     description: ClassVar[str] = "Evaluates commands for safety and security risks"
 
     # Regex patterns for immediate blocking (Red Flags)
-    # These are duplicated from registry.py but kept here for the agent's internal logic
     BLOCKLIST = [
         r"rm\s+-rf\s+/$",  # rm -rf /
         r"rm\s+-rf\s+/\*",  # rm -rf /*
@@ -67,6 +66,18 @@ class SafetySupervisorAgent(Agent[SafetyInput, SafetyAction]):
         r">\s*/etc/passwd",  # Overwriting system files
         r">\s*/etc/shadow",
         r"dd\s+if=.*of=/dev/",  # Direct disk writing
+    ]
+
+    # Large wordlist patterns to block (anti-brute-force policy)
+    BRUTEFORCE_BLOCKLIST = [
+        r"rockyou",  # rockyou.txt
+        r"SecLists.*Password",  # SecLists password lists
+        r"darkweb.*top",  # Darkweb password dumps
+        r"/usr/share/wordlists/.*password",  # System wordlists
+        r"-P\s+/.*\.txt",  # Hydra with file-based password list
+        r"-L\s+/.*\.txt",  # Hydra with file-based user list
+        r"--passwords?\s+/.*\.txt",  # Generic password file args
+        r"-w\s+/usr/share/seclists.*(Password|Credential)",  # Wordlist dirs
     ]
 
     async def execute(
@@ -87,6 +98,21 @@ class SafetySupervisorAgent(Agent[SafetyInput, SafetyAction]):
                         reasoning=f"Blocked by regex pattern: {pattern}",
                         allowed=False,
                         reason="Matches known dangerous command pattern",
+                    ),
+                )
+
+        # 1b. Brute-force policy: block large wordlists
+        for pattern in self.BRUTEFORCE_BLOCKLIST:
+            if re.search(pattern, input_data.command, re.IGNORECASE):
+                return AgentResult(
+                    success=True,
+                    action=SafetyAction(
+                        confidence=1.0,
+                        risk_level=ActionRisk.HIGH,
+                        reasoning=f"Blocked large wordlist brute-force: {pattern}",
+                        allowed=False,
+                        reason="Large wordlist brute-force is not allowed. "
+                        "Only default/common credentials are permitted.",
                     ),
                 )
 

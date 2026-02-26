@@ -37,10 +37,9 @@ event_bridge = EventWebSocketBridge()
 
 # Patch lifespan to include bridge
 # Note: In a cleaner implementation, we would add this to app/core/lifespan.py
-# but to keep changes focused, we'll wrap the lifespan here or rely on the fact 
+# but to keep changes focused, we'll wrap the lifespan here or rely on the fact
 # that lifespan imports are used.
 # Ideally, we should add startup/shutdown events.
-
 
 
 # --- Logging Setup ---
@@ -80,13 +79,16 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+
 @app.on_event("startup")
 async def startup_event():
     event_bridge.start()
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     event_bridge.stop()
+
 
 # --- Rate Limiting ---
 from slowapi.middleware import SlowAPIMiddleware

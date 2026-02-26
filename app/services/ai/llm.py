@@ -258,7 +258,9 @@ class OllamaClient(LLMClient):
             ) from e
         except httpx.RequestError as e:
             logger.error("Ollama connection error: %s", e)
-            raise LLMConnectionError(f"Ollama connection failed: {e}", host=self.host) from e
+            raise LLMConnectionError(
+                f"Ollama connection failed: {e}", host=self.host
+            ) from e
         finally:
             # Record telemetry (fire and forget)
             duration_ms = (time.time() - start_time) * 1000
@@ -285,7 +287,9 @@ class OllamaClient(LLMClient):
             response = await client.get(f"{self.host}/api/tags")
             healthy = response.status_code == 200
             latency_ms = (time.time() - start_time) * 1000
-            telemetry.update_service_status("ollama", healthy=healthy, latency_ms=latency_ms)
+            telemetry.update_service_status(
+                "ollama", healthy=healthy, latency_ms=latency_ms
+            )
             return healthy
         except (httpx.RequestError, httpx.TimeoutException) as e:
             logger.debug("Ollama health check failed: %s", e)
@@ -382,8 +386,6 @@ class APIClient(LLMClient):
             return False
 
 
-# Legacy alias for backwards compatibility
-OpenAIClient = APIClient
 
 
 # --- Mock Client (for testing) ---
@@ -515,7 +517,7 @@ def get_llm_client(
     Factory function to get the appropriate LLM client.
 
     Args:
-        provider: One of "ollama", "api", "openai" (legacy), or "mock".
+        provider: One of "ollama", "api", or "mock".
         **kwargs: Provider-specific arguments.
 
     Returns:
@@ -526,7 +528,7 @@ def get_llm_client(
             host=kwargs.get("host", "http://localhost:11434"),
             model=kwargs.get("model", "qwen2.5:3b"),
         )
-    elif provider in ("api", "openai"):  # Support both new and legacy names
+    elif provider in ("api", "openai"):
         api_key = kwargs.get("api_key")
         if not api_key:
             raise ValueError("API key is required for cloud provider")
@@ -548,21 +550,29 @@ def get_default_llm_client() -> LLMClient:
     """
     Get the LLM client configured in settings.
 
-    Returns:
-        LLMClient instance based on app configuration.
+    Uses LiteLLM smart router when available, falls back to direct clients.
     """
+    try:
+        from app.services.ai.router import create_smart_router
+
+        client = create_smart_router()
+        logger.info("Using LiteLLM smart router (provider=%s)", settings.AI_PROVIDER)
+        return client
+    except ImportError:
+        logger.info("LiteLLM not available, using direct clients")
+    except Exception as e:
+        logger.warning("Smart router init failed, falling back to direct: %s", e)
+
+    # Fallback to direct clients
     provider = settings.AI_PROVIDER
 
     if provider == "ollama":
-        # For Ollama, we strictly use OLLAMA_HOST and OLLAMA_MODEL
-        # ignoring any LLM_* settings which are for the API provider
         return get_llm_client(
             provider="ollama",
             host=settings.OLLAMA_HOST,
             model=settings.OLLAMA_MODEL,
         )
-    elif provider in ("api", "openai"):  # Support both
-        # For API, we strictly use LLM_* settings
+    elif provider in ("api", "openai"):
         return get_llm_client(
             provider="api",
             api_key=settings.LLM_API_KEY.get_secret_value(),
@@ -572,7 +582,6 @@ def get_default_llm_client() -> LLMClient:
     elif provider == "mock":
         return get_llm_client(provider="mock")
     else:
-        # Fallback or error
         logger.warning("Unknown provider %s, falling back to mock", provider)
         return get_llm_client(provider="mock")
 

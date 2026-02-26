@@ -45,9 +45,15 @@ class ToolSelectorInput(BaseModel):
     tools_already_run: list[str] = Field(
         default_factory=list, description="Tools that have already been run"
     )
-    user_preference: str | None = Field(None, description="User's tool preference if any")
-    required_capability: str | None = Field(None, description="Specific capability needed")
-    tags_filter: list[str] = Field(default_factory=list, description="Filter tools by tags")
+    user_preference: str | None = Field(
+        None, description="User's tool preference if any"
+    )
+    required_capability: str | None = Field(
+        None, description="Specific capability needed"
+    )
+    tags_filter: list[str] = Field(
+        default_factory=list, description="Filter tools by tags"
+    )
 
 
 class ToolSelectorOutput(ToolAction):
@@ -57,7 +63,9 @@ class ToolSelectorOutput(ToolAction):
     alternatives: list[str] = Field(
         default_factory=list, description="Alternative tools that could be used"
     )
-    skip_reason: str | None = Field(default=None, description="Reason if no tool selected")
+    skip_reason: str | None = Field(
+        default=None, description="Reason if no tool selected"
+    )
 
 
 # --- ToolSelector Implementation ---
@@ -75,7 +83,9 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
 
     role: ClassVar[AgentRole] = AgentRole.TOOL_SELECTOR
     name: ClassVar[str] = "ToolSelector"
-    description: ClassVar[str] = "Analyzes context and selects the optimal security tool to run"
+    description: ClassVar[str] = (
+        "Analyzes context and selects the optimal security tool to run"
+    )
 
     # Phase to tool category mapping (primary)
     PHASE_CATEGORIES = {
@@ -180,19 +190,25 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             if selected_tool:
                 # Apply stealth mode adjustments from tool config
                 if context.stealth_mode:
-                    action.tool_args = self._apply_stealth_settings(selected_tool, action.tool_args)
+                    action.tool_args = self._apply_stealth_settings(
+                        selected_tool, action.tool_args
+                    )
 
                 # Set risk level from tool metadata
-                action.risk_level = self._map_risk_level(selected_tool.config.metadata.risk_level)
+                action.risk_level = self._map_risk_level(
+                    selected_tool.config.metadata.risk_level
+                )
 
                 # Validate arguments against registry schema if possible, or basic types
                 self._validate_tool_args(selected_tool, action.tool_args)
 
                 # Set estimated duration from tool config if not provided or too low
                 # Use min_timeout as a threshold to detect if LLM defaulted to 60s
-                if action.estimated_duration <= selected_tool.config.execution.min_timeout:
+                if (
+                    action.estimated_duration
+                    <= selected_tool.config.execution.min_timeout
+                ):
                     action.estimated_duration = selected_tool.config.execution.timeout
-
 
             return AgentResult(
                 success=bool(action.tool_name),
@@ -224,7 +240,10 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         available_tools: list[Any],  # List[RegisteredTool]
     ) -> ToolSelectorOutput:
         """Use LLM to select and configure the best tool with rich metadata and RAG context."""
-        from app.services.ai.knowledge import get_methodology_guidance, get_tool_usage_context
+        from app.services.ai.knowledge import (
+            get_methodology_guidance,
+            get_tool_usage_context,
+        )
 
         # If user specified a tool preference, check if it's available and use it directly
         if input_data.user_preference:
@@ -291,10 +310,100 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             preferred_tool_info = f"\n**[IMPORTANT] REQUIRED TOOL: {input_data.user_preference}** - You MUST select this tool if available.\n"
 
         # Get RAG context using centralized service
-        rag_context = await get_tool_usage_context(input_data.current_phase, input_data.known_services)
+        rag_context = await get_tool_usage_context(
+            input_data.current_phase, input_data.known_services
+        )
 
         # Get methodology guidance using centralized service
         methodology_context = get_methodology_guidance(input_data.current_phase)
+
+        # Get learned context from persistent memory
+        memory_context = ""
+        try:
+            from app.services.ai.memory import get_memory, detect_os_from_services
+
+            memory = get_memory()
+            # Detect OS from known services
+            os_family = None
+            if input_data.known_services:
+                os_family = detect_os_from_services(input_data.known_services)
+                if os_family == "unknown":
+                    os_family = None
+            # Get service-specific recommendations from past missions
+            primary_service = None
+            if input_data.known_services:
+                primary_service = input_data.known_services[0].get("service")
+            memory_context = memory.get_context_for_prompt(
+                service=primary_service,
+                os_family=os_family,
+            )
+        except Exception:
+            pass
+
+        # Get playbook recommendations
+        playbook_context = ""
+        try:
+            from app.services.ai.playbook import get_playbook_engine
+
+            engine = get_playbook_engine()
+            playbook_context = engine.get_grounded_prompt_context(
+                input_data.known_services,
+                input_data.tools_already_run,
+            )
+        except Exception:
+            pass
+
+        # Get CVE intelligence for discovered services (live + builtin)
+        cve_context = ""
+        try:
+            from app.services.ai.cve_intel import (
+                get_cve_context_for_services,
+                get_cve_context_for_services_live,
+            )
+
+            if input_data.known_services:
+                # Try live NVD lookup first, fall back to builtin
+                try:
+                    cve_context = await get_cve_context_for_services_live(
+                        input_data.known_services
+                    )
+                except Exception:
+                    cve_context = get_cve_context_for_services(
+                        input_data.known_services
+                    )
+        except Exception:
+            pass
+
+        # Generate smart wordlist context for brute-force and directory tools
+        wordlist_context = ""
+        try:
+            from app.services.ai.wordlists import (
+                generate_credential_list,
+                generate_tech_wordlist,
+            )
+
+            if input_data.known_services:
+                for svc in input_data.known_services[:3]:
+                    service = svc.get("service", "")
+                    product = svc.get("product")
+                    if service:
+                        creds = generate_credential_list(service, product)
+                        wordlist_context += (
+                            f"\n**Default credentials for {service}**: "
+                            f"users=[{','.join(creds['users'][:5])}] "
+                            f"passwords=[{','.join(creds['passwords'][:5])}]"
+                        )
+        except Exception:
+            pass
+
+        # Combine all learned context
+        learned_context = "\n\n".join(
+            filter(None, [memory_context, playbook_context, cve_context, wordlist_context])
+        )
+        if learned_context:
+            learned_context = (
+                f"\n--- Learned from Past Missions ---\n{learned_context}\n"
+            )
 
         prompt = TOOL_SELECTION_PROMPT.format(
             target=input_data.target,
@@ -308,7 +417,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             vulns_info=vulns_info,
             already_run_info=already_run_info,
             methodology_context=methodology_context,
-            rag_context=rag_context,
+            rag_context=rag_context + learned_context,
             tools_text=tools_text,
         )
 
@@ -340,7 +449,9 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             config = tool.config
 
             # Score by capability match
-            matching_caps = sum(1 for cap in phase_caps if cap in config.metadata.capabilities)
+            matching_caps = sum(
+                1 for cap in phase_caps if cap in config.metadata.capabilities
+            )
             score += matching_caps * 10
 
             # Score by prerequisites (prefer tools with no unmet prereqs)
@@ -374,7 +485,11 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             confidence=0.6,
             risk_level=self._map_risk_level(selected_tool.config.metadata.risk_level),
             reasoning=f"Fallback selection based on capability matching: {selected_tool.config.name}",
-            alternatives=[t.config.id for t in available_tools[1:4] if t.config.id != selected_tool.config.id],
+            alternatives=[
+                t.config.id
+                for t in available_tools[1:4]
+                if t.config.id != selected_tool.config.id
+            ],
             estimated_duration=selected_tool.config.execution.timeout,
         )
 
@@ -386,7 +501,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         """Apply stealth settings from tool config or fallback defaults."""
         # Strict overrides for stealth mode
         stealth_args = args.copy()
-        
+
         # Apply tool-specific stealth configuration if available
         if tool.config.stealth:
             if tool.config.stealth.rate_limit:
@@ -395,30 +510,30 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 stealth_args["delay"] = tool.config.stealth.delay_ms
             if tool.config.stealth.extra_args:
                 stealth_args.update(tool.config.stealth.extra_args)
-        
+
         # Hardcoded fallbacks for common tools to ENSURE safety
         # Using a mapping for cleaner extensibility (KISS)
         tool_name = tool.config.id
-        
+
         stealth_overrides = {
             "nmap": {
                 "-T": "1",  # Paranoid
                 "--scan-delay": "1s",
                 "-T4": None,  # Remove aggressive
-                "-T5": None   # Remove aggressive
+                "-T5": None,  # Remove aggressive
             },
             "naabu": {"rate": 50},
             "ffuf": {"rate": 5, "delay": 1000},
-            "nuclei": {"rate-limit": 5}
+            "nuclei": {"rate-limit": 5},
         }
-        
+
         if tool_name in stealth_overrides:
             for key, val in stealth_overrides[tool_name].items():
                 if val is None:
                     stealth_args.pop(key, None)
                 else:
                     stealth_args[key] = val
-        
+
         return stealth_args
 
     def _validate_tool_args(self, tool: Any, args: dict[str, Any]) -> None:
@@ -485,17 +600,22 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         for key in ["port", "ports", "p"]:
             if key in args:
                 val = args[key]
-                if isinstance(val, str) and not val.replace(",", "").replace("-", "").isdigit():
-                     # Attempt to fix strict comma spacing e.g. "80, 443" -> "80,443"
-                     args[key] = val.replace(" ", "")
-        
+                if (
+                    isinstance(val, str)
+                    and not val.replace(",", "").replace("-", "").isdigit()
+                ):
+                    # Attempt to fix strict comma spacing e.g. "80, 443" -> "80,443"
+                    args[key] = val.replace(" ", "")
+
         # Ensure rate limits are integers
         for key in ["rate", "threads", "concurrency"]:
             if key in args:
                 try:
                     args[key] = int(args[key])
                 except (ValueError, TypeError):
-                    logger.warning(f"Invalid integer for {key}: {args[key]}, using default")
+                    logger.warning(
+                        f"Invalid integer for {key}: {args[key]}, using default"
+                    )
                     args.pop(key)
 
         # Apply argument modifiers from tool configuration
@@ -505,8 +625,8 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 target_key = None
                 if arg_name in args:
                     target_key = arg_name
-                
-                # If explicitly checking for aliases in the modifier config could be added here, 
+
+                # If explicitly checking for aliases in the modifier config could be added here,
                 # but for now we assume the config key matches the argument name or we check common variants if needed.
                 # Let's check common variants if not found directly
                 if not target_key:
@@ -514,11 +634,11 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                         if variant in args:
                             target_key = variant
                             break
-                
+
                 if target_key:
                     val = str(args[target_key]).strip()
                     param_config = modifier
-                    
+
                     # Apply separator if list-like string
                     separator = param_config.get("separator")
                     if separator and " " in val and separator != " ":

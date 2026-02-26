@@ -50,9 +50,29 @@ class MissionExecutionManager:
 
     async def run_mission_loop(self, mission: Mission) -> None:
         """Main execution loop for a mission."""
+        # Initialize demo recorder if requested
+        recorder = None
+        if getattr(mission, "record_demo", False):
+            try:
+                from app.services.mission.demo_recorder import DemoRecorder
+
+                recorder = DemoRecorder(mission.id, mission.target)
+                recorder.start()
+                mission.log("[RECORD] Demo recording started")
+            except Exception:
+                pass
+
         context = await self.lifecycle.initialize_mission(mission)
         if context is None:
-            return  # Initialization failed
+            return
+
+        # Send start notification
+        try:
+            from app.services.notifications import notify_mission_started
+
+            await notify_mission_started(mission.target, mission.directive)
+        except Exception:
+            pass
 
         try:
             # 1. Define Scope
@@ -64,13 +84,46 @@ class MissionExecutionManager:
             if mission.plan is None:
                 raise RuntimeError("No plan created")
 
-            # 3. Execute tasks
+            # 3. Execute tasks (with demo recording)
+            if recorder:
+                mission._demo_recorder = recorder
             await self._execute_mission_tasks(mission, context)
 
-            # 4. Complete
+            # 4. Post-mission learning
+            self._record_mission_lessons(mission)
+
+            # 5. Run AI debrief
+            await self._run_debrief(mission, context)
+
+            # 6. Generate HTML report
+            self._generate_html_report(mission)
+
+            # 7. Complete
             mission.set_status("completed")
             mission.log("Mission completed successfully")
             self._broadcast_state("mission_controller", "idle", plan="Mission Complete")
+
+            # Save demo recording
+            if recorder:
+                path = recorder.stop()
+                recorder.save()
+                if path:
+                    mission.log(f"[RECORD] Demo saved: {path}")
+
+            # Send completion notification
+            try:
+                from app.services.notifications import notify_mission_completed
+
+                critical = sum(
+                    1
+                    for f in mission.findings
+                    if str(f.get("severity", "")).lower() == "critical"
+                )
+                await notify_mission_completed(
+                    mission.target, len(mission.findings), critical
+                )
+            except Exception:
+                pass
 
             # Update DB
             await self.lifecycle.update_db_status(mission)
@@ -92,7 +145,9 @@ class MissionExecutionManager:
             try:
                 shell_manager.notify_mission_complete(str(mission.id))
             except Exception as e:
-                logger.error(f"Failed to notify shell manager of mission completion: {e}")
+                logger.error(
+                    f"Failed to notify shell manager of mission completion: {e}"
+                )
 
     async def _run_scope_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run scope definition phase."""
@@ -119,7 +174,9 @@ class MissionExecutionManager:
         target_count = len(scope_result.action.targets)  # type: ignore
         mission.log(f"Scope defined: {target_count} targets")
 
-    async def _run_planning_phase(self, mission: Mission, context: AgentContext) -> None:
+    async def _run_planning_phase(
+        self, mission: Mission, context: AgentContext
+    ) -> None:
         """Run mission planning phase with quality gate validation."""
         mission.log("Generating mission plan...")
 
@@ -174,15 +231,26 @@ class MissionExecutionManager:
         if vote_result.status != "approved":
             raise RuntimeError(f"Plan rejected: {vote_result.escalation_reason}")
 
-        mission.log(f"[APPROVED] Plan validated (Confidence: {vote_result.average_confidence:.2f})")
+        mission.log(
+            f"[APPROVED] Plan validated (Confidence: {vote_result.average_confidence:.2f})"
+        )
         mission.plan = plan_action
 
         task_count = len(mission.plan.tasks)
         mission.log(f"Plan created: {task_count} tasks")
-        self._broadcast_state("mission_controller", "running", plan=f"{task_count} tasks planned")
+        self._broadcast_state(
+            "mission_controller", "running", plan=f"{task_count} tasks planned"
+        )
 
-    async def _execute_mission_tasks(self, mission: Mission, context: AgentContext) -> None:
-        """Execute all mission tasks with dynamic plan adaptation."""
+    async def _execute_mission_tasks(
+        self, mission: Mission, context: AgentContext
+    ) -> None:
+        """Execute all mission tasks with dynamic plan adaptation.
+
+        Tasks are grouped by phase and independent tasks within the same phase
+        run in parallel via ``asyncio.gather``.  Tasks with unmet dependencies
+        execute sequentially after the independent batch completes.
+        """
         if mission.plan is None:
             return
 
@@ -190,44 +258,141 @@ class MissionExecutionManager:
         last_findings_count = len(mission.findings)
         last_adaptation_index = -1
 
+        # Group tasks by phase while preserving order
+        phase_groups: dict[str, list[tuple[int, Any]]] = {}
         for i, task in enumerate(mission.plan.tasks):
+            phase = task.phase.value
+            if phase not in phase_groups:
+                phase_groups[phase] = []
+            phase_groups[phase].append((i, task))
+
+        global_task_counter = 0
+
+        for phase, indexed_tasks in phase_groups.items():
             if mission.is_stopped():
                 mission.log("Mission stopped by user")
                 break
 
             await mission.wait_if_paused()
 
-            if task.phase.value in mission.skipped_phases:
-                mission.log(f"Skipping task '{task.description}' (phase skipped)")
+            # Skip entire phase if requested
+            if phase in mission.skipped_phases:
+                for _, task in indexed_tasks:
+                    mission.log(f"Skipping task '{task.description}' (phase skipped)")
+                global_task_counter += len(indexed_tasks)
                 continue
 
-            mission.current_task_index = i
-            mission.log(
-                f"[TASK] Executing task [{i + 1}/{len(mission.plan.tasks)}]: {task.description}"
-            )
-            context.phase = task.phase.value
+            # Track completed task IDs within this mission
+            completed_task_ids: set[str] = set()
 
-            try:
-                if not self.executor:
-                    raise RuntimeError("Executor not initialized")
-                await self.executor.execute_task(mission, task, context)
+            # Partition into independent and dependent tasks
+            independent = [
+                (i, t)
+                for i, t in indexed_tasks
+                if not t.dependencies
+                or all(d in completed_task_ids for d in t.dependencies)
+            ]
+            dependent = [
+                (i, t) for i, t in indexed_tasks if (i, t) not in independent
+            ]
 
-                # Check if we should adapt the plan based on new findings
-                current_findings = len(mission.findings)
-                new_findings = current_findings - last_findings_count
+            # --- Run independent tasks in parallel ---
+            if independent:
+                async def _run_task(
+                    idx: int,
+                    task: Any,
+                    _context: AgentContext = context,
+                ) -> None:
+                    """Execute a single task with full lifecycle handling."""
+                    mission.current_task_index = idx
+                    total = len(mission.plan.tasks) if mission.plan else 0
+                    mission.log(
+                        f"[TASK] Executing task [{idx + 1}/{total}]: {task.description}"
+                    )
+                    _context_copy = AgentContext(
+                        mission_id=_context.mission_id,
+                        session_id=_context.session_id,
+                        target=_context.target,
+                        mission=_context.mission,
+                    )
+                    _context_copy.phase = task.phase.value
 
-                # Adapt plan if significant new findings discovered (PTES/MAKER methodology)
-                if new_findings >= 3 and i > last_adaptation_index + 2:
-                    await self._adapt_plan_to_findings(mission, context, new_findings)
-                    last_adaptation_index = i
-                    last_findings_count = current_findings
+                    if not self.executor:
+                        raise RuntimeError("Executor not initialized")
+                    await self.executor.execute_task(mission, task, _context_copy)
 
-                # Persist state after each task
-                await self.lifecycle.update_db_status(mission)
-            except Exception as e:
-                await self._handle_task_failure(mission, task, str(e), context)
-                # Persist state after failure handling
-                await self.lifecycle.update_db_status(mission)
+                results = await asyncio.gather(
+                    *[_run_task(idx, t) for idx, t in independent],
+                    return_exceptions=True,
+                )
+
+                for (idx, task), result in zip(independent, results):
+                    if isinstance(result, Exception):
+                        await self._handle_task_failure(
+                            mission, task, str(result), context
+                        )
+                        await self.lifecycle.update_db_status(mission)
+                    else:
+                        completed_task_ids.add(task.task_id)
+                        # Check plan adaptation after each successful task
+                        current_findings = len(mission.findings)
+                        new_findings = current_findings - last_findings_count
+                        effective_idx = global_task_counter + independent.index(
+                            (idx, task)
+                        )
+                        if (
+                            new_findings >= 3
+                            and effective_idx > last_adaptation_index + 2
+                        ):
+                            await self._adapt_plan_to_findings(
+                                mission, context, new_findings
+                            )
+                            last_adaptation_index = effective_idx
+                            last_findings_count = current_findings
+                        await self.lifecycle.update_db_status(mission)
+
+            # --- Run dependent tasks sequentially ---
+            for idx, task in dependent:
+                if mission.is_stopped():
+                    mission.log("Mission stopped by user")
+                    break
+
+                await mission.wait_if_paused()
+
+                mission.current_task_index = idx
+                total = len(mission.plan.tasks) if mission.plan else 0
+                mission.log(
+                    f"[TASK] Executing task [{idx + 1}/{total}]: {task.description}"
+                )
+                context.phase = task.phase.value
+
+                try:
+                    if not self.executor:
+                        raise RuntimeError("Executor not initialized")
+                    await self.executor.execute_task(mission, task, context)
+                    completed_task_ids.add(task.task_id)
+
+                    current_findings = len(mission.findings)
+                    new_findings = current_findings - last_findings_count
+                    effective_idx = global_task_counter + len(independent) + dependent.index(
+                        (idx, task)
+                    )
+                    if (
+                        new_findings >= 3
+                        and effective_idx > last_adaptation_index + 2
+                    ):
+                        await self._adapt_plan_to_findings(
+                            mission, context, new_findings
+                        )
+                        last_adaptation_index = effective_idx
+                        last_findings_count = current_findings
+
+                    await self.lifecycle.update_db_status(mission)
+                except Exception as e:
+                    await self._handle_task_failure(mission, task, str(e), context)
+                    await self.lifecycle.update_db_status(mission)
+
+            global_task_counter += len(indexed_tasks)
 
     async def _adapt_plan_to_findings(
         self, mission: Mission, context: AgentContext, new_findings_count: int
@@ -343,7 +508,9 @@ class MissionExecutionManager:
                     )
 
                     if vote_result.status != "approved":
-                        mission.log(f"[REJECTED] Replan rejected: {vote_result.escalation_reason}")
+                        mission.log(
+                            f"[REJECTED] Replan rejected: {vote_result.escalation_reason}"
+                        )
                         mission.log("[ADAPT] Continuing with original plan")
                         return
 
@@ -358,9 +525,105 @@ class MissionExecutionManager:
             logger.error("Adaptive replanning failed: %s", e, exc_info=True)
             mission.log(f"[ADAPT] Critical failure: {e}")
 
+    async def _run_debrief(self, mission: Mission, context: AgentContext) -> None:
+        """Run AI debrief analysis after mission completion."""
+        try:
+            from app.services.ai.agents.debrief import DebriefAgent, DebriefInput
+
+            if not self.mission_controller:
+                return
+
+            debrief = DebriefAgent(self.mission_controller.llm)
+            debrief_input = DebriefInput(
+                target=mission.target,
+                directive=mission.directive,
+                findings=mission.findings[:30],
+                tools_run=mission.tools_run,
+                logs=mission.logs[-50:],
+                attack_surface_summary=mission.attack_surface.get_summary(),
+            )
+
+            result = await debrief.execute(context, debrief_input)
+            if result.success and result.action:
+                action = result.action
+                mission.log(f"[DEBRIEF] Risk: {action.risk_rating.upper()}")
+                mission.log(f"[DEBRIEF] {action.executive_summary[:200]}")
+                for lesson in action.lessons_learned[:3]:
+                    mission.log(f"[LEARN] {lesson}")
+        except Exception as e:
+            logger.debug("Debrief failed (non-critical): %s", e)
+
+    def _generate_html_report(self, mission: Mission) -> None:
+        """Generate HTML report from mission data."""
+        try:
+            from app.services.mission.report_generator import (
+                generate_html_report,
+                save_report,
+            )
+
+            html = generate_html_report(mission.to_dict())
+            path = save_report(mission.id, html)
+            if path:
+                mission.log(f"[REPORT] HTML report: {path}")
+        except Exception as e:
+            logger.debug("HTML report generation failed: %s", e)
+
+    def _record_mission_lessons(self, mission: Mission) -> None:
+        """Extract lessons from the completed mission and persist them."""
+        try:
+            from app.services.ai.memory import get_memory
+
+            memory = get_memory()
+
+            # Detect duplicate/low-value finding templates as false positives
+            template_counts: dict[str, int] = {}
+            for finding in mission.findings:
+                template = finding.get("template-id") or finding.get("name", "")
+                if template:
+                    template_counts[template] = template_counts.get(template, 0) + 1
+
+            for template, count in template_counts.items():
+                severity = next(
+                    (
+                        f.get("severity", "info")
+                        for f in mission.findings
+                        if (f.get("template-id") or f.get("name")) == template
+                    ),
+                    "info",
+                )
+                if count >= 5 and severity == "info":
+                    memory.record_false_positive(template)
+                    mission.log(
+                        f"[LEARN] Marked '{template}' as probable false positive ({count} duplicates)"
+                    )
+
+            # Record OS profile if detected
+            os_family = getattr(mission, "_detected_os", None)
+            if os_family and os_family != "unknown":
+                services = [
+                    s.service for s in mission.attack_surface.services if s.service
+                ]
+                memory.update_target_profile(
+                    os_family,
+                    services=services,
+                    note=f"Mission against {mission.target}: {len(mission.findings)} findings, "
+                    f"{len(mission.tools_run)} tools used",
+                )
+
+            stats = memory.get_stats()
+            mission.log(
+                f"[LEARN] Memory updated: {stats['tool_lessons']} tool lessons, "
+                f"{stats['exploit_lessons']} exploit patterns, {stats['target_profiles']} OS profiles"
+            )
+
+        except Exception as e:
+            logger.debug("Post-mission learning failed (non-critical): %s", e)
+
     def _broadcast_state(self, agent_id: str, status: str, **kwargs) -> None:
         """Broadcast agent state."""
-        self._broadcast("agent_state", {"agent_id": agent_id, "status": status, **kwargs})
+        self._broadcast(
+            "agent_state", {"agent_id": agent_id, "status": status, **kwargs}
+        )
 
     def _broadcast(self, msg_type: str, data: Any) -> None:
         """Broadcast to WebSocket clients via EventBus."""

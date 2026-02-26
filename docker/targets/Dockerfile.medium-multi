@@ -1,0 +1,79 @@
+# Spectra Test Target: Medium Multi-Service
+# Difficulty: MEDIUM
+# Vulns: FTP anon, MySQL weak creds, web app with LFI, outdated services
+# Services: HTTP (80), FTP (21), MySQL (3306), SSH (22)
+
+FROM debian:bullseye-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    apache2 \
+    php \
+    php-mysql \
+    libapache2-mod-php \
+    mariadb-server \
+    vsftpd \
+    openssh-server \
+    curl \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- FTP with anonymous access ---
+RUN mkdir -p /var/ftp/pub /var/run/vsftpd/empty && \
+    echo "anonymous_enable=YES" > /etc/vsftpd.conf && \
+    echo "local_enable=YES" >> /etc/vsftpd.conf && \
+    echo "write_enable=NO" >> /etc/vsftpd.conf && \
+    echo "listen=YES" >> /etc/vsftpd.conf && \
+    echo "listen_port=21" >> /etc/vsftpd.conf && \
+    echo "seccomp_sandbox=NO" >> /etc/vsftpd.conf && \
+    echo "anon_root=/var/ftp" >> /etc/vsftpd.conf && \
+    echo "pasv_enable=YES" >> /etc/vsftpd.conf && \
+    echo "pasv_min_port=30000" >> /etc/vsftpd.conf && \
+    echo "pasv_max_port=30009" >> /etc/vsftpd.conf
+
+# Sensitive file accessible via FTP
+RUN echo "# Database credentials\nDB_HOST=127.0.0.1\nDB_USER=webapp\nDB_PASS=W3bApp2024!\nDB_NAME=production" \
+    > /var/ftp/pub/credentials.txt
+
+# --- MySQL with weak credentials ---
+RUN service mariadb start && \
+    mysql -e "CREATE USER 'webapp'@'%' IDENTIFIED BY 'W3bApp2024!';" && \
+    mysql -e "CREATE DATABASE production;" && \
+    mysql -e "GRANT ALL PRIVILEGES ON production.* TO 'webapp'@'%';" && \
+    mysql -e "USE production; CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50), password VARCHAR(100), role VARCHAR(20));" && \
+    mysql -e "USE production; INSERT INTO users VALUES (1, 'admin', 'admin123', 'admin'), (2, 'john', 'password', 'user'), (3, 'api_svc', 'S3cur3T0k3n!', 'service');" && \
+    mysql -e "FLUSH PRIVILEGES;" && \
+    service mariadb stop
+
+RUN sed -i 's/bind-address.*/bind-address = 0.0.0.0/' /etc/mysql/mariadb.conf.d/50-server.cnf
+
+# --- Web app with LFI vulnerability ---
+RUN mkdir -p /var/www/html/pages /var/www/html/includes
+
+RUN echo '<?php \
+$page = isset($_GET["page"]) ? $_GET["page"] : "home"; \
+// Vulnerable to LFI - no path sanitization \
+include("/var/www/html/pages/" . $page . ".php"); \
+?>' > /var/www/html/index.php
+
+RUN echo '<h1>Home</h1><p>Welcome to our application.</p>' > /var/www/html/pages/home.php
+RUN echo '<h1>About</h1><p>Version 1.0</p>' > /var/www/html/pages/about.php
+
+# Hidden admin panel
+RUN echo '<?php echo "<h1>Admin Panel</h1><pre>Server: " . php_uname() . "</pre>"; ?>' \
+    > /var/www/html/pages/admin.php
+
+# --- SSH with password auth ---
+RUN mkdir -p /run/sshd && \
+    useradd -m -s /bin/bash webadmin && \
+    echo 'webadmin:changeme' | chpasswd && \
+    echo 'root:Sup3rS3cur3!' | chpasswd && \
+    sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+EXPOSE 80 21 3306 22 30000-30009
+
+# Start all services
+CMD service ssh start && \
+    service mariadb start && \
+    vsftpd /etc/vsftpd.conf & \
+    apachectl -D FOREGROUND

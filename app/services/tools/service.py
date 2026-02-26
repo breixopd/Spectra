@@ -4,6 +4,7 @@ Tool Execution Service.
 Centralizes the execution of security tools with mandatory safety checks,
 consensus validation, and output management.
 """
+
 from __future__ import annotations
 
 import logging
@@ -12,15 +13,18 @@ import uuid
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TYPE_CHECKING, cast
+from typing import Any, TYPE_CHECKING
 
 from app.core.config import settings
-from app.services.tools.adapter.builder import CommandBuilder
+from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.models import ToolExecutionRequest, ToolExecutionResult
 from app.services.tools.registry import get_registry
 from app.services.ai.agents.base import AgentContext, ToolAction
-from app.services.ai.agents.safety import SafetySupervisorAgent, SafetyInput, SafetyAction
-from app.services.ai.llm import LLMClient
+from app.services.ai.agents.safety import (
+    SafetySupervisorAgent,
+    SafetyInput,
+    SafetyAction,
+)
 from app.services.ai.consensus import VotingSystem
 
 if TYPE_CHECKING:
@@ -28,11 +32,13 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("spectra.tools.service")
 
+
 class StandaloneMissionAdapter:
     """Adapts a standalone execution to the Mission interface."""
 
     def __init__(self, target: str, job_id: str | None = None):
         import uuid
+
         self.id = job_id or str(uuid.uuid4())
         self.target = target
         self.directive = f"Execute tool against {target}"
@@ -47,6 +53,7 @@ class StandaloneMissionAdapter:
 
     def record_tool_run(self, tool_name: str) -> None:
         self.tool_runs.append(tool_name)
+
 
 class ToolExecutionService:
     """
@@ -133,12 +140,16 @@ class ToolExecutionService:
             )
 
             if not job:
-                return self._create_error_result("custom_script", target, "Failed to enqueue job")
+                return self._create_error_result(
+                    "custom_script", target, "Failed to enqueue job"
+                )
 
             result_data = await job.result(timeout=timeout + 60)
 
             if not result_data:
-                 return self._create_error_result("custom_script", target, "Job returned no result")
+                return self._create_error_result(
+                    "custom_script", target, "Job returned no result"
+                )
 
             success = result_data.get("success", False)
             mission.log(f"[{'OK' if success else 'FAIL'}] Script execution finished")
@@ -152,7 +163,7 @@ class ToolExecutionService:
                 exit_code=result_data.get("exit_code", -1),
                 stdout=result_data.get("stdout", ""),
                 stderr=result_data.get("stderr", ""),
-                duration_seconds=0.0, # Worker doesn't return duration for script job yet
+                duration_seconds=0.0,  # Worker doesn't return duration for script job yet
             )
 
         except Exception as e:
@@ -191,7 +202,9 @@ class ToolExecutionService:
 
             if not tool:
                 mission.log(f"Tool {tool_name} not found in registry")
-                return self._create_error_result(tool_name, target, "Tool not found")
+                return self._create_error_result(
+                    tool_name, target, "Tool not available"
+                )
 
             # Auto-install tool if not ready
             if not tool.is_available:
@@ -230,8 +243,8 @@ class ToolExecutionService:
             run_id = f"{tool_name}_{timestamp}_{uuid.uuid4().hex[:4]}"
             output_dir = self._prepare_output_directory(mission.id, run_id)
 
-            builder = CommandBuilder(tool.config)
-            
+            adapter = CommandToolAdapter(tool.config)
+
             request = ToolExecutionRequest(
                 tool_id=tool_name,
                 target=target,
@@ -240,7 +253,7 @@ class ToolExecutionService:
             )
 
             # 3. Safety Check (Pre-flight) with retry on failure
-            full_command = builder.build_command(request, output_dir=str(output_dir))
+            full_command = adapter.build_command(request, output_dir=str(output_dir))
 
             # Log detailed command info
             args_str = (
@@ -257,7 +270,7 @@ class ToolExecutionService:
 
             # Safety check with auto-fix retry
             is_safe, reason, fixed_args = await self._perform_safety_check_with_retry(
-                mission, full_command, tool_name, target, args, builder, output_dir
+                mission, full_command, tool_name, target, args, adapter, output_dir
             )
             if not is_safe:
                 # Record the failed attempt for learning
@@ -268,12 +281,14 @@ class ToolExecutionService:
                     success=False,
                     error=f"Safety blocked: {reason}",
                 )
-                return self._create_error_result(tool_name, target, f"Blocked by Safety Supervisor: {reason}")
+                return self._create_error_result(
+                    tool_name, target, f"Blocked by Safety Supervisor: {reason}"
+                )
 
             # Use fixed args if safety check corrected them
             if fixed_args is not None:
                 request.args = fixed_args
-                full_command = builder.build_command(
+                full_command = adapter.build_command(
                     request, output_dir=str(output_dir)
                 )
                 mission.log(
@@ -282,14 +297,51 @@ class ToolExecutionService:
 
             # 4. Consensus Check (High Risk)
             if risk_level in ("high", "critical"):
-                is_approved = await self._perform_consensus_check(mission, tool_name, risk_level)
+                is_approved = await self._perform_consensus_check(
+                    mission, tool_name, risk_level
+                )
                 if not is_approved:
-                    return self._create_error_result(tool_name, target, "Blocked by Consensus")
+                    return self._create_error_result(
+                        tool_name, target, "Blocked by Consensus"
+                    )
 
-            # 5. Execution (with Retry)
-            return await self._execute_with_retry(
-                mission, request, output_dir, max_retries=1
-            )
+            # 5. Execution via ARQ worker in tools container
+            async with self._semaphore:
+                result = await self._execute_via_worker(
+                    tool_id=request.tool_id,
+                    target=request.target,
+                    args=request.args,
+                    timeout=request.timeout,
+                    output_dir=str(output_dir),
+                )
+
+            if result.success:
+                self._log_success(mission, tool_name, result)
+                for finding in result.parsed_findings:
+                    mission.add_finding(finding)
+                    self._update_attack_surface_from_finding(mission, finding)
+                mission.record_tool_run(
+                    tool_name,
+                    args=args,
+                    command=full_command,
+                    success=True,
+                )
+            else:
+                last_error = (
+                    result.stderr[:500] if result.stderr else "No error message"
+                )
+                mission.log(f"[ERROR] {tool_name} failed: {last_error[:200]}")
+                mission.record_tool_run(
+                    tool_name,
+                    args=args,
+                    success=False,
+                    error=last_error,
+                )
+
+            # --- Learn from this execution ---
+            self._record_to_memory(mission, tool_name, target, args, result)
+
+            return result
 
         except Exception as e:
             msg = f"Critical error executing {tool_name}: {e}"
@@ -305,14 +357,16 @@ class ToolExecutionService:
         max_retries: int = 1,
     ) -> ToolExecutionResult:
         """Execute the tool via ARQ worker in the tools container."""
-        
+
         last_result = None
         last_error = None
 
         async with self._semaphore:
             for attempt in range(max_retries + 1):
                 if attempt > 0:
-                    mission.log(f"[RETRY] Retrying {request.tool_id} (Attempt {attempt+1})...")
+                    mission.log(
+                        f"[RETRY] Retrying {request.tool_id} (Attempt {attempt + 1})..."
+                    )
                     if request.timeout:
                         request.timeout *= 2
 
@@ -349,7 +403,9 @@ class ToolExecutionService:
                         last_error = (
                             result.stderr[:500] if result.stderr else "No error message"
                         )
-                        mission.log(f"[ERROR] {request.tool_id} failed: {last_error[:200]}")
+                        mission.log(
+                            f"[ERROR] {request.tool_id} failed: {last_error[:200]}"
+                        )
 
                         # Provide detailed error for LLM learning
                         if result.stderr:
@@ -362,12 +418,14 @@ class ToolExecutionService:
                             or "permission denied" in result.stderr.lower()
                         ):
                             break
-                            
+
                 except Exception as e:
                     last_error = str(e)
                     mission.log(f"[ERROR] Execution error: {e}")
-                    last_result = self._create_error_result(request.tool_id, request.target, str(e))
-                
+                    last_result = self._create_error_result(
+                        request.tool_id, request.target, str(e)
+                    )
+
                 if attempt < max_retries:
                     await asyncio.sleep(2)
 
@@ -376,7 +434,9 @@ class ToolExecutionService:
             request.tool_id, args=request.args, success=False, error=last_error
         )
 
-        return last_result or self._create_error_result(request.tool_id, request.target, "Unknown failure")
+        return last_result or self._create_error_result(
+            request.tool_id, request.target, "Unknown failure"
+        )
 
     async def _execute_via_worker(
         self,
@@ -387,18 +447,15 @@ class ToolExecutionService:
         output_dir: str,
     ) -> ToolExecutionResult:
         """Execute tool via ARQ worker and wait for result."""
-        from arq import create_pool
-        from arq.connections import RedisSettings
-        from app.core.config import settings
+        from app.core.optimizations import get_arq_pool, tool_cache
 
-        redis_settings = RedisSettings(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD.get_secret_value(),
-            database=settings.REDIS_DB,
-        )
+        # Check cache first
+        cached = tool_cache.get(tool_id, target, args or {})
+        if cached is not None:
+            logger.info("Using cached result for %s against %s", tool_id, target)
+            return cached
 
-        pool = await create_pool(redis_settings, default_queue_name="spectra:tasks")
+        pool = await get_arq_pool()
 
         try:
             # Enqueue the job
@@ -425,8 +482,11 @@ class ToolExecutionService:
                     tool_id, target, "Job returned no result"
                 )
 
-            # Convert dict back to ToolExecutionResult
-            return ToolExecutionResult(**result_data)
+            # Convert dict back to ToolExecutionResult and cache
+            result = ToolExecutionResult(**result_data)
+            if result.success:
+                tool_cache.set(tool_id, target, args or {}, result)
+            return result
 
         except asyncio.TimeoutError:
             return self._create_error_result(
@@ -435,11 +495,6 @@ class ToolExecutionService:
         except Exception as e:
             logger.error("Worker execution failed: %s", e)
             return self._create_error_result(tool_id, target, f"Worker error: {e}")
-        finally:
-            if hasattr(pool, "aclose"):
-                await pool.aclose()
-            else:
-                await pool.close()
 
     async def _ensure_tool_installed(self, tool_id: str) -> bool:
         """Ensure a tool is installed via the worker."""
@@ -484,25 +539,26 @@ class ToolExecutionService:
             else:
                 await pool.close()
 
-    def _create_error_result(self, tool_id: str, target: str, error: str) -> ToolExecutionResult:
+    def _create_error_result(
+        self, tool_id: str, target: str, error: str
+    ) -> ToolExecutionResult:
         return ToolExecutionResult(
             tool_id=tool_id,
             target=target,
             success=False,
             stdout="",
             stderr=str(error),
-            exit_code=-1, # Internal error
-            duration_seconds=0.0
+            exit_code=-1,  # Internal error
+            duration_seconds=0.0,
         )
 
-
     async def _perform_safety_check(
-        self, 
-        mission: "Mission", 
-        command: str, 
+        self,
+        mission: "Mission",
+        command: str,
         tool_name: str,
         target: str,
-        args: dict[str, Any] | None
+        args: dict[str, Any] | None,
     ) -> tuple[bool, str]:
         """Run the command through the Safety Supervisor."""
         safety_input = SafetyInput(
@@ -523,11 +579,15 @@ class ToolExecutionService:
                 max_concurrency=1,
             )
 
-            safety_result = await self.safety_supervisor.execute(safety_context, safety_input)
-            
+            safety_result = await self.safety_supervisor.execute(
+                safety_context, safety_input
+            )
+
             if safety_result.success and isinstance(safety_result.action, SafetyAction):
                 if not safety_result.action.allowed:
-                    mission.log(f"[BLOCK] Safety check blocked: {safety_result.action.reason}")
+                    mission.log(
+                        f"[BLOCK] Safety check blocked: {safety_result.action.reason}"
+                    )
                     return False, safety_result.action.reason
             return True, "Safe"
         except Exception as e:
@@ -541,7 +601,7 @@ class ToolExecutionService:
         tool_name: str,
         target: str,
         args: dict[str, Any] | None,
-        builder: "CommandBuilder",
+        builder: "CommandToolAdapter",
         output_dir: Path,
         max_retries: int = 2,
     ) -> tuple[bool, str, dict[str, Any] | None]:
@@ -659,35 +719,113 @@ Example response format:
         return None
 
     async def _perform_consensus_check(
-        self, 
-        mission: "Mission", 
-        tool_name: str,
-        risk_level: str
+        self, mission: "Mission", tool_name: str, risk_level: str
     ) -> bool:
         """Get consensus for high-risk actions."""
         mission.log(f"[VOTE] High-risk action: {tool_name} ({risk_level})")
-        
+
         # Construct proxy action for consensus check
         # This is a bit of a hack, but VotingSystem expects an Action object
         from app.services.ai.agents.base import AgentAction, ActionRisk
+
         proxy_action = AgentAction(
             action_type="tool_execution",
             risk_level=ActionRisk.HIGH if risk_level == "high" else ActionRisk.CRITICAL,
             confidence=1.0,
-            reasoning=f"Execute high-risk tool {tool_name}"
+            reasoning=f"Execute high-risk tool {tool_name}",
         )
-        
+
         vote_result = await self.consensus.vote_on_action(
             proxy_action,
             {"target": mission.target, "tool": tool_name},
         )
 
         if vote_result.status != "approved":
-            mission.log(f"[REJECTED] Action blocked by consensus: {vote_result.escalation_reason}")
+            mission.log(
+                f"[REJECTED] Action blocked by consensus: {vote_result.escalation_reason}"
+            )
             return False
-            
+
         mission.log("[APPROVED] Action validated by consensus")
         return True
+
+    def _record_to_memory(
+        self,
+        mission: "Mission",
+        tool_name: str,
+        target: str,
+        args: dict[str, Any] | None,
+        result: ToolExecutionResult,
+    ) -> None:
+        """Record tool execution results to persistent memory for learning."""
+        try:
+            from app.services.ai.memory import get_memory, detect_os_from_output
+
+            memory = get_memory()
+
+            # Determine service context from mission's attack surface
+            service = "unknown"
+            product = None
+            version = None
+            for svc in mission.attack_surface.services:
+                if str(svc.port) in target or svc.host in target:
+                    service = svc.service or "unknown"
+                    product = svc.product
+                    version = svc.version
+                    break
+            if service == "unknown" and mission.attack_surface.services:
+                svc = mission.attack_surface.services[0]
+                service = svc.service or "unknown"
+                product = svc.product
+                version = svc.version
+
+            # Detect OS from output if this is nmap or similar
+            detected_os = None
+            if result.stdout and tool_name in ("nmap", "naabu"):
+                detected_os = detect_os_from_output(result.stdout)
+                if detected_os and detected_os != "unknown":
+                    mission.log(f"[LEARN] Detected OS: {detected_os}")
+                    # Store on mission for other agents to use
+                    if not hasattr(mission, "_detected_os") or not mission._detected_os:
+                        mission._detected_os = detected_os
+                        memory.update_target_profile(
+                            detected_os,
+                            services=[service] if service != "unknown" else [],
+                        )
+
+            # Get OS from mission if previously detected
+            os_family = getattr(mission, "_detected_os", None) or detected_os
+
+            # Record finding types
+            finding_types = []
+            for f in result.parsed_findings:
+                ft = f.get("severity") or f.get("state") or f.get("type", "info")
+                if ft not in finding_types:
+                    finding_types.append(ft)
+
+            memory.record_tool_result(
+                tool_id=tool_name,
+                target_service=service,
+                success=result.success and len(result.parsed_findings) > 0,
+                findings_count=len(result.parsed_findings),
+                finding_types=finding_types,
+                target_product=product,
+                target_version=version,
+                target_os=os_family,
+                args_used=args or {},
+            )
+
+            # Update target profile with effective/ineffective tools
+            if os_family and os_family != "unknown":
+                if result.success and result.parsed_findings:
+                    memory.update_target_profile(os_family, effective_tools=[tool_name])
+                elif not result.success:
+                    memory.update_target_profile(
+                        os_family, ineffective_tools=[tool_name]
+                    )
+
+        except Exception as e:
+            logger.debug("Memory recording failed (non-critical): %s", e)
 
     def _prepare_output_directory(self, mission_id: str, run_id: str) -> Path:
         """Create and return the output directory path."""
@@ -724,7 +862,9 @@ Example response format:
         normalized = tool_name.lower().strip()
         return tool_aliases.get(normalized, normalized)
 
-    def _log_success(self, mission: "Mission", tool_name: str, result: ToolExecutionResult) -> None:
+    def _log_success(
+        self, mission: "Mission", tool_name: str, result: ToolExecutionResult
+    ) -> None:
         """Log detailed successful execution summary."""
         finding_count = len(result.parsed_findings)
         summary_parts = []

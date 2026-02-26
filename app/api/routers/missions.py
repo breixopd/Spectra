@@ -4,7 +4,6 @@ Mission API Router.
 Endpoints for managing security missions.
 """
 
-import uuid
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -35,6 +34,62 @@ class SteerMissionRequest(BaseModel):
     phase: str | None = Field(None, description="Phase to skip (for skip_phase action)")
     target: str | None = Field(None, description="Target to prioritize")
     vulnerability: str | None = Field(None, description="Vulnerability to focus on")
+
+
+@router.get("/presets")
+async def get_scan_presets():
+    """Get available scan presets."""
+    from app.services.mission.presets import SCAN_PRESETS
+    return SCAN_PRESETS
+
+
+@router.get("/adversary-playbooks")
+async def get_adversary_playbooks():
+    """List available adversary simulation playbooks."""
+    from app.services.ai.adversary_playbooks import list_adversary_playbooks
+
+    return list_adversary_playbooks()
+
+
+@router.get("/adversary-playbooks/{playbook_id}")
+async def get_adversary_playbook_detail(playbook_id: str):
+    """Get full details of an adversary playbook."""
+    from app.services.ai.adversary_playbooks import get_adversary_playbook
+
+    pb = get_adversary_playbook(playbook_id)
+    if not pb:
+        raise HTTPException(status_code=404, detail="Playbook not found")
+    return pb.model_dump()
+
+
+@router.get("/exploit-chains")
+async def get_exploit_chains():
+    """List available exploit chains."""
+    from app.services.mission.chain_builder import get_builtin_chains
+
+    return [c.model_dump() for c in get_builtin_chains()]
+
+
+@router.get("/attack-summary")
+async def get_attack_coverage(
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Get MITRE ATT&CK technique coverage from all recent missions."""
+    from app.services.ai.mitre_attack import get_attack_summary
+
+    # Get recent mission findings from memory
+    try:
+        from app.services.ai.memory import get_memory
+
+        memory = get_memory()
+        findings = []
+        for lesson in memory.tool_lessons[-50:]:
+            findings.append(
+                {"tool_name": lesson.tool_id, "source": "tool_execution"}
+            )
+        return get_attack_summary(findings)
+    except Exception:
+        return {"tactics": {}, "total_techniques": 0}
 
 
 @router.post("", response_model=MissionResponse)
@@ -114,6 +169,45 @@ async def list_missions(
         )
         for m in missions
     ]
+
+
+@router.get("/{mission_id}/report/pdf")
+async def download_pdf_report(
+    mission_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Download mission report as PDF."""
+    from fastapi.responses import Response as FastAPIResponse
+
+    from app.services.mission.report_generator import generate_pdf_report
+
+    repo = MissionRepository(session)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    mission_data = {
+        "id": mission.id,
+        "target": mission.target,
+        "status": mission.status,
+        "findings": mission.summary.get("findings", []) if mission.summary else [],
+        "logs": mission.logs or [],
+        "tools_run": mission.summary.get("tools_run", []) if mission.summary else [],
+        "attack_surface": mission.attack_surface or {},
+    }
+
+    pdf_bytes = generate_pdf_report(mission_data)
+    if not pdf_bytes:
+        raise HTTPException(status_code=500, detail="PDF generation failed")
+
+    return FastAPIResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=spectra_report_{mission_id[:8]}.pdf"
+        },
+    )
 
 
 @router.get("/{mission_id}", response_model=MissionResponse)
@@ -208,6 +302,61 @@ async def resume_mission(
     """Resume a paused mission."""
     await mission_manager.resume_mission(mission_id)
     return {"message": "Mission resumed"}
+
+
+@router.get("/{mission_id}/diff/{other_mission_id}")
+async def diff_missions(
+    mission_id: str,
+    other_mission_id: str,
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Compare two missions and return a structured diff.
+
+    Returns changed services, findings, and vulnerabilities between
+    the *old* mission (``mission_id``) and the *new* mission
+    (``other_mission_id``).
+    """
+    from app.services.mission.target_diff import compare_missions, generate_diff_report
+
+    repo = MissionRepository(db)
+
+    old_db = await repo.get_by_id(mission_id)
+    if not old_db:
+        raise HTTPException(status_code=404, detail=f"Mission {mission_id} not found")
+
+    new_db = await repo.get_by_id(other_mission_id)
+    if not new_db:
+        raise HTTPException(
+            status_code=404, detail=f"Mission {other_mission_id} not found"
+        )
+
+    old_dict = {
+        "id": old_db.id,
+        "target": old_db.target,
+        "status": old_db.status,
+        "findings": (old_db.summary or {}).get("findings", []),
+        "attack_surface": old_db.attack_surface or {},
+        "summary": old_db.summary or {},
+    }
+    new_dict = {
+        "id": new_db.id,
+        "target": new_db.target,
+        "status": new_db.status,
+        "findings": (new_db.summary or {}).get("findings", []),
+        "attack_surface": new_db.attack_surface or {},
+        "summary": new_db.summary or {},
+    }
+
+    diff = compare_missions(old_dict, new_dict)
+    report = generate_diff_report(diff)
+
+    return {
+        "old_mission_id": mission_id,
+        "new_mission_id": other_mission_id,
+        "diff": diff,
+        "report": report,
+    }
 
 
 @router.post("/{mission_id}/steer")

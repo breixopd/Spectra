@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import uuid
 from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -106,14 +104,18 @@ class MissionLifecycleManager:
         try:
             mission.set_status("running")
             mission.log(f"Starting mission against {mission.target}")
-            self._broadcast_state(mission.id, "mission_controller", "running", plan="Initializing...")
+            self._broadcast_state(
+                mission.id, "mission_controller", "running", plan="Initializing..."
+            )
 
             # Resolve GeoIP
             mission.log("Resolving target location...")
             geo = await resolve_ip(mission.target)
             if geo:
                 mission.geo_info = geo
-                mission.log(f"Target located in {geo.get('city')}, {geo.get('country')}")
+                mission.log(
+                    f"Target located in {geo.get('city')}, {geo.get('country')}"
+                )
                 mission._broadcast("geo", geo)
 
             return AgentContext(
@@ -134,7 +136,9 @@ class MissionLifecycleManager:
             await self.update_db_status(mission)
             return None
 
-    def _broadcast_state(self, mission_id: str, agent_id: str, status: str, **kwargs) -> None:
+    def _broadcast_state(
+        self, mission_id: str, agent_id: str, status: str, **kwargs
+    ) -> None:
         """Broadcast agent state."""
         # Using events to broadcast. Note: original used self._broadcast which uses events.emit_sync
         # We need to make sure we keep the same signature/behavior.

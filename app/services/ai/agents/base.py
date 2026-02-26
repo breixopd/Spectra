@@ -85,7 +85,9 @@ class ToolAction(AgentAction):
 
     action_type: str = "run_tool"
     tool_name: str = Field(..., description="Name of tool to run")
-    tool_args: dict[str, Any] = Field(default_factory=dict, description="Tool arguments")
+    tool_args: dict[str, Any] = Field(
+        default_factory=dict, description="Tool arguments"
+    )
     target: str = Field(..., description="Target for the tool")
     estimated_duration: int = Field(60, description="Estimated duration in seconds")
 
@@ -168,7 +170,11 @@ class Agent(ABC, Generic[InputT, OutputT]):
         # - Scope/Safety/Parser -> Low (Precision)
         # - Exploit/Mission -> High (Creativity)
 
-        if self.role in (AgentRole.SCOPE, AgentRole.PARSER, AgentRole.SAFETY_SUPERVISOR):
+        if self.role in (
+            AgentRole.SCOPE,
+            AgentRole.PARSER,
+            AgentRole.SAFETY_SUPERVISOR,
+        ):
             return 0.1
         elif self.role == AgentRole.EXPLOIT_CRAFTER:
             return 0.7
@@ -215,29 +221,29 @@ class Agent(ABC, Generic[InputT, OutputT]):
     def requires_approval(self, action: OutputT) -> bool:
         """Check if an action requires human approval."""
         from app.core.config import settings
-        
+
         if not settings.REQUIRE_APPROVAL:
             return False
-            
+
         return action.risk_level in (ActionRisk.HIGH, ActionRisk.CRITICAL)
 
     def requires_consensus(self, action: OutputT) -> bool:
         """Check if an action requires consensus voting."""
         return action.risk_level == ActionRisk.HIGH
-    
+
     def broadcast_thought(self, content: str) -> None:
         """
         Broadcast a thought/reasoning step to the UI.
-        
+
         This enables the 'Stream of Consciousness' display.
         """
         from app.core.events import EventType, events
-        
+
         events.emit_sync(
             EventType.AGENT_THOUGHT,
             source=self.name,
             content=content,
-            role=self.role.value
+            role=self.role.value,
         )
 
     async def __call__(

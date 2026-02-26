@@ -30,7 +30,9 @@ pytestmark = [
 class TestFullMissionWorkflow:
     """Test complete mission workflow (E2E-01)."""
 
-    async def test_mission_starts_and_scopes(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_mission_starts_and_scopes(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that a mission starts and defines scope correctly."""
         # Mock event emission
         with patch("app.core.events.events.emit_sync") as mock_emit:
@@ -48,7 +50,9 @@ class TestFullMissionWorkflow:
         assert mission.target == test_target_ip
         assert mission.directive == "Full security assessment"
 
-    async def test_mission_creates_plan_with_consensus(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_mission_creates_plan_with_consensus(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that mission planning triggers consensus validation."""
         # Test passes if mission starts without error - consensus is internal to workflow
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
@@ -67,7 +71,9 @@ class TestFullMissionWorkflow:
                 # Mission should have started
                 assert mission.status in ["created", "running", "failed", "completed"]
 
-    async def test_mission_logs_show_workflow_stages(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_mission_logs_show_workflow_stages(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that mission logs capture key workflow stages."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -88,9 +94,15 @@ class TestFullMissionWorkflow:
         assert "Starting mission" in log_text, "Mission start not logged"
         # Note: Scope phase log message might differ based on agent implementation
         # Checking for general progress or scope agent activity
-        assert "scope" in log_text.lower() or "Refining scope" in log_text or "Defining" in log_text, f"Scope phase not logged: {log_text}"
+        assert (
+            "scope" in log_text.lower()
+            or "Refining scope" in log_text
+            or "Defining" in log_text
+        ), f"Scope phase not logged: {log_text}"
 
-    async def test_mission_can_be_stopped(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_mission_can_be_stopped(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that a running mission can be stopped."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -108,7 +120,9 @@ class TestFullMissionWorkflow:
                 assert mission is not None
                 assert mission.is_stopped()
 
-    async def test_mission_tracks_findings(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_mission_tracks_findings(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that findings are tracked in the mission."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -120,11 +134,13 @@ class TestFullMissionWorkflow:
                 # Get mission and add a finding manually
                 mission = await mission_manager.get_mission(mission_id)
                 if mission:
-                    mission.add_finding({
-                        "name": "Test Vulnerability",
-                        "severity": "high",
-                        "port": 80,
-                    })
+                    mission.add_finding(
+                        {
+                            "name": "Test Vulnerability",
+                            "severity": "high",
+                            "port": 80,
+                        }
+                    )
 
                     assert len(mission.findings) > 0
                     assert mission.findings[0]["name"] == "Test Vulnerability"
@@ -133,13 +149,15 @@ class TestFullMissionWorkflow:
 class TestMissionConsensusValidation:
     """Test consensus validation at quality gates."""
 
-    async def test_tool_selection_triggers_validation(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_tool_selection_triggers_validation(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that tool selection triggers TOOL_SELECTION gate."""
         tool_selection_validated = False
-        
+
         # Ensure agents are initialized
         await mission_manager._ensure_agents()
-        
+
         # Access sub-manager
         original_validate = mission_manager.execution.consensus.validate_at_gate
 
@@ -149,7 +167,11 @@ class TestMissionConsensusValidation:
                 tool_selection_validated = True
             return await original_validate(gate, action, context)
 
-        with patch.object(mission_manager.execution.consensus, 'validate_at_gate', side_effect=mock_validate):
+        with patch.object(
+            mission_manager.execution.consensus,
+            "validate_at_gate",
+            side_effect=mock_validate,
+        ):
             with patch("app.services.mission.manager.lifecycle.async_session_maker"):
                 with patch("app.core.events.events.emit_sync"):
                     _mission_id = await mission_manager.start_mission(
@@ -163,7 +185,9 @@ class TestMissionConsensusValidation:
         # Note: This may not trigger if the mock LLM doesn't produce valid tool selection
         # In real E2E with actual LLM, this should always trigger
 
-    async def test_rejected_plan_stops_mission(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_rejected_plan_stops_mission(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that a rejected plan properly stops the mission."""
         from app.services.ai.consensus import ConsensusResult, ConsensusStatus
 
@@ -184,7 +208,9 @@ class TestMissionConsensusValidation:
             )
 
         with patch.object(
-            mission_manager.execution.consensus, "validate_at_gate", side_effect=mock_reject
+            mission_manager.execution.consensus,
+            "validate_at_gate",
+            side_effect=mock_reject,
         ):
             with patch("app.services.mission.manager.lifecycle.async_session_maker"):
                 with patch("app.core.events.events.emit_sync"):
@@ -208,15 +234,18 @@ class TestMissionConsensusValidation:
                         if mission:
                             logs = mission.logs
                             # Either rejected log OR failure status
-                            assert any("rejected" in log.lower() for log in logs) or mission.status == "failed", (
-                                "Rejection not logged and status not failed"
-                            )
+                            assert (
+                                any("rejected" in log.lower() for log in logs)
+                                or mission.status == "failed"
+                            ), "Rejection not logged and status not failed"
 
 
 class TestMissionAttackSurface:
     """Test attack surface tracking during mission."""
 
-    async def test_services_added_to_attack_surface(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_services_added_to_attack_surface(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that discovered services are added to attack surface."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -240,7 +269,9 @@ class TestMissionAttackSurface:
                     assert mission.attack_surface.services[0].port == 22
                     assert mission.attack_surface.services[0].service == "ssh"
 
-    async def test_vulnerabilities_added_to_attack_surface(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_vulnerabilities_added_to_attack_surface(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that discovered vulnerabilities are added to attack surface."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -260,9 +291,14 @@ class TestMissionAttackSurface:
                     )
 
                     assert len(mission.attack_surface.vulnerabilities) == 1
-                    assert mission.attack_surface.vulnerabilities[0].cve_id == "CVE-2024-1234"
+                    assert (
+                        mission.attack_surface.vulnerabilities[0].cve_id
+                        == "CVE-2024-1234"
+                    )
 
-    async def test_attack_surface_summary(self, mission_manager: MissionManager, test_target_ip: str):
+    async def test_attack_surface_summary(
+        self, mission_manager: MissionManager, test_target_ip: str
+    ):
         """Test that attack surface summary is correct."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -276,7 +312,9 @@ class TestMissionAttackSurface:
                     # Add multiple items
                     mission.add_service(host=test_target_ip, port=22, service="ssh")
                     mission.add_service(host=test_target_ip, port=80, service="http")
-                    mission.add_vulnerability(vuln_id="v1", title="Test", severity="high")
+                    mission.add_vulnerability(
+                        vuln_id="v1", title="Test", severity="high"
+                    )
 
                     summary = mission.attack_surface.get_summary()
 

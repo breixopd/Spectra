@@ -152,13 +152,12 @@ class ConnectionManager:
             if hasattr(obj, "model_dump"):  # Pydantic models (v2)
                 return obj.model_dump()
             raise TypeError(f"Type {type(obj)} not serializable")
-            
+
         from datetime import date
 
         try:
             message = json.dumps(
-                {"type": event_type, "data": data},
-                default=json_serializer
+                {"type": event_type, "data": data}, default=json_serializer
             )
             await self.broadcast(message)
         except Exception as e:

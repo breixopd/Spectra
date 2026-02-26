@@ -1,0 +1,67 @@
+# Spectra Vulnerable Test Targets
+#
+# Usage:
+#   cd docker/targets
+#   docker compose -f docker-compose.targets.yml up -d
+#
+# All targets join the spectra-network for direct scanning.
+#
+# Difficulty levels:
+#   EASY:   Obvious vulns, default creds, info leaks
+#   MEDIUM: Multiple services, chained attacks needed
+#   HARD:   Hardened surface, subtle vulns, requires creativity
+
+services:
+  # EASY: Basic vulnerable web server (Apache/PHP)
+  # Vulns: directory listing, phpinfo, default creds, robots.txt, backup exposure
+  target-easy:
+    build:
+      context: .
+      dockerfile: Dockerfile.easy-web
+    container_name: spectra-target-easy
+    networks:
+      - spectra-network
+    restart: unless-stopped
+
+  # MEDIUM: Multi-service server
+  # Vulns: FTP anon, MySQL weak creds, LFI, SSH weak password
+  target-medium:
+    build:
+      context: .
+      dockerfile: Dockerfile.medium-multi
+    container_name: spectra-target-medium
+    networks:
+      - spectra-network
+    restart: unless-stopped
+
+  # HARD: Hardened Node.js API
+  # Vulns: CORS misconfiguration, SSRF, hidden debug endpoint, weak JWT
+  target-hard:
+    build:
+      context: .
+      dockerfile: Dockerfile.hard-hardened
+    container_name: spectra-target-hard
+    networks:
+      - spectra-network
+    restart: unless-stopped
+
+  # PRE-BUILT: DVWA (classic web vuln training)
+  target-dvwa:
+    image: vulnerables/web-dvwa:latest
+    container_name: spectra-target-dvwa
+    networks:
+      - spectra-network
+    restart: unless-stopped
+
+  # PRE-BUILT: Juice Shop (OWASP modern web)
+  target-juice:
+    image: bkimminich/juice-shop:latest
+    container_name: spectra-target-juice
+    networks:
+      - spectra-network
+    restart: unless-stopped
+
+networks:
+  spectra-network:
+    external: true
+    name: docker_spectra-network

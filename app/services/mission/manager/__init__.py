@@ -62,6 +62,7 @@ class MissionManager:
 
         # Start execution loop in background
         import asyncio
+
         asyncio.create_task(self.execution.run_mission_loop(mission))
 
         return mission.id
