@@ -102,6 +102,31 @@
         .page-header { margin-bottom: 1.5rem; animation: fadeInUp 0.4s ease-out both; }
         .page-header h1 { font-size: 1.5rem; font-weight: 700; color: white; }
         .page-header .page-description { font-size: 0.875rem; color: #64748b; margin-top: 0.25rem; }
+
+        /* Sidebar nav hover glow */
+        .sidebar nav a { transition: all 0.2s ease; }
+        .sidebar nav a:hover { background: rgba(255,255,255,0.04); }
+        .sidebar nav a.active-link { background: rgba(139,92,246,0.08); border-left: 2px solid #8b5cf6; }
+
+        /* Smooth page transitions */
+        .main-content { animation: fadeIn 0.25s ease-out; }
+
+        /* Button press effect */
+        button:active:not(:disabled) { transform: scale(0.97); }
+
+        /* Focus rings for accessibility */
+        input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: rgba(139,92,246,0.4); }
+
+        /* Glass panel subtle border glow on hover */
+        .glass-panel { transition: border-color 0.3s ease, box-shadow 0.3s ease; }
+        .glass-panel:hover { border-color: rgba(255,255,255,0.08); }
+
+        /* Tooltip styling */
+        [title] { position: relative; }
+
+        /* Loading spinner */
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
     {% block extra_css %}{% endblock %}
     <!-- Auth Check -->
