@@ -65,6 +65,7 @@ def mock_registry():
 def agent_context():
     """Create a test agent context."""
     return AgentContext(
+        mission_id="test-mission-1",
         session_id="test-session-123",
         target="192.168.1.1",
         mission="Test security assessment",
@@ -407,8 +408,9 @@ class TestVotingSystem:
 
         assert voting_system.requires_voting(action) is True
 
-    def test_critical_requires_human(self, voting_system):
+    def test_critical_requires_human(self, voting_system, monkeypatch):
         """Test that critical actions require human approval."""
+        monkeypatch.setattr("app.core.config.settings.FULLY_AUTOMATED", False)
         action = AgentAction(
             action_type="dangerous",
             confidence=0.9,
@@ -434,8 +436,9 @@ class TestVotingSystem:
         assert result.final_decision is True
 
     @pytest.mark.asyncio
-    async def test_vote_on_critical_escalates(self, voting_system):
+    async def test_vote_on_critical_escalates(self, voting_system, monkeypatch):
         """Test that critical actions escalate to human."""
+        monkeypatch.setattr("app.core.config.settings.FULLY_AUTOMATED", False)
         action = AgentAction(
             action_type="drop_database",
             confidence=0.9,
