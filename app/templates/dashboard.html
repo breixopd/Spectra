@@ -2,14 +2,14 @@
 
 {% block content %}
 <!-- Header / Mission Control -->
-<header class="h-14 mb-4 flex items-center justify-between shrink-0">
+<header class="min-h-[3.5rem] mb-3 md:mb-4 flex flex-col md:flex-row md:items-center justify-between shrink-0 gap-2 md:gap-0 animate-fade-in">
     <div class="flex items-center space-x-4">
         <h1 class="text-xl font-semibold text-white tracking-tight">Operation: <span class="text-slate-400 font-mono">ALPHA_PROTOCOL</span></h1>
         <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>
     </div>
 
     <!-- Mission Control Input -->
-    <div class="flex-1 max-w-xl mx-8 relative group">
+    <div class="flex-1 max-w-xl md:mx-8 relative group">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <i class="fa-solid fa-terminal text-slate-500 group-focus-within:text-violet-400 transition-colors"></i>
         </div>
@@ -76,10 +76,10 @@
 </div>
 
 <!-- Bento Grid Layout -->
-<div class="grid grid-cols-12 grid-rows-6 gap-4 flex-1 min-h-0">
+<div class="grid grid-cols-1 md:grid-cols-12 md:grid-rows-6 gap-3 md:gap-4 flex-1 min-h-0 pb-4 md:pb-0">
     
     <!-- Tile 1: Network Graph (Large) -->
-    <div class="col-span-8 row-span-4 glass-panel rounded-xl p-4 relative overflow-hidden group">
+    <div class="md:col-span-8 md:row-span-4 glass-panel rounded-xl p-4 relative overflow-hidden group min-h-[250px] md:min-h-0 animate-fade-in-up">
         <div class="absolute top-4 left-4 z-10 flex items-center space-x-2">
             <i class="fa-solid fa-diagram-project text-violet-400"></i>
             <span class="text-xs font-mono tracking-widest text-slate-500 uppercase">Network Topology</span>
@@ -96,7 +96,7 @@
     </div>
 
     <!-- Tile 2: Threat Map -->
-    <div class="col-span-4 row-span-2 glass-panel rounded-xl p-0 relative overflow-hidden flex flex-col">
+    <div class="md:col-span-4 md:row-span-2 glass-panel rounded-xl p-0 relative overflow-hidden flex flex-col min-h-[200px] md:min-h-0 animate-fade-in-up stagger-1">
         <div class="absolute top-4 left-4 z-[400] flex items-center space-x-2 pointer-events-none">
             <i class="fa-solid fa-earth-americas text-emerald-400"></i>
             <span class="text-xs font-mono tracking-widest text-slate-900 bg-emerald-400/90 px-1 rounded uppercase font-bold">Threat Map</span>
@@ -105,7 +105,7 @@
     </div>
 
     <!-- Tile 3: Findings Summary -->
-    <div class="col-span-4 row-span-2 glass-panel rounded-xl p-4">
+    <div class="md:col-span-4 md:row-span-2 glass-panel rounded-xl p-4 animate-fade-in-up stagger-2">
         <span class="text-xs font-mono tracking-widest text-slate-500 uppercase block mb-3">Vulnerabilities</span>
         <div class="grid grid-cols-2 gap-3 h-[calc(100%-1.5rem)]">
             <div class="bg-rose-500/10 border border-rose-500/20 rounded flex flex-col items-center justify-center p-2">
@@ -128,7 +128,7 @@
     </div>
 
     <!-- Tile 4: Active Shells (New) -->
-    <div class="col-span-4 row-span-2 glass-panel rounded-xl p-4 flex flex-col">
+    <div class="md:col-span-4 md:row-span-2 glass-panel rounded-xl p-4 flex flex-col animate-fade-in-up stagger-3">
         <span class="text-xs font-mono tracking-widest text-emerald-400 uppercase block mb-3">Active Shells</span>
         <div id="shell-list" class="flex-1 overflow-y-auto space-y-2">
             <!-- Shell Items will be injected here -->
@@ -137,7 +137,7 @@
     </div>
 
     <!-- Tile 5: Terminal -->
-    <div class="col-span-8 row-span-2 bg-black rounded-xl border border-white/10 relative overflow-hidden font-mono text-xs p-3">
+    <div class="md:col-span-8 md:row-span-2 bg-black rounded-xl border border-white/10 relative overflow-hidden font-mono text-xs p-3 min-h-[180px] md:min-h-0 animate-fade-in-up stagger-4">
         <div class="absolute inset-0 scanlines z-20 opacity-30"></div>
         <div class="flex items-center justify-between mb-2 border-b border-white/10 pb-2 relative z-30">
             <div class="flex items-center space-x-2">

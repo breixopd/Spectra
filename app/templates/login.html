@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex items-center justify-center h-full">
-    <div class="glass p-8 rounded-2xl w-full max-w-md">
+<div class="flex items-center justify-center h-full px-4">
+    <div class="glass-panel p-8 rounded-2xl w-full max-w-md animate-fade-in-up shadow-2xl shadow-violet-500/5">
         <div class="text-center mb-8">
-            <div class="w-16 h-16 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center mx-auto mb-4">
-                <i class="ph ph-lock-key text-3xl"></i>
+            <div class="w-16 h-16 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center mx-auto mb-4" style="animation: glow-pulse 3s ease-in-out infinite;">
+                <i class="fa-solid fa-shield-halved text-2xl"></i>
             </div>
-            <h1 class="text-2xl font-bold text-white">Login</h1>
-            <p class="text-gray-400 mt-2">Enter your credentials to access Spectra.</p>
+            <h1 class="text-2xl font-bold text-white">Sign In</h1>
+            <p class="text-slate-400 mt-2 text-sm">Enter your credentials to access Spectra.</p>
         </div>
 
         <form id="login-form" class="space-y-4">
@@ -22,7 +22,7 @@
                 <input type="password" name="password" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
             </div>
 
-            <button type="submit" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-bold transition-colors mt-6">
+            <button type="submit" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white font-bold transition-all mt-6 shadow-lg shadow-violet-500/20">
                 Sign In
             </button>
         </form>
