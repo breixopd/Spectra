@@ -1,0 +1,29 @@
+# =============================================================================
+# Spectra Tools Container Dependencies (worker only)
+# =============================================================================
+# Minimal set for the ARQ worker. No ML, no web framework, no LLM.
+
+# Task Queue
+arq>=0.25.0,<0.26.0
+redis[hiredis]>=5.0.0,<6.0.0
+
+# Config (shared with app)
+pydantic>=2.5.0,<3.0.0
+pydantic-settings>=2.1.0,<3.0.0
+python-dotenv>=1.0.0
+
+# Tool output parsing
+orjson>=3.9.0
+aiofiles>=23.2.0
+
+# Database (for status updates)
+sqlalchemy[asyncio]>=2.0.25,<2.1.0
+asyncpg>=0.30.0
+
+# Security (for plugin verification)
+cryptography>=42.0.0,<44.0.0
+
+# Auth (needed by shared config)
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt==4.2.1

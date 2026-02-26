@@ -1,66 +1,46 @@
 # =============================================================================
-# Spectra Tools - Worker Dockerfile
+# Spectra Tools - Optimized Worker Dockerfile
 # =============================================================================
-# Based on Kali Linux with security tools pre-installed.
-# Used by the Arq worker for running scans.
-# =============================================================================
+# Kali-based with security tools. Tools auto-install via plugin system.
+# Target size: ~3-4GB (down from 10.8GB)
 
 FROM kalilinux/kali-rolling:latest
 
 WORKDIR /app
 
-# Install system dependencies (minimal base)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Python
-    python3 \
-    python3-pip \
-    python3-venv \
-    python3-dev \
-    pkg-config \
-    libffi-dev \
-    # Build tools
-    gcc \
-    libpq-dev \
+# Install system deps in one layer, clean aggressively
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv python3-dev \
+    gcc libpq-dev libffi-dev pkg-config libpcap-dev \
+    curl wget git jq unzip \
+    iputils-ping iproute2 netcat-openbsd \
     golang \
-    libpcap-dev \
-    # Base utilities
-    curl \
-    wget \
-    git \
-    jq \
-    unzip \
-    # Network utils
-    iputils-ping \
-    iproute2 \
-    # Wordlists for fuzzing tools
+    nmap nikto sqlmap hydra whatweb \
     seclists \
-    wordlists \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
+    && rm -rf /usr/share/doc /usr/share/man
 
-# Setup Go environment (still needed for some tools or custom scripts)
+# Go environment
 ENV GOPATH=/root/go
 ENV PATH=$PATH:/root/go/bin:/usr/local/go/bin
 
-# Create virtual environment
+# Python venv with minimal deps only
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"
 
-# Create persistent tools directory
+COPY requirements-tools.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements-tools.txt
+
+# Persistent tools directory
 RUN mkdir -p /opt/spectra_tools
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir arq
-
-# Copy application code
+# Copy app code (read-only in production, mounted in dev)
 COPY app/ ./app/
 
-# Health check (simple script check)
 HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
-    CMD python -c "import app.worker" || exit 1
+    CMD python3 -c "import app.worker" || exit 1
 
-# Default command: Run Arq worker
 CMD ["arq", "app.worker.WorkerSettings"]
