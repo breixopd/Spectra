@@ -170,6 +170,19 @@ class MissionController(
         # Get full methodology using centralized service
         methodology_summary = get_full_methodology()
 
+        # Get learned context from persistent memory
+        try:
+            from app.services.ai.memory import get_memory
+            memory = get_memory()
+            memory_context = memory.get_context_for_prompt()
+            if memory_context:
+                rag_context += f"\n\n--- Learned from Past Missions ---\n{memory_context}"
+            stats = memory.get_stats()
+            if stats["tool_lessons"] > 0 or stats["exploit_lessons"] > 0:
+                rag_context += f"\n(Memory: {stats['tool_lessons']} tool lessons, {stats['exploit_lessons']} exploit patterns, {stats['target_profiles']} OS profiles)"
+        except Exception:
+            pass
+
         prompt = MISSION_PLAN_PROMPT.format(
             directive=input_data.directive,
             target=context.target or "Not specified",

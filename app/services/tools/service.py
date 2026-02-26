@@ -311,6 +311,9 @@ class ToolExecutionService:
                     tool_name, args=args, success=False, error=last_error,
                 )
 
+            # --- Learn from this execution ---
+            self._record_to_memory(mission, tool_name, target, args, result)
+
             return result
 
         except Exception as e:
@@ -710,6 +713,82 @@ Example response format:
             
         mission.log("[APPROVED] Action validated by consensus")
         return True
+
+    def _record_to_memory(
+        self,
+        mission: "Mission",
+        tool_name: str,
+        target: str,
+        args: dict[str, Any] | None,
+        result: ToolExecutionResult,
+    ) -> None:
+        """Record tool execution results to persistent memory for learning."""
+        try:
+            from app.services.ai.memory import get_memory, detect_os_from_output, detect_os_from_services
+
+            memory = get_memory()
+
+            # Determine service context from mission's attack surface
+            service = "unknown"
+            product = None
+            version = None
+            for svc in mission.attack_surface.services:
+                if str(svc.port) in target or svc.host in target:
+                    service = svc.service or "unknown"
+                    product = svc.product
+                    version = svc.version
+                    break
+            if service == "unknown" and mission.attack_surface.services:
+                svc = mission.attack_surface.services[0]
+                service = svc.service or "unknown"
+                product = svc.product
+                version = svc.version
+
+            # Detect OS from output if this is nmap or similar
+            detected_os = None
+            if result.stdout and tool_name in ("nmap", "naabu"):
+                detected_os = detect_os_from_output(result.stdout)
+                if detected_os and detected_os != "unknown":
+                    mission.log(f"[LEARN] Detected OS: {detected_os}")
+                    # Store on mission for other agents to use
+                    if not hasattr(mission, '_detected_os') or not mission._detected_os:
+                        mission._detected_os = detected_os
+                        memory.update_target_profile(
+                            detected_os,
+                            services=[service] if service != "unknown" else [],
+                        )
+
+            # Get OS from mission if previously detected
+            os_family = getattr(mission, '_detected_os', None) or detected_os
+
+            # Record finding types
+            finding_types = []
+            for f in result.parsed_findings:
+                ft = f.get("severity") or f.get("state") or f.get("type", "info")
+                if ft not in finding_types:
+                    finding_types.append(ft)
+
+            memory.record_tool_result(
+                tool_id=tool_name,
+                target_service=service,
+                success=result.success and len(result.parsed_findings) > 0,
+                findings_count=len(result.parsed_findings),
+                finding_types=finding_types,
+                target_product=product,
+                target_version=version,
+                target_os=os_family,
+                args_used=args or {},
+            )
+
+            # Update target profile with effective/ineffective tools
+            if os_family and os_family != "unknown":
+                if result.success and result.parsed_findings:
+                    memory.update_target_profile(os_family, effective_tools=[tool_name])
+                elif not result.success:
+                    memory.update_target_profile(os_family, ineffective_tools=[tool_name])
+
+        except Exception as e:
+            logger.debug("Memory recording failed (non-critical): %s", e)
 
     def _prepare_output_directory(self, mission_id: str, run_id: str) -> Path:
         """Create and return the output directory path."""
