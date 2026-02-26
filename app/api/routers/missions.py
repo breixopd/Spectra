@@ -43,6 +43,13 @@ async def get_scan_presets():
     return SCAN_PRESETS
 
 
+@router.get("/adversary-playbooks")
+async def get_adversary_playbooks():
+    """List available adversary simulation playbooks."""
+    from app.services.ai.adversary_playbooks import list_adversary_playbooks
+    return list_adversary_playbooks()
+
+
 @router.post("", response_model=MissionResponse)
 @limiter.limit("5/minute")
 async def start_mission(
