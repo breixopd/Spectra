@@ -6,13 +6,16 @@ from app.services.mission.mission import Mission
 from app.models.attack_surface import ExploitAttempt, VectorPriority, AttackVector
 from app.services.ai.llm import LLMClient
 
+
 @pytest.fixture
 def mock_llm():
     return AsyncMock(spec=LLMClient)
 
+
 @pytest.fixture
 def executor(mock_llm):
     return MissionExecutor(mock_llm)
+
 
 @pytest.fixture
 def mission():
@@ -26,5 +29,3 @@ def mission():
     m.attack_surface = MagicMock()
     m.is_stopped.return_value = False
     return m
-
-

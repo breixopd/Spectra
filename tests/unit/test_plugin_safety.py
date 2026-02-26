@@ -15,6 +15,7 @@ from app.services.tools.registry import (
     ToolRegistry,
 )
 
+
 @pytest.fixture
 def keys(tmp_path):
     """Generate temporary keys for testing."""
@@ -25,19 +26,24 @@ def keys(tmp_path):
     pub_path = tmp_path / "test.pub"
 
     with open(priv_path, "wb") as f:
-        f.write(private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        ))
+        f.write(
+            private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
 
     with open(pub_path, "wb") as f:
-        f.write(public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        ))
+        f.write(
+            public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+        )
 
     return priv_path, pub_path
+
 
 @pytest.fixture
 def registry(tmp_path, keys):
@@ -46,10 +52,9 @@ def registry(tmp_path, keys):
     plugins_dir.mkdir()
 
     return ToolRegistry(
-        plugins_dir=plugins_dir,
-        public_key_path=keys[1],
-        safe_mode=True
+        plugins_dir=plugins_dir, public_key_path=keys[1], safe_mode=True
     )
+
 
 def sign_data(data: dict, key_path: Path) -> str:
     """Sign data dictionary."""
@@ -59,11 +64,12 @@ def sign_data(data: dict, key_path: Path) -> str:
     if not isinstance(private_key, Ed25519PrivateKey):
         raise TypeError(f"Expected Ed25519 private key, got {type(private_key)}")
 
-    canonical_json = json.dumps(
-        data, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    canonical_json = json.dumps(data, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
 
     return private_key.sign(canonical_json).hex()
+
 
 @pytest.mark.asyncio
 async def test_valid_signature(registry, keys):
@@ -75,15 +81,8 @@ async def test_valid_signature(registry, keys):
         "category": "custom",
         "version": "1.0.0",
         "author": "Test",
-        "execution": {
-            "command": "echo",
-            "args_template": "{target}",
-            "timeout": 5
-        },
-        "installation": {
-            "method": "none",
-            "commands": []
-        }
+        "execution": {"command": "echo", "args_template": "{target}", "timeout": 5},
+        "installation": {"method": "none", "commands": []},
     }
 
     # Sign
@@ -92,6 +91,7 @@ async def test_valid_signature(registry, keys):
     # Validate
     config = registry.validate_plugin(plugin_data)
     assert config.id == "test-tool"
+
 
 @pytest.mark.asyncio
 async def test_invalid_signature(registry, keys):
@@ -103,15 +103,8 @@ async def test_invalid_signature(registry, keys):
         "category": "custom",
         "version": "1.0.0",
         "author": "Test",
-        "execution": {
-            "command": "echo",
-            "args_template": "{target}",
-            "timeout": 5
-        },
-        "installation": {
-            "method": "none",
-            "commands": []
-        }
+        "execution": {"command": "echo", "args_template": "{target}", "timeout": 5},
+        "installation": {"method": "none", "commands": []},
     }
 
     # Sign then tamper
@@ -120,6 +113,7 @@ async def test_invalid_signature(registry, keys):
 
     with pytest.raises(PluginSignatureError):
         registry.validate_plugin(plugin_data)
+
 
 @pytest.mark.asyncio
 async def test_missing_signature_safe_mode(registry):
@@ -131,19 +125,13 @@ async def test_missing_signature_safe_mode(registry):
         "category": "custom",
         "version": "1.0.0",
         "author": "Test",
-        "execution": {
-            "command": "echo",
-            "args_template": "{target}",
-            "timeout": 5
-        },
-        "installation": {
-            "method": "none",
-            "commands": []
-        }
+        "execution": {"command": "echo", "args_template": "{target}", "timeout": 5},
+        "installation": {"method": "none", "commands": []},
     }
 
     with pytest.raises(PluginSignatureError):
         registry.validate_plugin(plugin_data)
+
 
 @pytest.mark.asyncio
 async def test_dangerous_command(registry, keys):
@@ -155,15 +143,8 @@ async def test_dangerous_command(registry, keys):
         "category": "custom",
         "version": "1.0.0",
         "author": "Test",
-        "execution": {
-            "command": "echo",
-            "args_template": "{target}",
-            "timeout": 5
-        },
-        "installation": {
-            "method": "script",
-            "commands": ["rm -rf /"]
-        }
+        "execution": {"command": "echo", "args_template": "{target}", "timeout": 5},
+        "installation": {"method": "script", "commands": ["rm -rf /"]},
     }
 
     # Sign (even signed dangerous plugins should be rejected)

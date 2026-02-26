@@ -4,7 +4,7 @@ UI router for serving the frontend dashboard.
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -115,6 +115,15 @@ async def toolbox_page(request: Request):
     )
 
 
+@router.get("/manual", response_class=HTMLResponse)
+async def manual_tools_page(request: Request):
+    """Serve the manual tools execution page."""
+    return templates.TemplateResponse(
+        "manual_tools.html",
+        {"request": request, "title": "Spectra | Manual Tools"},
+    )
+
+
 @router.get("/toolbox/create", response_class=HTMLResponse)
 async def plugin_creator_page(request: Request):
     """Serve the plugin creator page."""
@@ -141,6 +150,7 @@ async def observability_page(request: Request):
         {"request": request, "title": "Spectra | Observability"},
     )
 
+
 @router.get("/shell/{session_id}", response_class=HTMLResponse)
 async def shell_page(request: Request, session_id: str):
     """Serve the interactive shell page."""
@@ -155,13 +165,14 @@ async def shell_page(request: Request, session_id: str):
             "request": request,
             "title": f"Shell | {session.target}",
             "session_id": session_id,
-            "target": session.target
+            "target": session.target,
         },
     )
 
 
 # Global lock for settings updates to prevent race conditions
 import asyncio
+
 SETTINGS_LOCK = asyncio.Lock()
 
 
@@ -212,7 +223,11 @@ async def update_settings(
             if existing:
                 existing.value = data.llm_api_key
             else:
-                db.add(SystemConfig(key="LLM_API_KEY", value=data.llm_api_key, is_secret=True))
+                db.add(
+                    SystemConfig(
+                        key="LLM_API_KEY", value=data.llm_api_key, is_secret=True
+                    )
+                )
 
         if data.llm_api_base_url:
             settings.LLM_API_BASE_URL = data.llm_api_base_url
@@ -242,6 +257,8 @@ async def update_settings(
 @router.get("/api/settings")
 async def get_settings_api():
     """Get current settings."""
+    from app.services.ai.router import PROVIDER_PRESETS
+
     return {
         "ai_provider": settings.AI_PROVIDER,
         "llm_model": settings.LLM_MODEL,
@@ -253,8 +270,8 @@ async def get_settings_api():
         "connect_back_host": settings.CONNECT_BACK_HOST,
         "tool_container_name": settings.TOOL_CONTAINER_NAME,
         "require_approval": settings.REQUIRE_APPROVAL,
-        # Do not return full API key for security
         "llm_api_key_configured": bool(settings.LLM_API_KEY),
+        "provider_presets": PROVIDER_PRESETS,
     }
 
 
@@ -268,7 +285,9 @@ async def get_ai_status():
 
     return {
         "provider": settings.AI_PROVIDER,
-        "model": settings.LLM_MODEL if settings.AI_PROVIDER == "api" else settings.OLLAMA_MODEL,
+        "model": settings.LLM_MODEL
+        if settings.AI_PROVIDER == "api"
+        else settings.OLLAMA_MODEL,
         "healthy": is_healthy,
         "provider_info": {
             "api": {
@@ -289,11 +308,16 @@ async def test_llm_connection(request: LLMTestRequest):
     try:
         if request.provider == "ollama":
             client = get_llm_client(
-                provider="ollama", host=request.ollama_host or "http://localhost:11434", model=request.model
+                provider="ollama",
+                host=request.ollama_host or "http://localhost:11434",
+                model=request.model,
             )
         else:
             client = get_llm_client(
-                provider="api", api_key=request.api_key, base_url=request.base_url, model=request.model
+                provider="api",
+                api_key=request.api_key,
+                base_url=request.base_url,
+                model=request.model,
             )
 
         # Try a simple generation

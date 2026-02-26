@@ -8,8 +8,6 @@ Uses Redis Vector Search to store and retrieve:
 - Security knowledge base
 """
 
-import asyncio
-import hashlib
 import json
 import logging
 from dataclasses import dataclass
@@ -311,7 +309,16 @@ class RAGService:
 
             q = (
                 Query(query_str)
-                .return_fields("content", "doc_type", "cve_id", "severity", "target", "session_id", "metadata", "score")
+                .return_fields(
+                    "content",
+                    "doc_type",
+                    "cve_id",
+                    "severity",
+                    "target",
+                    "session_id",
+                    "metadata",
+                    "score",
+                )
                 .sort_by("score")
                 .dialect(2)
             )

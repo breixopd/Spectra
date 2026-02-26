@@ -162,9 +162,46 @@ class Mission:
         return app
 
     def add_finding(self, finding: dict[str, Any]) -> None:
-        """Add a finding to the mission."""
+        """Add a finding to the mission, deduplicating by key fields."""
+        # Build dedup key from template-id + host/port, or name + port
+        dedup_key = self._finding_dedup_key(finding)
+
+        # Check for duplicates — increment count instead of adding again
+        for existing in self.findings:
+            if self._finding_dedup_key(existing) == dedup_key:
+                existing["count"] = existing.get("count", 1) + 1
+                return
+
+        # Check if this is a known false positive
+        try:
+            from app.services.ai.memory import get_memory
+
+            memory = get_memory()
+            template_id = finding.get("template-id") or finding.get("name", "")
+            if template_id and memory.is_false_positive(template_id):
+                return
+        except Exception:
+            pass
+
+        # Auto-tag with MITRE ATT&CK techniques
+        try:
+            from app.services.ai.mitre_attack import tag_finding_with_attack
+
+            finding = tag_finding_with_attack(finding)
+        except Exception:
+            pass
+
+        finding["count"] = 1
         self.findings.append(finding)
         self._broadcast("finding", finding)
+
+    def _finding_dedup_key(self, finding: dict[str, Any]) -> str:
+        """Generate a deduplication key for a finding."""
+        template = finding.get("template-id") or finding.get("name") or ""
+        host = finding.get("host") or finding.get("ip") or ""
+        port = str(finding.get("port") or finding.get("portid") or "")
+        matched = finding.get("matched-at") or ""
+        return f"{template}|{host}|{port}|{matched}"
 
     def record_tool_run(
         self,

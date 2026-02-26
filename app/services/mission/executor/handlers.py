@@ -19,12 +19,6 @@ if TYPE_CHECKING:
     from app.services.mission.exploitation import ExploitationManager
     from app.services.ai.consensus import VotingSystem
     from app.services.ai.agents.base import BaseAgent
-    from app.services.ai.agents.tool_selector import ToolSelectorInput
-    from app.services.ai.agents.payload_crafter import PayloadCrafterOutput, PayloadCrafterInput
-    from app.services.ai.agents.exploit_verifier import ExploitVerifierOutput, ExploitVerifierInput
-    from app.services.ai.agents.scope import ScopeInput
-    from app.services.ai.agents.reporter import ReporterInput
-    from app.services.ai.agents.post_exploitation import PostExploitInput, PostExploitAction
 
 logger = logging.getLogger("spectra.mission.executor.handlers")
 
@@ -427,7 +421,7 @@ class TaskDispatcher:
         agent = self.agents["scope_agent"]
         try:
             mission.log("Refining scope...")
-            
+
             from app.services.ai.agents.scope import ScopeInput
 
             scope_input = ScopeInput(
@@ -508,7 +502,9 @@ class TaskDispatcher:
                     version=finding.get("version"),
                 )
                 if context and "vector_generator" in self.agents:
-                    await self._generate_dynamic_vectors(mission, context, "service", svc.dict())
+                    await self._generate_dynamic_vectors(
+                        mission, context, "service", svc.dict()
+                    )
 
             if finding.get("severity") and finding.get("name"):
                 vuln = mission.add_vulnerability(
@@ -518,7 +514,9 @@ class TaskDispatcher:
                     cve_id=finding.get("cve_id"),
                 )
                 if context and "vector_generator" in self.agents:
-                    await self._generate_dynamic_vectors(mission, context, "vulnerability", vuln.dict())
+                    await self._generate_dynamic_vectors(
+                        mission, context, "vulnerability", vuln.dict()
+                    )
 
             if finding.get("url") and finding.get("technologies"):
                 app = mission.add_webapp(
@@ -526,7 +524,9 @@ class TaskDispatcher:
                     technologies=finding.get("technologies", []),
                 )
                 if context and "vector_generator" in self.agents:
-                    await self._generate_dynamic_vectors(mission, context, "webapp", app.dict())
+                    await self._generate_dynamic_vectors(
+                        mission, context, "webapp", app.dict()
+                    )
 
         except Exception as e:
             logger.warning("Failed to update attack surface: %s", e)

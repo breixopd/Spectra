@@ -109,11 +109,7 @@ class TestJWTTokens:
 
     def test_create_access_token_preserves_claims(self):
         """create_access_token should preserve additional claims."""
-        data = {
-            "sub": "user123",
-            "role": "admin",
-            "permissions": ["read", "write"]
-        }
+        data = {"sub": "user123", "role": "admin", "permissions": ["read", "write"]}
         token = create_access_token(data)
         decoded = decode_token(token)
 
@@ -133,10 +129,7 @@ class TestJWTTokens:
     def test_create_access_token_custom_expiry(self):
         """create_access_token should respect custom expiry."""
         # Create token with 1 minute expiry
-        token = create_access_token(
-            {"sub": "user"},
-            expires_delta=timedelta(minutes=1)
-        )
+        token = create_access_token({"sub": "user"}, expires_delta=timedelta(minutes=1))
         decoded = decode_token(token)
 
         # exp - iat should be approximately 60 seconds
@@ -158,7 +151,7 @@ class TestJWTTokens:
         token = jwt.encode(
             {"sub": "user", "exp": 9999999999},
             "wrong_secret",
-            algorithm=settings.JWT_ALGORITHM
+            algorithm=settings.JWT_ALGORITHM,
         )
 
         with pytest.raises(JWTError):
@@ -169,7 +162,7 @@ class TestJWTTokens:
         # Create an already-expired token
         token = create_access_token(
             {"sub": "user"},
-            expires_delta=timedelta(seconds=-10)  # Expired 10 seconds ago
+            expires_delta=timedelta(seconds=-10),  # Expired 10 seconds ago
         )
 
         with pytest.raises(JWTError):

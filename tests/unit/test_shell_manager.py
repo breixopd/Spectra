@@ -3,6 +3,7 @@ import socket
 from unittest.mock import MagicMock, patch
 from app.services.shell.session_manager import ShellSessionManager, ShellSession
 
+
 @pytest.fixture
 def shell_manager():
     # Reset singleton
@@ -15,6 +16,7 @@ def shell_manager():
     manager.sessions = {}
     return manager
 
+
 @pytest.mark.asyncio
 async def test_allocate_port(shell_manager):
     # Mock socket to appear free
@@ -23,6 +25,7 @@ async def test_allocate_port(shell_manager):
         port = shell_manager.allocate_port()
         assert port >= 4444 and port <= 4500
         assert shell_manager.next_port == port + 1
+
 
 @pytest.mark.asyncio
 async def test_start_listener(shell_manager):
@@ -50,12 +53,13 @@ async def test_start_listener(shell_manager):
                 session_id="test-session",
                 target="127.0.0.1",
                 mission_id="mission-1",
-                port=port
+                port=port,
             )
 
             assert result_port == 4444
             assert 4444 in shell_manager.listeners
             assert mock_thread.called
+
 
 @pytest.mark.asyncio
 async def test_ttl_cleanup(shell_manager):
@@ -86,6 +90,7 @@ async def test_ttl_cleanup(shell_manager):
     # Verify sockets were closed
     assert session1.socket.close.called or session1.socket.shutdown.called
     assert session2.socket.close.called or session2.socket.shutdown.called
+
 
 @pytest.mark.asyncio
 async def test_mission_ownership_ttl(shell_manager):

@@ -125,9 +125,21 @@ class VotingConfig:
     # Maps gate -> (num_voters, k_threshold, min_confidence)
     gate_configs: dict[str, tuple[int, int, float]] = field(
         default_factory=lambda: {
-            QualityGate.PLAN.value: (3, 2, 0.7),  # Thorough: 3 voters, need 2, high confidence
-            QualityGate.TOOL_SELECTION.value: (2, 2, 0.5),  # Quick: 2 voters, need both, moderate
-            QualityGate.PAYLOAD.value: (3, 2, 0.7),  # Thorough: 3 voters, need 2, high confidence
+            QualityGate.PLAN.value: (
+                3,
+                2,
+                0.7,
+            ),  # Thorough: 3 voters, need 2, high confidence
+            QualityGate.TOOL_SELECTION.value: (
+                2,
+                2,
+                0.5,
+            ),  # Quick: 2 voters, need both, moderate
+            QualityGate.PAYLOAD.value: (
+                3,
+                2,
+                0.7,
+            ),  # Thorough: 3 voters, need 2, high confidence
             QualityGate.REPLAN.value: (3, 2, 0.6),  # Moderate: 3 voters, need 2
             QualityGate.EXECUTION.value: (3, 3, 0.8),  # Strictest: 3 voters, need all 3
         }
@@ -249,7 +261,12 @@ class VotingSystem:
 
     def requires_voting(self, action: AgentAction) -> bool:
         """Check if an action requires consensus voting."""
-        risk_levels = [ActionRisk.LOW, ActionRisk.MEDIUM, ActionRisk.HIGH, ActionRisk.CRITICAL]
+        risk_levels = [
+            ActionRisk.LOW,
+            ActionRisk.MEDIUM,
+            ActionRisk.HIGH,
+            ActionRisk.CRITICAL,
+        ]
         action_idx = risk_levels.index(action.risk_level)
         threshold_idx = risk_levels.index(self.config.voting_risk_threshold)
         return action_idx >= threshold_idx
@@ -265,7 +282,12 @@ class VotingSystem:
         if settings.FULLY_AUTOMATED:
             return False
 
-        risk_levels = [ActionRisk.LOW, ActionRisk.MEDIUM, ActionRisk.HIGH, ActionRisk.CRITICAL]
+        risk_levels = [
+            ActionRisk.LOW,
+            ActionRisk.MEDIUM,
+            ActionRisk.HIGH,
+            ActionRisk.CRITICAL,
+        ]
         action_idx = risk_levels.index(action.risk_level)
         threshold_idx = risk_levels.index(self.config.human_approval_risk)
         return action_idx >= threshold_idx

@@ -530,7 +530,9 @@ async def execute_script_job(
 
         # Run
         wrapped = f"timeout -k 10s {timeout}s {cmd}"
-        returncode, stdout, stderr = await _run_command(wrapped, timeout + 30, str(work_dir))
+        returncode, stdout, stderr = await _run_command(
+            wrapped, timeout + 30, str(work_dir)
+        )
 
         return {
             "success": returncode == 0,
@@ -834,4 +836,5 @@ async def get_arq_pool() -> ArqRedis:
 
 if __name__ == "__main__":
     from arq import run_worker
+
     run_worker(WorkerSettings)  # type: ignore[arg-type]

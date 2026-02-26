@@ -2,16 +2,13 @@ import pytest
 import xml.etree.ElementTree as ET
 from app.services.tools.parsers import xml_to_dict, parse_nmap_xml
 
+
 def test_xml_to_dict_simple():
     xml = "<root><child key='val'>text</child></root>"
     root = ET.fromstring(xml)
-    expected = {
-        "child": {
-            "key": "val",
-            "_text": "text"
-        }
-    }
+    expected = {"child": {"key": "val", "_text": "text"}}
     assert xml_to_dict(root) == expected
+
 
 def test_xml_to_dict_list():
     xml = """
@@ -26,6 +23,7 @@ def test_xml_to_dict_list():
     assert len(result["item"]) == 2
     assert result["item"][0]["_text"] == "1"
     assert result["item"][1]["_text"] == "2"
+
 
 def test_parse_nmap_xml():
     xml = """
@@ -57,16 +55,16 @@ def test_parse_nmap_xml():
     """
     root = ET.fromstring(xml)
     findings = parse_nmap_xml(root)
-    
+
     assert len(findings) == 2
-    
+
     # Check first finding (port 80 open)
     f1 = findings[0]
     assert f1["ip"] == "127.0.0.1"
     assert f1["portid"] == "80"
     assert f1["service"] == "http"
     assert f1["product"] == "nginx"
-    
+
     # Check second finding (port 22 open)
     f2 = findings[1]
     assert f2["ip"] == "10.0.0.1"

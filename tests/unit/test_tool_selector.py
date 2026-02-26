@@ -3,7 +3,7 @@ Tests for Tool Selector Agent with edge cases and error handling.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
@@ -157,9 +157,24 @@ class TestToolSelectorFallback:
 
         tools = []
         for tool_data in [
-            {"id": "nmap", "caps": [ToolCapability.PORT_SCAN, ToolCapability.SERVICE_DETECTION], "risk": RiskLevel.LOW, "prereqs": []},
-            {"id": "nuclei", "caps": [ToolCapability.VULN_SCAN], "risk": RiskLevel.MEDIUM, "prereqs": ["nmap"]},
-            {"id": "sqlmap", "caps": [ToolCapability.SQL_INJECTION], "risk": RiskLevel.HIGH, "prereqs": ["nuclei"]},
+            {
+                "id": "nmap",
+                "caps": [ToolCapability.PORT_SCAN, ToolCapability.SERVICE_DETECTION],
+                "risk": RiskLevel.LOW,
+                "prereqs": [],
+            },
+            {
+                "id": "nuclei",
+                "caps": [ToolCapability.VULN_SCAN],
+                "risk": RiskLevel.MEDIUM,
+                "prereqs": ["nmap"],
+            },
+            {
+                "id": "sqlmap",
+                "caps": [ToolCapability.SQL_INJECTION],
+                "risk": RiskLevel.HIGH,
+                "prereqs": ["nuclei"],
+            },
         ]:
             mock_tool = MagicMock()
             mock_tool.config.id = tool_data["id"]
@@ -211,7 +226,9 @@ class TestToolSelectorFallback:
             required_capability=None,
         )
 
-        result = agent._smart_fallback_selection(input_data, [mock_tool_high, mock_tool_low])
+        result = agent._smart_fallback_selection(
+            input_data, [mock_tool_high, mock_tool_low]
+        )
 
         # Lower risk should be preferred
         assert result.tool_name == "safe_scanner"
@@ -241,6 +258,7 @@ class TestToolSelectorExecution:
     def context(self):
         """Create agent context."""
         return AgentContext(
+            mission_id="test-mission-1",
             session_id="test-session",
             target="192.168.1.1",
             mission="Security assessment",
@@ -265,7 +283,9 @@ class TestToolSelectorExecution:
         )
 
         # Mock registry to return available tools
-        with patch("app.services.ai.agents.tool_selector.get_registry") as mock_registry:
+        with patch(
+            "app.services.ai.agents.tool_selector.get_registry"
+        ) as mock_registry:
             mock_tool = MagicMock()
             mock_tool.is_available = True
             mock_tool.config.id = "nmap"
@@ -277,8 +297,16 @@ class TestToolSelectorExecution:
             mock_tool.config.metadata.prerequisites = []
             mock_tool.config.metadata.tags = ["network"]
             mock_tool.config.metadata.categories = ["DISCOVERY"]
+            mock_tool.config.get_ai_summary.return_value = (
+                "**Nmap** (nmap)\nCategory: discovery\nDescription: Port scanner"
+            )
+            mock_tool.config.execution.min_timeout = 60
+            mock_tool.config.execution.timeout = 300
 
-            mock_registry.return_value.list_tools.return_value = [mock_tool]
+            registry_instance = mock_registry.return_value
+            registry_instance.get_tool.return_value = mock_tool
+            registry_instance.list_tools.return_value = [mock_tool]
+            registry_instance.sync_status_from_redis = AsyncMock()
 
             result = await agent.execute(context, input_data)
 
@@ -299,7 +327,9 @@ class TestToolSelectorExecution:
         )
 
         # Mock registry to return no tools
-        with patch("app.services.ai.agents.tool_selector.get_registry") as mock_registry:
+        with patch(
+            "app.services.ai.agents.tool_selector.get_registry"
+        ) as mock_registry:
             mock_registry.return_value.list_tools.return_value = []
 
             result = await agent.execute(context, input_data)
@@ -308,6 +338,7 @@ class TestToolSelectorExecution:
         assert result.action is not None
         # ToolSelectorOutput has skip_reason attribute - cast to check
         from app.services.ai.agents.tool_selector import ToolSelectorOutput
+
         if isinstance(result.action, ToolSelectorOutput):
             assert result.action.skip_reason is not None
 
@@ -319,6 +350,7 @@ class TestToolSelectorStealthMode:
     def context_stealth(self):
         """Create stealth mode context."""
         return AgentContext(
+            mission_id="test-mission-1",
             session_id="test-session",
             target="192.168.1.1",
             mission="Quiet assessment",
@@ -331,6 +363,7 @@ class TestToolSelectorStealthMode:
         """System prompt should mention stealth when enabled."""
         agent = ToolSelectorAgent(MockLLMClient())
         context = AgentContext(
+            mission_id="test-mission-1",
             session_id="test",
             target="target.com",
             mission="Stealth scan",
@@ -341,4 +374,8 @@ class TestToolSelectorStealthMode:
 
         prompt = agent._build_system_prompt(context)
 
-        assert "stealth" in prompt.lower() or "quiet" in prompt.lower() or "evasion" in prompt.lower()
+        assert (
+            "stealth" in prompt.lower()
+            or "quiet" in prompt.lower()
+            or "evasion" in prompt.lower()
+        )

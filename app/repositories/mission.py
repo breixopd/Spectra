@@ -6,7 +6,7 @@ Provides data access operations for mission CRUD and status queries.
 
 from typing import Optional, Sequence
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.mission import Mission, MissionStatus
@@ -57,7 +57,11 @@ class MissionRepository(BaseRepository[Mission]):
             MissionStatus.EXPLOITING.value,
         ]
 
-        stmt = select(self.model).where(self.model.status.in_(active_statuses)).order_by(self.model.created_at.desc())
+        stmt = (
+            select(self.model)
+            .where(self.model.status.in_(active_statuses))
+            .order_by(self.model.created_at.desc())
+        )
 
         result = await self.session.execute(stmt)
         return result.scalars().all()

@@ -1,277 +1,211 @@
-# Spectra: AI-Driven Security Assessment Platform
+# Spectra
 
-Spectra is a next-generation **Multi-Agent System (MAS)** for automated security assessments. It leverages the **MAKER Framework** (Maximal Agentic decomposition, K-threshold Error mitigation, and Red-flagging) to orchestrate industry-standard security tools with human-level reasoning and machine-speed execution.
+**Autonomous AI-powered penetration testing platform.**
 
----
+Spectra runs full security assessments against targets using LLM-orchestrated security tools. Point it at a target, give it a directive, and watch it scan, enumerate, exploit, and report — following real pentesting methodology (PTES).
 
-## Documentation
-
-- **[Penetration Testing Workflow](docs/pentest.md)** - Complete guide to how Spectra executes pentests
-- **[Plugin Configuration Guide](docs/plugins.md)** - Documentation for creating and configuring tool plugins
-- **[API Reference](docs/api_reference.md)** - Detailed API documentation
-- **[Deployment Guide](docs/deployment.md)** - Deployment and scaling instructions
+It learns from every engagement, adapts to different system types, and gets better over time.
 
 ---
 
-## Core Architecture
+## Quick Start
 
-### The MAKER Framework
+```bash
+# 1. Clone and configure
+cp .env.example .env
+# Edit .env — set AI_PROVIDER and API key (or use Ollama for local models)
 
-Spectra decomposes complex security tasks into specialized agents:
+# 2. Start everything
+cd docker
+docker compose up -d
 
-1. **Recon Swarm:**
-    - `ScopeAgent`: Defines strict assessment boundaries.
-    - `ToolSelector`: Chooses the optimal tool for the specific context.
-2. **Analysis Swarm:**
-    - `VotingSystem`: Uses K-Threshold consensus (multiple models voting) to validate findings and reduce false positives.
-    - `RiskScorer`: Contextual risk assessment.
-3. **Exploitation Swarm:**
-    - `ExploitCrafter`: Iterative exploitation with adaptive retry strategies.
-    - `PayloadCrafter`: Generates tailored exploits using SearchSploit and CVE data.
-    - `SafetySupervisor`: Intercepts and blocks dangerous commands (e.g., `rm -rf`).
-4. **Strategic Swarm:**
-    - `MissionController`: High-level planning and steering.
-    - `PostExploitation`: Plans privilege escalation, persistence, and lateral movement.
-    - `POCDeveloper`: **(New)** Specialized agent for generating custom exploit scripts (Python/Go/Bash) when standard tools fail.
+# 3. Open the UI
+# http://localhost:5000
+# First visit → setup wizard for admin account + AI provider config
+```
 
-### Quality Gates (Consensus Validation)
-
-Spectra validates decisions at **5 quality gates** to ensure high-quality autonomous operation:
-
-| Gate | Trigger | Validation Level |
-|------|---------|------------------|
-| **PLAN** | Initial mission planning | 3 voters, need 2, 70% confidence |
-| **TOOL_SELECTION** | Each tool selection | 2 voters, need both, 50% confidence |
-| **PAYLOAD** | Exploit/payload crafting | 3 voters, need 2, 70% confidence |
-| **REPLAN** | Plan changes due to errors | 3 voters, need 2, 60% confidence |
-| **EXECUTION** | High-risk tool execution | 3 voters, need all 3, 80% confidence |
-
-This ensures even low-risk decisions that could derail the mission are validated.
-
-### Technology Stack
-
-- **Backend:** Python 3.11+, FastAPI, Arq (Redis Queue).
-- **AI:** Ollama (Local Inference), OpenAI (Cloud Fallback), LangChain (Orchestration).
-- **Data:** PostgreSQL (Persistence), Redis (Vector Store & Cache).
-- **Frontend:** Modern Web UI with WebSockets for real-time feedback.
-- **Infrastructure:** Docker Compose (Microservices).
+That's it. The tools container auto-installs security tools on first boot.
 
 ---
 
-## Tool Integration
+## What It Does
 
-Spectra uses a **Dynamic Plugin System** to integrate tools. Tools are defined in JSON configuration files (`plugins/*.json`) and executed via a generic adapter.
+1. **You provide a target** (IP, domain, URL) and a directive ("full security assessment")
+2. **AI agents plan the pentest** following PTES phases: Scope → Discovery → Enumeration → Vulnerability Analysis → Exploitation → Post-Exploitation → Reporting
+3. **Tools execute autonomously** in a sandboxed Kali container via an Arq worker queue
+4. **Consensus voting** validates critical decisions (planning, exploitation, payload crafting)
+5. **Findings are parsed and tracked** in a live attack surface model
+6. **A report is generated** with findings, severity ratings, and remediation steps
 
-**Plugin Safety:**
-All plugins are cryptographically signed using Ed25519. The system enforces signature verification in production to prevent tampering.
+### Live-Tested Results
 
-- **Safe Mode:** Enabled by default. Only signed plugins can be loaded.
-- **Hot Loading:** Drop a new `.json` file into `plugins/` to instantly register a new tool.
-
-**Custom Exploits (POCs):**
-Spectra can now generate and execute custom Proof-of-Concept scripts if no suitable tool is found. These scripts are validated by the consensus engine and executed in a sandboxed worker.
-
-**Interactive Web Shell:**
-Connect to compromised targets directly through the browser using the integrated Web Shell (xterm.js), supported by a WebSocket backend.
-
-**Default Tools:**
-
-| Category        | Tools                                      |
-| --------------- | ------------------------------------------ |
-| **Discovery**   | Nmap, Naabu, Amass                         |
-| **Enumeration** | Ffuf, Gobuster                             |
-| **Web**         | Nikto, WPScan                              |
-| **Vulnerability** | Nuclei                                   |
-| **Exploitation** | SearchSploit, Metasploit, SQLMap, Hydra  |
+| Target | Findings | Critical | Tools Used |
+|--------|----------|----------|------------|
+| DVWA (web app) | 31 | 3 | nmap, nuclei, nikto, searchsploit, gobuster |
+| Juice Shop (Node.js) | 50 | 4 | nmap, nuclei, sqlmap, searchsploit |
+| SSH Server | 5+ | — | nmap, hydra (default creds only), searchsploit |
 
 ---
 
-## Setup & Installation
+## Features
 
-1. **Environment Setup:**
-    Copy the example environment file and configure it:
+### Autonomous Pentesting
+- Multi-agent AI system orchestrates 18 security tools
+- PTES methodology enforced in all planning and execution
+- Mid-mission plan adaptation when new findings emerge
+- CVE correlation: discovered service versions matched to known exploits
+- Custom exploit (POC) generation when standard tools fail
 
-    ```bash
-    cp .env.example .env
-    # Edit .env with your configuration
-    ```
+### Manual Mode
+- Run any tool directly from the UI without AI orchestration
+- Visual pipeline editor: chain tools together (output of one → input of next)
+- Dynamic argument forms built from each plugin's configuration
 
-    **Note:** `.env.test` is only for running tests and already contains test configurations.
+### Learning System
+- Persistent memory across missions (JSON on disk, no heavy dependencies)
+- Records which tools work for which services, successful exploit chains, OS strategies
+- Auto-detects OS from tool output (Linux/Windows/macOS/FreeBSD/embedded)
+- False positive detection (repeated low-value findings auto-flagged)
+- Agents get richer context with each mission
 
-2. **Start Services:**
+### Plugin System
+- Drop a JSON file into `plugins/` to add a new tool
+- Auto-installs in the tools container on next boot
+- Ed25519 cryptographic signing for production safety
+- 18 tools included: nmap, nuclei, nikto, gobuster, ffuf, hydra, sqlmap, metasploit, searchsploit, wpscan, amass, naabu, whatweb, dirsearch, subfinder, feroxbuster, httpx, testssl
 
-    ```bash
-    cd docker
-    docker compose up -d
-    ```
+### Smart Routing (LiteLLM)
+- Routes to any LLM provider: Ollama, OpenAI, Anthropic, Groq, Azure, etc.
+- Automatic fallbacks: local model fails → cloud takes over
+- Per-task model selection: cheap models for simple tasks, capable models for exploit crafting
+- 100+ models supported through unified interface
 
-    For development with hot-reloading:
+### Safety
+- SafetySupervisor blocks dangerous commands (rm -rf, fork bombs, etc.)
+- Anti-brute-force policy: blocks large wordlists, only allows default credential testing
+- Consensus voting at 5 quality gates before critical actions
+- All tools run in isolated Docker container
 
-    ```bash
-    docker compose up --watch
-    ```
+---
 
-3. **Access Points:**
-    - **Web UI:** `http://localhost:5000/dashboard`
-    - **API Docs:** `http://localhost:5000/docs`
-    - **Redis Insight:** `http://localhost:8001/`
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│  Web UI (Jinja2 + Tailwind + WebSockets)        │
+├─────────────────────────────────────────────────┤
+│  FastAPI App Container                          │
+│  ├── Mission Manager (orchestration)            │
+│  ├── AI Agents (scope, tool selector, exploit)  │
+│  ├── LiteLLM Router (model routing)             │
+│  ├── Memory System (learning)                   │
+│  └── CVE Intelligence (version correlation)     │
+├──────────────┬──────────────────────────────────┤
+│  PostgreSQL  │  Redis Stack (queue + cache)     │
+├──────────────┴──────────────────────────────────┤
+│  Tools Container (Kali Linux)                   │
+│  ├── Arq Worker (job execution)                 │
+│  ├── 18 security tools (auto-installed)         │
+│  └── Plugin system (JSON configs)               │
+└─────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Configuration
 
-Configuration is managed via environment variables. Copy `.env.example` to `.env` and customize the following:
+Copy `.env.example` to `.env` and set:
 
-### Required Settings
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AI_PROVIDER` | Yes | `ollama` (local) or `api` (cloud) |
+| `OLLAMA_HOST` | If ollama | Ollama server URL (default: `http://ai:11434`) |
+| `OLLAMA_MODEL` | If ollama | Model name (default: `qwen2.5:3b`) |
+| `LLM_API_KEY` | If api | API key for cloud provider |
+| `LLM_API_BASE_URL` | If api | Custom base URL (for OpenRouter, vLLM, etc.) |
+| `LLM_MODEL` | If api | Model name (default: `gpt-4o-mini`) |
 
-- **`DATABASE_URL`**: PostgreSQL connection string
-  - Default: `postgresql+asyncpg://spectra:spectra_dev@db:5432/spectra`
-- **`REDIS_PASSWORD`**: Redis password (change in production!)
-  - Default: `changeme`
-- **`JWT_SECRET_KEY`**: Secret for authentication tokens (change in production!)
-  - Default: `change-me-in-production`
-
-### AI Configuration
-
-- **`AI_PROVIDER`**: AI backend to use
-  - Options: `ollama` (local) or `api` (cloud/remote)
-  - Default: `ollama`
-
-**For Local AI (Ollama):**
-
-- **`OLLAMA_HOST`**: Ollama server URL
-  - Default: `http://ai:11434`
-- **`OLLAMA_MODEL`**: Model to use
-  - Default: `qwen2.5:3b`
-
-**For Cloud API (OpenAI, OpenRouter, vLLM, LocalAI, etc.):**
-
-- **`LLM_API_KEY`**: Your API key (required if using `api` provider)
-- **`LLM_API_BASE_URL`**: API endpoint (optional)
-  - Use for OpenRouter, vLLM, LocalAI, etc.
-  - Example: `https://openrouter.ai/api/v1`
-- **`LLM_MODEL`**: Model to use
-  - Default: `gpt-4o-mini`
-  - OpenRouter example: `qwen/qwen-2.5-coder-7b-instruct:free`
-
-### Optional Settings
-
-- **`LOG_LEVEL`**: Logging verbosity (`DEBUG`, `INFO`, `WARNING`)
-- **`DEBUG`**: Enable debug mode (`true`/`false`)
-- **`PLUGIN_SAFE_MODE`**: Block dangerous tool commands (`true`/`false`)
+Everything else has sensible defaults. See `.env.example` for the full list.
 
 ---
 
-## Development
-
-### Running Tests
-
-Tests are run inside the Docker container to ensure environment consistency.
+## Testing
 
 ```bash
-cd docker
+# Unit tests (781 tests, 76% coverage, no Docker needed)
+python3 -m pytest tests/unit/ --no-cov
 
-# Run all tests (221+ tests)
-docker compose run --rm app pytest
+# With coverage
+python3 -m pytest tests/unit/
 
-# Run E2E tests (mission workflow, steering, safety)
-docker compose run --rm app pytest tests/e2e/ -v
-
-# Run UI tests
-docker compose run --rm -e BASE_URL=http://app:5000 app pytest tests/e2e/test_ui_flow.py
-
-# Run Plugin Safety tests
-docker compose run --rm app pytest tests/unit/test_plugin_safety.py
-
-# Run live target tests (requires docker-compose.test.yml)
-docker compose -f docker-compose.test.yml run --rm test-runner
+# Lint
+ruff check app/
 ```
 
-### Test Coverage
+### Test Targets
 
-| Category | Tests | Description |
-|----------|-------|-------------|
-| **Unit Tests** | 140+ | Individual component testing |
-| **E2E Tests** | 60+ | End-to-end workflow testing |
-| **Integration** | 15+ | Container and plugin integration |
+Custom vulnerable containers are included for live testing:
 
-### Project Structure
+```bash
+cd docker/targets
+docker compose -f docker-compose.targets.yml up -d
+```
 
-- `app/`: Main application code (FastAPI).
-- `docker/`: Docker configuration files.
-- `docs/`: Documentation.
-- `plugins/`: Tool configuration files (JSON).
-- `tests/`: Unit and integration tests.
-- `alembic/`: Database migrations.
+| Target | Difficulty | Services | Key Vulns |
+|--------|-----------|----------|-----------|
+| Easy Web | Easy | HTTP, SSH | Default creds, phpinfo, directory listing |
+| Medium Multi | Medium | HTTP, FTP, MySQL, SSH | FTP anon, LFI, weak DB creds |
+| Hard Hardened | Hard | HTTPS API, SSH | CORS, SSRF, hidden endpoints, weak JWT |
+| DVWA | Easy | HTTP | Classic web vulns (SQLi, XSS, etc.) |
+| Juice Shop | Medium | HTTP | OWASP Top 10 |
 
 ---
 
-## Security
+## Documentation
 
-Spectra is a powerful security tool. **Use responsibly.**
-
-- **Authorization:** Only scan targets you own or have explicit permission to test.
-- **Safety:** The `SafetySupervisor` agent is enabled by default to prevent accidental damage.
-- **Sandboxing:** Tools run in an isolated container.
-
----
-
-## UI Features
-
-### Global Status Bar
-
-The UI includes a status bar that shows system initialization progress:
-
-- **Tool Installation:** Progress of installing security tools
-- **Embedding Loading:** AI model loading status
-- **Database/Redis Health:** Connection status
-
-### Settings Page
-
-The settings page (`/settings`) includes:
-
-- **AI Configuration:** Configure Ollama or Cloud API providers
-- **Data Management:**
-  - Clear tool statistics
-  - Clear mission history (with confirmation)
-  - Clear Redis cache
-  - Reinstall all tools
-- **System Status:** Real-time component health monitoring
-
-### Plugin Creator
-
-Create custom tool plugins at `/toolbox` → "Create New Plugin":
-
-- **Visual Editor:** Form-based plugin configuration
-- **JSON Preview:** Real-time config preview
-- **Plugin Signing:**
-  - Server key signing (DEBUG mode only)
-  - Custom key upload for official/dev signing
-  - Save unsigned (when safe_mode disabled)
+| Document | Description |
+|----------|-------------|
+| **[Penetration Testing Workflow](docs/pentest.md)** | How Spectra executes pentests phase by phase |
+| **[Plugin Guide](docs/plugins.md)** | Creating, configuring, and signing tool plugins |
+| **[Architecture](docs/architecture.md)** | Technical deep-dive into the agent system |
+| **[API Reference](docs/api_reference.md)** | REST API endpoints |
+| **[Deployment](docs/deployment.md)** | Production deployment and scaling |
+| **[Roadmap](docs/ROADMAP.md)** | Planned features and improvements |
 
 ---
 
-## API Features
-
-### System Status API
+## Project Structure
 
 ```
-GET /api/system/status
+app/
+├── api/              # FastAPI routes and schemas
+├── core/             # Config, database, security, WebSocket, events
+├── models/           # SQLAlchemy database models
+├── services/
+│   ├── ai/           # LLM clients, agents, consensus, memory, playbooks
+│   │   ├── agents/   # Specialized agents (scope, tool_selector, exploit, etc.)
+│   │   ├── router.py # LiteLLM smart routing
+│   │   ├── memory.py # Persistent cross-mission learning
+│   │   ├── playbook.py # Deterministic attack playbooks
+│   │   ├── grounding.py # Anti-hallucination framework
+│   │   └── cve_intel.py # CVE correlation database
+│   ├── mission/      # Mission lifecycle, execution, exploitation
+│   ├── tools/        # Tool registry, adapter, parser, installer
+│   └── shell/        # Reverse shell session management
+├── templates/        # Jinja2 HTML templates
+└── static/           # JavaScript and CSS
+docker/
+├── docker-compose.yml    # Main stack (app, db, redis, tools)
+├── targets/              # Vulnerable test containers
+├── Dockerfile.app        # FastAPI app image
+└── Dockerfile.tools      # Kali tools worker image
+plugins/                  # Tool plugin JSON configs (18 included)
+tests/                    # 781 unit tests, 76% coverage
+docs/                     # Documentation wiki
 ```
 
-Returns comprehensive system status including:
+---
 
-- Database and Redis health
-- Tool installation progress
-- Ongoing operations
-- Overall system readiness
+## Legal
 
-### Data Management APIs
-
-```
-POST /api/system/clear/tools     # Clear tool statistics
-POST /api/system/clear/missions  # Clear missions (requires ?confirm=true)
-POST /api/system/clear/cache     # Clear Redis cache
-```
-
-All require superuser authentication.
+**Use responsibly.** Only scan targets you own or have explicit written permission to test. Spectra includes safety mechanisms but ultimately you are responsible for how you use it.

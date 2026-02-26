@@ -349,15 +349,26 @@ function initMap() {
     const mapContainer = document.getElementById('threat-map');
     if (!mapContainer) return;
 
-    // Dark mode map style (CartoDB Dark Matter)
     map = L.map('threat-map', {
         zoomControl: false,
-        attributionControl: false
-    }).setView([20, 0], 2);
+        attributionControl: false,
+        minZoom: 1,
+        maxZoom: 18,
+        worldCopyJump: true
+    }).setView([25, 0], 2);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19
+        maxZoom: 18,
+        subdomains: 'abcd'
     }).addTo(map);
+
+    // Leaflet requires invalidateSize when container is resized or initially hidden
+    setTimeout(() => { if (map) map.invalidateSize(); }, 200);
+    // Also revalidate on window resize
+    window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
+    // Observer for container visibility changes
+    const observer = new ResizeObserver(() => { if (map) map.invalidateSize(); });
+    observer.observe(mapContainer);
 }
 
 function addMapMarker(lat, lng, title) {

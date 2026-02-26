@@ -86,8 +86,11 @@ class Settings(BaseSettings):
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
     FULLY_AUTOMATED: bool = True  # Skip ALL human approval, fully autonomous operation
-    TOOL_CONTAINER_NAME: str = "spectra-tools"  # Default to standard container name
-    CONNECT_BACK_HOST: str = "spectra-app"  # Host for reverse shells to connect back to
+    TOOL_CONTAINER_NAME: str = "spectra-tools"
+    CONNECT_BACK_HOST: str = "spectra-app"
+
+    # Notifications
+    NOTIFICATION_WEBHOOK: str | None = None  # e.g., https://ntfy.sh/your-topic
 
     # --- Validators ---
 
@@ -124,7 +127,9 @@ class Settings(BaseSettings):
     def validate_redis_password(cls, v: str, info) -> str:
         """Warn if using default Redis password."""
         if v == "changeme":
-            logger.warning("Using default Redis password 'changeme'. This is insecure for production.")
+            logger.warning(
+                "Using default Redis password 'changeme'. This is insecure for production."
+            )
         return v
 
     def save_runtime_settings(self):
@@ -197,7 +202,9 @@ def get_settings() -> Settings:
     # Generate random secret key if not set
     if not settings_instance.JWT_SECRET_KEY.get_secret_value():
         if not settings_instance.DEBUG:
-            logger.warning("JWT_SECRET_KEY not set in production. Generating random key (sessions will invalid on restart).")
+            logger.warning(
+                "JWT_SECRET_KEY not set in production. Generating random key (sessions will invalid on restart)."
+            )
 
         import secrets
 

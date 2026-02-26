@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any
 
-from app.core.events import events
 from app.models.attack_surface import AttackVector, VectorPriority
 from app.services.ai.agents.base import SteeringAction
 from app.services.mission.mission import Mission

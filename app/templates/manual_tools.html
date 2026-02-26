@@ -1,0 +1,552 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .tool-card { transition: all 0.2s ease; border: 1px solid rgba(255,255,255,0.05); }
+    .tool-card:hover { border-color: rgba(139,92,246,0.3); transform: translateY(-1px); }
+    .tool-card.selected { border-color: rgba(139,92,246,0.6); background: rgba(139,92,246,0.05); }
+    .arg-field input, .arg-field select { transition: border-color 0.2s; }
+    .arg-field input:focus, .arg-field select:focus { border-color: rgba(139,92,246,0.5); box-shadow: 0 0 0 2px rgba(139,92,246,0.15); }
+    .output-line { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; line-height: 1.4; }
+    .risk-passive { color: #94a3b8; } .risk-low { color: #34d399; } .risk-medium { color: #fbbf24; }
+    .risk-high { color: #fb7185; } .risk-critical { color: #f43f5e; }
+    .pipeline-node { background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 1rem; min-width: 180px; position: relative; }
+    .pipeline-node.active { border-color: rgba(139,92,246,0.5); box-shadow: 0 0 15px rgba(139,92,246,0.15); }
+    .pipeline-connector { width: 40px; display: flex; align-items: center; justify-content: center; color: #475569; }
+    .tab-btn-manual { padding: 0.5rem 1rem; border-bottom: 2px solid transparent; color: #94a3b8; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .tab-btn-manual:hover { color: white; }
+    .tab-btn-manual.active { color: #a78bfa; border-bottom-color: #8b5cf6; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3 animate-fade-in-up shrink-0">
+        <div>
+            <h1 class="text-2xl font-bold text-white tracking-tight">Manual Mode</h1>
+            <p class="text-slate-400 text-sm mt-0.5">Run security tools directly — no AI required</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="flex border border-white/10 rounded-lg overflow-hidden">
+                <button id="tab-execute" class="tab-btn-manual active" onclick="switchManualTab('execute')">
+                    <i class="fa-solid fa-play mr-1.5"></i> Execute
+                </button>
+                <button id="tab-pipeline" class="tab-btn-manual" onclick="switchManualTab('pipeline')">
+                    <i class="fa-solid fa-diagram-project mr-1.5"></i> Pipeline
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Execute Tab -->
+    <div id="panel-execute" class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up stagger-1">
+        <!-- Tool Picker (Left) -->
+        <div class="lg:w-72 shrink-0 flex flex-col gap-3">
+            <input type="text" id="tool-search" placeholder="Search tools..." oninput="filterTools()"
+                class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:outline-none transition-all">
+            <div id="tool-picker" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[120px] lg:min-h-0">
+                <div class="text-slate-500 text-sm text-center py-6">Loading tools...</div>
+            </div>
+        </div>
+
+        <!-- Execution Panel (Center+Right) -->
+        <div class="flex-1 flex flex-col min-h-0 gap-4">
+            <!-- Config Form -->
+            <div id="exec-form" class="glass-panel rounded-xl p-5 shrink-0">
+                <div id="no-tool-selected" class="text-center py-8">
+                    <i class="fa-solid fa-hand-pointer text-3xl text-slate-600 mb-3"></i>
+                    <p class="text-slate-500">Select a tool from the left to configure and run it</p>
+                </div>
+                <div id="tool-form-content" class="hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div id="tool-icon-badge" class="w-10 h-10 rounded-lg flex items-center justify-center text-lg"></div>
+                            <div>
+                                <h2 id="form-tool-name" class="text-lg font-bold text-white"></h2>
+                                <p id="form-tool-desc" class="text-xs text-slate-400 max-w-md truncate"></p>
+                            </div>
+                        </div>
+                        <span id="form-tool-risk" class="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wide"></span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4" id="args-container">
+                        <!-- Dynamic arg fields inserted here -->
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="executeManualTool()" id="run-btn"
+                            class="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2">
+                            <i class="fa-solid fa-play"></i> Run
+                        </button>
+                        <button onclick="clearOutput()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
+                            <i class="fa-solid fa-eraser mr-1"></i> Clear
+                        </button>
+                        <div id="exec-status" class="text-xs text-slate-500 ml-auto font-mono"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Panel -->
+            <div class="flex-1 min-h-0 bg-black rounded-xl border border-white/10 flex flex-col overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-2 border-b border-white/10 shrink-0">
+                    <div class="flex items-center gap-2 text-slate-400 text-xs">
+                        <i class="fa-solid fa-terminal"></i>
+                        <span>Output</span>
+                        <span id="output-tool-label" class="text-violet-400 font-mono"></span>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs">
+                        <span id="output-duration" class="text-slate-500 font-mono"></span>
+                        <span id="output-findings-count" class="text-emerald-400 font-mono hidden"></span>
+                    </div>
+                </div>
+                <div id="output-area" class="flex-1 overflow-y-auto p-4 font-mono text-sm text-slate-300 whitespace-pre-wrap">
+                    <span class="text-slate-600">Output will appear here...</span>
+                </div>
+                <!-- Findings panel -->
+                <div id="findings-panel" class="hidden border-t border-white/10 max-h-[200px] overflow-y-auto">
+                    <div class="px-4 py-2 bg-slate-900/50 text-xs font-medium text-slate-400 sticky top-0">
+                        <i class="fa-solid fa-magnifying-glass mr-1"></i> Parsed Findings
+                    </div>
+                    <div id="findings-list" class="p-3 space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline Tab -->
+    <div id="panel-pipeline" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
+        <div class="glass-panel rounded-xl p-5 mb-4 shrink-0">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-white">Tool Pipeline</h2>
+                    <p class="text-slate-400 text-sm">Chain tools together — output from one feeds into the next</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="addPipelineStep()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors">
+                        <i class="fa-solid fa-plus mr-1"></i> Add Step
+                    </button>
+                    <button onclick="runPipeline()" id="pipeline-run-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all">
+                        <i class="fa-solid fa-play mr-1"></i> Run Pipeline
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4">
+            <!-- Pipeline Canvas -->
+            <div class="flex-1 glass-panel rounded-xl p-4 overflow-auto">
+                <div id="pipeline-canvas" class="flex items-start gap-0 min-h-[200px] pb-4">
+                    <div class="empty-state" id="pipeline-empty">
+                        <i class="fa-solid fa-diagram-project text-violet-400/40"></i>
+                        <h3>Build your pipeline</h3>
+                        <p>Click "Add Step" to chain tools together. Each step's output feeds into the next.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pipeline Output -->
+            <div class="lg:w-96 bg-black rounded-xl border border-white/10 flex flex-col overflow-hidden">
+                <div class="px-4 py-2 border-b border-white/10 text-xs text-slate-400 shrink-0">
+                    <i class="fa-solid fa-terminal mr-1"></i> Pipeline Output
+                </div>
+                <div id="pipeline-output" class="flex-1 overflow-y-auto p-4 font-mono text-sm text-slate-300 whitespace-pre-wrap">
+                    <span class="text-slate-600">Pipeline results will appear here...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// State
+let allTools = [];
+let selectedToolId = null;
+let selectedToolConfig = null;
+let pipelineSteps = [];
+let pipelineStepId = 0;
+
+// Tab switching
+function switchManualTab(tab) {
+    document.querySelectorAll('.tab-btn-manual').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('panel-execute').classList.toggle('hidden', tab !== 'execute');
+    document.getElementById('panel-execute').classList.toggle('flex', tab === 'execute');
+    document.getElementById('panel-pipeline').classList.toggle('hidden', tab !== 'pipeline');
+    document.getElementById('panel-pipeline').classList.toggle('flex', tab === 'pipeline');
+}
+
+// Load tools
+async function loadTools() {
+    try {
+        const res = await fetch('/api/tools');
+        const data = await res.json();
+        allTools = data.tools || data;
+        renderToolPicker(allTools);
+    } catch (e) {
+        document.getElementById('tool-picker').innerHTML = '<div class="text-red-400 text-sm p-2">Failed to load tools</div>';
+    }
+}
+
+function filterTools() {
+    const q = document.getElementById('tool-search').value.toLowerCase();
+    const filtered = allTools.filter(t =>
+        t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q) ||
+        t.description.toLowerCase().includes(q) || (t.category || '').toLowerCase().includes(q)
+    );
+    renderToolPicker(filtered);
+}
+
+function renderToolPicker(tools) {
+    const container = document.getElementById('tool-picker');
+    if (!tools.length) {
+        container.innerHTML = '<div class="empty-state py-6"><i class="fa-solid fa-search text-slate-600 text-xl"></i><p class="text-slate-500 text-xs mt-2">No tools found</p></div>';
+        return;
+    }
+    container.innerHTML = tools.map(t => {
+        const statusDot = t.status === 'ready' ? 'bg-emerald-500' : t.status === 'installing' ? 'bg-blue-400 animate-pulse' : 'bg-amber-500';
+        const sel = selectedToolId === t.id ? 'selected' : '';
+        return `<div class="tool-card rounded-lg p-3 cursor-pointer glass-panel ${sel}" onclick="selectManualTool('${t.id}')">
+            <div class="flex items-center gap-2.5">
+                <div class="w-2 h-2 rounded-full ${statusDot} shrink-0"></div>
+                <div class="min-w-0">
+                    <div class="text-sm font-medium text-white truncate">${t.name}</div>
+                    <div class="text-[10px] text-slate-500 truncate">${t.category} · ${t.description.slice(0, 40)}...</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Select tool and build form
+async function selectManualTool(toolId) {
+    selectedToolId = toolId;
+    renderToolPicker(allTools.filter(t => {
+        const q = document.getElementById('tool-search').value.toLowerCase();
+        return !q || t.name.toLowerCase().includes(q) || t.id.toLowerCase().includes(q) || t.description.toLowerCase().includes(q);
+    }));
+
+    document.getElementById('no-tool-selected').classList.add('hidden');
+    document.getElementById('tool-form-content').classList.remove('hidden');
+    document.getElementById('form-tool-name').textContent = 'Loading...';
+
+    try {
+        const res = await fetch(`/api/tools/${toolId}/config`);
+        const cfg = await res.json();
+        selectedToolConfig = cfg;
+        buildForm(cfg);
+    } catch (e) {
+        document.getElementById('form-tool-name').textContent = 'Error loading config';
+    }
+}
+
+function buildForm(cfg) {
+    document.getElementById('form-tool-name').textContent = cfg.name;
+    document.getElementById('form-tool-desc').textContent = cfg.metadata.ai_description || cfg.description;
+
+    const riskEl = document.getElementById('form-tool-risk');
+    const rl = cfg.metadata.risk_level || 'low';
+    riskEl.textContent = rl;
+    riskEl.className = `px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wide risk-${rl}`;
+
+    const badge = document.getElementById('tool-icon-badge');
+    badge.className = `w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-${cfg.ui.color || 'violet'}-500/20 text-${cfg.ui.color || 'violet'}-400`;
+    badge.innerHTML = `<i class="fa-solid fa-${getIcon(cfg.ui.icon)}"></i>`;
+
+    // Build arg fields
+    const container = document.getElementById('args-container');
+    const placeholders = cfg.placeholders || [];
+
+    let html = `<div class="arg-field">
+        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Target *</label>
+        <input type="text" id="arg-target" placeholder="e.g. 192.168.1.1 or example.com"
+            class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
+    </div>`;
+
+    placeholders.forEach(p => {
+        if (p === 'target') return;
+        const modifier = (cfg.arg_modifiers || {})[p];
+        const hint = modifier ? `Prefix: ${modifier.prefix || 'none'}, Sep: ${modifier.separator || 'space'}` : '';
+        html += `<div class="arg-field">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${p}</label>
+            <input type="text" id="arg-${p}" placeholder="${hint || p}"
+                class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
+        </div>`;
+    });
+
+    html += `<div class="arg-field">
+        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Timeout (s)</label>
+        <input type="number" id="arg-timeout" value="${cfg.timeout || 300}" min="10" max="3600"
+            class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white focus:outline-none">
+    </div>`;
+
+    container.innerHTML = html;
+}
+
+function getIcon(name) {
+    const map = {network:'network-wired', crosshair:'crosshairs', database:'database', key:'key', shield:'shield',
+        terminal:'terminal', bug:'bug', globe:'globe', lightning:'bolt', 'folder-open':'folder-open'};
+    return map[name] || 'wrench';
+}
+
+// Execute tool
+async function executeManualTool() {
+    if (!selectedToolConfig) return;
+    const target = document.getElementById('arg-target')?.value;
+    if (!target) { alert('Target is required'); return; }
+
+    const args = {};
+    (selectedToolConfig.placeholders || []).forEach(p => {
+        if (p === 'target') return;
+        const val = document.getElementById('arg-' + p)?.value;
+        if (val) args[p] = val;
+    });
+    const timeout = parseInt(document.getElementById('arg-timeout')?.value) || 300;
+
+    const btn = document.getElementById('run-btn');
+    const status = document.getElementById('exec-status');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
+    status.textContent = 'Executing...';
+
+    const outputArea = document.getElementById('output-area');
+    outputArea.innerHTML = `<span class="text-violet-400">$ ${selectedToolConfig.command} ... ${target}</span>\n<span class="text-slate-500">Waiting for results...</span>\n`;
+    document.getElementById('output-tool-label').textContent = selectedToolConfig.name;
+    document.getElementById('output-duration').textContent = '';
+    document.getElementById('findings-panel').classList.add('hidden');
+    document.getElementById('output-findings-count').classList.add('hidden');
+
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+        status.textContent = `Running... ${elapsed}s`;
+    }, 1000);
+
+    try {
+        const res = await fetch(`/api/tools/${selectedToolConfig.id}/test`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({target, args, timeout})
+        });
+        const result = await res.json();
+        clearInterval(timer);
+
+        const dur = result.duration_seconds?.toFixed(1) || '0';
+        document.getElementById('output-duration').textContent = `${dur}s`;
+        status.textContent = result.success ? 'Completed' : 'Failed';
+        status.className = 'text-xs ml-auto font-mono ' + (result.success ? 'text-emerald-400' : 'text-rose-400');
+
+        let out = `<span class="text-violet-400">$ ${selectedToolConfig.command} ${selectedToolConfig.args_template}</span>\n`;
+        out += `<span class="text-slate-500">Target: ${target} | Exit: ${result.exit_code} | Duration: ${dur}s</span>\n\n`;
+
+        if (result.stdout) {
+            out += colorizeOutput(escapeHtml(result.stdout));
+        }
+        if (result.stderr) {
+            out += `\n<span class="text-amber-500/70">${escapeHtml(result.stderr)}</span>`;
+        }
+        if (!result.stdout && !result.stderr) {
+            out += '<span class="text-slate-500">(no output)</span>';
+        }
+        outputArea.innerHTML = out;
+
+        // Show findings
+        if (result.parsed_findings?.length > 0) {
+            document.getElementById('findings-panel').classList.remove('hidden');
+            document.getElementById('output-findings-count').classList.remove('hidden');
+            document.getElementById('output-findings-count').textContent = `${result.parsed_findings_count} findings`;
+            renderFindings(result.parsed_findings);
+        }
+    } catch (e) {
+        clearInterval(timer);
+        outputArea.innerHTML += `\n<span class="text-red-400">Error: ${e.message}</span>`;
+        status.textContent = 'Error';
+        status.className = 'text-xs ml-auto font-mono text-rose-400';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Run';
+    }
+}
+
+function renderFindings(findings) {
+    const list = document.getElementById('findings-list');
+    list.innerHTML = findings.slice(0, 30).map((f, i) => {
+        const sev = f.severity || f.state || 'info';
+        const title = f.name || f.service || f.title || f.template_id || `Finding ${i+1}`;
+        const detail = f.port ? `Port ${f.port}` : f.host || f.url || '';
+        const sevColor = {critical:'text-rose-400',high:'text-amber-400',medium:'text-blue-400',low:'text-slate-400',open:'text-emerald-400',info:'text-slate-500'}[sev.toLowerCase()] || 'text-slate-400';
+        return `<div class="flex items-center gap-3 text-xs p-2 rounded bg-white/[0.02] hover:bg-white/[0.04]">
+            <span class="font-mono ${sevColor} uppercase w-16 text-[10px] shrink-0">${sev}</span>
+            <span class="text-white truncate">${escapeHtml(title)}</span>
+            <span class="text-slate-500 ml-auto shrink-0">${escapeHtml(detail)}</span>
+        </div>`;
+    }).join('');
+}
+
+function colorizeOutput(text) {
+    return text
+        .replace(/(\[(\+|SUCCESS|FOUND|open)\])/gi, '<span class="text-emerald-400">$1</span>')
+        .replace(/(\[(-|FAIL|ERROR|closed)\])/gi, '<span class="text-rose-400">$1</span>')
+        .replace(/(\[(WARNING|WARN|\*)\])/gi, '<span class="text-amber-400">$1</span>')
+        .replace(/(\[(INFO|i)\])/gi, '<span class="text-blue-400">$1</span>')
+        .replace(/(CVE-\d{4}-\d+)/g, '<span class="text-rose-300 font-medium">$1</span>')
+        .replace(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/g, '<span class="text-violet-300">$1</span>');
+}
+
+function clearOutput() {
+    document.getElementById('output-area').innerHTML = '<span class="text-slate-600">Output will appear here...</span>';
+    document.getElementById('findings-panel').classList.add('hidden');
+    document.getElementById('output-findings-count').classList.add('hidden');
+    document.getElementById('output-duration').textContent = '';
+    document.getElementById('exec-status').textContent = '';
+    document.getElementById('exec-status').className = 'text-xs text-slate-500 ml-auto font-mono';
+}
+
+// === Pipeline ===
+function addPipelineStep() {
+    document.getElementById('pipeline-empty')?.remove();
+    const canvas = document.getElementById('pipeline-canvas');
+    const stepNum = pipelineSteps.length;
+    const id = ++pipelineStepId;
+
+    if (stepNum > 0) {
+        const conn = document.createElement('div');
+        conn.className = 'pipeline-connector shrink-0';
+        conn.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
+        canvas.appendChild(conn);
+    }
+
+    const node = document.createElement('div');
+    node.className = 'pipeline-node shrink-0 animate-fade-in-up';
+    node.id = 'pipeline-node-' + id;
+    node.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-mono text-slate-500">Step ${stepNum + 1}</span>
+            <button onclick="removePipelineStep(${id})" class="text-slate-600 hover:text-rose-400 text-xs transition-colors"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <select onchange="updatePipelineStep(${id}, this.value)" class="w-full px-2 py-1.5 bg-black/30 border border-white/10 rounded text-sm text-white mb-2 focus:outline-none focus:border-violet-500">
+            <option value="">Select tool...</option>
+            ${allTools.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
+        </select>
+        <input type="text" placeholder="Target / Args" id="pipeline-target-${id}"
+            class="w-full px-2 py-1.5 bg-black/30 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500">
+        <div class="text-[10px] text-slate-600 mt-1.5">Use <code class="text-violet-400">{prev}</code> for previous output</div>
+    `;
+    canvas.appendChild(node);
+    pipelineSteps.push({id, toolId: '', target: ''});
+}
+
+function removePipelineStep(id) {
+    const idx = pipelineSteps.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    pipelineSteps.splice(idx, 1);
+    // Rebuild pipeline canvas
+    rebuildPipelineCanvas();
+}
+
+function updatePipelineStep(id, toolId) {
+    const step = pipelineSteps.find(s => s.id === id);
+    if (step) step.toolId = toolId;
+}
+
+function rebuildPipelineCanvas() {
+    const canvas = document.getElementById('pipeline-canvas');
+    canvas.innerHTML = '';
+    if (pipelineSteps.length === 0) {
+        canvas.innerHTML = '<div class="empty-state" id="pipeline-empty"><i class="fa-solid fa-diagram-project text-violet-400/40"></i><h3>Build your pipeline</h3><p>Click "Add Step" to chain tools together.</p></div>';
+        return;
+    }
+    const saved = [...pipelineSteps];
+    pipelineSteps = [];
+    pipelineStepId = 0;
+    saved.forEach(s => {
+        addPipelineStep();
+        const last = pipelineSteps[pipelineSteps.length - 1];
+        const node = document.getElementById('pipeline-node-' + last.id);
+        if (node && s.toolId) {
+            node.querySelector('select').value = s.toolId;
+            last.toolId = s.toolId;
+        }
+    });
+}
+
+async function runPipeline() {
+    const output = document.getElementById('pipeline-output');
+    const btn = document.getElementById('pipeline-run-btn');
+
+    if (pipelineSteps.length === 0) { alert('Add at least one step'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Running...';
+    output.innerHTML = '';
+
+    let previousOutput = '';
+
+    for (let i = 0; i < pipelineSteps.length; i++) {
+        const step = pipelineSteps[i];
+        if (!step.toolId) {
+            output.innerHTML += `<span class="text-amber-400">Step ${i+1}: No tool selected, skipping\n</span>`;
+            continue;
+        }
+
+        const node = document.getElementById('pipeline-node-' + step.id);
+        node?.classList.add('active');
+        let target = document.getElementById('pipeline-target-' + step.id)?.value || '';
+        if (target.includes('{prev}') && previousOutput) {
+            target = target.replace('{prev}', previousOutput.trim().split('\n')[0]);
+        } else if (!target && previousOutput) {
+            target = previousOutput.trim().split('\n')[0];
+        }
+
+        if (!target) {
+            output.innerHTML += `<span class="text-amber-400">Step ${i+1} (${step.toolId}): No target, skipping\n</span>`;
+            node?.classList.remove('active');
+            continue;
+        }
+
+        output.innerHTML += `<span class="text-violet-400">━━━ Step ${i+1}: ${step.toolId} → ${escapeHtml(target)} ━━━</span>\n`;
+        output.innerHTML += `<span class="text-slate-500">Executing...</span>\n`;
+        output.scrollTop = output.scrollHeight;
+
+        try {
+            const res = await fetch(`/api/tools/${step.toolId}/test`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({target, args: {}, timeout: 300})
+            });
+            const result = await res.json();
+            const statusIcon = result.success ? '<span class="text-emerald-400">✓</span>' : '<span class="text-rose-400">✗</span>';
+            output.innerHTML += `${statusIcon} Exit: ${result.exit_code} | Duration: ${result.duration_seconds?.toFixed(1) || 0}s | Findings: ${result.parsed_findings_count || 0}\n`;
+
+            if (result.stdout) {
+                const preview = result.stdout.slice(0, 1500);
+                output.innerHTML += escapeHtml(preview) + (result.stdout.length > 1500 ? '\n...(truncated)' : '') + '\n';
+                previousOutput = result.stdout;
+            }
+            if (result.stderr) {
+                output.innerHTML += `<span class="text-amber-500/60">${escapeHtml(result.stderr.slice(0, 500))}</span>\n`;
+            }
+        } catch (e) {
+            output.innerHTML += `<span class="text-rose-400">Error: ${e.message}</span>\n`;
+        }
+
+        node?.classList.remove('active');
+        output.innerHTML += '\n';
+        output.scrollTop = output.scrollHeight;
+    }
+
+    output.innerHTML += `<span class="text-emerald-400">━━━ Pipeline complete ━━━</span>\n`;
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-play mr-1"></i> Run Pipeline';
+}
+
+function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => { loadTools(); });
+</script>
+{% endblock %}

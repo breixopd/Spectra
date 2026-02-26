@@ -12,15 +12,19 @@ from app.repositories.base import BaseRepository
 
 # --- Test Setup ---
 
+
 class MockBase(DeclarativeBase):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String)
 
+
 class MockModel(MockBase):
     __tablename__ = "test_model"
 
+
 class MockRepository(BaseRepository[MockModel]):  # type: ignore[type-var]
     pass
+
 
 @pytest_asyncio.fixture
 async def db_session():
@@ -33,7 +37,9 @@ async def db_session():
     async with session_maker() as session:
         yield session
 
+
 # --- Tests ---
+
 
 @pytest.mark.asyncio
 async def test_create_and_get(db_session):
@@ -49,6 +55,7 @@ async def test_create_and_get(db_session):
     assert fetched is not None
     assert fetched.name == "Test Item"
 
+
 @pytest.mark.asyncio
 async def test_find_one_by(db_session):
     repo = MockRepository(MockModel, db_session)
@@ -57,6 +64,7 @@ async def test_find_one_by(db_session):
     found = await repo.find_one_by(name="Unique Name")
     assert found is not None
     assert found.id == "1"
+
 
 @pytest.mark.asyncio
 async def test_delete(db_session):
