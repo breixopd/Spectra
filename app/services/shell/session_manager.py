@@ -139,6 +139,9 @@ class ShellSessionManager:
              except RuntimeError:
                  pass
 
+        # Record listener immediately so callers can see it's active
+        self.listeners[port] = None  # Placeholder until socket is created in thread
+
         def _listen():
             try:
                 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

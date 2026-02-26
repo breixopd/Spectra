@@ -23,7 +23,7 @@ from app.services.ai.agents.base import (
 from app.services.ai.agents.scope import ScopeAgent, ScopeInput, ScopeAction
 from app.services.ai.agents.tool_selector import ToolSelectorAgent, ToolSelectorInput, ToolSelectorOutput
 from app.services.tools.models import ToolConfig, ToolCategory, RegisteredTool, ToolStatus
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 
 # --- Fixtures ---
@@ -56,6 +56,8 @@ def mock_registry():
     ]
 
     registry.get_available_tools.return_value = tools
+    registry.list_tools.return_value = tools
+    registry.sync_status_from_redis = AsyncMock()
     registry.get_tool.side_effect = lambda x: next((t for t in tools if t.config.id == x), None)
 
     return registry
