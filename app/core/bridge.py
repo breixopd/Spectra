@@ -30,7 +30,7 @@ class EventWebSocketBridge:
 
         # Subscribe to all event types that should be broadcast
         # We can iterate over EventType enum or subscribe to specific ones
-        # For now, we subscribe to 'mission_*', 'tool_*', 'finding_*', 'agent_*'
+        # Subscribe to 'mission_*', 'tool_*', 'finding_*', 'agent_*'
 
         # We'll use a catch-all approach by subscribing to common prefixes if logic allows,
         # but EventBus requires specific event types.
@@ -38,7 +38,7 @@ class EventWebSocketBridge:
         # Subscribe to all EventType members
         for event_type in EventType:
             # We don't broadcast sensitive events or internal-only ones if needed
-            # For now, broadcast all typical monitoring events
+            # Broadcast monitoring events
             events.subscribe(event_type, self._handle_event)
 
         self.listening = True

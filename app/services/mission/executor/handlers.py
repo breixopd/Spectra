@@ -338,11 +338,9 @@ class TaskDispatcher:
                     mission.log(f"Output: {result.stdout[:200]}...")
 
                 # If we have exploit metadata, we should save this attempt
-                # Note: Real validation usually happens in verification phase,
                 # but for custom scripts, successful execution is step 1.
 
                 # We can update the mission findings/attack surface here if the script output implies success
-                # For now, we rely on the subsequent Verification task (if any) or just log it.
             else:
                 mission.log(f"Script execution failed: {result.stderr}")
 
@@ -561,8 +559,6 @@ class TaskDispatcher:
                     mission.log(f"Generated vector: {vector.name} ({vector.priority})")
                     # Broadcast vector update? Mission handles it internally via add_vector logging?
                     # Executor used _broadcast("vector_update").
-                    # We can leave it for now or implement _broadcast method in Dispatcher (it has one).
-                    # self._broadcast("vector_update", vector.model_dump(mode="json"))
                     pass
 
         except Exception as e:

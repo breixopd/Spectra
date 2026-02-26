@@ -169,15 +169,6 @@ class PluginInstaller:
                 # We still try to remove the plugin file even if commands fail
                 pass
 
-        # Remove plugin file handled by Registry or here?
-        # Logic was in registry previously.
-        # It's better if `uninstall_tool` here just handles the COMMANDS,
-        # and Registry handles the FILE removal and MEMORY removal.
-        # But `install_tool` handled status updates.
-
-        # Let's verify `install_tool` logic: it does status updates on the tool object.
-        # So `uninstall_tool` should probably return logic success, and registry cleans up.
-
         return True
 
     async def _verify_installation(self, config: ToolConfig) -> bool:

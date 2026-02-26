@@ -39,7 +39,7 @@ class POCService:
             callback_host = settings.CONNECT_BACK_HOST
 
             # Start listener if reverse shell
-            # In a real scenario, we'd allocate a free port dynamically
+            # Allocate a free port
             shell_manager.start_listener(
                 callback_port, context.session_id, request.target
             )

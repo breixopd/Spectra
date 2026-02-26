@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
+
 import numpy as np
 
 from app.services.ai.embeddings import EmbeddingService

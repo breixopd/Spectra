@@ -36,10 +36,7 @@ from app.core.bridge import EventWebSocketBridge
 event_bridge = EventWebSocketBridge()
 
 # Patch lifespan to include bridge
-# Note: In a cleaner implementation, we would add this to app/core/lifespan.py
-# but to keep changes focused, we'll wrap the lifespan here or rely on the fact
 # that lifespan imports are used.
-# Ideally, we should add startup/shutdown events.
 
 
 # --- Logging Setup ---
