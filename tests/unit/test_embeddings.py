@@ -4,10 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 import asyncio
 
-try:
-    import numpy as np
-except ImportError:
-    pytest.skip("numpy not installed", allow_module_level=True)
+import numpy as np
 
 from app.services.ai.embeddings import EmbeddingService
 
