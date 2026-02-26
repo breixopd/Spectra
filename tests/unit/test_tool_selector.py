@@ -3,7 +3,7 @@ Tests for Tool Selector Agent with edge cases and error handling.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
@@ -278,8 +278,14 @@ class TestToolSelectorExecution:
             mock_tool.config.metadata.prerequisites = []
             mock_tool.config.metadata.tags = ["network"]
             mock_tool.config.metadata.categories = ["DISCOVERY"]
+            mock_tool.config.get_ai_summary.return_value = "**Nmap** (nmap)\nCategory: discovery\nDescription: Port scanner"
+            mock_tool.config.execution.min_timeout = 60
+            mock_tool.config.execution.timeout = 300
 
-            mock_registry.return_value.list_tools.return_value = [mock_tool]
+            registry_instance = mock_registry.return_value
+            registry_instance.get_tool.return_value = mock_tool
+            registry_instance.list_tools.return_value = [mock_tool]
+            registry_instance.sync_status_from_redis = AsyncMock()
 
             result = await agent.execute(context, input_data)
 

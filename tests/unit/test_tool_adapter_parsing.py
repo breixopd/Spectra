@@ -57,14 +57,10 @@ class TestToolAdapterParsing:
         adapter.config.parsing.row_tag = "item"
         findings = adapter.parser._parse_xml(xml_content)
         
-        # _parse_xml returns [root_dict]
-        assert len(findings) == 1
-        # The items are nested under result['item'] if root name is stripped or under root?
-        # Check _xml_to_dict logic: it returns children keys. So keys are 'item'.
-        items = findings[0]['item']
-        assert len(items) == 2
-        assert items[0]["severity"]["_text"] == "high"
-        assert items[1]["id"]["_text"] == "2"
+        # Parser finds "item" container elements and returns each as a finding
+        assert len(findings) == 2
+        assert findings[0]["severity"] == "high"
+        assert findings[1]["id"] == "2"
 
     def test_parse_malformed_xml(self, adapter):
         xml_content = "<root><unclosed>"

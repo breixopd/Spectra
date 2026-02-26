@@ -329,17 +329,19 @@ class TestOutputParser:
         from app.services.tools.adapter.parser import OutputParser
         return OutputParser(config)
 
-    def test_parse_json_output(self, parser):
+    @pytest.mark.asyncio
+    async def test_parse_json_output(self, parser):
         """Test JSON output parsing."""
         output = '[{"level": "high", "title": "SQL Injection"}]'
 
-        findings = parser.parse_output(output, "", None)
+        findings = await parser.parse_output(output, "", None)
 
         assert len(findings) == 1
         assert findings[0]["severity"] == "high"  # Mapped from "level"
         assert findings[0]["name"] == "SQL Injection"  # Mapped from "title"
 
-    def test_parse_ndjson_output(self, parser):
+    @pytest.mark.asyncio
+    async def test_parse_ndjson_output(self, parser):
         """Test NDJSON (newline-delimited JSON) parsing."""
         parser.config.parsing.format = "ndjson" # Verify NDJSON format logic if needed, or parser auto-detects
         # Updating config to match expected behavior if format matters
@@ -347,7 +349,7 @@ class TestOutputParser:
         output = '{"level": "high", "title": "XSS"}\n{"level": "low", "title": "Info Disclosure"}'
 
         # Ensure parser handles NDJSON if configured
-        findings = parser.parse_output(output, "", None)
+        findings = await parser.parse_output(output, "", None)
 
         assert len(findings) == 2
         assert findings[0]["severity"] == "high"
