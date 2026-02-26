@@ -217,6 +217,10 @@
                         <i class="fa-solid fa-toolbox text-lg mr-3 {% if request.path == '/toolbox' %}text-rose-400{% else %}group-hover:text-rose-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Toolbox</span>
                     </a>
+                    <a href="/manual" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/manual' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-terminal text-lg mr-3 {% if request.path == '/manual' %}text-orange-400{% else %}group-hover:text-orange-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Manual Mode</span>
+                    </a>
                     <a href="/observability" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-chart-line text-lg mr-3 {% if request.path == '/observability' %}text-teal-400{% else %}group-hover:text-teal-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Observability</span>

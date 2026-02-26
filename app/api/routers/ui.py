@@ -115,6 +115,15 @@ async def toolbox_page(request: Request):
     )
 
 
+@router.get("/manual", response_class=HTMLResponse)
+async def manual_tools_page(request: Request):
+    """Serve the manual tools execution page."""
+    return templates.TemplateResponse(
+        "manual_tools.html",
+        {"request": request, "title": "Spectra | Manual Tools"},
+    )
+
+
 @router.get("/toolbox/create", response_class=HTMLResponse)
 async def plugin_creator_page(request: Request):
     """Serve the plugin creator page."""
