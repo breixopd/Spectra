@@ -5,7 +5,6 @@ __pycache__/**
 *.log
 *.cpython
 
-.env.test
 .env
 .vscode
 .venv
