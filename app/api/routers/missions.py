@@ -47,7 +47,49 @@ async def get_scan_presets():
 async def get_adversary_playbooks():
     """List available adversary simulation playbooks."""
     from app.services.ai.adversary_playbooks import list_adversary_playbooks
+
     return list_adversary_playbooks()
+
+
+@router.get("/adversary-playbooks/{playbook_id}")
+async def get_adversary_playbook_detail(playbook_id: str):
+    """Get full details of an adversary playbook."""
+    from app.services.ai.adversary_playbooks import get_adversary_playbook
+
+    pb = get_adversary_playbook(playbook_id)
+    if not pb:
+        raise HTTPException(status_code=404, detail="Playbook not found")
+    return pb.model_dump()
+
+
+@router.get("/exploit-chains")
+async def get_exploit_chains():
+    """List available exploit chains."""
+    from app.services.mission.chain_builder import get_builtin_chains
+
+    return [c.model_dump() for c in get_builtin_chains()]
+
+
+@router.get("/attack-summary")
+async def get_attack_coverage(
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Get MITRE ATT&CK technique coverage from all recent missions."""
+    from app.services.ai.mitre_attack import get_attack_summary
+
+    # Get recent mission findings from memory
+    try:
+        from app.services.ai.memory import get_memory
+
+        memory = get_memory()
+        findings = []
+        for lesson in memory.tool_lessons[-50:]:
+            findings.append(
+                {"tool_name": lesson.tool_id, "source": "tool_execution"}
+            )
+        return get_attack_summary(findings)
+    except Exception:
+        return {"tactics": {}, "total_techniques": 0}
 
 
 @router.post("", response_model=MissionResponse)
