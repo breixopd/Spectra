@@ -296,6 +296,45 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         # Get methodology guidance using centralized service
         methodology_context = get_methodology_guidance(input_data.current_phase)
 
+        # Get learned context from persistent memory
+        memory_context = ""
+        try:
+            from app.services.ai.memory import get_memory, detect_os_from_services
+            memory = get_memory()
+            # Detect OS from known services
+            os_family = None
+            if input_data.known_services:
+                os_family = detect_os_from_services(input_data.known_services)
+                if os_family == "unknown":
+                    os_family = None
+            # Get service-specific recommendations from past missions
+            primary_service = None
+            if input_data.known_services:
+                primary_service = input_data.known_services[0].get("service")
+            memory_context = memory.get_context_for_prompt(
+                service=primary_service,
+                os_family=os_family,
+            )
+        except Exception:
+            pass
+
+        # Get playbook recommendations
+        playbook_context = ""
+        try:
+            from app.services.ai.playbook import get_playbook_engine
+            engine = get_playbook_engine()
+            playbook_context = engine.get_grounded_prompt_context(
+                input_data.known_services,
+                input_data.tools_already_run,
+            )
+        except Exception:
+            pass
+
+        # Combine all learned context
+        learned_context = "\n\n".join(filter(None, [memory_context, playbook_context]))
+        if learned_context:
+            learned_context = f"\n--- Learned from Past Missions ---\n{learned_context}\n"
+
         prompt = TOOL_SELECTION_PROMPT.format(
             target=input_data.target,
             target_type=input_data.target_type,
@@ -308,7 +347,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             vulns_info=vulns_info,
             already_run_info=already_run_info,
             methodology_context=methodology_context,
-            rag_context=rag_context,
+            rag_context=rag_context + learned_context,
             tools_text=tools_text,
         )
 

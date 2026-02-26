@@ -67,7 +67,10 @@ class MissionExecutionManager:
             # 3. Execute tasks
             await self._execute_mission_tasks(mission, context)
 
-            # 4. Complete
+            # 4. Post-mission learning
+            self._record_mission_lessons(mission)
+
+            # 5. Complete
             mission.set_status("completed")
             mission.log("Mission completed successfully")
             self._broadcast_state("mission_controller", "idle", plan="Mission Complete")
@@ -357,6 +360,50 @@ class MissionExecutionManager:
         except Exception as e:
             logger.error("Adaptive replanning failed: %s", e, exc_info=True)
             mission.log(f"[ADAPT] Critical failure: {e}")
+
+    def _record_mission_lessons(self, mission: Mission) -> None:
+        """Extract lessons from the completed mission and persist them."""
+        try:
+            from app.services.ai.memory import get_memory
+
+            memory = get_memory()
+
+            # Detect duplicate/low-value finding templates as false positives
+            template_counts: dict[str, int] = {}
+            for finding in mission.findings:
+                template = finding.get("template-id") or finding.get("name", "")
+                if template:
+                    template_counts[template] = template_counts.get(template, 0) + 1
+
+            for template, count in template_counts.items():
+                severity = next(
+                    (f.get("severity", "info") for f in mission.findings
+                     if (f.get("template-id") or f.get("name")) == template),
+                    "info"
+                )
+                if count >= 5 and severity == "info":
+                    memory.record_false_positive(template)
+                    mission.log(f"[LEARN] Marked '{template}' as probable false positive ({count} duplicates)")
+
+            # Record OS profile if detected
+            os_family = getattr(mission, '_detected_os', None)
+            if os_family and os_family != "unknown":
+                services = [s.service for s in mission.attack_surface.services if s.service]
+                memory.update_target_profile(
+                    os_family,
+                    services=services,
+                    note=f"Mission against {mission.target}: {len(mission.findings)} findings, "
+                         f"{len(mission.tools_run)} tools used",
+                )
+
+            stats = memory.get_stats()
+            mission.log(
+                f"[LEARN] Memory updated: {stats['tool_lessons']} tool lessons, "
+                f"{stats['exploit_lessons']} exploit patterns, {stats['target_profiles']} OS profiles"
+            )
+
+        except Exception as e:
+            logger.debug("Post-mission learning failed (non-critical): %s", e)
 
     def _broadcast_state(self, agent_id: str, status: str, **kwargs) -> None:
         """Broadcast agent state."""
