@@ -57,7 +57,7 @@ class ToolInstaller:
             return {
                 "tool_id": tool_id,
                 "success": success,
-                "status": tool.status.value if tool else "unknown",
+                "status": (tool.status.value if hasattr(tool.status, 'value') else tool.status) if tool else "unknown",
                 "error": tool.error_message if tool else None,
             }
         except Exception as e:

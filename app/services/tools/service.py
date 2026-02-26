@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING, cast
 
 from app.core.config import settings
-from app.services.tools.adapter.builder import CommandBuilder
+from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.models import ToolExecutionRequest, ToolExecutionResult
 from app.services.tools.registry import get_registry
 from app.services.ai.agents.base import AgentContext, ToolAction
@@ -191,7 +191,7 @@ class ToolExecutionService:
 
             if not tool:
                 mission.log(f"Tool {tool_name} not found in registry")
-                return self._create_error_result(tool_name, target, "Tool not found")
+                return self._create_error_result(tool_name, target, "Tool not available")
 
             # Auto-install tool if not ready
             if not tool.is_available:
@@ -230,7 +230,7 @@ class ToolExecutionService:
             run_id = f"{tool_name}_{timestamp}_{uuid.uuid4().hex[:4]}"
             output_dir = self._prepare_output_directory(mission.id, run_id)
 
-            builder = CommandBuilder(tool.config)
+            adapter = CommandToolAdapter(tool.config)
             
             request = ToolExecutionRequest(
                 tool_id=tool_name,
@@ -240,7 +240,7 @@ class ToolExecutionService:
             )
 
             # 3. Safety Check (Pre-flight) with retry on failure
-            full_command = builder.build_command(request, output_dir=str(output_dir))
+            full_command = adapter.build_command(request, output_dir=str(output_dir))
 
             # Log detailed command info
             args_str = (
@@ -257,7 +257,7 @@ class ToolExecutionService:
 
             # Safety check with auto-fix retry
             is_safe, reason, fixed_args = await self._perform_safety_check_with_retry(
-                mission, full_command, tool_name, target, args, builder, output_dir
+                mission, full_command, tool_name, target, args, adapter, output_dir
             )
             if not is_safe:
                 # Record the failed attempt for learning
@@ -273,7 +273,7 @@ class ToolExecutionService:
             # Use fixed args if safety check corrected them
             if fixed_args is not None:
                 request.args = fixed_args
-                full_command = builder.build_command(
+                full_command = adapter.build_command(
                     request, output_dir=str(output_dir)
                 )
                 mission.log(
@@ -286,10 +286,26 @@ class ToolExecutionService:
                 if not is_approved:
                     return self._create_error_result(tool_name, target, "Blocked by Consensus")
 
-            # 5. Execution (with Retry)
-            return await self._execute_with_retry(
-                mission, request, output_dir, max_retries=1
-            )
+            # 5. Execution via adapter
+            async with self._semaphore:
+                result = await adapter.execute(request, output_dir=str(output_dir))
+
+            if result.success:
+                self._log_success(mission, tool_name, result)
+                for finding in result.parsed_findings:
+                    mission.add_finding(finding)
+                    self._update_attack_surface_from_finding(mission, finding)
+                mission.record_tool_run(
+                    tool_name, args=args, command=full_command, success=True,
+                )
+            else:
+                last_error = result.stderr[:500] if result.stderr else "No error message"
+                mission.log(f"[ERROR] {tool_name} failed: {last_error[:200]}")
+                mission.record_tool_run(
+                    tool_name, args=args, success=False, error=last_error,
+                )
+
+            return result
 
         except Exception as e:
             msg = f"Critical error executing {tool_name}: {e}"
@@ -541,7 +557,7 @@ class ToolExecutionService:
         tool_name: str,
         target: str,
         args: dict[str, Any] | None,
-        builder: "CommandBuilder",
+        builder: "CommandToolAdapter",
         output_dir: Path,
         max_retries: int = 2,
     ) -> tuple[bool, str, dict[str, Any] | None]:
