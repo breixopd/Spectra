@@ -168,8 +168,10 @@
         </div>
     </div>
 
-    <div class="flex h-full relative z-10 flex-col md:flex-row">
+    {% set is_public_page = request.path in ['/login', '/setup'] %}
+    <div class="flex h-full relative z-10 {% if is_public_page %}items-center justify-center{% else %}flex-col md:flex-row{% endif %}">
 
+        {% if not is_public_page %}
         <!-- Mobile Header -->
         <div class="mobile-header">
             <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
@@ -244,9 +246,10 @@
                 </div>
             </div>
         </aside>
+        {% endif %}
 
         <!-- Main Content -->
-        <main class="main-content flex-1 p-4 md:p-6 h-full overflow-y-auto overflow-x-hidden flex flex-col">
+        <main class="{% if is_public_page %}w-full max-w-lg px-4{% else %}main-content flex-1 p-4 md:p-6 h-full overflow-y-auto overflow-x-hidden flex flex-col{% endif %}">
             {% block content %}{% endblock %}
         </main>
     </div>
