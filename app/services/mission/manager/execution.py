@@ -75,6 +75,21 @@ class MissionExecutionManager:
             mission.log("Mission completed successfully")
             self._broadcast_state("mission_controller", "idle", plan="Mission Complete")
 
+            # Send notification
+            try:
+                from app.services.notifications import notify_mission_completed
+
+                critical = sum(
+                    1
+                    for f in mission.findings
+                    if str(f.get("severity", "")).lower() == "critical"
+                )
+                await notify_mission_completed(
+                    mission.target, len(mission.findings), critical
+                )
+            except Exception:
+                pass
+
             # Update DB
             await self.lifecycle.update_db_status(mission)
 
