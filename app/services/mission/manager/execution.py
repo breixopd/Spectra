@@ -50,9 +50,29 @@ class MissionExecutionManager:
 
     async def run_mission_loop(self, mission: Mission) -> None:
         """Main execution loop for a mission."""
+        # Initialize demo recorder if requested
+        recorder = None
+        if getattr(mission, "record_demo", False):
+            try:
+                from app.services.mission.demo_recorder import DemoRecorder
+
+                recorder = DemoRecorder(mission.id, mission.target)
+                recorder.start()
+                mission.log("[RECORD] Demo recording started")
+            except Exception:
+                pass
+
         context = await self.lifecycle.initialize_mission(mission)
         if context is None:
-            return  # Initialization failed
+            return
+
+        # Send start notification
+        try:
+            from app.services.notifications import notify_mission_started
+
+            await notify_mission_started(mission.target, mission.directive)
+        except Exception:
+            pass
 
         try:
             # 1. Define Scope
@@ -64,18 +84,33 @@ class MissionExecutionManager:
             if mission.plan is None:
                 raise RuntimeError("No plan created")
 
-            # 3. Execute tasks
+            # 3. Execute tasks (with demo recording)
+            if recorder:
+                mission._demo_recorder = recorder
             await self._execute_mission_tasks(mission, context)
 
             # 4. Post-mission learning
             self._record_mission_lessons(mission)
 
-            # 5. Complete
+            # 5. Run AI debrief
+            await self._run_debrief(mission, context)
+
+            # 6. Generate HTML report
+            self._generate_html_report(mission)
+
+            # 7. Complete
             mission.set_status("completed")
             mission.log("Mission completed successfully")
             self._broadcast_state("mission_controller", "idle", plan="Mission Complete")
 
-            # Send notification
+            # Save demo recording
+            if recorder:
+                path = recorder.stop()
+                recorder.save()
+                if path:
+                    mission.log(f"[RECORD] Demo saved: {path}")
+
+            # Send completion notification
             try:
                 from app.services.notifications import notify_mission_completed
 
@@ -489,6 +524,49 @@ class MissionExecutionManager:
         except Exception as e:
             logger.error("Adaptive replanning failed: %s", e, exc_info=True)
             mission.log(f"[ADAPT] Critical failure: {e}")
+
+    async def _run_debrief(self, mission: Mission, context: AgentContext) -> None:
+        """Run AI debrief analysis after mission completion."""
+        try:
+            from app.services.ai.agents.debrief import DebriefAgent, DebriefInput
+
+            if not self.mission_controller:
+                return
+
+            debrief = DebriefAgent(self.mission_controller.llm)
+            debrief_input = DebriefInput(
+                target=mission.target,
+                directive=mission.directive,
+                findings=mission.findings[:30],
+                tools_run=mission.tools_run,
+                logs=mission.logs[-50:],
+                attack_surface_summary=mission.attack_surface.get_summary(),
+            )
+
+            result = await debrief.execute(context, debrief_input)
+            if result.success and result.action:
+                action = result.action
+                mission.log(f"[DEBRIEF] Risk: {action.risk_rating.upper()}")
+                mission.log(f"[DEBRIEF] {action.executive_summary[:200]}")
+                for lesson in action.lessons_learned[:3]:
+                    mission.log(f"[LEARN] {lesson}")
+        except Exception as e:
+            logger.debug("Debrief failed (non-critical): %s", e)
+
+    def _generate_html_report(self, mission: Mission) -> None:
+        """Generate HTML report from mission data."""
+        try:
+            from app.services.mission.report_generator import (
+                generate_html_report,
+                save_report,
+            )
+
+            html = generate_html_report(mission.to_dict())
+            path = save_report(mission.id, html)
+            if path:
+                mission.log(f"[REPORT] HTML report: {path}")
+        except Exception as e:
+            logger.debug("HTML report generation failed: %s", e)
 
     def _record_mission_lessons(self, mission: Mission) -> None:
         """Extract lessons from the completed mission and persist them."""

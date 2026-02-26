@@ -183,6 +183,14 @@ class Mission:
         except Exception:
             pass
 
+        # Auto-tag with MITRE ATT&CK techniques
+        try:
+            from app.services.ai.mitre_attack import tag_finding_with_attack
+
+            finding = tag_finding_with_attack(finding)
+        except Exception:
+            pass
+
         finding["count"] = 1
         self.findings.append(finding)
         self._broadcast("finding", finding)

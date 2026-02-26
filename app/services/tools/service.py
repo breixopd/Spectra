@@ -447,18 +447,15 @@ class ToolExecutionService:
         output_dir: str,
     ) -> ToolExecutionResult:
         """Execute tool via ARQ worker and wait for result."""
-        from arq import create_pool
-        from arq.connections import RedisSettings
-        from app.core.config import settings
+        from app.core.optimizations import get_arq_pool, tool_cache
 
-        redis_settings = RedisSettings(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD.get_secret_value(),
-            database=settings.REDIS_DB,
-        )
+        # Check cache first
+        cached = tool_cache.get(tool_id, target, args or {})
+        if cached is not None:
+            logger.info("Using cached result for %s against %s", tool_id, target)
+            return cached
 
-        pool = await create_pool(redis_settings, default_queue_name="spectra:tasks")
+        pool = await get_arq_pool()
 
         try:
             # Enqueue the job
@@ -485,8 +482,11 @@ class ToolExecutionService:
                     tool_id, target, "Job returned no result"
                 )
 
-            # Convert dict back to ToolExecutionResult
-            return ToolExecutionResult(**result_data)
+            # Convert dict back to ToolExecutionResult and cache
+            result = ToolExecutionResult(**result_data)
+            if result.success:
+                tool_cache.set(tool_id, target, args or {}, result)
+            return result
 
         except asyncio.TimeoutError:
             return self._create_error_result(
@@ -495,11 +495,6 @@ class ToolExecutionService:
         except Exception as e:
             logger.error("Worker execution failed: %s", e)
             return self._create_error_result(tool_id, target, f"Worker error: {e}")
-        finally:
-            if hasattr(pool, "aclose"):
-                await pool.aclose()
-            else:
-                await pool.close()
 
     async def _ensure_tool_installed(self, tool_id: str) -> bool:
         """Ensure a tool is installed via the worker."""

@@ -374,9 +374,31 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         except Exception:
             pass
 
+        # Generate smart wordlist context for brute-force and directory tools
+        wordlist_context = ""
+        try:
+            from app.services.ai.wordlists import (
+                generate_credential_list,
+                generate_tech_wordlist,
+            )
+
+            if input_data.known_services:
+                for svc in input_data.known_services[:3]:
+                    service = svc.get("service", "")
+                    product = svc.get("product")
+                    if service:
+                        creds = generate_credential_list(service, product)
+                        wordlist_context += (
+                            f"\n**Default credentials for {service}**: "
+                            f"users=[{','.join(creds['users'][:5])}] "
+                            f"passwords=[{','.join(creds['passwords'][:5])}]"
+                        )
+        except Exception:
+            pass
+
         # Combine all learned context
         learned_context = "\n\n".join(
-            filter(None, [memory_context, playbook_context, cve_context])
+            filter(None, [memory_context, playbook_context, cve_context, wordlist_context])
         )
         if learned_context:
             learned_context = (
