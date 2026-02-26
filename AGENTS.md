@@ -64,3 +64,4 @@ ruff check app/
 - In Docker-in-Docker environments, use `fuse-overlayfs` storage driver and `iptables-legacy`.
 - Tool plugins auto-install in the tools container on startup. Adding a new `.json` file to `plugins/` is all that's needed.
 - `FULLY_AUTOMATED=true` disables human approval requirements — tests that verify human approval behavior must monkeypatch this to `False`.
+- `xhtml2pdf` (in `requirements-app.txt`) needs system packages `libcairo2-dev`, `pkg-config`, and `python3-dev` to build its `pycairo` transitive dependency. Install them with `apt-get` before `pip install -r requirements-app.txt` if they are missing.
