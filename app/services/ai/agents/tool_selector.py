@@ -353,8 +353,20 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         except Exception:
             pass
 
+        # Get CVE intelligence for discovered services
+        cve_context = ""
+        try:
+            from app.services.ai.cve_intel import get_cve_context_for_services
+
+            if input_data.known_services:
+                cve_context = get_cve_context_for_services(input_data.known_services)
+        except Exception:
+            pass
+
         # Combine all learned context
-        learned_context = "\n\n".join(filter(None, [memory_context, playbook_context]))
+        learned_context = "\n\n".join(
+            filter(None, [memory_context, playbook_context, cve_context])
+        )
         if learned_context:
             learned_context = (
                 f"\n--- Learned from Past Missions ---\n{learned_context}\n"
