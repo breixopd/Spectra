@@ -19,10 +19,38 @@
     </div>
 
     <div class="flex items-center gap-2">
-        <button class="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 border border-white/10 rounded-lg text-xs text-slate-300 hover:bg-white/5 transition-colors">
-            <i class="fa-solid fa-brain text-violet-400"></i>
-            <span id="current-model">Qwen-2.5-3B</span>
-        </button>
+        <!-- Scan Preset Dropdown -->
+        <div class="relative group">
+            <button class="flex items-center gap-2 px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 border border-violet-500/30 rounded-lg text-xs text-white transition-colors">
+                <i class="fa-solid fa-bolt"></i>
+                <span>Presets</span>
+                <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
+            </button>
+            <div class="absolute right-0 top-full mt-1 w-64 bg-slate-900 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                <div class="p-1.5" id="preset-dropdown">
+                    <div class="px-2 py-1 text-[9px] font-mono text-slate-500 uppercase tracking-wider">Quick Launch</div>
+                    <button onclick="launchPreset('quick_recon')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-bolt text-amber-400 w-4"></i> Quick Recon <span class="ml-auto text-[9px] text-slate-500">~5 min</span>
+                    </button>
+                    <button onclick="launchPreset('full_assessment')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-shield text-violet-400 w-4"></i> Full Assessment <span class="ml-auto text-[9px] text-slate-500">~30 min</span>
+                    </button>
+                    <button onclick="launchPreset('web_only')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-globe text-blue-400 w-4"></i> Web Application <span class="ml-auto text-[9px] text-slate-500">~15 min</span>
+                    </button>
+                    <button onclick="launchPreset('stealth')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-ghost text-slate-400 w-4"></i> Stealth Scan <span class="ml-auto text-[9px] text-slate-500">~45 min</span>
+                    </button>
+                    <button onclick="launchPreset('exploit_focus')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-crosshairs text-rose-400 w-4"></i> Exploit Focus <span class="ml-auto text-[9px] text-slate-500">~20 min</span>
+                    </button>
+                    <button onclick="launchPreset('api_security')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                        <i class="fa-solid fa-code text-emerald-400 w-4"></i> API Security <span class="ml-auto text-[9px] text-slate-500">~15 min</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <button onclick="pauseMission()" class="p-2 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-white/5 transition-colors" title="Pause">
             <i class="fa-solid fa-pause"></i>
         </button>
