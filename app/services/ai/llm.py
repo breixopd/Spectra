@@ -386,8 +386,6 @@ class APIClient(LLMClient):
             return False
 
 
-# Legacy alias for backwards compatibility
-OpenAIClient = APIClient
 
 
 # --- Mock Client (for testing) ---
@@ -519,7 +517,7 @@ def get_llm_client(
     Factory function to get the appropriate LLM client.
 
     Args:
-        provider: One of "ollama", "api", "openai" (legacy), or "mock".
+        provider: One of "ollama", "api", or "mock".
         **kwargs: Provider-specific arguments.
 
     Returns:
@@ -530,7 +528,7 @@ def get_llm_client(
             host=kwargs.get("host", "http://localhost:11434"),
             model=kwargs.get("model", "qwen2.5:3b"),
         )
-    elif provider in ("api", "openai"):  # Support both new and legacy names
+    elif provider in ("api", "openai"):
         api_key = kwargs.get("api_key")
         if not api_key:
             raise ValueError("API key is required for cloud provider")
