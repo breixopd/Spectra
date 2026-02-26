@@ -286,9 +286,15 @@ class ToolExecutionService:
                 if not is_approved:
                     return self._create_error_result(tool_name, target, "Blocked by Consensus")
 
-            # 5. Execution via adapter
+            # 5. Execution via ARQ worker in tools container
             async with self._semaphore:
-                result = await adapter.execute(request, output_dir=str(output_dir))
+                result = await self._execute_via_worker(
+                    tool_id=request.tool_id,
+                    target=request.target,
+                    args=request.args,
+                    timeout=request.timeout,
+                    output_dir=str(output_dir),
+                )
 
             if result.success:
                 self._log_success(mission, tool_name, result)
