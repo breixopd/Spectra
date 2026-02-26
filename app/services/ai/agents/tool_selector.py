@@ -353,13 +353,24 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         except Exception:
             pass
 
-        # Get CVE intelligence for discovered services
+        # Get CVE intelligence for discovered services (live + builtin)
         cve_context = ""
         try:
-            from app.services.ai.cve_intel import get_cve_context_for_services
+            from app.services.ai.cve_intel import (
+                get_cve_context_for_services,
+                get_cve_context_for_services_live,
+            )
 
             if input_data.known_services:
-                cve_context = get_cve_context_for_services(input_data.known_services)
+                # Try live NVD lookup first, fall back to builtin
+                try:
+                    cve_context = await get_cve_context_for_services_live(
+                        input_data.known_services
+                    )
+                except Exception:
+                    cve_context = get_cve_context_for_services(
+                        input_data.known_services
+                    )
         except Exception:
             pass
 
