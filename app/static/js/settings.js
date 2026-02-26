@@ -148,6 +148,33 @@ function setCheckboxValue(name, value) {
 }
 
 function checkSystemStatus() {
-    // Mock API call
     console.log('Checking system status...');
+}
+
+// Provider preset quick-setup buttons
+async function applyPreset(presetId) {
+    try {
+        const res = await fetch('/api/settings');
+        const data = await res.json();
+        const presets = data.provider_presets || {};
+        const preset = presets[presetId];
+
+        if (!preset) {
+            alert('Preset not found: ' + presetId);
+            return;
+        }
+
+        setFieldValue('llm_api_base_url', preset.base_url || '');
+        setFieldValue('llm_model', preset.default_model || '');
+
+        // Visual feedback
+        const btn = event.target.closest('button');
+        if (btn) {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<span class="text-emerald-400">✓ Applied</span>';
+            setTimeout(() => { btn.innerHTML = orig; }, 1500);
+        }
+    } catch (e) {
+        console.error('Failed to apply preset:', e);
+    }
 }
