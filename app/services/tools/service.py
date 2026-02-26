@@ -725,7 +725,7 @@ Example response format:
         mission.log(f"[VOTE] High-risk action: {tool_name} ({risk_level})")
 
         # Construct proxy action for consensus check
-        # This is a bit of a hack, but VotingSystem expects an Action object
+        # Construct action for consensus validation
         from app.services.ai.agents.base import AgentAction, ActionRisk
 
         proxy_action = AgentAction(

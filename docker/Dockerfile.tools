@@ -1,14 +1,11 @@
-# =============================================================================
-# Spectra Tools - Optimized Worker Dockerfile
-# =============================================================================
-# Kali-based with security tools. Tools auto-install via plugin system.
-# Target size: ~3-4GB (down from 10.8GB)
+# Spectra Tools — Kali-based Worker Container
+# Runs security tools via the ARQ job queue.
+# Tools auto-install from plugin configs on first boot.
 
 FROM kalilinux/kali-rolling:latest
 
 WORKDIR /app
 
-# Install system deps in one layer, clean aggressively
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     python3 python3-pip python3-venv python3-dev \
@@ -22,11 +19,9 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && rm -rf /usr/share/doc /usr/share/man
 
-# Go environment
 ENV GOPATH=/root/go
 ENV PATH=$PATH:/root/go/bin:/usr/local/go/bin
 
-# Python venv with minimal deps only
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"
 
@@ -34,10 +29,8 @@ COPY requirements-tools.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements-tools.txt
 
-# Persistent tools directory
 RUN mkdir -p /opt/spectra_tools
 
-# Copy app code (read-only in production, mounted in dev)
 COPY app/ ./app/
 
 HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
