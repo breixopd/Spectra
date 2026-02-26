@@ -45,6 +45,75 @@ TASK_TIERS = {
     "post_exploitation": 3,
 }
 
+# Pre-configured provider profiles
+PROVIDER_PRESETS = {
+    "z.ai": {
+        "name": "Z.AI (Zhipu)",
+        "base_url": "https://api.z.ai/api/coding/paas/v4",
+        "models": {
+            "glm-4.7": {"tier": 3, "description": "Flagship coding model, 200K context"},
+            "glm-4.7-flashx": {"tier": 2, "description": "Fast and affordable, 200K context"},
+            "glm-4.7-flash": {"tier": 1, "description": "Free tier, lightweight"},
+            "glm-5": {"tier": 3, "description": "Latest flagship, 744B MoE"},
+        },
+        "default_model": "glm-4.7",
+    },
+    "kimi": {
+        "name": "Kimi (Moonshot AI)",
+        "base_url": "https://api.moonshot.cn/v1",
+        "models": {
+            "kimi-k2.5": {"tier": 3, "description": "1T params, 256K context, multimodal"},
+            "moonshot-v1-128k": {"tier": 2, "description": "128K context, balanced"},
+            "moonshot-v1-32k": {"tier": 1, "description": "32K context, fast"},
+        },
+        "default_model": "kimi-k2.5",
+    },
+    "qwen": {
+        "name": "Qwen (Alibaba)",
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "models": {
+            "qwen3-235b-a22b": {"tier": 3, "description": "Flagship MoE, 22B active"},
+            "qwen3-32b": {"tier": 2, "description": "32B dense, 128K context"},
+            "qwen3-8b": {"tier": 1, "description": "8B dense, 128K context, fast"},
+            "qwen3-14b": {"tier": 2, "description": "14B dense, 128K context"},
+        },
+        "default_model": "qwen3-32b",
+    },
+    "openrouter": {
+        "name": "OpenRouter (Multi-provider)",
+        "base_url": "https://openrouter.ai/api/v1",
+        "models": {
+            "qwen/qwen3-8b:free": {"tier": 1, "description": "Qwen3 8B, free"},
+            "qwen/qwen3-32b": {"tier": 2, "description": "Qwen3 32B"},
+            "anthropic/claude-3.5-sonnet": {"tier": 3, "description": "Claude 3.5 Sonnet"},
+            "google/gemini-2.5-flash": {"tier": 2, "description": "Gemini 2.5 Flash"},
+        },
+        "default_model": "qwen/qwen3-8b:free",
+    },
+    "openai": {
+        "name": "OpenAI",
+        "base_url": None,
+        "models": {
+            "gpt-4.1-mini": {"tier": 1, "description": "Fast and affordable"},
+            "gpt-4.1": {"tier": 2, "description": "Balanced performance"},
+            "o3-mini": {"tier": 3, "description": "Reasoning model"},
+        },
+        "default_model": "gpt-4.1-mini",
+    },
+    "ollama": {
+        "name": "Ollama (Local)",
+        "base_url": None,
+        "models": {
+            "qwen3:8b": {"tier": 1, "description": "Qwen3 8B local"},
+            "qwen3:14b": {"tier": 2, "description": "Qwen3 14B local"},
+            "qwen3:32b": {"tier": 3, "description": "Qwen3 32B local (needs 24GB+ RAM)"},
+            "llama3.3:8b": {"tier": 1, "description": "Llama 3.3 8B local"},
+            "deepseek-r1:8b": {"tier": 2, "description": "DeepSeek R1 8B reasoning"},
+        },
+        "default_model": "qwen3:8b",
+    },
+}
+
 
 class LiteLLMRouter(LLMClient):
     """
@@ -218,7 +287,7 @@ def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
     """Build LiteLLM model configs from current app settings."""
     model_list = []
     fallbacks = []
-    default_model = "openai/gpt-4o-mini"
+    default_model = "openai/gpt-4.1-mini"
 
     provider = settings.AI_PROVIDER
 
@@ -238,7 +307,7 @@ def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
         # Add cloud fallback if API key is configured
         api_key = settings.LLM_API_KEY.get_secret_value()
         if api_key:
-            cloud_model = settings.LLM_MODEL or "gpt-4o-mini"
+            cloud_model = settings.LLM_MODEL or "glm-4.7-flash"
             model_list.append(
                 {
                     "model_name": "cloud-fallback",
@@ -258,11 +327,11 @@ def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
     elif provider in ("api", "openai"):
         api_key = settings.LLM_API_KEY.get_secret_value()
         if not api_key:
-            return [], [], "openai/gpt-4o-mini"
+            return [], [], default_model
 
-        cloud_model = settings.LLM_MODEL or "gpt-4o-mini"
+        cloud_model = settings.LLM_MODEL or "glm-4.7"
 
-        # If custom base URL, prefix with openai/ for LiteLLM
+        # Custom base URL means OpenAI-compatible provider (Z.AI, Kimi, Qwen, etc.)
         if settings.LLM_API_BASE_URL:
             litellm_model = f"openai/{cloud_model}"
         else:

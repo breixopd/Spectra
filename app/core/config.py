@@ -86,8 +86,11 @@ class Settings(BaseSettings):
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
     FULLY_AUTOMATED: bool = True  # Skip ALL human approval, fully autonomous operation
-    TOOL_CONTAINER_NAME: str = "spectra-tools"  # Default to standard container name
-    CONNECT_BACK_HOST: str = "spectra-app"  # Host for reverse shells to connect back to
+    TOOL_CONTAINER_NAME: str = "spectra-tools"
+    CONNECT_BACK_HOST: str = "spectra-app"
+
+    # Notifications
+    NOTIFICATION_WEBHOOK: str | None = None  # e.g., https://ntfy.sh/your-topic
 
     # --- Validators ---
 

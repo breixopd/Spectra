@@ -257,6 +257,8 @@ async def update_settings(
 @router.get("/api/settings")
 async def get_settings_api():
     """Get current settings."""
+    from app.services.ai.router import PROVIDER_PRESETS
+
     return {
         "ai_provider": settings.AI_PROVIDER,
         "llm_model": settings.LLM_MODEL,
@@ -268,8 +270,8 @@ async def get_settings_api():
         "connect_back_host": settings.CONNECT_BACK_HOST,
         "tool_container_name": settings.TOOL_CONTAINER_NAME,
         "require_approval": settings.REQUIRE_APPROVAL,
-        # Do not return full API key for security
         "llm_api_key_configured": bool(settings.LLM_API_KEY),
+        "provider_presets": PROVIDER_PRESETS,
     }
 
 
