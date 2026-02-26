@@ -13,4 +13,4 @@ keys/plugin_signing.pem
 reports/missions/
 reports/findings/
 reports/knowledge_base/
-logs/
+logs/test.db
