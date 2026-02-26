@@ -1,175 +1,190 @@
-# Spectra Improvement Roadmap
+# Spectra Roadmap
 
-## Agent Grounding, Reliability & Anti-Hallucination
-
-### Current Architecture Strengths
-
-The MAKER framework already provides solid foundations:
-- **K-Threshold Voting** at 5 quality gates (PLAN, TOOL_SELECTION, PAYLOAD, REPLAN, EXECUTION)
-- **Safety Supervisor** blocks dangerous commands before execution
-- **Structured outputs** via Pydantic models with `json_repair` fallback
-- **Dynamic temperature** per agent role (low for scope/safety, high for exploit creativity)
-- **RAG knowledge base** for learning from past exploits
-
-### Improvements to Implement
-
-#### 1. Output Verification Loop (Highest Impact)
-
-Currently agents trust tool output at face value. Add a verification step:
-
-```
-Tool runs → Output parsed → VerificationAgent checks output →
-  If output makes sense for the tool/target → Accept
-  If output is empty/garbled/suspicious → Flag for retry or alternate tool
-```
-
-Implementation: In `MissionExecutor.execute_task()`, after tool execution, run a lightweight verification prompt that asks: "Does this output look like valid {tool_name} output against {target_type}? Is this a false positive?" This catches tool misconfigurations and LLM hallucinations about findings.
-
-#### 2. Fact-Grounded Prompting
-
-Every agent prompt should include **concrete evidence** from previous steps, not summaries. Current prompts use `services_info` and `vulns_info` strings. Enhance to include:
-- Raw nmap output snippets (first 500 chars)
-- Exact port/version strings from parsing
-- Exact CVE IDs from Nuclei/Nikto
-
-This prevents the LLM from inventing services or versions that don't exist.
-
-#### 3. Tool Output Assertion Framework
-
-Add assertion checks in the parser that validate tool output against known patterns:
-
-```python
-TOOL_OUTPUT_VALIDATORS = {
-    "nmap": lambda output: "<nmaprun" in output or "Nmap scan report" in output,
-    "nuclei": lambda output: '"template-id"' in output or "[INF]" in output,
-    "sqlmap": lambda output: "sqlmap" in output.lower(),
-}
-```
-
-If a tool's output doesn't match its expected pattern, the finding is marked `unverified` and the agent is told to retry or skip.
-
-#### 4. Confidence Decay
-
-Track confidence through the pipeline. A finding discovered by a tool (confidence: 0.9) that's validated by consensus (0.85) but fails manual verification drops to 0.3. Only findings above threshold appear in the final report.
-
-#### 5. Chain-of-Thought Audit Trail
-
-Force all agents to include `reasoning_steps` (list of strings) in their output. Each step must reference concrete data:
-
-```json
-{
-  "reasoning_steps": [
-    "Nmap found port 80 running Apache 2.4.41",
-    "Apache 2.4.41 has known CVE-2021-41773 (path traversal)",
-    "Nuclei confirmed CVE-2021-41773 with 200 response",
-    "Attempting exploitation via curl path traversal"
-  ]
-}
-```
-
-This creates an auditable chain and forces the model to ground each step in evidence.
-
-#### 6. Pivoting & Attack Chaining
-
-Current `PostExploitationAgent` plans but doesn't execute. To enable real pivoting:
-
-- **Network pivot detection**: After gaining a shell, run `ip addr`, `arp -a`, `netstat -an` to discover internal networks
-- **Session management**: Track multiple active sessions across hosts
-- **Credential harvesting**: Parse `/etc/shadow`, browser creds, SSH keys from compromised hosts
-- **Lateral movement tasks**: Auto-generate tasks to attack newly discovered internal hosts
-
-Implementation: Add a `PivotAgent` that takes shell access as input, enumerates the compromised host, and generates new `Task` objects targeting internal hosts.
-
-#### 7. POC Code Quality Gates
-
-The `POCDeveloperAgent` generates exploit code but has no quality check. Add:
-
-1. **Static analysis**: Run `pylint`/`ruff` on generated Python code before execution
-2. **Sandbox test**: Execute in an isolated container first with a timeout
-3. **Output validation**: Check that the script actually produces the expected `[+] Exploit Successful` marker
-4. **Consensus validation**: POC code goes through PAYLOAD quality gate
+Single-operator autonomous pentesting platform. Prioritized by impact and effort.
 
 ---
 
-## Video Demo Recording
+## Tier 1 — High Impact, Low-Medium Effort
 
-### Feasibility: Medium (Achievable with current architecture)
+### 1. Live Tool Output Streaming
+**Impact: Very High | Effort: Medium**
 
-#### Approach
+Currently tool output only appears after the tool finishes. Stream stdout/stderr via WebSocket in real-time so you can watch nmap scanning, nuclei finding vulns, etc. live in the terminal.
 
-The tools container already runs commands via `asyncio.create_subprocess_shell`. A video demo would:
+Implementation: In the ARQ worker, pipe subprocess stdout line-by-line to Redis pub/sub. App container subscribes and pushes to WebSocket. Dashboard terminal already handles `onSocketMessage`.
 
-1. **Record terminal sessions** using `script` or `asciinema` (lightweight, text-based recording)
-2. **Convert to video** using `asciinema` + `svg-term` or `termtosvg` for animated SVGs
-3. **Trigger recording** when `record_demo=True` in the mission request
+### 2. Scan Profiles / Presets
+**Impact: High | Effort: Low**
 
-#### Implementation Plan
+One-click profiles instead of typing directives:
+- **Quick Recon** — nmap fast scan + nuclei top templates (5 min)
+- **Full Assessment** — all phases, all tools (30+ min)
+- **Web Only** — nikto + ffuf + nuclei web + sqlmap (15 min)
+- **Stealth** — slow timing, passive first, no brute force
+- **Exploitation Focus** — skip recon, go straight to exploit phase
 
-1. Add `asciinema` to the tools container Dockerfile
-2. Wrap tool execution commands in `asciinema rec --command "..." output.cast`
-3. After mission completion, concatenate `.cast` files into a single recording
-4. Store recordings in `reports/missions/{mission_id}/demo.cast`
-5. Add a playback endpoint that serves an embedded `asciinema-player`
-6. For video export: use `agg` (asciinema gif generator) to create MP4/GIF
+Implementation: Dropdown on the dashboard command bar. Each profile sets a predefined directive + stealth_mode + skip_phases.
 
-#### Alternative: Browser-based recording
+### 3. Finding Deduplication
+**Impact: High | Effort: Low**
 
-Since Spectra has a web UI with Xterm.js terminal:
-- Use the `MediaRecorder` API in the browser to record the terminal output area
-- Stream all tool output through WebSocket to the terminal
-- Record the DOM canvas as the mission runs
-- Save as WebM/MP4 on the client side
+The DVWA live test produced 38 findings but many were duplicates (same `http-missing-security-headers` for different headers). Deduplicate by:
+- CVE ID (exact match)
+- Template ID + host (nuclei)
+- Port + service combo (nmap)
 
-The `record_demo` boolean field has already been added to `StartMissionRequest`.
+Show count of occurrences instead of repeated entries.
+
+### 4. Integrate Grounding + Playbooks into Pipeline
+**Impact: High | Effort: Medium**
+
+The `grounding.py` and `playbook.py` modules are built but not wired into the execution pipeline yet. Wire them:
+- After each tool run, call `validate_tool_output()` and log evidence quality
+- Feed `GroundedContext.get_evidence_summary()` into agent prompts instead of raw service lists
+- Use `PlaybookEngine.get_recommended_tools()` as a fallback when LLM tool selection fails
+- Call `extract_evidence_snippets()` and include in the next agent's prompt
+
+### 5. Model Routing / Fallback Chain
+**Impact: High | Effort: Low**
+
+Use cheap/fast model for routine tasks, expensive model for hard ones:
+- Tool selection, scope parsing → small model (qwen 3B, gpt-4o-mini)
+- Exploit crafting, POC generation, report writing → larger model (gpt-4o, claude)
+- If small model fails 2x → auto-escalate to larger model
+
+Implementation: Add `model_override` per agent role in settings. The `LLMClient` factory already supports multiple providers.
+
+### 6. Parallel Tool Execution
+**Impact: High | Effort: Medium**
+
+Run independent tools simultaneously instead of sequentially. The ARQ worker already supports `max_jobs=10`. Just enqueue multiple jobs and `await asyncio.gather()`:
+- Discovery phase: nmap + naabu + amass in parallel
+- Enumeration: gobuster + ffuf in parallel
+- Each tool's findings merge into the shared attack surface
 
 ---
 
-## Improvements & Feature Ideas
+## Tier 2 — Medium Impact, Medium Effort
 
-### High Priority
+### 7. PDF/HTML Report Generation
+**Impact: Medium | Effort: Medium**
 
-| Feature | Impact | Effort | Description |
-|---------|--------|--------|-------------|
-| **Tool output streaming** | High | Medium | Stream tool stdout via WebSocket in real-time instead of waiting for completion. Show live nmap/nuclei output in the terminal. |
-| **Scan profiles** | High | Low | Preset profiles: "Quick Recon" (nmap fast + nuclei), "Full Assessment" (all phases), "Web Only" (nikto + ffuf + nuclei web), "Stealth" (slow, passive first). |
-| **Finding deduplication** | High | Low | Deduplicate findings by CVE/port/service before reporting. Current system can log the same vuln multiple times. |
-| **Scheduled scans** | Medium | Medium | Cron-like scheduling for recurring assessments. Compare results across runs to detect new vulns. |
-| **Multi-target campaigns** | Medium | Medium | Scan multiple targets in parallel as a single campaign with aggregated reporting. |
+Current reports are Markdown. Add:
+- HTML report with interactive charts (finding severity pie chart, timeline)
+- PDF export via WeasyPrint or wkhtmltopdf
+- Executive summary (1 page, no jargon) + technical details
+- Jinja2 report templates that users can customize
 
-### Medium Priority
+### 8. Exploit Demo Recording (asciinema)
+**Impact: Medium | Effort: Medium**
 
-| Feature | Impact | Effort | Description |
-|---------|--------|--------|-------------|
-| **Report templates** | Medium | Medium | PDF/HTML report generation with executive summary, technical details, risk matrix, remediation. Use Jinja2 templates + WeasyPrint for PDF. |
-| **CVE database integration** | Medium | Medium | Ingest NVD/CVE JSON feeds into RAG. Auto-correlate discovered service versions with known CVEs. |
-| **Plugin marketplace** | Medium | High | Community-contributed plugins. Signed, versioned, with auto-update. GitHub-backed or self-hosted. |
-| **Role-based access** | Medium | Medium | Beyond superuser: viewer (read reports), operator (run scans), admin (manage settings). |
-| **Webhook notifications** | Low | Low | Send mission events to Slack, Discord, email, or custom webhooks. |
+When `record_demo=True`:
+1. Wrap each tool command with `asciinema rec --command "..." step_N.cast`
+2. After mission, concatenate .cast files
+3. Serve via embedded asciinema-player at `/missions/{id}/demo`
+4. Optional: convert to GIF/MP4 via `agg`
 
-### Architecture Improvements
+The `record_demo` field is already in `StartMissionRequest`.
 
-| Feature | Impact | Effort | Description |
-|---------|--------|--------|-------------|
-| **Agent memory** | High | Medium | Long-term memory across missions. "Last time I scanned this network, I found X". Uses RAG with mission-scoped embeddings. |
-| **Model routing** | Medium | Medium | Use different LLM models for different tasks: fast/small for tool selection, large/capable for exploit crafting. Route by task complexity. |
-| **Parallel tool execution** | High | Medium | Run independent tools in parallel (e.g., nmap and amass simultaneously). Currently sequential. |
-| **Retry with escalation** | Medium | Low | If a small model fails at a task 3 times, escalate to a larger model. Fallback chain: local 3B → local 7B → cloud API. |
-| **Offline mode** | Medium | Medium | Full functionality without internet using local Ollama models, local CVE database, and offline wordlists. |
+### 9. CVE Database Integration
+**Impact: Medium | Effort: Medium**
 
-### Differentiators (What Would Make This Stand Out)
+Download NVD JSON feeds, index into a local SQLite DB. When nmap finds `Apache 2.4.25`, auto-lookup matching CVEs without needing the LLM to know them. Feed exact CVE IDs into exploit selection prompts.
 
-1. **Attack Graph Visualization**: Real-time Cytoscape.js graph showing the attack path from initial access → privilege escalation → lateral movement → data exfiltration. Each node is a host/service, edges are attack vectors with success/fail indicators.
+Eliminates a major hallucination source — LLMs often invent plausible-sounding CVE IDs.
 
-2. **AI Debrief**: After mission completion, an AI agent generates a "lessons learned" analysis: what worked, what didn't, what a human pentester would have done differently, and how to improve defenses.
+### 10. Webhook / ntfy.sh Notifications
+**Impact: Medium | Effort: Low**
 
-3. **Compliance Mapping**: Map findings to compliance frameworks (PCI-DSS, HIPAA, SOC2, NIST). Auto-generate compliance-ready reports.
+Push mission events to ntfy.sh, Slack, Discord, or any webhook URL:
+- Mission started/completed/failed
+- Critical vulnerability found
+- Exploitation successful
+- Configurable in settings page
 
-4. **MITRE ATT&CK Mapping**: Tag each exploit/technique with its ATT&CK TTP ID. Generate ATT&CK Navigator heatmap showing coverage.
+### 11. Smart Context-Aware Wordlists
+**Impact: Medium | Effort: Low**
 
-5. **Collaborative Mode**: Multiple operators can watch the same mission in real-time, steer together, and annotate findings. Think "Google Docs for pentesting".
+Generate custom wordlists using LLM based on target context:
+- Company name variations, employee names from OSINT
+- Technology-specific paths (e.g., WordPress → `/wp-admin`, `/xmlrpc.php`)
+- Industry-specific terms
 
-6. **Adversary Simulation Playbooks**: Pre-built attack playbooks that simulate specific threat actors (APT28, FIN7, etc.) using their known TTPs. Useful for purple team exercises.
+Feed into ffuf/gobuster/hydra instead of generic wordlists.
 
-7. **Smart Wordlists**: Generate context-aware wordlists based on target info (company name, industry, discovered tech stack) using LLM. Feed into brute-force tools.
+---
 
-8. **Exploit Chain Builder**: Visual editor (like the pipeline we built) but specifically for multi-stage exploits: "Exploit web app → get shell → dump creds → pivot to DB → exfil data". Each stage has success criteria and fallback paths.
+## Tier 3 — Differentiators
+
+### 12. Attack Graph Visualization
+Real-time Cytoscape.js graph showing the full attack path: initial scan → service discovery → vuln found → exploit attempt → shell access → pivot. Each node is a host/service, edges show the attack flow with success/fail colors. Already have Cytoscape loaded in the dashboard.
+
+### 13. MITRE ATT&CK Mapping
+Tag each tool/technique with its ATT&CK TTP ID automatically. Generate an ATT&CK Navigator JSON that can be loaded into the official Navigator tool to see coverage heatmap. Useful for compliance and purple team exercises.
+
+### 14. AI Debrief Agent
+After mission completion, a `DebriefAgent` analyzes the full mission log and generates:
+- What worked and what didn't
+- What a human pentester would have done differently
+- Specific remediation recommendations for each finding
+- Risk prioritization based on business context
+
+### 15. Adversary Simulation Playbooks
+Pre-built attack playbooks that mimic specific threat actors:
+- APT28 (Fancy Bear): spearphishing → lateral movement → data exfil
+- FIN7: web app exploitation → POS malware deployment
+- Lazarus Group: supply chain → cryptomining
+
+Each playbook is a JSON file with ordered steps, tools, and TTPs.
+
+### 16. Exploit Chain Builder
+Enhanced version of the Pipeline editor specifically for multi-stage attacks:
+- Visual flow: `Exploit Web App → Get Shell → Dump Creds → Pivot to Internal → Exfil Data`
+- Each stage has success criteria (regex match on output)
+- Automatic fallback paths (if exploit A fails, try exploit B)
+- Shareable as JSON files
+
+### 17. Target Diff / Change Detection
+Compare scan results across runs. Show what changed:
+- New ports opened since last scan
+- New services deployed
+- Vulnerabilities patched vs new ones introduced
+- Useful for continuous monitoring
+
+### 18. Offline / Air-Gapped Mode
+Full functionality without internet:
+- Local Ollama models (already supported)
+- Local CVE database (SQLite)
+- Bundled wordlists (seclists already in tools container)
+- No CDN dependencies (bundle Tailwind, fonts, icons)
+
+---
+
+## Architecture Optimizations
+
+### Already Built
+- ✅ Grounding framework (`grounding.py`) — tool output validation, evidence extraction, confidence tracking
+- ✅ Playbook system (`playbook.py`) — deterministic service→tool mapping, success pattern learning
+- ✅ Manual Mode — direct tool execution without LLM
+- ✅ Pipeline editor — chain tools visually
+- ✅ Safety Supervisor — blocks dangerous commands
+- ✅ K-threshold consensus at 5 quality gates
+- ✅ Dynamic temperature per agent role
+- ✅ Plugin auto-install in tools container
+- ✅ WebSocket real-time updates
+
+### Suggested Optimizations
+1. **Connection pooling for ARQ** — reuse Redis connections instead of creating new pool per tool execution
+2. **Lazy model loading** — don't load sentence-transformers embedding model until RAG is actually used
+3. **Tool result caching** — cache nmap scan results for 5 min to avoid duplicate scans during plan adaptation
+4. **Prompt token budgeting** — track token usage per mission, warn when approaching limits
+5. **Graceful degradation** — if LLM provider is down, fall back to playbook-only mode (no AI, just run the playbook steps sequentially)
+
+---
+
+## Removed from Roadmap (Single-User)
+- ~~Role-based access control~~ — single operator, not needed
+- ~~Collaborative mode~~ — no multi-user
+- ~~Plugin marketplace~~ — just drop JSON files into `plugins/`
+- ~~Scheduled scans~~ — can be done with cron externally
+- ~~Multi-target campaigns~~ — can run missions sequentially
