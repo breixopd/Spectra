@@ -36,6 +36,13 @@ class SteerMissionRequest(BaseModel):
     vulnerability: str | None = Field(None, description="Vulnerability to focus on")
 
 
+@router.get("/presets")
+async def get_scan_presets():
+    """Get available scan presets."""
+    from app.services.mission.presets import SCAN_PRESETS
+    return SCAN_PRESETS
+
+
 @router.post("", response_model=MissionResponse)
 @limiter.limit("5/minute")
 async def start_mission(
