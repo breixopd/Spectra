@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title | default("Spectra | War Room") }}</title>
     
-    <!-- Tailwind CSS (CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (local) -->
+    <script src="/static/vendor/js/tailwind.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -30,18 +30,18 @@
         }
     </script>
 
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Fonts (local) -->
+    <link rel="stylesheet" href="/static/vendor/css/fonts.css">
     
-    <!-- Icons (FontAwesome) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Icons (FontAwesome, local) -->
+    <link rel="stylesheet" href="/static/vendor/css/fontawesome.min.css">
 
-    <!-- Cytoscape.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+    <!-- Cytoscape.js (local) -->
+    <script src="/static/vendor/js/cytoscape.min.js"></script>
 
-    <!-- Leaflet (Maps) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet Maps (local) -->
+    <link rel="stylesheet" href="/static/vendor/css/leaflet.css">
+    <script src="/static/vendor/js/leaflet.js"></script>
 
     <style>
         /* Cinematic Noise Texture */
