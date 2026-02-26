@@ -142,6 +142,12 @@
                             <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
                         </label>
                     </div>
+
+                    <div class="mt-4 pt-4 border-t border-white/5">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Notification Webhook</label>
+                        <input type="text" name="notification_webhook" placeholder="https://ntfy.sh/your-topic or Slack/Discord webhook URL" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Receive notifications when missions start, complete, or find critical vulns</p>
+                    </div>
                 </div>
                 
                 <div class="flex justify-end mt-4">

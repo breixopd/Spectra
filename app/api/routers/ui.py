@@ -185,10 +185,10 @@ class SettingsUpdate(BaseModel):
     ollama_model: str | None = None
     log_level: str
     plugin_safe_mode: bool
-    # Advanced Options
     connect_back_host: str = "spectra-app"
     tool_container_name: str | None = None
     require_approval: bool = False
+    notification_webhook: str | None = None
 
 
 @router.post("/api/settings")
@@ -213,6 +213,8 @@ async def update_settings(
         settings.CONNECT_BACK_HOST = data.connect_back_host
         settings.TOOL_CONTAINER_NAME = data.tool_container_name
         settings.REQUIRE_APPROVAL = data.require_approval
+        if data.notification_webhook is not None:
+            settings.NOTIFICATION_WEBHOOK = data.notification_webhook or None
 
         if data.llm_api_key:
             settings.LLM_API_KEY = data.llm_api_key
@@ -271,6 +273,7 @@ async def get_settings_api():
         "tool_container_name": settings.TOOL_CONTAINER_NAME,
         "require_approval": settings.REQUIRE_APPROVAL,
         "llm_api_key_configured": bool(settings.LLM_API_KEY),
+        "notification_webhook": settings.NOTIFICATION_WEBHOOK or "",
         "provider_presets": PROVIDER_PRESETS,
     }
 
