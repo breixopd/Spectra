@@ -10,6 +10,7 @@ Provides endpoints for:
 
 import json
 import logging
+import re
 from pathlib import Path
 
 from fastapi import (
@@ -321,6 +322,54 @@ async def get_tool(
         icon=tool.config.ui.icon,
         color=tool.config.ui.color,
     )
+
+
+@router.get("/{tool_id}/config")
+async def get_tool_execution_config(
+    tool_id: str,
+    registry: ToolRegistry = Depends(get_tool_registry),
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Get full execution configuration for building a manual execution form."""
+    tool = registry.get_tool(tool_id)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
+
+    config = tool.config
+
+    placeholders = re.findall(r'\{(\w+)\}', config.execution.args_template)
+    system_placeholders = {'output_file'}
+    user_placeholders = [p for p in placeholders if p not in system_placeholders]
+
+    return {
+        "id": config.id,
+        "name": config.name,
+        "version": config.version,
+        "category": config.category,
+        "description": config.description,
+        "status": tool.status,
+        "command": config.execution.command,
+        "args_template": config.execution.args_template,
+        "timeout": config.execution.timeout,
+        "placeholders": user_placeholders,
+        "arg_modifiers": config.execution.arg_modifiers,
+        "metadata": {
+            "ai_description": config.metadata.ai_description,
+            "capabilities": [c for c in config.metadata.capabilities],
+            "risk_level": config.metadata.risk_level,
+            "tags": config.metadata.tags,
+            "supported_targets": [t for t in config.metadata.supported_targets],
+            "use_cases": config.metadata.use_cases,
+            "limitations": config.metadata.limitations,
+        },
+        "stealth": {
+            "rate_limit": config.stealth.rate_limit if config.stealth else None,
+            "delay_ms": config.stealth.delay_ms if config.stealth else None,
+            "extra_args": config.stealth.extra_args if config.stealth else {},
+        },
+        "parsing_format": config.parsing.format,
+        "ui": {"icon": config.ui.icon, "color": config.ui.color},
+    }
 
 
 @router.post("/upload", response_model=PluginUploadResponse)
