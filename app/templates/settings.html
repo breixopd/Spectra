@@ -42,9 +42,7 @@
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">AI Provider</label>
                         <select name="ai_provider" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                            <option value="ollama">Ollama (Local)</option>
-                            <option value="api">Cloud API (OpenAI, OpenRouter, etc.)</option>
-                            <option value="mock">Mock (Testing)</option>
+                            <option value="api">Cloud API</option>
                         </select>
                     </div>
                     <div>
@@ -60,7 +58,7 @@
 
                 <!-- Cloud API Settings -->
                 <div class="border border-white/10 rounded-lg p-4 mt-4">
-                    <h3 class="text-sm font-medium text-white mb-3">Cloud API Settings</h3>
+                    <h3 class="text-sm font-medium text-white mb-3">API Settings</h3>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">API Key</label>
                         <input type="password" name="llm_api_key" placeholder="sk-..." class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
@@ -84,22 +82,17 @@
                     </div>
                 </div>
 
-                <!-- Ollama Settings -->
+                <!-- Provider Presets -->
                 <div class="border border-white/10 rounded-lg p-4 mt-4">
-                    <h3 class="text-sm font-medium text-white mb-3">Ollama Settings</h3>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1">Ollama Host</label>
-                            <input type="text" name="ollama_host" placeholder="http://ai:11434" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1">Ollama Model</label>
-                            <input type="text" name="ollama_model" placeholder="qwen2.5:3b" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                        </div>
-                    </div>
-                    <div class="mt-3 flex justify-end">
-                        <button type="button" id="test-ollama-btn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
-                            Test Connection
+                    <h3 class="text-sm font-medium text-white mb-3">Quick Setup</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" onclick="applyPreset('z.ai')" class="p-3 bg-slate-800/50 hover:bg-violet-500/10 border border-white/5 hover:border-violet-500/30 rounded-lg text-left transition-all">
+                            <div class="text-sm font-medium text-white">Z.AI (GLM)</div>
+                            <div class="text-[10px] text-slate-500 mt-0.5">GLM-4.7-Flash (free) · Coding optimized</div>
+                        </button>
+                        <button type="button" onclick="applyPreset('qwen')" class="p-3 bg-slate-800/50 hover:bg-violet-500/10 border border-white/5 hover:border-violet-500/30 rounded-lg text-left transition-all">
+                            <div class="text-sm font-medium text-white">Qwen (Alibaba)</div>
+                            <div class="text-[10px] text-slate-500 mt-0.5">Qwen3-32B · Free trial</div>
                         </button>
                     </div>
                 </div>

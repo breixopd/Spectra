@@ -50,32 +50,6 @@ services:
     networks:
       - spectra-network
 
-  # Ollama (Local LLM Inference)
-  ai:
-    image: ollama/ollama:latest
-    container_name: spectra-ai
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    environment:
-      OLLAMA_KEEP_ALIVE: 24h
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    networks:
-      - spectra-network
-
   # Spectra App (FastAPI Backend)
   app:
     build:
@@ -181,5 +155,4 @@ networks:
 volumes:
   postgres_data:
   redis_data:
-  ollama_data:
   spectra_tools_data:
