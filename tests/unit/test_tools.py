@@ -380,11 +380,13 @@ class TestCommandToolAdapter:
         )
 
         mock_output = '{"findings": []}'
-        
-        # Mocking CommandRunner inside adapter
-        with patch("app.services.tools.adapter.runner.CommandRunner.run_with_timeout", new_callable=AsyncMock) as mock_run:
-            mock_run.return_value = (0, mock_output, "")
-            
+
+        with patch("asyncio.create_subprocess_shell") as mock_subprocess:
+            process_mock = AsyncMock()
+            process_mock.communicate.return_value = (mock_output.encode(), b"")
+            process_mock.returncode = 0
+            mock_subprocess.return_value = process_mock
+
             result = await adapter.execute(request, "/tmp")
 
         assert result.success is True
@@ -403,8 +405,13 @@ class TestCommandToolAdapter:
             timeout=1,
         )
 
-        with patch("app.services.tools.adapter.runner.CommandRunner.run_with_timeout", new_callable=AsyncMock) as mock_run:
-            mock_run.side_effect = asyncio.TimeoutError()
+        with patch("asyncio.create_subprocess_shell") as mock_subprocess, \
+             patch("asyncio.wait_for", side_effect=TimeoutError), \
+             patch("os.killpg"), \
+             patch("os.getpgid"):
+            process_mock = AsyncMock()
+            process_mock.pid = 12345
+            mock_subprocess.return_value = process_mock
 
             result = await adapter.execute(request, "/tmp")
 

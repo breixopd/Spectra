@@ -1,13 +1,16 @@
 """
 Command Tool Adapter.
 
-Provides command building and output parsing for security tools.
-Execution is handled by the ARQ worker in the tools container.
+Provides command building, output parsing, and execution for security tools.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
+import signal
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,6 +20,7 @@ from app.services.tools.adapter.parser import OutputParser
 from app.services.tools.models import (
     ToolConfig,
     ToolExecutionRequest,
+    ToolExecutionResult,
 )
 
 if TYPE_CHECKING:
@@ -39,9 +43,9 @@ class CommandToolAdapter(ToolAdapter):
 
     This adapter handles:
     - Building commands with templated arguments
+    - Wrapping commands with timeout and optional Docker execution
     - Parsing output based on tool configuration
-
-    Actual execution is delegated to the ARQ worker in the tools container.
+    - Full async execution with timeout handling
     """
 
     def __init__(self, config: ToolConfig) -> None:
@@ -57,6 +61,9 @@ class CommandToolAdapter(ToolAdapter):
         """
         Build the command string for execution.
 
+        Builds the raw command, wraps it with a timeout, and optionally
+        wraps with ``docker exec`` when a container is configured.
+
         Args:
             request: Tool execution request with target and args.
             output_dir: Directory for output files.
@@ -64,7 +71,19 @@ class CommandToolAdapter(ToolAdapter):
         Returns:
             Command string ready for execution.
         """
-        return self.builder.build_command(request, output_dir)
+        from app.services.tools.adapter import runner
+
+        raw_cmd = self.builder.build_command(request, output_dir)
+        timeout = self.calculate_timeout(request)
+
+        wrapped_cmd = f"timeout -k 5s {timeout}s {raw_cmd}"
+
+        container = runner.settings.TOOL_CONTAINER_NAME
+        if container:
+            escaped = wrapped_cmd.replace("'", "'\\''")
+            wrapped_cmd = f"docker exec {container} bash -c '{escaped}'"
+
+        return wrapped_cmd
 
     def calculate_timeout(self, request: ToolExecutionRequest) -> int:
         """Calculate dynamic timeout based on target and tool config."""
@@ -90,6 +109,86 @@ class CommandToolAdapter(ToolAdapter):
         calculated = max(base_timeout, dynamic_timeout)
 
         return max(exec_config.min_timeout, min(calculated, exec_config.max_timeout))
+
+    async def execute(
+        self,
+        request: ToolExecutionRequest,
+        output_dir: str | Path | None = None,
+    ) -> ToolExecutionResult:
+        """Execute the tool command.
+
+        Args:
+            request: Tool execution request with target and args.
+            output_dir: Optional directory for output files.
+
+        Returns:
+            ToolExecutionResult with stdout/stderr and parsed findings.
+
+        Raises:
+            ValueError: If the request target is empty.
+        """
+        if not request.target:
+            raise ValueError("target cannot be empty")
+
+        cmd = self.build_command(request, output_dir)
+        timeout = self.calculate_timeout(request)
+
+        start_time = time.time()
+
+        try:
+            proc = await asyncio.create_subprocess_shell(
+                cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                start_new_session=True,
+            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                proc.communicate(), timeout=timeout + 30
+            )
+            duration = time.time() - start_time
+
+            stdout = stdout_bytes.decode("utf-8", errors="replace")
+            stderr = stderr_bytes.decode("utf-8", errors="replace")
+
+            parsed: list = []
+            try:
+                parsed = await self.parser.parse_output(
+                    stdout,
+                    stderr,
+                    str(Path(output_dir) / f"{self.config.id}_output")
+                    if output_dir
+                    else None,
+                )
+            except Exception:
+                pass
+
+            return ToolExecutionResult(
+                tool_id=request.tool_id,
+                target=request.target,
+                success=proc.returncode == 0,
+                exit_code=proc.returncode or 0,
+                stdout=stdout,
+                stderr=stderr,
+                duration_seconds=duration,
+                output_file=str(Path(output_dir) / f"{self.config.id}_output")
+                if output_dir
+                else None,
+                parsed_findings=parsed,
+            )
+        except (TimeoutError, asyncio.TimeoutError):
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+            except Exception:
+                pass
+            return ToolExecutionResult(
+                tool_id=request.tool_id,
+                target=request.target,
+                success=False,
+                exit_code=-1,
+                stdout="",
+                stderr=f"Command timed out after {timeout}s",
+                duration_seconds=time.time() - start_time,
+            )
 
 
 def create_adapter(config: ToolConfig) -> ToolAdapter:
