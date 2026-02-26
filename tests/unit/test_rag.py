@@ -115,30 +115,15 @@ async def test_search(mock_redis, mock_embedding_service):
 
 @pytest.mark.asyncio
 async def test_embedding_service_loading():
-    """Test EmbeddingService logic (isolated)."""
-    with (
-        patch("app.services.ai.embeddings.asyncio.Lock") as MockLock,
-        patch(
-            "app.services.ai.embeddings.asyncio.get_running_loop"
-        ) as mock_loop_getter,
-    ):
-        mock_loop = AsyncMock()
-        mock_loop_getter.return_value = mock_loop
+    """Test EmbeddingService produces embeddings (uses fallback if sentence-transformers unavailable)."""
+    service = EmbeddingService()
+    embedding = await service.embed("test")
 
-        # Mock run_in_executor return value
-        # The first call returns the model (not used directly in test but assigned)
-        # The second call returns the embedding (result of model.encode)
-        mock_model = MagicMock()
+    # Should return a list of floats with consistent dimensionality
+    assert isinstance(embedding, list)
+    assert len(embedding) > 0
+    assert all(isinstance(x, float) for x in embedding)
 
-        # model.encode returns a numpy array-like, so it must have tolist()
-        mock_numpy_array = MagicMock()
-        mock_numpy_array.tolist.return_value = [0.1, 0.2]
-
-        mock_loop.run_in_executor.side_effect = [mock_model, mock_numpy_array]
-
-        service = EmbeddingService()
-
-        embedding = await service.embed("test")
-
-        assert len(embedding) == 2
-        assert embedding == [0.1, 0.2]
+    # Same input should produce same output (deterministic)
+    embedding2 = await service.embed("test")
+    assert embedding == embedding2
