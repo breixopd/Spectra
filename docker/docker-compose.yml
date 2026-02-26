@@ -89,28 +89,16 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file:
+      - ../.env
     environment:
-      # Connection details that depend on other services
+      # Infrastructure (these always point to Docker service names)
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password}
-      
-      # Security (Explicitly set secrets, but let others default)
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-prod_secret_key_change_in_real_prod}
-      
-      # AI/LLM Configuration
-      - AI_PROVIDER=api
-      - LLM_API_KEY=${LLM_API_KEY:-4df9d751ee58488ba4cb0db4ddb988b7.35J2q7fELSJgYSvU}
-      - LLM_API_BASE_URL=${LLM_API_BASE_URL:-https://api.z.ai/api/coding/paas/v4}
-      - LLM_MODEL=${LLM_MODEL:-glm-4.7-flash}
-      
-      # Defaults from code are sufficient for:
-      - LOG_LEVEL=DEBUG
-      - DEBUG=True
-      # - PLUGIN_SAFE_MODE (True) - uses default
-      # - CORS_ORIGINS (['http://localhost:5000', 'http://127.0.0.1:5000'])
-      # - TOOL_CONTAINER_NAME (spectra-tools)
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+      - TOOL_CONTAINER_NAME=spectra-tools
+      - CONNECT_BACK_HOST=spectra-app
     volumes:
       - ../app:/app/app
       - ../tests:/app/tests
@@ -157,11 +145,9 @@ services:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-prod_redis_password}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-prod_secret_key_change_in_real_prod}
-      # Mark this as the tools container so commands run locally (no docker exec wrapping)
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
       - IS_TOOLS_CONTAINER=true
-      # Disable safe mode for tools container (it runs install commands)
       - PLUGIN_SAFE_MODE=false
     volumes:
       - ../app:/app/app:ro
