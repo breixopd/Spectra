@@ -13,7 +13,7 @@ Spectra is a Multi-Agent System (MAS) for automated security assessments built w
 | **db** | `spectra-db` (postgres:16-alpine) | Primary data store | Yes |
 | **redis** | `spectra-redis` (redis/redis-stack) | Task queue, cache, vector store | Yes |
 | **app** | `spectra-app` (FastAPI) | API + Web UI on port 5000 | Yes |
-| **tools** | `spectra-tools` (Kali Linux worker) | Security tool execution | Optional for basic UI testing |
+| **tools** | `spectra-tools` (Kali Linux worker) | Security tool execution via Arq | Optional for basic UI testing |
 | **ai** | `spectra-ai` (Ollama) | Local LLM inference (needs GPU) | No - use `AI_PROVIDER=api` instead |
 
 ### Starting the application
@@ -33,14 +33,19 @@ The Ollama AI service (`ai`) requires an NVIDIA GPU and is skipped in cloud agen
 
 ### Running tests
 
-Unit/integration tests use mocks and do **not** require running Docker services:
+Unit tests use mocks and do **not** require running Docker services:
 
 ```bash
-cd /workspace
-python3 -m pytest tests/unit/ -q
+python3 -m pytest tests/unit/ --no-cov -q
 ```
 
-Note: Some tests have pre-existing Pydantic validation failures.
+Integration tests under `tests/integration/` require live services (Redis, LLM, tools container). Expected failures when running outside Docker network:
+- RAG tests need Redis Stack on `localhost:6379`
+- LLM tests need a configured AI provider
+- Real tool workflow tests need security tools (nmap, etc.) installed
+- Tool execution tests need Docker socket access
+
+To run only unit tests: `python3 -m pytest tests/unit/ --no-cov`
 
 ### Linting
 
@@ -52,8 +57,10 @@ ruff check app/
 
 ### Key gotchas
 
-- The `.env.test` file is loaded by `pytest-dotenv` via `pytest.ini`. It configures `DATABASE_URL` (SQLite/aiosqlite), `AI_PROVIDER=mock`, and other test defaults.
+- `.env.test` is loaded by `pytest-dotenv` via `pytest.ini`. It configures `DATABASE_URL` (SQLite/aiosqlite), `AI_PROVIDER=mock`, `FULLY_AUTOMATED=true`, and other test defaults.
 - `pytest-asyncio` mode is `strict` — all async tests need `@pytest.mark.asyncio`.
-- Docker socket (`/var/run/docker.sock`) is mounted read-only into containers; ensure it exists before `docker compose up`.
+- Docker socket (`/var/run/docker.sock`) is mounted read-only into containers.
 - The app auto-runs Alembic migrations on startup via `scripts/start.sh`.
 - In Docker-in-Docker environments, use `fuse-overlayfs` storage driver and `iptables-legacy`.
+- Tool plugins auto-install in the tools container on startup. Adding a new `.json` file to `plugins/` is all that's needed.
+- `FULLY_AUTOMATED=true` disables human approval requirements — tests that verify human approval behavior must monkeypatch this to `False`.
