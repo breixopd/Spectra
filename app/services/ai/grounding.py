@@ -115,16 +115,16 @@ def extract_evidence_snippets(
     evidence = []
 
     evidence_patterns = [
-        r"\d+/tcp\s+open",                    # nmap open ports
-        r"\d+/udp\s+open",                    # nmap UDP ports
+        r"\d+/tcp\s+open",  # nmap open ports
+        r"\d+/udp\s+open",  # nmap UDP ports
         r"\[critical\]|\[high\]|\[medium\]",  # nuclei severity
-        r"CVE-\d{4}-\d+",                     # CVE references
-        r"login:\s*\S+\s+password:",          # hydra credentials
-        r"SQL injection",                      # sqlmap findings
-        r"VULNERABLE",                         # general vuln indicators
-        r"\[\+\]",                             # success markers
-        r"found:|discovered:",                 # discovery markers
-        r"Status:\s*(200|301|302|403)",        # HTTP status codes (gobuster/ffuf)
+        r"CVE-\d{4}-\d+",  # CVE references
+        r"login:\s*\S+\s+password:",  # hydra credentials
+        r"SQL injection",  # sqlmap findings
+        r"VULNERABLE",  # general vuln indicators
+        r"\[\+\]",  # success markers
+        r"found:|discovered:",  # discovery markers
+        r"Status:\s*(200|301|302|403)",  # HTTP status codes (gobuster/ffuf)
     ]
 
     compiled = [re.compile(p, re.IGNORECASE) for p in evidence_patterns]
@@ -335,9 +335,7 @@ class ConfidenceTracker:
     def get_verified_findings(self) -> list[str]:
         """Get finding IDs above the report threshold."""
         return [
-            fid
-            for fid, conf in self.findings.items()
-            if conf >= self.REPORT_THRESHOLD
+            fid for fid, conf in self.findings.items() if conf >= self.REPORT_THRESHOLD
         ]
 
     def get_confidence(self, finding_id: str) -> float:

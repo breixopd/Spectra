@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 from app.services.poc.service import POCService
 from app.services.poc.models import POCRequest
 
+
 @pytest.mark.asyncio
 async def test_poc_lifecycle():
     """Test the full POC generation and execution flow."""
@@ -36,12 +37,12 @@ async def test_poc_lifecycle():
 
     # Mock Shell Manager (it's a global singleton, but we can patch start_listener)
     with pytest.MonkeyPatch.context() as m:
-        m.setattr("app.services.shell.session_manager.shell_manager.start_listener", MagicMock())
-
-        request = POCRequest(
-            target="127.0.0.1",
-            vulnerability={"name": "TestVuln"}
+        m.setattr(
+            "app.services.shell.session_manager.shell_manager.start_listener",
+            MagicMock(),
         )
+
+        request = POCRequest(target="127.0.0.1", vulnerability={"name": "TestVuln"})
         context = MagicMock()
         context.session_id = "test-session"
 

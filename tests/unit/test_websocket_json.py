@@ -5,22 +5,24 @@ from datetime import datetime
 from enum import Enum
 from app.core.websocket import ConnectionManager
 
+
 class TestEnum(str, Enum):
     TEST = "test"
+
 
 @pytest.mark.asyncio
 async def test_broadcast_event_serialization():
     # Setup
     manager = ConnectionManager()
-    
+
     # Data with complex types
     complex_data = {
         "id": uuid.uuid4(),
         "timestamp": datetime.now(),
         "status": TestEnum.TEST,
-        "nested": {"id": uuid.uuid4()}
+        "nested": {"id": uuid.uuid4()},
     }
-    
+
     # Action
     # This should fail if standard json.dumps is used without defaults
     try:

@@ -7,14 +7,17 @@ from app.models.mission import Mission
 from app.services.ai.llm import LLMClient
 import asyncio
 
+
 @pytest.fixture
 def mock_llm():
     return AsyncMock(spec=LLMClient)
+
 
 @pytest.fixture
 def executor(mock_llm):
     # Initialize real executor
     return MissionExecutor(mock_llm)
+
 
 @pytest.fixture
 def mission():
@@ -24,29 +27,41 @@ def mission():
     m.log = MagicMock()
     return m
 
+
 @pytest.mark.asyncio
 async def test_execute_task_success(executor, mission):
     """Test task execution flow."""
-    task = Task(task_id="t1", description="scan", agent_type="tool_selector", phase=AssessmentPhase.DISCOVERY)
+    task = Task(
+        task_id="t1",
+        description="scan",
+        agent_type="tool_selector",
+        phase=AssessmentPhase.DISCOVERY,
+    )
     context = MagicMock()
-    
+
     # Mock dispatcher
     executor.dispatcher = AsyncMock()
-    
+
     await executor.execute_task(mission, task, context)
-    
+
     executor.dispatcher.dispatch.assert_called_once_with(mission, task, context)
+
 
 @pytest.mark.asyncio
 async def test_execute_task_failure(executor, mission):
     """Test task execution failure handling."""
-    task = Task(task_id="t1", description="scan", agent_type="tool_selector", phase=AssessmentPhase.DISCOVERY)
+    task = Task(
+        task_id="t1",
+        description="scan",
+        agent_type="tool_selector",
+        phase=AssessmentPhase.DISCOVERY,
+    )
     context = MagicMock()
-    
+
     executor.dispatcher = AsyncMock()
     executor.dispatcher.dispatch.side_effect = RuntimeError("Dispatch failed")
-    
+
     with pytest.raises(RuntimeError):
         await executor.execute_task(mission, task, context)
-        
+
     mission.log.assert_called()

@@ -116,7 +116,9 @@ class MissionStateMachine:
         ...
     """
 
-    def __init__(self, mission_id: str, initial_state: MissionState = MissionState.CREATED):
+    def __init__(
+        self, mission_id: str, initial_state: MissionState = MissionState.CREATED
+    ):
         self.mission_id = mission_id
         self._state = initial_state
         self._history: list[StateTransition] = []
@@ -246,7 +248,9 @@ class MissionStateMachine:
                 # Find when we left this state
                 if i + 1 < len(self._history):
                     next_transition = self._history[i + 1]
-                    duration = (next_transition.timestamp - transition.timestamp).total_seconds()
+                    duration = (
+                        next_transition.timestamp - transition.timestamp
+                    ).total_seconds()
                 else:
                     # Still in this state
                     duration = (datetime.now() - transition.timestamp).total_seconds()

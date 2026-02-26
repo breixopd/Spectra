@@ -126,7 +126,9 @@ class EventBus:
             handler: Sync or async function to call when event fires
             critical: If True, exceptions in handler will be propagated
         """
-        event_name = event_type.value if isinstance(event_type, EventType) else event_type
+        event_name = (
+            event_type.value if isinstance(event_type, EventType) else event_type
+        )
 
         if event_name not in self._handlers:
             self._handlers[event_name] = []
@@ -140,7 +142,9 @@ class EventBus:
         handler: Callable,
     ) -> None:
         """Unsubscribe a handler from an event type."""
-        event_name = event_type.value if isinstance(event_type, EventType) else event_type
+        event_name = (
+            event_type.value if isinstance(event_type, EventType) else event_type
+        )
 
         if event_name in self._handlers:
             # Remove handler regardless of criticality
@@ -168,7 +172,9 @@ class EventBus:
         )
 
         event = Event(
-            type=EventType(event_name) if event_name in [e.value for e in EventType] else EventType.MISSION_CREATED,
+            type=EventType(event_name)
+            if event_name in [e.value for e in EventType]
+            else EventType.MISSION_CREATED,
             source=source,
             data=data,
         )

@@ -19,7 +19,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                     if allowed_origin == "*" or origin == allowed_origin:
                         allowed = True
                         break
-                
+
                 if not allowed:
                     return Response("Invalid Origin", status_code=HTTP_403_FORBIDDEN)
 

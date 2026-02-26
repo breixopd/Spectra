@@ -16,6 +16,7 @@ from app.services.tools.models import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_tool_config(
     command="nmap",
     args_template="{target}",
@@ -49,8 +50,8 @@ def _make_request(target="192.168.1.1", args=None, tool_id="test-tool"):
 # Basic command building
 # =====================================================================
 
-class TestBuildCommandBasic:
 
+class TestBuildCommandBasic:
     def test_basic_target_substitution(self):
         config = _make_tool_config(command="nmap", args_template="-sV {target}")
         builder = CommandBuilder(config)
@@ -105,8 +106,8 @@ class TestBuildCommandBasic:
 # Output file placeholder
 # =====================================================================
 
-class TestOutputFilePlaceholder:
 
+class TestOutputFilePlaceholder:
     def test_output_file_with_dir(self, tmp_path):
         config = _make_tool_config(
             command="nmap",
@@ -132,9 +133,7 @@ class TestOutputFilePlaceholder:
             builder.build_command(request)
 
     def test_no_output_file_placeholder(self):
-        config = _make_tool_config(
-            command="tool", args_template="-t {target}"
-        )
+        config = _make_tool_config(command="tool", args_template="-t {target}")
         builder = CommandBuilder(config)
         request = _make_request(target="host")
 
@@ -146,8 +145,8 @@ class TestOutputFilePlaceholder:
 # Arg modifiers
 # =====================================================================
 
-class TestArgModifiers:
 
+class TestArgModifiers:
     def test_prefix_applied(self):
         config = _make_tool_config(
             command="nuclei",
@@ -155,9 +154,7 @@ class TestArgModifiers:
             arg_modifiers={"tags": {"prefix": "-tags "}},
         )
         builder = CommandBuilder(config)
-        request = _make_request(
-            target="example.com", args={"tags": "cves"}
-        )
+        request = _make_request(target="example.com", args={"tags": "cves"})
 
         cmd = builder.build_command(request)
         assert "-tags" in cmd
@@ -167,14 +164,10 @@ class TestArgModifiers:
         config = _make_tool_config(
             command="tool",
             args_template="{target} {extensions}",
-            arg_modifiers={
-                "extensions": {"prefix": "-x ", "separator": ","}
-            },
+            arg_modifiers={"extensions": {"prefix": "-x ", "separator": ","}},
         )
         builder = CommandBuilder(config)
-        request = _make_request(
-            target="host", args={"extensions": "php html txt"}
-        )
+        request = _make_request(target="host", args={"extensions": "php html txt"})
 
         cmd = builder.build_command(request)
         assert "php,html,txt" in cmd
@@ -217,9 +210,7 @@ class TestArgModifiers:
         assert parts.count("-t") == 1
 
     def test_no_modifiers_passthrough(self):
-        config = _make_tool_config(
-            command="tool", args_template="{target} {extra}"
-        )
+        config = _make_tool_config(command="tool", args_template="{target} {extra}")
         builder = CommandBuilder(config)
         request = _make_request(target="host", args={"extra": "value"})
 
@@ -231,8 +222,8 @@ class TestArgModifiers:
 # Conditional blocks
 # =====================================================================
 
-class TestConditionalBlocks:
 
+class TestConditionalBlocks:
     def test_present_placeholder_keeps_block(self):
         config = _make_tool_config(
             command="tool",
@@ -285,12 +276,10 @@ class TestConditionalBlocks:
 # Shell injection prevention
 # =====================================================================
 
-class TestShellInjectionPrevention:
 
+class TestShellInjectionPrevention:
     def test_special_chars_quoted(self):
-        config = _make_tool_config(
-            command="tool", args_template="{target}"
-        )
+        config = _make_tool_config(command="tool", args_template="{target}")
         builder = CommandBuilder(config)
         request = _make_request(target="$(whoami)")
 
@@ -298,9 +287,7 @@ class TestShellInjectionPrevention:
         assert "$(whoami)" not in cmd or shlex.quote("$(whoami)") in cmd
 
     def test_semicolon_injection_quoted(self):
-        config = _make_tool_config(
-            command="tool", args_template="{target}"
-        )
+        config = _make_tool_config(command="tool", args_template="{target}")
         builder = CommandBuilder(config)
         request = _make_request(target="host; rm -rf /")
 
@@ -310,9 +297,7 @@ class TestShellInjectionPrevention:
         assert quoted in cmd
 
     def test_backtick_injection_quoted(self):
-        config = _make_tool_config(
-            command="tool", args_template="{target}"
-        )
+        config = _make_tool_config(command="tool", args_template="{target}")
         builder = CommandBuilder(config)
         request = _make_request(target="`cat /etc/passwd`")
 
@@ -320,9 +305,7 @@ class TestShellInjectionPrevention:
         assert shlex.quote("`cat /etc/passwd`") in cmd
 
     def test_pipe_injection_quoted(self):
-        config = _make_tool_config(
-            command="tool", args_template="{target}"
-        )
+        config = _make_tool_config(command="tool", args_template="{target}")
         builder = CommandBuilder(config)
         request = _make_request(target="host | cat /etc/shadow")
 
@@ -335,16 +318,12 @@ class TestShellInjectionPrevention:
 # Edge cases
 # =====================================================================
 
-class TestEdgeCases:
 
+class TestEdgeCases:
     def test_target_cannot_be_overridden_by_args(self):
-        config = _make_tool_config(
-            command="tool", args_template="{target}"
-        )
+        config = _make_tool_config(command="tool", args_template="{target}")
         builder = CommandBuilder(config)
-        request = _make_request(
-            target="safe-host", args={"target": "evil-host"}
-        )
+        request = _make_request(target="safe-host", args={"target": "evil-host"})
 
         cmd = builder.build_command(request)
         assert "safe-host" in cmd

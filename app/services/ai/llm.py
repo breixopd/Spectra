@@ -258,7 +258,9 @@ class OllamaClient(LLMClient):
             ) from e
         except httpx.RequestError as e:
             logger.error("Ollama connection error: %s", e)
-            raise LLMConnectionError(f"Ollama connection failed: {e}", host=self.host) from e
+            raise LLMConnectionError(
+                f"Ollama connection failed: {e}", host=self.host
+            ) from e
         finally:
             # Record telemetry (fire and forget)
             duration_ms = (time.time() - start_time) * 1000
@@ -285,7 +287,9 @@ class OllamaClient(LLMClient):
             response = await client.get(f"{self.host}/api/tags")
             healthy = response.status_code == 200
             latency_ms = (time.time() - start_time) * 1000
-            telemetry.update_service_status("ollama", healthy=healthy, latency_ms=latency_ms)
+            telemetry.update_service_status(
+                "ollama", healthy=healthy, latency_ms=latency_ms
+            )
             return healthy
         except (httpx.RequestError, httpx.TimeoutException) as e:
             logger.debug("Ollama health check failed: %s", e)
@@ -552,6 +556,7 @@ def get_default_llm_client() -> LLMClient:
     """
     try:
         from app.services.ai.router import create_smart_router
+
         client = create_smart_router()
         logger.info("Using LiteLLM smart router (provider=%s)", settings.AI_PROVIDER)
         return client

@@ -3,10 +3,11 @@ POC Developer Agent.
 
 Specialized agent for writing custom exploit scripts.
 """
-import logging
-from typing import ClassVar, Any
 
-from pydantic import BaseModel, Field
+import logging
+from typing import ClassVar
+
+from pydantic import BaseModel
 
 from app.services.ai.agents.base import (
     Agent,
@@ -49,18 +50,22 @@ Generative Task:
 Write the complete source code for this exploit.
 """
 
+
 class POCDeveloperInput(BaseModel):
     request: POCRequest
     callback_host: str
     callback_port: int
     shell_type: str = "reverse_shell"
 
+
 class POCDeveloperOutput(ToolAction):
     """Output containing the generated code."""
+
     language: str
     code_content: str
     usage_instructions: str
     risk_assessment: str
+
 
 class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
     """
@@ -69,7 +74,9 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
 
     role: ClassVar[AgentRole] = AgentRole.EXPLOIT_CRAFTER
     name: ClassVar[str] = "POCDeveloper"
-    description: ClassVar[str] = "Writes custom exploit scripts (Python/Go/Bash) for specific vulnerabilities."
+    description: ClassVar[str] = (
+        "Writes custom exploit scripts (Python/Go/Bash) for specific vulnerabilities."
+    )
 
     async def execute(
         self,
@@ -100,7 +107,7 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
                 prompt=prompt,
                 response_model=POCDeveloperOutput,
                 system_prompt=system_prompt,
-                temperature=0.2, # Low temp for code correctness
+                temperature=0.2,  # Low temp for code correctness
             )
 
             # Set high risk for custom code execution

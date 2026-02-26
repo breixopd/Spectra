@@ -3,7 +3,6 @@
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,7 +61,8 @@ class SystemSetupService:
             await self.session.rollback()
             logger.error("Setup failed: %s", e, exc_info=True)
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Setup failed: {str(e)}"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Setup failed: {str(e)}",
             ) from e
 
     def _generate_signing_keys(self) -> None:
@@ -111,7 +111,6 @@ class SystemSetupService:
         except Exception as e:
             logger.error("Failed to generate signing keys: %s", e)
 
-
     async def _create_admin_user(self, setup_in: SystemSetupRequest) -> User:
         """Create the initial superuser."""
         user = User(
@@ -133,32 +132,56 @@ class SystemSetupService:
 
         if setup_in.llm_provider == "api":
             if setup_in.llm_api_key:
-                configs.append(SystemConfig(key="LLM_API_KEY", value=setup_in.llm_api_key, is_secret=True))
+                configs.append(
+                    SystemConfig(
+                        key="LLM_API_KEY", value=setup_in.llm_api_key, is_secret=True
+                    )
+                )
             if setup_in.llm_api_base:
-                configs.append(SystemConfig(key="LLM_API_BASE_URL", value=setup_in.llm_api_base))
+                configs.append(
+                    SystemConfig(key="LLM_API_BASE_URL", value=setup_in.llm_api_base)
+                )
         elif setup_in.llm_provider == "ollama":
             if setup_in.ollama_host:
-                configs.append(SystemConfig(key="OLLAMA_HOST", value=setup_in.ollama_host))
+                configs.append(
+                    SystemConfig(key="OLLAMA_HOST", value=setup_in.ollama_host)
+                )
             # OLLAMA_MODEL defaults to LLM_MODEL for compatibility
             configs.append(SystemConfig(key="OLLAMA_MODEL", value=setup_in.llm_model))
 
         # Database Configs (Stored in DB for reference, even if used via JSON)
         if setup_in.use_custom_db and setup_in.database_url:
-            configs.append(SystemConfig(key="DATABASE_URL", value=setup_in.database_url, is_secret=True))
+            configs.append(
+                SystemConfig(
+                    key="DATABASE_URL", value=setup_in.database_url, is_secret=True
+                )
+            )
 
         # Redis Configs
         if setup_in.use_custom_redis:
             if setup_in.redis_host:
-                configs.append(SystemConfig(key="REDIS_HOST", value=setup_in.redis_host))
+                configs.append(
+                    SystemConfig(key="REDIS_HOST", value=setup_in.redis_host)
+                )
             if setup_in.redis_port:
-                configs.append(SystemConfig(key="REDIS_PORT", value=str(setup_in.redis_port)))
+                configs.append(
+                    SystemConfig(key="REDIS_PORT", value=str(setup_in.redis_port))
+                )
             if setup_in.redis_password:
-                configs.append(SystemConfig(key="REDIS_PASSWORD", value=setup_in.redis_password, is_secret=True))
+                configs.append(
+                    SystemConfig(
+                        key="REDIS_PASSWORD",
+                        value=setup_in.redis_password,
+                        is_secret=True,
+                    )
+                )
 
         for config in configs:
             self.session.add(config)
 
-    async def _handle_infrastructure_changes(self, setup_in: SystemSetupRequest) -> None:
+    async def _handle_infrastructure_changes(
+        self, setup_in: SystemSetupRequest
+    ) -> None:
         """Handle infrastructure changes: save config and manage containers."""
         infra_updates = {}
 
@@ -201,8 +224,6 @@ class SystemSetupService:
         except Exception as e:
             logger.error("Failed to save infra config: %s", e)
 
-
-
     async def _reinitialize_llm(self, setup_in: SystemSetupRequest) -> None:
         """Re-initialize the global LLM client with new settings."""
         await close_global_llm_client()
@@ -210,7 +231,9 @@ class SystemSetupService:
         try:
             if setup_in.llm_provider == "ollama":
                 new_client = get_llm_client(
-                    provider="ollama", host=setup_in.ollama_host or "http://localhost:11434", model=setup_in.llm_model
+                    provider="ollama",
+                    host=setup_in.ollama_host or "http://localhost:11434",
+                    model=setup_in.llm_model,
                 )
             else:
                 if not setup_in.llm_api_key:
@@ -225,7 +248,9 @@ class SystemSetupService:
                 )
 
             llm_module._global_llm_client = new_client
-            logger.info("LLM client reinitialized with provider: %s", setup_in.llm_provider)
+            logger.info(
+                "LLM client reinitialized with provider: %s", setup_in.llm_provider
+            )
         except Exception as e:
             logger.error("Failed to initialize LLM client: %s", e)
             # Don't fail the whole setup if LLM fails, user can fix later
@@ -244,11 +269,14 @@ class SystemSetupService:
         """Check Redis connectivity."""
         try:
             from redis.asyncio import Redis
+
             client = Redis(
                 host=settings.REDIS_HOST,
                 port=settings.REDIS_PORT,
-                password=settings.REDIS_PASSWORD.get_secret_value() if settings.REDIS_PASSWORD else None,
-                socket_timeout=5
+                password=settings.REDIS_PASSWORD.get_secret_value()
+                if settings.REDIS_PASSWORD
+                else None,
+                socket_timeout=5,
             )
             await client.ping()
             await client.close()
@@ -261,14 +289,16 @@ class SystemSetupService:
         """Check Docker connectivity and version."""
         try:
             import asyncio
+
             # Use subprocess to check docker version
             proc = await asyncio.create_subprocess_exec(
-                "docker", "--version",
+                "docker",
+                "--version",
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
-            
+
             if proc.returncode == 0:
                 logger.debug(f"Docker version: {stdout.decode().strip()}")
                 return True
@@ -282,18 +312,22 @@ class SystemSetupService:
         """Try to stop a container by name suffix (e.g. 'db' matches 'spectra-db')."""
         try:
             import asyncio
+
             # Get list of running containers
             proc = await asyncio.create_subprocess_shell(
                 "docker ps --format '{{.Names}}'",
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, _ = await proc.communicate()
-            
+
             if stdout:
                 for name in stdout.decode().splitlines():
                     name = name.strip()
-                    if name and (name.endswith(container_name_suffix) or name.strip("/").endswith(container_name_suffix)):
+                    if name and (
+                        name.endswith(container_name_suffix)
+                        or name.strip("/").endswith(container_name_suffix)
+                    ):
                         logger.info("Stopping container: %s", name)
                         await asyncio.create_subprocess_exec("docker", "stop", name)
                         break
@@ -325,13 +359,10 @@ class SystemSetupService:
             "database": await self.check_database(),
             "redis": await self.check_redis(),
             "docker": await self.check_docker(),
-            "directories": await self.check_directories()
+            "directories": await self.check_directories(),
         }
-        
+
         # Determine overall status
         status = "healthy" if all(checks.values()) else "unhealthy"
-        
-        return {
-            "status": status,
-            **checks
-        }
+
+        return {"status": status, **checks}

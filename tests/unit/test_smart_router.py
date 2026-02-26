@@ -13,7 +13,6 @@ from app.services.ai.llm import LLMResponse
 
 
 class TestTaskTiers:
-
     def test_simple_tasks_are_tier1(self):
         assert TASK_TIERS["scope"] == 1
         assert TASK_TIERS["tool_selection"] == 1
@@ -31,7 +30,6 @@ class TestTaskTiers:
 
 
 class TestLiteLLMRouter:
-
     def test_init_defaults(self):
         router = LiteLLMRouter()
         assert router._default_model == "openai/gpt-4o-mini"
@@ -76,7 +74,9 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 20
         mock_response.usage.total_tokens = 30
 
-        with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_response):
+        with patch(
+            "litellm.acompletion", new_callable=AsyncMock, return_value=mock_response
+        ):
             result = await router.generate("hello")
             assert result.content == "test response"
             assert result.usage["total_tokens"] == 30
@@ -95,7 +95,9 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 5
         mock_response.usage.total_tokens = 10
 
-        with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_response) as mock_call:
+        with patch(
+            "litellm.acompletion", new_callable=AsyncMock, return_value=mock_response
+        ) as mock_call:
             await router.generate("select a tool", task_type="tool_selection")
             call_args = mock_call.call_args
             assert call_args.kwargs["model"] == "cheap-model"
@@ -111,13 +113,17 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 1
         mock_response.usage.total_tokens = 2
 
-        with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_response):
+        with patch(
+            "litellm.acompletion", new_callable=AsyncMock, return_value=mock_response
+        ):
             assert await router.health_check() is True
 
     @pytest.mark.asyncio
     async def test_health_check_failure(self):
         router = LiteLLMRouter()
-        with patch("litellm.acompletion", new_callable=AsyncMock, side_effect=Exception("down")):
+        with patch(
+            "litellm.acompletion", new_callable=AsyncMock, side_effect=Exception("down")
+        ):
             assert await router.health_check() is False
 
     @pytest.mark.asyncio
@@ -128,7 +134,6 @@ class TestLiteLLMRouter:
 
 
 class TestBuildModelConfig:
-
     def test_api_provider(self):
         with patch("app.services.ai.router.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "api"
@@ -163,6 +168,7 @@ class TestBuildModelConfig:
 
         router = create_smart_router()
         from app.services.ai.llm import MockLLMClient
+
         assert isinstance(router, MockLLMClient)
 
     def test_no_api_key(self):
@@ -176,9 +182,9 @@ class TestBuildModelConfig:
 
 
 class TestSingleton:
-
     def test_get_smart_router(self):
         import app.services.ai.router as mod
+
         mod._smart_router = None
         with patch("app.services.ai.router.create_smart_router") as mock_create:
             mock_create.return_value = MagicMock()

@@ -65,7 +65,9 @@ class FindingDetailResponse(FindingResponse):
 # --- Endpoints ---
 
 
-@router.post("", response_model=FindingDetailResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=FindingDetailResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_finding(
     finding_in: FindingCreate,
     db: AsyncSession = Depends(get_async_session),

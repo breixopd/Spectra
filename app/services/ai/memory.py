@@ -103,9 +103,7 @@ class MissionMemory:
         """Load all memory from disk."""
         self.tool_lessons = self._load_file("tool_lessons.json", ToolLesson)
         self.exploit_lessons = self._load_file("exploit_lessons.json", ExploitLesson)
-        self.false_positives = set(
-            self._load_raw("false_positives.json") or []
-        )
+        self.false_positives = set(self._load_raw("false_positives.json") or [])
 
         profiles_raw = self._load_raw("target_profiles.json") or {}
         for key, data in profiles_raw.items():
@@ -301,19 +299,29 @@ class MissionMemory:
                 continue
 
             relevance = 0.5
-            if product and lesson.target_product and product.lower() in lesson.target_product.lower():
+            if (
+                product
+                and lesson.target_product
+                and product.lower() in lesson.target_product.lower()
+            ):
                 relevance += 0.3
-            if os_family and lesson.target_os and os_family.lower() in lesson.target_os.lower():
+            if (
+                os_family
+                and lesson.target_os
+                and os_family.lower() in lesson.target_os.lower()
+            ):
                 relevance += 0.2
 
-            recommendations.append({
-                "tool": lesson.tool_id,
-                "reason": f"Previously found {lesson.findings_count} findings on {lesson.target_service}"
+            recommendations.append(
+                {
+                    "tool": lesson.tool_id,
+                    "reason": f"Previously found {lesson.findings_count} findings on {lesson.target_service}"
                     + (f" ({lesson.target_product})" if lesson.target_product else ""),
-                "args": lesson.args_used,
-                "relevance": relevance,
-                "finding_types": lesson.finding_types,
-            })
+                    "args": lesson.args_used,
+                    "relevance": relevance,
+                    "finding_types": lesson.finding_types,
+                }
+            )
             seen_tools.add(lesson.tool_id)
 
         recommendations.sort(key=lambda x: x["relevance"], reverse=True)
@@ -329,7 +337,11 @@ class MissionMemory:
         for lesson in reversed(self.exploit_lessons):
             if service and lesson.target_service.lower() != service.lower():
                 continue
-            if product and lesson.target_product and product.lower() not in lesson.target_product.lower():
+            if (
+                product
+                and lesson.target_product
+                and product.lower() not in lesson.target_product.lower()
+            ):
                 continue
             results.append(lesson)
             if len(results) >= 5:
@@ -375,7 +387,11 @@ class MissionMemory:
             if exploits:
                 lines = ["**Successful Exploits** (from previous missions):"]
                 for ex in exploits[:3]:
-                    chain_str = " → ".join(ex.attack_chain) if ex.attack_chain else ex.exploit_tool
+                    chain_str = (
+                        " → ".join(ex.attack_chain)
+                        if ex.attack_chain
+                        else ex.exploit_tool
+                    )
                     lines.append(
                         f"  - {chain_str}"
                         + (f" (CVE: {ex.cve_id})" if ex.cve_id else "")
@@ -389,11 +405,17 @@ class MissionMemory:
             if profile:
                 lines = [f"**{os_family.title()} Strategy** (learned):"]
                 if profile.effective_tools:
-                    lines.append(f"  Effective tools: {', '.join(profile.effective_tools)}")
+                    lines.append(
+                        f"  Effective tools: {', '.join(profile.effective_tools)}"
+                    )
                 if profile.ineffective_tools:
-                    lines.append(f"  Skip these tools: {', '.join(profile.ineffective_tools)}")
+                    lines.append(
+                        f"  Skip these tools: {', '.join(profile.ineffective_tools)}"
+                    )
                 if profile.effective_exploits:
-                    lines.append(f"  Known exploits: {', '.join(profile.effective_exploits)}")
+                    lines.append(
+                        f"  Known exploits: {', '.join(profile.effective_exploits)}"
+                    )
                 if profile.notes:
                     lines.append(f"  Notes: {profile.notes[-1]}")
                 parts.append("\n".join(lines))
@@ -415,18 +437,43 @@ class MissionMemory:
 
 OS_SIGNATURES = {
     "linux": [
-        "Linux", "Ubuntu", "Debian", "CentOS", "RedHat", "Fedora",
-        "Kali", "Alpine", "Arch", "SUSE", "Gentoo", "Mint",
+        "Linux",
+        "Ubuntu",
+        "Debian",
+        "CentOS",
+        "RedHat",
+        "Fedora",
+        "Kali",
+        "Alpine",
+        "Arch",
+        "SUSE",
+        "Gentoo",
+        "Mint",
     ],
     "windows": [
-        "Windows", "Microsoft", "IIS", "NTLM", "SMB", "Active Directory",
-        "PowerShell", "Win32", "Win64", ".NET",
+        "Windows",
+        "Microsoft",
+        "IIS",
+        "NTLM",
+        "SMB",
+        "Active Directory",
+        "PowerShell",
+        "Win32",
+        "Win64",
+        ".NET",
     ],
     "macos": ["macOS", "Darwin", "Apple", "OS X"],
     "freebsd": ["FreeBSD", "OpenBSD", "NetBSD", "pfSense"],
     "embedded": [
-        "MikroTik", "Cisco", "Juniper", "FortiOS", "DD-WRT",
-        "OpenWrt", "RTOS", "VxWorks", "firmware",
+        "MikroTik",
+        "Cisco",
+        "Juniper",
+        "FortiOS",
+        "DD-WRT",
+        "OpenWrt",
+        "RTOS",
+        "VxWorks",
+        "firmware",
     ],
 }
 

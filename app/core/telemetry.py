@@ -166,7 +166,9 @@ class TelemetryCollector:
         )
         return span
 
-    def end_span(self, span: SpanData, status: str = "ok", error: str | None = None) -> None:
+    def end_span(
+        self, span: SpanData, status: str = "ok", error: str | None = None
+    ) -> None:
         """End a span and record it."""
         span.end_time = datetime.now()
         span.duration_ms = (span.end_time - span.start_time).total_seconds() * 1000
@@ -212,7 +214,9 @@ class TelemetryCollector:
             self._metrics.popleft()
 
         # Update aggregates
-        key = f"{name}:{','.join(f'{k}={v}' for k, v in sorted((labels or {}).items()))}"
+        key = (
+            f"{name}:{','.join(f'{k}={v}' for k, v in sorted((labels or {}).items()))}"
+        )
 
         if metric_type == "counter":
             self._counters[key] = self._counters.get(key, 0) + value
@@ -226,7 +230,9 @@ class TelemetryCollector:
             if len(self._histograms[key]) > 1000:
                 self._histograms[key] = self._histograms[key][-1000:]
 
-    def increment_counter(self, name: str, value: float = 1, labels: dict[str, str] | None = None) -> None:
+    def increment_counter(
+        self, name: str, value: float = 1, labels: dict[str, str] | None = None
+    ) -> None:
         """Increment a counter metric."""
         self.record_metric(name, value, labels, "counter")
 
@@ -236,7 +242,9 @@ class TelemetryCollector:
         """Set a gauge metric."""
         self.record_metric(name, value, labels, "gauge")
 
-    def observe_histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
+    def observe_histogram(
+        self, name: str, value: float, labels: dict[str, str] | None = None
+    ) -> None:
         """Record a histogram observation."""
         self.record_metric(name, value, labels, "histogram")
 

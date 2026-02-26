@@ -57,14 +57,22 @@ def parse_nmap_xml(root: ET.Element) -> list[dict[str, Any]]:
                 continue
 
             service_elem = port.find("service")
-            findings.append({
-                "ip": ip,
-                "portid": port.get("portid", ""),
-                "protocol": port.get("protocol", ""),
-                "state": "open",
-                "service": service_elem.get("name") if service_elem is not None else None,
-                "product": service_elem.get("product") if service_elem is not None else None,
-                "version": service_elem.get("version") if service_elem is not None else None,
-            })
+            findings.append(
+                {
+                    "ip": ip,
+                    "portid": port.get("portid", ""),
+                    "protocol": port.get("protocol", ""),
+                    "state": "open",
+                    "service": service_elem.get("name")
+                    if service_elem is not None
+                    else None,
+                    "product": service_elem.get("product")
+                    if service_elem is not None
+                    else None,
+                    "version": service_elem.get("version")
+                    if service_elem is not None
+                    else None,
+                }
+            )
 
     return findings

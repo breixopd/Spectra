@@ -27,8 +27,10 @@ def _make_breaker(failure_threshold=3, recovery_timeout=30, success_threshold=2)
 @pytest.fixture(autouse=True)
 def _patch_cache_and_events():
     """Prevent real Redis/event-bus calls in every test."""
-    with patch("app.core.cache.get_cache", return_value=None), \
-         patch("app.core.circuit_breaker.events") as mock_events:
+    with (
+        patch("app.core.cache.get_cache", return_value=None),
+        patch("app.core.circuit_breaker.events") as mock_events,
+    ):
         mock_events.emit_sync = MagicMock()
         yield
 

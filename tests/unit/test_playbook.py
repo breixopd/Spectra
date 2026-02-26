@@ -11,7 +11,6 @@ from app.services.ai.playbook import (
 
 
 class TestPlaybookEngine:
-
     @pytest.fixture
     def engine(self):
         return PlaybookEngine()
@@ -51,7 +50,9 @@ class TestPlaybookEngine:
     def test_filters_already_run(self, engine):
         services = [{"service": "http", "port": 80}]
         recs_all = engine.get_recommended_tools(services)
-        recs_filtered = engine.get_recommended_tools(services, tools_already_run=["nmap"])
+        recs_filtered = engine.get_recommended_tools(
+            services, tools_already_run=["nmap"]
+        )
         assert len(recs_filtered) < len(recs_all)
         assert not any(r["tool"] == "nmap" for r in recs_filtered)
 
@@ -103,7 +104,6 @@ class TestPlaybookEngine:
 
 
 class TestPlaybookStep:
-
     def test_create(self):
         step = PlaybookStep(
             tool="nmap",
@@ -123,7 +123,6 @@ class TestPlaybookStep:
 
 
 class TestServicePlaybook:
-
     def test_create(self):
         pb = ServicePlaybook(
             service="http",
@@ -137,7 +136,6 @@ class TestServicePlaybook:
 
 
 class TestExploitPattern:
-
     def test_create(self):
         pattern = ExploitPattern(
             service="ssh",
@@ -151,9 +149,9 @@ class TestExploitPattern:
 
 
 class TestSingleton:
-
     def test_get_playbook_engine_returns_same(self):
         import app.services.ai.playbook as mod
+
         mod._engine = None
         e1 = get_playbook_engine()
         e2 = get_playbook_engine()
@@ -162,7 +160,6 @@ class TestSingleton:
 
 
 class TestHTTPPlaybook:
-
     def test_http_playbook_steps_order(self):
         engine = PlaybookEngine()
         pb = engine.get_playbook_for_service("http")

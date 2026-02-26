@@ -3,12 +3,12 @@ Embedding Service.
 
 Handles text embedding generation using local transformer models or fallbacks.
 """
+
 from __future__ import annotations
 
 import asyncio
 import hashlib
 import logging
-from typing import Any
 
 import struct
 
@@ -53,7 +53,9 @@ class EmbeddingService:
                 )
                 logger.info("Loaded embedding model: %s", self.model_name)
             except ImportError:
-                logger.warning("sentence-transformers not available, using fallback embeddings")
+                logger.warning(
+                    "sentence-transformers not available, using fallback embeddings"
+                )
                 self._use_fallback = True
             except Exception as e:
                 logger.warning("Failed to load embedding model: %s. Using fallback.", e)

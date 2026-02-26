@@ -420,18 +420,39 @@ class TestAttackSurface:
         )
 
         # Add vectors
-        attack_surface.add_vector(AttackVector(
-            id="vec-1", name="V1", description="", priority=VectorPriority.HIGH,
-            target_type="service", target_ref="test", status=VectorStatus.SUCCESS
-        ))
-        attack_surface.add_vector(AttackVector(
-            id="vec-2", name="V2", description="", priority=VectorPriority.MEDIUM,
-            target_type="service", target_ref="test", status=VectorStatus.FAILED
-        ))
-        attack_surface.add_vector(AttackVector(
-            id="vec-3", name="V3", description="", priority=VectorPriority.LOW,
-            target_type="service", target_ref="test", status=VectorStatus.PENDING
-        ))
+        attack_surface.add_vector(
+            AttackVector(
+                id="vec-1",
+                name="V1",
+                description="",
+                priority=VectorPriority.HIGH,
+                target_type="service",
+                target_ref="test",
+                status=VectorStatus.SUCCESS,
+            )
+        )
+        attack_surface.add_vector(
+            AttackVector(
+                id="vec-2",
+                name="V2",
+                description="",
+                priority=VectorPriority.MEDIUM,
+                target_type="service",
+                target_ref="test",
+                status=VectorStatus.FAILED,
+            )
+        )
+        attack_surface.add_vector(
+            AttackVector(
+                id="vec-3",
+                name="V3",
+                description="",
+                priority=VectorPriority.LOW,
+                target_type="service",
+                target_ref="test",
+                status=VectorStatus.PENDING,
+            )
+        )
 
         summary = attack_surface.get_summary()
 

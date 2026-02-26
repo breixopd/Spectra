@@ -28,7 +28,6 @@ from fastapi import (
 
 from app.api.dependencies import get_current_active_user, get_current_superuser
 from app.api.schemas import (
-    InstallToolRequest,
     InstallToolResponse,
     PluginUploadResponse,
     ToolDetailResponse,
@@ -44,7 +43,6 @@ from app.services.tools.models import (
     ToolStatus,
 )
 from app.services.tools.registry import (
-    PluginInstallationError,
     PluginSignatureError,
     PluginValidationError,
     ToolRegistry,
@@ -337,8 +335,8 @@ async def get_tool_execution_config(
 
     config = tool.config
 
-    placeholders = re.findall(r'\{(\w+)\}', config.execution.args_template)
-    system_placeholders = {'output_file'}
+    placeholders = re.findall(r"\{(\w+)\}", config.execution.args_template)
+    system_placeholders = {"output_file"}
     user_placeholders = [p for p in placeholders if p not in system_placeholders]
 
     return {
@@ -461,7 +459,7 @@ async def install_all_tools(
 ):
     """
     Queue installation of all tools via the tools container.
-    
+
     This is useful for initial setup or reinstalling all tools.
     """
     from arq import create_pool

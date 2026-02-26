@@ -150,7 +150,9 @@ def analyze_unexpected_output(
     for name, pattern in interesting_patterns:
         matches = re.findall(pattern, combined, re.IGNORECASE)
         if matches:
-            analysis["interesting_findings"].extend([f"{name}: {m}" for m in matches[:3]])
+            analysis["interesting_findings"].extend(
+                [f"{name}: {m}" for m in matches[:3]]
+            )
 
     # Generate suggestions based on analysis
     if analysis["error_type"] == "timeout":

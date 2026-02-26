@@ -124,7 +124,9 @@ class Settings(BaseSettings):
     def validate_redis_password(cls, v: str, info) -> str:
         """Warn if using default Redis password."""
         if v == "changeme":
-            logger.warning("Using default Redis password 'changeme'. This is insecure for production.")
+            logger.warning(
+                "Using default Redis password 'changeme'. This is insecure for production."
+            )
         return v
 
     def save_runtime_settings(self):
@@ -197,7 +199,9 @@ def get_settings() -> Settings:
     # Generate random secret key if not set
     if not settings_instance.JWT_SECRET_KEY.get_secret_value():
         if not settings_instance.DEBUG:
-            logger.warning("JWT_SECRET_KEY not set in production. Generating random key (sessions will invalid on restart).")
+            logger.warning(
+                "JWT_SECRET_KEY not set in production. Generating random key (sessions will invalid on restart)."
+            )
 
         import secrets
 
