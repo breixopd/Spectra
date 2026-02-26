@@ -171,6 +171,45 @@ async def list_missions(
     ]
 
 
+@router.get("/{mission_id}/report/pdf")
+async def download_pdf_report(
+    mission_id: str,
+    session: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Download mission report as PDF."""
+    from fastapi.responses import Response as FastAPIResponse
+
+    from app.services.mission.report_generator import generate_pdf_report
+
+    repo = MissionRepository(session)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    mission_data = {
+        "id": mission.id,
+        "target": mission.target,
+        "status": mission.status,
+        "findings": mission.summary.get("findings", []) if mission.summary else [],
+        "logs": mission.logs or [],
+        "tools_run": mission.summary.get("tools_run", []) if mission.summary else [],
+        "attack_surface": mission.attack_surface or {},
+    }
+
+    pdf_bytes = generate_pdf_report(mission_data)
+    if not pdf_bytes:
+        raise HTTPException(status_code=500, detail="PDF generation failed")
+
+    return FastAPIResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=spectra_report_{mission_id[:8]}.pdf"
+        },
+    )
+
+
 @router.get("/{mission_id}", response_model=MissionResponse)
 async def get_mission(
     mission_id: str,

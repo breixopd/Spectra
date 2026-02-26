@@ -45,3 +45,6 @@ psutil>=5.9.0
 jsonschema>=4.20.0
 orjson>=3.9.0
 json-repair>=0.54.0
+
+# PDF report generation
+xhtml2pdf>=0.2.11
