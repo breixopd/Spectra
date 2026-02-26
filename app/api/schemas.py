@@ -149,6 +149,10 @@ class StartMissionRequest(BaseModel):
         max_length=2000,
         description="High-level assessment directive (max 2000 chars)",
     )
+    record_demo: bool = Field(
+        default=False,
+        description="Record a video walkthrough of the exploit workflow if exploitation succeeds",
+    )
 
     @field_validator("target")
     @classmethod
