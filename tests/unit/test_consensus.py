@@ -115,8 +115,9 @@ class TestVotingSystemBasics:
 
         assert voting_system.requires_voting(action) is False
 
-    def test_requires_human_approval_for_critical(self, voting_system):
+    def test_requires_human_approval_for_critical(self, voting_system, monkeypatch):
         """Critical actions should require human approval."""
+        monkeypatch.setattr("app.core.config.settings.FULLY_AUTOMATED", False)
         action = AgentAction(
             action_type="test",
             confidence=0.8,
@@ -173,8 +174,9 @@ class TestVoteOnAction:
         assert len(result.votes) == 0  # No actual voting occurred
 
     @pytest.mark.asyncio
-    async def test_critical_escalates_to_human(self, mock_llm):
+    async def test_critical_escalates_to_human(self, mock_llm, monkeypatch):
         """Critical actions should escalate to human without voting."""
+        monkeypatch.setattr("app.core.config.settings.FULLY_AUTOMATED", False)
         voting = VotingSystem(mock_llm)
         action = AgentAction(
             action_type="test",
@@ -250,8 +252,9 @@ class TestValidateAtGate:
         assert result.status == ConsensusStatus.APPROVED
 
     @pytest.mark.asyncio
-    async def test_critical_at_any_gate_escalates(self, mock_llm):
+    async def test_critical_at_any_gate_escalates(self, mock_llm, monkeypatch):
         """Critical actions at any gate should escalate to human."""
+        monkeypatch.setattr("app.core.config.settings.FULLY_AUTOMATED", False)
         voting = VotingSystem(mock_llm)
         action = AgentAction(
             action_type="test",
