@@ -14,6 +14,7 @@ def mock_service_context():
          patch("app.services.tools.service.CommandToolAdapter") as MockAdapter:
              
         registry = MagicMock()
+        registry.sync_status_from_redis = AsyncMock()
         mock_get_registry.return_value = registry
         
         service = ToolExecutionService(llm_client=MagicMock())
