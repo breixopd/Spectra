@@ -157,7 +157,7 @@ async def test_adaptive_replanning(mock_manager_context):
     from app.services.ai.agents.mission_controller import MissionType
     mission.plan = MissionPlan(mission_type=MissionType.CUSTOM, tasks=[task])
     
-    context = AgentContext(session_id="1", target="1.1.1.1", mission="test")
+    context = AgentContext(mission_id="test-mission-1", session_id="1", target="1.1.1.1", mission="test")
     
     replan_result = MagicMock()
     replan_result.success = True

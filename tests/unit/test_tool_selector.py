@@ -241,6 +241,7 @@ class TestToolSelectorExecution:
     def context(self):
         """Create agent context."""
         return AgentContext(
+            mission_id="test-mission-1",
             session_id="test-session",
             target="192.168.1.1",
             mission="Security assessment",
@@ -319,6 +320,7 @@ class TestToolSelectorStealthMode:
     def context_stealth(self):
         """Create stealth mode context."""
         return AgentContext(
+            mission_id="test-mission-1",
             session_id="test-session",
             target="192.168.1.1",
             mission="Quiet assessment",
@@ -331,6 +333,7 @@ class TestToolSelectorStealthMode:
         """System prompt should mention stealth when enabled."""
         agent = ToolSelectorAgent(MockLLMClient())
         context = AgentContext(
+            mission_id="test-mission-1",
             session_id="test",
             target="target.com",
             mission="Stealth scan",

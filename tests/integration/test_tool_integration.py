@@ -109,7 +109,7 @@ async def test_integration_flow_success(integration_context):
     # 1. Setup Mission & Context
     mission = Mission("127.0.0.1", "test-integration")
     mission.log = MagicMock()
-    context = AgentContext(session_id="int-1", target="127.0.0.1", mission="integrate")
+    context = AgentContext(mission_id="test-mission-1", session_id="int-1", target="127.0.0.1", mission="integrate")
     task = Task(task_id="t1", description="run echo", agent_type="tool_selector", phase=AssessmentPhase.DISCOVERY)
     
     # 2. Mock Agent Selection -> "test-echo"
@@ -149,7 +149,7 @@ async def test_integration_flow_failure_adaptation(integration_context):
     # 1. Setup
     mission = Mission("127.0.0.1", "test-integration-fail")
     mission.log = MagicMock()
-    context = AgentContext(session_id="int-2", target="127.0.0.1", mission="integrate-fail")
+    context = AgentContext(mission_id="test-mission-1", session_id="int-2", target="127.0.0.1", mission="integrate-fail")
     task = Task(task_id="t2", description="run fail", agent_type="tool_selector", phase=AssessmentPhase.DISCOVERY)
     
     # 2. Mock Selection -> "test-fail"

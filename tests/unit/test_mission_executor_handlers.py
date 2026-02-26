@@ -49,7 +49,7 @@ def mock_mission():
 
 @pytest.fixture
 def mock_context():
-    return AgentContext(session_id="test-session", request_id="req-1")
+    return AgentContext(mission_id="test-mission-1", session_id="test-session", request_id="req-1")
 
 @pytest.mark.asyncio
 async def test_dispatch_delegates_correctly(dispatcher, mock_mission, mock_context):

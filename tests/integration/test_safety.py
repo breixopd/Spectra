@@ -51,6 +51,7 @@ class TestSafetyBlocking:
     async def test_blocks_rm_rf_command(self, safety_agent: SafetySupervisorAgent):
         """Test that rm -rf commands are blocked."""
         context = AgentContext(
+            mission_id="test-mission-1",
             session_id="test",
             target="192.168.1.1",
             mission="Test",
@@ -75,6 +76,7 @@ class TestSafetyBlocking:
     async def test_blocks_drop_table_command(self, safety_agent: SafetySupervisorAgent):
         """Test that DROP TABLE commands are blocked."""
         context = AgentContext(
+            mission_id="test-mission-1",
             session_id="test",
             target="192.168.1.1",
             mission="Test",
@@ -114,6 +116,7 @@ class TestSafetyBlocking:
         )
 
         context = AgentContext(
+            mission_id="test-mission-1",
             session_id="test",
             target="192.168.1.1",  # Original target
             mission="Test",
@@ -154,6 +157,7 @@ class TestSafetyBlocking:
         safety_agent = SafetySupervisorAgent(mock_llm)
 
         context = AgentContext(
+            mission_id="test-mission-1",
             session_id="test",
             target="192.168.1.1",
             mission="Test",
@@ -356,6 +360,7 @@ class TestTaskFailureHandling:
                         )
 
                         context = AgentContext(
+                            mission_id=mission.id,
                             session_id=mission.id,
                             target=test_target_ip,
                             mission="Test",
@@ -397,6 +402,7 @@ class TestTaskFailureHandling:
                     )
 
                     context = AgentContext(
+                        mission_id=mission_id,
                         session_id=mission_id,
                         target=test_target_ip,
                         mission="Test",
@@ -430,6 +436,7 @@ class TestTaskFailureHandling:
                     from app.services.ai.agents.mission_controller import Task, AssessmentPhase
 
                     context = AgentContext(
+                        mission_id=mission_id,
                         session_id=mission_id,
                         target=test_target_ip,
                         mission="Test",

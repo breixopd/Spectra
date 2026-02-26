@@ -169,6 +169,7 @@ class TestUserSteering:
 
                         from app.services.ai.agents.base import AgentContext
                         context = AgentContext(
+                            mission_id=mission_id,
                             session_id=mission_id,
                             target=test_target_ip,
                             mission="Test",

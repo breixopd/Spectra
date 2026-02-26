@@ -32,6 +32,7 @@ def mock_nmap_tool():
 async def test_stealth_mode_enforcement(tool_selector, mock_nmap_tool):
     """Test that stealth mode strictly overrides arguments."""
     context = AgentContext(
+        mission_id="test-mission-1",
         session_id="test-session",
         stealth_mode=True, # ENABLED
         phase="discovery"

@@ -52,7 +52,7 @@ async def test_execute_task_tool_selector(mock_executor_context):
     mission.log = MagicMock()
     
     task = Task(task_id="t1", description="desc", agent_type="tool_selector", phase=AssessmentPhase.DISCOVERY)
-    context = AgentContext(session_id="1", target="127.0.0.1", mission="test")
+    context = AgentContext(mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test")
     
     # Mock Selection
     select_result = MagicMock()
@@ -86,7 +86,7 @@ async def test_execute_task_tool_selector_no_tool(mock_executor_context):
     mission = Mission("127.0.0.1", "test")
     mission.log = MagicMock()
     task = Task(task_id="t1", description="desc", agent_type="tool_selector", phase=AssessmentPhase.DISCOVERY)
-    context = AgentContext(session_id="1", target="127.0.0.1", mission="test")
+    context = AgentContext(mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test")
     
     # Mock Selection - No tool selected (e.g. phase complete)
     select_result = MagicMock()
@@ -115,7 +115,7 @@ async def test_handle_exploit_crafter(mock_executor_context):
     mission = Mission("127.0.0.1", "test")
     mission.log = MagicMock()
     task = Task(task_id="t1", description="exploit", agent_type="exploit_crafter", phase=AssessmentPhase.EXPLOITATION)
-    context = AgentContext(session_id="1", target="127.0.0.1", mission="test")
+    context = AgentContext(mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test")
     
     exploit_manager.run_iterative_exploitation = AsyncMock()
     
@@ -133,7 +133,7 @@ async def test_unknown_agent_type(mock_executor_context):
     # _get_task_handler checks dict, then suffix "_agent", then phase keywords.
     # "unknown_xyz" -> no.
     task_random = Task(task_id="t2", description="random", agent_type="unknown_xyz", phase=AssessmentPhase.DISCOVERY)
-    context = AgentContext(session_id="1", target="127.0.0.1", mission="test")
+    context = AgentContext(mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test")
     
     await executor.execute_task(mission, task_random, context)
     # Should log "Unknown agent type"

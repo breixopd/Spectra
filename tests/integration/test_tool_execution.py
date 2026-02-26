@@ -398,6 +398,7 @@ class TestToolIntegrationWithMission:
         agent = ToolSelectorAgent(mock_llm)
 
         context = AgentContext(
+            mission_id="test-mission-1",
             session_id="test",
             target="192.168.1.1",
             mission="Test",

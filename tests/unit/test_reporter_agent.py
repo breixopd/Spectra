@@ -16,6 +16,7 @@ def reporter_agent(mock_llm):
 @pytest.fixture
 def context():
     return AgentContext(
+        mission_id="test-mission-1",
         session_id="test-session",
         target="example.com",
         mission="Test Mission",
