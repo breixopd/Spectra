@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-6 animate-fade-in-up">
     <h1 class="text-2xl font-semibold text-white tracking-tight">System Settings</h1>
     <button class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
         Save Changes
     </button>
 </div>
 
-<div class="grid grid-cols-12 gap-6">
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 animate-fade-in-up stagger-1">
     <!-- Sidebar Navigation -->
-    <div class="col-span-3">
+    <div class="md:col-span-3">
         <nav class="space-y-1">
             <a href="#general" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
                 <i class="fa-solid fa-sliders mr-3 text-violet-400"></i>
@@ -32,7 +32,7 @@
     </div>
 
     <!-- Content Area -->
-    <div class="col-span-9 space-y-6">
+    <div class="md:col-span-9 space-y-6">
         
         <!-- General Settings -->
         <div class="glass-panel rounded-xl p-6">

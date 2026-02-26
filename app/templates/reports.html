@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex items-center justify-between mb-6">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3 animate-fade-in-up">
     <h1 class="text-2xl font-semibold text-white tracking-tight">Assessment Reports</h1>
     <div class="flex space-x-2">
         <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors">
@@ -15,8 +15,16 @@
     </div>
 </div>
 
+<!-- Empty State -->
+<div id="reports-empty" class="empty-state glass-panel rounded-xl animate-fade-in-up stagger-1">
+    <i class="fa-solid fa-file-lines text-amber-400/40"></i>
+    <h3>No reports generated</h3>
+    <p>Reports will appear here after completing a security assessment mission.</p>
+</div>
+
 <!-- Reports List -->
-<div class="glass-panel rounded-xl overflow-hidden">
+<div class="glass-panel rounded-xl overflow-hidden animate-fade-in-up stagger-1 hidden sm:block">
+    <div class="overflow-x-auto">
     <table class="w-full text-left text-sm">
         <thead class="bg-white/5 text-slate-400 font-medium border-b border-white/5">
             <tr>
@@ -56,6 +64,7 @@
             </template>
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}
 

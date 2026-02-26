@@ -10,9 +10,9 @@
     </header>
 
     <!-- Content -->
-    <div class="flex flex-1 gap-4 min-h-0">
+    <div class="flex flex-col md:flex-row flex-1 gap-4 min-h-0 animate-fade-in-up stagger-1">
         <!-- Mission List -->
-        <div class="w-1/3 glass-panel rounded-xl flex flex-col overflow-hidden">
+        <div class="w-full md:w-1/3 glass-panel rounded-xl flex flex-col overflow-hidden min-h-[200px] md:min-h-0">
             <div class="p-4 border-b border-white/5 bg-slate-900/50">
                 <h2 class="text-sm font-medium text-slate-300">Past Missions</h2>
             </div>
@@ -91,7 +91,7 @@
             list.innerHTML = '';
             
             if (missions.length === 0) {
-                list.innerHTML = '<div class="text-center text-slate-500 py-8">No missions found</div>';
+                list.innerHTML = '<div class="empty-state"><i class="fa-solid fa-clock-rotate-left text-blue-400/40"></i><h3>No missions yet</h3><p>Start a mission from the War Room to see history here.</p></div>';
                 return;
             }
 
