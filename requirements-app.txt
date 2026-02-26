@@ -47,4 +47,4 @@ orjson>=3.9.0
 json-repair>=0.54.0
 
 # PDF report generation
-xhtml2pdf>=0.2.11
+blinker>=1.7.0,<2.0.0

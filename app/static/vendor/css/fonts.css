@@ -1,0 +1,17 @@
+/* Local fonts - no Google Fonts dependency */
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400 600;
+    font-display: swap;
+    src: url('/static/vendor/fonts/inter-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF;
+}
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+    src: url('/static/vendor/fonts/jetbrainsmono-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF;
+}

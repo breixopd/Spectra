@@ -36,7 +36,7 @@ arq>=0.25.0,<0.26.0
 openai>=1.10.0
 litellm>=1.50.0
 httpx>=0.26.0
-sentence-transformers>=2.2.0  # For RAG embeddings (optional, has fallback)
+# sentence-transformers>=2.2.0  # Optional: only needed for RAG vector embeddings
 
 # -----------------------------------------------------------------------------
 # Web & Templates

@@ -203,6 +203,31 @@ function startMission(target, directive) {
     .catch(err => addTerminalLine(`[ERROR] Connection failed: ${err}`, 'error'));
 }
 
+// --- Scan Presets ---
+async function launchPreset(presetId) {
+    const target = document.getElementById('mission-control-input')?.value?.split(' ')[0];
+    if (!target || !target.includes('.')) {
+        addTerminalLine('[ERROR] Enter a target IP or domain in the command bar first', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/missions/presets');
+        const presets = await res.json();
+        const preset = presets[presetId];
+        
+        if (!preset) {
+            addTerminalLine(`[ERROR] Unknown preset: ${presetId}`, 'error');
+            return;
+        }
+        
+        addTerminalLine(`[SYSTEM] Launching preset: ${preset.name} (~${preset.estimated_minutes} min)`, 'info');
+        startMission(target, preset.directive);
+    } catch (err) {
+        addTerminalLine(`[ERROR] Failed to load preset: ${err}`, 'error');
+    }
+}
+
 function pauseMission() {
     if (!currentMissionId) {
         addTerminalLine('[ERROR] No active mission to pause', 'error');

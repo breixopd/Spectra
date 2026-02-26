@@ -45,9 +45,6 @@ class ToolInstaller:
         # Check if already installed in persistent storage
         if await self._is_installed(tool) and self.check_persistence:
             logger.info("Tool '%s' appears to be already installed.", tool_id)
-            # We still run verify/install to ensure dependencies are met,
-            # but this could be optimized to skip if verification passes.
-            pass
 
         try:
             success = await registry.install_tool(tool_id)
