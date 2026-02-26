@@ -22,7 +22,7 @@ async def shell_websocket(websocket: WebSocket, session_id: str):
     session = await shell_manager.get_session(session_id)
     if not session:
         # Check if it's a valid session ID for reconnection?
-        # For now, just close. The "Reconnect" feature will be an API call
+        # Close the connection
         # that spawns a NEW session, not connecting to a dead one.
         await websocket.close(code=1000, reason="Session not found")
         return
