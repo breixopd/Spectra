@@ -4,7 +4,6 @@ Mission API Router.
 Endpoints for managing security missions.
 """
 
-import uuid
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response

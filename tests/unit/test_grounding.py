@@ -11,7 +11,6 @@ from app.services.ai.grounding import (
 
 
 class TestToolOutputValidation:
-
     def test_empty_output_invalid(self):
         result = validate_tool_output("nmap", "", "")
         assert result["valid"] is False
@@ -31,13 +30,15 @@ class TestToolOutputValidation:
         assert result["valid"] is True
 
     def test_nuclei_valid_output(self):
-        output = '[INF] Templates: 100 | matched-at: http://example.com | template-id: cve-2021-1234'
+        output = "[INF] Templates: 100 | matched-at: http://example.com | template-id: cve-2021-1234"
         result = validate_tool_output("nuclei", output, "")
         assert result["valid"] is True
         assert result["confidence"] > 0.5
 
     def test_wrong_tool_output(self):
-        result = validate_tool_output("nmap", "This is just random text with no tool signatures", "")
+        result = validate_tool_output(
+            "nmap", "This is just random text with no tool signatures", ""
+        )
         assert result["valid"] is False
         assert result["confidence"] < 0.5
 
@@ -48,7 +49,9 @@ class TestToolOutputValidation:
         assert result["evidence_quality"] == "weak"
 
     def test_stderr_included(self):
-        result = validate_tool_output("nmap", "", "Nmap scan report for 10.0.0.1\nPORT STATE SERVICE")
+        result = validate_tool_output(
+            "nmap", "", "Nmap scan report for 10.0.0.1\nPORT STATE SERVICE"
+        )
         assert result["valid"] is True
 
     def test_hydra_output(self):
@@ -59,7 +62,6 @@ class TestToolOutputValidation:
 
 
 class TestEvidenceExtraction:
-
     def test_nmap_ports(self):
         output = "22/tcp open  ssh\n80/tcp open  http\n443/tcp closed https"
         snippets = extract_evidence_snippets("nmap", output)
@@ -103,7 +105,6 @@ class TestEvidenceExtraction:
 
 
 class TestConfidenceTracker:
-
     def test_register_and_get(self):
         tracker = ConfidenceTracker()
         tracker.register_finding("vuln-1", 0.8)
@@ -154,7 +155,6 @@ class TestConfidenceTracker:
 
 
 class TestGroundedContext:
-
     def test_empty_context_summary(self):
         ctx = GroundedContext(target="10.0.0.1", target_type="ip")
         summary = ctx.get_evidence_summary()
@@ -164,7 +164,9 @@ class TestGroundedContext:
         ctx = GroundedContext(
             target="10.0.0.1",
             target_type="ip",
-            confirmed_services=[{"port": 22, "service": "ssh", "product": "OpenSSH", "version": "8.2"}],
+            confirmed_services=[
+                {"port": 22, "service": "ssh", "product": "OpenSSH", "version": "8.2"}
+            ],
         )
         summary = ctx.get_evidence_summary()
         assert "Port 22" in summary
@@ -175,7 +177,13 @@ class TestGroundedContext:
         ctx = GroundedContext(
             target="10.0.0.1",
             target_type="ip",
-            confirmed_vulns=[{"title": "SQL Injection", "severity": "high", "cve_id": "CVE-2024-1234"}],
+            confirmed_vulns=[
+                {
+                    "title": "SQL Injection",
+                    "severity": "high",
+                    "cve_id": "CVE-2024-1234",
+                }
+            ],
         )
         summary = ctx.get_evidence_summary()
         assert "SQL Injection" in summary
@@ -196,7 +204,9 @@ class TestGroundedContext:
         ctx = GroundedContext(
             target="10.0.0.1",
             target_type="ip",
-            tools_run_with_results=[{"tool": "nmap", "success": True, "evidence_quality": "strong"}],
+            tools_run_with_results=[
+                {"tool": "nmap", "success": True, "evidence_quality": "strong"}
+            ],
         )
         summary = ctx.get_evidence_summary()
         assert "nmap" in summary
@@ -204,7 +214,6 @@ class TestGroundedContext:
 
 
 class TestReasoningStep:
-
     def test_create(self):
         step = ReasoningStep(
             step=1,

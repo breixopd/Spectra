@@ -12,6 +12,7 @@ from app.services.tools.models import OutputFormat
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_config(
     fmt=OutputFormat.JSON,
     mapping=None,
@@ -44,8 +45,8 @@ def _make_config(
 # JSON parsing
 # =====================================================================
 
-class TestParseJson:
 
+class TestParseJson:
     def test_array_of_objects(self):
         config = _make_config(fmt=OutputFormat.JSON)
         parser = UniversalParser(config)
@@ -110,8 +111,8 @@ class TestParseJson:
 # NDJSON parsing
 # =====================================================================
 
-class TestParseNdjson:
 
+class TestParseNdjson:
     def test_multiple_lines(self):
         config = _make_config(fmt=OutputFormat.NDJSON)
         parser = UniversalParser(config)
@@ -169,8 +170,8 @@ class TestParseNdjson:
 # CSV parsing
 # =====================================================================
 
-class TestParseCsv:
 
+class TestParseCsv:
     def test_csv_with_headers(self):
         config = _make_config(fmt=OutputFormat.CSV)
         parser = UniversalParser(config)
@@ -210,8 +211,8 @@ class TestParseCsv:
 # XML parsing
 # =====================================================================
 
-class TestParseXml:
 
+class TestParseXml:
     def test_generic_elements(self):
         config = _make_config(fmt=OutputFormat.XML)
         parser = UniversalParser(config)
@@ -336,12 +337,10 @@ class TestParseXml:
 # Regex pattern parsing
 # =====================================================================
 
-class TestParseWithRegex:
 
+class TestParseWithRegex:
     def test_named_groups(self):
-        patterns = [
-            {"pattern": r"(?P<host>\d+\.\d+\.\d+\.\d+):(?P<port>\d+)"}
-        ]
+        patterns = [{"pattern": r"(?P<host>\d+\.\d+\.\d+\.\d+):(?P<port>\d+)"}]
         config = _make_config(fmt=OutputFormat.TEXT, regex_patterns=patterns)
         parser = UniversalParser(config)
 
@@ -373,9 +372,7 @@ class TestParseWithRegex:
         assert result[1]["status"] == "stopped"
 
     def test_no_matches_returns_empty(self):
-        patterns = [
-            {"pattern": r"(?P<cve>CVE-\d{4}-\d+)"}
-        ]
+        patterns = [{"pattern": r"(?P<cve>CVE-\d{4}-\d+)"}]
         config = _make_config(fmt=OutputFormat.TEXT, regex_patterns=patterns)
         parser = UniversalParser(config)
 
@@ -423,8 +420,8 @@ class TestParseWithRegex:
 # Field mapping (_apply_mapping)
 # =====================================================================
 
-class TestApplyMapping:
 
+class TestApplyMapping:
     def test_mapped_fields(self):
         mapping = {"ip_address": "host", "port_number": "port"}
         config = _make_config(mapping=mapping)
@@ -481,8 +478,8 @@ class TestApplyMapping:
 # Output collection (_collect_output_content)
 # =====================================================================
 
-class TestCollectOutputContent:
 
+class TestCollectOutputContent:
     def test_stdout_only(self):
         config = _make_config()
         parser = UniversalParser(config)
@@ -563,8 +560,8 @@ class TestCollectOutputContent:
 # parse_output (async entry point)
 # =====================================================================
 
-class TestParseOutput:
 
+class TestParseOutput:
     @pytest.mark.asyncio
     async def test_json_end_to_end(self):
         config = _make_config(fmt=OutputFormat.JSON)
@@ -680,8 +677,8 @@ class TestParseOutput:
 # LLM parsing stub
 # =====================================================================
 
-class TestParseWithLlm:
 
+class TestParseWithLlm:
     @pytest.mark.asyncio
     async def test_no_llm_client_returns_empty(self):
         config = _make_config(fmt=OutputFormat.TEXT, llm_extraction=True)

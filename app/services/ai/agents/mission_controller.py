@@ -173,10 +173,13 @@ class MissionController(
         # Get learned context from persistent memory
         try:
             from app.services.ai.memory import get_memory
+
             memory = get_memory()
             memory_context = memory.get_context_for_prompt()
             if memory_context:
-                rag_context += f"\n\n--- Learned from Past Missions ---\n{memory_context}"
+                rag_context += (
+                    f"\n\n--- Learned from Past Missions ---\n{memory_context}"
+                )
             stats = memory.get_stats()
             if stats["tool_lessons"] > 0 or stats["exploit_lessons"] > 0:
                 rag_context += f"\n(Memory: {stats['tool_lessons']} tool lessons, {stats['exploit_lessons']} exploit patterns, {stats['target_profiles']} OS profiles)"
@@ -197,14 +200,6 @@ class MissionController(
             target=context.target or "Not specified",
             phase=context.phase,
             mission=context.mission or "Standard security assessment",
-        )
-
-        # Generate plan using LLM
-        response = await self.llm.generate_structured(
-            prompt=prompt,
-            response_model=MissionPlan,
-            system_prompt=system_prompt,
-            temperature=self._get_temperature(input_data),
         )
 
         system_prompt = (

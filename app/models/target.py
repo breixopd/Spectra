@@ -6,7 +6,6 @@ Provides the central entity that findings and exploits reference.
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Enum as SQLEnum

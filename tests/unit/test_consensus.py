@@ -83,7 +83,7 @@ class TestVotingSystemBasics:
                     "decision": "approve",
                     "confidence": 0.8,
                     "reasoning": "Test approval",
-                    "concerns": []
+                    "concerns": [],
                 }
             }
         )
@@ -99,7 +99,7 @@ class TestVotingSystemBasics:
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.HIGH,
-            reasoning="Test action"
+            reasoning="Test action",
         )
 
         assert voting_system.requires_voting(action) is True
@@ -110,7 +110,7 @@ class TestVotingSystemBasics:
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.LOW,
-            reasoning="Test action"
+            reasoning="Test action",
         )
 
         assert voting_system.requires_voting(action) is False
@@ -122,7 +122,7 @@ class TestVotingSystemBasics:
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.CRITICAL,
-            reasoning="Test action"
+            reasoning="Test action",
         )
 
         assert voting_system.requires_human_approval(action) is True
@@ -133,7 +133,7 @@ class TestVotingSystemBasics:
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.HIGH,
-            reasoning="Test action"
+            reasoning="Test action",
         )
 
         assert voting_system.requires_human_approval(action) is False
@@ -151,7 +151,7 @@ class TestVoteOnAction:
                     "decision": "approve",
                     "confidence": 0.85,
                     "reasoning": "Action looks safe",
-                    "concerns": []
+                    "concerns": [],
                 }
             }
         )
@@ -164,7 +164,7 @@ class TestVoteOnAction:
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.LOW,
-            reasoning="Test"
+            reasoning="Test",
         )
 
         result = await voting.vote_on_action(action)
@@ -182,7 +182,7 @@ class TestVoteOnAction:
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.CRITICAL,
-            reasoning="Test"
+            reasoning="Test",
         )
 
         result = await voting.vote_on_action(action)
@@ -204,7 +204,7 @@ class TestValidateAtGate:
                     "decision": "approve",
                     "confidence": 0.9,
                     "reasoning": "Test approval",
-                    "concerns": []
+                    "concerns": [],
                 }
             }
         )
@@ -217,13 +217,11 @@ class TestValidateAtGate:
             action_type="mission_plan",
             confidence=0.8,
             risk_level=ActionRisk.MEDIUM,
-            reasoning="Test plan"
+            reasoning="Test plan",
         )
 
         result = await voting.validate_at_gate(
-            QualityGate.PLAN,
-            action,
-            {"target": "192.168.1.1", "task_count": 5}
+            QualityGate.PLAN, action, {"target": "192.168.1.1", "task_count": 5}
         )
 
         # With mock returning approve, should be approved
@@ -240,13 +238,11 @@ class TestValidateAtGate:
             reasoning="Running nmap",
             tool_name="nmap",
             target="192.168.1.1",
-            estimated_duration=60
+            estimated_duration=60,
         )
 
         result = await voting.validate_at_gate(
-            QualityGate.TOOL_SELECTION,
-            action,
-            {"phase": "discovery", "tool": "nmap"}
+            QualityGate.TOOL_SELECTION, action, {"phase": "discovery", "tool": "nmap"}
         )
 
         assert result.status == ConsensusStatus.APPROVED
@@ -260,14 +256,10 @@ class TestValidateAtGate:
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.CRITICAL,
-            reasoning="Dangerous action"
+            reasoning="Dangerous action",
         )
 
-        result = await voting.validate_at_gate(
-            QualityGate.PAYLOAD,
-            action,
-            {}
-        )
+        result = await voting.validate_at_gate(QualityGate.PAYLOAD, action, {})
 
         assert result.status == ConsensusStatus.PENDING_HUMAN
 
@@ -281,16 +273,31 @@ class TestVoteAnalysis:
         voting = VotingSystem(MockLLMClient(), config)
 
         votes = [
-            Vote(voter_id="v1", decision=VoteDecision.APPROVE, confidence=0.8, reasoning="Good"),
-            Vote(voter_id="v2", decision=VoteDecision.APPROVE, confidence=0.7, reasoning="Fine"),
-            Vote(voter_id="v3", decision=VoteDecision.REJECT, confidence=0.5, reasoning="Not sure"),
+            Vote(
+                voter_id="v1",
+                decision=VoteDecision.APPROVE,
+                confidence=0.8,
+                reasoning="Good",
+            ),
+            Vote(
+                voter_id="v2",
+                decision=VoteDecision.APPROVE,
+                confidence=0.7,
+                reasoning="Fine",
+            ),
+            Vote(
+                voter_id="v3",
+                decision=VoteDecision.REJECT,
+                confidence=0.5,
+                reasoning="Not sure",
+            ),
         ]
 
         action = AgentAction(
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.MEDIUM,
-            reasoning="Test"
+            reasoning="Test",
         )
 
         result = voting._analyze_votes(votes, action)
@@ -306,16 +313,31 @@ class TestVoteAnalysis:
         voting = VotingSystem(MockLLMClient(), config)
 
         votes = [
-            Vote(voter_id="v1", decision=VoteDecision.REJECT, confidence=0.8, reasoning="Dangerous"),
-            Vote(voter_id="v2", decision=VoteDecision.REJECT, confidence=0.9, reasoning="Too risky"),
-            Vote(voter_id="v3", decision=VoteDecision.APPROVE, confidence=0.5, reasoning="Maybe ok"),
+            Vote(
+                voter_id="v1",
+                decision=VoteDecision.REJECT,
+                confidence=0.8,
+                reasoning="Dangerous",
+            ),
+            Vote(
+                voter_id="v2",
+                decision=VoteDecision.REJECT,
+                confidence=0.9,
+                reasoning="Too risky",
+            ),
+            Vote(
+                voter_id="v3",
+                decision=VoteDecision.APPROVE,
+                confidence=0.5,
+                reasoning="Maybe ok",
+            ),
         ]
 
         action = AgentAction(
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.MEDIUM,
-            reasoning="Test"
+            reasoning="Test",
         )
 
         result = voting._analyze_votes(votes, action)
@@ -330,16 +352,31 @@ class TestVoteAnalysis:
         voting = VotingSystem(MockLLMClient(), config)
 
         votes = [
-            Vote(voter_id="v1", decision=VoteDecision.APPROVE, confidence=0.6, reasoning="Ok"),
-            Vote(voter_id="v2", decision=VoteDecision.ABSTAIN, confidence=0.3, reasoning="Unsure"),
-            Vote(voter_id="v3", decision=VoteDecision.ABSTAIN, confidence=0.2, reasoning="Not sure"),
+            Vote(
+                voter_id="v1",
+                decision=VoteDecision.APPROVE,
+                confidence=0.6,
+                reasoning="Ok",
+            ),
+            Vote(
+                voter_id="v2",
+                decision=VoteDecision.ABSTAIN,
+                confidence=0.3,
+                reasoning="Unsure",
+            ),
+            Vote(
+                voter_id="v3",
+                decision=VoteDecision.ABSTAIN,
+                confidence=0.2,
+                reasoning="Not sure",
+            ),
         ]
 
         action = AgentAction(
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.MEDIUM,
-            reasoning="Test"
+            reasoning="Test",
         )
 
         result = voting._analyze_votes(votes, action)
@@ -353,15 +390,25 @@ class TestVoteAnalysis:
         voting = VotingSystem(MockLLMClient(), config)
 
         votes = [
-            Vote(voter_id="v1", decision=VoteDecision.APPROVE, confidence=0.5, reasoning="Maybe"),
-            Vote(voter_id="v2", decision=VoteDecision.APPROVE, confidence=0.6, reasoning="Perhaps"),
+            Vote(
+                voter_id="v1",
+                decision=VoteDecision.APPROVE,
+                confidence=0.5,
+                reasoning="Maybe",
+            ),
+            Vote(
+                voter_id="v2",
+                decision=VoteDecision.APPROVE,
+                confidence=0.6,
+                reasoning="Perhaps",
+            ),
         ]
 
         action = AgentAction(
             action_type="test",
             confidence=0.8,
             risk_level=ActionRisk.MEDIUM,
-            reasoning="Test"
+            reasoning="Test",
         )
 
         result = voting._analyze_votes(votes, action)
@@ -383,7 +430,7 @@ class TestHumanApprovalRequest:
             action_type="exploit",
             confidence=0.9,
             risk_level=ActionRisk.CRITICAL,
-            reasoning="Attempting RCE exploit"
+            reasoning="Attempting RCE exploit",
         )
 
         request = await voting.request_human_approval(action)
@@ -401,7 +448,7 @@ class TestHumanApprovalRequest:
             action_type="test",
             confidence=0.5,
             risk_level=ActionRisk.HIGH,
-            reasoning="Test"
+            reasoning="Test",
         )
 
         consensus_result = ConsensusResult(
@@ -412,9 +459,9 @@ class TestHumanApprovalRequest:
                     decision=VoteDecision.REJECT,
                     confidence=0.8,
                     reasoning="Too risky",
-                    concerns=["May cause downtime", "Not authorized"]
+                    concerns=["May cause downtime", "Not authorized"],
                 )
-            ]
+            ],
         )
 
         request = await voting.request_human_approval(action, consensus_result)

@@ -27,6 +27,7 @@ def tool_registry() -> ToolRegistry:
         registry.validator.safe_mode = False
     return registry
 
+
 @pytest.mark.asyncio
 async def test_load_all_plugins(tool_registry: ToolRegistry) -> None:
     """Test that all plugins in the plugins directory can be loaded."""
@@ -48,6 +49,7 @@ async def test_load_all_plugins(tool_registry: ToolRegistry) -> None:
         tool = tool_registry.get_tool(tool_id)
         assert tool is not None, f"Failed to load plugin {tool_id} from {plugin_file}"
         assert tool.config.name == data.get("name")
+
 
 @pytest.mark.asyncio
 async def test_execute_tool_version(tool_registry: ToolRegistry) -> None:
@@ -96,6 +98,7 @@ async def test_execute_tool_version(tool_registry: ToolRegistry) -> None:
     assert result.success
     assert "hello world" in result.stdout
 
+
 @pytest.mark.asyncio
 async def test_hot_load_plugin(tool_registry: ToolRegistry) -> None:
     """Test adding a new plugin file and verifying it loads."""
@@ -136,9 +139,7 @@ async def test_hot_load_plugin(tool_registry: ToolRegistry) -> None:
         tool_registry.validator.safe_mode = False
 
         # Write new plugin
-        new_plugin_path.write_text(
-            json.dumps(plugin_data, indent=2), encoding="utf-8"
-        )
+        new_plugin_path.write_text(json.dumps(plugin_data, indent=2), encoding="utf-8")
 
         # Trigger reload
         await tool_registry.load_plugins()

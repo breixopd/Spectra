@@ -95,7 +95,9 @@ class MissionExecutionManager:
             try:
                 shell_manager.notify_mission_complete(str(mission.id))
             except Exception as e:
-                logger.error(f"Failed to notify shell manager of mission completion: {e}")
+                logger.error(
+                    f"Failed to notify shell manager of mission completion: {e}"
+                )
 
     async def _run_scope_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run scope definition phase."""
@@ -122,7 +124,9 @@ class MissionExecutionManager:
         target_count = len(scope_result.action.targets)  # type: ignore
         mission.log(f"Scope defined: {target_count} targets")
 
-    async def _run_planning_phase(self, mission: Mission, context: AgentContext) -> None:
+    async def _run_planning_phase(
+        self, mission: Mission, context: AgentContext
+    ) -> None:
         """Run mission planning phase with quality gate validation."""
         mission.log("Generating mission plan...")
 
@@ -177,14 +181,20 @@ class MissionExecutionManager:
         if vote_result.status != "approved":
             raise RuntimeError(f"Plan rejected: {vote_result.escalation_reason}")
 
-        mission.log(f"[APPROVED] Plan validated (Confidence: {vote_result.average_confidence:.2f})")
+        mission.log(
+            f"[APPROVED] Plan validated (Confidence: {vote_result.average_confidence:.2f})"
+        )
         mission.plan = plan_action
 
         task_count = len(mission.plan.tasks)
         mission.log(f"Plan created: {task_count} tasks")
-        self._broadcast_state("mission_controller", "running", plan=f"{task_count} tasks planned")
+        self._broadcast_state(
+            "mission_controller", "running", plan=f"{task_count} tasks planned"
+        )
 
-    async def _execute_mission_tasks(self, mission: Mission, context: AgentContext) -> None:
+    async def _execute_mission_tasks(
+        self, mission: Mission, context: AgentContext
+    ) -> None:
         """Execute all mission tasks with dynamic plan adaptation."""
         if mission.plan is None:
             return
@@ -346,7 +356,9 @@ class MissionExecutionManager:
                     )
 
                     if vote_result.status != "approved":
-                        mission.log(f"[REJECTED] Replan rejected: {vote_result.escalation_reason}")
+                        mission.log(
+                            f"[REJECTED] Replan rejected: {vote_result.escalation_reason}"
+                        )
                         mission.log("[ADAPT] Continuing with original plan")
                         return
 
@@ -377,23 +389,30 @@ class MissionExecutionManager:
 
             for template, count in template_counts.items():
                 severity = next(
-                    (f.get("severity", "info") for f in mission.findings
-                     if (f.get("template-id") or f.get("name")) == template),
-                    "info"
+                    (
+                        f.get("severity", "info")
+                        for f in mission.findings
+                        if (f.get("template-id") or f.get("name")) == template
+                    ),
+                    "info",
                 )
                 if count >= 5 and severity == "info":
                     memory.record_false_positive(template)
-                    mission.log(f"[LEARN] Marked '{template}' as probable false positive ({count} duplicates)")
+                    mission.log(
+                        f"[LEARN] Marked '{template}' as probable false positive ({count} duplicates)"
+                    )
 
             # Record OS profile if detected
-            os_family = getattr(mission, '_detected_os', None)
+            os_family = getattr(mission, "_detected_os", None)
             if os_family and os_family != "unknown":
-                services = [s.service for s in mission.attack_surface.services if s.service]
+                services = [
+                    s.service for s in mission.attack_surface.services if s.service
+                ]
                 memory.update_target_profile(
                     os_family,
                     services=services,
                     note=f"Mission against {mission.target}: {len(mission.findings)} findings, "
-                         f"{len(mission.tools_run)} tools used",
+                    f"{len(mission.tools_run)} tools used",
                 )
 
             stats = memory.get_stats()
@@ -407,7 +426,9 @@ class MissionExecutionManager:
 
     def _broadcast_state(self, agent_id: str, status: str, **kwargs) -> None:
         """Broadcast agent state."""
-        self._broadcast("agent_state", {"agent_id": agent_id, "status": status, **kwargs})
+        self._broadcast(
+            "agent_state", {"agent_id": agent_id, "status": status, **kwargs}
+        )
 
     def _broadcast(self, msg_type: str, data: Any) -> None:
         """Broadcast to WebSocket clients via EventBus."""

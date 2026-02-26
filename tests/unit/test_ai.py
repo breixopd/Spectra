@@ -21,8 +21,17 @@ from app.services.ai.agents.base import (
     ActionRisk,
 )
 from app.services.ai.agents.scope import ScopeAgent, ScopeInput, ScopeAction
-from app.services.ai.agents.tool_selector import ToolSelectorAgent, ToolSelectorInput, ToolSelectorOutput
-from app.services.tools.models import ToolConfig, ToolCategory, RegisteredTool, ToolStatus
+from app.services.ai.agents.tool_selector import (
+    ToolSelectorAgent,
+    ToolSelectorInput,
+    ToolSelectorOutput,
+)
+from app.services.tools.models import (
+    ToolConfig,
+    ToolCategory,
+    RegisteredTool,
+    ToolStatus,
+)
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
@@ -42,12 +51,20 @@ def mock_registry():
 
     # Create some mock tools
     nmap_config = ToolConfig(
-        id="nmap", name="Nmap", version="1.0.0", category=ToolCategory.DISCOVERY,
-        description="Nmap scanner", execution={"command": "nmap", "args_template": ""}
+        id="nmap",
+        name="Nmap",
+        version="1.0.0",
+        category=ToolCategory.DISCOVERY,
+        description="Nmap scanner",
+        execution={"command": "nmap", "args_template": ""},
     )
     naabu_config = ToolConfig(
-        id="naabu", name="Naabu", version="1.0.0", category=ToolCategory.DISCOVERY,
-        description="Naabu scanner", execution={"command": "naabu", "args_template": ""}
+        id="naabu",
+        name="Naabu",
+        version="1.0.0",
+        category=ToolCategory.DISCOVERY,
+        description="Naabu scanner",
+        execution={"command": "naabu", "args_template": ""},
     )
 
     tools = [
@@ -58,7 +75,9 @@ def mock_registry():
     registry.get_available_tools.return_value = tools
     registry.list_tools.return_value = tools
     registry.sync_status_from_redis = AsyncMock()
-    registry.get_tool.side_effect = lambda x: next((t for t in tools if t.config.id == x), None)
+    registry.get_tool.side_effect = lambda x: next(
+        (t for t in tools if t.config.id == x), None
+    )
 
     return registry
 
@@ -116,9 +135,7 @@ class TestMockLLMClient:
             value: int
 
         llm = MockLLMClient(
-            structured_responses={
-                "TestModel": {"name": "test", "value": 42}
-            }
+            structured_responses={"TestModel": {"name": "test", "value": 42}}
         )
 
         result = await llm.generate_structured("prompt", TestModel)
@@ -171,6 +188,7 @@ class TestLLMFactory:
     def test_get_ollama_client(self):
         """Test creating an Ollama client."""
         from app.services.ai.llm import OllamaClient
+
         client = get_llm_client("ollama", host="http://localhost:11434")
         assert isinstance(client, OllamaClient)
 
@@ -285,7 +303,9 @@ class TestToolSelectorAgent:
     """Tests for ToolSelectorAgent."""
 
     @pytest.mark.asyncio
-    async def test_selects_tool_for_discovery(self, mock_llm, agent_context, mock_registry):
+    async def test_selects_tool_for_discovery(
+        self, mock_llm, agent_context, mock_registry
+    ):
         """Test tool selection for discovery phase."""
         # Configure mock to return valid tool selection
         mock_llm.structured_responses["ToolSelectorOutput"] = {
@@ -310,7 +330,10 @@ class TestToolSelectorAgent:
             user_preference=None,
         )
 
-        with patch("app.services.ai.agents.tool_selector.get_registry", return_value=mock_registry):
+        with patch(
+            "app.services.ai.agents.tool_selector.get_registry",
+            return_value=mock_registry,
+        ):
             result = await agent.execute(agent_context, input_data)
 
         assert result.success is True
@@ -319,7 +342,9 @@ class TestToolSelectorAgent:
         assert result.action.tool_name in ["nmap", "naabu"]
 
     @pytest.mark.asyncio
-    async def test_respects_user_preference(self, mock_llm, agent_context, mock_registry):
+    async def test_respects_user_preference(
+        self, mock_llm, agent_context, mock_registry
+    ):
         """Test that user tool preference is respected."""
         # Configure mock LLM to return valid response
         mock_llm.structured_responses["ToolSelectorOutput"] = {
@@ -332,7 +357,7 @@ class TestToolSelectorAgent:
             "risk_level": "low",
             "reasoning": "User requested naabu",
             "alternatives": [],
-            "skip_reason": None
+            "skip_reason": None,
         }
 
         agent = ToolSelectorAgent(mock_llm)
@@ -344,7 +369,10 @@ class TestToolSelectorAgent:
             user_preference="naabu",
         )
 
-        with patch("app.services.ai.agents.tool_selector.get_registry", return_value=mock_registry):
+        with patch(
+            "app.services.ai.agents.tool_selector.get_registry",
+            return_value=mock_registry,
+        ):
             result = await agent.execute(agent_context, input_data)
 
         assert result.success is True
@@ -352,7 +380,9 @@ class TestToolSelectorAgent:
         assert result.action.tool_name == "naabu"
 
     @pytest.mark.asyncio
-    async def test_skips_already_run_tools(self, mock_llm, agent_context, mock_registry):
+    async def test_skips_already_run_tools(
+        self, mock_llm, agent_context, mock_registry
+    ):
         """Test that already-run tools are skipped."""
         agent = ToolSelectorAgent(mock_llm)
 
@@ -364,7 +394,10 @@ class TestToolSelectorAgent:
             user_preference=None,
         )
 
-        with patch("app.services.ai.agents.tool_selector.get_registry", return_value=mock_registry):
+        with patch(
+            "app.services.ai.agents.tool_selector.get_registry",
+            return_value=mock_registry,
+        ):
             result = await agent.execute(agent_context, input_data)
 
         assert result.success is True

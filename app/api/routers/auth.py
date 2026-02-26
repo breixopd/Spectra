@@ -23,7 +23,6 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
-    get_password_hash,
     verify_password,
 )
 from app.core.telemetry import telemetry
@@ -72,7 +71,9 @@ async def login_for_access_token(
             username=form_data.username,
             client_ip=client_ip,
         )
-        telemetry.increment_counter("login_failed", 1, {"reason": "invalid_credentials"})
+        telemetry.increment_counter(
+            "login_failed", 1, {"reason": "invalid_credentials"}
+        )
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

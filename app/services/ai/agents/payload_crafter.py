@@ -29,7 +29,9 @@ logger = logging.getLogger("spectra.ai.agents.payload_crafter")
 class PayloadCrafterInput(BaseModel):
     """Input for the PayloadCrafter."""
 
-    vulnerability: dict[str, Any] = Field(..., description="The vulnerability to exploit")
+    vulnerability: dict[str, Any] = Field(
+        ..., description="The vulnerability to exploit"
+    )
     target: str = Field(..., description="Target IP/Domain")
     target_os: str | None = Field(None, description="Target OS if known")
     protocol: str | None = Field(None, description="Target protocol (http, ssh, etc)")
@@ -39,7 +41,9 @@ class PayloadCrafterOutput(ToolAction):
     """Output from the PayloadCrafter."""
 
     exploit_name: str = Field(..., description="Name/ID of the exploit to use")
-    payload_type: str = Field(..., description="Type of payload (reverse_shell, bind_shell, etc)")
+    payload_type: str = Field(
+        ..., description="Type of payload (reverse_shell, bind_shell, etc)"
+    )
 
 
 class PayloadCrafterAgent(Agent[PayloadCrafterInput, PayloadCrafterOutput]):
@@ -54,7 +58,9 @@ class PayloadCrafterAgent(Agent[PayloadCrafterInput, PayloadCrafterOutput]):
         AgentRole.EXPLOIT_CRAFTER
     )  # Using EXPLOIT_CRAFTER as this agent crafts payloads/exploits
     name: ClassVar[str] = "PayloadCrafter"
-    description: ClassVar[str] = "Selects and customizes exploits for identified vulnerabilities"
+    description: ClassVar[str] = (
+        "Selects and customizes exploits for identified vulnerabilities"
+    )
 
     async def execute(
         self,
@@ -92,13 +98,15 @@ class PayloadCrafterAgent(Agent[PayloadCrafterInput, PayloadCrafterOutput]):
             for a in context.previous_actions:
                 if "error" in a or "result" in a:
                     previous_failures.append(f"- {a.get('error') or a.get('result')}")
-        
+
         prompt = EXPLOIT_SELECTION_PROMPT.format(
             target=input_data.target,
             vulnerability_name=input_data.vulnerability.get("name", "Unknown"),
             vulnerability_desc=input_data.vulnerability.get("description", "N/A"),
             vulnerability_details=input_data.vulnerability,
-            previous_failures="\n".join(previous_failures) if previous_failures else "None",
+            previous_failures="\n".join(previous_failures)
+            if previous_failures
+            else "None",
         )
 
         system_prompt = self._build_system_prompt(context)

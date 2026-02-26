@@ -4,7 +4,6 @@ Mission model for storing mission execution history.
 Tracks security assessment missions, their status, logs, and results.
 """
 
-from enum import Enum
 from typing import Optional
 
 from sqlalchemy import JSON, String, Text

@@ -151,13 +151,16 @@ class CommandBuilder:
 
         return result
 
-    def _process_conditional_blocks(self, template: str, substitutions: dict[str, Any]) -> str:
+    def _process_conditional_blocks(
+        self, template: str, substitutions: dict[str, Any]
+    ) -> str:
         """Process conditional blocks in the template.
 
         Format: [content {placeholder} content]
         If all placeholders in the block are present in substitutions and non-empty,
         the block is kept (without brackets). Otherwise, it is removed.
         """
+
         def replace_block(match):
             block_content = match.group(1)
             # Find all placeholders in the block

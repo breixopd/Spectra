@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.models import ToolConfig, OutputFormat
 
+
 class TestToolAdapterParsing:
-    
     @pytest.fixture
     def adapter(self):
         config = MagicMock(spec=ToolConfig)
@@ -31,10 +31,10 @@ class TestToolAdapterParsing:
                 </ports>
             </host>
         </nmaprun>"""
-        
+
         # Use _parse_xml which delegates to parsers now
         findings = adapter.parser._parse_xml(xml_content)
-        
+
         # _parse_xml returns list of dicts. Since it's nmaprun, it returns list of findings.
         assert len(findings) == 1
         assert findings[0]["portid"] == "80"
@@ -53,10 +53,10 @@ class TestToolAdapterParsing:
                 <severity>low</severity>
             </item>
         </root>"""
-        
+
         adapter.config.parsing.row_tag = "item"
         findings = adapter.parser._parse_xml(xml_content)
-        
+
         # Parser finds "item" container elements and returns each as a finding
         assert len(findings) == 2
         assert findings[0]["severity"] == "high"

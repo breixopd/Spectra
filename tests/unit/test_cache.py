@@ -234,4 +234,5 @@ class TestGetCacheSingleton:
         with patch("app.core.cache._cache", None):
             set_cache(mock_svc)
             from app.core.cache import _cache
+
             assert _cache is mock_svc

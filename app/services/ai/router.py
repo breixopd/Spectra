@@ -13,10 +13,9 @@ Usage:
     response = await router.generate("What ports are open?", task_type="tool_selection")
 """
 
-import json
 import logging
 import time
-from typing import Any, Type, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -225,27 +224,35 @@ def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
 
     if provider == "ollama":
         ollama_model = f"ollama/{settings.OLLAMA_MODEL}"
-        model_list.append({
-            "model_name": "default",
-            "litellm_params": {
-                "model": ollama_model,
-                "api_base": settings.OLLAMA_HOST,
-            },
-        })
+        model_list.append(
+            {
+                "model_name": "default",
+                "litellm_params": {
+                    "model": ollama_model,
+                    "api_base": settings.OLLAMA_HOST,
+                },
+            }
+        )
         default_model = "default"
 
         # Add cloud fallback if API key is configured
         api_key = settings.LLM_API_KEY.get_secret_value()
         if api_key:
             cloud_model = settings.LLM_MODEL or "gpt-4o-mini"
-            model_list.append({
-                "model_name": "cloud-fallback",
-                "litellm_params": {
-                    "model": cloud_model,
-                    "api_key": api_key,
-                    **({"api_base": settings.LLM_API_BASE_URL} if settings.LLM_API_BASE_URL else {}),
-                },
-            })
+            model_list.append(
+                {
+                    "model_name": "cloud-fallback",
+                    "litellm_params": {
+                        "model": cloud_model,
+                        "api_key": api_key,
+                        **(
+                            {"api_base": settings.LLM_API_BASE_URL}
+                            if settings.LLM_API_BASE_URL
+                            else {}
+                        ),
+                    },
+                }
+            )
             fallbacks.append({"default": ["cloud-fallback"]})
 
     elif provider in ("api", "openai"):
@@ -261,14 +268,20 @@ def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
         else:
             litellm_model = cloud_model
 
-        model_list.append({
-            "model_name": "default",
-            "litellm_params": {
-                "model": litellm_model,
-                "api_key": api_key,
-                **({"api_base": settings.LLM_API_BASE_URL} if settings.LLM_API_BASE_URL else {}),
-            },
-        })
+        model_list.append(
+            {
+                "model_name": "default",
+                "litellm_params": {
+                    "model": litellm_model,
+                    "api_key": api_key,
+                    **(
+                        {"api_base": settings.LLM_API_BASE_URL}
+                        if settings.LLM_API_BASE_URL
+                        else {}
+                    ),
+                },
+            }
+        )
         default_model = "default"
 
     return model_list, fallbacks, default_model

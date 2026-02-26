@@ -246,9 +246,7 @@ class TestOllamaClient:
     async def test_generate_connection_error(self):
         client = self._make_client()
         mock_http = AsyncMock()
-        mock_http.post = AsyncMock(
-            side_effect=httpx.ConnectError("connection refused")
-        )
+        mock_http.post = AsyncMock(side_effect=httpx.ConnectError("connection refused"))
         client._http_client = mock_http
 
         with patch("app.services.ai.llm.get_llm_circuit_breaker") as mock_cb:
@@ -521,9 +519,7 @@ class TestAPIClient:
         client = self._make_client()
 
         mock_openai_client = AsyncMock()
-        mock_openai_client.models.list = AsyncMock(
-            side_effect=Exception("auth error")
-        )
+        mock_openai_client.models.list = AsyncMock(side_effect=Exception("auth error"))
         client._client = mock_openai_client
 
         assert await client.health_check() is False
@@ -556,7 +552,9 @@ class TestGenerateStructured:
 
     @pytest.mark.asyncio
     async def test_parse_json_with_surrounding_text(self):
-        content = 'Here is the result: {"name": "embedded", "value": 7} hope that helps!'
+        content = (
+            'Here is the result: {"name": "embedded", "value": 7} hope that helps!'
+        )
         client = MockLLMClient(responses=[content])
         result = await _call_base_generate_structured(client, "prompt", SimpleModel)
         assert result.name == "embedded"
@@ -657,10 +655,13 @@ class TestGetDefaultLLMClient:
         mock_settings.LLM_MODEL = None
         mock_settings.LLM_TIMEOUT = 600.0
 
-        with patch("app.services.ai.llm.settings", mock_settings), \
-             patch("app.services.ai.router.settings", mock_settings):
+        with (
+            patch("app.services.ai.llm.settings", mock_settings),
+            patch("app.services.ai.router.settings", mock_settings),
+        ):
             client = get_default_llm_client()
             from app.services.ai.router import LiteLLMRouter
+
             assert isinstance(client, (OllamaClient, LiteLLMRouter))
 
     def test_api_provider(self):
@@ -672,10 +673,13 @@ class TestGetDefaultLLMClient:
         mock_settings.LLM_MODEL = "gpt-4o"
         mock_settings.LLM_TIMEOUT = 600.0
 
-        with patch("app.services.ai.llm.settings", mock_settings), \
-             patch("app.services.ai.router.settings", mock_settings):
+        with (
+            patch("app.services.ai.llm.settings", mock_settings),
+            patch("app.services.ai.router.settings", mock_settings),
+        ):
             client = get_default_llm_client()
             from app.services.ai.router import LiteLLMRouter
+
             assert isinstance(client, (APIClient, LiteLLMRouter))
 
     def test_openai_legacy_provider(self):
@@ -687,10 +691,13 @@ class TestGetDefaultLLMClient:
         mock_settings.LLM_MODEL = "gpt-3.5-turbo"
         mock_settings.LLM_TIMEOUT = 600.0
 
-        with patch("app.services.ai.llm.settings", mock_settings), \
-             patch("app.services.ai.router.settings", mock_settings):
+        with (
+            patch("app.services.ai.llm.settings", mock_settings),
+            patch("app.services.ai.router.settings", mock_settings),
+        ):
             client = get_default_llm_client()
             from app.services.ai.router import LiteLLMRouter
+
             assert isinstance(client, (APIClient, LiteLLMRouter))
 
     @patch("app.services.ai.llm.settings")

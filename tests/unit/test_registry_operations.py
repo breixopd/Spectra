@@ -51,7 +51,9 @@ def _make_tool(
     category: str = "discovery",
 ) -> RegisteredTool:
     """Create a RegisteredTool with given status."""
-    config = _make_config(tool_id, name=tool_id.title(), category=category, is_system=is_system)
+    config = _make_config(
+        tool_id, name=tool_id.title(), category=category, is_system=is_system
+    )
     return RegisteredTool(config=config, status=status)
 
 

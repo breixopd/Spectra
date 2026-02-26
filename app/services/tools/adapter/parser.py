@@ -243,6 +243,7 @@ class UniversalParser:
     def _parse_nmap_xml(self, root: ET.Element) -> list[dict[str, Any]]:
         """Parse nmap XML output into structured findings."""
         from app.services.tools.parsers import parse_nmap_xml
+
         return parse_nmap_xml(root)
 
     def _element_to_dict(self, elem: ET.Element) -> dict[str, Any]:

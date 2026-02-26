@@ -11,8 +11,9 @@ from sqlalchemy import select
 from app.core.database import async_session_maker
 import logging
 
-router = APIRouter(prefix="", tags=["Shell"]) # Prefix is handled in main.py
+router = APIRouter(prefix="", tags=["Shell"])  # Prefix is handled in main.py
 logger = logging.getLogger("spectra.api.shell")
+
 
 @router.websocket("/{session_id}")
 async def shell_websocket(websocket: WebSocket, session_id: str):
@@ -39,10 +40,12 @@ async def shell_websocket(websocket: WebSocket, session_id: str):
         logger.error(f"WebSocket error: {e}")
         await session.disconnect_websocket()
 
+
 @router.get("/sessions")
 async def list_sessions():
     """List active shell sessions."""
     return shell_manager.list_sessions()
+
 
 @router.post("/reconnect/{finding_id}")
 async def reconnect_exploit(finding_id: str):
@@ -68,5 +71,5 @@ async def reconnect_exploit(finding_id: str):
         "status": "triggered",
         "message": "To reconnect, please start a new targeted mission.",
         "suggested_directive": directive,
-        "target": finding.location
+        "target": finding.location,
     }

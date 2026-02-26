@@ -42,10 +42,10 @@ async def auth_token(api_client: httpx.AsyncClient):
     """Get authentication token (creates user if needed)."""
     # Check if setup is needed
     setup_response = await api_client.get(f"{API_BASE_URL}/api/auth/setup/status")
-    
+
     if setup_response.status_code == 200:
         is_setup = setup_response.json().get("is_setup", False)
-        
+
         if not is_setup:
             # Create admin user
             setup_data = {
@@ -65,12 +65,12 @@ async def auth_token(api_client: httpx.AsyncClient):
         "username": "admin",
         "password": "AdminPass123!",
     }
-    
+
     response = await api_client.post(
         f"{API_BASE_URL}/api/auth/token",
         data=login_data,  # OAuth2 form data
     )
-    
+
     if response.status_code == 200:
         token = response.json().get("access_token")
         print("Authenticated as admin")
@@ -126,7 +126,7 @@ class TestFullWorkflow:
         4. Verify results
         """
         headers = get_headers(auth_token)
-        
+
         print("\n" + "=" * 70)
         print("FULL WORKFLOW TEST - NO MOCKING")
         print("=" * 70)
@@ -169,7 +169,9 @@ class TestFullWorkflow:
             else:
                 pytest.fail(f"Failed to list targets: {list_response.text}")
         else:
-            pytest.fail(f"Failed to create target: {response.status_code} - {response.text}")
+            pytest.fail(
+                f"Failed to create target: {response.status_code} - {response.text}"
+            )
 
         # Step 2: Start a mission
         print("\nStep 2: Starting mission...")
@@ -185,7 +187,9 @@ class TestFullWorkflow:
         )
 
         if response.status_code not in (200, 201):
-            pytest.fail(f"Failed to start mission: {response.status_code} - {response.text}")
+            pytest.fail(
+                f"Failed to start mission: {response.status_code} - {response.text}"
+            )
 
         mission = response.json()
         mission_id = mission["id"]
@@ -253,7 +257,7 @@ class TestFullWorkflow:
             mission = response.json()
             print(f"   Final status: {mission['status']}")
             print(f"   Logs count: {len(mission.get('logs', []))}")
-            
+
             # Get findings count
             findings_count = mission.get("findings_count", 0)
             print(f"   Findings: {findings_count}")
@@ -283,8 +287,9 @@ class TestFullWorkflow:
 
         # Assertions
         assert mission_id is not None, "Mission should have been created"
-        assert final_status in ["completed", "failed", "stopping", None], \
+        assert final_status in ["completed", "failed", "stopping", None], (
             f"Mission should end in terminal state, got: {final_status}"
+        )
 
     async def test_list_available_tools(
         self,
@@ -301,7 +306,7 @@ class TestFullWorkflow:
 
         assert response.status_code == 200
         tools = response.json()
-        
+
         print(f"\nAvailable Tools ({len(tools)}):")
         for tool in tools[:10]:
             status = "Available" if tool.get("is_available") else "Unavailable"
@@ -438,7 +443,7 @@ class TestWebSocketConnection:
             async with websockets.connect(ws_url, close_timeout=5) as ws:
                 # Send a test message
                 await ws.send("test")
-                
+
                 # Wait for response with timeout
                 try:
                     response = await asyncio.wait_for(ws.recv(), timeout=5.0)

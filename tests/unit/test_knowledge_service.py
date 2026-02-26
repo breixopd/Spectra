@@ -61,7 +61,9 @@ class TestGetFullMethodology:
     def test_contains_all_phase_names(self):
         result = get_full_methodology()
         for phase in PTES_METHODOLOGY:
-            assert phase.title() in result, f"Phase '{phase}' not found in full methodology"
+            assert phase.title() in result, (
+                f"Phase '{phase}' not found in full methodology"
+            )
 
     def test_contains_header(self):
         result = get_full_methodology()
@@ -98,10 +100,16 @@ class TestGetExploitContext:
 
     @pytest.mark.asyncio
     async def test_successful_query_returns_formatted_context(self, mock_rag_service):
-        mock_rag_service.get_context_for_prompt.return_value = "CVE-2021-44228 exploit data"
+        mock_rag_service.get_context_for_prompt.return_value = (
+            "CVE-2021-44228 exploit data"
+        )
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
-            result = await get_exploit_context("log4j exploit", _target="10.0.0.1", max_tokens=500)
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
+            result = await get_exploit_context(
+                "log4j exploit", _target="10.0.0.1", max_tokens=500
+            )
 
         assert "Past Exploits & CVEs" in result
         assert "CVE-2021-44228 exploit data" in result
@@ -115,7 +123,9 @@ class TestGetExploitContext:
     async def test_empty_result_returns_empty_string(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = ""
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_exploit_context("unknown query")
 
         assert result == ""
@@ -124,7 +134,9 @@ class TestGetExploitContext:
     async def test_none_result_returns_empty_string(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = None
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_exploit_context("query")
 
         assert result == ""
@@ -143,7 +155,9 @@ class TestGetExploitContext:
     async def test_rag_method_exception_returns_empty_string(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.side_effect = Exception("search error")
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_exploit_context("query")
 
         assert result == ""
@@ -166,14 +180,18 @@ class TestGetToolUsageContext:
             {"service": "ssh", "port": 22},
         ]
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_tool_usage_context("discovery", services=services)
 
         assert "Past Successful Actions" in result
         assert "nmap scan results" in result
 
         call_args = mock_rag_service.get_context_for_prompt.call_args
-        query = call_args.kwargs.get("query", call_args.args[0] if call_args.args else "")
+        query = call_args.kwargs.get(
+            "query", call_args.args[0] if call_args.args else ""
+        )
         assert "discovery" in query
         assert "http" in query
         assert "ssh" in query
@@ -182,19 +200,25 @@ class TestGetToolUsageContext:
     async def test_with_empty_services(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "tool data"
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_tool_usage_context("enumeration", services=[])
 
         assert "Past Successful Actions" in result
         call_args = mock_rag_service.get_context_for_prompt.call_args
-        query = call_args.kwargs.get("query", call_args.args[0] if call_args.args else "")
+        query = call_args.kwargs.get(
+            "query", call_args.args[0] if call_args.args else ""
+        )
         assert "enumeration" in query
 
     @pytest.mark.asyncio
     async def test_with_none_services(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "context"
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_tool_usage_context("exploitation", services=None)
 
         assert "Past Successful Actions" in result
@@ -203,7 +227,9 @@ class TestGetToolUsageContext:
     async def test_empty_rag_result(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = ""
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_tool_usage_context("scope")
 
         assert result == ""
@@ -229,11 +255,15 @@ class TestGetToolUsageContext:
             {"service": "smtp"},
         ]
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             await get_tool_usage_context("discovery", services=services)
 
         call_args = mock_rag_service.get_context_for_prompt.call_args
-        query = call_args.kwargs.get("query", call_args.args[0] if call_args.args else "")
+        query = call_args.kwargs.get(
+            "query", call_args.args[0] if call_args.args else ""
+        )
         assert "smtp" not in query
 
 
@@ -249,14 +279,18 @@ class TestGetMissionContext:
     async def test_with_target(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "past mission data"
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_mission_context("scan network", target="10.0.0.0/24")
 
         assert "Past Successful Approaches" in result
         assert "past mission data" in result
 
         call_args = mock_rag_service.get_context_for_prompt.call_args
-        query = call_args.kwargs.get("query", call_args.args[0] if call_args.args else "")
+        query = call_args.kwargs.get(
+            "query", call_args.args[0] if call_args.args else ""
+        )
         assert "scan network" in query
         assert "10.0.0.0/24" in query
 
@@ -264,20 +298,26 @@ class TestGetMissionContext:
     async def test_without_target(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = "context"
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_mission_context("enumerate services", target=None)
 
         assert "Past Successful Approaches" in result
 
         call_args = mock_rag_service.get_context_for_prompt.call_args
-        query = call_args.kwargs.get("query", call_args.args[0] if call_args.args else "")
+        query = call_args.kwargs.get(
+            "query", call_args.args[0] if call_args.args else ""
+        )
         assert "enumerate services" in query
 
     @pytest.mark.asyncio
     async def test_empty_result_returns_empty_string(self, mock_rag_service):
         mock_rag_service.get_context_for_prompt.return_value = ""
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await get_mission_context("directive")
 
         assert result == ""
@@ -298,8 +338,14 @@ class TestGetMissionContext:
 # ---------------------------------------------------------------------------
 
 
-def _make_mock_tool(name: str, tool_id: str, category: str, available: bool,
-                    description: str = "A tool", capabilities=None):
+def _make_mock_tool(
+    name: str,
+    tool_id: str,
+    category: str,
+    available: bool,
+    description: str = "A tool",
+    capabilities=None,
+):
     """Helper to create a mock RegisteredTool."""
     tool = MagicMock()
     tool.config.name = name
@@ -331,7 +377,9 @@ class TestGetAvailableToolsContext:
         mock_registry.sync_status_from_redis = AsyncMock()
         mock_registry.list_tools.return_value = tools
 
-        with patch("app.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch(
+            "app.services.tools.registry.get_registry", return_value=mock_registry
+        ):
             result = await get_available_tools_context(grouped=True)
 
         assert "Available Security Tools" in result
@@ -346,16 +394,23 @@ class TestGetAvailableToolsContext:
         cap = MagicMock()
         cap.value = "port_scan"
         tools = [
-            _make_mock_tool("Nmap", "nmap", "scanner", True,
-                            description="Network mapper for host discovery and service detection",
-                            capabilities=[cap]),
+            _make_mock_tool(
+                "Nmap",
+                "nmap",
+                "scanner",
+                True,
+                description="Network mapper for host discovery and service detection",
+                capabilities=[cap],
+            ),
         ]
 
         mock_registry = MagicMock()
         mock_registry.sync_status_from_redis = AsyncMock()
         mock_registry.list_tools.return_value = tools
 
-        with patch("app.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch(
+            "app.services.tools.registry.get_registry", return_value=mock_registry
+        ):
             result = await get_available_tools_context(grouped=False)
 
         assert "Security Tools" in result
@@ -368,16 +423,23 @@ class TestGetAvailableToolsContext:
         cap = MagicMock()
         cap.value = "vuln_scan"
         tools = [
-            _make_mock_tool("Nikto", "nikto", "scanner", False,
-                            description="Web server scanner",
-                            capabilities=[cap]),
+            _make_mock_tool(
+                "Nikto",
+                "nikto",
+                "scanner",
+                False,
+                description="Web server scanner",
+                capabilities=[cap],
+            ),
         ]
 
         mock_registry = MagicMock()
         mock_registry.sync_status_from_redis = AsyncMock()
         mock_registry.list_tools.return_value = tools
 
-        with patch("app.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch(
+            "app.services.tools.registry.get_registry", return_value=mock_registry
+        ):
             result = await get_available_tools_context(grouped=False)
 
         assert "auto-install" in result
@@ -388,7 +450,9 @@ class TestGetAvailableToolsContext:
         mock_registry.sync_status_from_redis = AsyncMock()
         mock_registry.list_tools.return_value = []
 
-        with patch("app.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch(
+            "app.services.tools.registry.get_registry", return_value=mock_registry
+        ):
             result = await get_available_tools_context(grouped=True)
 
         assert result == ""
@@ -409,10 +473,14 @@ class TestGetAvailableToolsContext:
         tools = [_make_mock_tool("Nmap", "nmap", "scanner", True)]
 
         mock_registry = MagicMock()
-        mock_registry.sync_status_from_redis = AsyncMock(side_effect=Exception("redis down"))
+        mock_registry.sync_status_from_redis = AsyncMock(
+            side_effect=Exception("redis down")
+        )
         mock_registry.list_tools.return_value = tools
 
-        with patch("app.services.tools.registry.get_registry", return_value=mock_registry):
+        with patch(
+            "app.services.tools.registry.get_registry", return_value=mock_registry
+        ):
             result = await get_available_tools_context(grouped=True)
 
         assert "Nmap" in result
@@ -430,7 +498,9 @@ class TestIndexExploitAttempt:
     async def test_successful_indexing(self, mock_rag_service):
         mock_rag_service.index_document.return_value = True
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await index_exploit_attempt(
                 vector_name="SQL Injection on login",
                 vector_type="exploit",
@@ -459,7 +529,9 @@ class TestIndexExploitAttempt:
     async def test_failed_exploit_uses_failure_doc_type(self, mock_rag_service):
         mock_rag_service.index_document.return_value = True
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await index_exploit_attempt(
                 vector_name="XSS attempt",
                 vector_type="exploit",
@@ -506,7 +578,9 @@ class TestIndexExploitAttempt:
     async def test_index_document_exception_returns_false(self, mock_rag_service):
         mock_rag_service.index_document.side_effect = RuntimeError("write error")
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             result = await index_exploit_attempt(
                 vector_name="test",
                 vector_type="exploit",
@@ -529,7 +603,9 @@ class TestIndexExploitAttempt:
         mock_rag_service.index_document.return_value = True
         long_output = "x" * 1000
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             await index_exploit_attempt(
                 vector_name="test",
                 vector_type="exploit",
@@ -546,6 +622,7 @@ class TestIndexExploitAttempt:
             )
 
         import json
+
         doc_arg = mock_rag_service.index_document.call_args[0][0]
         content = json.loads(doc_arg.content)
         assert len(content["output_summary"]) == 500
@@ -554,7 +631,9 @@ class TestIndexExploitAttempt:
     async def test_document_metadata_contains_tool_and_mission(self, mock_rag_service):
         mock_rag_service.index_document.return_value = True
 
-        with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
+        with patch(
+            "app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service
+        ):
             await index_exploit_attempt(
                 vector_name="test",
                 vector_type="exploit",

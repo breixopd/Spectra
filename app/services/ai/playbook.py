@@ -37,7 +37,9 @@ class PlaybookStep(BaseModel):
     tool: str = Field(..., description="Tool ID to use")
     args: dict[str, Any] = Field(default_factory=dict, description="Tool arguments")
     description: str = Field(..., description="What this step does")
-    condition: str | None = Field(None, description="When to run (e.g., 'port_80_open')")
+    condition: str | None = Field(
+        None, description="When to run (e.g., 'port_80_open')"
+    )
     on_success: str | None = Field(None, description="Next step ID on success")
     on_failure: str | None = Field(None, description="Next step ID on failure")
 
@@ -72,12 +74,39 @@ DEFAULT_PLAYBOOKS: list[dict[str, Any]] = [
         "ports": [80, 443, 8080, 8443, 8000, 3000],
         "tags": ["web", "common"],
         "steps": [
-            {"tool": "nmap", "args": {"ports": "80,443,8080,8443"}, "description": "Service version detection on web ports"},
-            {"tool": "nuclei", "args": {}, "description": "Vulnerability scan with nuclei templates"},
-            {"tool": "nikto", "args": {}, "description": "Web server misconfiguration scan"},
-            {"tool": "gobuster", "args": {}, "description": "Directory and file enumeration", "condition": "http_found"},
-            {"tool": "ffuf", "args": {}, "description": "Parameter fuzzing on discovered endpoints", "condition": "directories_found"},
-            {"tool": "sqlmap", "args": {}, "description": "SQL injection testing on found parameters", "condition": "parameters_found"},
+            {
+                "tool": "nmap",
+                "args": {"ports": "80,443,8080,8443"},
+                "description": "Service version detection on web ports",
+            },
+            {
+                "tool": "nuclei",
+                "args": {},
+                "description": "Vulnerability scan with nuclei templates",
+            },
+            {
+                "tool": "nikto",
+                "args": {},
+                "description": "Web server misconfiguration scan",
+            },
+            {
+                "tool": "gobuster",
+                "args": {},
+                "description": "Directory and file enumeration",
+                "condition": "http_found",
+            },
+            {
+                "tool": "ffuf",
+                "args": {},
+                "description": "Parameter fuzzing on discovered endpoints",
+                "condition": "directories_found",
+            },
+            {
+                "tool": "sqlmap",
+                "args": {},
+                "description": "SQL injection testing on found parameters",
+                "condition": "parameters_found",
+            },
         ],
     },
     {
@@ -85,9 +114,26 @@ DEFAULT_PLAYBOOKS: list[dict[str, Any]] = [
         "ports": [22, 2222],
         "tags": ["remote_access"],
         "steps": [
-            {"tool": "nmap", "args": {"ports": "22", "flags": "--script ssh-auth-methods,ssh-hostkey"}, "description": "SSH version and auth method detection"},
-            {"tool": "hydra", "args": {}, "description": "SSH credential brute force", "condition": "password_auth_enabled"},
-            {"tool": "searchsploit", "args": {}, "description": "Search for SSH version exploits", "condition": "old_ssh_version"},
+            {
+                "tool": "nmap",
+                "args": {
+                    "ports": "22",
+                    "flags": "--script ssh-auth-methods,ssh-hostkey",
+                },
+                "description": "SSH version and auth method detection",
+            },
+            {
+                "tool": "hydra",
+                "args": {},
+                "description": "SSH credential brute force",
+                "condition": "password_auth_enabled",
+            },
+            {
+                "tool": "searchsploit",
+                "args": {},
+                "description": "Search for SSH version exploits",
+                "condition": "old_ssh_version",
+            },
         ],
     },
     {
@@ -95,8 +141,19 @@ DEFAULT_PLAYBOOKS: list[dict[str, Any]] = [
         "ports": [139, 445],
         "tags": ["windows", "file_share"],
         "steps": [
-            {"tool": "nmap", "args": {"ports": "139,445", "flags": "--script smb-vuln-*,smb-enum-shares"}, "description": "SMB vulnerability and share enumeration"},
-            {"tool": "metasploit", "args": {"module": "auxiliary/scanner/smb/smb_ms17_010"}, "description": "EternalBlue check"},
+            {
+                "tool": "nmap",
+                "args": {
+                    "ports": "139,445",
+                    "flags": "--script smb-vuln-*,smb-enum-shares",
+                },
+                "description": "SMB vulnerability and share enumeration",
+            },
+            {
+                "tool": "metasploit",
+                "args": {"module": "auxiliary/scanner/smb/smb_ms17_010"},
+                "description": "EternalBlue check",
+            },
             {"tool": "hydra", "args": {}, "description": "SMB credential brute force"},
         ],
     },
@@ -105,7 +162,14 @@ DEFAULT_PLAYBOOKS: list[dict[str, Any]] = [
         "ports": [21],
         "tags": ["file_transfer"],
         "steps": [
-            {"tool": "nmap", "args": {"ports": "21", "flags": "--script ftp-anon,ftp-vsftpd-backdoor"}, "description": "FTP anonymous login and vulnerability check"},
+            {
+                "tool": "nmap",
+                "args": {
+                    "ports": "21",
+                    "flags": "--script ftp-anon,ftp-vsftpd-backdoor",
+                },
+                "description": "FTP anonymous login and vulnerability check",
+            },
             {"tool": "hydra", "args": {}, "description": "FTP credential brute force"},
         ],
     },
@@ -114,8 +178,16 @@ DEFAULT_PLAYBOOKS: list[dict[str, Any]] = [
         "ports": [3306],
         "tags": ["database"],
         "steps": [
-            {"tool": "nmap", "args": {"ports": "3306", "flags": "--script mysql-info,mysql-enum"}, "description": "MySQL version and user enumeration"},
-            {"tool": "hydra", "args": {}, "description": "MySQL credential brute force"},
+            {
+                "tool": "nmap",
+                "args": {"ports": "3306", "flags": "--script mysql-info,mysql-enum"},
+                "description": "MySQL version and user enumeration",
+            },
+            {
+                "tool": "hydra",
+                "args": {},
+                "description": "MySQL credential brute force",
+            },
         ],
     },
     {
@@ -123,7 +195,11 @@ DEFAULT_PLAYBOOKS: list[dict[str, Any]] = [
         "ports": [3389],
         "tags": ["remote_access", "windows"],
         "steps": [
-            {"tool": "nmap", "args": {"ports": "3389", "flags": "--script rdp-vuln-ms12-020"}, "description": "RDP vulnerability check (BlueKeep, MS12-020)"},
+            {
+                "tool": "nmap",
+                "args": {"ports": "3389", "flags": "--script rdp-vuln-ms12-020"},
+                "description": "RDP vulnerability check (BlueKeep, MS12-020)",
+            },
             {"tool": "hydra", "args": {}, "description": "RDP credential brute force"},
         ],
     },
@@ -132,9 +208,22 @@ DEFAULT_PLAYBOOKS: list[dict[str, Any]] = [
         "ports": [80, 443],
         "tags": ["web", "cms"],
         "steps": [
-            {"tool": "wpscan", "args": {}, "description": "WordPress enumeration (plugins, themes, users)"},
-            {"tool": "nuclei", "args": {"tags": "wordpress"}, "description": "WordPress-specific vulnerability scan"},
-            {"tool": "hydra", "args": {}, "description": "WordPress admin brute force", "condition": "wp_admin_found"},
+            {
+                "tool": "wpscan",
+                "args": {},
+                "description": "WordPress enumeration (plugins, themes, users)",
+            },
+            {
+                "tool": "nuclei",
+                "args": {"tags": "wordpress"},
+                "description": "WordPress-specific vulnerability scan",
+            },
+            {
+                "tool": "hydra",
+                "args": {},
+                "description": "WordPress admin brute force",
+                "condition": "wp_admin_found",
+            },
         ],
     },
 ]
@@ -270,7 +359,11 @@ class PlaybookEngine:
         from datetime import datetime
 
         existing = next(
-            (p for p in self.exploit_patterns if p.service == service and p.tool == tool),
+            (
+                p
+                for p in self.exploit_patterns
+                if p.service == service and p.tool == tool
+            ),
             None,
         )
 

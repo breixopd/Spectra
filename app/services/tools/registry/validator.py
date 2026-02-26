@@ -4,7 +4,6 @@ import json
 import logging
 import re
 from typing import Any, TYPE_CHECKING
-from pathlib import Path
 
 from app.services.tools.models import ToolConfig
 from app.services.tools.registry.constants import DANGEROUS_PATTERNS
@@ -14,7 +13,7 @@ from app.services.tools.registry.exceptions import (
 )
 
 if TYPE_CHECKING:
-    from cryptography.hazmat.primitives.asymmetric import ed25519 as crypto_ed25519
+    pass
 
 logger = logging.getLogger("spectra.tools.registry.validator")
 
@@ -99,7 +98,7 @@ class PluginValidator:
 
             # Check if public key is of correct type (we skip strict type check to avoid import issues if not installed)
             if not getattr(self._public_key, "verify", None):
-                 raise PluginSignatureError("Invalid public key type")
+                raise PluginSignatureError("Invalid public key type")
 
             # Canonicalize JSON (same as sign_plugin.py)
             canonical_json = json.dumps(
@@ -125,7 +124,7 @@ class PluginValidator:
         commands: list[str] = list(config.installation.commands)
         if config.installation.verification_command:
             commands.append(config.installation.verification_command)
-        
+
         # Check uninstall commands too!
         if config.installation.uninstall_commands:
             commands.extend(config.installation.uninstall_commands)

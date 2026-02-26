@@ -20,7 +20,6 @@ def memory(tmp_path):
 
 
 class TestToolLessons:
-
     def test_record_and_retrieve(self, memory):
         memory.record_tool_result(
             tool_id="nmap",
@@ -52,14 +51,20 @@ class TestToolLessons:
         assert len(recs) == 1
 
     def test_product_boosts_relevance(self, memory):
-        memory.record_tool_result("nuclei", "http", success=True, findings_count=2, target_product="Apache")
+        memory.record_tool_result(
+            "nuclei", "http", success=True, findings_count=2, target_product="Apache"
+        )
         memory.record_tool_result("nikto", "http", success=True, findings_count=1)
         recs = memory.get_tool_recommendations("http", product="Apache")
         assert recs[0]["tool"] == "nuclei"
 
     def test_os_boosts_relevance(self, memory):
-        memory.record_tool_result("nmap", "ssh", success=True, findings_count=1, target_os="linux")
-        memory.record_tool_result("nmap", "ssh", success=True, findings_count=1, target_os="windows")
+        memory.record_tool_result(
+            "nmap", "ssh", success=True, findings_count=1, target_os="linux"
+        )
+        memory.record_tool_result(
+            "nmap", "ssh", success=True, findings_count=1, target_os="windows"
+        )
         recs = memory.get_tool_recommendations("ssh", os_family="linux")
         assert len(recs) >= 1
 
@@ -71,13 +76,14 @@ class TestToolLessons:
 
     def test_max_recommendations(self, memory):
         for i in range(10):
-            memory.record_tool_result(f"tool-{i}", "http", success=True, findings_count=i+1)
+            memory.record_tool_result(
+                f"tool-{i}", "http", success=True, findings_count=i + 1
+            )
         recs = memory.get_tool_recommendations("http")
         assert len(recs) <= 5
 
 
 class TestExploitLessons:
-
     def test_record_and_retrieve(self, memory):
         memory.record_exploit_success(
             target_service="http",
@@ -109,7 +115,6 @@ class TestExploitLessons:
 
 
 class TestTargetProfiles:
-
     def test_create_and_update(self, memory):
         memory.update_target_profile(
             os_family="linux",
@@ -143,7 +148,6 @@ class TestTargetProfiles:
 
 
 class TestFalsePositives:
-
     def test_record_and_check(self, memory):
         assert not memory.is_false_positive("http-missing-headers")
         memory.record_false_positive("http-missing-headers")
@@ -157,7 +161,6 @@ class TestFalsePositives:
 
 
 class TestPersistence:
-
     def test_tool_lessons_persist(self, tmp_path):
         m1 = MissionMemory(memory_dir=tmp_path)
         m1.record_tool_result("nmap", "http", success=True, findings_count=3)
@@ -184,19 +187,22 @@ class TestPersistence:
 
 
 class TestPromptContext:
-
     def test_empty_memory_returns_empty(self, memory):
         assert memory.get_context_for_prompt("http") == ""
 
     def test_includes_tool_recommendations(self, memory):
-        memory.record_tool_result("nuclei", "http", success=True, findings_count=5, target_product="Apache")
+        memory.record_tool_result(
+            "nuclei", "http", success=True, findings_count=5, target_product="Apache"
+        )
         ctx = memory.get_context_for_prompt(service="http")
         assert "nuclei" in ctx
         assert "Past Experience" in ctx
 
     def test_includes_exploit_history(self, memory):
         memory.record_exploit_success(
-            "http", "sqlmap", cve_id="CVE-2021-1234",
+            "http",
+            "sqlmap",
+            cve_id="CVE-2021-1234",
             attack_chain=["nmap", "nuclei", "sqlmap"],
             access_level="root",
         )
@@ -221,7 +227,6 @@ class TestPromptContext:
 
 
 class TestOSDetection:
-
     def test_linux_from_banner(self):
         assert detect_os_from_output("Ubuntu 20.04 LTS") == "linux"
 
@@ -256,7 +261,6 @@ class TestOSDetection:
 
 
 class TestStats:
-
     def test_returns_counts(self, memory):
         memory.record_tool_result("nmap", "http", success=True, findings_count=1)
         memory.record_exploit_success("http", "sqlmap")
@@ -270,9 +274,9 @@ class TestStats:
 
 
 class TestSingleton:
-
     def test_get_memory_returns_same(self):
         import app.services.ai.memory as mod
+
         mod._memory = None
         m1 = get_memory()
         m2 = get_memory()
