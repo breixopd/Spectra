@@ -1,0 +1,70 @@
+{
+  "id": "subfinder",
+  "name": "Subfinder",
+  "version": "1.0.0",
+  "category": "discovery",
+  "description": "Fast passive subdomain discovery tool using multiple sources (crt.sh, DNSdumpster, etc.).",
+  "metadata": {
+    "ai_description": "Subfinder is a subdomain discovery tool that uses passive sources only. It queries certificate transparency logs, DNS databases, search engines, and other sources to find subdomains without touching the target. Use it for domain-based targets to expand the attack surface.",
+    "capabilities": [
+      "subdomain_enum",
+      "dns_enum",
+      "host_discovery"
+    ],
+    "supported_targets": [
+      "domain"
+    ],
+    "risk_level": "passive",
+    "tags": [
+      "subdomain",
+      "dns",
+      "passive",
+      "recon",
+      "osint"
+    ],
+    "use_cases": [
+      "Find subdomains of a target domain",
+      "Expand attack surface for web assessments",
+      "Passive reconnaissance without touching target"
+    ],
+    "limitations": [
+      "Domain targets only, not IPs",
+      "Passive - may miss internal subdomains"
+    ],
+    "complements": [
+      "amass",
+      "nmap",
+      "nuclei"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "go",
+    "commands": [
+      "go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest"
+    ],
+    "verification_command": "subfinder -version",
+    "verification_regex": "subfinder"
+  },
+  "execution": {
+    "command": "subfinder",
+    "args_template": "-d {target} -o {output_file} -silent {flags}",
+    "timeout": 300,
+    "min_timeout": 30,
+    "max_timeout": 600
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "^(?P<subdomain>[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})$",
+        "type": "subdomain"
+      }
+    ]
+  },
+  "ui": {
+    "icon": "network",
+    "color": "teal"
+  },
+  "signature": "60fa5dc392e13595a88c2c2c30d37bf6adb6a4443f3440fe91d45b86094d36e68fb4f57c63b9567ec14f1cb227fe2e731e005b52cf34470d8df6d302eb1b280b"
+}

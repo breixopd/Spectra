@@ -1,0 +1,73 @@
+{
+  "id": "testssl",
+  "name": "testssl.sh",
+  "version": "1.0.0",
+  "category": "vulnerability",
+  "description": "SSL/TLS configuration scanner. Tests for weak ciphers, expired certs, and protocol vulnerabilities.",
+  "metadata": {
+    "ai_description": "testssl.sh checks a server's TLS/SSL configuration including protocols, ciphers, certificate details, and known vulnerabilities (Heartbleed, POODLE, ROBOT, etc.). Use it on any HTTPS service to identify cryptographic weaknesses.",
+    "capabilities": [
+      "vuln_scan",
+      "misconfig_detection"
+    ],
+    "supported_targets": [
+      "domain",
+      "ip",
+      "url"
+    ],
+    "risk_level": "passive",
+    "tags": [
+      "ssl",
+      "tls",
+      "crypto",
+      "vulnerability",
+      "passive"
+    ],
+    "use_cases": [
+      "Test SSL/TLS configuration of web servers",
+      "Detect weak ciphers and protocols",
+      "Check for Heartbleed, POODLE, and other SSL vulns"
+    ],
+    "limitations": [
+      "HTTPS services only",
+      "Can be slow for thorough scans"
+    ],
+    "complements": [
+      "nmap",
+      "nuclei"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "script",
+    "commands": [
+      "git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/spectra_tools/testssl",
+      "ln -sf /opt/spectra_tools/testssl/testssl.sh /opt/spectra_tools/testssl.sh",
+      "chmod +x /opt/spectra_tools/testssl.sh"
+    ],
+    "verification_command": "testssl.sh --version",
+    "verification_regex": "testssl"
+  },
+  "execution": {
+    "command": "testssl.sh",
+    "args_template": "--jsonfile {output_file} --quiet {target} {flags}",
+    "timeout": 300,
+    "min_timeout": 60,
+    "max_timeout": 600
+  },
+  "parsing": {
+    "format": "json",
+    "mapping": {
+      "severity": "severity",
+      "finding": "finding",
+      "id": "id"
+    }
+  },
+  "ui": {
+    "icon": "shield",
+    "color": "blue"
+  },
+  "signature": "3aaabb79e8dec58304a0f7136c4f12b91c6cda9db81d92498e11a41c171c55c3b3c4f5c7cb75fa6201906de62f01c0fc6fec7a5867428c69069bb9c484aa830a"
+}

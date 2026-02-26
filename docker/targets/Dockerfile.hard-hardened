@@ -1,0 +1,131 @@
+# Spectra Test Target: Hard Hardened Server
+# Difficulty: HARD
+# Vulns: Subtle — misconfigured CORS, JWT weakness, hidden API endpoint,
+#         SSRF via image proxy, log4j-style header injection
+# Services: HTTP (8080 - Node.js), SSH (22 - key only, non-standard)
+# Challenge: Most obvious attacks fail. Requires chaining findings.
+
+FROM node:18-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssh-server \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# --- Node.js API server (looks secure but has subtle vulns) ---
+RUN echo '{ \
+  "name": "hardened-api", \
+  "version": "1.0.0", \
+  "main": "server.js", \
+  "dependencies": { "express": "^4.18.0" } \
+}' > package.json && npm install --production 2>/dev/null
+
+RUN cat > server.js << 'SERVEREOF'
+const express = require('express');
+const crypto = require('crypto');
+const app = express();
+app.use(express.json());
+
+const SECRET = 'spectra-weak-jwt-secret-2024';
+const API_KEY = 'sk-internal-9f8e7d6c5b4a3210';
+
+// Security headers (looks hardened)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  // Vuln: CORS misconfigured - reflects Origin header
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  // Vuln: Logs user-controlled header (info leak via error pages)
+  if (req.headers['x-debug']) {
+    console.log('DEBUG:', req.headers['x-debug']);
+  }
+  next();
+});
+
+// Public endpoint
+app.get('/', (req, res) => {
+  res.json({ service: 'Hardened API', version: '1.0.0', status: 'operational' });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', uptime: process.uptime() });
+});
+
+// Vuln: Hidden debug endpoint not in docs
+app.get('/api/v1/debug/info', (req, res) => {
+  res.json({
+    node_version: process.version,
+    env: process.env.NODE_ENV || 'development',
+    platform: process.platform,
+    arch: process.arch,
+    memory: process.memoryUsage(),
+    pid: process.pid
+  });
+});
+
+// Vuln: SSRF via image proxy
+app.get('/api/v1/proxy', (req, res) => {
+  const url = req.query.url;
+  if (!url) return res.status(400).json({ error: 'url parameter required' });
+
+  // Weak validation - only checks protocol
+  if (!url.startsWith('http')) return res.status(400).json({ error: 'Invalid URL' });
+
+  const http = require(url.startsWith('https') ? 'https' : 'http');
+  http.get(url, (response) => {
+    let data = '';
+    response.on('data', chunk => data += chunk);
+    response.on('end', () => res.send(data));
+  }).on('error', (err) => {
+    res.status(500).json({ error: 'Fetch failed', detail: err.message });
+  });
+});
+
+// Auth endpoint with weak JWT
+app.post('/api/v1/auth', (req, res) => {
+  const { username, password } = req.body || {};
+  if (username === 'admin' && password === 'Adm1n!Str0ng') {
+    const token = Buffer.from(JSON.stringify({
+      user: username, role: 'admin', iat: Date.now(),
+      sig: crypto.createHmac('sha256', SECRET).update(username).digest('hex')
+    })).toString('base64');
+    return res.json({ token });
+  }
+  res.status(401).json({ error: 'Invalid credentials' });
+});
+
+// Protected endpoint
+app.get('/api/v1/internal/keys', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const payload = JSON.parse(Buffer.from(auth.replace('Bearer ', ''), 'base64'));
+    if (payload.role === 'admin') {
+      return res.json({ api_keys: [API_KEY], warning: 'Internal use only' });
+    }
+  } catch {}
+  res.status(403).json({ error: 'Forbidden' });
+});
+
+app.listen(8080, '0.0.0.0', () => console.log('Hardened API on :8080'));
+SERVEREOF
+
+# --- SSH hardened (but has one weakness) ---
+RUN mkdir -p /run/sshd && \
+    useradd -m -s /bin/bash sysops && \
+    echo 'sysops:0p3r@t0r2024' | chpasswd && \
+    sed -i 's/#Port 22/Port 22/' /etc/ssh/sshd_config && \
+    sed -i 's/#PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#MaxAuthTries.*/MaxAuthTries 3/' /etc/ssh/sshd_config && \
+    ssh-keygen -A
+
+EXPOSE 8080 22
+
+CMD service ssh start && node server.js

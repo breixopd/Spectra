@@ -1,0 +1,78 @@
+{
+  "id": "whatweb",
+  "name": "WhatWeb",
+  "version": "1.0.0",
+  "category": "discovery",
+  "description": "Web technology fingerprinter. Identifies CMS, frameworks, server software, and plugins.",
+  "metadata": {
+    "ai_description": "WhatWeb identifies websites. It recognises web technologies including CMS, blogging platforms, JavaScript libraries, web servers, embedded devices, and more. Use it early in discovery to understand the technology stack before choosing specialized tools.",
+    "capabilities": [
+      "web_fingerprint",
+      "cms_detection",
+      "service_detection"
+    ],
+    "supported_targets": [
+      "url",
+      "domain",
+      "ip"
+    ],
+    "risk_level": "passive",
+    "tags": [
+      "web",
+      "fingerprint",
+      "cms",
+      "recon",
+      "passive"
+    ],
+    "use_cases": [
+      "Identify web technologies before deeper scanning",
+      "Detect CMS (WordPress, Joomla, Drupal)",
+      "Find web frameworks (Rails, Django, Express)"
+    ],
+    "limitations": [
+      "Passive only - does not exploit",
+      "May miss heavily customized applications"
+    ],
+    "complements": [
+      "nmap",
+      "nuclei",
+      "wpscan"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update -qq",
+      "apt-get install -y -qq whatweb"
+    ],
+    "verification_command": "whatweb --version",
+    "verification_regex": "WhatWeb"
+  },
+  "execution": {
+    "command": "whatweb",
+    "args_template": "{target} --log-json={output_file} {flags}",
+    "timeout": 120,
+    "min_timeout": 30,
+    "max_timeout": 300
+  },
+  "parsing": {
+    "format": "json",
+    "mapping": {
+      "target": "target",
+      "plugins": "plugins"
+    }
+  },
+  "stealth": {
+    "rate_limit": 5,
+    "delay_ms": 500,
+    "extra_args": {
+      "-a": "1"
+    }
+  },
+  "ui": {
+    "icon": "globe",
+    "color": "cyan"
+  },
+  "signature": "1bf5c7e4b1b4b90699602304e1f64c7af892c26b7467447d34d984f329a84d3c947404ec91476a659a7814725ac4612f116c100c76d6d2caf9607c6ca3605304"
+}
