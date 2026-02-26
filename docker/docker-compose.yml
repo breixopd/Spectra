@@ -22,8 +22,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 2G
+          cpus: '0.5'
+          memory: 512M
     networks:
       - spectra-network
 
@@ -35,7 +35,7 @@ services:
       - redis_data:/data
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-prod_redis_password}
-      REDIS_ARGS: "--requirepass ${REDIS_PASSWORD:-prod_redis_password} --maxmemory 2gb --maxmemory-policy allkeys-lru --appendonly yes --appendfsync everysec --save 60 1"
+      REDIS_ARGS: "--requirepass ${REDIS_PASSWORD:-changeme} --maxmemory 512mb --maxmemory-policy allkeys-lru --appendonly yes --appendfsync everysec --save 60 1"
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-prod_redis_password}", "ping"]
       interval: 10s
@@ -45,8 +45,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 2G
+          cpus: '0.5'
+          memory: 768M
     networks:
       - spectra-network
 
@@ -115,11 +115,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2'
-          memory: 4G
-        reservations:
-          cpus: '0.5'
+          cpus: '1'
           memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
     networks:
       - spectra-network
     develop:
