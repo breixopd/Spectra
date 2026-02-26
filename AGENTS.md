@@ -37,10 +37,10 @@ Unit/integration tests use mocks and do **not** require running Docker services:
 
 ```bash
 cd /workspace
-python3 -m pytest tests/unit/ --ignore=tests/unit/test_tool_parsers.py -q
+python3 -m pytest tests/unit/ -q
 ```
 
-Note: `tests/unit/test_tool_parsers.py` has a pre-existing import error (`app.services.tools.parsers` does not exist) and must be excluded. Some other tests have pre-existing Pydantic validation failures.
+Note: Some tests have pre-existing Pydantic validation failures.
 
 ### Linting
 
