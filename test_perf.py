@@ -27,13 +27,12 @@ def run_benchmark():
     engine_old = PlaybookEngineOld(size)
     engine_new = PlaybookEngine()
 
-    # Let's add some dummy playbooks to engine_new for testing
+    # Let's add some dummy playbooks to engine_new for testing using the public API
     from app.services.ai.playbook import ServicePlaybook
-    engine_new.playbooks = [
-        ServicePlaybook(service=f'service_{i}', ports=[1000 + i, 2000 + i])
-        for i in range(size)
-    ]
-    engine_new._rebuild_indices()
+    for i in range(size):
+        engine_new.add_playbook(
+            ServicePlaybook(service=f'service_{i}', ports=[1000 + i, 2000 + i])
+        )
 
     services = [f"service_{i}" for i in range(size)] + ["unknown_service"]
     ports = [1000 + i for i in range(size)] + [9999, None]
