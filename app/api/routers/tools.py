@@ -222,7 +222,7 @@ async def save_plugin_unsigned(
         }
     except Exception as e:
         logger.error("Failed to save unsigned plugin: %s", e)
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        raise HTTPException(status_code=400, detail="Failed to save unsigned plugin due to validation or server error.") from e
 
 
 @router.get("", response_model=ToolListResponse)
@@ -670,7 +670,7 @@ async def test_tool(
 
     except Exception as e:
         logger.error("Tool test failed for %s: %s", tool_id, e)
-        raise HTTPException(status_code=500, detail=f"Test execution failed: {e}")
+        raise HTTPException(status_code=500, detail="Test execution failed due to an internal error.")
 
 
 @router.get("/{tool_id}/stats")
@@ -739,5 +739,5 @@ async def get_tool_stats(
         logger.error("Failed to get stats for %s: %s", tool_id, e)
         return {
             "tool_id": tool_id,
-            "error": str(e),
+            "error": "Failed to retrieve statistics due to an internal error.",
         }

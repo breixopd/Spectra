@@ -274,7 +274,8 @@ async def get_system_status(
         await db.execute(text("SELECT 1"))
         db_status = ComponentStatus(status="healthy", message="Connected")
     except Exception as e:
-        db_status = ComponentStatus(status="error", message=str(e))
+        logger.error("Database connection check failed: %s", e)
+        db_status = ComponentStatus(status="error", message="Connection failed")
         overall_status = "degraded"
         status_messages.append("Database connection issue")
 
@@ -283,7 +284,8 @@ async def get_system_status(
         await redis.ping()
         redis_status = ComponentStatus(status="healthy", message="Connected")
     except Exception as e:
-        redis_status = ComponentStatus(status="error", message=str(e))
+        logger.error("Redis connection check failed: %s", e)
+        redis_status = ComponentStatus(status="error", message="Connection failed")
         overall_status = "degraded"
         status_messages.append("Redis connection issue")
 
@@ -405,7 +407,7 @@ async def clear_tool_statistics(
         logger.error("Failed to clear tool statistics: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear tool statistics: {str(e)}",
+            detail="Failed to clear tool statistics due to an internal error",
         )
 
 
@@ -475,7 +477,7 @@ async def clear_missions(
         logger.error("Failed to clear missions: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear missions: {str(e)}",
+            detail="Failed to clear missions due to an internal error",
         )
 
 
@@ -535,7 +537,7 @@ async def clear_cache(
         logger.error("Failed to clear cache: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clear cache: {str(e)}",
+            detail="Failed to clear cache due to an internal error",
         )
 
 
@@ -612,7 +614,7 @@ async def remove_operation(
         logger.error("Failed to remove operation: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to remove operation: {str(e)}",
+            detail="Failed to remove operation due to an internal error",
         )
 
 
@@ -666,5 +668,5 @@ async def update_operation_progress(
         logger.error("Failed to update operation progress: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update operation progress: {str(e)}",
+            detail="Failed to update operation progress due to an internal error",
         )
