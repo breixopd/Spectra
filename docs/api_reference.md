@@ -26,14 +26,13 @@ Most endpoints require authentication using a JWT token.
 ### System Status
 
 - **GET `/system/status`**
-  - **Description:** detailed system health including DB, Redis, and Tool readiness.
+  - **Description:** detailed system health including DB and Tool readiness.
   - **Response:**
     ```json
     {
       "status": "ready",
       "components": {
-        "database": true,
-        "redis": true
+        "database": true
       },
       "initialization": {
         "tools_installed": 10,

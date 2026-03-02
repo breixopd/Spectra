@@ -31,7 +31,6 @@ Edit `.env` and set the following critical variables:
 
 - `JWT_SECRET_KEY`: Generate a secure random string (e.g., `openssl rand -hex 32`)
 - `POSTGRES_PASSWORD`: Set a strong database password
-- `REDIS_PASSWORD`: Set a strong Redis password
 - `LLM_API_KEY`: If using external LLM provider (OpenAI, etc.)
 
 ### 3. Production Deployment
@@ -44,11 +43,11 @@ docker compose -f docker/docker-compose.yml up -d
 
 This will:
 
-- Start all services (App, DB, Redis, Ollama)
+- Start all services (App, DB, Ollama)
 - Apply resource limits
 - Disable debug mode
 - Enable plugin safe mode (signature verification)
-- Hide internal ports (DB, Redis) from the host
+- Hide internal ports (DB) from the host
 
 ### 4. Verify Deployment
 
@@ -65,8 +64,7 @@ Expected output:
   "status": "healthy",
   "service": "spectra",
   "components": {
-    "database": "healthy",
-    "redis": "healthy"
+    "database": "healthy"
   }
 }
 ```
@@ -88,9 +86,6 @@ docker compose exec app alembic upgrade head
 ```bash
 docker compose exec db pg_dump -U spectra spectra > backup_db_$(date +%F).sql
 ```
-
-**Redis:**
-Redis is configured to save snapshots (RDB) and append-only logs (AOF) to the `redis_data` volume.
 
 ### Logs
 
