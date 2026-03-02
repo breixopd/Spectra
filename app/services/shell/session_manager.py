@@ -11,6 +11,8 @@ import threading
 from typing import Dict, Optional
 from fastapi import WebSocket
 
+from app.core.constants import SHELL_SOCKET_RECV_BYTES
+
 logger = logging.getLogger("spectra.shell.manager")
 
 
@@ -167,7 +169,7 @@ class ShellSessionManager:
                 # Handle data loop
                 while session.active:
                     try:
-                        data = conn.recv(4096)
+                        data = conn.recv(SHELL_SOCKET_RECV_BYTES)
                         if not data:
                             break
 

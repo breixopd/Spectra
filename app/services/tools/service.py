@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
 from app.core.config import settings
+from app.core.constants import ARQ_QUEUE_NAME
 from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.models import ToolExecutionRequest, ToolExecutionResult
 from app.services.tools.registry import get_registry
@@ -129,7 +130,7 @@ class ToolExecutionService:
         )
 
         try:
-            pool = await create_pool(redis_settings, default_queue_name="spectra:tasks")
+            pool = await create_pool(redis_settings, default_queue_name=ARQ_QUEUE_NAME)
             job = await pool.enqueue_job(
                 "execute_script_job",
                 content=script_content,
@@ -500,7 +501,6 @@ class ToolExecutionService:
         """Ensure a tool is installed via the worker."""
         from arq import create_pool
         from arq.connections import RedisSettings
-        from app.core.config import settings
 
         redis_settings = RedisSettings(
             host=settings.REDIS_HOST,
@@ -509,7 +509,7 @@ class ToolExecutionService:
             database=settings.REDIS_DB,
         )
 
-        pool = await create_pool(redis_settings, default_queue_name="spectra:tasks")
+        pool = await create_pool(redis_settings, default_queue_name=ARQ_QUEUE_NAME)
 
         try:
             job = await pool.enqueue_job("install_tool_job", tool_id)
@@ -706,7 +706,7 @@ Example response format:
             if response_text.startswith("```"):
                 # Remove code blocks
                 lines = response_text.split("\n")
-                response_text = "\n".join(l for l in lines if not l.startswith("```"))
+                response_text = "\n".join(line for line in lines if not line.startswith("```"))
 
             fixed_args = json.loads(response_text)
             if isinstance(fixed_args, dict):

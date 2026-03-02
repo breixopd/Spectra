@@ -7,6 +7,12 @@ import logging
 from typing import Any, cast
 
 from app.core.events import events
+from app.core.constants import (
+    DEBRIEF_MAX_FINDINGS,
+    DEBRIEF_MAX_LOGS,
+    DEBRIEF_SUMMARY_LOG_CHARS,
+    MAX_HOSTS_DEFAULT,
+)
 from app.services.ai.agents.base import AgentContext, SteeringAction
 from app.services.ai.agents.mission_controller import (
     MissionController,
@@ -162,7 +168,7 @@ class MissionExecutionManager:
             ScopeInput(
                 raw_input=mission.target,
                 include_subdomains=True,
-                max_hosts=256,
+                max_hosts=MAX_HOSTS_DEFAULT,
             ),
         )
 
@@ -537,9 +543,9 @@ class MissionExecutionManager:
             debrief_input = DebriefInput(
                 target=mission.target,
                 directive=mission.directive,
-                findings=mission.findings[:30],
+                findings=mission.findings[:DEBRIEF_MAX_FINDINGS],
                 tools_run=mission.tools_run,
-                logs=mission.logs[-50:],
+                logs=mission.logs[-DEBRIEF_MAX_LOGS:],
                 attack_surface_summary=mission.attack_surface.get_summary(),
             )
 
@@ -547,7 +553,7 @@ class MissionExecutionManager:
             if result.success and result.action:
                 action = result.action
                 mission.log(f"[DEBRIEF] Risk: {action.risk_rating.upper()}")
-                mission.log(f"[DEBRIEF] {action.executive_summary[:200]}")
+                mission.log(f"[DEBRIEF] {action.executive_summary[:DEBRIEF_SUMMARY_LOG_CHARS]}")
                 for lesson in action.lessons_learned[:3]:
                     mission.log(f"[LEARN] {lesson}")
         except Exception as e:

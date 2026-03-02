@@ -31,6 +31,15 @@ from arq import create_pool
 from arq.connections import ArqRedis, RedisSettings
 
 from app.core.config import settings
+from app.core.constants import (
+    ARQ_HEALTH_CHECK_INTERVAL,
+    ARQ_JOB_TIMEOUT,
+    ARQ_KEEP_RESULT,
+    ARQ_MAX_JOBS,
+    ARQ_QUEUE_NAME,
+    GO_COMPILE_TIMEOUT,
+    MAX_HOSTS_DEFAULT,
+)
 from app.services.tools.models import (
     ToolStatus,
     ToolExecutionRequest,
@@ -128,7 +137,7 @@ async def execute_tool_job(
     if "/" in target:  # CIDR range
         try:
             network = ipaddress.ip_network(target, strict=False)
-            host_count = min(network.num_addresses, 256)
+            host_count = min(network.num_addresses, MAX_HOSTS_DEFAULT)
             effective_timeout = max(
                 effective_timeout, config.execution.timeout_per_host * host_count
             )
@@ -500,7 +509,7 @@ async def execute_script_job(
             script_path.write_text(content)
             # Compile then run
             compile_cmd = f"go build -o {work_dir}/exploit {script_path}"
-            r_code, r_out, r_err = await _run_command(compile_cmd, 60, str(work_dir))
+            r_code, r_out, r_err = await _run_command(compile_cmd, GO_COMPILE_TIMEOUT, str(work_dir))
             if r_code != 0:
                 return {
                     "success": False,
@@ -816,11 +825,11 @@ class WorkerSettings:
     on_startup = startup
     on_shutdown = shutdown
 
-    max_jobs = 10
-    job_timeout = 600
-    keep_result = 3600
-    health_check_interval = 30
-    queue_name = "spectra:tasks"
+    max_jobs = ARQ_MAX_JOBS
+    job_timeout = ARQ_JOB_TIMEOUT
+    keep_result = ARQ_KEEP_RESULT
+    health_check_interval = ARQ_HEALTH_CHECK_INTERVAL
+    queue_name = ARQ_QUEUE_NAME
 
 
 # =============================================================================

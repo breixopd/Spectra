@@ -62,9 +62,6 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gpt-4o-mini"
     LLM_TIMEOUT: float = 600.0
 
-    # --- Plugin Security ---
-    PLUGIN_SAFE_MODE: bool = True  # Enforce signature checks by default
-
     # --- CORS ---
     CORS_ORIGINS: List[str] = ["http://localhost:5000", "http://127.0.0.1:5000"]
 
