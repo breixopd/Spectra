@@ -1,6 +1,7 @@
 import asyncio
 import time
 import uuid
+import json
 from app.services.ai.rag import RAGService, Document, RAGConfig
 
 class MockRedisPipeline:

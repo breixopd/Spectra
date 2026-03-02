@@ -67,6 +67,9 @@ class RAGConfig:
     default_top_k: int = 5
     min_score: float = 0.5
 
+    # Indexing configuration
+    batch_size: int = 500
+
     # Index configuration
     distance_metric: str = "COSINE"
 
@@ -235,15 +238,15 @@ class RAGService:
         embeddings = await self.embeddings.embed_batch(contents)
 
         success_count = 0
-        batch_size = 500
 
         # Process in chunks to minimize massive pipeline memory footprint
         # and avoid blocking Redis for too long.
-        for i in range(0, len(docs), batch_size):
-            batch_docs = docs[i:i + batch_size]
-            batch_embeddings = embeddings[i:i + batch_size]
+        for i in range(0, len(docs), self.config.batch_size):
+            batch_docs = docs[i:i + self.config.batch_size]
+            batch_embeddings = embeddings[i:i + self.config.batch_size]
             pipe = self.redis.pipeline()
 
+            chunk_success = 0
             for doc, embedding in zip(batch_docs, batch_embeddings):
                 try:
                     doc_data = {
@@ -264,13 +267,16 @@ class RAGService:
 
                     key = f"{self.config.doc_prefix}{doc.id}"
                     pipe.hset(key, mapping=doc_data)
-                    success_count += 1
+                    chunk_success += 1
 
                 except Exception as e:
                     logger.warning("Failed to prepare document %s: %s", doc.id, e)
 
             # Execute the pipeline for this chunk
-            await pipe.execute()
+            results = await pipe.execute()
+
+            # Count actual successes from Redis execution
+            success_count += sum(1 for r in results if r is not None and not isinstance(r, Exception))
 
         logger.info("Indexed %d/%d documents", success_count, len(docs))
         return success_count
