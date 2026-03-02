@@ -404,6 +404,91 @@ class TestAttackSurface:
         assert attack_surface.vectors[0].status == VectorStatus.FAILED
         assert len(attack_surface.vectors[0].attempts) == 2
 
+    def test_get_retryable_vectors(self, attack_surface):
+        """get_retryable_vectors should return vectors that failed but can be retried."""
+        retryable_vec = AttackVector(
+            id="vec-retry",
+            name="Retryable",
+            description="",
+            priority=VectorPriority.MEDIUM,
+            target_type="service",
+            target_ref="test",
+            status=VectorStatus.FAILED,
+            attempts=[ExploitAttempt(tool_used="test", success=False)],
+            max_attempts=3,
+        )
+        exhausted_vec = AttackVector(
+            id="vec-exhausted",
+            name="Exhausted",
+            description="",
+            priority=VectorPriority.MEDIUM,
+            target_type="service",
+            target_ref="test",
+            status=VectorStatus.FAILED,
+            attempts=[
+                ExploitAttempt(tool_used="test", success=False),
+                ExploitAttempt(tool_used="test", success=False),
+                ExploitAttempt(tool_used="test", success=False),
+            ],
+            max_attempts=3,
+        )
+        pending_vec = AttackVector(
+            id="vec-pending",
+            name="Pending",
+            description="",
+            priority=VectorPriority.MEDIUM,
+            target_type="service",
+            target_ref="test",
+            status=VectorStatus.PENDING,
+        )
+        success_vec = AttackVector(
+            id="vec-success",
+            name="Success",
+            description="",
+            priority=VectorPriority.MEDIUM,
+            target_type="service",
+            target_ref="test",
+            status=VectorStatus.SUCCESS,
+        )
+
+        attack_surface.add_vector(retryable_vec)
+        attack_surface.add_vector(exhausted_vec)
+        attack_surface.add_vector(pending_vec)
+        attack_surface.add_vector(success_vec)
+
+        retryable = attack_surface.get_retryable_vectors()
+
+        assert len(retryable) == 1
+        assert retryable[0].id == "vec-retry"
+
+    def test_vector_succeeded(self, attack_surface):
+        """_vector_succeeded should correctly identify successful vectors."""
+        success_vec = AttackVector(
+            id="vec-success",
+            name="Success",
+            description="",
+            priority=VectorPriority.MEDIUM,
+            target_type="service",
+            target_ref="test",
+            status=VectorStatus.SUCCESS,
+        )
+        failed_vec = AttackVector(
+            id="vec-failed",
+            name="Failed",
+            description="",
+            priority=VectorPriority.MEDIUM,
+            target_type="service",
+            target_ref="test",
+            status=VectorStatus.FAILED,
+        )
+
+        attack_surface.add_vector(success_vec)
+        attack_surface.add_vector(failed_vec)
+
+        assert attack_surface._vector_succeeded("vec-success") is True
+        assert attack_surface._vector_succeeded("vec-failed") is False
+        assert attack_surface._vector_succeeded("non-existent") is False
+
     def test_get_summary(self, attack_surface):
         """get_summary should return correct counts."""
         # Add services
