@@ -22,6 +22,7 @@ from app.services.tools.models import (
     ToolExecutionRequest,
     ToolExecutionResult,
 )
+from app.core.constants import MAX_HOSTS_DEFAULT
 
 if TYPE_CHECKING:
     pass
@@ -101,7 +102,7 @@ class CommandToolAdapter(ToolAdapter):
                 import ipaddress
 
                 network = ipaddress.ip_network(target, strict=False)
-                host_count = min(network.num_addresses, 256)
+                host_count = min(network.num_addresses, MAX_HOSTS_DEFAULT)
             except ValueError:
                 pass
 

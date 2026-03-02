@@ -35,6 +35,7 @@ from app.api.schemas import (
     ToolSummary,
 )
 from app.core.config import settings
+from app.core.constants import ARQ_QUEUE_NAME
 from app.core.rate_limit import limiter
 from app.models.user import User
 from app.services.tools.models import (
@@ -420,7 +421,7 @@ async def upload_plugin(
                         password=settings.REDIS_PASSWORD.get_secret_value(),
                         database=settings.REDIS_DB,
                     ),
-                    default_queue_name="spectra:tasks",
+                    default_queue_name=ARQ_QUEUE_NAME,
                 )
                 await pool.enqueue_job("install_tool_job", tool.config.id)
                 if hasattr(pool, "aclose"):
@@ -474,7 +475,7 @@ async def install_all_tools(
                     password=settings.REDIS_PASSWORD.get_secret_value(),
                     database=settings.REDIS_DB,
                 ),
-                default_queue_name="spectra:tasks",
+                default_queue_name=ARQ_QUEUE_NAME,
             )
             await pool.enqueue_job("install_all_tools_job", force=force)
             if hasattr(pool, "aclose"):
@@ -543,7 +544,7 @@ async def install_tool(
                     password=settings.REDIS_PASSWORD.get_secret_value(),
                     database=settings.REDIS_DB,
                 ),
-                default_queue_name="spectra:tasks",
+                default_queue_name=ARQ_QUEUE_NAME,
             )
             await pool.enqueue_job("install_tool_job", tool_id)
             if hasattr(pool, "aclose"):
@@ -628,7 +629,7 @@ async def test_tool(
                 password=settings.REDIS_PASSWORD.get_secret_value(),
                 database=settings.REDIS_DB,
             ),
-            default_queue_name="spectra:tasks",
+            default_queue_name=ARQ_QUEUE_NAME,
         )
 
         # Execute via ARQ worker
