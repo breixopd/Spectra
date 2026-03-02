@@ -175,3 +175,26 @@ class TestHTTPPlaybook:
         assert pb is not None
         tools = [s.tool for s in pb.steps]
         assert "wpscan" in tools
+
+    def test_add_playbook_dynamic(self):
+        """Test that adding a playbook dynamically rebuilds the indices for O(1) lookups."""
+        engine = PlaybookEngine()
+        new_pb = ServicePlaybook(
+            service="custom_service",
+            ports=[9999],
+            steps=[PlaybookStep(tool="custom_tool", description="Custom tool test")],
+            tags=["custom"],
+        )
+
+        # Add the playbook dynamically
+        engine.add_playbook(new_pb)
+
+        # Verify it can be found by service name
+        found_by_svc = engine.get_playbook_for_service("custom_service")
+        assert found_by_svc is not None
+        assert found_by_svc.service == "custom_service"
+
+        # Verify it can be found by port
+        found_by_port = engine.get_playbook_for_service("unknown", port=9999)
+        assert found_by_port is not None
+        assert found_by_port.service == "custom_service"

@@ -300,22 +300,43 @@ class PlaybookEngine:
             except Exception as e:
                 logger.warning("Failed to load custom playbook %s: %s", path, e)
 
+    def add_playbook(self, playbook: ServicePlaybook) -> None:
+        """Add a dynamic playbook to the engine and rebuild indices."""
+        self.playbooks.append(playbook)
+        self._rebuild_indices()
+
     def get_playbook_for_service(
         self, service: str, port: int | None = None
     ) -> ServicePlaybook | None:
-        """Find matching playbook for a service."""
+        """Find matching playbook for a service.
+
+        Optimized to use O(1) dictionary lookups instead of O(N) list traversal.
+        Preserves original 'first-match-wins' priority by taking the minimum
+        index when both service and port matches are found.
+        """
         service_lower = service.lower()
 
-        svc_idx = self._service_index.get(service_lower, float("inf"))
-        port_idx = (
-            self._port_index.get(port, float("inf")) if port else float("inf")
-        )
+        # O(1) lookups
+        svc_idx = self._service_index.get(service_lower)
 
-        best_idx = min(svc_idx, port_idx)
-        if best_idx == float("inf"):
-            return None
+        if port is not None:
+            port_idx = self._port_index.get(port)
+            if svc_idx is None:
+                if port_idx is None:
+                    return None
+                return self.playbooks[port_idx]
+            if port_idx is None:
+                return self.playbooks[svc_idx]
 
-        return self.playbooks[int(best_idx)]
+            # Both match, return the highest priority (lowest index)
+            # to preserve original first-match-wins behavior
+            best_idx = min(svc_idx, port_idx)
+            return self.playbooks[best_idx]
+
+        else:
+            if svc_idx is None:
+                return None
+            return self.playbooks[svc_idx]
 
     def get_recommended_tools(
         self,
