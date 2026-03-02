@@ -240,9 +240,26 @@ class PlaybookEngine:
     def __init__(self, custom_playbook_dir: str | Path | None = None):
         self.playbooks: list[ServicePlaybook] = []
         self.exploit_patterns: list[ExploitPattern] = []
+        self._service_index: dict[str, int] = {}
+        self._port_index: dict[int, int] = {}
         self._load_defaults()
         if custom_playbook_dir:
             self._load_custom(Path(custom_playbook_dir))
+        self._rebuild_indices()
+
+    def _rebuild_indices(self) -> None:
+        """Rebuild lookup indices for $O(1)$ playbook discovery."""
+        self._service_index = {}
+        self._port_index = {}
+
+        for i, pb in enumerate(self.playbooks):
+            service_lower = pb.service.lower()
+            if service_lower not in self._service_index:
+                self._service_index[service_lower] = i
+
+            for port in pb.ports:
+                if port not in self._port_index:
+                    self._port_index[port] = i
 
     def _load_defaults(self) -> None:
         """Load built-in playbooks."""
@@ -289,13 +306,16 @@ class PlaybookEngine:
         """Find matching playbook for a service."""
         service_lower = service.lower()
 
-        for pb in self.playbooks:
-            if pb.service == service_lower:
-                return pb
-            if port and port in pb.ports:
-                return pb
+        svc_idx = self._service_index.get(service_lower, float("inf"))
+        port_idx = (
+            self._port_index.get(port, float("inf")) if port else float("inf")
+        )
 
-        return None
+        best_idx = min(svc_idx, port_idx)
+        if best_idx == float("inf"):
+            return None
+
+        return self.playbooks[int(best_idx)]
 
     def get_recommended_tools(
         self,
