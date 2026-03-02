@@ -86,7 +86,7 @@ async def subscribe_tool_output(
                 try:
                     data = json.loads(message["data"])
                     await callback(data)
-                except Exception:
-                    logger.debug("Ignored exception", exc_info=True)
+                except Exception as e:
+                    logger.debug("Failed to decode tool output: %s", e)
     finally:
         await pubsub.unsubscribe(STREAM_CHANNEL)

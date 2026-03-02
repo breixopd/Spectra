@@ -63,8 +63,8 @@ def get_user_identifier(request: Request) -> str:
             username = payload.get("sub")
             if username:
                 return f"user:{username}"
-        except Exception:
-            logger.debug("Ignored exception", exc_info=True)
+        except Exception as e:
+            logger.debug(f"Ignored exception: {e}")
 
     return get_client_identifier(request)
 
