@@ -37,7 +37,5 @@ def run_benchmark():
         duration = timeit.timeit(test_lookup, number=100)
         print(f"Baseline for {size} playbooks: {duration:.4f} seconds")
 
-# NOTE: This module is a legacy baseline benchmark kept for development reference.
-# It is not intended to be executed as part of the production codebase or test suite.
-# To run it manually, invoke `run_benchmark()` from an interactive session or a
-# dedicated benchmarking harness, not from automated tooling.
+if __name__ == "__main__":
+    run_benchmark()
