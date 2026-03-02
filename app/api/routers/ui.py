@@ -331,5 +331,5 @@ async def test_llm_connection(request: LLMTestRequest):
             return {"success": True}
         return {"success": False, "error": "No response from LLM"}
 
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    except Exception:
+        return {"success": False, "error": "Failed to communicate with LLM provider"}
