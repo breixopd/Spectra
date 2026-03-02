@@ -110,6 +110,6 @@ class UserRepository(BaseRepository[User]):
         Returns:
             True if at least one user exists, False otherwise.
         """
-        stmt = select(self.model).limit(1)
+        stmt = select(self.model.id).limit(1)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none() is not None
