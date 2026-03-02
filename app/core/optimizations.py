@@ -38,6 +38,7 @@ async def get_arq_pool():
         from arq.connections import RedisSettings
 
         from app.core.config import settings
+        from app.core.constants import ARQ_QUEUE_NAME
 
         _arq_pool = await create_pool(
             RedisSettings(
@@ -46,7 +47,7 @@ async def get_arq_pool():
                 password=settings.REDIS_PASSWORD.get_secret_value(),
                 database=settings.REDIS_DB,
             ),
-            default_queue_name="spectra:tasks",
+            default_queue_name=ARQ_QUEUE_NAME,
         )
         return _arq_pool
 

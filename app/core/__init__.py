@@ -20,6 +20,22 @@ Note: Import lifespan directly from app.core.lifespan to avoid circular imports.
 from app.core.cache import CacheService, get_cache, set_cache
 from app.core.circuit_breaker import CircuitBreaker, circuit_breakers
 from app.core.config import get_settings, settings
+from app.core.constants import (
+    ARQ_HEALTH_CHECK_INTERVAL,
+    ARQ_JOB_TIMEOUT,
+    ARQ_KEEP_RESULT,
+    ARQ_MAX_JOBS,
+    ARQ_QUEUE_NAME,
+    DEBRIEF_MAX_FINDINGS,
+    DEBRIEF_MAX_LOGS,
+    DEBRIEF_SUMMARY_LOG_CHARS,
+    EXPLOIT_OUTPUT_LOG_CHARS,
+    GO_COMPILE_TIMEOUT,
+    MAX_EXPLOIT_ITERATIONS,
+    MAX_HOSTS_DEFAULT,
+    REDIS_HEALTH_CHECK_INTERVAL,
+    SHELL_SOCKET_RECV_BYTES,
+)
 from app.core.database import async_session_maker, engine, get_async_session
 from app.core.enums import (
     AssessmentPhase,
@@ -64,6 +80,21 @@ __all__ = [
     # Config
     "settings",
     "get_settings",
+    # Constants
+    "ARQ_QUEUE_NAME",
+    "ARQ_MAX_JOBS",
+    "ARQ_JOB_TIMEOUT",
+    "ARQ_KEEP_RESULT",
+    "ARQ_HEALTH_CHECK_INTERVAL",
+    "REDIS_HEALTH_CHECK_INTERVAL",
+    "MAX_HOSTS_DEFAULT",
+    "MAX_EXPLOIT_ITERATIONS",
+    "EXPLOIT_OUTPUT_LOG_CHARS",
+    "GO_COMPILE_TIMEOUT",
+    "SHELL_SOCKET_RECV_BYTES",
+    "DEBRIEF_MAX_FINDINGS",
+    "DEBRIEF_MAX_LOGS",
+    "DEBRIEF_SUMMARY_LOG_CHARS",
     # Database
     "get_async_session",
     "async_session_maker",

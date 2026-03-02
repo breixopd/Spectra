@@ -8,6 +8,7 @@ import uuid
 from typing import TYPE_CHECKING, Any, cast, Callable, Awaitable
 
 from app.core.events import events
+from app.core.constants import MAX_HOSTS_DEFAULT
 from app.services.ai.agents.base import AgentContext, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
 from app.services.mission.executor.utils import detect_target_type
@@ -333,7 +334,7 @@ class TaskDispatcher:
             )
 
             if result.success:
-                mission.log(f"Custom script executed successfully.")
+                mission.log("Custom script executed successfully.")
                 if result.stdout:
                     mission.log(f"Output: {result.stdout[:200]}...")
 
@@ -425,7 +426,7 @@ class TaskDispatcher:
             scope_input = ScopeInput(
                 raw_input=mission.target,
                 include_subdomains=task.parameters.get("include_subdomains", True),
-                max_hosts=task.parameters.get("max_hosts", 256),
+                max_hosts=task.parameters.get("max_hosts", MAX_HOSTS_DEFAULT),
             )
 
             result = await agent.execute(context, scope_input)

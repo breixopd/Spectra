@@ -17,6 +17,7 @@ from redis.asyncio import Redis
 
 from app.core.cache import CacheService, set_cache
 from app.core.config import settings
+from app.core.constants import ARQ_QUEUE_NAME, REDIS_HEALTH_CHECK_INTERVAL
 from app.core.database import async_session_maker, engine
 from app.core.events import EventType, events
 from app.core.telemetry import telemetry
@@ -86,7 +87,7 @@ async def run_startup_tasks(redis: Redis) -> None:
                 database=settings.REDIS_DB,
             )
 
-            pool = await create_pool(redis_settings, default_queue_name="spectra:tasks")
+            pool = await create_pool(redis_settings, default_queue_name=ARQ_QUEUE_NAME)
 
             # Queue installation job
             job = await pool.enqueue_job("install_all_tools_job")
@@ -138,7 +139,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             settings.REDIS_URL,
             encoding="utf-8",
             decode_responses=True,
-            health_check_interval=30,
+            health_check_interval=REDIS_HEALTH_CHECK_INTERVAL,
         )
         await app.state.redis.ping()
         logger.info("[OK] Redis connected")
