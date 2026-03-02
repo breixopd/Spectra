@@ -51,9 +51,6 @@ class Settings(BaseSettings):
         """Construct Redis URL from components."""
         return f"redis://:{self.REDIS_PASSWORD.get_secret_value()}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
-    # --- RAG Backend ---
-    RAG_BACKEND: str = "redis"  # redis, postgres
-
     # --- AI / LLM ---
     AI_PROVIDER: str = "ollama"  # ollama, api, mock
     OLLAMA_HOST: str = "http://ai:11434"
@@ -110,15 +107,6 @@ class Settings(BaseSettings):
         valid_providers = {"ollama", "api", "mock"}
         if v.lower() not in valid_providers:
             raise ValueError(f"AI_PROVIDER must be one of {valid_providers}")
-        return v.lower()
-
-    @field_validator("RAG_BACKEND")
-    @classmethod
-    def validate_rag_backend(cls, v: str) -> str:
-        """Validate configured RAG backend."""
-        valid_backends = {"redis", "postgres"}
-        if v.lower() not in valid_backends:
-            raise ValueError(f"RAG_BACKEND must be one of {valid_backends}")
         return v.lower()
 
     @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES")
