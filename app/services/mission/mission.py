@@ -181,7 +181,7 @@ class Mission:
             if template_id and memory.is_false_positive(template_id):
                 return
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         # Auto-tag with MITRE ATT&CK techniques
         try:
@@ -189,7 +189,7 @@ class Mission:
 
             finding = tag_finding_with_attack(finding)
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         finding["count"] = 1
         self.findings.append(finding)

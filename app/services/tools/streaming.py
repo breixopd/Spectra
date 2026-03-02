@@ -87,6 +87,6 @@ async def subscribe_tool_output(
                     data = json.loads(message["data"])
                     await callback(data)
                 except Exception:
-                    pass
+                    logger.debug("Ignored exception", exc_info=True)
     finally:
         await pubsub.unsubscribe(STREAM_CHANNEL)

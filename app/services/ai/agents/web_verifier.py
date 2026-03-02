@@ -112,6 +112,7 @@ async def _verify_sqli(client: httpx.AsyncClient, url: str) -> dict:
                     "method": "error_based_sqli",
                 }
     except Exception:
+        # Exception ignored intentionally
         pass
     return {
         "verified": False,
@@ -135,6 +136,7 @@ async def _verify_xss(client: httpx.AsyncClient, url: str) -> dict:
                 "method": "reflected_xss",
             }
     except Exception:
+        # Exception ignored intentionally
         pass
     return {
         "verified": False,

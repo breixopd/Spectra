@@ -138,7 +138,7 @@ class ShellSessionManager:
             try:
                 self.loop = asyncio.get_running_loop()
             except RuntimeError:
-                pass
+                logger.debug("Ignored exception", exc_info=True)
 
         # Record listener immediately so callers can see it's active
         self.listeners[port] = None  # Placeholder until socket is created in thread
@@ -254,7 +254,7 @@ class ShellSessionManager:
                             session.socket.shutdown(socket.SHUT_RDWR)
                             session.socket.close()
                         except Exception:
-                            pass
+                            logger.debug("Ignored exception", exc_info=True)
 
 
 shell_manager = ShellSessionManager()

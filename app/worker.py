@@ -134,7 +134,7 @@ async def execute_tool_job(
                 effective_timeout, config.execution.timeout_per_host * host_count
             )
         except ValueError:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
     effective_timeout = min(effective_timeout, config.execution.max_timeout)
     effective_timeout = max(effective_timeout, config.execution.min_timeout)
@@ -554,7 +554,7 @@ async def execute_script_job(
         try:
             shutil.rmtree(work_dir)
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
 
 # =============================================================================
@@ -636,7 +636,7 @@ async def _run_command(
         try:
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         except ProcessLookupError:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
         await proc.wait()
         return (-1, "", f"Command timed out after {timeout}s")
 

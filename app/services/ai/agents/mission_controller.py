@@ -184,7 +184,7 @@ class MissionController(
             if stats["tool_lessons"] > 0 or stats["exploit_lessons"] > 0:
                 rag_context += f"\n(Memory: {stats['tool_lessons']} tool lessons, {stats['exploit_lessons']} exploit patterns, {stats['target_profiles']} OS profiles)"
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         prompt = MISSION_PLAN_PROMPT.format(
             directive=input_data.directive,

@@ -60,7 +60,7 @@ class MissionExecutionManager:
                 recorder.start()
                 mission.log("[RECORD] Demo recording started")
             except Exception:
-                pass
+                logger.debug("Ignored exception", exc_info=True)
 
         context = await self.lifecycle.initialize_mission(mission)
         if context is None:
@@ -72,7 +72,7 @@ class MissionExecutionManager:
 
             await notify_mission_started(mission.target, mission.directive)
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         try:
             # 1. Define Scope
@@ -123,7 +123,7 @@ class MissionExecutionManager:
                     mission.target, len(mission.findings), critical
                 )
             except Exception:
-                pass
+                logger.debug("Ignored exception", exc_info=True)
 
             # Update DB
             await self.lifecycle.update_db_status(mission)

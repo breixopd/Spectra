@@ -87,13 +87,13 @@ async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, 
                 try:
                     await task
                 except asyncio.CancelledError:
-                    pass
+                    logger.debug("Ignored exception", exc_info=True)
 
         # Kill the entire process group
         try:
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         except ProcessLookupError:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         await proc.wait()
 
@@ -107,12 +107,12 @@ async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, 
                 try:
                     await task
                 except asyncio.CancelledError:
-                    pass
+                    logger.debug("Ignored exception", exc_info=True)
 
         try:
             proc.kill()
         except ProcessLookupError:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         await proc.wait()
 

@@ -187,7 +187,7 @@ async def get_system_operations(redis: Redis) -> list[OngoingOperation]:
                         )
                     )
             except (json.JSONDecodeError, TypeError):
-                pass
+                logger.debug("Ignored exception", exc_info=True)
 
         # Check for embeddings loading
         embeddings_status = await redis.get(SystemKeys.EMBEDDINGS_STATUS)
@@ -206,7 +206,7 @@ async def get_system_operations(redis: Redis) -> list[OngoingOperation]:
                         )
                     )
             except (json.JSONDecodeError, TypeError):
-                pass
+                logger.debug("Ignored exception", exc_info=True)
 
     except Exception as e:
         logger.warning("Failed to retrieve operations from Redis: %s", e)
@@ -222,7 +222,7 @@ async def check_tools_installing(redis: Redis) -> bool:
             data = json.loads(progress)
             return data.get("active", False)
     except Exception:
-        pass
+        logger.debug("Ignored exception", exc_info=True)
     return False
 
 
@@ -234,7 +234,7 @@ async def check_embeddings_loading(redis: Redis) -> bool:
             data = json.loads(status)
             return data.get("loading", False)
     except Exception:
-        pass
+        logger.debug("Ignored exception", exc_info=True)
     return False
 
 

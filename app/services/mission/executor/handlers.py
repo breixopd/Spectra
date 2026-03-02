@@ -32,7 +32,7 @@ def _get_known_tools() -> set[str]:
         if registry:
             return {t.config.id.lower() for t in registry.list_tools()}
     except Exception:
-        pass
+        logger.debug("Ignored exception", exc_info=True)
     # Fallback if registry not available
     return {
         "nmap",

@@ -110,7 +110,7 @@ class MissionMemory:
             try:
                 self.target_profiles[key] = TargetProfile(**data)
             except Exception:
-                pass
+                logger.debug("Ignored exception", exc_info=True)
 
         logger.info(
             "Loaded memory: %d tool lessons, %d exploit lessons, %d profiles, %d false positives",

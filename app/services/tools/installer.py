@@ -151,7 +151,7 @@ class ToolInstaller:
                     try:
                         proc.kill()
                     except ProcessLookupError:
-                        pass
+                        logger.debug("Ignored exception", exc_info=True)
                     return False
 
             except Exception as e:

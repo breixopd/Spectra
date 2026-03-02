@@ -338,7 +338,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 os_family=os_family,
             )
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         # Get playbook recommendations
         playbook_context = ""
@@ -351,7 +351,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 input_data.tools_already_run,
             )
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         # Get CVE intelligence for discovered services (live + builtin)
         cve_context = ""
@@ -372,7 +372,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                         input_data.known_services
                     )
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         # Generate smart wordlist context for brute-force and directory tools
         wordlist_context = ""
@@ -394,7 +394,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                             f"passwords=[{','.join(creds['passwords'][:5])}]"
                         )
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
         # Combine all learned context
         learned_context = "\n\n".join(

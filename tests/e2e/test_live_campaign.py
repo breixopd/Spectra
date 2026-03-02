@@ -95,6 +95,7 @@ class TestLiveCampaign:
             else:
                 print("DEBUG: 'spectra-tools' container NOT found.")
         except Exception:
+            # Exception ignored intentionally
             pass
 
         # Revert skip logic - we WANT to fail if installation fails now, to debug logs.

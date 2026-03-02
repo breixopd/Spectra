@@ -64,7 +64,7 @@ def get_user_identifier(request: Request) -> str:
             if username:
                 return f"user:{username}"
         except Exception:
-            pass
+            logger.debug("Ignored exception", exc_info=True)
 
     return get_client_identifier(request)
 

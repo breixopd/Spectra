@@ -992,7 +992,7 @@ Example response format:
                     version=finding.get("version"),
                 )
             except (ValueError, TypeError):
-                pass
+                logger.debug("Ignored exception", exc_info=True)
 
         # Handle vulnerability findings (from nuclei, etc.)
         severity = finding.get("severity") or finding.get("info", {}).get("severity")

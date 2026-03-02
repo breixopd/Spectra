@@ -103,6 +103,7 @@ class CommandToolAdapter(ToolAdapter):
                 network = ipaddress.ip_network(target, strict=False)
                 host_count = min(network.num_addresses, 256)
             except ValueError:
+                # Exception ignored intentionally
                 pass
 
         dynamic_timeout = exec_config.timeout_per_host * host_count
@@ -160,6 +161,7 @@ class CommandToolAdapter(ToolAdapter):
                     else None,
                 )
             except Exception:
+                # Exception ignored intentionally
                 pass
 
             return ToolExecutionResult(
@@ -179,6 +181,7 @@ class CommandToolAdapter(ToolAdapter):
             try:
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
             except Exception:
+                # Exception ignored intentionally
                 pass
             return ToolExecutionResult(
                 tool_id=request.tool_id,
