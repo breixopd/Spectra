@@ -11,8 +11,10 @@ Covers:
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import app.services.ai.knowledge as knowledge_module
 from app.services.ai.knowledge import (
     PTES_METHODOLOGY,
+    close_rag_service,
     get_methodology_guidance,
     get_full_methodology,
     get_exploit_context,
@@ -129,6 +131,45 @@ class TestGetExploitContext:
             result = await get_exploit_context("unknown query")
 
         assert result == ""
+
+
+class TestRAGBackendSelection:
+    @pytest.mark.asyncio
+    async def test_get_rag_service_uses_postgres_backend(self):
+        await close_rag_service()
+        try:
+            with patch(
+                "app.services.ai.knowledge.PostgresRAGService"
+            ) as mock_postgres_rag:
+                mock_instance = AsyncMock()
+                mock_postgres_rag.return_value = mock_instance
+
+                rag = await knowledge_module.get_rag_service()
+
+                assert rag is mock_instance
+                mock_postgres_rag.assert_called_once_with()
+                mock_instance.initialize.assert_awaited_once()
+        finally:
+            await close_rag_service()
+
+    @pytest.mark.asyncio
+    async def test_get_rag_service_returns_singleton_instance(self):
+        await close_rag_service()
+        try:
+            with patch(
+                "app.services.ai.knowledge.PostgresRAGService"
+            ) as mock_postgres_rag:
+                rag_instance = AsyncMock()
+                mock_postgres_rag.return_value = rag_instance
+
+                first = await knowledge_module.get_rag_service()
+                second = await knowledge_module.get_rag_service()
+
+                assert first is second
+                mock_postgres_rag.assert_called_once_with()
+                rag_instance.initialize.assert_awaited_once()
+        finally:
+            await close_rag_service()
 
     @pytest.mark.asyncio
     async def test_none_result_returns_empty_string(self, mock_rag_service):
