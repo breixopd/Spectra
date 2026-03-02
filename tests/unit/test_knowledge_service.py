@@ -137,42 +137,46 @@ class TestRAGBackendSelection:
     @pytest.mark.asyncio
     async def test_get_rag_service_uses_postgres_backend(self):
         await close_rag_service()
-        with patch.object(knowledge_module.settings, "RAG_BACKEND", "postgres"):
-            with patch(
-                "app.services.ai.knowledge.PostgresRAGService"
-            ) as mock_postgres_rag:
-                mock_instance = AsyncMock()
-                mock_postgres_rag.return_value = mock_instance
+        try:
+            with patch.object(knowledge_module.settings, "RAG_BACKEND", "postgres"):
+                with patch(
+                    "app.services.ai.knowledge.PostgresRAGService"
+                ) as mock_postgres_rag:
+                    mock_instance = AsyncMock()
+                    mock_postgres_rag.return_value = mock_instance
 
-                rag = await knowledge_module.get_rag_service()
+                    rag = await knowledge_module.get_rag_service()
 
-                assert rag is mock_instance
-                mock_postgres_rag.assert_called_once_with()
-                mock_instance.initialize.assert_awaited_once()
-
-        await close_rag_service()
+                    assert rag is mock_instance
+                    mock_postgres_rag.assert_called_once_with()
+                    mock_instance.initialize.assert_awaited_once()
+        finally:
+            await close_rag_service()
 
     @pytest.mark.asyncio
     async def test_get_rag_service_uses_redis_backend_by_default(self):
         await close_rag_service()
-        with patch.object(knowledge_module.settings, "RAG_BACKEND", "redis"):
-            with (
-                patch("app.services.ai.knowledge.Redis.from_url") as mock_redis_factory,
-                patch("app.services.ai.knowledge.RAGService") as mock_rag_service,
-            ):
-                redis_client = AsyncMock()
-                mock_redis_factory.return_value = redis_client
-                rag_instance = AsyncMock()
-                mock_rag_service.return_value = rag_instance
+        try:
+            with patch.object(knowledge_module.settings, "RAG_BACKEND", "redis"):
+                with (
+                    patch(
+                        "app.services.ai.knowledge.Redis.from_url"
+                    ) as mock_redis_factory,
+                    patch("app.services.ai.knowledge.RAGService") as mock_rag_service,
+                ):
+                    redis_client = AsyncMock()
+                    mock_redis_factory.return_value = redis_client
+                    rag_instance = AsyncMock()
+                    mock_rag_service.return_value = rag_instance
 
-                rag = await knowledge_module.get_rag_service()
+                    rag = await knowledge_module.get_rag_service()
 
-                assert rag is rag_instance
-                mock_redis_factory.assert_called_once()
-                mock_rag_service.assert_called_once_with(redis_client)
-                rag_instance.initialize.assert_awaited_once()
-
-        await close_rag_service()
+                    assert rag is rag_instance
+                    mock_redis_factory.assert_called_once()
+                    mock_rag_service.assert_called_once_with(redis_client)
+                    rag_instance.initialize.assert_awaited_once()
+        finally:
+            await close_rag_service()
 
     @pytest.mark.asyncio
     async def test_none_result_returns_empty_string(self, mock_rag_service):

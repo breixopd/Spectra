@@ -22,6 +22,15 @@ logger = logging.getLogger("spectra.ai.rag_postgres")
 class PostgresRAGService:
     """Retrieval-Augmented Generation service backed by PostgreSQL."""
 
+    CHARS_PER_TOKEN = 4
+    FILTER_COLUMNS = {
+        "cve_id": "cve_id",
+        "severity": "severity",
+        "target": "target",
+        "session_id": "session_id",
+        "doc_type": "doc_type",
+    }
+
     def __init__(self, config: RAGConfig | None = None):
         self.config = config or RAGConfig()
         self.embeddings = EmbeddingService(self.config.embedding_model)
@@ -131,37 +140,30 @@ class PostgresRAGService:
         try:
             query_embedding = await self.embeddings.embed(query)
 
-            where = []
-            params: dict[str, Any] = {}
-            if doc_type:
-                where.append("doc_type = :doc_type")
-                params["doc_type"] = doc_type
-            if filters:
-                for idx, (field, value) in enumerate(filters.items()):
-                    if field not in {"cve_id", "severity", "target", "session_id", "doc_type"}:
-                        continue
-                    key = f"f_{idx}"
-                    where.append(f"{field} = :{key}")
-                    params[key] = value
-
-            where_clause = f"WHERE {' AND '.join(where)}" if where else ""
-
             async with async_session_maker() as session:
                 rows = (
                     await session.execute(
                         text(
-                            f"""
+                            """
                             SELECT id, content, doc_type, cve_id, severity, target, session_id, metadata, embedding
                             FROM rag_documents
-                            {where_clause}
                             """
                         ),
-                        params,
                     )
                 ).mappings().all()
 
             scored: list[SearchResult] = []
+            normalized_filters = {
+                self.FILTER_COLUMNS[k]: v
+                for k, v in (filters or {}).items()
+                if k in self.FILTER_COLUMNS
+            }
             for row in rows:
+                if doc_type and row.get("doc_type") != doc_type:
+                    continue
+                if any(row.get(field) != value for field, value in normalized_filters.items()):
+                    continue
+
                 embedding = row.get("embedding")
                 if not isinstance(embedding, list):
                     continue
@@ -231,20 +233,29 @@ class PostgresRAGService:
         """Delete a document from the index."""
         if not self._table_ready:
             await self.initialize()
-        async with async_session_maker() as session:
-            result = await session.execute(
-                text("DELETE FROM rag_documents WHERE id = :id"), {"id": doc_id}
-            )
-            await session.commit()
-        return result.rowcount > 0
+        try:
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    text("DELETE FROM rag_documents WHERE id = :id"), {"id": doc_id}
+                )
+                deleted = result.rowcount > 0
+                await session.commit()
+                return deleted
+        except Exception as e:
+            logger.error("Failed to delete document %s from Postgres RAG: %s", doc_id, e)
+            return False
 
     async def get_stats(self) -> dict[str, Any]:
         """Get basic index statistics."""
         if not self._table_ready:
             await self.initialize()
-        async with async_session_maker() as session:
-            count = await session.execute(text("SELECT COUNT(*) FROM rag_documents"))
-        return {"num_docs": count.scalar() or 0, "backend": "postgres"}
+        try:
+            async with async_session_maker() as session:
+                count = await session.execute(text("SELECT COUNT(*) FROM rag_documents"))
+                return {"num_docs": count.scalar() or 0, "backend": "postgres"}
+        except Exception as e:
+            logger.error("Failed to get Postgres RAG stats: %s", e)
+            return {"num_docs": 0, "backend": "postgres", "error": str(e)}
 
     async def search_cves(
         self,
@@ -287,11 +298,10 @@ class PostgresRAGService:
 
         context_parts = []
         current_length = 0
-        char_per_token = 4
 
         for result in results:
             content = result.document.content
-            content_tokens = len(content) // char_per_token
+            content_tokens = len(content) // self.CHARS_PER_TOKEN
             if current_length + content_tokens > max_tokens:
                 break
 

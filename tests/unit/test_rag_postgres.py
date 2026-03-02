@@ -33,6 +33,7 @@ class _FakeSession:
 async def test_search_returns_ranked_results():
     service = PostgresRAGService()
     service._table_ready = True
+    service.config.min_score = 0.5
     service.embeddings = MagicMock()
     service.embeddings.embed = AsyncMock(return_value=[1.0, 0.0])
 
@@ -67,6 +68,8 @@ async def test_search_returns_ranked_results():
     assert len(results) == 1
     assert results[0].document.id == "doc-1"
     assert results[0].score == pytest.approx(1.0)
+    assert all(result.score >= service.config.min_score for result in results)
+    assert all(result.document.id != "doc-2" for result in results)
 
 
 def test_cosine_similarity_handles_zero_vectors():
