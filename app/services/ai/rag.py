@@ -235,34 +235,43 @@ class RAGService:
         embeddings = await self.embeddings.embed_batch(contents)
 
         success_count = 0
-        pipe = self.redis.pipeline()
+        batch_size = 500
 
-        for doc, embedding in zip(docs, embeddings):
-            try:
-                doc_data = {
-                    "content": doc.content,
-                    "doc_type": doc.doc_type,
-                    "metadata": json.dumps(doc.metadata),
-                    "embedding": self._vector_to_bytes(embedding),
-                }
+        # Process in chunks to minimize massive pipeline memory footprint
+        # and avoid blocking Redis for too long.
+        for i in range(0, len(docs), batch_size):
+            batch_docs = docs[i:i + batch_size]
+            batch_embeddings = embeddings[i:i + batch_size]
+            pipe = self.redis.pipeline()
 
-                if doc.cve_id:
-                    doc_data["cve_id"] = doc.cve_id
-                if doc.severity:
-                    doc_data["severity"] = doc.severity
-                if doc.target:
-                    doc_data["target"] = doc.target
-                if doc.session_id:
-                    doc_data["session_id"] = doc.session_id
+            for doc, embedding in zip(batch_docs, batch_embeddings):
+                try:
+                    doc_data = {
+                        "content": doc.content,
+                        "doc_type": doc.doc_type,
+                        "metadata": json.dumps(doc.metadata),
+                        "embedding": self._vector_to_bytes(embedding),
+                    }
 
-                key = f"{self.config.doc_prefix}{doc.id}"
-                pipe.hset(key, mapping=doc_data)
-                success_count += 1
+                    if doc.cve_id:
+                        doc_data["cve_id"] = doc.cve_id
+                    if doc.severity:
+                        doc_data["severity"] = doc.severity
+                    if doc.target:
+                        doc_data["target"] = doc.target
+                    if doc.session_id:
+                        doc_data["session_id"] = doc.session_id
 
-            except Exception as e:
-                logger.warning("Failed to prepare document %s: %s", doc.id, e)
+                    key = f"{self.config.doc_prefix}{doc.id}"
+                    pipe.hset(key, mapping=doc_data)
+                    success_count += 1
 
-        await pipe.execute()
+                except Exception as e:
+                    logger.warning("Failed to prepare document %s: %s", doc.id, e)
+
+            # Execute the pipeline for this chunk
+            await pipe.execute()
+
         logger.info("Indexed %d/%d documents", success_count, len(docs))
         return success_count
 
