@@ -16,6 +16,7 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
 import os
 import shutil
@@ -126,15 +127,16 @@ async def execute_tool_job(
     effective_timeout = timeout or config.execution.timeout
     if "/" in target:  # CIDR range
         try:
-            import ipaddress
-
             network = ipaddress.ip_network(target, strict=False)
             host_count = min(network.num_addresses, 256)
             effective_timeout = max(
                 effective_timeout, config.execution.timeout_per_host * host_count
             )
         except ValueError:
-            pass
+            logger.debug(
+                "Target '%s' is not a valid IP network; skipping dynamic timeout adjustment",
+                target,
+            )
 
     effective_timeout = min(effective_timeout, config.execution.max_timeout)
     effective_timeout = max(effective_timeout, config.execution.min_timeout)
