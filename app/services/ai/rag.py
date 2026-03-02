@@ -476,7 +476,9 @@ class RAGService:
         results = await self.search(query, top_k=10)
 
         if doc_types:
-            results = [r for r in results if r.document.doc_type in doc_types]
+            # Performance Optimization: Convert list to set for O(1) lookups instead of O(N)
+            doc_types_set = set(doc_types)
+            results = [r for r in results if r.document.doc_type in doc_types_set]
 
         context_parts = []
         current_length = 0
