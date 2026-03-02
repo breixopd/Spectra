@@ -38,16 +38,16 @@ async def health_check(
     try:
         await redis.ping()
         health_status["components"]["redis"] = "healthy"
-    except Exception as e:
-        health_status["components"]["redis"] = f"unhealthy: {e}"
+    except Exception:
+        health_status["components"]["redis"] = "unhealthy: Connection failed"
         is_healthy = False
 
     # Check Database
     try:
         await db.execute(text("SELECT 1"))
         health_status["components"]["database"] = "healthy"
-    except Exception as e:
-        health_status["components"]["database"] = f"unhealthy: {e}"
+    except Exception:
+        health_status["components"]["database"] = "unhealthy: Connection failed"
         is_healthy = False
 
     if not is_healthy:
@@ -63,5 +63,5 @@ async def redis_health(redis: Redis = Depends(get_redis)):
     try:
         await redis.ping()
         return {"status": "healthy", "service": "redis"}
-    except Exception as e:
-        return {"status": "unhealthy", "service": "redis", "error": str(e)}
+    except Exception:
+        return {"status": "unhealthy", "service": "redis", "error": "Connection failed"}
