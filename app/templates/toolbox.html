@@ -12,7 +12,7 @@
                 <p class="text-gray-400 text-sm">Manage security tools and plugins</p>
             </div>
             <div class="flex gap-3">
-                <button onclick="refreshTools()" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition-colors">
+                <button onclick="refreshTools()" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 transition-colors" aria-label="Refresh tools" title="Refresh tools">
                     <i class="ph ph-arrows-clockwise text-xl"></i>
                 </button>
                 <a href="/toolbox/create" class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white font-medium transition-colors flex items-center gap-2">
@@ -64,7 +64,7 @@
 <!-- Upload Modal -->
 <div id="upload-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
     <div class="glass-panel p-8 rounded-2xl w-full max-w-md relative">
-        <button onclick="document.getElementById('upload-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+        <button onclick="document.getElementById('upload-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-white" aria-label="Close modal" title="Close modal">
             <i class="ph ph-x text-xl"></i>
         </button>
         
