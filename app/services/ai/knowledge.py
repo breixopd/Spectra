@@ -16,6 +16,7 @@ from redis.asyncio import Redis
 
 from app.core.config import settings
 from app.services.ai.rag import RAGService
+from app.services.ai.rag_postgres import PostgresRAGService
 
 logger = logging.getLogger("spectra.ai.knowledge")
 
@@ -23,17 +24,20 @@ logger = logging.getLogger("spectra.ai.knowledge")
 # --- Singleton RAG Connection ---
 
 
-_rag_service: RAGService | None = None
+_rag_service: RAGService | PostgresRAGService | None = None
 
 
-async def get_rag_service() -> RAGService:
+async def get_rag_service() -> RAGService | PostgresRAGService:
     """Get singleton RAG service instance."""
     global _rag_service
     if _rag_service is None:
-        redis = Redis.from_url(
-            f"redis://:{settings.REDIS_PASSWORD.get_secret_value()}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
-        )
-        _rag_service = RAGService(redis)
+        if settings.RAG_BACKEND == "postgres":
+            _rag_service = PostgresRAGService()
+        else:
+            redis = Redis.from_url(
+                f"redis://:{settings.REDIS_PASSWORD.get_secret_value()}@{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
+            )
+            _rag_service = RAGService(redis)
         await _rag_service.initialize()
     return _rag_service
 
@@ -42,7 +46,8 @@ async def close_rag_service() -> None:
     """Close the RAG service connection."""
     global _rag_service
     if _rag_service is not None:
-        await _rag_service.redis.close()
+        if isinstance(_rag_service, RAGService):
+            await _rag_service.redis.close()
         _rag_service = None
 
 

@@ -124,6 +124,7 @@ Copy `.env.example` to `.env` and set:
 | `LLM_API_KEY` | If api | API key for cloud provider |
 | `LLM_API_BASE_URL` | If api | Custom base URL (for OpenRouter, vLLM, etc.) |
 | `LLM_MODEL` | If api | Model name (default: `gpt-4o-mini`) |
+| `RAG_BACKEND` | No | RAG storage backend: `redis` (default) or `postgres` |
 
 Everything else has sensible defaults. See `.env.example` for the full list.
 
