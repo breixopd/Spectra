@@ -30,7 +30,7 @@ async def setup_page(request: Request):
     """Serve the setup page."""
     # If already setup, redirect to login
     async with async_session_maker() as session:
-        result = await session.execute(select(User).limit(1))
+        result = await session.execute(select(User.id).limit(1))
         if result.scalar_one_or_none():
             return RedirectResponse(url="/login")
 
@@ -45,7 +45,7 @@ async def login_page(request: Request):
     """Serve the login page."""
     # If not setup, redirect to setup
     async with async_session_maker() as session:
-        result = await session.execute(select(User).limit(1))
+        result = await session.execute(select(User.id).limit(1))
         if not result.scalar_one_or_none():
             return RedirectResponse(url="/setup")
 
@@ -60,7 +60,7 @@ async def dashboard(request: Request):
     """Serve the main dashboard UI."""
     # If not setup, redirect to setup
     async with async_session_maker() as session:
-        result = await session.execute(select(User).limit(1))
+        result = await session.execute(select(User.id).limit(1))
         if not result.scalar_one_or_none():
             return RedirectResponse(url="/setup")
 

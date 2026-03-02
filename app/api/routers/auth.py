@@ -186,7 +186,7 @@ async def setup_admin_user(
     """
     _ = request  # Used by rate limiter decorator
     # Check if any user exists
-    stmt = select(User).limit(1)
+    stmt = select(User.id).limit(1)
     result = await session.execute(stmt)
     if result.scalar_one_or_none():
         raise HTTPException(
@@ -207,7 +207,7 @@ async def check_setup_status(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Check if the system is already set up."""
-    stmt = select(User).limit(1)
+    stmt = select(User.id).limit(1)
     result = await session.execute(stmt)
     is_setup = result.scalar_one_or_none() is not None
     return {"is_setup": is_setup}

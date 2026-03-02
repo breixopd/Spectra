@@ -200,7 +200,7 @@ async def root():
 
     async with async_session_maker() as session:
         is_setup = (
-            await session.execute(select(User).limit(1))
+            await session.execute(select(User.id).limit(1))
         ).scalar_one_or_none() is not None
 
     return RedirectResponse(url="/dashboard" if is_setup else "/setup")
