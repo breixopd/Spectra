@@ -101,8 +101,8 @@ That's it. The tools container auto-installs security tools on first boot.
 │  ├── Memory System (learning)                   │
 │  └── CVE Intelligence (version correlation)     │
 ├──────────────┬──────────────────────────────────┤
-│  PostgreSQL  │  Redis Stack (queue + cache)     │
-├──────────────┴──────────────────────────────────┤
+│  PostgreSQL (data, cache, and RAG)              │
+├──────────────────────────────────────────────────┤
 │  Tools Container (Kali Linux)                   │
 │  ├── Arq Worker (job execution)                 │
 │  ├── 18 security tools (auto-installed)         │
@@ -195,7 +195,7 @@ app/
 ├── templates/        # Jinja2 HTML templates
 └── static/           # JavaScript and CSS
 docker/
-├── docker-compose.yml    # Main stack (app, db, redis, tools)
+├── docker-compose.yml    # Main stack (app, db, tools)
 ├── targets/              # Vulnerable test containers
 ├── Dockerfile.app        # FastAPI app image
 └── Dockerfile.tools      # Kali tools worker image

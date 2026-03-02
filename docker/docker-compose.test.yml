@@ -22,17 +22,6 @@ services:
     networks:
       - spectra_test
 
-  redis:
-    image: redis:alpine
-    command: redis-server --requirepass spectra_test
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "spectra_test", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    networks:
-      - spectra_test
-
   # Ollama for AI capabilities in tests
   ai:
     image: ollama/ollama:latest
@@ -49,11 +38,8 @@ services:
     env_file:
       - ../.env.test
     environment:
-      # Override database/redis for container network
+      # Override database for container network
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=spectra_test
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
@@ -71,8 +57,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
       # ai:
         # condition: service_started
     networks:
@@ -86,17 +70,12 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=spectra_test
     volumes:
       - ../plugins:/app/plugins
       - ../reports:/app/reports
       - ../app:/app/app:ro
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     networks:
       - spectra_test
@@ -137,9 +116,6 @@ services:
     environment:
       # Override for test environment
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=spectra_test
       - TEST_TARGET_IP=172.21.0.5
       - TEST_TARGET_URL=http://172.21.0.5
       - METASPLOITABLE_AVAILABLE=true
@@ -157,8 +133,6 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       # ai:
         # condition: service_started
