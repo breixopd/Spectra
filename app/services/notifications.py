@@ -6,7 +6,6 @@ when key mission events occur.
 """
 
 import logging
-from typing import Any
 
 import httpx
 

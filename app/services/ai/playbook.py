@@ -350,7 +350,8 @@ class PlaybookEngine:
         grounded in the actual discovered services (not hallucinated).
         """
         already_run = set(tools_already_run or [])
-        recommendations = []
+        seen_tools = set()
+        unique_recs = []
 
         for svc in services:
             service_name = svc.get("service", "").lower()
@@ -362,10 +363,13 @@ class PlaybookEngine:
                 continue
 
             for step in playbook.steps:
-                if step.tool in already_run:
+                # Performance Optimization: Skip already recommended or run tools
+                # to prevent allocating dictionaries and filtering later
+                if step.tool in already_run or step.tool in seen_tools:
                     continue
 
-                recommendations.append(
+                seen_tools.add(step.tool)
+                unique_recs.append(
                     {
                         "tool": step.tool,
                         "reason": f"{step.description} (service: {service_name} on port {port})",
@@ -378,13 +382,6 @@ class PlaybookEngine:
                         "playbook": playbook.service,
                     }
                 )
-
-        seen_tools = set()
-        unique_recs = []
-        for rec in recommendations:
-            if rec["tool"] not in seen_tools:
-                seen_tools.add(rec["tool"])
-                unique_recs.append(rec)
 
         return unique_recs
 
