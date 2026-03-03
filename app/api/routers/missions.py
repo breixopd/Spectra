@@ -390,7 +390,7 @@ async def steer_mission(
         )
         return result
     except ValueError as e:
-        logger.error(f"Mission steering error: {e}")
+        logger.error("Mission steering error: %s", e, exc_info=True)
         if "not found" in str(e):
             raise HTTPException(status_code=404, detail="Mission or target not found")
         raise HTTPException(status_code=400, detail="Invalid steering request")
