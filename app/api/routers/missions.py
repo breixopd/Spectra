@@ -15,8 +15,11 @@ from app.api.schemas import MissionResponse, StartMissionRequest
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
 from app.models.user import User
+import logging
 from app.repositories.mission import MissionRepository
 from app.services.mission import mission_manager
+
+logger = logging.getLogger("spectra.api.missions")
 
 # Pagination limits
 MAX_PAGE_SIZE = 100
@@ -387,6 +390,7 @@ async def steer_mission(
         )
         return result
     except ValueError as e:
+        logger.error("Mission steering error: %s", e, exc_info=True)
         if "not found" in str(e):
-            raise HTTPException(status_code=404, detail=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=404, detail="Mission or target not found")
+        raise HTTPException(status_code=400, detail="Invalid steering request")
