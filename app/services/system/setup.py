@@ -62,7 +62,7 @@ class SystemSetupService:
             logger.error("Setup failed: %s", e, exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Setup failed: {str(e)}",
+                detail="Setup failed due to an internal error.",
             ) from e
 
     def _generate_signing_keys(self) -> None:
