@@ -422,7 +422,7 @@ function addPipelineStep() {
     node.innerHTML = `
         <div class="flex items-center justify-between mb-2">
             <span class="text-[10px] font-mono text-slate-500">Step ${stepNum + 1}</span>
-            <button onclick="removePipelineStep(${id})" class="text-slate-600 hover:text-rose-400 text-xs transition-colors"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="removePipelineStep(${id})" class="text-slate-600 hover:text-rose-400 text-xs transition-colors" aria-label="Remove step"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <select onchange="updatePipelineStep(${id}, this.value)" class="w-full px-2 py-1.5 bg-black/30 border border-white/10 rounded text-sm text-white mb-2 focus:outline-none focus:border-violet-500">
             <option value="">Select tool...</option>
