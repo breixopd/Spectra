@@ -5,3 +5,7 @@
 ## 2026-03-03 - Optimized AI Playbook Deduplication
 **Learning:** Generating a large list of dictionaries just to iterate over them again and discard duplicates is inefficient. By checking for duplicates with a `set` *before* allocating the dictionary and appending it, we can achieve speedup and reduce memory allocation overhead.
 **Action:** Whenever a unique set of complex objects (like dicts) is needed from a loop, check for uniqueness using a primitive key in a `set()` *before* constructing the complex object.
+
+## 2026-03-04 - Optimized CVE Vulnerability Lookup and Inference
+**Learning:** Allocating dictionaries and performing generator comprehension checks like `any()` inside a hot path loop causes significant garbage collector and CPU overhead.
+**Action:** Lift static mappings (like vulnerability types and severities) to pre-computed module-level global constants. Also, pre-calculate repeated string manipulations, such as `.lower()`, outside loops instead of applying them repeatedly on every item within the loop, and utilize fast looping constructs (like early returns inside explicit `for` loops).

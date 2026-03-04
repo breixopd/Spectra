@@ -186,24 +186,30 @@ async def fetch_cves_from_nvd(
         return []
 
 
+# Pre-computed mapping for vulnerability inference
+TYPE_KEYWORDS = {
+    "rce": ["remote code execution", "arbitrary code", "command execution"],
+    "sqli": ["sql injection"],
+    "xss": ["cross-site scripting", "xss"],
+    "path_traversal": ["path traversal", "directory traversal"],
+    "auth_bypass": ["authentication bypass", "auth bypass"],
+    "privilege_escalation": ["privilege escalation", "privesc"],
+    "info_leak": ["information disclosure", "information leak", "sensitive data"],
+    "dos": ["denial of service", "crash", "resource exhaustion"],
+    "ssrf": ["server-side request forgery", "ssrf"],
+    "xxe": ["xml external entity", "xxe"],
+}
+
+
 def _infer_vuln_type(description: str) -> str:
     """Infer vulnerability type from description text."""
     desc_lower = description.lower()
-    type_keywords = {
-        "rce": ["remote code execution", "arbitrary code", "command execution"],
-        "sqli": ["sql injection"],
-        "xss": ["cross-site scripting", "xss"],
-        "path_traversal": ["path traversal", "directory traversal"],
-        "auth_bypass": ["authentication bypass", "auth bypass"],
-        "privilege_escalation": ["privilege escalation", "privesc"],
-        "info_leak": ["information disclosure", "information leak", "sensitive data"],
-        "dos": ["denial of service", "crash", "resource exhaustion"],
-        "ssrf": ["server-side request forgery", "ssrf"],
-        "xxe": ["xml external entity", "xxe"],
-    }
-    for vuln_type, keywords in type_keywords.items():
-        if any(kw in desc_lower for kw in keywords):
-            return vuln_type
+    # Performance Optimization: Avoid creating the dictionary and using any() closure
+    # inside a frequently called function.
+    for vuln_type, keywords in TYPE_KEYWORDS.items():
+        for kw in keywords:
+            if kw in desc_lower:
+                return vuln_type
     return "unknown"
 
 
@@ -253,6 +259,10 @@ def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
 # =============================================================================
 
 
+# Pre-computed severity sorting weights
+SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+
+
 def lookup_cves(
     product: str | None = None,
     version: str | None = None,
@@ -263,29 +273,36 @@ def lookup_cves(
 
     For real-time results, use lookup_cves_live() which also queries NVD API.
     """
-    matches = []
     search_term = (product or service or "").lower()
-
     if not search_term:
         return []
 
-    for cve in BUILTIN_CVES:
-        if search_term in cve["product"].lower():
-            if version and cve.get("versions"):
-                version_str = cve["versions"].lower()
-                version_major = version.split(".")[0] if "." in version else version
-                if version.lower() in version_str or version_major in version_str:
-                    matches.append({**cve, "version_match": True, "source": "builtin"})
-                else:
-                    matches.append({**cve, "version_match": False, "source": "builtin"})
-            else:
-                matches.append({**cve, "version_match": False, "source": "builtin"})
+    version_lower = version.lower() if version else None
+    version_major = version_lower.split(".")[0] if version_lower and "." in version_lower else version_lower
 
-    severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+    matches = []
+    for cve in BUILTIN_CVES:
+        # Performance Optimization: Avoid repeated .lower() calls on builtin dict elements
+        # which are already lowercased and static. Also avoid dict expansion overhead ({**cve}).
+        if search_term in cve["product"]:
+            version_match = False
+            if version_lower and "versions" in cve:
+                v_str = cve["versions"]
+                if version_lower in v_str or (version_major and version_major in v_str):
+                    version_match = True
+
+            cve_copy = cve.copy()
+            cve_copy["version_match"] = version_match
+            cve_copy["source"] = "builtin"
+            matches.append(cve_copy)
+
+    if not matches:
+        return []
+
     matches.sort(
         key=lambda x: (
-            0 if x.get("version_match") else 1,
-            severity_order.get(x["severity"], 5),
+            0 if x["version_match"] else 1,
+            SEVERITY_ORDER.get(x["severity"], 5),
         )
     )
 
