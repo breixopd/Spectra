@@ -104,29 +104,6 @@ def mock_websocket_for_unit_tests(request):
             yield
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def create_db_tables(request):
-    """Create all tables in the test database for e2e/live tests."""
-    if _is_live_test(request.node):
-        from app.core.database import engine
-        from app.models.base import Base
-        from app.models.infrastructure import InfrastructureBase
-        import app.models
-
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-            await conn.run_sync(InfrastructureBase.metadata.create_all)
-
-        yield
-
-        # Optionally, clear the tables after (but memory sqlite drops automatically)
-        # async with engine.begin() as conn:
-        #    await conn.run_sync(Base.metadata.drop_all)
-        #    await conn.run_sync(InfrastructureBase.metadata.drop_all)
-    else:
-        yield
-
-
 @pytest.fixture(autouse=True)
 def mock_database_for_unit_tests(request):
     """

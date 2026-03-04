@@ -56,8 +56,9 @@ class PostgresJobQueue:
 
 class Job:
     """Job handle for checking status or waiting for completion."""
-    def __init__(self, job_id: str, pool: PostgresJobQueue = None):
+    def __init__(self, job_id: str, pool: PostgresJobQueue | None = None):
         self.job_id = job_id
+        self.pool = pool
 
     async def status(self) -> str:
         """Get the current status of the job."""

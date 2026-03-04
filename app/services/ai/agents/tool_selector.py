@@ -379,6 +379,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         try:
             from app.services.ai.wordlists import (
                 generate_credential_list,
+                generate_tech_wordlist,
             )
 
             if input_data.known_services:

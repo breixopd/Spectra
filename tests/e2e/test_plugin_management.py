@@ -5,7 +5,6 @@ import pytest_asyncio
 import asyncio
 from app.services.tools.registry import get_registry
 from app.services.tools.models import ToolStatus
-from app.worker import get_arq_pool
 from app.core.queue import Job
 
 pytestmark = [
@@ -69,20 +68,17 @@ async def cleanup_registry(registry):
 
 
 async def wait_for_job(job_id: str, timeout: int = 30):
-    """Wait for a job to complete."""
-    pool = await get_arq_pool()
+    """Wait for a postgres job to complete."""
     start_time = asyncio.get_running_loop().time()
 
-    job = Job(job_id, pool)
-
     while asyncio.get_running_loop().time() - start_time < timeout:
+        job = Job(job_id)
         status = await job.status()
 
         if status == "completed":
-            result = await job.result()
-            return result
+            return await job.result()
         elif status == "failed":
-            raise Exception("Job failed")
+            raise Exception(f"Job {job_id} failed: {await job.result()}")
 
         await asyncio.sleep(1)
 
@@ -104,11 +100,10 @@ class TestPluginLifecycle:
         plugin_path = registry.plugins_dir / "test-plugin.json"
         assert plugin_path.exists()
 
-        from app.core.optimizations import get_arq_pool
-        from app.core.queue import worker_loop
+        from app.core.queue import PostgresJobQueue, worker_loop
         from app.worker import WorkerSettings
 
-        pool = await get_arq_pool()
+        pool = PostgresJobQueue(queue_name=WorkerSettings.queue_name)
         job_id = await pool.enqueue_job("install_tool_job", "test-plugin")
         assert job_id is not None, "Failed to enqueue installation"
 
@@ -130,11 +125,10 @@ class TestPluginLifecycle:
         tool = await registry.add_plugin(BROKEN_PLUGIN)
         assert tool.status == ToolStatus.PENDING
 
-        from app.core.optimizations import get_arq_pool
-        from app.core.queue import worker_loop
+        from app.core.queue import PostgresJobQueue, worker_loop
         from app.worker import WorkerSettings
 
-        pool = await get_arq_pool()
+        pool = PostgresJobQueue(queue_name=WorkerSettings.queue_name)
         job_id = await pool.enqueue_job("install_tool_job", "broken-plugin")
         assert job_id is not None, "Failed to enqueue installation"
 

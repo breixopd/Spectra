@@ -1,13 +1,13 @@
 from datetime import datetime
-
 import json
-from sqlalchemy import Column, DateTime, Integer, String, Text, TypeDecorator
+from sqlalchemy import DateTime, Integer, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import String as SAString
 
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-InfrastructureBase = declarative_base()
+class InfrastructureBase(DeclarativeBase):
+    pass
 
 class JSONBType(TypeDecorator):
     """Fallback JSONB type for SQLite testing."""
@@ -42,10 +42,10 @@ class SystemCache(InfrastructureBase):
 
     __tablename__ = "system_cache"
 
-    key = Column(String, primary_key=True)
-    value = Column(JSONBType, nullable=False)
-    expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.utcnow())
 
 
 class JobQueue(InfrastructureBase):
@@ -56,21 +56,21 @@ class JobQueue(InfrastructureBase):
 
     __tablename__ = "job_queue"
 
-    id = Column(String, primary_key=True)
-    queue_name = Column(String, nullable=False, default="default", index=True)
-    function = Column(String, nullable=False)
-    args = Column(JSONBType, nullable=False, default=list)
-    kwargs = Column(JSONBType, nullable=False, default=dict)
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    queue_name: Mapped[str] = mapped_column(String, nullable=False, default="default", index=True)
+    function: Mapped[str] = mapped_column(String, nullable=False)
+    args: Mapped[list] = mapped_column(JSONBType, nullable=False, default=list)
+    kwargs: Mapped[dict] = mapped_column(JSONBType, nullable=False, default=dict)
 
-    status = Column(String, nullable=False, default="queued", index=True)  # queued, in_progress, completed, failed
-    result = Column(JSONBType, nullable=True)
-    error = Column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="queued", index=True)  # queued, in_progress, completed, failed
+    result: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    enqueued_at = Column(DateTime, default=datetime.utcnow)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    enqueued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    timeout = Column(Integer, nullable=True) # in seconds
+    timeout: Mapped[int | None] = mapped_column(Integer, nullable=True) # in seconds
 
 
 class SystemStatus(InfrastructureBase):
@@ -81,6 +81,6 @@ class SystemStatus(InfrastructureBase):
 
     __tablename__ = "system_status"
 
-    key = Column(String, primary_key=True)
-    value = Column(JSONBType, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    value: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())

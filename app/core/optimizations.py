@@ -18,14 +18,14 @@ from typing import Any
 logger = logging.getLogger("spectra.core.optimizations")
 
 
-# --- 1. Task Queue Pool ---
+# --- 1. ARQ Connection Pool ---
 
 _arq_pool = None
 _arq_pool_lock = asyncio.Lock()
 
 
 async def get_arq_pool():
-    """Get or create a shared PostgresJobQueue pool (reused across requests)."""
+    """Get or create a shared ARQ Redis pool (reused across requests)."""
     global _arq_pool
     if _arq_pool is not None:
         return _arq_pool
@@ -34,18 +34,29 @@ async def get_arq_pool():
         if _arq_pool is not None:
             return _arq_pool
 
-        from app.core.constants import ARQ_QUEUE_NAME
-        from app.core.queue import PostgresJobQueue
+        from arq import create_pool
+        from arq.connections import RedisSettings
 
-        _arq_pool = PostgresJobQueue(queue_name=ARQ_QUEUE_NAME)
+        from app.core.config import settings
+        from app.core.constants import ARQ_QUEUE_NAME
+
+        _arq_pool = await create_pool(
+            RedisSettings(
+                host=settings.REDIS_HOST,
+                port=settings.REDIS_PORT,
+                password=settings.REDIS_PASSWORD.get_secret_value(),
+                database=settings.REDIS_DB,
+            ),
+            default_queue_name=ARQ_QUEUE_NAME,
+        )
         return _arq_pool
 
 
 async def close_arq_pool():
-    """Close the shared task queue pool."""
+    """Close the shared ARQ pool."""
     global _arq_pool
     if _arq_pool:
-        # PostgresJobQueue doesn't need explicit closing currently
+        await _arq_pool.close()
         _arq_pool = None
 
 

@@ -2,12 +2,29 @@ import pytest
 import pytest_asyncio
 import asyncio
 from app.services.ai.rag import RAGService, Document
+from redis.asyncio import Redis
+
+
+@pytest_asyncio.fixture
+async def redis_client():
+    """Get a real Redis client."""
+    client = Redis(host="redis", port=6379, decode_responses=True)
+    yield client
+    await client.aclose()
+
+
+@pytest.fixture
+def redis_client():
+    """Get a real Redis client."""
+    client = Redis(host="redis", port=6379, decode_responses=True, password="changeme")
+    return client
+    # Clean up handled by container teardown
 
 
 @pytest.mark.asyncio
-async def test_rag_indexing_and_search():
+async def test_rag_indexing_and_search(redis_client):
     """Test full RAG flow: Index -> Search -> Retrieve."""
-    rag_service = RAGService()
+    rag_service = RAGService(redis_client)
     await rag_service.initialize()
 
     doc = Document(
@@ -29,9 +46,9 @@ async def test_rag_indexing_and_search():
 
 
 @pytest.mark.asyncio
-async def test_rag_cve_search():
+async def test_rag_cve_search(redis_client):
     """Test specialized CVE search."""
-    rag_service = RAGService()
+    rag_service = RAGService(redis_client)
     await rag_service.initialize()
 
     doc = Document(
@@ -50,9 +67,9 @@ async def test_rag_cve_search():
 
 
 @pytest.mark.asyncio
-async def test_batch_indexing():
+async def test_batch_indexing(redis_client):
     """Test batch indexing."""
-    rag_service = RAGService()
+    rag_service = RAGService(redis_client)
     await rag_service.initialize()
 
     docs = [
@@ -69,9 +86,9 @@ async def test_batch_indexing():
 
 
 @pytest.mark.asyncio
-async def test_delete_document():
+async def test_delete_document(redis_client):
     """Test document deletion."""
-    rag_service = RAGService()
+    rag_service = RAGService(redis_client)
     await rag_service.initialize()
 
     doc = Document(id="del-1", content="Delete me", doc_type="temp")
