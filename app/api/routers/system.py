@@ -149,7 +149,8 @@ async def get_system_operations(db: AsyncSession) -> list[OngoingOperation]:
             if isinstance(op, str):
                 try:
                     op = json.loads(op)
-                except:
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.debug("Skipping invalid operation JSON value %r: %s", op, e)
                     continue
             operations.append(
                 OngoingOperation(
