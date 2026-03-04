@@ -365,7 +365,7 @@
     <div class="tab-content active" id="tab-services">
         <div class="section-header">
             <h2 class="section-title">Service Health</h2>
-            <button class="refresh-btn" onclick="refreshData()">
+            <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Services">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
                 Refresh
             </button>
@@ -385,7 +385,7 @@
                     <option value="error">Errors Only</option>
                     <option value="slow">Slow (>1s)</option>
                 </select>
-                <button class="refresh-btn" onclick="refreshData()">
+                <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Traces">
                     <i data-lucide="refresh-cw" class="icon-sm"></i>
                 </button>
             </div>
@@ -412,7 +412,7 @@
     <div class="tab-content" id="tab-circuit-breakers">
         <div class="section-header">
             <h2 class="section-title">Circuit Breakers</h2>
-            <button class="refresh-btn" onclick="refreshData()">
+            <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Circuit Breakers">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
                 Refresh
             </button>
@@ -426,7 +426,7 @@
     <div class="tab-content" id="tab-events">
         <div class="section-header">
             <h2 class="section-title">Recent Events</h2>
-            <button class="refresh-btn" onclick="refreshData()">
+            <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Events">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
                 Refresh
             </button>
@@ -440,7 +440,7 @@
     <div class="tab-content" id="tab-cache">
         <div class="section-header">
             <h2 class="section-title">Cache Statistics</h2>
-            <button class="refresh-btn" onclick="refreshData()">
+            <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Cache">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
                 Refresh
             </button>
