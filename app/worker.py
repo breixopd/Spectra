@@ -837,12 +837,9 @@ class WorkerSettings:
 # =============================================================================
 
 
-async def get_arq_pool() -> ArqRedis:
-    """Get ARQ Redis pool for enqueuing jobs from app container."""
-    return await create_pool(
-        WorkerSettings.redis_settings,
-        default_queue_name=WorkerSettings.queue_name,
-    )
+async def get_arq_pool():
+    from app.core.optimizations import get_arq_pool as get_pool
+    return await get_pool()
 
 
 if __name__ == "__main__":

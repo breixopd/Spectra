@@ -8,7 +8,6 @@ Follows the Dependency Inversion Principle (DIP) from SOLID.
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,16 +81,6 @@ async def get_current_superuser(
     return current_user
 
 
-async def get_redis(request: Request) -> Redis:
-    """Get Redis client from app state.
-
-    Args:
-        request: FastAPI request object containing app state.
-
-    Returns:
-        Redis client instance.
-    """
-    return request.app.state.redis
 
 
 async def get_target_repository(

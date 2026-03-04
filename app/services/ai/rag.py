@@ -1,30 +1,25 @@
 """
-RAG (Retrieval-Augmented Generation) Engine.
+PostgreSQL-backed RAG engine.
 
-Uses Redis Vector Search to store and retrieve:
-- CVE descriptions and details
-- Previous assessment findings
-- Tool documentation and usage patterns
-- Security knowledge base
+Stores document embeddings and metadata in PostgreSQL and performs
+similarity ranking in application code.
 """
 
 import json
 import logging
-from dataclasses import dataclass
+import math
 from typing import Any
 
 from pydantic import BaseModel, Field
-from redis.asyncio import Redis
-from redis.commands.search.field import TagField, TextField, VectorField
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
-from redis.commands.search.query import Query
-from redis.exceptions import ResponseError
+from dataclasses import dataclass
+from sqlalchemy import text
 
-logger = logging.getLogger("spectra.ai.rag")
+from app.core.database import async_session_maker
+from app.services.ai.embeddings import EmbeddingService
 
+logger = logging.getLogger("spectra.ai.rag_postgres")
 
 # --- Models ---
-
 
 class Document(BaseModel):
     """A document to be stored in the RAG system."""
@@ -55,8 +50,8 @@ class SearchResult(BaseModel):
 class RAGConfig:
     """Configuration for the RAG engine."""
 
-    # Redis key prefixes
-    index_name: str = "spectra:rag:idx"
+    # Key prefixes (kept for naming consistency)
+    index_name: str = "spectra_rag_idx"
     doc_prefix: str = "spectra:rag:doc:"
 
     # Embedding configuration
@@ -74,212 +69,126 @@ class RAGConfig:
     distance_metric: str = "COSINE"
 
 
-# --- Embedding Service ---
-
-
-from app.services.ai.embeddings import EmbeddingService
-
-
-# --- RAG Service ---
-
 
 class RAGService:
-    """
-    Retrieval-Augmented Generation service using Redis Vector Search.
+    """Retrieval-Augmented Generation service backed by PostgreSQL."""
 
-    Provides:
-    - Document indexing with vector embeddings
-    - Semantic similarity search
-    - Hybrid search (vector + keyword)
-    - CVE and finding retrieval
+    CHARS_PER_TOKEN = 4
+    FILTER_COLUMNS = {
+        "cve_id": "cve_id",
+        "severity": "severity",
+        "target": "target",
+        "session_id": "session_id",
+        "doc_type": "doc_type",
+    }
 
-    Example:
-        rag = RAGService(redis_client)
-        await rag.initialize()
-
-        # Index a CVE
-        await rag.index_document(Document(
-            id="cve-2024-1234",
-            content="SQL injection in...",
-            doc_type="cve",
-            cve_id="CVE-2024-1234",
-            severity="critical",
-        ))
-
-        # Search
-        results = await rag.search("SQL injection vulnerability")
-    """
-
-    def __init__(
-        self,
-        redis: Redis,
-        config: RAGConfig | None = None,
-    ):
-        self.redis = redis
+    def __init__(self, config: RAGConfig | None = None):
         self.config = config or RAGConfig()
         self.embeddings = EmbeddingService(self.config.embedding_model)
-        self._index_exists = False
+        self._table_ready = False
 
     async def initialize(self) -> bool:
-        """Initialize the RAG index in Redis."""
+        """Ensure RAG storage table exists."""
         try:
-            # Check if index exists
-            try:
-                await self.redis.ft(self.config.index_name).info()
-                self._index_exists = True
-                logger.info("RAG index '%s' already exists", self.config.index_name)
-                return True
-            except ResponseError:
-                # Index does not exist
-                pass
-            except Exception as e:
-                logger.warning("Error checking RAG index: %s", e)
+            async with async_session_maker() as session:
+                dialect = session.bind.dialect.name
 
-            # Create index schema
-            schema = [
-                TextField("content", weight=1.0),
-                TextField("doc_type", weight=0.5),
-                TagField("cve_id"),
-                TagField("severity"),
-                TagField("target"),
-                TagField("session_id"),
-                VectorField(
-                    "embedding",
-                    "HNSW",
-                    {
-                        "TYPE": "FLOAT32",
-                        "DIM": self.config.embedding_dim,
-                        "DISTANCE_METRIC": self.config.distance_metric,
-                    },
-                ),
-            ]
+                if dialect == "sqlite":
+                    create_sql = """
+                        CREATE TABLE IF NOT EXISTS rag_documents (
+                            id TEXT PRIMARY KEY,
+                            content TEXT NOT NULL,
+                            doc_type TEXT NOT NULL,
+                            cve_id TEXT NULL,
+                            severity TEXT NULL,
+                            target TEXT NULL,
+                            session_id TEXT NULL,
+                            metadata TEXT NOT NULL DEFAULT '{}',
+                            embedding TEXT NOT NULL
+                        )
+                        """
+                else:
+                    create_sql = """
+                        CREATE TABLE IF NOT EXISTS rag_documents (
+                            id TEXT PRIMARY KEY,
+                            content TEXT NOT NULL,
+                            doc_type TEXT NOT NULL,
+                            cve_id TEXT NULL,
+                            severity TEXT NULL,
+                            target TEXT NULL,
+                            session_id TEXT NULL,
+                            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                            embedding JSONB NOT NULL
+                        )
+                        """
 
-            # Create the index
-            await self.redis.ft(self.config.index_name).create_index(
-                schema,
-                definition=IndexDefinition(
-                    prefix=[self.config.doc_prefix],
-                    index_type=IndexType.HASH,
-                ),
-            )
+                await session.execute(text(create_sql))
+                await session.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_rag_documents_doc_type ON rag_documents (doc_type)"
+                    )
+                )
+                await session.commit()
 
-            self._index_exists = True
-            logger.info("Created RAG index: %s", self.config.index_name)
+            self._table_ready = True
             return True
-
         except Exception as e:
-            logger.error("Failed to initialize RAG index: %s", e)
+            logger.error("Failed to initialize Postgres RAG table: %s", e)
             return False
 
     async def index_document(self, doc: Document) -> bool:
-        """
-        Index a document with its embedding.
-
-        Args:
-            doc: The document to index.
-
-        Returns:
-            True if successful.
-        """
-        if not self._index_exists:
+        """Index a document with its embedding."""
+        if not self._table_ready:
             await self.initialize()
 
         try:
-            # Generate embedding
             embedding = await self.embeddings.embed(doc.content)
-
-            # Prepare document data
-            doc_data = {
-                "content": doc.content,
-                "doc_type": doc.doc_type,
-                "metadata": json.dumps(doc.metadata),
-                "embedding": self._vector_to_bytes(embedding),
-            }
-
-            # Add optional fields
-            if doc.cve_id:
-                doc_data["cve_id"] = doc.cve_id
-            if doc.severity:
-                doc_data["severity"] = doc.severity
-            if doc.target:
-                doc_data["target"] = doc.target
-            if doc.session_id:
-                doc_data["session_id"] = doc.session_id
-
-            # Store in Redis
-            key = f"{self.config.doc_prefix}{doc.id}"
-            await self.redis.hset(key, mapping=doc_data)  # type: ignore[misc]
-
-            logger.debug("Indexed document: %s", doc.id)
+            async with async_session_maker() as session:
+                await session.execute(
+                    text(
+                        """
+                        INSERT INTO rag_documents
+                            (id, content, doc_type, cve_id, severity, target, session_id, metadata, embedding)
+                        VALUES
+                            (:id, :content, :doc_type, :cve_id, :severity, :target, :session_id, CAST(:metadata AS JSONB), CAST(:embedding AS JSONB))
+                        ON CONFLICT (id) DO UPDATE SET
+                            content = EXCLUDED.content,
+                            doc_type = EXCLUDED.doc_type,
+                            cve_id = EXCLUDED.cve_id,
+                            severity = EXCLUDED.severity,
+                            target = EXCLUDED.target,
+                            session_id = EXCLUDED.session_id,
+                            metadata = EXCLUDED.metadata,
+                            embedding = EXCLUDED.embedding
+                        """
+                    ),
+                    {
+                        "id": doc.id,
+                        "content": doc.content,
+                        "doc_type": doc.doc_type,
+                        "cve_id": doc.cve_id,
+                        "severity": doc.severity,
+                        "target": doc.target,
+                        "session_id": doc.session_id,
+                        "metadata": json.dumps(doc.metadata),
+                        "embedding": json.dumps(embedding),
+                    },
+                )
+                await session.commit()
             return True
-
         except Exception as e:
-            logger.error("Failed to index document %s: %s", doc.id, e)
+            logger.error("Failed to index document %s in Postgres RAG: %s", doc.id, e)
             return False
 
     async def index_batch(self, docs: list[Document]) -> int:
-        """
-        Index multiple documents efficiently.
-
-        Args:
-            docs: List of documents to index.
-
-        Returns:
-            Number of successfully indexed documents.
-        """
+        """Index multiple documents."""
         if not docs:
             return 0
-
-        if not self._index_exists:
-            await self.initialize()
-
-        # Generate embeddings in batch
-        contents = [doc.content for doc in docs]
-        embeddings = await self.embeddings.embed_batch(contents)
-
-        success_count = 0
-
-        # Process in chunks to minimize massive pipeline memory footprint
-        # and avoid blocking Redis for too long.
-        for i in range(0, len(docs), self.config.batch_size):
-            batch_docs = docs[i:i + self.config.batch_size]
-            batch_embeddings = embeddings[i:i + self.config.batch_size]
-            pipe = self.redis.pipeline()
-
-            chunk_success = 0
-            for doc, embedding in zip(batch_docs, batch_embeddings):
-                try:
-                    doc_data = {
-                        "content": doc.content,
-                        "doc_type": doc.doc_type,
-                        "metadata": json.dumps(doc.metadata),
-                        "embedding": self._vector_to_bytes(embedding),
-                    }
-
-                    if doc.cve_id:
-                        doc_data["cve_id"] = doc.cve_id
-                    if doc.severity:
-                        doc_data["severity"] = doc.severity
-                    if doc.target:
-                        doc_data["target"] = doc.target
-                    if doc.session_id:
-                        doc_data["session_id"] = doc.session_id
-
-                    key = f"{self.config.doc_prefix}{doc.id}"
-                    pipe.hset(key, mapping=doc_data)
-                    chunk_success += 1
-
-                except Exception as e:
-                    logger.warning("Failed to prepare document %s: %s", doc.id, e)
-
-            # Execute the pipeline for this chunk
-            results = await pipe.execute()
-
-            # Count actual successes from Redis execution
-            success_count += sum(1 for r in results if r is not None and not isinstance(r, Exception))
-
-        logger.info("Indexed %d/%d documents", success_count, len(docs))
-        return success_count
+        success = 0
+        for doc in docs:
+            if await self.index_document(doc):
+                success += 1
+        return success
 
     async def search(
         self,
@@ -288,149 +197,131 @@ class RAGService:
         doc_type: str | None = None,
         filters: dict[str, str] | None = None,
     ) -> list[SearchResult]:
-        """
-        Search for similar documents.
-
-        Args:
-            query: Search query text.
-            top_k: Number of results to return.
-            doc_type: Filter by document type.
-            filters: Additional tag filters (e.g., {"severity": "critical"}).
-
-        Returns:
-            List of search results sorted by relevance.
-        """
-        if not self._index_exists:
+        """Search for similar documents using cosine similarity."""
+        if not self._table_ready:
             await self.initialize()
 
         top_k = top_k or self.config.default_top_k
 
         try:
-            # Generate query embedding
             query_embedding = await self.embeddings.embed(query)
 
-            # Build filter string
-            filter_parts = []
-            if doc_type:
-                filter_parts.append(f"@doc_type:{doc_type}")
-            if filters:
-                for field, value in filters.items():
-                    filter_parts.append(f"@{field}:{{{value}}}")
+            async with async_session_maker() as session:
+                rows = (
+                    await session.execute(
+                        text(
+                            """
+                            SELECT id, content, doc_type, cve_id, severity, target, session_id, metadata, embedding
+                            FROM rag_documents
+                            """
+                        ),
+                    )
+                ).mappings().all()
 
-            filter_str = " ".join(filter_parts) if filter_parts else "*"
+            scored: list[SearchResult] = []
+            normalized_filters = {
+                self.FILTER_COLUMNS[k]: v
+                for k, v in (filters or {}).items()
+                if k in self.FILTER_COLUMNS
+            }
+            for row in rows:
+                if doc_type and row.get("doc_type") != doc_type:
+                    continue
+                if any(row.get(field) != value for field, value in normalized_filters.items()):
+                    continue
 
-            # Build KNN query
-            query_str = f"({filter_str})=>[KNN {top_k} @embedding $vec AS score]"
+                embedding = row.get("embedding")
+                if not isinstance(embedding, list):
+                    continue
 
-            q = (
-                Query(query_str)
-                .return_fields(
-                    "content",
-                    "doc_type",
-                    "cve_id",
-                    "severity",
-                    "target",
-                    "session_id",
-                    "metadata",
-                    "score",
+                similarity = self._cosine_similarity(query_embedding, embedding)
+                if similarity < self.config.min_score:
+                    continue
+
+                scored.append(
+                    SearchResult(
+                        document=Document(
+                            id=row["id"],
+                            content=row["content"],
+                            doc_type=row["doc_type"],
+                            cve_id=row.get("cve_id"),
+                            severity=row.get("severity"),
+                            target=row.get("target"),
+                            session_id=row.get("session_id"),
+                            metadata=row.get("metadata") or {},
+                        ),
+                        score=similarity,
+                    )
                 )
-                .sort_by("score")
-                .dialect(2)
-            )
 
-            # Execute search
-            # Note: query_params accepts bytes for vector search despite type hint
-            result = await self.redis.ft(self.config.index_name).search(
-                q,
-                query_params={"vec": self._vector_to_bytes(query_embedding)},  # type: ignore
-            )
-
-            # Parse results
-            results = []
-            for doc in result.docs:  # type: ignore
-                try:
-                    score = float(doc.score) if hasattr(doc, "score") else 0.0
-
-                    # Convert cosine distance to similarity (1 - distance for cosine)
-                    similarity = 1 - score
-
-                    if similarity < self.config.min_score:
-                        continue
-
-                    document = Document(
-                        id=doc.id.replace(self.config.doc_prefix, ""),
-                        content=doc.content,
-                        doc_type=doc.doc_type,
-                        cve_id=getattr(doc, "cve_id", None),
-                        severity=getattr(doc, "severity", None),
-                        target=getattr(doc, "target", None),
-                        session_id=getattr(doc, "session_id", None),
-                        metadata=json.loads(getattr(doc, "metadata", "{}")),
-                    )
-
-                    results.append(
-                        SearchResult(
-                            document=document,
-                            score=similarity,
-                        )
-                    )
-                except Exception as e:
-                    logger.warning("Failed to parse search result: %s", e)
-
-            return results
-
+            scored.sort(key=lambda item: item.score, reverse=True)
+            return scored[:top_k]
         except Exception as e:
-            logger.error("Search failed: %s", e)
+            logger.error("Postgres RAG search failed: %s", e)
             return []
 
     async def get_document(self, doc_id: str) -> Document | None:
         """Retrieve a document by ID."""
-        key = f"{self.config.doc_prefix}{doc_id}"
+        if not self._table_ready:
+            await self.initialize()
 
         try:
-            data = await self.redis.hgetall(key)  # type: ignore
-            if not data:
+            async with async_session_maker() as session:
+                row = (
+                    await session.execute(
+                        text(
+                            """
+                            SELECT id, content, doc_type, cve_id, severity, target, session_id, metadata
+                            FROM rag_documents
+                            WHERE id = :id
+                            """
+                        ),
+                        {"id": doc_id},
+                    )
+                ).mappings().first()
+            if not row:
                 return None
-
             return Document(
-                id=doc_id,
-                content=data.get(b"content", b"").decode(),
-                doc_type=data.get(b"doc_type", b"").decode(),
-                cve_id=data.get(b"cve_id", b"").decode() or None,
-                severity=data.get(b"severity", b"").decode() or None,
-                target=data.get(b"target", b"").decode() or None,
-                session_id=data.get(b"session_id", b"").decode() or None,
-                metadata=json.loads(data.get(b"metadata", b"{}")),
+                id=row["id"],
+                content=row["content"],
+                doc_type=row["doc_type"],
+                cve_id=row.get("cve_id"),
+                severity=row.get("severity"),
+                target=row.get("target"),
+                session_id=row.get("session_id"),
+                metadata=row.get("metadata") or {},
             )
         except Exception as e:
-            logger.error("Failed to get document %s: %s", doc_id, e)
+            logger.error("Failed to get document %s from Postgres RAG: %s", doc_id, e)
             return None
 
     async def delete_document(self, doc_id: str) -> bool:
         """Delete a document from the index."""
-        key = f"{self.config.doc_prefix}{doc_id}"
-        result = await self.redis.delete(key)
-        return result > 0
+        if not self._table_ready:
+            await self.initialize()
+        try:
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    text("DELETE FROM rag_documents WHERE id = :id"), {"id": doc_id}
+                )
+                deleted = result.rowcount > 0
+                await session.commit()
+                return deleted
+        except Exception as e:
+            logger.error("Failed to delete document %s from Postgres RAG: %s", doc_id, e)
+            return False
 
     async def get_stats(self) -> dict[str, Any]:
-        """Get index statistics."""
+        """Get basic index statistics."""
+        if not self._table_ready:
+            await self.initialize()
         try:
-            info = await self.redis.ft(self.config.index_name).info()
-            return {
-                "num_docs": info.get("num_docs", 0),
-                "num_terms": info.get("num_terms", 0),
-                "index_name": self.config.index_name,
-            }
+            async with async_session_maker() as session:
+                count = await session.execute(text("SELECT COUNT(*) FROM rag_documents"))
+                return {"num_docs": count.scalar() or 0, "backend": "postgres"}
         except Exception as e:
-            return {"error": str(e)}
-
-    def _vector_to_bytes(self, vector: list[float]) -> bytes:
-        """Convert float vector to bytes for Redis."""
-        import struct
-
-        return struct.pack(f"{len(vector)}f", *vector)
-
-    # --- Convenience Methods ---
+            logger.error("Failed to get Postgres RAG stats: %s", e)
+            return {"num_docs": 0, "backend": "postgres", "error": str(e)}
 
     async def search_cves(
         self,
@@ -438,17 +329,8 @@ class RAGService:
         severity: str | None = None,
         top_k: int = 5,
     ) -> list[SearchResult]:
-        """Search for CVEs matching a query."""
-        filters = {}
-        if severity:
-            filters["severity"] = severity
-
-        return await self.search(
-            query=query,
-            top_k=top_k,
-            doc_type="cve",
-            filters=filters if filters else None,
-        )
+        filters = {"severity": severity} if severity else None
+        return await self.search(query=query, top_k=top_k, doc_type="cve", filters=filters)
 
     async def search_findings(
         self,
@@ -457,13 +339,11 @@ class RAGService:
         target: str | None = None,
         top_k: int = 5,
     ) -> list[SearchResult]:
-        """Search for previous findings."""
-        filters = {}
+        filters: dict[str, str] = {}
         if session_id:
             filters["session_id"] = session_id
         if target:
             filters["target"] = target
-
         return await self.search(
             query=query,
             top_k=top_k,
@@ -477,36 +357,20 @@ class RAGService:
         max_tokens: int = 2000,
         doc_types: list[str] | None = None,
     ) -> str:
-        """
-        Get relevant context to augment an LLM prompt.
-
-        Args:
-            query: The query or topic.
-            max_tokens: Approximate max tokens for context.
-            doc_types: Types of documents to include.
-
-        Returns:
-            Formatted context string for LLM prompts.
-        """
         results = await self.search(query, top_k=10)
-
         if doc_types:
-            # Performance Optimization: Convert list to set for O(1) lookups instead of O(N)
             doc_types_set = set(doc_types)
             results = [r for r in results if r.document.doc_type in doc_types_set]
 
         context_parts = []
         current_length = 0
-        char_per_token = 4  # Rough estimate
 
         for result in results:
             content = result.document.content
-            content_tokens = len(content) // char_per_token
-
+            content_tokens = len(content) // self.CHARS_PER_TOKEN
             if current_length + content_tokens > max_tokens:
                 break
 
-            # Format based on document type
             if result.document.doc_type == "cve":
                 part = f"[CVE: {result.document.cve_id or 'Unknown'}]\n{content}"
             elif result.document.doc_type == "finding":
@@ -519,5 +383,15 @@ class RAGService:
 
         if not context_parts:
             return ""
-
         return "Relevant Context:\n\n" + "\n\n---\n\n".join(context_parts)
+
+    @staticmethod
+    def _cosine_similarity(a: list[float], b: list[float]) -> float:
+        if not a or not b or len(a) != len(b):
+            return 0.0
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = math.sqrt(sum(x * x for x in a))
+        norm_b = math.sqrt(sum(y * y for y in b))
+        if norm_a == 0.0 or norm_b == 0.0:
+            return 0.0
+        return dot / (norm_a * norm_b)

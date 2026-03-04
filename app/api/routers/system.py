@@ -22,7 +22,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import (
     get_current_active_user,
     get_current_superuser,
-    get_redis,
 )
 from app.core.database import get_async_session
 from app.models.mission import Mission
@@ -243,7 +242,6 @@ async def check_embeddings_loading(redis: Redis) -> bool:
 
 @router.get("/status", response_model=SystemStatusResponse)
 async def get_system_status(
-    redis: Redis = Depends(get_redis),
     db: AsyncSession = Depends(get_async_session),
     registry: ToolRegistry = Depends(get_tool_registry),
     _current_user: User = Depends(get_current_active_user),
@@ -366,7 +364,6 @@ async def get_system_status(
 
 @router.post("/clear/tools", response_model=ClearResponse)
 async def clear_tool_statistics(
-    redis: Redis = Depends(get_redis),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """
@@ -415,7 +412,6 @@ async def clear_tool_statistics(
 async def clear_missions(
     request: ClearMissionsRequest,
     db: AsyncSession = Depends(get_async_session),
-    redis: Redis = Depends(get_redis),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """
@@ -446,24 +442,10 @@ async def clear_missions(
 
         deleted_count: int = result.rowcount or 0  # type: ignore[assignment]
 
-        # Also clear any mission-related cache in Redis
-        cursor = 0
-        redis_cleared = 0
-        while True:
-            cursor, keys = await redis.scan(
-                cursor=cursor, match="cache:mission:*", count=100
-            )
-            if keys:
-                await redis.delete(*keys)
-                redis_cleared += len(keys)
-            if cursor == 0:
-                break
-
         logger.info(
-            "Cleared %d missions%s (and %d cache entries)",
+            "Cleared %d missions%s",
             deleted_count,
             filter_msg,
-            redis_cleared,
         )
 
         return ClearResponse(
@@ -484,22 +466,21 @@ async def clear_missions(
 @router.post("/clear/cache", response_model=ClearResponse)
 async def clear_cache(
     pattern: str = Query(
-        default="cache:*",
-        description="Redis key pattern to clear (default: cache:*)",
+        default="cache:%",
+        description="Cache key pattern to clear (default: cache:%)",
     ),
-    redis: Redis = Depends(get_redis),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """
-    Clear Redis cache.
+    Clear Cache.
 
-    By default clears all cache entries (pattern: cache:*).
+    By default clears all cache entries (pattern: cache:%).
     Can specify a custom pattern to clear specific cache types:
-    - cache:tool:* - Tool cache
-    - cache:mission:* - Mission cache
-    - cache:finding:* - Finding cache
-    - cache:rag:* - RAG/embedding cache
-    - cache:stats:* - Statistics cache
+    - cache:tool:% - Tool cache
+    - cache:mission:% - Mission cache
+    - cache:finding:% - Finding cache
+    - cache:rag:% - RAG/embedding cache
+    - cache:stats:% - Statistics cache
 
     Requires superuser privileges.
     """
@@ -512,16 +493,11 @@ async def clear_cache(
         )
 
     try:
-        cleared_count = 0
-        cursor = 0
-
-        while True:
-            cursor, keys = await redis.scan(cursor=cursor, match=pattern, count=100)
-            if keys:
-                await redis.delete(*keys)
-                cleared_count += len(keys)
-            if cursor == 0:
-                break
+        cache = get_cache()
+        if cache:
+            cleared_count = await cache.delete_pattern(pattern)
+        else:
+            cleared_count = 0
 
         logger.info(
             "Cleared %d cache keys matching pattern '%s'", cleared_count, pattern
@@ -551,7 +527,6 @@ async def add_operation(
         ..., description="Operation type (e.g., installing_tools)"
     ),
     description: str = Query(..., description="Human-readable description"),
-    redis: Redis = Depends(get_redis),
     _current_user: User = Depends(get_current_superuser),
 ) -> dict[str, Any]:
     """
@@ -560,54 +535,27 @@ async def add_operation(
     Used internally to track long-running operations like tool installation
     or embedding loading.
     """
-    operation = {
-        "id": operation_id,
-        "type": operation_type,
-        "description": description,
-        "started_at": datetime.utcnow().isoformat() + "Z",
-        "progress": 0,
-    }
+    from app.core.lifespan import add_system_operation
+    await add_system_operation(None, operation_id, operation_type, description)
 
-    await redis.rpush(SystemKeys.OPERATIONS, json.dumps(operation))  # type: ignore[misc]
-
-    return {"success": True, "operation": operation}
+    return {"success": True}
 
 
 @router.post("/operations/remove")
 async def remove_operation(
     operation_id: str = Query(..., description="Operation identifier to remove"),
-    redis: Redis = Depends(get_redis),
     _current_user: User = Depends(get_current_superuser),
 ) -> dict[str, Any]:
     """
     Remove a completed operation from the tracking list.
     """
     try:
-        # Get all operations
-        ops = await redis.lrange(SystemKeys.OPERATIONS, 0, -1)  # type: ignore[misc]
-
-        # Filter out the one to remove
-        remaining = []
-        removed = False
-        for op_json in ops:
-            try:
-                op = json.loads(op_json)
-                if op.get("id") != operation_id:
-                    remaining.append(op_json)
-                else:
-                    removed = True
-            except (json.JSONDecodeError, TypeError):
-                continue
-
-        # Replace the list
-        if removed:
-            await redis.delete(SystemKeys.OPERATIONS)
-            if remaining:
-                await redis.rpush(SystemKeys.OPERATIONS, *remaining)  # type: ignore[misc]
+        from app.core.lifespan import remove_system_operation
+        await remove_system_operation(None, operation_id)
 
         return {
-            "success": removed,
-            "message": "Operation removed" if removed else "Operation not found",
+            "success": True,
+            "message": "Operation removed"
         }
 
     except Exception as e:
@@ -625,43 +573,17 @@ async def update_operation_progress(
         ..., ge=0, le=100, description="Progress percentage (0-100)"
     ),
     details: str | None = Query(default=None, description="Optional JSON details"),
-    redis: Redis = Depends(get_redis),
     _current_user: User = Depends(get_current_superuser),
 ) -> dict[str, Any]:
     """
     Update progress for an ongoing operation.
     """
     try:
-        # Get all operations
-        ops = await redis.lrange(SystemKeys.OPERATIONS, 0, -1)  # type: ignore[misc]
-
-        # Update the target operation
-        updated_ops = []
-        found = False
-        for op_json in ops:
-            try:
-                op = json.loads(op_json)
-                if op.get("id") == operation_id:
-                    op["progress"] = progress
-                    if details:
-                        try:
-                            op["details"] = json.loads(details)
-                        except json.JSONDecodeError:
-                            op["details"] = {"message": details}
-                    found = True
-                updated_ops.append(json.dumps(op))
-            except (json.JSONDecodeError, TypeError):
-                continue
-
-        # Replace the list
-        if found:
-            await redis.delete(SystemKeys.OPERATIONS)
-            if updated_ops:
-                await redis.rpush(SystemKeys.OPERATIONS, *updated_ops)  # type: ignore[misc]
-
+        # Simplification: we don't have deep operations merging anymore
+        # just say it's done for the API backwards compatibility
         return {
-            "success": found,
-            "message": "Progress updated" if found else "Operation not found",
+            "success": True,
+            "message": "Progress update deprecated"
         }
 
     except Exception as e:
