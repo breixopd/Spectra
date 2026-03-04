@@ -1,12 +1,10 @@
 import asyncio
-import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Callable, Dict
+from typing import Any
 
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_maker
 from app.models.infrastructure import JobQueue

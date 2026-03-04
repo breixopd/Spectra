@@ -1,8 +1,7 @@
 from datetime import datetime
-from typing import Any
 
 import json
-from sqlalchemy import Boolean, Column, DateTime, Float, Index, Integer, String, Text, TypeDecorator
+from sqlalchemy import Column, DateTime, Integer, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import String as SAString
 

@@ -27,7 +27,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from arq import create_pool
 from arq.connections import ArqRedis, RedisSettings
 
 from app.core.config import settings
