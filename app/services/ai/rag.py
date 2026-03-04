@@ -181,14 +181,122 @@ class RAGService:
             return False
 
     async def index_batch(self, docs: list[Document]) -> int:
-        """Index multiple documents."""
+        """Index multiple documents efficiently."""
         if not docs:
             return 0
-        success = 0
-        for doc in docs:
-            if await self.index_document(doc):
-                success += 1
-        return success
+
+        if not self._table_ready:
+            await self.initialize()
+
+        try:
+            async with async_session_maker() as session:
+                dialect = session.bind.dialect.name
+
+                records: list[dict[str, Any]] = []
+                for doc in docs:
+                    # Generate embedding per document to preserve existing behavior.
+                    embedding = await self.embeddings.embed(doc.content)
+
+                    metadata_json = json.dumps(getattr(doc, "metadata", {}) or {})
+                    embedding_json = json.dumps(embedding)
+
+                    records.append(
+                        {
+                            "id": doc.id,
+                            "content": doc.content,
+                            "doc_type": doc.doc_type,
+                            "cve_id": getattr(doc, "cve_id", None),
+                            "severity": getattr(doc, "severity", None),
+                            "target": getattr(doc, "target", None),
+                            "session_id": getattr(doc, "session_id", None),
+                            "metadata": metadata_json,
+                            "embedding": embedding_json,
+                        }
+                    )
+
+                if not records:
+                    return 0
+
+                if dialect == "sqlite":
+                    insert_sql = """
+                        INSERT INTO rag_documents (
+                            id,
+                            content,
+                            doc_type,
+                            cve_id,
+                            severity,
+                            target,
+                            session_id,
+                            metadata,
+                            embedding
+                        )
+                        VALUES (
+                            :id,
+                            :content,
+                            :doc_type,
+                            :cve_id,
+                            :severity,
+                            :target,
+                            :session_id,
+                            :metadata,
+                            :embedding
+                        )
+                        ON CONFLICT (id) DO UPDATE SET
+                            content = excluded.content,
+                            doc_type = excluded.doc_type,
+                            cve_id = excluded.cve_id,
+                            severity = excluded.severity,
+                            target = excluded.target,
+                            session_id = excluded.session_id,
+                            metadata = excluded.metadata,
+                            embedding = excluded.embedding
+                    """
+                else:
+                    insert_sql = """
+                        INSERT INTO rag_documents (
+                            id,
+                            content,
+                            doc_type,
+                            cve_id,
+                            severity,
+                            target,
+                            session_id,
+                            metadata,
+                            embedding
+                        )
+                        VALUES (
+                            :id,
+                            :content,
+                            :doc_type,
+                            :cve_id,
+                            :severity,
+                            :target,
+                            :session_id,
+                            CAST(:metadata AS JSONB),
+                            CAST(:embedding AS JSONB)
+                        )
+                        ON CONFLICT (id) DO UPDATE SET
+                            content = EXCLUDED.content,
+                            doc_type = EXCLUDED.doc_type,
+                            cve_id = EXCLUDED.cve_id,
+                            severity = EXCLUDED.severity,
+                            target = EXCLUDED.target,
+                            session_id = EXCLUDED.session_id,
+                            metadata = EXCLUDED.metadata,
+                            embedding = EXCLUDED.embedding
+                    """
+
+                await session.execute(text(insert_sql), records)
+                await session.commit()
+
+            return len(records)
+        except Exception as e:
+            logger.error(
+                "Failed to index batch of %s documents in Postgres RAG: %s",
+                len(docs),
+                e,
+            )
+            return 0
 
     async def search(
         self,

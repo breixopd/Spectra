@@ -27,8 +27,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from arq.connections import ArqRedis, RedisSettings
-
 from app.core.config import settings
 from app.core.constants import (
     ARQ_HEALTH_CHECK_INTERVAL,
@@ -795,14 +793,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 
 
 class WorkerSettings:
-    """ARQ worker configuration."""
-
-    redis_settings = RedisSettings(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        password=settings.REDIS_PASSWORD.get_secret_value(),
-        database=settings.REDIS_DB,
-    )
+    """Worker configuration."""
 
     functions = [
         # Tool execution
@@ -821,13 +812,6 @@ class WorkerSettings:
         execute_script_job,
     ]
 
-    on_startup = startup
-    on_shutdown = shutdown
-
-    max_jobs = ARQ_MAX_JOBS
-    job_timeout = ARQ_JOB_TIMEOUT
-    keep_result = ARQ_KEEP_RESULT
-    health_check_interval = ARQ_HEALTH_CHECK_INTERVAL
     queue_name = ARQ_QUEUE_NAME
 
 
@@ -842,6 +826,9 @@ async def get_arq_pool():
 
 
 if __name__ == "__main__":
-    from arq import run_worker
+    async def main():
+        from app.core.queue import worker_loop
+        await startup({})
+        await worker_loop(WorkerSettings.functions, queue_name=WorkerSettings.queue_name)
 
-    run_worker(WorkerSettings)  # type: ignore[arg-type]
+    asyncio.run(main())

@@ -110,15 +110,19 @@ async def create_db_tables(request):
     if _is_live_test(request.node):
         from app.core.database import engine
         from app.models.base import Base
+        from app.models.infrastructure import InfrastructureBase
+        import app.models
 
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(InfrastructureBase.metadata.create_all)
 
         yield
 
         # Optionally, clear the tables after (but memory sqlite drops automatically)
         # async with engine.begin() as conn:
         #    await conn.run_sync(Base.metadata.drop_all)
+        #    await conn.run_sync(InfrastructureBase.metadata.drop_all)
     else:
         yield
 

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import (
     get_current_active_user,
 )
+from app.core.config import settings
 from app.core.database import get_async_session
 from app.models.user import User
 from app.services.tools.models import ToolStatus
@@ -80,7 +81,7 @@ class SystemStatusResponse(BaseModel):
     """Complete system status response."""
 
     status: str = Field(
-        description="Overall system status: ready, initializing, degraded, error"
+        description="Overall system status: ready, initializing, degraded, error, setup_required"
     )
     message: str = Field(description="Human-readable status message for UI display")
     timestamp: str = Field(description="ISO timestamp of status check")
@@ -149,8 +150,7 @@ async def get_system_operations(db: AsyncSession) -> list[OngoingOperation]:
             if isinstance(op, str):
                 try:
                     op = json.loads(op)
-                except (json.JSONDecodeError, TypeError) as e:
-                    logger.debug("Skipping invalid operation JSON value %r: %s", op, e)
+                except:
                     continue
             operations.append(
                 OngoingOperation(

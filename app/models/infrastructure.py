@@ -5,7 +5,9 @@ from sqlalchemy import Column, DateTime, Integer, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import String as SAString
 
-from app.models.base import Base
+from sqlalchemy.orm import declarative_base
+
+InfrastructureBase = declarative_base()
 
 class JSONBType(TypeDecorator):
     """Fallback JSONB type for SQLite testing."""
@@ -32,7 +34,7 @@ class JSONBType(TypeDecorator):
             return value
         return json.loads(value)
 
-class SystemCache(Base):
+class SystemCache(InfrastructureBase):
     """
     PostgreSQL-backed key-value cache.
     Replaces Redis cache functionality.
@@ -46,7 +48,7 @@ class SystemCache(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-class JobQueue(Base):
+class JobQueue(InfrastructureBase):
     """
     PostgreSQL-backed job queue.
     Replaces ARQ for background task execution.
@@ -71,7 +73,7 @@ class JobQueue(Base):
     timeout = Column(Integer, nullable=True) # in seconds
 
 
-class SystemStatus(Base):
+class SystemStatus(InfrastructureBase):
     """
     PostgreSQL-backed system state storage.
     Replaces Redis hash maps used for operations tracking and readiness checks.

@@ -31,7 +31,7 @@ class PostgresJobQueue:
                 id=job_id,
                 queue_name=self.queue_name,
                 function=function_name,
-                args=args,
+                args=list(args),
                 kwargs=kwargs,
                 status="queued",
                 timeout=_timeout
