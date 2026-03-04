@@ -19,6 +19,7 @@ import asyncio
 import ipaddress
 import logging
 import os
+import shlex
 import shutil
 import signal
 import time
@@ -499,10 +500,12 @@ async def execute_script_job(
     work_dir.mkdir(parents=True, exist_ok=True)
 
     try:
+        safe_target = shlex.quote(str(target))
+
         if language.lower() in ("python", "python3"):
             script_path = work_dir / "exploit.py"
             script_path.write_text(content)
-            cmd = f"python3 {script_path} {target}"
+            cmd = f"python3 {script_path} {safe_target}"
 
         elif language.lower() == "go":
             script_path = work_dir / "exploit.go"
@@ -517,13 +520,13 @@ async def execute_script_job(
                     "stdout": r_out,
                     "stderr": f"Compilation failed: {r_err}",
                 }
-            cmd = f"{work_dir}/exploit {target}"
+            cmd = f"{work_dir}/exploit {safe_target}"
 
         elif language.lower() in ("bash", "sh"):
             script_path = work_dir / "exploit.sh"
             script_path.write_text(content)
             await _run_command(f"chmod +x {script_path}", 5)
-            cmd = f"{script_path} {target}"
+            cmd = f"{script_path} {safe_target}"
 
         else:
             return {
@@ -535,7 +538,8 @@ async def execute_script_job(
 
         # Add extra args
         if args:
-            cmd += " " + " ".join(args)
+            safe_args = [shlex.quote(str(arg)) for arg in args]
+            cmd += " " + " ".join(safe_args)
 
         logger.info(f"Executing custom script ({language}) against {target}")
 
