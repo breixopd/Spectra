@@ -281,6 +281,14 @@ class RAGService:
                 ).mappings().first()
             if not row:
                 return None
+
+            metadata = row.get("metadata")
+            if isinstance(metadata, str):
+                try:
+                    metadata = json.loads(metadata)
+                except json.JSONDecodeError:
+                    metadata = {}
+
             return Document(
                 id=row["id"],
                 content=row["content"],
@@ -289,7 +297,7 @@ class RAGService:
                 severity=row.get("severity"),
                 target=row.get("target"),
                 session_id=row.get("session_id"),
-                metadata=row.get("metadata") or {},
+                metadata=metadata or {},
             )
         except Exception as e:
             logger.error("Failed to get document %s from Postgres RAG: %s", doc_id, e)

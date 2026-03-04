@@ -677,18 +677,21 @@ async def _track_tool_stats(
 
 
 async def _sync_tool_status(
-    redis: ArqRedis,
+    redis: Any,
     tool_id: str,
     result: dict[str, Any],
 ) -> None:
-    """Sync tool status to Redis."""
+    """Sync tool status to Postgres Cache."""
+    from app.core.cache import CacheService
+
+    cache = CacheService()
     key = f"spectra:tool_status:{tool_id}"
     status = str(result.get("status") or "unknown")
     error = str(result.get("error") or "")
 
-    await redis.hset(  # type: ignore[arg-type]
+    await cache.set(
         key,
-        mapping={
+        {
             "status": status,
             "last_updated": datetime.now().isoformat(),
             "error": error,
@@ -723,14 +726,10 @@ async def startup(ctx: dict[str, Any]) -> None:
         return
 
     # Sync initial status and auto-install tools
-    redis: ArqRedis | None = ctx.get("redis")
-    if redis:
-        await _auto_install_pending(redis)
-    else:
-        logger.warning("Redis not available, skipping auto-install")
+    await _auto_install_pending()
 
 
-async def _auto_install_pending(redis: ArqRedis) -> None:
+async def _auto_install_pending() -> None:
     """Auto-install pending tools on startup."""
     from app.services.tools.registry import get_registry
 
@@ -744,7 +743,7 @@ async def _auto_install_pending(redis: ArqRedis) -> None:
 
         # Sync initial status
         await _sync_tool_status(
-            redis,
+            None,
             tool.config.id,
             {
                 "status": tool.status.value,

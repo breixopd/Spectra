@@ -27,6 +27,7 @@ from app.core.database import get_async_session
 from app.models.mission import Mission
 from app.models.user import User
 from app.services.tools.models import ToolStatus
+from app.core.cache import CacheService
 from app.services.tools.registry import ToolRegistry, get_registry
 
 logger = logging.getLogger("spectra.api.system")
@@ -262,7 +263,7 @@ async def get_system_status(
 
     # Initialize component statuses
     db_status = ComponentStatus(status="unknown")
-    redis_status = ComponentStatus(status="unknown")
+    redis_status = ComponentStatus(status="healthy", message="Connected (Postgres Mock)")
 
     overall_status = "ready"
     status_messages = []
@@ -276,16 +277,6 @@ async def get_system_status(
         db_status = ComponentStatus(status="error", message="Connection failed")
         overall_status = "degraded"
         status_messages.append("Database connection issue")
-
-    # Check Redis
-    try:
-        await redis.ping()
-        redis_status = ComponentStatus(status="healthy", message="Connected")
-    except Exception as e:
-        logger.error("Redis connection check failed: %s", e)
-        redis_status = ComponentStatus(status="error", message="Connection failed")
-        overall_status = "degraded"
-        status_messages.append("Redis connection issue")
 
     # Get tool statistics
     tool_stats = ToolStats()
@@ -310,9 +301,10 @@ async def get_system_status(
         logger.warning("Failed to get tool stats: %s", e)
 
     # Check ongoing operations
-    tools_installing = await check_tools_installing(redis)
-    embeddings_loading = await check_embeddings_loading(redis)
-    operations = await get_system_operations(redis)
+    cache = CacheService()
+    tools_installing = await check_tools_installing(cache)
+    embeddings_loading = await check_embeddings_loading(cache)
+    operations = await get_system_operations(cache)
 
     # Determine setup status
     setup_complete = True
@@ -382,17 +374,14 @@ async def clear_tool_statistics(
             "spectra:tools:install:*",
         ]
 
+        cache = CacheService()
         for pattern in patterns:
-            cursor = 0
-            while True:
-                cursor, keys = await redis.scan(cursor=cursor, match=pattern, count=100)
-                if keys:
-                    await redis.delete(*keys)
-                    cleared_count += len(keys)
-                if cursor == 0:
-                    break
+            keys = await cache.keys(pattern)
+            if keys:
+                await cache.delete(*keys)
+                cleared_count += len(keys)
 
-        logger.info("Cleared %d tool statistic keys from Redis", cleared_count)
+        logger.info("Cleared %d tool statistic keys from Cache", cleared_count)
 
         return ClearResponse(
             success=True,
@@ -442,18 +431,13 @@ async def clear_missions(
 
         deleted_count: int = result.rowcount or 0  # type: ignore[assignment]
 
-        # Also clear any mission-related cache in Redis
-        cursor = 0
+        # Also clear any mission-related cache in DB Cache
+        cache = CacheService()
         redis_cleared = 0
-        while True:
-            cursor, keys = await redis.scan(
-                cursor=cursor, match="cache:mission:*", count=100
-            )
-            if keys:
-                await redis.delete(*keys)
-                redis_cleared += len(keys)
-            if cursor == 0:
-                break
+        keys = await cache.keys("cache:mission:*")
+        if keys:
+            await cache.delete(*keys)
+            redis_cleared += len(keys)
 
         logger.info(
             "Cleared %d missions%s (and %d cache entries)",
@@ -508,15 +492,11 @@ async def clear_cache(
 
     try:
         cleared_count = 0
-        cursor = 0
-
-        while True:
-            cursor, keys = await redis.scan(cursor=cursor, match=pattern, count=100)
-            if keys:
-                await redis.delete(*keys)
-                cleared_count += len(keys)
-            if cursor == 0:
-                break
+        cache = CacheService()
+        keys = await cache.keys(pattern)
+        if keys:
+            await cache.delete(*keys)
+            cleared_count += len(keys)
 
         logger.info(
             "Cleared %d cache keys matching pattern '%s'", cleared_count, pattern
@@ -562,7 +542,21 @@ async def add_operation(
         "progress": 0,
     }
 
-    await redis.rpush(SystemKeys.OPERATIONS, json.dumps(operation))  # type: ignore[misc]
+    # In postgres we map this to SystemStatus table manually here
+    from app.models.infrastructure import SystemStatus
+    from app.core.database import async_session_maker
+    from sqlalchemy import select
+
+    async with async_session_maker() as session:
+        result = await session.execute(select(SystemStatus).where(SystemStatus.key == SystemKeys.OPERATIONS))
+        status_record = result.scalar_one_or_none()
+        ops = status_record.value if status_record and status_record.value else []
+        ops.append(operation)
+        if not status_record:
+            session.add(SystemStatus(key=SystemKeys.OPERATIONS, value=ops))
+        else:
+            status_record.value = ops
+        await session.commit()
 
     return {"success": True, "operation": operation}
 
@@ -576,27 +570,24 @@ async def remove_operation(
     Remove a completed operation from the tracking list.
     """
     try:
-        # Get all operations
-        ops = await redis.lrange(SystemKeys.OPERATIONS, 0, -1)  # type: ignore[misc]
+        from app.models.infrastructure import SystemStatus
+        from app.core.database import async_session_maker
+        from sqlalchemy import select, delete
 
-        # Filter out the one to remove
-        remaining = []
-        removed = False
-        for op_json in ops:
-            try:
-                op = json.loads(op_json)
-                if op.get("id") != operation_id:
-                    remaining.append(op_json)
+        async with async_session_maker() as session:
+            result = await session.execute(select(SystemStatus).where(SystemStatus.key == SystemKeys.OPERATIONS))
+            status_record = result.scalar_one_or_none()
+            ops = status_record.value if status_record and status_record.value else []
+
+            remaining = [op for op in ops if op.get("id") != operation_id]
+            removed = len(remaining) < len(ops)
+
+            if removed:
+                if not remaining:
+                    await session.execute(delete(SystemStatus).where(SystemStatus.key == SystemKeys.OPERATIONS))
                 else:
-                    removed = True
-            except (json.JSONDecodeError, TypeError):
-                continue
-
-        # Replace the list
-        if removed:
-            await redis.delete(SystemKeys.OPERATIONS)
-            if remaining:
-                await redis.rpush(SystemKeys.OPERATIONS, *remaining)  # type: ignore[misc]
+                    status_record.value = remaining
+                await session.commit()
 
         return {
             "success": removed,
@@ -624,15 +615,17 @@ async def update_operation_progress(
     Update progress for an ongoing operation.
     """
     try:
-        # Get all operations
-        ops = await redis.lrange(SystemKeys.OPERATIONS, 0, -1)  # type: ignore[misc]
+        from app.models.infrastructure import SystemStatus
+        from app.core.database import async_session_maker
+        from sqlalchemy import select
 
-        # Update the target operation
-        updated_ops = []
         found = False
-        for op_json in ops:
-            try:
-                op = json.loads(op_json)
+        async with async_session_maker() as session:
+            result = await session.execute(select(SystemStatus).where(SystemStatus.key == SystemKeys.OPERATIONS))
+            status_record = result.scalar_one_or_none()
+            ops = status_record.value if status_record and status_record.value else []
+
+            for op in ops:
                 if op.get("id") == operation_id:
                     op["progress"] = progress
                     if details:
@@ -641,15 +634,12 @@ async def update_operation_progress(
                         except json.JSONDecodeError:
                             op["details"] = {"message": details}
                     found = True
-                updated_ops.append(json.dumps(op))
-            except (json.JSONDecodeError, TypeError):
-                continue
+                    break
 
-        # Replace the list
-        if found:
-            await redis.delete(SystemKeys.OPERATIONS)
-            if updated_ops:
-                await redis.rpush(SystemKeys.OPERATIONS, *updated_ops)  # type: ignore[misc]
+            if found:
+                # Assign back to trigger JSONB update
+                status_record.value = list(ops)
+                await session.commit()
 
         return {
             "success": found,
