@@ -355,11 +355,10 @@ async def lookup_cves_live(
         logger.debug("Live CVE fetch failed, using builtin only: %s", e)
 
     # Re-sort merged results
-    severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
     builtin.sort(
         key=lambda x: (
             0 if x.get("version_match") else 1,
-            severity_order.get(x.get("severity", "medium"), 5),
+            SEVERITY_ORDER.get(x.get("severity", "medium"), 5),
         )
     )
 
