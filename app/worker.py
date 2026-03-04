@@ -771,11 +771,11 @@ async def _auto_install_pending() -> None:
                         "[FAIL] Failed to install %s: %s", tool_id, result.get("error")
                     )
 
-                await _sync_tool_status(redis, tool_id, result)
+                await _sync_tool_status(None, tool_id, result)
             except Exception as e:
                 logger.error("Error installing %s: %s", tool_id, e)
                 await _sync_tool_status(
-                    redis,
+                    None,
                     tool_id,
                     {
                         "status": "failed",
