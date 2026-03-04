@@ -1,0 +1,4 @@
+## 2024-05-17 - Prevent Command Injection in Custom Script Execution
+**Vulnerability:** Shell Command Injection via unsanitized parameters in ARQ worker script execution (`execute_script_job`). The target and script arguments were concatenated directly into a command string that was run in a shell.
+**Learning:** Even though scripts run inside an isolated tools container (`spectra-tools`), an attacker controlling the arguments or target input could execute arbitrary shell commands (escaping the intended command structure) and potentially escalate privileges or interfere with other tasks running in the container.
+**Prevention:** Always use `shlex.quote()` when constructing shell commands dynamically from user-supplied input (like `target` and `args`), or use `asyncio.create_subprocess_exec` instead of `asyncio.create_subprocess_shell` where a full shell isn't strictly necessary.
