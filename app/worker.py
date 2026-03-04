@@ -500,7 +500,7 @@ async def execute_script_job(
     work_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        safe_target = shlex.quote(target)
+        safe_target = shlex.quote(str(target))
 
         if language.lower() in ("python", "python3"):
             script_path = work_dir / "exploit.py"
