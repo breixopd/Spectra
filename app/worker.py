@@ -19,7 +19,6 @@ import asyncio
 import ipaddress
 import logging
 import os
-import shlex
 import shutil
 import signal
 import time
@@ -500,18 +499,16 @@ async def execute_script_job(
     work_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        safe_target = shlex.quote(str(target))
-
         if language.lower() in ("python", "python3"):
             script_path = work_dir / "exploit.py"
             script_path.write_text(content)
-            cmd = f"python3 {script_path} {safe_target}"
+            cmd = ["python3", str(script_path), str(target)]
 
         elif language.lower() == "go":
             script_path = work_dir / "exploit.go"
             script_path.write_text(content)
             # Compile then run
-            compile_cmd = f"go build -o {work_dir}/exploit {script_path}"
+            compile_cmd = ["go", "build", "-o", f"{work_dir}/exploit", str(script_path)]
             r_code, r_out, r_err = await _run_command(compile_cmd, GO_COMPILE_TIMEOUT, str(work_dir))
             if r_code != 0:
                 return {
@@ -520,13 +517,13 @@ async def execute_script_job(
                     "stdout": r_out,
                     "stderr": f"Compilation failed: {r_err}",
                 }
-            cmd = f"{work_dir}/exploit {safe_target}"
+            cmd = [f"{work_dir}/exploit", str(target)]
 
         elif language.lower() in ("bash", "sh"):
             script_path = work_dir / "exploit.sh"
             script_path.write_text(content)
-            await _run_command(f"chmod +x {script_path}", 5)
-            cmd = f"{script_path} {safe_target}"
+            await _run_command(["chmod", "+x", str(script_path)], 5)
+            cmd = [str(script_path), str(target)]
 
         else:
             return {
@@ -538,13 +535,12 @@ async def execute_script_job(
 
         # Add extra args
         if args:
-            safe_args = [shlex.quote(str(arg)) for arg in args]
-            cmd += " " + " ".join(safe_args)
+            cmd.extend([str(arg) for arg in args])
 
         logger.info(f"Executing custom script ({language}) against {target}")
 
         # Run
-        wrapped = f"timeout -k 10s {timeout}s {cmd}"
+        wrapped = ["timeout", "-k", "10s", f"{timeout}s"] + cmd
         returncode, stdout, stderr = await _run_command(
             wrapped, timeout + 30, str(work_dir)
         )
@@ -614,7 +610,7 @@ def _is_tool_installed(tool) -> bool:
 
 
 async def _run_command(
-    command: str,
+    command: str | list[str],
     timeout: int,
     cwd: str | None = None,
 ) -> tuple[int, str, str]:
@@ -625,14 +621,24 @@ async def _run_command(
     env["PATH"] = f"/opt/spectra_tools:{env.get('PATH', '')}"
 
     try:
-        proc = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=cwd,
-            env=env,
-            start_new_session=True,
-        )
+        if isinstance(command, list):
+            proc = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=cwd,
+                env=env,
+                start_new_session=True,
+            )
+        else:
+            proc = await asyncio.create_subprocess_shell(
+                command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=cwd,
+                env=env,
+                start_new_session=True,
+            )
     except Exception as e:
         logger.error("Failed to start process: %s", e)
         return (-1, "", str(e))
