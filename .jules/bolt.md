@@ -9,3 +9,7 @@
 ## 2026-03-04 - Optimized CVE Vulnerability Lookup and Inference
 **Learning:** Allocating dictionaries and performing generator comprehension checks like `any()` inside a hot path loop causes significant garbage collector and CPU overhead.
 **Action:** Lift static mappings (like vulnerability types and severities) to pre-computed module-level global constants. Also, pre-calculate repeated string manipulations, such as `.lower()`, outside loops instead of applying them repeatedly on every item within the loop, and utilize fast looping constructs (like early returns inside explicit `for` loops).
+
+## 2026-03-05 - Avoid deepcopy() in performance paths
+**Learning:** `copy.deepcopy()` is incredibly slow due to recursive traversal and memoization overhead. When copying dictionaries to avoid mutating global constants, if you are only reassigning top-level keys rather than mutating nested lists/dicts in-place, a simple `.copy()` is significantly faster (~1-2µs vs ~15-30µs) and perfectly safe.
+**Action:** Use `.copy()` instead of `deepcopy()` whenever possible when lifting static dictionaries to module-level scopes to avoid performance regressions.

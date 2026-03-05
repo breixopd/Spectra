@@ -146,11 +146,11 @@ class MissionMemory:
         """Persist all memory to disk."""
         self._save_file(
             "tool_lessons.json",
-            [l.model_dump() for l in self.tool_lessons[-500:]],
+            [lesson.model_dump() for lesson in self.tool_lessons[-500:]],
         )
         self._save_file(
             "exploit_lessons.json",
-            [l.model_dump() for l in self.exploit_lessons[-200:]],
+            [lesson.model_dump() for lesson in self.exploit_lessons[-200:]],
         )
         self._save_file(
             "target_profiles.json",
@@ -477,14 +477,24 @@ OS_SIGNATURES = {
     ],
 }
 
+# Pre-computed lowercase signatures to avoid `.lower()` in the hot path
+_LOWER_OS_SIGNATURES = {
+    os_family: [sig.lower() for sig in signatures]
+    for os_family, signatures in OS_SIGNATURES.items()
+}
+
 
 def detect_os_from_output(output: str) -> str:
     """Detect OS family from tool output (nmap banners, etc.)."""
     output_lower = output.lower()
 
     scores: dict[str, int] = {}
-    for os_family, signatures in OS_SIGNATURES.items():
-        score = sum(1 for sig in signatures if sig.lower() in output_lower)
+    # Performance Optimization: Avoid generator instantiation overhead and repeated .lower()
+    for os_family, signatures in _LOWER_OS_SIGNATURES.items():
+        score = 0
+        for sig in signatures:
+            if sig in output_lower:
+                score += 1
         if score > 0:
             scores[os_family] = score
 
