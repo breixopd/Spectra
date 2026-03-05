@@ -55,9 +55,10 @@ def generate_tech_wordlist(technologies: list[str]) -> list[str]:
 
 def generate_credential_list(service: str, product: str | None = None) -> dict[str, list[str]]:
     """Generate default credential pairs for a service. Small list only — no brute force."""
-    # Use shallow copy to avoid mutating the module-level static dictionary
-    # Since we are reassigning keys below (not mutating lists in-place), shallow copy is safe and much faster than deepcopy.
-    creds = SERVICE_CREDS.get(service.lower(), SERVICE_CREDS["http"]).copy()
+    # Copy the service template and its lists so callers can safely mutate the result
+    # without affecting the module-level SERVICE_CREDS defaults.
+    template = SERVICE_CREDS.get(service.lower(), SERVICE_CREDS["http"])
+    creds = {key: list(values) for key, values in template.items()}
 
     if product:
         product_lower = product.lower()
