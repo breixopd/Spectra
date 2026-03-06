@@ -374,8 +374,12 @@ function buildForm(cfg) {
 }
 
 function getIcon(name) {
-    const map = {network:'network-wired', crosshair:'crosshairs', database:'database', key:'key', shield:'shield',
-        terminal:'terminal', bug:'bug', globe:'globe', lightning:'bolt', 'folder-open':'folder-open'};
+    const map = {
+        network:'network-wired', crosshair:'crosshairs', database:'database',
+        key:'key', shield:'shield', terminal:'terminal', bug:'bug',
+        globe:'globe', lightning:'bolt', 'folder-open':'folder-open',
+        'globe-hemisphere-west':'earth-americas', 'shield-warning':'shield-halved',
+    };
     return map[name] || 'wrench';
 }
 
