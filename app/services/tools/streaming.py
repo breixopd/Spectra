@@ -22,8 +22,11 @@ by this module.  To enable streaming, change ``_run_command`` in
 
     from app.services.tools.streaming import publish_tool_output
 
-    async def _run_command(command, timeout, cwd=None, *, redis=None,
-                           mission_id="", tool_id=""):
+    async def _run_command(command, timeout, cwd=None, *, allow_shell=False,
+                           redis=None, mission_id="", tool_id=""):
+        if not allow_shell and isinstance(command, str):
+            raise ValueError("allow_shell=True is required to execute string commands via shell")
+
         proc = await asyncio.create_subprocess_shell(
             command,
             stdout=asyncio.subprocess.PIPE,
