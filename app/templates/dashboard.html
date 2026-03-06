@@ -4,31 +4,50 @@
 <!-- Header / Mission Control -->
 <header class="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 animate-fade-in">
     <div class="flex items-center gap-3">
-        <h1 class="text-lg font-semibold text-white tracking-tight">Operation: <span class="text-slate-400 font-mono text-base">ALPHA_PROTOCOL</span></h1>
-        <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>
+        <h1 class="text-lg font-semibold text-white tracking-tight">Assessment</h1>
     </div>
 
-    <!-- Mission Control Input -->
-    <div class="flex-1 max-w-2xl md:mx-6 relative group">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <i class="fa-solid fa-terminal text-slate-500 group-focus-within:text-violet-400 transition-colors"></i>
+    <!-- Mission Control -->
+    <div class="flex-1 max-w-3xl md:mx-4">
+        <div class="flex items-center gap-2">
+            <div class="relative" style="width: 220px;">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-crosshairs text-slate-500"></i>
+                </div>
+                <input type="text" id="mission-target"
+                    class="block w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
+                    placeholder="Target IP / domain">
+            </div>
+            <div class="flex-1 relative">
+                <input type="text" id="mission-directive"
+                    class="block w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all"
+                    placeholder="Directive (e.g., Full security assessment)">
+            </div>
+            <button onclick="toggleRequirements()" class="p-2 rounded-lg bg-slate-900/50 border border-white/10 text-slate-500 hover:text-violet-400 hover:border-violet-500/30 transition-all" title="Add scope / requirements" aria-label="Toggle requirements">
+                <i class="fa-solid fa-file-lines text-sm"></i>
+            </button>
+            <button onclick="launchFromForm()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-lg shadow-violet-500/20">
+                <i class="fa-solid fa-rocket"></i> Launch
+            </button>
         </div>
-        <input type="text" id="mission-control-input"
-            class="block w-full pl-10 pr-3 py-2.5 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
-            placeholder="Enter target and directive... (e.g., '192.168.1.1 Full scan')">
+        <div id="requirements-panel" class="hidden mt-2">
+            <textarea id="mission-requirements" rows="2"
+                class="block w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono resize-none"
+                placeholder="Optional: scope constraints, rules of engagement, specific requirements..."></textarea>
+        </div>
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-1">
         <!-- Scan Preset Dropdown -->
         <div class="relative group">
-            <button class="flex items-center gap-2 px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 border border-violet-500/30 rounded-lg text-xs text-white transition-colors">
-                <i class="fa-solid fa-bolt"></i>
+            <button class="flex items-center gap-2 px-3 py-2 bg-slate-900/50 hover:bg-white/5 border border-white/10 rounded-lg text-xs text-slate-300 transition-colors">
+                <i class="fa-solid fa-bolt text-violet-400"></i>
                 <span>Presets</span>
                 <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
             </button>
             <div class="absolute right-0 top-full mt-1 w-64 bg-slate-900 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
                 <div class="p-1.5" id="preset-dropdown">
-                    <div class="px-2 py-1 text-[9px] font-mono text-slate-500 uppercase tracking-wider">Quick Launch</div>
+                    <div class="px-2 py-1 text-[9px] font-mono text-slate-500 uppercase tracking-wider">Scan Presets</div>
                     <button onclick="launchPreset('quick_recon')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
                         <i class="fa-solid fa-bolt text-amber-400 w-4"></i> Quick Recon <span class="ml-auto text-[9px] text-slate-500">~5 min</span>
                     </button>
@@ -73,12 +92,19 @@
 
     <!-- Left Column: Map + Findings -->
     <div class="lg:col-span-1 flex flex-col gap-4">
-        <!-- Threat Map -->
+        <!-- Map -->
         <div class="glass-panel rounded-xl overflow-hidden relative" style="min-height: 220px;">
             <div class="absolute top-3 left-3 z-[400] pointer-events-none">
-                <span class="text-[10px] font-mono tracking-widest text-slate-400 uppercase bg-slate-900/80 px-2 py-0.5 rounded">Threat Map</span>
+                <span class="text-[10px] font-mono tracking-widest text-slate-400 uppercase bg-slate-900/80 px-2 py-0.5 rounded">Location</span>
             </div>
-            <div id="threat-map" class="w-full h-full bg-slate-900" style="min-height: 220px;"></div>
+            <div id="threat-map" class="w-full h-full bg-[#0f172a]" style="min-height: 220px;">
+                <div id="map-placeholder" class="flex items-center justify-center h-full text-slate-700">
+                    <div class="text-center">
+                        <i class="fa-solid fa-map-location-dot text-2xl mb-2"></i>
+                        <p class="text-xs">Target locations appear here</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Findings Summary -->
@@ -106,7 +132,7 @@
 
         <!-- Active Shells -->
         <div class="glass-panel rounded-xl p-4 flex flex-col">
-            <span class="text-[10px] font-mono tracking-widest text-emerald-400/70 uppercase block mb-2">Active Shells</span>
+            <span class="text-[10px] font-mono tracking-widest text-emerald-400/70 uppercase block mb-2">Sessions</span>
             <div id="shell-list" class="flex-1 overflow-y-auto space-y-1.5">
                 <div class="text-center text-slate-600 text-xs py-3">No active sessions</div>
             </div>
@@ -122,15 +148,15 @@
                 <span class="text-[10px] font-mono tracking-widest text-slate-500 uppercase">Network Topology</span>
             </div>
             <div id="network-graph" class="absolute inset-0 flex items-center justify-center">
-                <div class="text-center">
-                    <i class="fa-solid fa-diagram-project text-2xl text-slate-700 mb-2"></i>
-                    <p class="text-slate-600 text-xs">Start a mission to see the network graph</p>
+                <div class="text-center text-slate-700">
+                    <i class="fa-solid fa-diagram-project text-3xl mb-2"></i>
+                    <p class="text-xs">Discovered services and hosts appear here</p>
                 </div>
             </div>
             <div class="absolute bottom-3 right-3 z-10">
                 <div class="flex items-center gap-2 text-[10px] font-mono text-slate-500">
                     <span class="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
-                    <span id="node-count">0 Nodes</span>
+                    <span id="node-count">0 nodes</span>
                 </div>
             </div>
         </div>
@@ -149,7 +175,7 @@
                 </div>
             </div>
             <div id="terminal-output" class="flex-1 overflow-y-auto p-3 font-mono text-xs text-slate-400 space-y-0.5">
-                <p class="text-slate-500"><span class="text-violet-400/60">spectra</span> System initialized. Enter a target above to begin.</p>
+                <p class="text-slate-400">Ready. Enter a target and directive above to start an assessment.</p>
             </div>
         </div>
     </div>

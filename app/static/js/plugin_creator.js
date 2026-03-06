@@ -22,7 +22,6 @@ function buildConfig() {
         name: document.getElementById('tool-name').value,
         version: document.getElementById('tool-version').value,
         description: document.getElementById('tool-desc').value,
-        author: document.getElementById('tool-author').value,
         category: document.getElementById('tool-category').value,
         execution: {
             command: document.getElementById('exec-command').value,
@@ -32,12 +31,12 @@ function buildConfig() {
         installation: {
             method: document.getElementById('install-method').value,
             commands: cmds,
-            verification_command: document.getElementById('verify-cmd').value
+            verification_command: document.getElementById('verify-cmd').value || null
         },
         metadata: {
             risk_level: document.getElementById('meta-risk').value,
             capabilities: [],
-            min_memory_mb: 512
+            ai_description: document.getElementById('tool-desc').value
         },
         ui: {
             icon: document.getElementById('ui-icon').value,

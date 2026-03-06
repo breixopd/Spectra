@@ -45,20 +45,23 @@ class MissionManager:
 
     # --- Public API ---
 
-    async def start_mission(self, target: str, directive: str) -> str:
+    async def start_mission(
+        self, target: str, directive: str, requirements: str | None = None
+    ) -> str:
         """
         Start a new security assessment mission.
 
         Args:
             target: Target IP, domain, or CIDR
             directive: High-level user directive
+            requirements: Optional scope, requirements, or constraints
 
         Returns:
             Mission ID
         """
         await self._ensure_agents()
 
-        mission = await self.lifecycle.start_mission(target, directive)
+        mission = await self.lifecycle.start_mission(target, directive, requirements)
 
         # Start execution loop in background
         import asyncio
