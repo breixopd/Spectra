@@ -48,10 +48,15 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
                         <select id="tool-category" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-violet-500 focus:outline-none">
-                            <option value="recon">Reconnaissance</option>
+                            <option value="discovery">Discovery</option>
+                            <option value="enumeration">Enumeration</option>
+                            <option value="vulnerability">Vulnerability Scanning</option>
                             <option value="exploitation">Exploitation</option>
                             <option value="post_exploitation">Post-Exploitation</option>
-                            <option value="utility">Utility</option>
+                            <option value="web">Web</option>
+                            <option value="network">Network</option>
+                            <option value="secrets">Secrets</option>
+                            <option value="custom">Custom / Utility</option>
                         </select>
                     </div>
                     <div>
@@ -95,8 +100,9 @@
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Method</label>
                         <select id="install-method" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
                             <option value="apt">APT (Debian/Ubuntu)</option>
-                            <option value="pip">Pip (Python)</option>
+                            <option value="pipx">Pipx (Python)</option>
                             <option value="go">Go Install</option>
+                            <option value="binary">Binary Download</option>
                             <option value="script">Shell Script</option>
                             <option value="none">Pre-installed / None</option>
                         </select>

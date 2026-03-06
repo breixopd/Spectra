@@ -279,7 +279,7 @@ def build_grounded_context(mission: Any) -> GroundedContext:
     for exec_record in getattr(mission, "tool_executions", []):
         ctx.tools_run_with_results.append(
             {
-                "tool": exec_record.get("tool_name", "?"),
+                "tool": exec_record.get("tool", exec_record.get("tool_name", "?")),
                 "success": exec_record.get("success", False),
                 "evidence_quality": exec_record.get("evidence_quality", "unknown"),
             }
