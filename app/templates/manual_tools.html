@@ -42,15 +42,27 @@
         </div>
     </div>
 
-    <!-- Global Target -->
+    <!-- Global Target + Quick Actions -->
     <div class="glass-panel rounded-xl p-3 mb-4 shrink-0 animate-fade-in-up flex items-center gap-3">
         <div class="flex items-center gap-2 text-xs text-slate-400 shrink-0">
             <i class="fa-solid fa-crosshairs text-violet-400"></i>
             <span class="font-medium">Target</span>
         </div>
-        <input type="text" id="global-target" placeholder="Set target for all tools (e.g., 192.168.1.1 or example.com)"
-            class="flex-1 px-3 py-1.5 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:outline-none transition-all font-mono">
-        <span class="text-[10px] text-slate-600 shrink-0">Auto-fills tool target fields</span>
+        <input type="text" id="global-target" placeholder="Target IP or domain (e.g., 192.168.1.1)"
+            class="flex-1 px-3 py-1.5 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:outline-none transition-all font-mono" style="max-width:320px;">
+        <button onclick="quickRun('nmap')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Port scan">
+            <i class="fa-solid fa-network-wired text-violet-400"></i> Scan Ports
+        </button>
+        <button onclick="quickRun('nuclei')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Vulnerability scan">
+            <i class="fa-solid fa-bug text-rose-400"></i> Vuln Scan
+        </button>
+        <button onclick="quickRun('whatweb')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Fingerprint web tech">
+            <i class="fa-solid fa-globe text-blue-400"></i> Fingerprint
+        </button>
+        <div class="flex items-center gap-1.5 text-[10px] text-slate-500 shrink-0 ml-auto">
+            <i class="fa-solid fa-list-check"></i>
+            <span id="all-findings-count">0</span> findings
+        </div>
     </div>
 
     <!-- Execute Tab -->
@@ -466,19 +478,76 @@ async function executeManualTool() {
     }
 }
 
+let allFindings = [];
+let lastParsedFindings = [];
+
 function renderFindings(findings) {
+    lastParsedFindings = findings;
+    findings.forEach(f => {
+        f._source = selectedToolConfig?.id || 'unknown';
+        if (!allFindings.some(e => findingKey(e) === findingKey(f))) allFindings.push(f);
+    });
+    updateFindingsCount();
+
     const list = document.getElementById('findings-list');
     list.innerHTML = findings.slice(0, 30).map((f, i) => {
         const sev = f.severity || f.state || 'info';
         const title = f.name || f.service || f.title || f.template_id || `Finding ${i+1}`;
         const detail = f.port ? `Port ${f.port}` : f.host || f.url || '';
+        const product = [f.product, f.version].filter(Boolean).join(' ');
         const sevColor = {critical:'text-rose-400',high:'text-amber-400',medium:'text-blue-400',low:'text-slate-400',open:'text-emerald-400',info:'text-slate-500'}[sev.toLowerCase()] || 'text-slate-400';
-        return `<div class="flex items-center gap-3 text-xs p-2 rounded bg-white/[0.02] hover:bg-white/[0.04]">
-            <span class="font-mono ${sevColor} uppercase w-16 text-[10px] shrink-0">${sev}</span>
-            <span class="text-white truncate">${escapeHtml(title)}</span>
-            <span class="text-slate-500 ml-auto shrink-0">${escapeHtml(detail)}</span>
+
+        let actions = '';
+        if (product) {
+            actions += `<button onclick="lookupCVEsFor('${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded text-[10px] transition-colors" title="Search CVEs for ${escapeAttr(product)}"><i class="fa-solid fa-shield-virus"></i></button>`;
+            actions += `<button onclick="runToolOn('searchsploit','${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded text-[10px] transition-colors" title="SearchSploit"><i class="fa-solid fa-magnifying-glass"></i></button>`;
+        }
+        if (f.port || f.portid) {
+            const host = f.ip || f.host || document.getElementById('global-target')?.value || '';
+            const port = f.portid || f.port;
+            const svc = (f.service || '').toLowerCase();
+            const proto = (svc.includes('ssl') || svc.includes('https') || port == 443) ? 'https' : 'http';
+            const url = `${proto}://${host}:${port}`;
+            actions += `<button onclick="runToolOn('nuclei','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded text-[10px] transition-colors" title="Scan with Nuclei"><i class="fa-solid fa-bug"></i></button>`;
+            if (svc.includes('http')) {
+                actions += `<button onclick="runToolOn('nikto','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded text-[10px] transition-colors" title="Scan with Nikto"><i class="fa-solid fa-globe"></i></button>`;
+            }
+        }
+
+        return `<div class="flex items-center gap-2 text-xs p-2 rounded bg-white/[0.02] hover:bg-white/[0.04] group">
+            <span class="font-mono ${sevColor} uppercase w-14 text-[10px] shrink-0">${sev}</span>
+            <span class="text-white truncate flex-1">${escapeHtml(title)}</span>
+            <span class="text-slate-500 shrink-0 text-[10px]">${escapeHtml(detail)}</span>
+            <div class="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">${actions}</div>
         </div>`;
     }).join('');
+}
+
+function findingKey(f) {
+    return [f.name||f.service||'', f.host||f.ip||'', f.port||f.portid||'', f.severity||''].join('|');
+}
+
+function updateFindingsCount() {
+    const badge = document.getElementById('all-findings-count');
+    if (badge) badge.textContent = allFindings.length;
+}
+
+function escapeAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+function lookupCVEsFor(product) {
+    switchManualTab('cve');
+    const parts = product.split(' ');
+    document.getElementById('cve-product').value = parts[0] || '';
+    document.getElementById('cve-version').value = parts.slice(1).join(' ') || '';
+    searchCVEs();
+}
+
+function runToolOn(toolId, target) {
+    selectManualTool(toolId);
+    setTimeout(() => {
+        const targetInput = document.getElementById('arg-target');
+        if (targetInput) targetInput.value = target;
+    }, 300);
 }
 
 function colorizeOutput(text) {
@@ -520,7 +589,12 @@ function showNextToolSuggestions(toolId) {
 }
 
 function chainToTool(toolId) {
+    const smartTarget = buildSmartTarget(toolId, lastParsedFindings, lastToolOutput);
     selectManualTool(toolId);
+    setTimeout(() => {
+        const targetInput = document.getElementById('arg-target');
+        if (targetInput && smartTarget) targetInput.value = smartTarget;
+    }, 300);
 }
 
 // Pipeline templates
@@ -823,6 +897,22 @@ async function searchCVEs() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-magnifying-glass mr-1"></i> Search';
     }
+}
+
+function quickRun(toolId) {
+    const target = document.getElementById('global-target')?.value?.trim();
+    if (!target) {
+        alert('Enter a target first');
+        document.getElementById('global-target')?.focus();
+        return;
+    }
+    switchManualTab('execute');
+    selectManualTool(toolId);
+    setTimeout(() => {
+        const targetInput = document.getElementById('arg-target');
+        if (targetInput) targetInput.value = target;
+        executeManualTool();
+    }, 400);
 }
 
 // Init
