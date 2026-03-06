@@ -149,6 +149,11 @@ class StartMissionRequest(BaseModel):
         max_length=2000,
         description="High-level assessment directive (max 2000 chars)",
     )
+    requirements: str | None = Field(
+        default=None,
+        max_length=5000,
+        description="Optional scope, requirements, or constraints for the mission",
+    )
     record_demo: bool = Field(
         default=False,
         description="Record a video walkthrough of the exploit workflow if exploitation succeeds",

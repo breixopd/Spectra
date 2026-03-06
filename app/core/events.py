@@ -226,7 +226,7 @@ class EventBus:
         limit: int = 100,
     ) -> list[Event]:
         """Get recent events, optionally filtered by type."""
-        events = self._event_history
+        events = list(self._event_history)
 
         if event_type:
             event_name = (

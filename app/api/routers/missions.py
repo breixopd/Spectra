@@ -4,7 +4,8 @@ Mission API Router.
 Endpoints for managing security missions.
 """
 
-from typing import List
+import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
@@ -15,7 +16,6 @@ from app.api.schemas import MissionResponse, StartMissionRequest
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
 from app.models.user import User
-import logging
 from app.repositories.mission import MissionRepository
 from app.services.mission import mission_manager
 
@@ -108,7 +108,9 @@ async def start_mission(
     Rate limited to 5 missions per minute per user.
     """
     mission_id = await mission_manager.start_mission(
-        mission_request.target, mission_request.directive
+        mission_request.target,
+        mission_request.directive,
+        requirements=mission_request.requirements,
     )
     mission = await mission_manager.get_mission(mission_id)
 
@@ -141,7 +143,7 @@ async def start_mission(
     )
 
 
-@router.get("", response_model=List[MissionResponse])
+@router.get("", response_model=list[MissionResponse])
 async def list_missions(
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
     limit: int = Query(

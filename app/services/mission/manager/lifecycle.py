@@ -23,9 +23,11 @@ class MissionLifecycleManager:
     def __init__(self, active_missions: dict[str, Mission]):
         self.active_missions = active_missions
 
-    async def start_mission(self, target: str, directive: str) -> Mission:
+    async def start_mission(
+        self, target: str, directive: str, requirements: str | None = None
+    ) -> Mission:
         """Create and start a new mission."""
-        mission = Mission(target, directive)
+        mission = Mission(target, directive, requirements=requirements)
         self.active_missions[mission.id] = mission
 
         # Persist to DB
@@ -118,11 +120,15 @@ class MissionLifecycleManager:
                 )
                 mission._broadcast("geo", geo)
 
+            effective_mission = mission.directive
+            if mission.requirements:
+                effective_mission = f"{mission.directive}\n\nRequirements:\n{mission.requirements}"
+
             return AgentContext(
                 mission_id=mission.id,
                 session_id=mission.id,
                 target=mission.target,
-                mission=mission.directive,
+                mission=effective_mission,
                 phase="scope",
                 stealth_mode=False,
                 max_concurrency=3,

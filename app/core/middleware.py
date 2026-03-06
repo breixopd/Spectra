@@ -36,15 +36,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         for key, value in headers.items():
             response.headers[key] = value
 
-        # CSP - Relaxed for dashboard, stricter for API
+        # CSP - all assets served locally for air-gapped support
         if not request.url.path.startswith("/api/"):
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; "
-                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
-                "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
-                "img-src 'self' data: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com; "
-                "connect-src 'self' ws: wss: https://unpkg.com; "
+                "script-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "font-src 'self'; "
+                "img-src 'self' data:; "
+                "connect-src 'self' ws: wss:; "
                 "frame-ancestors 'none';"
             )
 

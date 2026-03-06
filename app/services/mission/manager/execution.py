@@ -567,10 +567,28 @@ class MissionExecutionManager:
                 save_report,
             )
 
-            html = generate_html_report(mission.to_dict())
+            report_data = {
+                "mission": {
+                    "id": mission.id,
+                    "target": mission.target,
+                    "directive": mission.directive,
+                    "name": f"Assessment of {mission.target}",
+                    "summary": mission.to_dict().get("summary", {}),
+                },
+                "findings": mission.findings,
+                "attack_surface": {
+                    "services": [
+                        {"host": s.host, "port": s.port, "service": s.service, "product": s.product, "version": s.version}
+                        for s in mission.attack_surface.services
+                    ] if mission.attack_surface else [],
+                },
+                "tools_used": mission.tools_run or [],
+            }
+            html = generate_html_report(report_data)
             path = save_report(mission.id, html)
             if path:
-                mission.log(f"[REPORT] HTML report: {path}")
+                mission.report_path = path
+                mission.log(f"Report saved: {path}")
         except Exception as e:
             logger.debug("HTML report generation failed: %s", e)
 

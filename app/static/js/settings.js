@@ -58,7 +58,7 @@ async function testConnection(provider) {
     btn.disabled = true;
 
     try {
-        const response = await fetch('/api/settings/test-llm', {
+        const response = await fetch('/test-llm', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -69,9 +69,9 @@ async function testConnection(provider) {
         const result = await response.json();
 
         if (result.success) {
-            alert(`Success! Response: ${result.response}`);
+            alert('Success! LLM connection is working.');
         } else {
-            alert(`Failed: ${result.message}`);
+            alert(`Failed: ${result.error || 'Unknown error'}`);
         }
     } catch (error) {
         console.error('Test failed:', error);
@@ -171,7 +171,7 @@ async function applyPreset(presetId) {
         const btn = event.target.closest('button');
         if (btn) {
             const orig = btn.innerHTML;
-            btn.innerHTML = '<span class="text-emerald-400">✓ Applied</span>';
+            btn.innerHTML = '<span class="text-emerald-400"><i class="fa-solid fa-check"></i> Applied</span>';
             setTimeout(() => { btn.innerHTML = orig; }, 1500);
         }
     } catch (e) {

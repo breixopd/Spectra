@@ -170,7 +170,8 @@ def generate_diff_report(diff: dict[str, Any]) -> str:
         lines.append("")
         for f in new_finds:
             name = f.get("template-id") or f.get("name") or "unnamed"
-            sev = f.get("severity") or f.get("info", {}).get("severity") or "?"
+            info = f.get("info") if isinstance(f.get("info"), dict) else {}
+            sev = f.get("severity") or info.get("severity") or "?"
             host = f.get("host") or f.get("ip") or ""
             lines.append(f"- **{name}** [{sev}] @ {host}")
         lines.append("")

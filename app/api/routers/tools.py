@@ -81,10 +81,8 @@ async def validate_plugin_config(
         # Or better, use pydantic validation directly
         ToolConfig.model_validate(config)
 
-        # Also check for dangerous commands
-        # We can reuse registry._validate_commands but we need a ToolConfig object
         tool_config = ToolConfig.model_validate(config)
-        registry._validate_commands(tool_config)
+        registry.validator._validate_commands(tool_config)
 
         return {"valid": True, "message": "Plugin configuration is valid"}
     except ValueError as e:

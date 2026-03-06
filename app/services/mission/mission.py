@@ -34,10 +34,11 @@ class Mission:
     - Coordinate agents (see MissionManager)
     """
 
-    def __init__(self, target: str, directive: str):
+    def __init__(self, target: str, directive: str, requirements: str | None = None):
         self.id = str(uuid.uuid4())
         self.target = target
         self.directive = directive
+        self.requirements = requirements
         self.status = "created"
         self.start_time = datetime.now()
         self.plan: MissionPlan | None = None
@@ -262,6 +263,7 @@ class Mission:
             "id": self.id,
             "target": self.target,
             "directive": self.directive,
+            "requirements": self.requirements,
             "status": self.status,
             "start_time": self.start_time.isoformat(),
             "current_task_index": self.current_task_index,

@@ -2,6 +2,7 @@
 UI router for serving the frontend dashboard.
 """
 
+import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -23,6 +24,7 @@ router = APIRouter()
 # Templates directory
 APP_DIR = Path(__file__).resolve().parent.parent.parent
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
+templates.env.globals["app_name"] = settings.APP_NAME
 
 
 @router.get("/setup", response_class=HTMLResponse)
@@ -36,7 +38,7 @@ async def setup_page(request: Request):
 
     return templates.TemplateResponse(
         "setup.html",
-        {"request": request, "title": "Spectra | Setup"},
+        {"request": request, "title": f"{settings.APP_NAME} | Setup"},
     )
 
 
@@ -51,7 +53,7 @@ async def login_page(request: Request):
 
     return templates.TemplateResponse(
         "login.html",
-        {"request": request, "title": "Spectra | Login"},
+        {"request": request, "title": f"{settings.APP_NAME} | Login"},
     )
 
 
@@ -66,7 +68,7 @@ async def dashboard(request: Request):
 
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "title": "Spectra | War Room"},
+        {"request": request, "title": f"{settings.APP_NAME} | Dashboard"},
     )
 
 
@@ -75,7 +77,7 @@ async def targets_page(request: Request):
     """Serve the targets management page."""
     return templates.TemplateResponse(
         "targets.html",
-        {"request": request, "title": "Spectra | Targets"},
+        {"request": request, "title": f"{settings.APP_NAME} | Targets"},
     )
 
 
@@ -84,7 +86,7 @@ async def history_page(request: Request):
     """Serve the mission history page."""
     return templates.TemplateResponse(
         "history.html",
-        {"request": request, "title": "Spectra | Mission History"},
+        {"request": request, "title": f"{settings.APP_NAME} | History"},
     )
 
 
@@ -93,7 +95,7 @@ async def reports_page(request: Request):
     """Serve the reports page."""
     return templates.TemplateResponse(
         "reports.html",
-        {"request": request, "title": "Spectra | Reports"},
+        {"request": request, "title": f"{settings.APP_NAME} | Reports"},
     )
 
 
@@ -102,7 +104,7 @@ async def overseer_page(request: Request):
     """Serve the agent overseer page."""
     return templates.TemplateResponse(
         "overseer.html",
-        {"request": request, "title": "Spectra | Overseer"},
+        {"request": request, "title": f"{settings.APP_NAME} | Agents"},
     )
 
 
@@ -111,7 +113,7 @@ async def toolbox_page(request: Request):
     """Serve the toolbox page."""
     return templates.TemplateResponse(
         "toolbox.html",
-        {"request": request, "title": "Spectra | Toolbox"},
+        {"request": request, "title": f"{settings.APP_NAME} | Toolbox"},
     )
 
 
@@ -120,7 +122,7 @@ async def manual_tools_page(request: Request):
     """Serve the manual tools execution page."""
     return templates.TemplateResponse(
         "manual_tools.html",
-        {"request": request, "title": "Spectra | Manual Tools"},
+        {"request": request, "title": f"{settings.APP_NAME} | Manual Tools"},
     )
 
 
@@ -129,7 +131,7 @@ async def plugin_creator_page(request: Request):
     """Serve the plugin creator page."""
     return templates.TemplateResponse(
         "plugin_creator.html",
-        {"request": request, "title": "Spectra | Plugin Creator"},
+        {"request": request, "title": f"{settings.APP_NAME} | Plugin Creator"},
     )
 
 
@@ -138,7 +140,7 @@ async def settings_page(request: Request):
     """Serve the settings page."""
     return templates.TemplateResponse(
         "settings.html",
-        {"request": request, "title": "Spectra | Settings"},
+        {"request": request, "title": f"{settings.APP_NAME} | Settings"},
     )
 
 
@@ -147,7 +149,7 @@ async def observability_page(request: Request):
     """Serve the observability/monitoring page."""
     return templates.TemplateResponse(
         "observability.html",
-        {"request": request, "title": "Spectra | Observability"},
+        {"request": request, "title": f"{settings.APP_NAME} | Observability"},
     )
 
 
@@ -169,9 +171,6 @@ async def shell_page(request: Request, session_id: str):
         },
     )
 
-
-# Global lock for settings updates to prevent race conditions
-import asyncio
 
 SETTINGS_LOCK = asyncio.Lock()
 

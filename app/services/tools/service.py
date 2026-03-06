@@ -995,10 +995,11 @@ Example response format:
                 pass
 
         # Handle vulnerability findings (from nuclei, etc.)
-        severity = finding.get("severity") or finding.get("info", {}).get("severity")
+        info = finding.get("info") if isinstance(finding.get("info"), dict) else {}
+        severity = finding.get("severity") or info.get("severity")
         name = (
             finding.get("name")
-            or finding.get("info", {}).get("name")
+            or info.get("name")
             or finding.get("template-id")
         )
 
@@ -1007,10 +1008,8 @@ Example response format:
             and name
             and severity.lower() in ("info", "low", "medium", "high", "critical")
         ):
-            # Extract CVE ID - may be a list or string
-            cve_id = finding.get("cve_id") or finding.get("info", {}).get(
-                "classification", {}
-            ).get("cve-id")
+            classification = info.get("classification") if isinstance(info.get("classification"), dict) else {}
+            cve_id = finding.get("cve_id") or classification.get("cve-id")
             if isinstance(cve_id, list):
                 cve_id = cve_id[0] if cve_id else None
 

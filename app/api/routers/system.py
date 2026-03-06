@@ -13,7 +13,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
 from sqlalchemy import delete, text
@@ -27,8 +27,12 @@ from app.core.database import get_async_session
 from app.models.mission import Mission
 from app.models.user import User
 from app.services.tools.models import ToolStatus
-from app.core.cache import CacheService
 from app.services.tools.registry import ToolRegistry, get_registry
+
+
+async def get_redis_client(request: Request) -> Redis:
+    """Dependency to get the Redis client from app state."""
+    return request.app.state.redis
 
 logger = logging.getLogger("spectra.api.system")
 
@@ -148,14 +152,14 @@ async def get_system_operations(redis: Redis) -> list[OngoingOperation]:
     operations = []
 
     try:
-        # Check for operations list
-        ops_data = await redis.lrange(SystemKeys.OPERATIONS, 0, -1)  # type: ignore[misc]
-        for op_json in ops_data:
+        # Operations are stored as a Redis HASH (key=op_id, value=JSON)
+        ops_data = await redis.hgetall(SystemKeys.OPERATIONS)
+        for op_id, op_json in ops_data.items():
             try:
                 op = json.loads(op_json)
                 operations.append(
                     OngoingOperation(
-                        id=op.get("id", "unknown"),
+                        id=op.get("id", op_id.decode() if isinstance(op_id, bytes) else str(op_id)),
                         type=op.get("type", "unknown"),
                         description=op.get("description", "Unknown operation"),
                         started_at=op.get("started_at"),
@@ -245,6 +249,7 @@ async def check_embeddings_loading(redis: Redis) -> bool:
 async def get_system_status(
     db: AsyncSession = Depends(get_async_session),
     registry: ToolRegistry = Depends(get_tool_registry),
+    redis: Redis = Depends(get_redis_client),
     _current_user: User = Depends(get_current_active_user),
 ) -> SystemStatusResponse:
     """
@@ -300,11 +305,10 @@ async def get_system_status(
     except Exception as e:
         logger.warning("Failed to get tool stats: %s", e)
 
-    # Check ongoing operations
-    cache = CacheService()
-    tools_installing = await check_tools_installing(cache)
-    embeddings_loading = await check_embeddings_loading(cache)
-    operations = await get_system_operations(cache)
+    # Check ongoing operations via Redis
+    tools_installing = await check_tools_installing(redis)
+    embeddings_loading = await check_embeddings_loading(redis)
+    operations = await get_system_operations(redis)
 
     # Determine setup status
     setup_complete = True
@@ -356,6 +360,7 @@ async def get_system_status(
 
 @router.post("/clear/tools", response_model=ClearResponse)
 async def clear_tool_statistics(
+    redis: Redis = Depends(get_redis_client),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """
@@ -367,19 +372,16 @@ async def clear_tool_statistics(
     cleared_count = 0
 
     try:
-        # Find and delete all tool-related keys
         patterns = [
             "spectra:tool:*",
             "spectra:tools:status:*",
             "spectra:tools:install:*",
         ]
 
-        cache = CacheService()
         for pattern in patterns:
-            keys = await cache.keys(pattern)
-            if keys:
-                await cache.delete(*keys)
-                cleared_count += len(keys)
+            async for key in redis.scan_iter(match=pattern):
+                await redis.delete(key)
+                cleared_count += 1
 
         logger.info("Cleared %d tool statistic keys from Cache", cleared_count)
 
@@ -401,6 +403,7 @@ async def clear_tool_statistics(
 async def clear_missions(
     request: ClearMissionsRequest,
     db: AsyncSession = Depends(get_async_session),
+    redis: Redis = Depends(get_redis_client),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """
@@ -431,13 +434,10 @@ async def clear_missions(
 
         deleted_count: int = result.rowcount or 0  # type: ignore[assignment]
 
-        # Also clear any mission-related cache in DB Cache
-        cache = CacheService()
         redis_cleared = 0
-        keys = await cache.keys("cache:mission:*")
-        if keys:
-            await cache.delete(*keys)
-            redis_cleared += len(keys)
+        async for key in redis.scan_iter(match="cache:mission:*"):
+            await redis.delete(key)
+            redis_cleared += 1
 
         logger.info(
             "Cleared %d missions%s (and %d cache entries)",
@@ -467,6 +467,7 @@ async def clear_cache(
         default="cache:*",
         description="Redis key pattern to clear (default: cache:*)",
     ),
+    redis: Redis = Depends(get_redis_client),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """
@@ -492,11 +493,9 @@ async def clear_cache(
 
     try:
         cleared_count = 0
-        cache = CacheService()
-        keys = await cache.keys(pattern)
-        if keys:
-            await cache.delete(*keys)
-            cleared_count += len(keys)
+        async for key in redis.scan_iter(match=pattern):
+            await redis.delete(key)
+            cleared_count += 1
 
         logger.info(
             "Cleared %d cache keys matching pattern '%s'", cleared_count, pattern

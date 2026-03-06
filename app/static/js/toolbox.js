@@ -4,7 +4,12 @@
  * Also handles Drag & Drop file uploads for plugins.
  */
 
-// Fetch and render tools
+let _lastToolsHash = '';
+
+function _hashTools(tools) {
+    return JSON.stringify(tools.map(t => t.id + ':' + t.status + ':' + t.name));
+}
+
 async function refreshTools() {
     const grid = document.getElementById('tools-grid');
     try {
@@ -13,12 +18,19 @@ async function refreshTools() {
         const tools = data.tools || data;
 
         if (!tools || tools.length === 0) {
-            grid.innerHTML = '<div class="empty-state glass-panel rounded-xl"><i class="fa-solid fa-toolbox text-rose-400/40"></i><h3>No tools registered</h3><p>Upload a plugin JSON file to get started.</p></div>';
+            if (_lastToolsHash !== 'empty') {
+                grid.innerHTML = '<div class="empty-state glass-panel rounded-xl"><i class="fa-solid fa-toolbox text-rose-400/40"></i><h3>No tools registered</h3><p>Upload a plugin JSON file to get started.</p></div>';
+                _lastToolsHash = 'empty';
+            }
             return;
         }
+
+        const newHash = _hashTools(tools);
+        if (newHash === _lastToolsHash) return;
+        _lastToolsHash = newHash;
         
         grid.innerHTML = tools.map((tool, i) => `
-            <div onclick="selectTool('${tool.id}')" class="glass-panel p-5 rounded-xl hover:bg-white/5 cursor-pointer group border border-transparent hover:border-violet-500/30 relative overflow-hidden card-hover animate-fade-in-up" style="animation-delay: ${i * 0.04}s">
+            <div onclick="selectTool('${tool.id}')" class="glass-panel p-5 rounded-xl hover:bg-white/5 cursor-pointer group border border-transparent hover:border-violet-500/30 relative overflow-hidden animate-fade-in-up" style="animation-delay: ${i * 0.04}s">
                 <div class="flex justify-between items-start mb-3">
                     <div class="w-9 h-9 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center">
                         <i class="fa-solid fa-wrench"></i>
@@ -195,7 +207,7 @@ async function handleFiles(files) {
     
     const status = document.getElementById('upload-status');
     status.classList.remove('hidden');
-    status.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Uploading...';
+    status.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
     
     try {
         // [FIX] Use FormData to send file, not JSON
@@ -230,7 +242,7 @@ function showTestModal(toolId) {
             <div id="test-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
                 <div class="glass p-8 rounded-2xl w-full max-w-2xl relative max-h-[80vh] overflow-hidden flex flex-col">
                     <button onclick="document.getElementById('test-modal').remove()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
-                        <i class="ph ph-x text-xl"></i>
+                        <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
                     
                     <h3 class="text-xl font-bold text-white mb-4">Test Tool: <span id="test-tool-name">${toolId}</span></h3>
@@ -249,7 +261,7 @@ function showTestModal(toolId) {
                     </div>
                     
                     <button onclick="runToolTest('${toolId}')" id="test-run-btn" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors mb-4">
-                        <i class="ph ph-play"></i> Run Test
+                        <i class="fa-solid fa-play"></i> Run Test
                     </button>
                     
                     <div id="test-result" class="flex-1 overflow-auto bg-black/50 rounded-lg p-4 font-mono text-sm hidden">
@@ -285,7 +297,7 @@ async function runToolTest(toolId) {
     }
 
     runBtn.disabled = true;
-    runBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Running...';
+        runBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
     resultDiv.classList.remove('hidden');
     resultDiv.innerHTML = '<div class="text-gray-400">Executing tool... This may take a while.</div>';
 
@@ -326,7 +338,7 @@ async function runToolTest(toolId) {
         resultDiv.innerHTML = `<div class="text-red-400">Error: ${e.message}</div>`;
     } finally {
         runBtn.disabled = false;
-        runBtn.innerHTML = '<i class="ph ph-play"></i> Run Test';
+        runBtn.innerHTML = '<i class="fa-solid fa-play"></i> Run Test';
     }
 }
 

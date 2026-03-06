@@ -35,7 +35,61 @@
                 <button id="tab-pipeline" class="tab-btn-manual" onclick="switchManualTab('pipeline')">
                     <i class="fa-solid fa-diagram-project mr-1.5"></i> Pipeline
                 </button>
+                <button id="tab-cve" class="tab-btn-manual" onclick="switchManualTab('cve')">
+                    <i class="fa-solid fa-shield-virus mr-1.5"></i> CVE Lookup
+                </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Tips Banner (dismissible) -->
+    <div id="tips-banner" class="glass-panel rounded-xl p-3 mb-3 shrink-0 animate-fade-in-up border-l-2 border-violet-500/50">
+        <div class="flex items-start gap-3">
+            <i class="fa-solid fa-lightbulb text-violet-400 mt-0.5 shrink-0"></i>
+            <div class="flex-1">
+                <p id="tip-text" class="text-xs text-slate-300"></p>
+            </div>
+            <button onclick="nextTip()" class="text-[10px] text-violet-400 hover:text-violet-300 shrink-0" title="Next tip">Next</button>
+            <button onclick="document.getElementById('tips-banner').classList.add('hidden')" class="text-slate-600 hover:text-slate-400 shrink-0" title="Dismiss tips">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Session Bar -->
+    <div id="session-bar" class="glass-panel rounded-xl p-2 mb-3 shrink-0 animate-fade-in-up flex items-center gap-3">
+        <i class="fa-solid fa-folder-open text-slate-500 text-xs"></i>
+        <span id="session-label" class="text-xs text-slate-400">No active session</span>
+        <div class="ml-auto flex gap-2">
+            <button onclick="startSession()" id="session-start-btn" class="px-2.5 py-1 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-[11px] transition-colors">
+                <i class="fa-solid fa-plus mr-1"></i> New Session
+            </button>
+            <button onclick="exportSession()" id="session-export-btn" class="hidden px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
+                <i class="fa-solid fa-file-export mr-1"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Global Target + Quick Actions -->
+    <div class="glass-panel rounded-xl p-3 mb-4 shrink-0 animate-fade-in-up flex items-center gap-3">
+        <div class="flex items-center gap-2 text-xs text-slate-400 shrink-0">
+            <i class="fa-solid fa-crosshairs text-violet-400"></i>
+            <span class="font-medium">Target</span>
+        </div>
+        <input type="text" id="global-target" placeholder="Target IP or domain (e.g., 192.168.1.1)"
+            class="flex-1 px-3 py-1.5 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:outline-none transition-all font-mono" style="max-width:320px;">
+        <button onclick="quickRun('nmap')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Port scan">
+            <i class="fa-solid fa-network-wired text-violet-400"></i> Scan Ports
+        </button>
+        <button onclick="quickRun('nuclei')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Vulnerability scan">
+            <i class="fa-solid fa-bug text-rose-400"></i> Vuln Scan
+        </button>
+        <button onclick="quickRun('whatweb')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Fingerprint web tech">
+            <i class="fa-solid fa-globe text-blue-400"></i> Fingerprint
+        </button>
+        <div class="flex items-center gap-1.5 text-[10px] text-slate-500 shrink-0 ml-auto">
+            <i class="fa-solid fa-list-check"></i>
+            <span id="all-findings-count">0</span> findings
         </div>
     </div>
 
@@ -82,6 +136,11 @@
                         </button>
                         <div id="exec-status" class="text-xs text-slate-500 ml-auto font-mono"></div>
                     </div>
+                    <!-- Next tool suggestions -->
+                    <div id="next-tool-suggestions" class="hidden mt-3 pt-3 border-t border-white/5">
+                        <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">Feed results to</div>
+                        <div id="suggestions-list" class="flex flex-wrap gap-2"></div>
+                    </div>
                 </div>
             </div>
 
@@ -99,7 +158,7 @@
                     </div>
                 </div>
                 <div id="output-area" class="flex-1 overflow-y-auto p-4 font-mono text-sm text-slate-300 whitespace-pre-wrap">
-                    <span class="text-slate-600">Output will appear here...</span>
+                    <span class="text-slate-500">Select a tool and click Run to see output here.</span>
                 </div>
                 <!-- Findings panel -->
                 <div id="findings-panel" class="hidden border-t border-white/10 max-h-[200px] overflow-y-auto">
@@ -115,7 +174,7 @@
     <!-- Pipeline Tab -->
     <div id="panel-pipeline" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <div class="glass-panel rounded-xl p-5 mb-4 shrink-0">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between mb-3">
                 <div>
                     <h2 class="text-lg font-bold text-white">Tool Pipeline</h2>
                     <p class="text-slate-400 text-sm">Chain tools together — output from one feeds into the next</p>
@@ -128,6 +187,18 @@
                         <i class="fa-solid fa-play mr-1"></i> Run Pipeline
                     </button>
                 </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <span class="text-[10px] text-slate-500 uppercase font-bold self-center mr-1">Templates:</span>
+                <button onclick="loadPipelineTemplate('recon')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
+                    <i class="fa-solid fa-radar text-violet-400 mr-1"></i> Recon (nmap + nikto + gobuster)
+                </button>
+                <button onclick="loadPipelineTemplate('vuln')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
+                    <i class="fa-solid fa-bug text-rose-400 mr-1"></i> Vuln Scan (nmap + nuclei + searchsploit)
+                </button>
+                <button onclick="loadPipelineTemplate('web')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
+                    <i class="fa-solid fa-globe text-blue-400 mr-1"></i> Web App (whatweb + nikto + sqlmap)
+                </button>
             </div>
         </div>
 
@@ -154,6 +225,43 @@
             </div>
         </div>
     </div>
+
+    <!-- CVE Lookup Tab -->
+    <div id="panel-cve" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
+        <div class="glass-panel rounded-xl p-5 mb-4 shrink-0">
+            <h2 class="text-lg font-bold text-white mb-1">CVE Lookup</h2>
+            <p class="text-slate-400 text-sm mb-4">Search known vulnerabilities by product, version, or service.</p>
+            <div class="flex gap-3 items-end">
+                <div class="flex-1">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Product</label>
+                    <input type="text" id="cve-product" placeholder="e.g., Apache, OpenSSH, nginx"
+                        class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none">
+                </div>
+                <div style="width:120px;">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Version</label>
+                    <input type="text" id="cve-version" placeholder="e.g., 2.4.49"
+                        class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none">
+                </div>
+                <div style="width:120px;">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Service</label>
+                    <input type="text" id="cve-service" placeholder="e.g., http"
+                        class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none">
+                </div>
+                <button onclick="searchCVEs()" id="cve-search-btn" class="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all shrink-0">
+                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Search
+                </button>
+            </div>
+        </div>
+        <div class="flex-1 min-h-0 glass-panel rounded-xl overflow-hidden flex flex-col">
+            <div class="px-4 py-2 border-b border-white/10 text-xs text-slate-400 flex items-center justify-between shrink-0">
+                <span><i class="fa-solid fa-shield-virus mr-1"></i> Results</span>
+                <span id="cve-count" class="text-slate-500 font-mono"></span>
+            </div>
+            <div id="cve-results" class="flex-1 overflow-y-auto p-4 space-y-2">
+                <div class="text-slate-600 text-sm text-center py-8">Enter a product name to search for known CVEs.</div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -170,10 +278,13 @@ let pipelineStepId = 0;
 function switchManualTab(tab) {
     document.querySelectorAll('.tab-btn-manual').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
-    document.getElementById('panel-execute').classList.toggle('hidden', tab !== 'execute');
-    document.getElementById('panel-execute').classList.toggle('flex', tab === 'execute');
-    document.getElementById('panel-pipeline').classList.toggle('hidden', tab !== 'pipeline');
-    document.getElementById('panel-pipeline').classList.toggle('flex', tab === 'pipeline');
+    ['execute', 'pipeline', 'cve'].forEach(t => {
+        const panel = document.getElementById('panel-' + t);
+        if (panel) {
+            panel.classList.toggle('hidden', tab !== t);
+            panel.classList.toggle('flex', tab === t);
+        }
+    });
 }
 
 // Load tools
@@ -240,6 +351,23 @@ async function selectManualTool(toolId) {
     }
 }
 
+// Tool chaining suggestions
+const TOOL_CHAINS = {
+    nmap: ['nuclei', 'nikto', 'searchsploit', 'gobuster'],
+    nuclei: ['searchsploit', 'sqlmap', 'nikto'],
+    nikto: ['sqlmap', 'gobuster', 'dirsearch'],
+    whatweb: ['nikto', 'nuclei', 'wpscan'],
+    gobuster: ['nikto', 'sqlmap', 'ffuf'],
+    dirsearch: ['nikto', 'sqlmap', 'ffuf'],
+    subfinder: ['nmap', 'httpx', 'nuclei'],
+    httpx: ['nuclei', 'nikto', 'gobuster'],
+    wpscan: ['sqlmap', 'nuclei'],
+    naabu: ['nmap', 'nuclei', 'httpx'],
+    feroxbuster: ['nikto', 'sqlmap'],
+};
+
+let lastToolOutput = '';
+
 function buildForm(cfg) {
     document.getElementById('form-tool-name').textContent = cfg.name;
     document.getElementById('form-tool-desc').textContent = cfg.metadata.ai_description || cfg.description;
@@ -253,13 +381,15 @@ function buildForm(cfg) {
     badge.className = `w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-${cfg.ui.color || 'violet'}-500/20 text-${cfg.ui.color || 'violet'}-400`;
     badge.innerHTML = `<i class="fa-solid fa-${getIcon(cfg.ui.icon)}"></i>`;
 
-    // Build arg fields
+    const globalTarget = document.getElementById('global-target')?.value || '';
+    document.getElementById('next-tool-suggestions').classList.add('hidden');
+
     const container = document.getElementById('args-container');
     const placeholders = cfg.placeholders || [];
 
     let html = `<div class="arg-field">
         <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Target *</label>
-        <input type="text" id="arg-target" placeholder="e.g. 192.168.1.1 or example.com"
+        <input type="text" id="arg-target" value="${escapeHtml(globalTarget)}" placeholder="e.g. 192.168.1.1 or example.com"
             class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
     </div>`;
 
@@ -284,8 +414,12 @@ function buildForm(cfg) {
 }
 
 function getIcon(name) {
-    const map = {network:'network-wired', crosshair:'crosshairs', database:'database', key:'key', shield:'shield',
-        terminal:'terminal', bug:'bug', globe:'globe', lightning:'bolt', 'folder-open':'folder-open'};
+    const map = {
+        network:'network-wired', crosshair:'crosshairs', database:'database',
+        key:'key', shield:'shield', terminal:'terminal', bug:'bug',
+        globe:'globe', lightning:'bolt', 'folder-open':'folder-open',
+        'globe-hemisphere-west':'earth-americas', 'shield-warning':'shield-halved',
+    };
     return map[name] || 'wrench';
 }
 
@@ -357,6 +491,15 @@ async function executeManualTool() {
             document.getElementById('output-findings-count').textContent = `${result.parsed_findings_count} findings`;
             renderFindings(result.parsed_findings);
         }
+
+        // Store output, log to session, and show next-tool suggestions
+        lastToolOutput = result.stdout || '';
+        logToSession(
+            `Ran ${selectedToolConfig.name} against ${target}`,
+            selectedToolConfig.id,
+            result.parsed_findings || []
+        );
+        showNextToolSuggestions(selectedToolConfig.id);
     } catch (e) {
         clearInterval(timer);
         outputArea.innerHTML += `\n<span class="text-red-400">Error: ${e.message}</span>`;
@@ -368,19 +511,76 @@ async function executeManualTool() {
     }
 }
 
+let allFindings = [];
+let lastParsedFindings = [];
+
 function renderFindings(findings) {
+    lastParsedFindings = findings;
+    findings.forEach(f => {
+        f._source = selectedToolConfig?.id || 'unknown';
+        if (!allFindings.some(e => findingKey(e) === findingKey(f))) allFindings.push(f);
+    });
+    updateFindingsCount();
+
     const list = document.getElementById('findings-list');
     list.innerHTML = findings.slice(0, 30).map((f, i) => {
         const sev = f.severity || f.state || 'info';
         const title = f.name || f.service || f.title || f.template_id || `Finding ${i+1}`;
         const detail = f.port ? `Port ${f.port}` : f.host || f.url || '';
+        const product = [f.product, f.version].filter(Boolean).join(' ');
         const sevColor = {critical:'text-rose-400',high:'text-amber-400',medium:'text-blue-400',low:'text-slate-400',open:'text-emerald-400',info:'text-slate-500'}[sev.toLowerCase()] || 'text-slate-400';
-        return `<div class="flex items-center gap-3 text-xs p-2 rounded bg-white/[0.02] hover:bg-white/[0.04]">
-            <span class="font-mono ${sevColor} uppercase w-16 text-[10px] shrink-0">${sev}</span>
-            <span class="text-white truncate">${escapeHtml(title)}</span>
-            <span class="text-slate-500 ml-auto shrink-0">${escapeHtml(detail)}</span>
+
+        let actions = '';
+        if (product) {
+            actions += `<button onclick="lookupCVEsFor('${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded text-[10px] transition-colors" title="Search CVEs for ${escapeAttr(product)}"><i class="fa-solid fa-shield-virus"></i></button>`;
+            actions += `<button onclick="runToolOn('searchsploit','${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded text-[10px] transition-colors" title="SearchSploit"><i class="fa-solid fa-magnifying-glass"></i></button>`;
+        }
+        if (f.port || f.portid) {
+            const host = f.ip || f.host || document.getElementById('global-target')?.value || '';
+            const port = f.portid || f.port;
+            const svc = (f.service || '').toLowerCase();
+            const proto = (svc.includes('ssl') || svc.includes('https') || port == 443) ? 'https' : 'http';
+            const url = `${proto}://${host}:${port}`;
+            actions += `<button onclick="runToolOn('nuclei','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded text-[10px] transition-colors" title="Scan with Nuclei"><i class="fa-solid fa-bug"></i></button>`;
+            if (svc.includes('http')) {
+                actions += `<button onclick="runToolOn('nikto','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded text-[10px] transition-colors" title="Scan with Nikto"><i class="fa-solid fa-globe"></i></button>`;
+            }
+        }
+
+        return `<div class="flex items-center gap-2 text-xs p-2 rounded bg-white/[0.02] hover:bg-white/[0.04] group">
+            <span class="font-mono ${sevColor} uppercase w-14 text-[10px] shrink-0">${sev}</span>
+            <span class="text-white truncate flex-1">${escapeHtml(title)}</span>
+            <span class="text-slate-500 shrink-0 text-[10px]">${escapeHtml(detail)}</span>
+            <div class="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">${actions}</div>
         </div>`;
     }).join('');
+}
+
+function findingKey(f) {
+    return [f.name||f.service||'', f.host||f.ip||'', f.port||f.portid||'', f.severity||''].join('|');
+}
+
+function updateFindingsCount() {
+    const badge = document.getElementById('all-findings-count');
+    if (badge) badge.textContent = allFindings.length;
+}
+
+function escapeAttr(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+
+function lookupCVEsFor(product) {
+    switchManualTab('cve');
+    const parts = product.split(' ');
+    document.getElementById('cve-product').value = parts[0] || '';
+    document.getElementById('cve-version').value = parts.slice(1).join(' ') || '';
+    searchCVEs();
+}
+
+function runToolOn(toolId, target) {
+    selectManualTool(toolId);
+    setTimeout(() => {
+        const targetInput = document.getElementById('arg-target');
+        if (targetInput) targetInput.value = target;
+    }, 300);
 }
 
 function colorizeOutput(text) {
@@ -394,13 +594,79 @@ function colorizeOutput(text) {
 }
 
 function clearOutput() {
-    document.getElementById('output-area').innerHTML = '<span class="text-slate-600">Output will appear here...</span>';
+    document.getElementById('output-area').innerHTML = '<span class="text-slate-500">Select a tool and click Run to see output here.</span>';
     document.getElementById('findings-panel').classList.add('hidden');
     document.getElementById('output-findings-count').classList.add('hidden');
     document.getElementById('output-duration').textContent = '';
     document.getElementById('exec-status').textContent = '';
     document.getElementById('exec-status').className = 'text-xs text-slate-500 ml-auto font-mono';
 }
+
+function showNextToolSuggestions(toolId) {
+    const suggestions = TOOL_CHAINS[toolId] || [];
+    const panel = document.getElementById('next-tool-suggestions');
+    const list = document.getElementById('suggestions-list');
+    if (!suggestions.length) { panel.classList.add('hidden'); return; }
+
+    const available = suggestions.filter(id => allTools.some(t => t.id === id));
+    if (!available.length) { panel.classList.add('hidden'); return; }
+
+    panel.classList.remove('hidden');
+    list.innerHTML = available.map(id => {
+        const tool = allTools.find(t => t.id === id);
+        const name = tool ? tool.name : id;
+        return `<button onclick="chainToTool('${id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-xs text-slate-300 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-right text-violet-400"></i> ${escapeHtml(name)}
+        </button>`;
+    }).join('');
+}
+
+function chainToTool(toolId) {
+    const smartTarget = buildSmartTarget(toolId, lastParsedFindings, lastToolOutput);
+    selectManualTool(toolId);
+    setTimeout(() => {
+        const targetInput = document.getElementById('arg-target');
+        if (targetInput && smartTarget) targetInput.value = smartTarget;
+    }, 300);
+}
+
+// Pipeline templates
+function loadPipelineTemplate(templateId) {
+    const globalTarget = document.getElementById('global-target')?.value || '';
+    const templates = {
+        recon: ['nmap', 'nikto', 'gobuster'],
+        vuln: ['nmap', 'nuclei', 'searchsploit'],
+        web: ['whatweb', 'nikto', 'sqlmap'],
+    };
+    const chain = templates[templateId];
+    if (!chain) return;
+
+    pipelineSteps = [];
+    pipelineStepId = 0;
+    const canvas = document.getElementById('pipeline-canvas');
+    canvas.innerHTML = '';
+
+    chain.forEach((toolId, i) => {
+        addPipelineStep();
+        const step = pipelineSteps[pipelineSteps.length - 1];
+        const node = document.getElementById('pipeline-node-' + step.id);
+        if (node) {
+            node.querySelector('select').value = toolId;
+            step.toolId = toolId;
+            const targetInput = document.getElementById('pipeline-target-' + step.id);
+            if (i === 0 && globalTarget && targetInput) {
+                targetInput.value = globalTarget;
+            }
+        }
+    });
+}
+
+// Auto-fill global target into pipeline first step
+document.getElementById('global-target')?.addEventListener('change', function() {
+    const val = this.value;
+    const firstTarget = document.getElementById('pipeline-target-1');
+    if (firstTarget && !firstTarget.value) firstTarget.value = val;
+});
 
 // === Pipeline ===
 function addPipelineStep() {
@@ -481,6 +747,7 @@ async function runPipeline() {
     output.innerHTML = '';
 
     let previousOutput = '';
+    let previousFindings = [];
 
     for (let i = 0; i < pipelineSteps.length; i++) {
         const step = pipelineSteps[i];
@@ -492,10 +759,11 @@ async function runPipeline() {
         const node = document.getElementById('pipeline-node-' + step.id);
         node?.classList.add('active');
         let target = document.getElementById('pipeline-target-' + step.id)?.value || '';
+
         if (target.includes('{prev}') && previousOutput) {
             target = target.replace('{prev}', previousOutput.trim().split('\n')[0]);
-        } else if (!target && previousOutput) {
-            target = previousOutput.trim().split('\n')[0];
+        } else if (!target && i > 0) {
+            target = buildSmartTarget(step.toolId, previousFindings, previousOutput);
         }
 
         if (!target) {
@@ -522,6 +790,7 @@ async function runPipeline() {
                 const preview = result.stdout.slice(0, 1500);
                 output.innerHTML += escapeHtml(preview) + (result.stdout.length > 1500 ? '\n...(truncated)' : '') + '\n';
                 previousOutput = result.stdout;
+                previousFindings = result.parsed_findings || [];
             }
             if (result.stderr) {
                 output.innerHTML += `<span class="text-amber-500/60">${escapeHtml(result.stderr.slice(0, 500))}</span>\n`;
@@ -546,7 +815,215 @@ function escapeHtml(text) {
     return d.innerHTML;
 }
 
+// Smart pipeline data passing: extract the right input for the next tool from previous findings
+function buildSmartTarget(nextToolId, findings, rawOutput) {
+    const globalTarget = document.getElementById('global-target')?.value || '';
+
+    if (!findings.length) {
+        return rawOutput ? rawOutput.trim().split('\n')[0] : globalTarget;
+    }
+
+    // searchsploit needs "product version" queries
+    if (nextToolId === 'searchsploit') {
+        const queries = findings
+            .filter(f => f.product || f.service)
+            .map(f => [f.product, f.version].filter(Boolean).join(' '))
+            .filter(Boolean);
+        return queries[0] || globalTarget;
+    }
+
+    // nuclei/nikto/gobuster/ffuf/dirsearch need URLs
+    if (['nuclei', 'nikto', 'gobuster', 'ffuf', 'dirsearch', 'feroxbuster'].includes(nextToolId)) {
+        const urls = findings
+            .filter(f => f.portid || f.port)
+            .map(f => {
+                const host = f.ip || f.host || globalTarget;
+                const port = f.portid || f.port;
+                const svc = (f.service || '').toLowerCase();
+                const proto = (svc.includes('ssl') || svc.includes('https') || port == 443) ? 'https' : 'http';
+                return `${proto}://${host}:${port}`;
+            });
+        return urls[0] || globalTarget;
+    }
+
+    // sqlmap needs a URL
+    if (nextToolId === 'sqlmap') {
+        const webFindings = findings.filter(f => {
+            const port = f.portid || f.port;
+            const svc = (f.service || '').toLowerCase();
+            return svc.includes('http') || port == 80 || port == 443 || port == 8080;
+        });
+        if (webFindings.length) {
+            const f = webFindings[0];
+            const host = f.ip || f.host || globalTarget;
+            const port = f.portid || f.port;
+            return `http://${host}:${port}/`;
+        }
+        return globalTarget;
+    }
+
+    // hydra needs host
+    if (nextToolId === 'hydra') {
+        const sshFindings = findings.filter(f => (f.service || '').toLowerCase().includes('ssh'));
+        if (sshFindings.length) {
+            return sshFindings[0].ip || sshFindings[0].host || globalTarget;
+        }
+        return globalTarget;
+    }
+
+    // Default: use first finding's host or global target
+    const first = findings[0];
+    return first?.ip || first?.host || first?.['matched-at'] || globalTarget;
+}
+
+// === CVE Lookup ===
+async function searchCVEs() {
+    const product = document.getElementById('cve-product')?.value?.trim();
+    const version = document.getElementById('cve-version')?.value?.trim();
+    const service = document.getElementById('cve-service')?.value?.trim();
+    const results = document.getElementById('cve-results');
+    const countEl = document.getElementById('cve-count');
+    const btn = document.getElementById('cve-search-btn');
+
+    if (!product && !service) {
+        results.innerHTML = '<div class="text-amber-400 text-sm text-center py-4">Enter a product or service name.</div>';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Searching...';
+    results.innerHTML = '<div class="text-slate-500 text-sm text-center py-8">Searching CVE databases...</div>';
+
+    try {
+        const params = new URLSearchParams();
+        if (product) params.set('product', product);
+        if (version) params.set('version', version);
+        if (service) params.set('service', service);
+
+        const res = await fetch('/api/cve/lookup?' + params.toString());
+        const data = await res.json();
+        const cves = data.cves || [];
+        countEl.textContent = `${data.total || cves.length} found`;
+
+        if (!cves.length) {
+            results.innerHTML = '<div class="text-slate-500 text-sm text-center py-8">No CVEs found for this query.</div>';
+            return;
+        }
+
+        results.innerHTML = cves.map(c => {
+            const sevColor = {critical:'text-rose-400 bg-rose-500/10',high:'text-amber-400 bg-amber-500/10',medium:'text-blue-400 bg-blue-500/10',low:'text-slate-400 bg-slate-500/10'}[(c.severity||'').toLowerCase()] || 'text-slate-400 bg-slate-500/10';
+            const cveId = c.cve || c.id || 'N/A';
+            return `<div class="p-3 rounded-lg bg-black/20 border border-white/5 hover:border-white/10 transition-colors">
+                <div class="flex items-center gap-3 mb-1">
+                    <code class="text-violet-300 font-mono text-sm font-medium">${escapeHtml(cveId)}</code>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase ${sevColor}">${escapeHtml(c.severity || 'unknown')}</span>
+                    ${c.type ? `<span class="text-[10px] text-slate-500 font-mono">${escapeHtml(c.type)}</span>` : ''}
+                    ${c.version_match ? '<span class="text-[10px] text-emerald-400 font-mono">version match</span>' : ''}
+                </div>
+                <p class="text-sm text-slate-300 line-clamp-2">${escapeHtml(c.description || '')}</p>
+                ${c.product ? `<div class="text-[10px] text-slate-500 mt-1">${escapeHtml(c.product)} ${c.versions || ''}</div>` : ''}
+            </div>`;
+        }).join('');
+    } catch (e) {
+        results.innerHTML = `<div class="text-red-400 text-sm text-center py-4">Error: ${e.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass mr-1"></i> Search';
+    }
+}
+
+function quickRun(toolId) {
+    const target = document.getElementById('global-target')?.value?.trim();
+    if (!target) {
+        alert('Enter a target first');
+        document.getElementById('global-target')?.focus();
+        return;
+    }
+    switchManualTab('execute');
+    selectManualTool(toolId);
+    setTimeout(() => {
+        const targetInput = document.getElementById('arg-target');
+        if (targetInput) targetInput.value = target;
+        executeManualTool();
+    }, 400);
+}
+
+// === Tips System ===
+const TIPS = [
+    "Start with <b>Nmap</b> to discover open ports and services, then use the findings to target specific tools.",
+    "After a port scan, use <b>SearchSploit</b> to find known exploits for discovered service versions.",
+    "For web targets, run <b>WhatWeb</b> first to identify technologies, then <b>Nikto</b> or <b>Nuclei</b> for vulnerabilities.",
+    "Use the <b>CVE Lookup</b> tab to search for known vulnerabilities by product name and version.",
+    "The <b>Pipeline</b> tab lets you chain tools together. Use templates for common workflows.",
+    "Click the action buttons on findings (hover to reveal) to quickly run follow-up tools.",
+    "Create a <b>Session</b> to track all your findings, actions, and notes for reporting.",
+    "For brute-force testing, manage wordlists in <b>Settings</b> and tools will auto-configure.",
+    "Use <b>Nuclei</b> for comprehensive vulnerability scanning — it checks thousands of templates.",
+    "The <b>{prev}</b> placeholder in pipelines passes the previous tool's output as the next tool's target.",
+];
+let tipIndex = Math.floor(Math.random() * TIPS.length);
+
+function showTip() {
+    document.getElementById('tip-text').innerHTML = TIPS[tipIndex % TIPS.length];
+}
+function nextTip() {
+    tipIndex++;
+    showTip();
+}
+
+// === Session Tracking ===
+let currentSessionId = null;
+
+async function startSession() {
+    const target = document.getElementById('global-target')?.value?.trim() || 'unknown';
+    const name = prompt('Session name:', `Pentest ${new Date().toLocaleDateString()}`);
+    if (!name) return;
+
+    try {
+        const res = await fetch('/api/pentest-sessions', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, target, description: ''})
+        });
+        const session = await res.json();
+        currentSessionId = session.id;
+        document.getElementById('session-label').textContent = `${name} (${target})`;
+        document.getElementById('session-start-btn').textContent = 'Active';
+        document.getElementById('session-start-btn').disabled = true;
+        document.getElementById('session-export-btn').classList.remove('hidden');
+    } catch (e) {
+        console.error('Failed to start session:', e);
+    }
+}
+
+function logToSession(action, tool, findings) {
+    if (!currentSessionId) return;
+    fetch(`/api/pentest-sessions/${currentSessionId}/log`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action, tool, note: '', findings: findings || []})
+    }).catch(e => console.debug('Session log failed:', e));
+}
+
+async function exportSession() {
+    if (!currentSessionId) return;
+    try {
+        const res = await fetch(`/api/pentest-sessions/${currentSessionId}/export`);
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `session-${currentSessionId}.json`;
+        a.click();
+    } catch (e) {
+        alert('Export failed: ' + e.message);
+    }
+}
+
 // Init
-document.addEventListener('DOMContentLoaded', () => { loadTools(); });
+document.addEventListener('DOMContentLoaded', () => {
+    loadTools();
+    showTip();
+});
 </script>
 {% endblock %}
