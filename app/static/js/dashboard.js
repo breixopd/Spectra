@@ -156,32 +156,30 @@ setInterval(updateShellList, 5000);
 
 // --- Mission Control ---
 let currentMissionId = null;
-const missionInput = document.getElementById('mission-control-input');
 
-if (missionInput) {
-    missionInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const input = e.target.value;
-            if (input.trim()) {
-                addTerminalLine(`[USER] ${input}`, 'command');
-                
-                // Simple parsing: assume first word is target if it looks like one, else directive
-                // This is a simplification for the UI
-                let target = "127.0.0.1";
-                let directive = input;
-                
-                const parts = input.split(' ');
-                if (parts[0].includes('.') || parts[0].includes('http')) {
-                    target = parts[0];
-                    directive = parts.slice(1).join(' ') || "Security assessment";
-                }
+function launchFromForm() {
+    const targetEl = document.getElementById('mission-target');
+    const directiveEl = document.getElementById('mission-directive');
+    const target = (targetEl?.value || '').trim();
+    const directive = (directiveEl?.value || '').trim() || 'Perform a comprehensive security assessment';
 
-                startMission(target, directive);
-                e.target.value = '';
-            }
-        }
-    });
+    if (!target) {
+        addTerminalLine('[ERROR] Enter a target IP or domain', 'error');
+        targetEl?.focus();
+        return;
+    }
+
+    addTerminalLine(`[USER] ${target} ${directive}`, 'command');
+    startMission(target, directive);
 }
+
+// Enter key on either field launches
+document.getElementById('mission-target')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') launchFromForm();
+});
+document.getElementById('mission-directive')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') launchFromForm();
+});
 
 function toggleRequirements() {
     const panel = document.getElementById('requirements-panel');
@@ -214,9 +212,10 @@ function startMission(target, directive) {
 
 // --- Scan Presets ---
 async function launchPreset(presetId) {
-    const target = document.getElementById('mission-control-input')?.value?.split(' ')[0];
-    if (!target || !target.includes('.')) {
-        addTerminalLine('[ERROR] Enter a target IP or domain in the command bar first', 'error');
+    const target = document.getElementById('mission-target')?.value?.trim();
+    if (!target) {
+        addTerminalLine('[ERROR] Enter a target IP or domain first', 'error');
+        document.getElementById('mission-target')?.focus();
         return;
     }
 

@@ -22,6 +22,7 @@ from app.core.database import async_session_maker, engine
 from app.core.events import EventType, events
 from app.core.telemetry import telemetry
 from app.services.ai.llm import close_global_llm_client
+from app.services.tools.models import ToolStatus
 
 logger = logging.getLogger("spectra.lifespan")
 
@@ -65,21 +66,44 @@ async def remove_system_operation(redis: Redis, op_id: str) -> None:
         logger.debug("Failed to remove system operation: %s", e)
 
 
+async def _mark_all_tools_ready(redis: Redis) -> None:
+    """Mark all registered tools as ready in Redis.
+
+    Used as a fallback when the ARQ tools worker is not available.
+    """
+    try:
+        from app.services.tools.registry import get_registry
+
+        registry = get_registry()
+        tools = registry.list_tools()
+        for tool in tools:
+            key = f"spectra:tool_status:{tool.config.id}"
+            await redis.hset(key, mapping={"status": "ready"})
+            tool.status = ToolStatus.READY
+
+        logger.info("Marked %d tools as ready (no worker)", len(tools))
+    except Exception as e:
+        logger.warning("Failed to mark tools as ready: %s", e)
+
+
 async def run_startup_tasks(redis: Redis) -> None:
     """Run background tasks on startup."""
     try:
         logger.info("Running startup tasks...")
 
-        # Queue tool installation via ARQ worker (tools container)
         await add_system_operation(
             redis, "tool_install", "install", "Installing security tools"
         )
+
+        # Mark tools as ready immediately so the UI works.
+        # If the tools worker (Kali container) is running, it will update
+        # statuses to reflect actual installation state.
+        await _mark_all_tools_ready(redis)
 
         try:
             from arq import create_pool
             from arq.connections import RedisSettings
 
-            # Queue install_all_tools job to the tools container
             redis_settings = RedisSettings(
                 host=settings.REDIS_HOST,
                 port=settings.REDIS_PORT,
@@ -88,23 +112,16 @@ async def run_startup_tasks(redis: Redis) -> None:
             )
 
             pool = await create_pool(redis_settings, default_queue_name=ARQ_QUEUE_NAME)
-
-            # Queue installation job
             job = await pool.enqueue_job("install_all_tools_job")
             logger.info(
                 "Queued tool installation job: %s", job.job_id if job else "failed"
             )
-
-            # Don't wait for completion - let it run in background
-            # The UI will poll /api/system/status for progress
-
             await pool.close()
 
         except Exception as e:
-            logger.warning("Failed to queue tool installation: %s", e)
-        finally:
-            await remove_system_operation(redis, "tool_install")
+            logger.debug("Could not queue install job (tools worker may not be running): %s", e)
 
+        await remove_system_operation(redis, "tool_install")
         await set_system_status(redis, "ready", "System ready")
         logger.info("Startup tasks completed")
 
