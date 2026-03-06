@@ -13,6 +13,7 @@ from sqlalchemy import select
 
 from app.api.routers import (
     auth,
+    cve,
     exploits,
     findings,
     health,
@@ -129,6 +130,7 @@ app.include_router(findings.router, prefix="/api", tags=["Findings"])
 app.include_router(exploits.router, prefix="/api", tags=["Exploits"])
 app.include_router(observability.router, prefix="/api", tags=["Observability"])
 app.include_router(system.router, prefix="/api", tags=["System"])
+app.include_router(cve.router, prefix="/api", tags=["CVE Intelligence"])
 app.include_router(shell.router, prefix="/api", tags=["Shell"])
 app.include_router(ui.router, tags=["UI"])
 
