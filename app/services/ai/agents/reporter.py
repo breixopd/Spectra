@@ -425,7 +425,7 @@ Immediate attention is required for critical and high severity findings.
 </head>
 <body>
     <div class="container">
-        <h1>🔒 Security Assessment Report</h1>
+        <h1>Security Assessment Report</h1>
         <p><strong>Target:</strong> {report.target}</p>
         <p><strong>Date:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
         
