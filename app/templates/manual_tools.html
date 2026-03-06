@@ -35,6 +35,9 @@
                 <button id="tab-pipeline" class="tab-btn-manual" onclick="switchManualTab('pipeline')">
                     <i class="fa-solid fa-diagram-project mr-1.5"></i> Pipeline
                 </button>
+                <button id="tab-cve" class="tab-btn-manual" onclick="switchManualTab('cve')">
+                    <i class="fa-solid fa-shield-virus mr-1.5"></i> CVE Lookup
+                </button>
             </div>
         </div>
     </div>
@@ -182,6 +185,43 @@
             </div>
         </div>
     </div>
+
+    <!-- CVE Lookup Tab -->
+    <div id="panel-cve" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
+        <div class="glass-panel rounded-xl p-5 mb-4 shrink-0">
+            <h2 class="text-lg font-bold text-white mb-1">CVE Lookup</h2>
+            <p class="text-slate-400 text-sm mb-4">Search known vulnerabilities by product, version, or service.</p>
+            <div class="flex gap-3 items-end">
+                <div class="flex-1">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Product</label>
+                    <input type="text" id="cve-product" placeholder="e.g., Apache, OpenSSH, nginx"
+                        class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none">
+                </div>
+                <div style="width:120px;">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Version</label>
+                    <input type="text" id="cve-version" placeholder="e.g., 2.4.49"
+                        class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none">
+                </div>
+                <div style="width:120px;">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Service</label>
+                    <input type="text" id="cve-service" placeholder="e.g., http"
+                        class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none">
+                </div>
+                <button onclick="searchCVEs()" id="cve-search-btn" class="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all shrink-0">
+                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Search
+                </button>
+            </div>
+        </div>
+        <div class="flex-1 min-h-0 glass-panel rounded-xl overflow-hidden flex flex-col">
+            <div class="px-4 py-2 border-b border-white/10 text-xs text-slate-400 flex items-center justify-between shrink-0">
+                <span><i class="fa-solid fa-shield-virus mr-1"></i> Results</span>
+                <span id="cve-count" class="text-slate-500 font-mono"></span>
+            </div>
+            <div id="cve-results" class="flex-1 overflow-y-auto p-4 space-y-2">
+                <div class="text-slate-600 text-sm text-center py-8">Enter a product name to search for known CVEs.</div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -198,10 +238,13 @@ let pipelineStepId = 0;
 function switchManualTab(tab) {
     document.querySelectorAll('.tab-btn-manual').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
-    document.getElementById('panel-execute').classList.toggle('hidden', tab !== 'execute');
-    document.getElementById('panel-execute').classList.toggle('flex', tab === 'execute');
-    document.getElementById('panel-pipeline').classList.toggle('hidden', tab !== 'pipeline');
-    document.getElementById('panel-pipeline').classList.toggle('flex', tab === 'pipeline');
+    ['execute', 'pipeline', 'cve'].forEach(t => {
+        const panel = document.getElementById('panel-' + t);
+        if (panel) {
+            panel.classList.toggle('hidden', tab !== t);
+            panel.classList.toggle('flex', tab === t);
+        }
+    });
 }
 
 // Load tools
@@ -593,6 +636,7 @@ async function runPipeline() {
     output.innerHTML = '';
 
     let previousOutput = '';
+    let previousFindings = [];
 
     for (let i = 0; i < pipelineSteps.length; i++) {
         const step = pipelineSteps[i];
@@ -604,10 +648,11 @@ async function runPipeline() {
         const node = document.getElementById('pipeline-node-' + step.id);
         node?.classList.add('active');
         let target = document.getElementById('pipeline-target-' + step.id)?.value || '';
+
         if (target.includes('{prev}') && previousOutput) {
             target = target.replace('{prev}', previousOutput.trim().split('\n')[0]);
-        } else if (!target && previousOutput) {
-            target = previousOutput.trim().split('\n')[0];
+        } else if (!target && i > 0) {
+            target = buildSmartTarget(step.toolId, previousFindings, previousOutput);
         }
 
         if (!target) {
@@ -634,6 +679,7 @@ async function runPipeline() {
                 const preview = result.stdout.slice(0, 1500);
                 output.innerHTML += escapeHtml(preview) + (result.stdout.length > 1500 ? '\n...(truncated)' : '') + '\n';
                 previousOutput = result.stdout;
+                previousFindings = result.parsed_findings || [];
             }
             if (result.stderr) {
                 output.innerHTML += `<span class="text-amber-500/60">${escapeHtml(result.stderr.slice(0, 500))}</span>\n`;
@@ -656,6 +702,123 @@ function escapeHtml(text) {
     const d = document.createElement('div');
     d.textContent = text;
     return d.innerHTML;
+}
+
+// Smart pipeline data passing: extract the right input for the next tool from previous findings
+function buildSmartTarget(nextToolId, findings, rawOutput) {
+    const globalTarget = document.getElementById('global-target')?.value || '';
+
+    if (!findings.length) {
+        return rawOutput ? rawOutput.trim().split('\n')[0] : globalTarget;
+    }
+
+    // searchsploit needs "product version" queries
+    if (nextToolId === 'searchsploit') {
+        const queries = findings
+            .filter(f => f.product || f.service)
+            .map(f => [f.product, f.version].filter(Boolean).join(' '))
+            .filter(Boolean);
+        return queries[0] || globalTarget;
+    }
+
+    // nuclei/nikto/gobuster/ffuf/dirsearch need URLs
+    if (['nuclei', 'nikto', 'gobuster', 'ffuf', 'dirsearch', 'feroxbuster'].includes(nextToolId)) {
+        const urls = findings
+            .filter(f => f.portid || f.port)
+            .map(f => {
+                const host = f.ip || f.host || globalTarget;
+                const port = f.portid || f.port;
+                const svc = (f.service || '').toLowerCase();
+                const proto = (svc.includes('ssl') || svc.includes('https') || port == 443) ? 'https' : 'http';
+                return `${proto}://${host}:${port}`;
+            });
+        return urls[0] || globalTarget;
+    }
+
+    // sqlmap needs a URL
+    if (nextToolId === 'sqlmap') {
+        const webFindings = findings.filter(f => {
+            const port = f.portid || f.port;
+            const svc = (f.service || '').toLowerCase();
+            return svc.includes('http') || port == 80 || port == 443 || port == 8080;
+        });
+        if (webFindings.length) {
+            const f = webFindings[0];
+            const host = f.ip || f.host || globalTarget;
+            const port = f.portid || f.port;
+            return `http://${host}:${port}/`;
+        }
+        return globalTarget;
+    }
+
+    // hydra needs host
+    if (nextToolId === 'hydra') {
+        const sshFindings = findings.filter(f => (f.service || '').toLowerCase().includes('ssh'));
+        if (sshFindings.length) {
+            return sshFindings[0].ip || sshFindings[0].host || globalTarget;
+        }
+        return globalTarget;
+    }
+
+    // Default: use first finding's host or global target
+    const first = findings[0];
+    return first?.ip || first?.host || first?.['matched-at'] || globalTarget;
+}
+
+// === CVE Lookup ===
+async function searchCVEs() {
+    const product = document.getElementById('cve-product')?.value?.trim();
+    const version = document.getElementById('cve-version')?.value?.trim();
+    const service = document.getElementById('cve-service')?.value?.trim();
+    const results = document.getElementById('cve-results');
+    const countEl = document.getElementById('cve-count');
+    const btn = document.getElementById('cve-search-btn');
+
+    if (!product && !service) {
+        results.innerHTML = '<div class="text-amber-400 text-sm text-center py-4">Enter a product or service name.</div>';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Searching...';
+    results.innerHTML = '<div class="text-slate-500 text-sm text-center py-8">Searching CVE databases...</div>';
+
+    try {
+        const params = new URLSearchParams();
+        if (product) params.set('product', product);
+        if (version) params.set('version', version);
+        if (service) params.set('service', service);
+
+        const res = await fetch('/api/cve/lookup?' + params.toString());
+        const data = await res.json();
+        const cves = data.cves || [];
+        countEl.textContent = `${data.total || cves.length} found`;
+
+        if (!cves.length) {
+            results.innerHTML = '<div class="text-slate-500 text-sm text-center py-8">No CVEs found for this query.</div>';
+            return;
+        }
+
+        results.innerHTML = cves.map(c => {
+            const sevColor = {critical:'text-rose-400 bg-rose-500/10',high:'text-amber-400 bg-amber-500/10',medium:'text-blue-400 bg-blue-500/10',low:'text-slate-400 bg-slate-500/10'}[(c.severity||'').toLowerCase()] || 'text-slate-400 bg-slate-500/10';
+            const cveId = c.cve || c.id || 'N/A';
+            return `<div class="p-3 rounded-lg bg-black/20 border border-white/5 hover:border-white/10 transition-colors">
+                <div class="flex items-center gap-3 mb-1">
+                    <code class="text-violet-300 font-mono text-sm font-medium">${escapeHtml(cveId)}</code>
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase ${sevColor}">${escapeHtml(c.severity || 'unknown')}</span>
+                    ${c.type ? `<span class="text-[10px] text-slate-500 font-mono">${escapeHtml(c.type)}</span>` : ''}
+                    ${c.version_match ? '<span class="text-[10px] text-emerald-400 font-mono">version match</span>' : ''}
+                </div>
+                <p class="text-sm text-slate-300 line-clamp-2">${escapeHtml(c.description || '')}</p>
+                ${c.product ? `<div class="text-[10px] text-slate-500 mt-1">${escapeHtml(c.product)} ${c.versions || ''}</div>` : ''}
+            </div>`;
+        }).join('');
+    } catch (e) {
+        results.innerHTML = `<div class="text-red-400 text-sm text-center py-4">Error: ${e.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass mr-1"></i> Search';
+    }
 }
 
 // Init

@@ -30,7 +30,7 @@ async function refreshTools() {
         _lastToolsHash = newHash;
         
         grid.innerHTML = tools.map((tool, i) => `
-            <div onclick="selectTool('${tool.id}')" class="glass-panel p-5 rounded-xl hover:bg-white/5 cursor-pointer group border border-transparent hover:border-violet-500/30 relative overflow-hidden card-hover animate-fade-in-up" style="animation-delay: ${i * 0.04}s">
+            <div onclick="selectTool('${tool.id}')" class="glass-panel p-5 rounded-xl hover:bg-white/5 cursor-pointer group border border-transparent hover:border-violet-500/30 relative overflow-hidden animate-fade-in-up" style="animation-delay: ${i * 0.04}s">
                 <div class="flex justify-between items-start mb-3">
                     <div class="w-9 h-9 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center">
                         <i class="fa-solid fa-wrench"></i>
