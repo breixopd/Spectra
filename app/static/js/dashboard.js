@@ -85,7 +85,7 @@ function handleAttackSurface(data) {
     const nodeCount = document.getElementById('node-count');
     if (nodeCount) {
         const total = (data.services || 0) + (data.vulnerabilities || 0);
-        nodeCount.textContent = `${total} Nodes Active`;
+        nodeCount.textContent = `${total} nodes`;
     }
     
     // Log attack surface updates
@@ -93,12 +93,8 @@ function handleAttackSurface(data) {
 }
 
 function handleExploitSuccess(data) {
-    addTerminalLine(`[SUCCESS] Exploitation successful: ${data.vector}`, 'success');
+    addTerminalLine(`Exploit confirmed: ${data.vector}`, 'success');
     
-    // Flash the screen border green briefly
-    document.body.classList.add('ring-2', 'ring-emerald-500');
-    setTimeout(() => document.body.classList.remove('ring-2', 'ring-emerald-500'), 2000);
-
     // Refresh shell list
     updateShellList();
 }
@@ -187,7 +183,7 @@ function toggleRequirements() {
 }
 
 function startMission(target, directive) {
-    addTerminalLine(`[SYSTEM] Initiating mission against ${target}...`, 'info');
+    addTerminalLine(`Starting assessment against ${target}...`, 'info');
     
     const reqEl = document.getElementById('mission-requirements');
     const requirements = reqEl && reqEl.value.trim() ? reqEl.value.trim() : null;
@@ -451,7 +447,7 @@ function addFindingNode(finding) {
 function updateNodeCount() {
     if (cy) {
         const count = cy.nodes().length;
-        document.getElementById('node-count').textContent = `${count} Nodes Active`;
+        document.getElementById('node-count').textContent = `${count} nodes`;
     }
 }
 
@@ -460,5 +456,5 @@ document.addEventListener('DOMContentLoaded', () => {
     initGraph();
     initMap();
     updateShellList(); // Initial fetch
-    addTerminalLine('[SYSTEM] Spectra Dashboard Initialized', 'success');
+    addTerminalLine('Dashboard ready.', 'success');
 });
