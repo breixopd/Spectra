@@ -24,15 +24,23 @@ by this module.  To enable streaming, change ``_run_command`` in
 
     async def _run_command(command, timeout, cwd=None, *, allow_shell=False,
                            redis=None, mission_id="", tool_id=""):
-        if not allow_shell and isinstance(command, str):
+        if not allow_shell and not isinstance(command, list):
             raise ValueError("allow_shell=True is required to execute string commands via shell")
 
-        proc = await asyncio.create_subprocess_shell(
-            command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=cwd, env=env, start_new_session=True,
-        )
+        if isinstance(command, list):
+            proc = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=cwd, env=env, start_new_session=True,
+            )
+        else:
+            proc = await asyncio.create_subprocess_shell(
+                command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=cwd, env=env, start_new_session=True,
+            )
         lines = []
         async for raw_line in proc.stdout:
             line = raw_line.decode("utf-8", errors="replace")

@@ -622,6 +622,9 @@ async def _run_command(
     # Ensure /opt/spectra_tools is in PATH
     env["PATH"] = f"/opt/spectra_tools:{env.get('PATH', '')}"
 
+    if not isinstance(command, list) and not allow_shell:
+        raise ValueError("allow_shell=True is required to execute string commands via shell")
+
     try:
         if isinstance(command, list):
             proc = await asyncio.create_subprocess_exec(
@@ -633,8 +636,6 @@ async def _run_command(
                 start_new_session=True,
             )
         else:
-            if not allow_shell:
-                raise ValueError("allow_shell=True is required to execute string commands via shell")
             proc = await asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
