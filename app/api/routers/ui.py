@@ -2,6 +2,7 @@
 UI router for serving the frontend dashboard.
 """
 
+import asyncio
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -170,9 +171,6 @@ async def shell_page(request: Request, session_id: str):
         },
     )
 
-
-# Global lock for settings updates to prevent race conditions
-import asyncio
 
 SETTINGS_LOCK = asyncio.Lock()
 

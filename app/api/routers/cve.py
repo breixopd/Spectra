@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.api.dependencies import get_current_active_user
 from app.models.user import User
+from app.core.constants import CVE_RESULTS_LIMIT
 from app.services.ai.cve_intel import lookup_cves_live
 
 router = APIRouter(prefix="/cve", tags=["CVE Intelligence"])
@@ -37,7 +38,7 @@ async def cve_lookup(
     )
 
     return {
-        "cves": cves[:50],
+        "cves": cves[:CVE_RESULTS_LIMIT],
         "total": len(cves),
         "query": {"product": product, "version": version, "service": service, "keyword": keyword},
     }

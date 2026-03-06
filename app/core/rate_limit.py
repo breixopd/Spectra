@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.core.events import EventType, events
 from app.core.security import decode_token
 
-logger = logging.getLogger("spectra.ratelimit")
+logger = logging.getLogger("spectra.core.rate_limit")
 
 
 def get_client_identifier(request: Request) -> str:

@@ -74,3 +74,36 @@ DEBRIEF_MAX_LOGS: int = 50
 
 #: Maximum characters of the debrief executive summary to log inline.
 DEBRIEF_SUMMARY_LOG_CHARS: int = 200
+
+# ---------------------------------------------------------------------------
+# API pagination / limits
+# ---------------------------------------------------------------------------
+
+#: Default page size for list endpoints.
+API_DEFAULT_PAGE_SIZE: int = 50
+
+#: Maximum page size for list endpoints.
+API_MAX_PAGE_SIZE: int = 100
+
+#: Maximum CVE results returned per lookup.
+CVE_RESULTS_LIMIT: int = 50
+
+#: Maximum events/traces returned by observability endpoints.
+OBSERVABILITY_MAX_RESULTS: int = 500
+
+# ---------------------------------------------------------------------------
+# Memory system limits
+# ---------------------------------------------------------------------------
+
+#: Maximum tool lessons kept in memory.
+MEMORY_MAX_TOOL_LESSONS: int = 500
+
+#: Maximum exploit lessons kept in memory.
+MEMORY_MAX_EXPLOIT_LESSONS: int = 200
+
+# ---------------------------------------------------------------------------
+# Rate limits
+# ---------------------------------------------------------------------------
+
+#: Default API rate limit.
+API_RATE_LIMIT: str = "100/minute"
