@@ -108,7 +108,9 @@ async def start_mission(
     Rate limited to 5 missions per minute per user.
     """
     mission_id = await mission_manager.start_mission(
-        mission_request.target, mission_request.directive
+        mission_request.target,
+        mission_request.directive,
+        requirements=mission_request.requirements,
     )
     mission = await mission_manager.get_mission(mission_id)
 

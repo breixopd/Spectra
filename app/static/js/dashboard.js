@@ -183,13 +183,22 @@ if (missionInput) {
     });
 }
 
+function toggleRequirements() {
+    const panel = document.getElementById('requirements-panel');
+    if (panel) panel.classList.toggle('hidden');
+}
+
 function startMission(target, directive) {
     addTerminalLine(`[SYSTEM] Initiating mission against ${target}...`, 'info');
     
+    const reqEl = document.getElementById('mission-requirements');
+    const requirements = reqEl && reqEl.value.trim() ? reqEl.value.trim() : null;
+    if (requirements) addTerminalLine(`[SCOPE] Requirements attached (${requirements.length} chars)`, 'info');
+
     fetch('/api/missions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: target, directive: directive })
+        body: JSON.stringify({ target: target, directive: directive, requirements: requirements })
     })
     .then(res => res.json())
     .then(data => {
@@ -384,8 +393,10 @@ function initMap() {
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 18,
-        subdomains: 'abcd'
+        subdomains: 'abcd',
+        errorTileUrl: ''
     }).addTo(map);
+    map.getContainer().style.background = '#0f172a';
 
     // Leaflet requires invalidateSize when container is resized or initially hidden
     setTimeout(() => { if (map) map.invalidateSize(); }, 200);

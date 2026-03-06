@@ -10,12 +10,24 @@
 
     <!-- Mission Control Input -->
     <div class="flex-1 max-w-2xl md:mx-6 relative group">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <i class="fa-solid fa-terminal text-slate-500 group-focus-within:text-violet-400 transition-colors"></i>
+        <div class="flex items-center gap-2">
+            <div class="flex-1 relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-terminal text-slate-500 group-focus-within:text-violet-400 transition-colors"></i>
+                </div>
+                <input type="text" id="mission-control-input"
+                    class="block w-full pl-10 pr-3 py-2.5 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
+                    placeholder="Enter target and directive... (e.g., '192.168.1.1 Full scan')">
+            </div>
+            <button onclick="toggleRequirements()" class="p-2.5 rounded-lg bg-slate-900/50 border border-white/10 text-slate-500 hover:text-violet-400 hover:border-violet-500/30 transition-all" title="Add requirements / scope" aria-label="Toggle requirements">
+                <i class="fa-solid fa-file-lines text-sm"></i>
+            </button>
         </div>
-        <input type="text" id="mission-control-input"
-            class="block w-full pl-10 pr-3 py-2.5 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
-            placeholder="Enter target and directive... (e.g., '192.168.1.1 Full scan')">
+        <div id="requirements-panel" class="hidden mt-2">
+            <textarea id="mission-requirements" rows="3"
+                class="block w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono resize-none"
+                placeholder="Optional: scope, requirements, constraints..."></textarea>
+        </div>
     </div>
 
     <div class="flex items-center gap-2">
