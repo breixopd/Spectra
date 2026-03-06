@@ -4,8 +4,7 @@
 <!-- Header / Mission Control -->
 <header class="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 animate-fade-in">
     <div class="flex items-center gap-3">
-        <h1 class="text-lg font-semibold text-white tracking-tight">Operation: <span class="text-slate-400 font-mono text-base">ALPHA_PROTOCOL</span></h1>
-        <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>
+        <h1 class="text-lg font-semibold text-white tracking-tight">Assessment</h1>
     </div>
 
     <!-- Mission Control -->
@@ -48,7 +47,7 @@
             </button>
             <div class="absolute right-0 top-full mt-1 w-64 bg-slate-900 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
                 <div class="p-1.5" id="preset-dropdown">
-                    <div class="px-2 py-1 text-[9px] font-mono text-slate-500 uppercase tracking-wider">Quick Launch</div>
+                    <div class="px-2 py-1 text-[9px] font-mono text-slate-500 uppercase tracking-wider">Scan Presets</div>
                     <button onclick="launchPreset('quick_recon')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
                         <i class="fa-solid fa-bolt text-amber-400 w-4"></i> Quick Recon <span class="ml-auto text-[9px] text-slate-500">~5 min</span>
                     </button>
@@ -96,7 +95,7 @@
         <!-- Threat Map -->
         <div class="glass-panel rounded-xl overflow-hidden relative" style="min-height: 220px;">
             <div class="absolute top-3 left-3 z-[400] pointer-events-none">
-                <span class="text-[10px] font-mono tracking-widest text-slate-400 uppercase bg-slate-900/80 px-2 py-0.5 rounded">Threat Map</span>
+                <span class="text-[10px] font-mono tracking-widest text-slate-400 uppercase bg-slate-900/80 px-2 py-0.5 rounded">Location</span>
             </div>
             <div id="threat-map" class="w-full h-full bg-slate-900" style="min-height: 220px;"></div>
         </div>
@@ -126,7 +125,7 @@
 
         <!-- Active Shells -->
         <div class="glass-panel rounded-xl p-4 flex flex-col">
-            <span class="text-[10px] font-mono tracking-widest text-emerald-400/70 uppercase block mb-2">Active Shells</span>
+            <span class="text-[10px] font-mono tracking-widest text-emerald-400/70 uppercase block mb-2">Sessions</span>
             <div id="shell-list" class="flex-1 overflow-y-auto space-y-1.5">
                 <div class="text-center text-slate-600 text-xs py-3">No active sessions</div>
             </div>
@@ -150,7 +149,7 @@
             <div class="absolute bottom-3 right-3 z-10">
                 <div class="flex items-center gap-2 text-[10px] font-mono text-slate-500">
                     <span class="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
-                    <span id="node-count">0 Nodes</span>
+                    <span id="node-count">0 nodes</span>
                 </div>
             </div>
         </div>
@@ -169,7 +168,7 @@
                 </div>
             </div>
             <div id="terminal-output" class="flex-1 overflow-y-auto p-3 font-mono text-xs text-slate-400 space-y-0.5">
-                <p class="text-slate-500"><span class="text-violet-400/60">spectra</span> System initialized. Enter a target above to begin.</p>
+                <p class="text-slate-500">Ready. Enter a target and directive above to start an assessment.</p>
             </div>
         </div>
     </div>

@@ -66,7 +66,7 @@ async def dashboard(request: Request):
 
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "title": "Spectra | War Room"},
+        {"request": request, "title": "Spectra | Dashboard"},
     )
 
 
@@ -102,7 +102,7 @@ async def overseer_page(request: Request):
     """Serve the agent overseer page."""
     return templates.TemplateResponse(
         "overseer.html",
-        {"request": request, "title": "Spectra | Overseer"},
+        {"request": request, "title": "Spectra | Agents"},
     )
 
 
