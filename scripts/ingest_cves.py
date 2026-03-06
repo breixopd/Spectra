@@ -67,7 +67,7 @@ async def main():
     logger.info("Starting CVE ingestion...")
 
     # Initialize common services
-    redis, rag = await init_script_services()
+    rag = await init_script_services()
 
     # Find all JSON files
     files = sorted(CVE_DATA_DIR.glob("nvdcve-1.1-*.json"))

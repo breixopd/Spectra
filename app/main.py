@@ -19,11 +19,13 @@ from app.api.routers import (
     health,
     missions,
     observability,
+    pentest_sessions,
     system,
     targets,
     tools,
     ui,
     shell,
+    wordlists,
 )
 from app.core.config import settings
 from app.core.database import async_session_maker
@@ -131,6 +133,8 @@ app.include_router(exploits.router, prefix="/api", tags=["Exploits"])
 app.include_router(observability.router, prefix="/api", tags=["Observability"])
 app.include_router(system.router, prefix="/api", tags=["System"])
 app.include_router(cve.router, prefix="/api", tags=["CVE Intelligence"])
+app.include_router(wordlists.router, prefix="/api", tags=["Wordlists"])
+app.include_router(pentest_sessions.router, prefix="/api", tags=["Pentest Sessions"])
 app.include_router(shell.router, prefix="/api", tags=["Shell"])
 app.include_router(ui.router, tags=["UI"])
 

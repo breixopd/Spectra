@@ -29,7 +29,7 @@ async def main():
     logger.info("Starting tool documentation indexing...")
 
     # Initialize common services
-    redis, rag = await init_script_services()
+    rag = await init_script_services()
 
     # Get Registry
     registry = get_registry()
