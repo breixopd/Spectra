@@ -13,13 +13,11 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
 from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from fastapi import Request
 
 from app.api.dependencies import (
     get_current_active_user,

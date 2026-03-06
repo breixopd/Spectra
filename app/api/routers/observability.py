@@ -6,7 +6,7 @@ Provides endpoints for telemetry, metrics, and system health monitoring.
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.dependencies import get_current_active_user
 from app.core.cache import get_cache
@@ -112,8 +112,6 @@ async def reset_circuit_breakers(
     Requires superuser privileges.
     """
     if not _current_user.is_superuser:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=403, detail="Superuser access required")
 
     circuit_breakers.reset_all()
