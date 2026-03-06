@@ -39,6 +39,17 @@
         </div>
     </div>
 
+    <!-- Global Target -->
+    <div class="glass-panel rounded-xl p-3 mb-4 shrink-0 animate-fade-in-up flex items-center gap-3">
+        <div class="flex items-center gap-2 text-xs text-slate-400 shrink-0">
+            <i class="fa-solid fa-crosshairs text-violet-400"></i>
+            <span class="font-medium">Target</span>
+        </div>
+        <input type="text" id="global-target" placeholder="Set target for all tools (e.g., 192.168.1.1 or example.com)"
+            class="flex-1 px-3 py-1.5 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:outline-none transition-all font-mono">
+        <span class="text-[10px] text-slate-600 shrink-0">Auto-fills tool target fields</span>
+    </div>
+
     <!-- Execute Tab -->
     <div id="panel-execute" class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up stagger-1">
         <!-- Tool Picker (Left) -->
@@ -82,6 +93,11 @@
                         </button>
                         <div id="exec-status" class="text-xs text-slate-500 ml-auto font-mono"></div>
                     </div>
+                    <!-- Next tool suggestions -->
+                    <div id="next-tool-suggestions" class="hidden mt-3 pt-3 border-t border-white/5">
+                        <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">Feed results to</div>
+                        <div id="suggestions-list" class="flex flex-wrap gap-2"></div>
+                    </div>
                 </div>
             </div>
 
@@ -115,7 +131,7 @@
     <!-- Pipeline Tab -->
     <div id="panel-pipeline" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <div class="glass-panel rounded-xl p-5 mb-4 shrink-0">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between mb-3">
                 <div>
                     <h2 class="text-lg font-bold text-white">Tool Pipeline</h2>
                     <p class="text-slate-400 text-sm">Chain tools together — output from one feeds into the next</p>
@@ -128,6 +144,18 @@
                         <i class="fa-solid fa-play mr-1"></i> Run Pipeline
                     </button>
                 </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <span class="text-[10px] text-slate-500 uppercase font-bold self-center mr-1">Templates:</span>
+                <button onclick="loadPipelineTemplate('recon')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
+                    <i class="fa-solid fa-radar text-violet-400 mr-1"></i> Recon (nmap + nikto + gobuster)
+                </button>
+                <button onclick="loadPipelineTemplate('vuln')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
+                    <i class="fa-solid fa-bug text-rose-400 mr-1"></i> Vuln Scan (nmap + nuclei + searchsploit)
+                </button>
+                <button onclick="loadPipelineTemplate('web')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
+                    <i class="fa-solid fa-globe text-blue-400 mr-1"></i> Web App (whatweb + nikto + sqlmap)
+                </button>
             </div>
         </div>
 
@@ -240,6 +268,23 @@ async function selectManualTool(toolId) {
     }
 }
 
+// Tool chaining suggestions
+const TOOL_CHAINS = {
+    nmap: ['nuclei', 'nikto', 'searchsploit', 'gobuster'],
+    nuclei: ['searchsploit', 'sqlmap', 'nikto'],
+    nikto: ['sqlmap', 'gobuster', 'dirsearch'],
+    whatweb: ['nikto', 'nuclei', 'wpscan'],
+    gobuster: ['nikto', 'sqlmap', 'ffuf'],
+    dirsearch: ['nikto', 'sqlmap', 'ffuf'],
+    subfinder: ['nmap', 'httpx', 'nuclei'],
+    httpx: ['nuclei', 'nikto', 'gobuster'],
+    wpscan: ['sqlmap', 'nuclei'],
+    naabu: ['nmap', 'nuclei', 'httpx'],
+    feroxbuster: ['nikto', 'sqlmap'],
+};
+
+let lastToolOutput = '';
+
 function buildForm(cfg) {
     document.getElementById('form-tool-name').textContent = cfg.name;
     document.getElementById('form-tool-desc').textContent = cfg.metadata.ai_description || cfg.description;
@@ -253,13 +298,15 @@ function buildForm(cfg) {
     badge.className = `w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-${cfg.ui.color || 'violet'}-500/20 text-${cfg.ui.color || 'violet'}-400`;
     badge.innerHTML = `<i class="fa-solid fa-${getIcon(cfg.ui.icon)}"></i>`;
 
-    // Build arg fields
+    const globalTarget = document.getElementById('global-target')?.value || '';
+    document.getElementById('next-tool-suggestions').classList.add('hidden');
+
     const container = document.getElementById('args-container');
     const placeholders = cfg.placeholders || [];
 
     let html = `<div class="arg-field">
         <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Target *</label>
-        <input type="text" id="arg-target" placeholder="e.g. 192.168.1.1 or example.com"
+        <input type="text" id="arg-target" value="${escapeHtml(globalTarget)}" placeholder="e.g. 192.168.1.1 or example.com"
             class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
     </div>`;
 
@@ -357,6 +404,10 @@ async function executeManualTool() {
             document.getElementById('output-findings-count').textContent = `${result.parsed_findings_count} findings`;
             renderFindings(result.parsed_findings);
         }
+
+        // Store output and show next-tool suggestions
+        lastToolOutput = result.stdout || '';
+        showNextToolSuggestions(selectedToolConfig.id);
     } catch (e) {
         clearInterval(timer);
         outputArea.innerHTML += `\n<span class="text-red-400">Error: ${e.message}</span>`;
@@ -401,6 +452,67 @@ function clearOutput() {
     document.getElementById('exec-status').textContent = '';
     document.getElementById('exec-status').className = 'text-xs text-slate-500 ml-auto font-mono';
 }
+
+function showNextToolSuggestions(toolId) {
+    const suggestions = TOOL_CHAINS[toolId] || [];
+    const panel = document.getElementById('next-tool-suggestions');
+    const list = document.getElementById('suggestions-list');
+    if (!suggestions.length) { panel.classList.add('hidden'); return; }
+
+    const available = suggestions.filter(id => allTools.some(t => t.id === id));
+    if (!available.length) { panel.classList.add('hidden'); return; }
+
+    panel.classList.remove('hidden');
+    list.innerHTML = available.map(id => {
+        const tool = allTools.find(t => t.id === id);
+        const name = tool ? tool.name : id;
+        return `<button onclick="chainToTool('${id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-xs text-slate-300 transition-colors flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-right text-violet-400"></i> ${escapeHtml(name)}
+        </button>`;
+    }).join('');
+}
+
+function chainToTool(toolId) {
+    selectManualTool(toolId);
+}
+
+// Pipeline templates
+function loadPipelineTemplate(templateId) {
+    const globalTarget = document.getElementById('global-target')?.value || '';
+    const templates = {
+        recon: ['nmap', 'nikto', 'gobuster'],
+        vuln: ['nmap', 'nuclei', 'searchsploit'],
+        web: ['whatweb', 'nikto', 'sqlmap'],
+    };
+    const chain = templates[templateId];
+    if (!chain) return;
+
+    pipelineSteps = [];
+    pipelineStepId = 0;
+    const canvas = document.getElementById('pipeline-canvas');
+    canvas.innerHTML = '';
+
+    chain.forEach((toolId, i) => {
+        addPipelineStep();
+        const step = pipelineSteps[pipelineSteps.length - 1];
+        const node = document.getElementById('pipeline-node-' + step.id);
+        if (node) {
+            node.querySelector('select').value = toolId;
+            step.toolId = toolId;
+            const targetInput = document.getElementById('pipeline-target-' + step.id);
+            if (i === 0 && globalTarget && targetInput) {
+                targetInput.value = globalTarget;
+            }
+        }
+    });
+}
+
+// Auto-fill global target into pipeline first step
+document.getElementById('global-target')?.addEventListener('change', function() {
+    const val = this.value;
+    const firstTarget = document.getElementById('pipeline-target-1');
+    if (firstTarget && !firstTarget.value) firstTarget.value = val;
+});
 
 // === Pipeline ===
 function addPipelineStep() {

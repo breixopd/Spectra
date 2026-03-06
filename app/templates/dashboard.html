@@ -8,33 +8,41 @@
         <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">ACTIVE</span>
     </div>
 
-    <!-- Mission Control Input -->
-    <div class="flex-1 max-w-2xl md:mx-6 relative group">
+    <!-- Mission Control -->
+    <div class="flex-1 max-w-3xl md:mx-4">
         <div class="flex items-center gap-2">
-            <div class="flex-1 relative">
+            <div class="relative" style="width: 220px;">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <i class="fa-solid fa-terminal text-slate-500 group-focus-within:text-violet-400 transition-colors"></i>
+                    <i class="fa-solid fa-crosshairs text-slate-500"></i>
                 </div>
-                <input type="text" id="mission-control-input"
-                    class="block w-full pl-10 pr-3 py-2.5 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
-                    placeholder="Enter target and directive... (e.g., '192.168.1.1 Full scan')">
+                <input type="text" id="mission-target"
+                    class="block w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono"
+                    placeholder="Target IP / domain">
             </div>
-            <button onclick="toggleRequirements()" class="p-2.5 rounded-lg bg-slate-900/50 border border-white/10 text-slate-500 hover:text-violet-400 hover:border-violet-500/30 transition-all" title="Add requirements / scope" aria-label="Toggle requirements">
+            <div class="flex-1 relative">
+                <input type="text" id="mission-directive"
+                    class="block w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all"
+                    placeholder="Directive (e.g., Full security assessment)">
+            </div>
+            <button onclick="toggleRequirements()" class="p-2 rounded-lg bg-slate-900/50 border border-white/10 text-slate-500 hover:text-violet-400 hover:border-violet-500/30 transition-all" title="Add scope / requirements" aria-label="Toggle requirements">
                 <i class="fa-solid fa-file-lines text-sm"></i>
+            </button>
+            <button onclick="launchFromForm()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-lg shadow-violet-500/20">
+                <i class="fa-solid fa-rocket"></i> Launch
             </button>
         </div>
         <div id="requirements-panel" class="hidden mt-2">
-            <textarea id="mission-requirements" rows="3"
+            <textarea id="mission-requirements" rows="2"
                 class="block w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono resize-none"
-                placeholder="Optional: scope, requirements, constraints..."></textarea>
+                placeholder="Optional: scope constraints, rules of engagement, specific requirements..."></textarea>
         </div>
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-1">
         <!-- Scan Preset Dropdown -->
         <div class="relative group">
-            <button class="flex items-center gap-2 px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 border border-violet-500/30 rounded-lg text-xs text-white transition-colors">
-                <i class="fa-solid fa-bolt"></i>
+            <button class="flex items-center gap-2 px-3 py-2 bg-slate-900/50 hover:bg-white/5 border border-white/10 rounded-lg text-xs text-slate-300 transition-colors">
+                <i class="fa-solid fa-bolt text-violet-400"></i>
                 <span>Presets</span>
                 <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
             </button>
