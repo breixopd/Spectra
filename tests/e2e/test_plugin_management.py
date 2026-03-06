@@ -5,8 +5,7 @@ import pytest_asyncio
 import asyncio
 from app.services.tools.registry import get_registry
 from app.services.tools.models import ToolStatus
-from app.worker import get_arq_pool
-from arq.jobs import Job, JobStatus
+from app.core.queue import Job
 
 pytestmark = [
     pytest.mark.asyncio,
@@ -69,24 +68,20 @@ async def cleanup_registry(registry):
 
 
 async def wait_for_job(job_id: str, timeout: int = 30):
-    """Wait for an arq job to complete."""
-    pool = await get_arq_pool()
+    """Wait for a postgres job to complete."""
     start_time = asyncio.get_running_loop().time()
 
     while asyncio.get_running_loop().time() - start_time < timeout:
-        job = Job(job_id, pool)
+        job = Job(job_id)
         status = await job.status()
 
-        if status == JobStatus.complete:
-            result = await job.result()
-            if hasattr(pool, "aclose"):
-                await pool.aclose()
-            return result
+        if status == "completed":
+            return await job.result()
+        elif status == "failed":
+            raise Exception(f"Job {job_id} failed: {await job.result()}")
 
         await asyncio.sleep(1)
 
-    if hasattr(pool, "aclose"):
-        await pool.aclose()
     raise TimeoutError("Job timed out")
 
 
@@ -105,25 +100,22 @@ class TestPluginLifecycle:
         plugin_path = registry.plugins_dir / "test-plugin.json"
         assert plugin_path.exists()
 
-        from app.worker import enqueue_tool_installation, WorkerSettings
-        from arq.worker import Worker
+        from app.core.queue import PostgresJobQueue, worker_loop
+        from app.worker import WorkerSettings
 
-        job_id = await enqueue_tool_installation("test-plugin")
+        pool = PostgresJobQueue(queue_name=WorkerSettings.queue_name)
+        job_id = await pool.enqueue_job("install_tool_job", "test-plugin")
         assert job_id is not None, "Failed to enqueue installation"
 
         # Run worker to process the job
-        worker = Worker(
-            functions=WorkerSettings.functions,
-            redis_settings=WorkerSettings.redis_settings,
-            burst=True,
-        )
-        await worker.run()
+        worker_task = asyncio.create_task(worker_loop(WorkerSettings.functions, queue_name=WorkerSettings.queue_name))
 
         result = await wait_for_job(job_id)
         assert result["success"] is True
         assert result["tool_id"] == "test-plugin"
 
         print(f"Installation result: {result}")
+        worker_task.cancel()
 
     async def test_broken_plugin_verification_failure(self, registry):
         """Test that a plugin with failing verification is marked as failed."""
@@ -133,23 +125,20 @@ class TestPluginLifecycle:
         tool = await registry.add_plugin(BROKEN_PLUGIN)
         assert tool.status == ToolStatus.PENDING
 
-        from app.worker import enqueue_tool_installation, WorkerSettings
-        from arq.worker import Worker
+        from app.core.queue import PostgresJobQueue, worker_loop
+        from app.worker import WorkerSettings
 
-        job_id = await enqueue_tool_installation("broken-plugin")
+        pool = PostgresJobQueue(queue_name=WorkerSettings.queue_name)
+        job_id = await pool.enqueue_job("install_tool_job", "broken-plugin")
         assert job_id is not None, "Failed to enqueue installation"
 
         # Run worker to process the job
-        worker = Worker(
-            functions=WorkerSettings.functions,
-            redis_settings=WorkerSettings.redis_settings,
-            burst=True,
-        )
-        await worker.run()
+        worker_task = asyncio.create_task(worker_loop(WorkerSettings.functions, queue_name=WorkerSettings.queue_name))
 
         result = await wait_for_job(job_id)
         assert result["success"] is False
         assert "Verification command failed" in result["error"]
+        worker_task.cancel()
 
     async def test_plugin_uninstall(self, registry):
         """Test uninstalling a plugin removes it from registry and disk."""
