@@ -130,7 +130,7 @@
                     </div>
                 </div>
                 <div id="output-area" class="flex-1 overflow-y-auto p-4 font-mono text-sm text-slate-300 whitespace-pre-wrap">
-                    <span class="text-slate-600">Output will appear here...</span>
+                    <span class="text-slate-500">Select a tool and click Run to see output here.</span>
                 </div>
                 <!-- Findings panel -->
                 <div id="findings-panel" class="hidden border-t border-white/10 max-h-[200px] overflow-y-auto">
@@ -561,7 +561,7 @@ function colorizeOutput(text) {
 }
 
 function clearOutput() {
-    document.getElementById('output-area').innerHTML = '<span class="text-slate-600">Output will appear here...</span>';
+    document.getElementById('output-area').innerHTML = '<span class="text-slate-500">Select a tool and click Run to see output here.</span>';
     document.getElementById('findings-panel').classList.add('hidden');
     document.getElementById('output-findings-count').classList.add('hidden');
     document.getElementById('output-duration').textContent = '';
