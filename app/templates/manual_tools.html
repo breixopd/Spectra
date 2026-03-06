@@ -42,6 +42,34 @@
         </div>
     </div>
 
+    <!-- Tips Banner (dismissible) -->
+    <div id="tips-banner" class="glass-panel rounded-xl p-3 mb-3 shrink-0 animate-fade-in-up border-l-2 border-violet-500/50">
+        <div class="flex items-start gap-3">
+            <i class="fa-solid fa-lightbulb text-violet-400 mt-0.5 shrink-0"></i>
+            <div class="flex-1">
+                <p id="tip-text" class="text-xs text-slate-300"></p>
+            </div>
+            <button onclick="nextTip()" class="text-[10px] text-violet-400 hover:text-violet-300 shrink-0" title="Next tip">Next</button>
+            <button onclick="document.getElementById('tips-banner').classList.add('hidden')" class="text-slate-600 hover:text-slate-400 shrink-0" title="Dismiss tips">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Session Bar -->
+    <div id="session-bar" class="glass-panel rounded-xl p-2 mb-3 shrink-0 animate-fade-in-up flex items-center gap-3">
+        <i class="fa-solid fa-folder-open text-slate-500 text-xs"></i>
+        <span id="session-label" class="text-xs text-slate-400">No active session</span>
+        <div class="ml-auto flex gap-2">
+            <button onclick="startSession()" id="session-start-btn" class="px-2.5 py-1 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-[11px] transition-colors">
+                <i class="fa-solid fa-plus mr-1"></i> New Session
+            </button>
+            <button onclick="exportSession()" id="session-export-btn" class="hidden px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
+                <i class="fa-solid fa-file-export mr-1"></i> Export
+            </button>
+        </div>
+    </div>
+
     <!-- Global Target + Quick Actions -->
     <div class="glass-panel rounded-xl p-3 mb-4 shrink-0 animate-fade-in-up flex items-center gap-3">
         <div class="flex items-center gap-2 text-xs text-slate-400 shrink-0">
@@ -464,8 +492,13 @@ async function executeManualTool() {
             renderFindings(result.parsed_findings);
         }
 
-        // Store output and show next-tool suggestions
+        // Store output, log to session, and show next-tool suggestions
         lastToolOutput = result.stdout || '';
+        logToSession(
+            `Ran ${selectedToolConfig.name} against ${target}`,
+            selectedToolConfig.id,
+            result.parsed_findings || []
+        );
         showNextToolSuggestions(selectedToolConfig.id);
     } catch (e) {
         clearInterval(timer);
@@ -915,7 +948,82 @@ function quickRun(toolId) {
     }, 400);
 }
 
+// === Tips System ===
+const TIPS = [
+    "Start with <b>Nmap</b> to discover open ports and services, then use the findings to target specific tools.",
+    "After a port scan, use <b>SearchSploit</b> to find known exploits for discovered service versions.",
+    "For web targets, run <b>WhatWeb</b> first to identify technologies, then <b>Nikto</b> or <b>Nuclei</b> for vulnerabilities.",
+    "Use the <b>CVE Lookup</b> tab to search for known vulnerabilities by product name and version.",
+    "The <b>Pipeline</b> tab lets you chain tools together. Use templates for common workflows.",
+    "Click the action buttons on findings (hover to reveal) to quickly run follow-up tools.",
+    "Create a <b>Session</b> to track all your findings, actions, and notes for reporting.",
+    "For brute-force testing, manage wordlists in <b>Settings</b> and tools will auto-configure.",
+    "Use <b>Nuclei</b> for comprehensive vulnerability scanning — it checks thousands of templates.",
+    "The <b>{prev}</b> placeholder in pipelines passes the previous tool's output as the next tool's target.",
+];
+let tipIndex = Math.floor(Math.random() * TIPS.length);
+
+function showTip() {
+    document.getElementById('tip-text').innerHTML = TIPS[tipIndex % TIPS.length];
+}
+function nextTip() {
+    tipIndex++;
+    showTip();
+}
+
+// === Session Tracking ===
+let currentSessionId = null;
+
+async function startSession() {
+    const target = document.getElementById('global-target')?.value?.trim() || 'unknown';
+    const name = prompt('Session name:', `Pentest ${new Date().toLocaleDateString()}`);
+    if (!name) return;
+
+    try {
+        const res = await fetch('/api/pentest-sessions', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, target, description: ''})
+        });
+        const session = await res.json();
+        currentSessionId = session.id;
+        document.getElementById('session-label').textContent = `${name} (${target})`;
+        document.getElementById('session-start-btn').textContent = 'Active';
+        document.getElementById('session-start-btn').disabled = true;
+        document.getElementById('session-export-btn').classList.remove('hidden');
+    } catch (e) {
+        console.error('Failed to start session:', e);
+    }
+}
+
+function logToSession(action, tool, findings) {
+    if (!currentSessionId) return;
+    fetch(`/api/pentest-sessions/${currentSessionId}/log`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action, tool, note: '', findings: findings || []})
+    }).catch(e => console.debug('Session log failed:', e));
+}
+
+async function exportSession() {
+    if (!currentSessionId) return;
+    try {
+        const res = await fetch(`/api/pentest-sessions/${currentSessionId}/export`);
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `session-${currentSessionId}.json`;
+        a.click();
+    } catch (e) {
+        alert('Export failed: ' + e.message);
+    }
+}
+
 // Init
-document.addEventListener('DOMContentLoaded', () => { loadTools(); });
+document.addEventListener('DOMContentLoaded', () => {
+    loadTools();
+    showTip();
+});
 </script>
 {% endblock %}
