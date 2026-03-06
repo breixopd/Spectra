@@ -34,6 +34,13 @@ TOOL_OUTPUT_SIGNATURES: dict[str, list[str]] = {
     "metasploit": ["msf", "exploit", "payload", "session", "Meterpreter"],
 }
 
+# Performance Optimization: Pre-compute lowercase signatures to avoid recalculating
+# them inside the hot path during output matching.
+TOOL_OUTPUT_SIGNATURES_LOWER: dict[str, list[str]] = {
+    tool: [sig.lower() for sig in signatures]
+    for tool, signatures in TOOL_OUTPUT_SIGNATURES.items()
+}
+
 
 def validate_tool_output(tool_id: str, stdout: str, stderr: str) -> dict[str, Any]:
     """
@@ -56,9 +63,9 @@ def validate_tool_output(tool_id: str, stdout: str, stderr: str) -> dict[str, An
             "evidence_quality": "none",
         }
 
-    signatures = TOOL_OUTPUT_SIGNATURES.get(tool_id.lower(), [])
+    signatures_lower = TOOL_OUTPUT_SIGNATURES_LOWER.get(tool_id.lower(), [])
 
-    if not signatures:
+    if not signatures_lower:
         return {
             "valid": True,
             "confidence": 0.6,
@@ -66,8 +73,9 @@ def validate_tool_output(tool_id: str, stdout: str, stderr: str) -> dict[str, An
             "evidence_quality": "weak",
         }
 
-    matches = sum(1 for sig in signatures if sig.lower() in output.lower())
-    match_ratio = matches / len(signatures) if signatures else 0
+    output_lower = output.lower()
+    matches = sum(1 for sig in signatures_lower if sig in output_lower)
+    match_ratio = matches / len(signatures_lower) if signatures_lower else 0
 
     if match_ratio == 0:
         issues.append(f"Output doesn't match any known {tool_id} patterns")
@@ -79,7 +87,7 @@ def validate_tool_output(tool_id: str, stdout: str, stderr: str) -> dict[str, An
         }
 
     if match_ratio < 0.3:
-        issues.append(f"Only {matches}/{len(signatures)} signature matches")
+        issues.append(f"Only {matches}/{len(signatures_lower)} signature matches")
         return {
             "valid": True,
             "confidence": 0.4,

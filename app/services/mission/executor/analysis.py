@@ -9,21 +9,25 @@ if TYPE_CHECKING:
     from app.models.attack_surface import AttackVector
 
 
+# Performance Optimization: Pre-compute lowercase indicators to avoid recalculating
+# them inside the hot path during output matching.
+SUCCESS_INDICATORS_LOWER = [
+    "uid=",
+    "gid=",
+    "root@",
+    "administrator",
+    "meterpreter session",
+    "command shell session",
+    "sql injection found",
+    "database dumped",
+    "vulnerable:",
+    "[+]",
+]
+
 def check_exploit_success(output: str) -> bool:
     """Check if exploit output indicates success."""
-    indicators = [
-        "uid=",
-        "gid=",
-        "root@",
-        "Administrator",
-        "Meterpreter session",
-        "Command shell session",
-        "SQL injection found",
-        "database dumped",
-        "Vulnerable:",
-        "[+]",
-    ]
-    return any(ind.lower() in output.lower() for ind in indicators)
+    output_lower = output.lower()
+    return any(ind in output_lower for ind in SUCCESS_INDICATORS_LOWER)
 
 
 def detect_blocking(stderr: str) -> str | None:

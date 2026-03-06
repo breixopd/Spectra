@@ -477,14 +477,21 @@ OS_SIGNATURES = {
     ],
 }
 
+# Performance Optimization: Pre-compute lowercase signatures to avoid recalculating
+# them inside the hot path during output matching.
+OS_SIGNATURES_LOWER: dict[str, list[str]] = {
+    os_family: [sig.lower() for sig in signatures]
+    for os_family, signatures in OS_SIGNATURES.items()
+}
+
 
 def detect_os_from_output(output: str) -> str:
     """Detect OS family from tool output (nmap banners, etc.)."""
     output_lower = output.lower()
 
     scores: dict[str, int] = {}
-    for os_family, signatures in OS_SIGNATURES.items():
-        score = sum(1 for sig in signatures if sig.lower() in output_lower)
+    for os_family, signatures in OS_SIGNATURES_LOWER.items():
+        score = sum(1 for sig in signatures if sig in output_lower)
         if score > 0:
             scores[os_family] = score
 
