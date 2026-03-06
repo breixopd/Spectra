@@ -12,7 +12,7 @@ import logging
 from datetime import timezone
 from typing import Any
 
-from app.services.ai.rag_postgres import PostgresRAGService
+from app.services.ai.rag import RAGService
 
 logger = logging.getLogger("spectra.ai.knowledge")
 
@@ -20,14 +20,14 @@ logger = logging.getLogger("spectra.ai.knowledge")
 # --- Singleton RAG Connection ---
 
 
-_rag_service: PostgresRAGService | None = None
+_rag_service: RAGService | None = None
 
 
-async def get_rag_service() -> PostgresRAGService:
+async def get_rag_service() -> RAGService:
     """Get singleton RAG service instance."""
     global _rag_service
     if _rag_service is None:
-        _rag_service = PostgresRAGService()
+        _rag_service = RAGService()
         await _rag_service.initialize()
     return _rag_service
 

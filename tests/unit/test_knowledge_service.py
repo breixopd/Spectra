@@ -139,7 +139,7 @@ class TestRAGBackendSelection:
         await close_rag_service()
         try:
             with patch(
-                "app.services.ai.knowledge.PostgresRAGService"
+                "app.services.ai.knowledge.RAGService"
             ) as mock_postgres_rag:
                 mock_instance = AsyncMock()
                 mock_postgres_rag.return_value = mock_instance
@@ -157,7 +157,7 @@ class TestRAGBackendSelection:
         await close_rag_service()
         try:
             with patch(
-                "app.services.ai.knowledge.PostgresRAGService"
+                "app.services.ai.knowledge.RAGService"
             ) as mock_postgres_rag:
                 rag_instance = AsyncMock()
                 mock_postgres_rag.return_value = rag_instance
