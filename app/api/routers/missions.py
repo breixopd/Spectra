@@ -5,7 +5,6 @@ Endpoints for managing security missions.
 """
 
 import logging
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field

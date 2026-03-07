@@ -5,7 +5,7 @@ Provides dependency injection for database sessions, Redis, and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
