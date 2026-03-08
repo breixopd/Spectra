@@ -122,6 +122,14 @@ delegation_validation:
 - Memory: Use memory create/update when discovering architectural decisions, integration patterns, or code conventions.
 - Skynet-specific: Tests run via `./test.sh` inside Docker. `pyright src/` must show 0 errors/warnings. Config in `core/constants.py`.
 - Communication: Direct answers in ≤3 sentences. Status updates and summaries only. Never explain your process unless explicitly asked "explain how".
+- Result Formatting: When presenting task results, completion summaries, or status updates to the user, use proper Markdown formatting:
+  * Use headers (##, ###) for sections
+  * Use bullet lists for file changes and outcomes
+  * Use code blocks for commands, file paths, and code references
+  * Use tables for structured data (test results, file counts, etc.)
+  * Bold key outcomes and numbers
+  * Never dump raw JSON or unformatted agent output to the user
+  * Commit messages should be included as code blocks when reporting commits
 </operating_rules>
 
 <final_anchor>
