@@ -6,10 +6,10 @@ so they are easy to locate and change.
 """
 
 # ---------------------------------------------------------------------------
-# ARQ task queue
+# Task queue
 # ---------------------------------------------------------------------------
 
-#: Name of the ARQ Redis queue used by the tools worker.
+#: Name of the task queue used by the tools worker.
 ARQ_QUEUE_NAME: str = "spectra:tasks"
 
 # ---------------------------------------------------------------------------
@@ -18,6 +18,16 @@ ARQ_QUEUE_NAME: str = "spectra:tasks"
 
 #: Maximum number of hosts that will be included from a CIDR range.
 MAX_HOSTS_DEFAULT: int = 256
+
+# ---------------------------------------------------------------------------
+# Concurrency
+# ---------------------------------------------------------------------------
+
+#: Maximum number of missions running simultaneously.
+MAX_CONCURRENT_MISSIONS: int = 3
+
+#: Maximum replans per mission to prevent infinite loops.
+MAX_REPLANS_PER_MISSION: int = 3
 
 # ---------------------------------------------------------------------------
 # Exploitation engine
@@ -29,28 +39,28 @@ MAX_EXPLOIT_ITERATIONS: int = 20
 #: Maximum characters of exploit output to log inline.
 EXPLOIT_OUTPUT_LOG_CHARS: int = 300
 
+#: Mission-level timeout in seconds (1 hour default).
+MISSION_TIMEOUT_SECONDS: int = 3600
+
 # ---------------------------------------------------------------------------
 # ARQ worker settings
 # ---------------------------------------------------------------------------
 
-#: Maximum concurrent ARQ jobs in the tools worker.
+#: Maximum concurrent jobs in the tools worker.
 ARQ_MAX_JOBS: int = 10
 
-#: Default ARQ job timeout in seconds (10 minutes).
+#: Default job timeout in seconds (10 minutes).
 ARQ_JOB_TIMEOUT: int = 600
 
-#: How long (seconds) ARQ keeps job results in Redis (1 hour).
+#: How long (seconds) job results are kept (1 hour).
 ARQ_KEEP_RESULT: int = 3600
 
-#: Interval (seconds) between ARQ worker health-checks.
+#: Interval (seconds) between worker health-checks.
 ARQ_HEALTH_CHECK_INTERVAL: int = 30
 
 # ---------------------------------------------------------------------------
-# Redis / networking
+# Networking
 # ---------------------------------------------------------------------------
-
-#: Interval (seconds) for Redis client health-checks.
-REDIS_HEALTH_CHECK_INTERVAL: int = 30
 
 #: TCP receive-buffer size for shell session sockets (bytes).
 SHELL_SOCKET_RECV_BYTES: int = 4096
@@ -80,7 +90,7 @@ DEBRIEF_SUMMARY_LOG_CHARS: int = 200
 # ---------------------------------------------------------------------------
 
 #: Default page size for list endpoints.
-API_DEFAULT_PAGE_SIZE: int = 50
+API_DEFAULT_PAGE_SIZE: int = 20
 
 #: Maximum page size for list endpoints.
 API_MAX_PAGE_SIZE: int = 100
@@ -107,3 +117,25 @@ MEMORY_MAX_EXPLOIT_LESSONS: int = 200
 
 #: Default API rate limit.
 API_RATE_LIMIT: str = "100/minute"
+
+# ---------------------------------------------------------------------------
+# Exploit Database
+# ---------------------------------------------------------------------------
+
+#: URL for Metasploit module metadata (raw GitHub).
+MSF_METADATA_URL: str = "https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json"
+
+#: URL for CISA Known Exploited Vulnerabilities catalog.
+CISA_KEV_URL: str = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+
+#: EPSS API base URL.
+EPSS_API_URL: str = "https://api.first.org/data/v1/epss"
+
+#: Exploit database cache directory.
+EXPLOIT_DB_CACHE_DIR: str = "reports/memory/exploit_db"
+
+#: Refresh interval for exploit database (7 days in seconds).
+EXPLOIT_DB_REFRESH_INTERVAL: int = 604800
+
+#: Cache TTL for EPSS scores (24 hours in seconds).
+EPSS_CACHE_TTL: int = 86400

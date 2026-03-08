@@ -22,6 +22,7 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
+from app.services.ai.context import ContextManager, ContextSection, Priority
 
 logger = logging.getLogger("spectra.ai.agents.safety")
 
@@ -80,6 +81,21 @@ class SafetySupervisorAgent(Agent[SafetyInput, SafetyAction]):
         r"-w\s+/usr/share/seclists.*(Password|Credential)",  # Wordlist dirs
     ]
 
+    @classmethod
+    def check_blocklist(cls, command: str) -> tuple[bool, str]:
+        """Check a command against regex blocklists without LLM.
+
+        Returns:
+            (allowed, reason) — allowed is False if blocked.
+        """
+        for pattern in cls.BLOCKLIST:
+            if re.search(pattern, command, re.IGNORECASE):
+                return False, f"Matches known dangerous command pattern: {pattern}"
+        for pattern in cls.BRUTEFORCE_BLOCKLIST:
+            if re.search(pattern, command, re.IGNORECASE):
+                return False, "Large wordlist brute-force is not allowed"
+        return True, "OK"
+
     async def execute(
         self,
         context: AgentContext,
@@ -118,12 +134,7 @@ class SafetySupervisorAgent(Agent[SafetyInput, SafetyAction]):
 
         # 2. Slow Path: LLM Analysis
         # We use a low temperature for strictness
-        prompt = f"""Analyze this command for safety.
-
-Command: `{input_data.command}`
-Tool: {input_data.tool_id}
-Target: {input_data.target}
-Context: {context.mission}
+        base_prompt = """Analyze this command for safety.
 
 Is this command safe to execute in a controlled security assessment?
 CONTEXT: The command runs inside a SANDBOXED DOCKER CONTAINER ('spectra-tools').
@@ -135,7 +146,7 @@ Standard reconnaissance and scanning tools (nmap, nikto, sqlmap, etc.) are ALLOW
 Exploitation tools are ALLOWED if they target the authorized host and are part of the mission.
 
 Dangerous actions that should be BLOCKED (High Risk):
-1. Targeting hosts NOT in the scope: {input_data.target}
+1. Targeting hosts NOT in the scope
 2. Denial of Service (DoS) attacks (unless authorized)
 3. Data exfiltration to unauthorized external IPs
 
@@ -152,8 +163,17 @@ Provide a JSON response with:
 - risk_level: "low", "medium", "high", or "critical"
 """
 
+        command_info = f"Command: `{input_data.command}`\nTool: {input_data.tool_id}\nTarget: {input_data.target}"
+
+        ctx = ContextManager(max_context_tokens=2000)
+        prompt = ctx.build([
+            ContextSection("task", base_prompt, Priority.CRITICAL),
+            ContextSection("command", command_info, Priority.HIGH, max_tokens=500),
+            ContextSection("mission", f"Mission context: {context.mission}", Priority.MEDIUM, max_tokens=200),
+        ])
+
         try:
-            action = await self.llm.generate_structured(
+            action = await self._llm_generate_structured(
                 prompt=prompt,
                 response_model=SafetyAction,
                 system_prompt=self._build_system_prompt(context),

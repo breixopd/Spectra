@@ -3,14 +3,21 @@
 Exposes CVE lookup capabilities to the UI for manual pentest workflows.
 """
 
+import re
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from app.api.dependencies import get_current_active_user
 from app.models.user import User
 from app.core.constants import CVE_RESULTS_LIMIT
-from app.services.ai.cve_intel import lookup_cves_live
+
+_CVE_PATTERN = re.compile(r"^CVE-\d{4}-\d{4,}$")
+from app.services.ai.cve_intel import (
+    get_metasploit_modules,
+    lookup_cves_live,
+    search_exploitdb,
+)
 
 router = APIRouter(prefix="/cve", tags=["CVE Intelligence"])
 
@@ -41,4 +48,49 @@ async def cve_lookup(
         "cves": cves[:CVE_RESULTS_LIMIT],
         "total": len(cves),
         "query": {"product": product, "version": version, "service": service, "keyword": keyword},
+    }
+
+
+@router.get("/cve/{cve_id}/exploits")
+async def get_cve_exploits(
+    cve_id: str = Path(..., pattern=r"^CVE-\d{4}-\d{4,}$"),
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Get available exploit modules for a specific CVE."""
+    modules = get_metasploit_modules(cve_id)
+    return {
+        "cve_id": cve_id,
+        "exploit_available": len(modules) > 0,
+        "metasploit_modules": modules,
+        "total": len(modules),
+    }
+
+
+@router.get("/cve/{cve_id}/enriched")
+async def get_cve_enriched(
+    cve_id: str = Path(..., pattern=r"^CVE-\d{4}-\d{4,}$"),
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Get unified exploit intelligence for a CVE (exploits + EPSS + KEV)."""
+    from app.services.ai.exploit_db import get_exploit_db
+
+    db = get_exploit_db()
+    return await db.enrich(cve_id)
+
+
+@router.get("/searchsploit/{query:path}")
+async def search_exploitdb_endpoint(
+    query: str,
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Search ExploitDB for exploits matching a query."""
+    if len(query) > 200:
+        raise HTTPException(status_code=422, detail="Query too long (max 200 chars)")
+    results = await search_exploitdb(query)
+    msf_matches = get_metasploit_modules(query.upper())
+    return {
+        "query": query,
+        "exploitdb_results": results,
+        "metasploit_modules": msf_matches,
+        "total": len(results) + len(msf_matches),
     }

@@ -17,7 +17,7 @@ async def test_connection_manager_connect():
     mock_ws = AsyncMock()
     mock_ws.accept = AsyncMock()
 
-    await manager.connect(mock_ws)
+    await manager.connect(mock_ws, require_auth=False)
 
     assert mock_ws in manager.active_connections
     mock_ws.accept.assert_awaited_once()
@@ -31,7 +31,7 @@ async def test_connection_manager_disconnect():
     mock_ws = AsyncMock()
     mock_ws.accept = AsyncMock()
 
-    await manager.connect(mock_ws)
+    await manager.connect(mock_ws, require_auth=False)
     await manager.disconnect(mock_ws)
 
     assert mock_ws not in manager.active_connections
@@ -55,8 +55,8 @@ async def test_connection_manager_broadcast():
     mock_ws2.send_text = AsyncMock()
     mock_ws2.client_state = WebSocketState.CONNECTED
 
-    await manager.connect(mock_ws1)
-    await manager.connect(mock_ws2)
+    await manager.connect(mock_ws1, require_auth=False)
+    await manager.connect(mock_ws2, require_auth=False)
 
     await manager.broadcast("test message")
 

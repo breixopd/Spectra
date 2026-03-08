@@ -12,8 +12,8 @@ from app.services.ai.playbook import (
 
 class TestPlaybookEngine:
     @pytest.fixture
-    def engine(self):
-        return PlaybookEngine()
+    def engine(self, tmp_path):
+        return PlaybookEngine(patterns_file=tmp_path / "patterns.json")
 
     def test_loads_default_playbooks(self, engine):
         assert len(engine.playbooks) > 0

@@ -1,19 +1,15 @@
 """LLM Client Interface and Implementations."""
 
+import asyncio
 import json
 import logging
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Type, TypeVar
 
-import httpx
 from pydantic import BaseModel
 
-from app.core.circuit_breaker import get_llm_circuit_breaker
 from app.core.config import settings
-from app.core.exceptions import LLMConnectionError, LLMResponseError, LLMTimeoutError
-from app.core.telemetry import record_llm_call, telemetry
 
 logger = logging.getLogger("spectra.services.ai.llm")
 
@@ -42,6 +38,39 @@ class LLMClient(ABC):
     """Abstract base class for LLM clients."""
 
     provider: str = "base"
+    MAX_RETRIES: int = 3
+
+    async def generate_with_retry(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+        timeout: float | None = None,
+        task_type: str | None = None,
+    ) -> "LLMResponse":
+        """Generate with exponential backoff retry on transient failures."""
+        last_error: Exception | None = None
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                return await self.generate(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    timeout=timeout,
+                    task_type=task_type,
+                )
+            except Exception as e:
+                last_error = e
+                if attempt < self.MAX_RETRIES - 1:
+                    delay = 2 ** attempt
+                    logger.warning(
+                        "LLM call failed (attempt %d/%d): %s. Retrying in %ds...",
+                        attempt + 1, self.MAX_RETRIES, e, delay,
+                    )
+                    await asyncio.sleep(delay)
+        raise last_error  # type: ignore[misc]
 
     @abstractmethod
     async def generate(
@@ -51,6 +80,7 @@ class LLMClient(ABC):
         temperature: float = 0.7,
         max_tokens: int = 2048,
         timeout: float | None = None,
+        task_type: str | None = None,
     ) -> LLMResponse:
         """
         Generate a text response from the LLM.
@@ -61,6 +91,7 @@ class LLMClient(ABC):
             temperature: Sampling temperature (0.0 - 1.0).
             max_tokens: Maximum tokens to generate.
             timeout: Request timeout in seconds.
+            task_type: Task type for model routing (e.g. 'scope', 'exploit_crafting').
 
         Returns:
             LLMResponse containing the generated text.
@@ -74,6 +105,7 @@ class LLMClient(ABC):
         temperature: float = 0.3,
         max_tokens: int = 2048,
         timeout: float | None = None,
+        task_type: str | None = None,
     ) -> T:
         """
         Generate a structured response that conforms to a Pydantic model.
@@ -85,6 +117,7 @@ class LLMClient(ABC):
             temperature: Sampling temperature (lower = more deterministic).
             max_tokens: Maximum tokens to generate.
             timeout: Request timeout in seconds.
+            task_type: Task type for model routing.
 
         Returns:
             Validated Pydantic model instance.
@@ -109,6 +142,7 @@ Respond ONLY with the JSON object. No markdown, no explanation, just the JSON.""
             temperature=temperature,
             max_tokens=max_tokens,
             timeout=timeout,
+            task_type=task_type,
         )
 
         # Parse and validate
@@ -166,228 +200,6 @@ Respond ONLY with the JSON object. No markdown, no explanation, just the JSON.""
         pass
 
 
-# --- Ollama Client ---
-
-
-class OllamaClient(LLMClient):
-    """Client for Ollama (local LLM inference)."""
-
-    provider = "ollama"
-
-    def __init__(
-        self,
-        host: str = "http://localhost:11434",
-        model: str = "qwen2.5:3b",
-    ):
-        self.host = host.rstrip("/")
-        self.model = model
-        self._http_client: Any = None
-
-    async def _get_client(self):
-        """Get or create HTTP client."""
-        if self._http_client is None:
-            import httpx
-
-            # Increased timeout for local LLMs which can be slow
-            self._http_client = httpx.AsyncClient(timeout=settings.LLM_TIMEOUT)
-        return self._http_client
-
-    async def generate(
-        self,
-        prompt: str,
-        system_prompt: str | None = None,
-        temperature: float = 0.7,
-        max_tokens: int = 2048,
-        timeout: float | None = None,
-    ) -> LLMResponse:
-        """Generate text using Ollama API with circuit breaker and telemetry."""
-        circuit_breaker = get_llm_circuit_breaker()
-        start_time = time.time()
-        success = False
-        tokens = 0
-
-        try:
-            async with circuit_breaker:
-                client = await self._get_client()
-
-                payload = {
-                    "model": self.model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": temperature,
-                        "num_predict": max_tokens,
-                    },
-                }
-
-                if system_prompt:
-                    payload["system"] = system_prompt
-
-                response = await client.post(
-                    f"{self.host}/api/generate",
-                    json=payload,
-                    timeout=timeout,
-                )
-                response.raise_for_status()
-                data = response.json()
-
-                tokens = data.get("prompt_eval_count", 0) + data.get("eval_count", 0)
-                success = True
-
-                return LLMResponse(
-                    content=data.get("response", ""),
-                    model=self.model,
-                    provider=self.provider,
-                    usage={
-                        "prompt_tokens": data.get("prompt_eval_count", 0),
-                        "completion_tokens": data.get("eval_count", 0),
-                        "total_tokens": tokens,
-                    },
-                    raw=data,
-                )
-        except httpx.TimeoutException as e:
-            logger.error("Ollama request timed out: %s", e)
-            raise LLMTimeoutError(
-                f"Ollama request timed out: {e}", timeout=settings.LLM_TIMEOUT
-            ) from e
-        except httpx.HTTPStatusError as e:
-            logger.error("Ollama HTTP error %d: %s", e.response.status_code, e)
-            raise LLMResponseError(
-                f"Ollama HTTP error: {e.response.status_code}",
-                status_code=e.response.status_code,
-            ) from e
-        except httpx.RequestError as e:
-            logger.error("Ollama connection error: %s", e)
-            raise LLMConnectionError(
-                f"Ollama connection failed: {e}", host=self.host
-            ) from e
-        finally:
-            # Record telemetry (fire and forget)
-            duration_ms = (time.time() - start_time) * 1000
-            import asyncio
-
-            asyncio.create_task(
-                record_llm_call(
-                    provider=self.provider,
-                    model=self.model,
-                    duration_ms=duration_ms,
-                    tokens=tokens,
-                    success=success,
-                )
-            )
-
-        # This line is unreachable but satisfies the type checker
-        raise RuntimeError("Unexpected code path in generate()")
-
-    async def health_check(self) -> bool:
-        """Check if Ollama is available."""
-        start_time = time.time()
-        try:
-            client = await self._get_client()
-            response = await client.get(f"{self.host}/api/tags")
-            healthy = response.status_code == 200
-            latency_ms = (time.time() - start_time) * 1000
-            telemetry.update_service_status(
-                "ollama", healthy=healthy, latency_ms=latency_ms
-            )
-            return healthy
-        except (httpx.RequestError, httpx.TimeoutException) as e:
-            logger.debug("Ollama health check failed: %s", e)
-            telemetry.update_service_status("ollama", healthy=False, error=str(e))
-            return False
-
-    async def close(self):
-        """Close the HTTP client."""
-        if self._http_client:
-            await self._http_client.aclose()
-            self._http_client = None
-
-
-# --- OpenAI-Compatible API Client ---
-
-
-class APIClient(LLMClient):
-    """Client for OpenAI-compatible APIs (OpenAI, OpenRouter, vLLM, LocalAI, etc.)."""
-
-    provider = "api"
-
-    def __init__(
-        self,
-        api_key: str,
-        model: str = "gpt-4o-mini",
-        base_url: str | None = None,
-    ):
-        self.model = model
-        self._client: Any = None
-        self._api_key = api_key
-        self._base_url = base_url
-
-    def _get_client(self):
-        """Get or create OpenAI-compatible client."""
-        if self._client is None:
-            from openai import AsyncOpenAI
-
-            self._client = AsyncOpenAI(
-                api_key=self._api_key,
-                base_url=self._base_url,
-            )
-        return self._client
-
-    async def generate(
-        self,
-        prompt: str,
-        system_prompt: str | None = None,
-        temperature: float = 0.7,
-        max_tokens: int = 2048,
-        timeout: float | None = None,
-    ) -> LLMResponse:
-        """Generate text using OpenAI-compatible API."""
-        client = self._get_client()
-
-        messages = []
-        if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
-
-        try:
-            response = await client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=timeout,
-            )
-
-            choice = response.choices[0]
-            usage = response.usage
-
-            return LLMResponse(
-                content=choice.message.content or "",
-                model=self.model,
-                provider=self.provider,
-                usage={
-                    "prompt_tokens": usage.prompt_tokens if usage else 0,
-                    "completion_tokens": usage.completion_tokens if usage else 0,
-                    "total_tokens": usage.total_tokens if usage else 0,
-                },
-                raw=response.model_dump(),
-            )
-        except Exception as e:
-            logger.error("API generation failed: %s", e)
-            raise
-
-    async def health_check(self) -> bool:
-        """Check if API is available."""
-        try:
-            client = self._get_client()
-            await client.models.list()
-            return True
-        except Exception:
-            return False
-
-
-
-
 # --- Mock Client (for testing) ---
 
 
@@ -420,6 +232,7 @@ class MockLLMClient(LLMClient):
         temperature: float = 0.7,
         max_tokens: int = 2048,
         timeout: float | None = None,
+        task_type: str | None = None,
     ) -> LLMResponse:
         """Return mock response."""
         self.call_history.append(
@@ -451,6 +264,7 @@ class MockLLMClient(LLMClient):
         temperature: float = 0.3,
         max_tokens: int = 2048,
         timeout: float | None = None,
+        task_type: str | None = None,
     ) -> T:
         """Return mock structured response."""
         self.call_history.append(
@@ -475,9 +289,35 @@ class MockLLMClient(LLMClient):
         """Generate a default instance of a Pydantic model."""
         schema = response_model.model_json_schema()
         props = schema.get("properties", {})
+        defs = schema.get("$defs", {})
 
         data = {}
         for prop_name, prop_info in props.items():
+            # Check for enum via anyOf or $ref
+            enum_vals = prop_info.get("enum")
+            if not enum_vals:
+                # Check $ref to enum definition
+                ref = prop_info.get("$ref") or prop_info.get("allOf", [{}])[0].get("$ref") if prop_info.get("allOf") else None
+                if ref and isinstance(ref, str):
+                    ref_name = ref.split("/")[-1]
+                    ref_def = defs.get(ref_name, {})
+                    enum_vals = ref_def.get("enum")
+                # Check anyOf for enum
+                if not enum_vals and "anyOf" in prop_info:
+                    for option in prop_info["anyOf"]:
+                        if "enum" in option:
+                            enum_vals = option["enum"]
+                            break
+                        if "$ref" in option:
+                            ref_name = option["$ref"].split("/")[-1]
+                            ref_def = defs.get(ref_name, {})
+                            if "enum" in ref_def:
+                                enum_vals = ref_def["enum"]
+                                break
+            if enum_vals:
+                data[prop_name] = enum_vals[0]
+                continue
+
             prop_type = prop_info.get("type", "string")
             if prop_type == "string":
                 data[prop_name] = f"mock_{prop_name}"
@@ -506,84 +346,336 @@ class MockLLMClient(LLMClient):
         self.call_history = []
 
 
+class PentestMockLLMClient(MockLLMClient):
+    """Mock LLM that returns realistic pentest responses based on prompt keywords."""
+
+    provider = "mock"
+
+    async def generate(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+        timeout: float | None = None,
+        task_type: str | None = None,
+    ) -> LLMResponse:
+        """Return context-aware pentest mock responses."""
+        self.call_history.append({"prompt": prompt, "system_prompt": system_prompt,
+                                  "temperature": temperature, "max_tokens": max_tokens, "timeout": timeout})
+        self._call_count += 1
+
+        content = self._get_pentest_response(prompt, system_prompt or "")
+        return LLMResponse(
+            content=content,
+            model="mock-pentest",
+            provider=self.provider,
+            usage={"prompt_tokens": 100, "completion_tokens": 200, "total_tokens": 300},
+            raw={},
+        )
+
+    async def generate_structured(
+        self,
+        prompt: str,
+        response_model: Type[T],
+        system_prompt: str | None = None,
+        temperature: float = 0.3,
+        max_tokens: int = 2048,
+        timeout: float | None = None,
+        task_type: str | None = None,
+    ) -> T:
+        """Return realistic structured responses for pentest models."""
+        self.call_history.append({"prompt": prompt, "system_prompt": system_prompt,
+                                  "response_model": response_model.__name__,
+                                  "temperature": temperature, "max_tokens": max_tokens, "timeout": timeout})
+        self._call_count += 1
+
+        model_name = response_model.__name__
+
+        # Check custom responses first
+        if model_name in self.structured_responses:
+            return response_model.model_validate(self.structured_responses[model_name])
+
+        # Return pentest-aware defaults
+        data = self._get_pentest_structured(model_name, prompt)
+        if data:
+            try:
+                return response_model.model_validate(data)
+            except Exception as e:
+                logger.debug("Mock LLM validation failed: %s", e)
+
+        return self._generate_default(response_model)
+
+    def _get_pentest_response(self, prompt: str, system_prompt: str) -> str:
+        """Generate context-aware text response."""
+        prompt_lower = (prompt + " " + system_prompt).lower()
+
+        if "scope" in prompt_lower or "target" in prompt_lower:
+            return "Target is in scope. Proceeding with reconnaissance."
+        elif "nmap" in prompt_lower or "scan" in prompt_lower:
+            return ("Based on the scan results, the target has open ports 22 (SSH), 80 (HTTP), "
+                    "and 443 (HTTPS). The HTTP server appears to be Apache with PHP enabled. "
+                    "Recommend running nikto and dirb/dirsearch for web enumeration.")
+        elif "vulnerability" in prompt_lower or "vuln" in prompt_lower:
+            return ("Several vulnerabilities identified: 1) Apache server version disclosure (Info), "
+                    "2) phpinfo() page exposed at /info.php (Medium), 3) Directory listing enabled (Low), "
+                    "4) Backup configuration file at /backup/config.bak containing credentials (High), "
+                    "5) Default admin credentials on /admin/ (Critical)")
+        elif "exploit" in prompt_lower:
+            return ("Recommend testing default credentials on admin panel (admin:admin123). "
+                    "Also check the backup config file for database credentials. "
+                    "For SSH, test weak credentials (root:toor).")
+        elif "report" in prompt_lower or "debrief" in prompt_lower:
+            return ("Assessment complete. Found 5 findings: 1 Critical (default credentials), "
+                    "1 High (credential exposure), 1 Medium (information disclosure), "
+                    "2 Low (config issues). Recommend immediate password changes and removing exposed files.")
+        elif "safety" in prompt_lower or "approve" in prompt_lower:
+            return "Action is within scope and poses no risk to availability. Approved."
+        elif "tool" in prompt_lower or "select" in prompt_lower or "recommend" in prompt_lower:
+            return ("Recommend running: 1) nmap for port discovery, 2) whatweb for technology fingerprinting, "
+                    "3) nikto for web vulnerability scanning, 4) dirsearch for directory enumeration")
+        elif "analyze" in prompt_lower or "result" in prompt_lower or "output" in prompt_lower:
+            return ("Analysis of tool output shows multiple interesting findings. Open ports detected. "
+                    "Web technologies identified. Several potential vulnerabilities found that warrant "
+                    "further investigation.")
+        else:
+            return ("Proceeding with the next phase of the assessment. Current findings suggest "
+                    "the target has several areas of concern that need further investigation.")
+
+    def _get_pentest_structured(self, model_name: str, prompt: str) -> dict | None:
+        """Return pentest-aware structured data for known models."""
+        prompt_lower = prompt.lower()
+
+        if "ScopeAction" in model_name or "scope" in model_name.lower():
+            return {
+                "action_type": "define_scope",
+                "confidence": 0.95,
+                "risk_level": "low",
+                "reasoning": "Target parsed and validated",
+                "targets": [],
+                "exclusions": [],
+                "total_hosts": 1,
+                "warnings": [],
+            }
+
+        if "ToolSelection" in model_name or "tool" in model_name.lower():
+            if "recon" in prompt_lower or "discover" in prompt_lower:
+                return {
+                    "tool_name": "nmap",
+                    "arguments": "-sV -sC -T4",
+                    "reasoning": "Port scan with service/version detection for initial recon",
+                    "confidence": 0.9,
+                }
+            return {
+                "tool_name": "nikto",
+                "arguments": "",
+                "reasoning": "Web vulnerability scanner for HTTP services",
+                "confidence": 0.85,
+            }
+
+        if "Safety" in model_name or "safety" in model_name.lower():
+            return {
+                "approved": True,
+                "reasoning": "Action is within defined scope",
+                "risk_level": "low",
+                "concerns": [],
+            }
+
+        # VoteResponse - consensus voting
+        if "Vote" in model_name or "vote" in model_name.lower():
+            return {
+                "decision": "approve",
+                "confidence": 0.85,
+                "reasoning": "Action appears safe and within mission scope",
+                "concerns": [],
+            }
+
+        if "Finding" in model_name or "finding" in model_name.lower():
+            return {
+                "title": "Service detected on target",
+                "severity": "info",
+                "description": "Mock finding from automated analysis",
+                "confidence": 0.8,
+            }
+
+        if "Controller" in model_name or "Phase" in model_name or "Decision" in model_name:
+            return {
+                "next_phase": "reconnaissance",
+                "reasoning": "Continue with reconnaissance to gather more information",
+                "tasks": ["run_nmap", "run_whatweb"],
+                "confidence": 0.85,
+            }
+
+        # MissionPlan - the controller's plan output
+        if "MissionPlan" in model_name:
+            return {
+                "action_type": "mission_plan",
+                "confidence": 0.85,
+                "risk_level": "low",
+                "reasoning": "Comprehensive assessment plan covering recon through reporting",
+                "mission_type": "full_assessment",
+                "current_phase": "discovery",
+                "estimated_duration_minutes": 45,
+                "requires_approval": False,
+                "tasks": [
+                    {
+                        "task_id": "task_1",
+                        "description": "Port scan and service discovery",
+                        "agent_type": "tool_executor",
+                        "phase": "discovery",
+                        "priority": 1,
+                        "dependencies": [],
+                        "parameters": {"tool": "nmap", "args": "-sV -sC -T4"},
+                    },
+                    {
+                        "task_id": "task_2",
+                        "description": "Web technology fingerprinting",
+                        "agent_type": "tool_executor",
+                        "phase": "enumeration",
+                        "priority": 2,
+                        "dependencies": ["task_1"],
+                        "parameters": {"tool": "whatweb"},
+                    },
+                    {
+                        "task_id": "task_3",
+                        "description": "Web vulnerability scanning",
+                        "agent_type": "tool_executor",
+                        "phase": "vulnerability",
+                        "priority": 3,
+                        "dependencies": ["task_2"],
+                        "parameters": {"tool": "nikto"},
+                    },
+                    {
+                        "task_id": "task_4",
+                        "description": "Directory and file enumeration",
+                        "agent_type": "tool_executor",
+                        "phase": "enumeration",
+                        "priority": 2,
+                        "dependencies": ["task_1"],
+                        "parameters": {"tool": "dirsearch"},
+                    },
+                    {
+                        "task_id": "task_5",
+                        "description": "Generate final report",
+                        "agent_type": "reporter",
+                        "phase": "reporting",
+                        "priority": 5,
+                        "dependencies": ["task_3", "task_4"],
+                        "parameters": {},
+                    },
+                ],
+            }
+
+        # PhaseTransition
+        if "PhaseTransition" in model_name:
+            return {
+                "action_type": "phase_transition",
+                "confidence": 0.9,
+                "risk_level": "low",
+                "reasoning": "Phase objectives complete, transitioning to next phase",
+                "from_phase": "discovery",
+                "to_phase": "enumeration",
+                "summary": "Discovery phase completed. Identified open services.",
+                "findings_count": 0,
+            }
+
+        # SteeringAction
+        if "Steering" in model_name:
+            return {
+                "action_type": "steering",
+                "confidence": 0.8,
+                "risk_level": "low",
+                "reasoning": "Adjusting mission parameters per steering input",
+            }
+
+        # DebriefReport
+        if "Debrief" in model_name or "Report" in model_name:
+            return {
+                "action_type": "debrief",
+                "confidence": 0.9,
+                "risk_level": "low",
+                "reasoning": "Assessment complete",
+                "summary": "Security assessment completed against target.",
+                "key_findings": ["Services discovered", "Web application analyzed"],
+                "risk_rating": "medium",
+                "recommendations": ["Review service configurations", "Apply security patches"],
+            }
+
+        return None
+
+
 # --- Factory Function ---
 
 
 def get_llm_client(
-    provider: str = "ollama",
+    provider: str = "litellm",
     **kwargs,
 ) -> LLMClient:
     """
     Factory function to get the appropriate LLM client.
 
     Args:
-        provider: One of "ollama", "api", or "mock".
+        provider: "litellm" (all providers) or "mock" (testing).
         **kwargs: Provider-specific arguments.
 
     Returns:
         Configured LLM client instance.
     """
-    if provider == "ollama":
-        return OllamaClient(
-            host=kwargs.get("host", "http://localhost:11434"),
-            model=kwargs.get("model", "qwen2.5:3b"),
-        )
-    elif provider in ("api", "openai"):
-        api_key = kwargs.get("api_key")
-        if not api_key:
-            raise ValueError("API key is required for cloud provider")
-        return APIClient(
-            api_key=api_key,
-            model=kwargs.get("model", "gpt-4o-mini"),
-            base_url=kwargs.get("base_url"),
-        )
-    elif provider == "mock":
-        return MockLLMClient(
+    from app.services.ai.router import LiteLLMRouter, _normalize_provider_name
+
+    normalized_provider = _normalize_provider_name(provider)
+
+    if normalized_provider == "mock":
+        return PentestMockLLMClient(
             responses=kwargs.get("responses"),
             structured_responses=kwargs.get("structured_responses"),
         )
-    else:
-        raise ValueError(f"Unknown LLM provider: {provider}")
+
+    # Everything else goes through LiteLLM
+    model = kwargs.get("model", "")
+    base_url = kwargs.get("base_url") or kwargs.get("host")
+    api_key = kwargs.get("api_key")
+
+    # Detect Ollama-style requests: if host is provided or raw provider is "ollama"
+    raw_lower = (provider or "").strip().lower()
+    if raw_lower == "ollama" and model and not model.startswith("ollama/"):
+        model = f"ollama/{model}"
+
+    model_configs = []
+    if model:
+        litellm_params: dict[str, Any] = {"model": model}
+        if base_url:
+            litellm_params["api_base"] = base_url
+        if api_key:
+            litellm_params["api_key"] = api_key
+        model_configs.append({"model_name": "default", "litellm_params": litellm_params})
+
+    return LiteLLMRouter(
+        model_configs=model_configs or None,
+        default_model=model or "openai/gpt-4o-mini",
+    )
 
 
 def get_default_llm_client() -> LLMClient:
     """
     Get the LLM client configured in settings.
 
-    Uses LiteLLM smart router when available, falls back to direct clients.
+    Uses LiteLLM smart router for all non-mock providers.
     """
-    try:
-        from app.services.ai.router import create_smart_router
+    from app.services.ai.router import LiteLLMRouter, _normalize_provider_name, create_smart_router
 
+    provider = _normalize_provider_name(settings.AI_PROVIDER)
+
+    if provider == "mock":
+        return get_llm_client(provider="mock")
+
+    try:
         client = create_smart_router()
         logger.info("Using LiteLLM smart router (provider=%s)", settings.AI_PROVIDER)
         return client
-    except ImportError:
-        logger.info("LiteLLM not available, using direct clients")
     except Exception as e:
-        logger.warning("Smart router init failed, falling back to direct: %s", e)
-
-    # Fallback to direct clients
-    provider = settings.AI_PROVIDER
-
-    if provider == "ollama":
-        return get_llm_client(
-            provider="ollama",
-            host=settings.OLLAMA_HOST,
-            model=settings.OLLAMA_MODEL,
-        )
-    elif provider in ("api", "openai"):
-        return get_llm_client(
-            provider="api",
-            api_key=settings.LLM_API_KEY.get_secret_value(),
-            base_url=settings.LLM_API_BASE_URL,
-            model=settings.LLM_MODEL,
-        )
-    elif provider == "mock":
-        return get_llm_client(provider="mock")
-    else:
-        logger.warning("Unknown provider %s, falling back to mock", provider)
-        return get_llm_client(provider="mock")
+        logger.warning("Smart router init failed, falling back to direct LiteLLM: %s", e)
+        return LiteLLMRouter(default_model=settings.LLM_MODEL or "openai/gpt-4o-mini")
 
 
 # Global singleton

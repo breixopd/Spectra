@@ -66,8 +66,8 @@ async def list_wordlists(
             try:
                 with f.open("r", errors="ignore") as fh:
                     lines = sum(1 for _ in fh)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to count wordlist lines: %s", e)
             local.append({
                 "name": f.stem.replace("-", " ").replace("_", " ").title(),
                 "filename": f.name,

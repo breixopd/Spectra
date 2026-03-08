@@ -14,7 +14,6 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from starlette.responses import JSONResponse
 
-from app.core.config import settings
 from app.core.events import EventType, events
 from app.core.security import decode_token
 
@@ -22,26 +21,16 @@ logger = logging.getLogger("spectra.core.rate_limit")
 
 
 def get_client_identifier(request: Request) -> str:
+    """Get client IP from the request.
+
+    Uses request.client.host directly. X-Forwarded-For is only used
+    when behind a trusted reverse proxy (Caddy/nginx), in which case
+    uvicorn's --proxy-headers flag handles it automatically via
+    request.client.host.
     """
-    Get client identifier for rate limiting.
-
-    Uses:
-    1. X-Forwarded-For header (for proxied requests)
-    2. X-Real-IP header
-    3. Client IP address
-    """
-    # Check for forwarded headers
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        # Take the first IP in the chain
-        return forwarded.split(",")[0].strip()
-
-    real_ip = request.headers.get("X-Real-IP")
-    if real_ip:
-        return real_ip
-
-    # Fall back to direct client
-    return get_remote_address(request)
+    if request.client:
+        return request.client.host
+    return "unknown"
 
 
 def get_user_identifier(request: Request) -> str:
@@ -63,8 +52,9 @@ def get_user_identifier(request: Request) -> str:
             username = payload.get("sub")
             if username:
                 return f"user:{username}"
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("JWT decode failed in rate limiter: %s", e)
+            return f"invalid:{get_remote_address(request)}"
 
     return get_client_identifier(request)
 
@@ -74,7 +64,7 @@ limiter = Limiter(
     key_func=get_user_identifier,
     default_limits=["100/minute"],  # Default: 100 requests per minute
     headers_enabled=True,  # Add rate limit headers to responses
-    storage_uri=settings.REDIS_URL,
+    storage_uri="memory://",
 )
 
 

@@ -214,9 +214,9 @@ class ToolRegistry:
         """Get all tools that are ready to use."""
         return [t for t in self._tools.values() if t.is_available]
 
-    async def sync_status_from_redis(self) -> int:
+    async def sync_status_from_cache(self) -> int:
         """
-        Sync tool status from Redis (set by tools container worker).
+        Sync tool status from cache (set by tools container worker).
 
         Returns:
             Number of tools updated.
@@ -232,14 +232,11 @@ class ToolRegistry:
         for tool_id, tool in self._tools.items():
             try:
                 key = f"spectra:tool_status:{tool_id}"
-                status_data = await cache.redis.hgetall(key)  # type: ignore[misc]
+                status_data = await cache.get(key)
 
-                if status_data:
-                    # Handle bytes keys from Redis
-                    status_str = status_data.get(b"status") or status_data.get("status")
+                if status_data and isinstance(status_data, dict):
+                    status_str = status_data.get("status")
                     if status_str:
-                        if isinstance(status_str, bytes):
-                            status_str = status_str.decode("utf-8")
                         try:
                             new_status = ToolStatus(status_str)
                             if tool.status != new_status:

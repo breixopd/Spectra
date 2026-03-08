@@ -13,7 +13,7 @@ from app.services.mission.exploitation import ExploitationManager
 # Agents
 from app.services.ai.agents.tool_selector import ToolSelectorAgent
 from app.services.ai.agents.scope import ScopeAgent
-from app.services.ai.agents.payload_crafter import PayloadCrafterAgent
+from app.services.ai.agents.exploit_crafter import ExploitCrafter
 from app.services.ai.agents.exploit_verifier import ExploitVerifierAgent
 from app.services.ai.agents.reporter import ReporterAgent
 from app.services.ai.agents.vector_generator import VectorGeneratorAgent
@@ -49,10 +49,11 @@ class MissionExecutor:
         self.consensus = VotingSystem(llm)
 
         # Task execution agents
+        exploit_crafter = ExploitCrafter(llm)
         self.agents = {
             "tool_selector": ToolSelectorAgent(llm),
             "scope_agent": ScopeAgent(llm),
-            "payload_crafter": PayloadCrafterAgent(llm),
+            "exploit_crafter": exploit_crafter,
             "exploit_verifier": ExploitVerifierAgent(llm),
             "reporter": ReporterAgent(llm),
             "vector_generator": VectorGeneratorAgent(llm),

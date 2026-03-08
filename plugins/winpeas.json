@@ -1,0 +1,98 @@
+{
+  "id": "winpeas",
+  "name": "WinPEAS",
+  "version": "1.0.0",
+  "category": "post_exploitation",
+  "description": "Windows Privilege Escalation Awesome Script. Enumerates service misconfigs, unquoted paths, registry keys, and more.",
+  "metadata": {
+    "ai_description": "WinPEAS is the Windows counterpart of LinPEAS for privilege escalation enumeration. It checks for service misconfigurations, unquoted service paths, insecure registry keys, token privileges, scheduled tasks, and many other Windows-specific privesc vectors. Run it on a compromised Windows host.",
+    "capabilities": [
+      "privilege_escalation"
+    ],
+    "supported_targets": [
+      "ip",
+      "host"
+    ],
+    "risk_level": "low",
+    "tags": [
+      "windows",
+      "privilege-escalation",
+      "post-exploitation",
+      "enumeration",
+      "service-misconfig",
+      "registry",
+      "tokens"
+    ],
+    "use_cases": [
+      "Finding service misconfigurations for privilege escalation",
+      "Identifying unquoted service paths",
+      "Discovering insecure registry keys",
+      "Enumerating token privileges",
+      "Finding sensitive files and credentials on Windows"
+    ],
+    "limitations": [
+      "Requires shell access on the target",
+      "Windows targets only",
+      "May be detected by AV/EDR",
+      "Output can be very large"
+    ],
+    "complements": [
+      "metasploit",
+      "impacket",
+      "crackmapexec"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "binary",
+    "commands": [
+      "mkdir -p /opt/spectra_tools/privesc",
+      "curl -sL -o /opt/spectra_tools/privesc/winPEASany.exe https://github.com/peass-ng/PEASS-ng/releases/latest/download/winPEASany.exe"
+    ],
+    "verification_command": "test -f /opt/spectra_tools/privesc/winPEASany.exe && echo 'winpeas ready'",
+    "verification_regex": "winpeas ready",
+    "uninstall_commands": [
+      "rm -f /opt/spectra_tools/privesc/winPEASany.exe"
+    ]
+  },
+  "execution": {
+    "command": "winPEASany.exe",
+    "args_template": "{flags}",
+    "timeout": 600,
+    "min_timeout": 120,
+    "max_timeout": 1200
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "╔══════════╣\\s+(?P<section>.+)",
+        "type": "info"
+      },
+      {
+        "pattern": "(?P<service_name>[^\\s]+).*Unquoted and target_type Spaces",
+        "type": "vuln"
+      },
+      {
+        "pattern": "(?P<reg_key>HKLM\\\\[^\\s]+).*(?:Modify|FullControl)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "(?:SeImpersonate|SeAssignPrimaryToken|SeBackup|SeRestore|SeDebug|SeTakeOwnership)\\s+(?P<status>Enabled)",
+        "type": "vuln"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract service misconfigurations, unquoted service paths, insecure registry keys, token privileges, and scheduled tasks"
+  },
+  "ui": {
+    "icon": "arrow-circle-up",
+    "color": "blue"
+  },
+  "examples": [
+    {"description": "Run all checks", "args": {"flags": "all"}},
+    {"description": "Check services only", "args": {"flags": "servicesinfo"}},
+    {"description": "Quiet mode with focus on interesting findings", "args": {"flags": "all quiet"}}
+  ],
+  "signature": null
+}

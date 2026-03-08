@@ -25,7 +25,9 @@ from app.api.routers import (
     tools,
     ui,
     shell,
+    vpn,
     wordlists,
+    manual_helpers,
 )
 from app.core.config import settings
 from app.core.database import async_session_maker
@@ -34,6 +36,7 @@ from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.websocket import manager
 from app.models.user import User
 from app.core.bridge import EventWebSocketBridge
+from app.version import __version__
 
 # Initialize event bridge
 event_bridge = EventWebSocketBridge()
@@ -71,7 +74,7 @@ swagger_ui_params = {
 app = FastAPI(
     title="Spectra Security Assessment API",
     description="AI-driven security assessment platform with MAKER Framework.",
-    version="1.0.0",
+    version=__version__,
     lifespan=lifespan,
     swagger_ui_parameters=swagger_ui_params,
     docs_url="/api/docs",
@@ -80,14 +83,7 @@ app = FastAPI(
 )
 
 
-@app.on_event("startup")
-async def startup_event():
-    event_bridge.start()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    event_bridge.stop()
+# Event bridge start/stop is handled in lifespan context (app/core/lifespan.py)
 
 
 # --- Rate Limiting ---
@@ -135,7 +131,9 @@ app.include_router(system.router, prefix="/api", tags=["System"])
 app.include_router(cve.router, prefix="/api", tags=["CVE Intelligence"])
 app.include_router(wordlists.router, prefix="/api", tags=["Wordlists"])
 app.include_router(pentest_sessions.router, prefix="/api", tags=["Pentest Sessions"])
+app.include_router(manual_helpers.router, prefix="/api", tags=["Manual Helpers"])
 app.include_router(shell.router, prefix="/api", tags=["Shell"])
+app.include_router(vpn.router, prefix="/api", tags=["VPN"])
 app.include_router(ui.router, tags=["UI"])
 
 
@@ -159,7 +157,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
         logger.warning("WebSocket connection rejected: invalid or missing token")
         return
 
-    await manager.connect(websocket)
+    await manager.connect(websocket, require_auth=False)
     logger.debug("WebSocket connected for user: %s", user.username)
 
     try:

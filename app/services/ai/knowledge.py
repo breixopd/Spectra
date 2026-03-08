@@ -208,16 +208,16 @@ async def get_available_tools_context(grouped: bool = True) -> str:
     """Get list of all registered tools and their capabilities.
 
     Tools will be auto-installed when first used, so we show all registered tools.
-    Status is synced from Redis (set by tools container worker).
+    Status is synced from cache (set by tools container worker).
     """
     try:
         from app.services.tools.registry import get_registry
 
         registry = get_registry()
 
-        # Sync tool status from Redis before displaying
+        # Sync tool status from cache before displaying
         try:
-            await registry.sync_status_from_redis()
+            await registry.sync_status_from_cache()
         except Exception as e:
             logger.debug("Failed to sync tool status: %s", e)
 

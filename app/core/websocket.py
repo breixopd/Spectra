@@ -10,6 +10,7 @@ import logging
 from typing import Any
 
 from fastapi import WebSocket
+from jose import JWTError
 from starlette.websockets import WebSocketState
 
 logger = logging.getLogger("spectra.websocket")
@@ -21,6 +22,7 @@ class ConnectionManager:
 
     Thread-safe implementation that handles:
     - Connection lifecycle (connect/disconnect)
+    - JWT authentication on connect
     - Reliable broadcasting with error recovery
     - Dead connection cleanup
     """
@@ -28,6 +30,7 @@ class ConnectionManager:
     def __init__(self) -> None:
         """Initialize the connection manager."""
         self._connections: set[WebSocket] = set()
+        self._rooms: dict[str, set[WebSocket]] = {}
         self._lock = asyncio.Lock()
 
     @property
@@ -35,17 +38,34 @@ class ConnectionManager:
         """Get list of active connections."""
         return list(self._connections)
 
-    async def connect(self, websocket: WebSocket) -> None:
+    async def connect(self, websocket: WebSocket, require_auth: bool = True) -> bool:
         """
         Accept and register a new WebSocket connection.
 
         Args:
             websocket: The WebSocket connection to accept.
+            require_auth: If True, require JWT token in query params.
+
+        Returns:
+            True if connection was accepted, False if rejected.
         """
+        if require_auth:
+            token = websocket.query_params.get("token")
+            if not token:
+                await websocket.close(code=4001, reason="Authentication required")
+                return False
+            try:
+                from app.core.security import decode_token
+                decode_token(token)
+            except (JWTError, Exception):
+                await websocket.close(code=4001, reason="Invalid or expired token")
+                return False
+
         await websocket.accept()
         async with self._lock:
             self._connections.add(websocket)
         logger.debug("WebSocket connected. Total: %d", len(self._connections))
+        return True
 
     async def disconnect(self, websocket: WebSocket) -> None:
         """
@@ -56,6 +76,7 @@ class ConnectionManager:
         """
         async with self._lock:
             self._connections.discard(websocket)
+        await self.leave_all_rooms(websocket)
         logger.debug("WebSocket disconnected. Total: %d", len(self._connections))
 
     async def broadcast(self, message: str) -> None:
@@ -147,10 +168,10 @@ class ConnectionManager:
                 return obj.isoformat()
             if isinstance(obj, (UUID, Enum)):
                 return str(obj)
-            if hasattr(obj, "dict"):  # Pydantic models (v1)
-                return obj.dict()
             if hasattr(obj, "model_dump"):  # Pydantic models (v2)
                 return obj.model_dump()
+            if hasattr(obj, "dict"):  # Pydantic models (v1)
+                return obj.dict()
             raise TypeError(f"Type {type(obj)} not serializable")
 
         from datetime import date
@@ -162,6 +183,57 @@ class ConnectionManager:
             await self.broadcast(message)
         except Exception as e:
             logger.error("Failed to serialize event %s: %s", event_type, e)
+
+    async def join_room(self, websocket: WebSocket, room_id: str) -> None:
+        """Add a client to a room for targeted broadcasting."""
+        async with self._lock:
+            if room_id not in self._rooms:
+                self._rooms[room_id] = set()
+            self._rooms[room_id].add(websocket)
+
+    async def leave_room(self, websocket: WebSocket, room_id: str) -> None:
+        """Remove a client from a room."""
+        async with self._lock:
+            if room_id in self._rooms:
+                self._rooms[room_id].discard(websocket)
+                if not self._rooms[room_id]:
+                    del self._rooms[room_id]
+
+    async def leave_all_rooms(self, websocket: WebSocket) -> None:
+        """Remove a client from all rooms (called on disconnect)."""
+        async with self._lock:
+            empty_rooms = []
+            for room_id, members in self._rooms.items():
+                members.discard(websocket)
+                if not members:
+                    empty_rooms.append(room_id)
+            for room_id in empty_rooms:
+                del self._rooms[room_id]
+
+    async def broadcast_to_room(self, room_id: str, message: str) -> None:
+        """Send a message to all clients in a specific room."""
+        async with self._lock:
+            members = list(self._rooms.get(room_id, set()))
+        dead: list[WebSocket] = []
+        for ws in members:
+            try:
+                await ws.send_text(message)
+            except Exception:
+                dead.append(ws)
+        if dead:
+            async with self._lock:
+                room = self._rooms.get(room_id)
+                if room:
+                    for ws in dead:
+                        room.discard(ws)
+                    if not room:
+                        del self._rooms[room_id]
+
+    async def broadcast_to_room_json(self, room_id: str, data: dict[str, Any]) -> None:
+        """Send typed JSON to all clients in a specific room."""
+        import json
+
+        await self.broadcast_to_room(room_id, json.dumps(data))
 
     def connection_count(self) -> int:
         """

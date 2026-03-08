@@ -12,6 +12,7 @@ import logging
 from typing import Any, ClassVar
 from pydantic import BaseModel, Field
 from app.services.ai.agents.base import Agent, AgentAction, AgentContext, AgentResult, AgentRole
+from app.services.ai.context import ContextManager, ContextSection, Priority
 
 logger = logging.getLogger("spectra.ai.agents.debrief")
 
@@ -38,7 +39,7 @@ class DebriefOutput(AgentAction):
 
 
 class DebriefAgent(Agent[DebriefInput, DebriefOutput]):
-    role: ClassVar[AgentRole] = AgentRole.MISSION_CONTROLLER
+    role: ClassVar[AgentRole] = AgentRole.DEBRIEF
     name: ClassVar[str] = "DebriefAgent"
     description: ClassVar[str] = "Analyzes completed missions to extract lessons learned and remediation priorities"
 
@@ -55,20 +56,7 @@ class DebriefAgent(Agent[DebriefInput, DebriefOutput]):
         key_logs = [entry for entry in input_data.logs[-50:] if any(k in entry for k in ["[OK]", "[ERROR]", "[SUCCESS]", "[FAIL]", "[APPROVED]", "[REJECTED]", "[LEARN]", "[ADAPT]"])]
         logs_text = "\n".join(key_logs[-20:]) if key_logs else "No significant log entries"
 
-        prompt = f"""Analyze this completed penetration test and provide a comprehensive debrief.
-
-**Target:** {input_data.target}
-**Directive:** {input_data.directive}
-**Tools Used:** {', '.join(input_data.tools_run)}
-**Total Findings:** {len(input_data.findings)}
-
-**Findings:**
-{findings_summary or "No findings discovered"}
-
-**Key Events:**
-{logs_text}
-
-**Attack Surface:** {input_data.attack_surface_summary}
+        base_prompt = """Analyze this completed penetration test and provide a comprehensive debrief.
 
 Provide:
 1. Executive summary (2-3 sentences on overall risk posture)
@@ -80,8 +68,23 @@ Provide:
 7. Suggested next steps for the target owner
 8. Lessons learned for future assessments against similar targets"""
 
+        target_section = f"""**Target:** {input_data.target}
+**Directive:** {input_data.directive}
+**Tools Used:** {', '.join(input_data.tools_run)}
+**Total Findings:** {len(input_data.findings)}"""
+
+        ctx = ContextManager(max_context_tokens=6000)
+        prompt = ctx.build([
+            ContextSection("task", base_prompt, Priority.CRITICAL),
+            ContextSection("target", target_section, Priority.CRITICAL),
+            ContextSection("findings", f"**Findings:**\n{findings_summary or 'No findings discovered'}", Priority.HIGH, max_tokens=1500),
+            ContextSection("logs", f"**Key Events:**\n{logs_text}", Priority.MEDIUM, max_tokens=500),
+            ContextSection("attack_surface", f"**Attack Surface:** {input_data.attack_surface_summary}", Priority.LOW, max_tokens=400),
+            ContextSection("tools_run", f"**Tools Run:** {', '.join(input_data.tools_run)}", Priority.LOW, max_tokens=200),
+        ])
+
         try:
-            result = await self.llm.generate_structured(
+            result = await self._llm_generate_structured(
                 prompt=prompt,
                 response_model=DebriefOutput,
                 system_prompt="You are a senior penetration tester conducting a post-engagement debrief. Be specific, actionable, and honest about both successes and failures.",

@@ -1,68 +1,92 @@
-"""Unit tests for app.core.cache module."""
+"""Unit tests for app.core.cache module (PostgreSQL-backed)."""
 
 import pytest
+import pytest_asyncio
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import orjson
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
-from app.core.cache import CacheService, CacheConfig, get_cache, set_cache
-
-
-@pytest.fixture
-def mock_redis():
-    """Provide a mock async Redis client."""
-    r = AsyncMock()
-    r.get = AsyncMock(return_value=None)
-    r.setex = AsyncMock(return_value=True)
-    r.delete = AsyncMock(return_value=1)
-    r.exists = AsyncMock(return_value=0)
-    r.info = AsyncMock(return_value={})
-    return r
+from app.core.cache import CacheService, CacheConfig, get_cache, set_cache, _json_dumps
+from app.models.infrastructure import CacheEntry, InfrastructureBase
 
 
-@pytest.fixture
-def cache(mock_redis):
-    """Provide a CacheService backed by mock Redis."""
-    return CacheService(mock_redis)
+@pytest_asyncio.fixture
+async def db_session_maker():
+    """Create an in-memory SQLite async engine and session maker for tests."""
+    engine = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with engine.begin() as conn:
+        await conn.run_sync(InfrastructureBase.metadata.create_all)
+
+    maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    yield maker
+
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def cache(db_session_maker):
+    """Provide a CacheService backed by in-memory SQLite."""
+    return CacheService(session_maker=db_session_maker)
 
 
 class TestCacheServiceGet:
     """Tests for CacheService.get()."""
 
     @pytest.mark.asyncio
-    async def test_get_returns_deserialized_value(self, cache, mock_redis):
+    async def test_get_returns_deserialized_value(self, cache, db_session_maker):
         """get() deserializes and returns cached data."""
         payload = {"foo": "bar"}
-        mock_redis.get.return_value = orjson.dumps(payload)
+        await cache.set("key1", payload, ttl=300)
 
         result = await cache.get("key1")
 
         assert result == payload
-        mock_redis.get.assert_awaited_once_with("key1")
 
     @pytest.mark.asyncio
-    async def test_get_miss_returns_none(self, cache, mock_redis):
+    async def test_get_miss_returns_none(self, cache):
         """get() returns None and increments misses on cache miss."""
-        mock_redis.get.return_value = None
-
         result = await cache.get("missing")
 
         assert result is None
         assert cache._stats["misses"] == 1
 
     @pytest.mark.asyncio
-    async def test_get_hit_increments_hits(self, cache, mock_redis):
+    async def test_get_hit_increments_hits(self, cache):
         """get() increments hit counter on cache hit."""
-        mock_redis.get.return_value = orjson.dumps("value")
+        await cache.set("k", "value")
 
         await cache.get("k")
 
         assert cache._stats["hits"] == 1
 
     @pytest.mark.asyncio
-    async def test_get_redis_error_returns_none(self, cache, mock_redis):
-        """get() returns None when Redis raises an exception."""
-        mock_redis.get.side_effect = ConnectionError("down")
+    async def test_get_expired_returns_none(self, cache, db_session_maker):
+        """get() returns None for expired entries."""
+        # Insert an already-expired entry directly
+        async with db_session_maker() as session:
+            entry = CacheEntry(
+                key="expired_key",
+                value=_json_dumps("old_value"),
+                expires_at=datetime.now(timezone.utc) - timedelta(seconds=10),
+                created_at=datetime.now(timezone.utc),
+            )
+            session.add(entry)
+            await session.commit()
+
+        result = await cache.get("expired_key")
+
+        assert result is None
+        assert cache._stats["misses"] == 1
+
+    @pytest.mark.asyncio
+    async def test_get_db_error_returns_none(self, cache):
+        """get() returns None when DB raises an exception."""
+        cache._session_maker = MagicMock(side_effect=ConnectionError("down"))
 
         result = await cache.get("k")
 
@@ -74,35 +98,42 @@ class TestCacheServiceSet:
     """Tests for CacheService.set()."""
 
     @pytest.mark.asyncio
-    async def test_set_stores_serialized_value(self, cache, mock_redis):
-        """set() serializes value with orjson and calls setex."""
+    async def test_set_stores_value(self, cache):
+        """set() stores value and retrieves it."""
         result = await cache.set("k", {"a": 1}, ttl=120)
 
         assert result is True
-        mock_redis.setex.assert_awaited_once()
-        args = mock_redis.setex.call_args
-        assert args[0][0] == "k"
-        assert args[0][1] == 120
+        retrieved = await cache.get("k")
+        assert retrieved == {"a": 1}
 
     @pytest.mark.asyncio
-    async def test_set_uses_default_ttl(self, cache, mock_redis):
-        """set() falls back to CacheConfig.TTL_MEDIUM when no TTL given."""
-        await cache.set("k", "v")
+    async def test_set_uses_default_ttl(self, cache):
+        """set() works with default TTL."""
+        result = await cache.set("k", "v")
 
-        args = mock_redis.setex.call_args
-        assert args[0][1] == CacheConfig.TTL_MEDIUM
+        assert result is True
+        assert cache._stats["sets"] == 1
 
     @pytest.mark.asyncio
-    async def test_set_increments_sets_counter(self, cache, mock_redis):
+    async def test_set_increments_sets_counter(self, cache):
         """set() increments the 'sets' stat."""
         await cache.set("k", "v")
 
         assert cache._stats["sets"] == 1
 
     @pytest.mark.asyncio
-    async def test_set_redis_error_returns_false(self, cache, mock_redis):
-        """set() returns False when Redis raises."""
-        mock_redis.setex.side_effect = ConnectionError("down")
+    async def test_set_upsert_overwrites(self, cache):
+        """set() overwrites existing keys."""
+        await cache.set("k", "first")
+        await cache.set("k", "second")
+
+        result = await cache.get("k")
+        assert result == "second"
+
+    @pytest.mark.asyncio
+    async def test_set_db_error_returns_false(self, cache):
+        """set() returns False when DB raises."""
+        cache._session_maker = MagicMock(side_effect=ConnectionError("down"))
 
         result = await cache.set("k", "v")
 
@@ -113,9 +144,9 @@ class TestCacheServiceDelete:
     """Tests for CacheService.delete()."""
 
     @pytest.mark.asyncio
-    async def test_delete_existing_key(self, cache, mock_redis):
+    async def test_delete_existing_key(self, cache):
         """delete() returns True when key existed."""
-        mock_redis.delete.return_value = 1
+        await cache.set("k", "v")
 
         result = await cache.delete("k")
 
@@ -123,36 +154,64 @@ class TestCacheServiceDelete:
         assert cache._stats["deletes"] == 1
 
     @pytest.mark.asyncio
-    async def test_delete_missing_key(self, cache, mock_redis):
+    async def test_delete_missing_key(self, cache):
         """delete() returns False when key did not exist."""
-        mock_redis.delete.return_value = 0
-
         result = await cache.delete("missing")
 
         assert result is False
+
+
+class TestCacheServiceDeletePattern:
+    """Tests for CacheService.delete_pattern()."""
+
+    @pytest.mark.asyncio
+    async def test_delete_pattern_removes_matching(self, cache):
+        """delete_pattern() removes keys matching glob pattern."""
+        await cache.set("cache:tool:a", "1")
+        await cache.set("cache:tool:b", "2")
+        await cache.set("cache:other:c", "3")
+
+        count = await cache.delete_pattern("cache:tool:*")
+
+        assert count == 2
+        assert await cache.exists("cache:other:c") is True
+        assert await cache.exists("cache:tool:a") is False
 
 
 class TestCacheServiceExists:
     """Tests for CacheService.exists()."""
 
     @pytest.mark.asyncio
-    async def test_exists_true(self, cache, mock_redis):
+    async def test_exists_true(self, cache):
         """exists() returns True when key is present."""
-        mock_redis.exists.return_value = 1
+        await cache.set("k", "v")
 
         assert await cache.exists("k") is True
 
     @pytest.mark.asyncio
-    async def test_exists_false(self, cache, mock_redis):
+    async def test_exists_false(self, cache):
         """exists() returns False when key is absent."""
-        mock_redis.exists.return_value = 0
-
         assert await cache.exists("k") is False
 
     @pytest.mark.asyncio
-    async def test_exists_error_returns_false(self, cache, mock_redis):
-        """exists() returns False when Redis raises."""
-        mock_redis.exists.side_effect = ConnectionError("down")
+    async def test_exists_expired_returns_false(self, cache, db_session_maker):
+        """exists() returns False for expired entries."""
+        async with db_session_maker() as session:
+            entry = CacheEntry(
+                key="expired",
+                value=_json_dumps("val"),
+                expires_at=datetime.now(timezone.utc) - timedelta(seconds=10),
+                created_at=datetime.now(timezone.utc),
+            )
+            session.add(entry)
+            await session.commit()
+
+        assert await cache.exists("expired") is False
+
+    @pytest.mark.asyncio
+    async def test_exists_error_returns_false(self, cache):
+        """exists() returns False when DB raises."""
+        cache._session_maker = MagicMock(side_effect=ConnectionError("down"))
 
         assert await cache.exists("k") is False
 
@@ -161,9 +220,9 @@ class TestCacheServiceGetOrSet:
     """Tests for CacheService.get_or_set()."""
 
     @pytest.mark.asyncio
-    async def test_get_or_set_cache_hit(self, cache, mock_redis):
+    async def test_get_or_set_cache_hit(self, cache):
         """get_or_set() returns cached value without calling factory."""
-        mock_redis.get.return_value = orjson.dumps({"cached": True})
+        await cache.set("k", {"cached": True})
         factory = AsyncMock(return_value={"computed": True})
 
         result = await cache.get_or_set("k", factory, ttl=60)
@@ -172,21 +231,18 @@ class TestCacheServiceGetOrSet:
         factory.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_get_or_set_cache_miss_async_factory(self, cache, mock_redis):
+    async def test_get_or_set_cache_miss_async_factory(self, cache):
         """get_or_set() calls async factory and stores result on miss."""
-        mock_redis.get.return_value = None
         factory = AsyncMock(return_value={"computed": True})
 
         result = await cache.get_or_set("k", factory, ttl=60)
 
         assert result == {"computed": True}
         factory.assert_awaited_once()
-        mock_redis.setex.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_get_or_set_cache_miss_sync_factory(self, cache, mock_redis):
+    async def test_get_or_set_cache_miss_sync_factory(self, cache):
         """get_or_set() works with a sync factory callable."""
-        mock_redis.get.return_value = None
         factory = MagicMock(return_value=42)
 
         result = await cache.get_or_set("k", factory, ttl=60)
@@ -207,10 +263,9 @@ class TestCacheStats:
         assert stats["hit_rate_percent"] == 0.0
 
     @pytest.mark.asyncio
-    async def test_get_stats_after_operations(self, cache, mock_redis):
+    async def test_get_stats_after_operations(self, cache):
         """Stats accurately reflect operations."""
-        mock_redis.get.side_effect = [orjson.dumps("v"), None]
-
+        await cache.set("hit_key", "v")
         await cache.get("hit_key")
         await cache.get("miss_key")
 

@@ -17,38 +17,11 @@ from app.services.ai.agents.base import (
     ToolAction,
     ActionRisk,
 )
+from app.services.ai.context import ContextManager, ContextSection, Priority
+from app.services.ai.prompts import POC_DEVELOPER_PROMPT
 from app.services.poc.models import POCRequest
 
 logger = logging.getLogger("spectra.ai.agents.poc_developer")
-
-POC_DEVELOPER_PROMPT = """You are an expert Exploit Developer specializing in creating Proof-of-Concept (POC) scripts for security assessments.
-
-YOUR GOAL: Write a working, self-contained exploit script for the specified vulnerability.
-
-INPUT CONTEXT:
-Target: {target}
-Vulnerability: {vulnerability_name}
-Description: {vulnerability_desc}
-Port: {port}
-Protocol: {protocol}
-
-REQUIREMENTS:
-1. Language: Prefer Python 3. If not feasible, use Bash or Go.
-2. Stability: The script must be robust and handle connection errors gracefully.
-3. Payload: Implement a {shell_type} payload.
-   - If Reverse Shell: Connect back to {callback_host}:{callback_port}.
-   - If Bind Shell: Bind to a random port and print it.
-   - If Command Exec: Execute 'whoami' or 'id' to verify.
-4. Output: The script should print "[+] Exploit Successful" if it works.
-
-CONSTRAINTS:
-- Do NOT use external dependencies that are not standard (e.g., use 'socket', 'requests', 'sys').
-- Code must be clean, commented, and safe (no destructive actions).
-- Return ONLY the code block, or structured JSON if requested.
-
-Generative Task:
-Write the complete source code for this exploit.
-"""
 
 
 class POCDeveloperInput(BaseModel):
@@ -72,7 +45,7 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
     Agent that writes custom exploit code.
     """
 
-    role: ClassVar[AgentRole] = AgentRole.EXPLOIT_CRAFTER
+    role: ClassVar[AgentRole] = AgentRole.POC_DEVELOPER
     name: ClassVar[str] = "POCDeveloper"
     description: ClassVar[str] = (
         "Writes custom exploit scripts (Python/Go/Bash) for specific vulnerabilities."
@@ -86,7 +59,7 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
         try:
             vuln = input_data.request.vulnerability
 
-            prompt = POC_DEVELOPER_PROMPT.format(
+            full_prompt = POC_DEVELOPER_PROMPT.format(
                 target=input_data.request.target,
                 vulnerability_name=vuln.get("name", "Unknown"),
                 vulnerability_desc=vuln.get("description", "N/A"),
@@ -97,13 +70,27 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
                 callback_port=input_data.callback_port,
             )
 
+            vuln_desc = vuln.get("description", "N/A")
+            target_details = (
+                f"Target: {input_data.request.target}\n"
+                f"Port: {input_data.request.port or 'Unknown'}\n"
+                f"Protocol: {input_data.request.protocol}"
+            )
+
+            ctx = ContextManager(max_context_tokens=3000)
+            prompt = ctx.build([
+                ContextSection("task", full_prompt, Priority.CRITICAL),
+                ContextSection("vulnerability", f"Vulnerability Description:\n{vuln_desc}", Priority.HIGH, max_tokens=500),
+                ContextSection("target", f"Target Details:\n{target_details}", Priority.MEDIUM, max_tokens=300),
+            ])
+
             system_prompt = (
                 "You are a senior security researcher writing educational exploit code. "
                 "Ensure code follows safe coding practices and PTES methodology. "
                 "Focus on reliability and stealth."
             )
 
-            action = await self.llm.generate_structured(
+            action = await self._llm_generate_structured(
                 prompt=prompt,
                 response_model=POCDeveloperOutput,
                 system_prompt=system_prompt,
@@ -116,5 +103,5 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
             return AgentResult(success=True, action=action)
 
         except Exception as e:
-            logger.error(f"POC Developer failed: {e}")
+            logger.error("POC Developer failed: %s", e)
             return AgentResult(success=False, error=str(e))

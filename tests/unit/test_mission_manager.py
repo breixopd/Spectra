@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from app.services.mission.manager import MissionManager
@@ -92,6 +94,9 @@ async def test_start_mission(mock_manager_context):
         manager.execution, "run_mission_loop", new_callable=AsyncMock
     ) as mock_loop:
         mission_id = await manager.start_mission("127.0.0.1", "test directive")
+
+        # Yield to let the background task start
+        await asyncio.sleep(0)
 
         assert mission_id in manager.active_missions
         repo.create.assert_called_once()

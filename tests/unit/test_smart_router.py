@@ -1,5 +1,8 @@
 """Tests for the LiteLLM Smart Router."""
 
+import sys
+import types
+
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from app.services.ai.router import (
@@ -10,6 +13,7 @@ from app.services.ai.router import (
     get_smart_router,
 )
 from app.services.ai.llm import LLMResponse
+from app.services.ai.agents.base import ROLE_TASK_MAP, AgentRole
 
 
 class TestTaskTiers:
@@ -74,9 +78,10 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 20
         mock_response.usage.total_tokens = 30
 
-        with patch(
-            "litellm.acompletion", new_callable=AsyncMock, return_value=mock_response
-        ):
+        fake_litellm = types.SimpleNamespace(
+            acompletion=AsyncMock(return_value=mock_response)
+        )
+        with patch.dict(sys.modules, {"litellm": fake_litellm}):
             result = await router.generate("hello")
             assert result.content == "test response"
             assert result.usage["total_tokens"] == 30
@@ -95,11 +100,12 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 5
         mock_response.usage.total_tokens = 10
 
-        with patch(
-            "litellm.acompletion", new_callable=AsyncMock, return_value=mock_response
-        ) as mock_call:
+        fake_litellm = types.SimpleNamespace(
+            acompletion=AsyncMock(return_value=mock_response)
+        )
+        with patch.dict(sys.modules, {"litellm": fake_litellm}):
             await router.generate("select a tool", task_type="tool_selection")
-            call_args = mock_call.call_args
+            call_args = fake_litellm.acompletion.call_args
             assert call_args.kwargs["model"] == "cheap-model"
 
     @pytest.mark.asyncio
@@ -113,17 +119,19 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 1
         mock_response.usage.total_tokens = 2
 
-        with patch(
-            "litellm.acompletion", new_callable=AsyncMock, return_value=mock_response
-        ):
+        fake_litellm = types.SimpleNamespace(
+            acompletion=AsyncMock(return_value=mock_response)
+        )
+        with patch.dict(sys.modules, {"litellm": fake_litellm}):
             assert await router.health_check() is True
 
     @pytest.mark.asyncio
     async def test_health_check_failure(self):
         router = LiteLLMRouter()
-        with patch(
-            "litellm.acompletion", new_callable=AsyncMock, side_effect=Exception("down")
-        ):
+        fake_litellm = types.SimpleNamespace(
+            acompletion=AsyncMock(side_effect=Exception("down"))
+        )
+        with patch.dict(sys.modules, {"litellm": fake_litellm}):
             assert await router.health_check() is False
 
     @pytest.mark.asyncio
@@ -134,21 +142,30 @@ class TestLiteLLMRouter:
 
 
 class TestBuildModelConfig:
-    def test_api_provider(self):
+    def test_legacy_api_provider_normalizes_to_unified_cloud_router(self):
         with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.AI_PROVIDER_PROFILES = {}
+            mock_settings.AI_PROVIDER_ROUTING = {}
+            mock_settings.AI_PROVIDER_FALLBACKS = {}
             mock_settings.AI_PROVIDER = "api"
             mock_settings.LLM_API_KEY = MagicMock()
             mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
             mock_settings.LLM_MODEL = "gpt-4o"
             mock_settings.LLM_API_BASE_URL = None
+            mock_settings.OLLAMA_ENABLED = False
 
             configs, fallbacks, default = build_model_config_from_settings()
             assert len(configs) == 1
             assert configs[0]["model_name"] == "default"
+            assert configs[0]["litellm_params"]["model"] == "gpt-4o"
             assert default == "default"
+            assert fallbacks == []
 
     def test_ollama_with_cloud_fallback(self):
         with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.AI_PROVIDER_PROFILES = {}
+            mock_settings.AI_PROVIDER_ROUTING = {}
+            mock_settings.AI_PROVIDER_FALLBACKS = {}
             mock_settings.AI_PROVIDER = "ollama"
             mock_settings.OLLAMA_HOST = "http://localhost:11434"
             mock_settings.OLLAMA_MODEL = "qwen2.5:3b"
@@ -164,15 +181,20 @@ class TestBuildModelConfig:
 
     def test_mock_provider(self):
         with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.AI_PROVIDER_PROFILES = {}
+            mock_settings.AI_PROVIDER_ROUTING = {}
+            mock_settings.AI_PROVIDER_FALLBACKS = {}
             mock_settings.AI_PROVIDER = "mock"
+            router = create_smart_router()
+            from app.services.ai.llm import MockLLMClient
 
-        router = create_smart_router()
-        from app.services.ai.llm import MockLLMClient
-
-        assert isinstance(router, MockLLMClient)
+            assert isinstance(router, MockLLMClient)
 
     def test_no_api_key(self):
         with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.AI_PROVIDER_PROFILES = {}
+            mock_settings.AI_PROVIDER_ROUTING = {}
+            mock_settings.AI_PROVIDER_FALLBACKS = {}
             mock_settings.AI_PROVIDER = "api"
             mock_settings.LLM_API_KEY = MagicMock()
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
@@ -193,3 +215,141 @@ class TestSingleton:
             assert r1 is r2
             mock_create.assert_called_once()
         mod._smart_router = None
+
+
+class TestRoleTaskMap:
+    """Tests that every AgentRole has a task mapping."""
+
+    def test_all_roles_mapped(self):
+        for role in AgentRole:
+            assert role in ROLE_TASK_MAP, f"AgentRole.{role.name} missing from ROLE_TASK_MAP"
+
+    def test_mapped_task_types_in_tiers(self):
+        """Every task_type in ROLE_TASK_MAP should exist in TASK_TIERS."""
+        for role, task_type in ROLE_TASK_MAP.items():
+            assert task_type in TASK_TIERS, (
+                f"ROLE_TASK_MAP[{role.name}] = '{task_type}' not in TASK_TIERS"
+            )
+
+    def test_exploit_crafter_is_tier3(self):
+        task = ROLE_TASK_MAP[AgentRole.EXPLOIT_CRAFTER]
+        assert TASK_TIERS[task] == 3
+
+    def test_scope_is_tier1(self):
+        task = ROLE_TASK_MAP[AgentRole.SCOPE]
+        assert TASK_TIERS[task] == 1
+
+    def test_reporter_is_tier2(self):
+        task = ROLE_TASK_MAP[AgentRole.REPORTER]
+        assert TASK_TIERS[task] == 2
+
+
+class TestCreateSmartRouterTierWiring:
+    """Tests that create_smart_router wires tier models from settings."""
+
+    def test_tier_models_wired(self):
+        with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.AI_PROVIDER_PROFILES = {}
+            mock_settings.AI_PROVIDER_ROUTING = {}
+            mock_settings.AI_PROVIDER_FALLBACKS = {}
+            mock_settings.AI_PROVIDER = "ollama"
+            mock_settings.OLLAMA_HOST = "http://localhost:11434"
+            mock_settings.OLLAMA_MODEL = "qwen2.5:7b"
+            mock_settings.LLM_API_KEY = MagicMock()
+            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
+            mock_settings.LLM_TIMEOUT = 600.0
+            mock_settings.LLM_TIER1_MODEL = "ollama/qwen2.5:3b"
+            mock_settings.LLM_TIER2_MODEL = ""
+            mock_settings.LLM_TIER3_MODEL = "ollama/qwen2.5:14b"
+
+            router = create_smart_router()
+
+        assert isinstance(router, LiteLLMRouter)
+        assert router._task_model_map[1] == "ollama/qwen2.5:3b"
+        assert 2 not in router._task_model_map
+        assert router._task_model_map[3] == "ollama/qwen2.5:14b"
+
+    def test_no_tier_models_no_map(self):
+        with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.AI_PROVIDER_PROFILES = {}
+            mock_settings.AI_PROVIDER_ROUTING = {}
+            mock_settings.AI_PROVIDER_FALLBACKS = {}
+            mock_settings.AI_PROVIDER = "ollama"
+            mock_settings.OLLAMA_HOST = "http://localhost:11434"
+            mock_settings.OLLAMA_MODEL = "qwen2.5:7b"
+            mock_settings.LLM_API_KEY = MagicMock()
+            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
+            mock_settings.LLM_TIMEOUT = 600.0
+            mock_settings.LLM_TIER1_MODEL = ""
+            mock_settings.LLM_TIER2_MODEL = ""
+            mock_settings.LLM_TIER3_MODEL = ""
+
+            router = create_smart_router()
+
+        assert isinstance(router, LiteLLMRouter)
+
+    def test_profile_based_routing_uses_profile_names(self):
+        with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.AI_PROVIDER = "api"
+            mock_settings.LLM_TIMEOUT = 600.0
+            mock_settings.AI_PROVIDER_PROFILES = {
+                "default": {
+                    "provider": "api",
+                    "model": "gpt-4o-mini",
+                    "api_key": "sk-test",
+                    "base_url": "https://example.test/v1",
+                },
+                "research": {
+                    "provider": "ollama",
+                    "model": "qwen2.5:7b",
+                    "base_url": "http://ollama:11434",
+                },
+            }
+            mock_settings.AI_PROVIDER_ROUTING = {
+                "default": "default",
+                "tier1": "research",
+            }
+            mock_settings.AI_PROVIDER_FALLBACKS = {"tier1": ["default"]}
+
+            configs, fallbacks, default = build_model_config_from_settings()
+            router = create_smart_router()
+
+        assert {config["model_name"] for config in configs} == {"default", "research"}
+        default_config = next(config for config in configs if config["model_name"] == "default")
+        assert default_config["litellm_params"]["model"] == "openai/gpt-4o-mini"
+        assert fallbacks == [{"research": ["default"]}]
+        assert default == "default"
+        assert isinstance(router, LiteLLMRouter)
+        assert router._task_model_map[1] == "research"
+        assert 2 not in router._task_model_map
+
+
+class TestLiteLLMProvider:
+    """Tests for the litellm provider in build_model_config_from_settings."""
+
+    def test_litellm_provider_basic(self):
+        with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.LLM_MODEL = "ollama/qwen2.5:7b"
+            mock_settings.LLM_API_KEY = MagicMock()
+            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
+            mock_settings.LLM_API_BASE_URL = None
+
+            configs, fallbacks, default = build_model_config_from_settings()
+
+        assert len(configs) == 1
+        assert configs[0]["litellm_params"]["model"] == "ollama/qwen2.5:7b"
+        assert "api_key" not in configs[0]["litellm_params"]
+        assert default == "default"
+
+    def test_litellm_provider_with_api_key(self):
+        with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.LLM_MODEL = "anthropic/claude-3-haiku"
+            mock_settings.LLM_API_KEY = MagicMock()
+            mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-ant-test"
+            mock_settings.LLM_API_BASE_URL = None
+
+            configs, _, _ = build_model_config_from_settings()
+
+        assert configs[0]["litellm_params"]["api_key"] == "sk-ant-test"

@@ -74,7 +74,6 @@ async def main():
             logger.error("Failed to index %s: %s", tool.config.id, e)
 
     logger.info("Tool indexing complete.")
-    await redis.close()
 
 
 if __name__ == "__main__":

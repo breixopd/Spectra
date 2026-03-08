@@ -4,6 +4,7 @@ from .base import BaseRepository
 from .exploit import ExploitRepository
 from .finding import FindingRepository
 from .mission import MissionRepository
+from .pentest_session import PentestSessionRepository
 from .target import TargetRepository
 from .user import UserRepository
 
@@ -13,5 +14,6 @@ __all__ = [
     "FindingRepository",
     "ExploitRepository",
     "MissionRepository",
+    "PentestSessionRepository",
     "UserRepository",
 ]

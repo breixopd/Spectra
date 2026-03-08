@@ -1,0 +1,150 @@
+# Spectra Security Assessment Platform — Production Compose
+#
+# Usage:
+#   docker compose -f docker/docker-compose.prod.yml up -d
+#
+# First run: navigate to http://<host>:5000/setup to create admin user.
+# Configuration: place a .env file in the project root with secrets.
+
+services:
+  # ── PostgreSQL (with pgvector for RAG) ──────────────────────
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: spectra-db
+    environment:
+      POSTGRES_USER: spectra
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spectra_dev}
+      POSTGRES_DB: spectra
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spectra -d spectra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    networks:
+      - spectra-network
+
+  # ── Caddy Reverse Proxy ──────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: spectra-caddy
+    ports:
+      - "${SPECTRA_PORT:-443}:443"
+      - "80:80"
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: always
+    networks:
+      - spectra-network
+
+  # ── Spectra App (FastAPI) ───────────────────────────────────
+  app:
+    image: ghcr.io/breixopd14/spectra-app:${VERSION:-latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    container_name: spectra-app
+    # No public port — Caddy proxies to app:5000 internally
+    expose:
+      - "5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
+      - TOOL_CONTAINER_NAME=spectra-tools
+      - CONNECT_BACK_HOST=spectra-app
+      - DEBUG=false
+    volumes:
+      - spectra_reports:/app/reports
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    networks:
+      - spectra-network
+
+  # ── Spectra Tools (Kali Worker) ─────────────────────────────
+  tools:
+    image: ghcr.io/breixopd14/spectra-tools:${VERSION:-latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.tools
+    container_name: spectra-tools
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - IS_TOOLS_CONTAINER=true
+      - PLUGIN_SAFE_MODE=true
+      - TZ=UTC
+    volumes:
+      - spectra_reports:/app/reports
+      - spectra_tools_data:/opt/spectra_tools
+      - spectra_vpn_configs:/app/vpn_configs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    networks:
+      - spectra-network
+
+networks:
+  spectra-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  spectra_reports:
+  spectra_tools_data:
+  spectra_vpn_configs:
+  caddy_data:
+  caddy_config:

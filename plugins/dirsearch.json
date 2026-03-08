@@ -79,5 +79,10 @@
     "icon": "folder-open",
     "color": "amber"
   },
+  "examples": [
+    {"description": "Default directory scan", "args": {"target": "http://192.168.1.10"}},
+    {"description": "Scan with extensions", "args": {"target": "http://192.168.1.10", "extensions": "php,asp,html"}},
+    {"description": "Recursive scan with depth limit", "args": {"target": "http://192.168.1.10", "flags": "--recursion --recursion-depth 3"}}
+  ],
   "signature": "4e2bb2f3ac267ca2d43de2301d4a8f84efd9b59ec0850a6031fab08b3afb66d90a3658bf6c3b5202626db8aa13fa3b0230a02857ba607dedd7fa4437f99c300f"
 }

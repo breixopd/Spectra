@@ -22,7 +22,7 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
-from app.services.ai.prompts import SCOPE_PARSING_PROMPT
+from app.services.ai.context import ContextManager, ContextSection, Priority
 
 logger = logging.getLogger("spectra.ai.agents.scope")
 
@@ -212,6 +212,29 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
                     )
                 )
 
+        # Extract bare hostnames (not already captured by other patterns)
+        # Only consider words that look like hostnames (contain hyphens or match known patterns)
+        words = re.findall(r'\b[a-zA-Z][a-zA-Z0-9-]+\b', text)
+        # Filter: must contain at least one hyphen (to distinguish from regular words)
+        # OR be known to be a target (starts with common host prefixes)
+        _skip_words = frozenset((
+            'the', 'and', 'not', 'but', 'for', 'all', 'internal', 'external',
+            'except', 'exclude', 'between', 'production', 'staging', 'only',
+        ))
+        for word in words:
+            value = word.lower()
+            if value not in seen and (
+                '-' in value
+                or value.startswith(('target', 'host', 'server', 'vm', 'container'))
+            ):
+                if value not in _skip_words:
+                    seen.add(value)
+                    targets.append(TargetSpec(
+                        value=value,
+                        target_type="hostname",
+                        notes="Bare hostname (no domain suffix)",
+                    ))
+
         return targets, warnings
 
     def _is_complex_input(self, text: str) -> bool:
@@ -239,12 +262,28 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
         input_data: ScopeInput,
     ) -> ScopeAction:
         """Use LLM to parse complex input."""
-        prompt = SCOPE_PARSING_PROMPT.format(raw_input=input_data.raw_input)
+        base_prompt = (
+            "Parse the following security assessment scope definition and extract all targets.\n\n"
+            "Extract:\n"
+            "1. All IP addresses, domains, CIDRs, and URLs\n"
+            "2. Any exclusions mentioned\n"
+            "3. Any warnings about ambiguous or risky scope definitions\n\n"
+            "For each target, specify:\n"
+            "- value: The exact target string\n"
+            '- target_type: One of "ip", "domain", "cidr", "url"\n'
+            "- notes: Any relevant context"
+        )
+
+        ctx = ContextManager(max_context_tokens=4000)
+        prompt = ctx.build([
+            ContextSection("task", base_prompt, Priority.CRITICAL),
+            ContextSection("raw_input", f'User Input: "{input_data.raw_input}"', Priority.HIGH, max_tokens=2000),
+        ])
 
         system_prompt = self._build_system_prompt(context)
 
         try:
-            return await self.llm.generate_structured(
+            return await self._llm_generate_structured(
                 prompt=prompt,
                 response_model=ScopeAction,
                 system_prompt=system_prompt,
@@ -285,6 +324,12 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
             elif target.target_type == "url":
                 # URL is valid if it has a scheme and host
                 return "://" in target.value, 1
+
+            elif target.target_type == "hostname":
+                # Bare hostname - valid if it's reasonable length and chars
+                if re.match(r'^[a-zA-Z][a-zA-Z0-9-]{0,62}$', target.value):
+                    return True, 1
+                return False, 0
 
             return False, 0
 

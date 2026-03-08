@@ -4,9 +4,13 @@ Shell Router.
 Handles WebSocket connections for interactive shells.
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, HTTPException, Query
+from app.api.dependencies import get_current_active_user, validate_websocket_token
 from app.services.shell.session_manager import shell_manager
 from app.models.finding import Finding
+from app.models.user import User
+from app.models.audit_log import AuditEventType
+from app.services.system.audit import log_event as audit_log_event
 from sqlalchemy import select
 from app.core.database import async_session_maker
 import logging
@@ -16,8 +20,21 @@ logger = logging.getLogger("spectra.api.shell")
 
 
 @router.websocket("/{session_id}")
-async def shell_websocket(websocket: WebSocket, session_id: str):
+async def shell_websocket(websocket: WebSocket, session_id: str, token: str | None = Query(default=None)):
+    user = await validate_websocket_token(token)
+    if not user:
+        await websocket.close(code=4001, reason="Authentication required")
+        return
     await websocket.accept()
+
+    logger.info("Shell WebSocket connected: user=%s session=%s", user.username, session_id)
+    async with async_session_maker() as db:
+        await audit_log_event(
+            db,
+            AuditEventType.SHELL_CONNECT,
+            user_id=str(user.id),
+            details={"session_id": session_id},
+        )
 
     session = await shell_manager.get_session(session_id)
     if not session:
@@ -37,18 +54,18 @@ async def shell_websocket(websocket: WebSocket, session_id: str):
     except WebSocketDisconnect:
         await session.disconnect_websocket()
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.error("WebSocket error: %s", e)
         await session.disconnect_websocket()
 
 
 @router.get("/sessions")
-async def list_sessions():
+async def list_sessions(_current_user: User = Depends(get_current_active_user)):
     """List active shell sessions."""
     return shell_manager.list_sessions()
 
 
 @router.post("/reconnect/{finding_id}")
-async def reconnect_exploit(finding_id: str):
+async def reconnect_exploit(finding_id: str, _current_user: User = Depends(get_current_active_user)):
     """
     Trigger a re-exploitation of a vulnerability to re-establish a shell.
 
@@ -64,12 +81,21 @@ async def reconnect_exploit(finding_id: str):
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
 
-    directive = f"Exploit vulnerability at {finding.location} using {finding.tool_name} to get a shell."
+    logger.info("Exploit reconnect requested: user=%s finding=%s", _current_user.username, finding_id)
+    async with async_session_maker() as db:
+        await audit_log_event(
+            db,
+            AuditEventType.EXPLOIT_RECONNECT,
+            user_id=str(_current_user.id),
+            details={"finding_id": finding_id, "target": finding.target_id},
+        )
+
+    directive = f"Exploit vulnerability at {finding.target_id} using {finding.tool_source} to get a shell."
 
     # Return instructions to frontend to start a new mission
     return {
         "status": "triggered",
         "message": "To reconnect, please start a new targeted mission.",
         "suggested_directive": directive,
-        "target": finding.location,
+        "target": finding.target_id,
     }

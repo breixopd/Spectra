@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from app.services.system.setup import SystemSetupService
-from app.core.config import settings
 
 
 @pytest.fixture
@@ -26,19 +25,6 @@ async def test_check_database_connection_success(mock_setup_service):
 
 
 @pytest.mark.asyncio
-async def test_check_redis_connection_success(mock_setup_service):
-    """Test successful Redis connection check."""
-    # Patch where it is imported/used
-    with patch("redis.asyncio.Redis") as MockRedis:
-        mock_client = MockRedis.return_value
-        mock_client.ping = AsyncMock(return_value=True)
-        mock_client.close = AsyncMock()
-
-        result = await mock_setup_service.check_redis()
-        assert result is True
-
-
-@pytest.mark.asyncio
 async def test_check_docker_connection_success(mock_setup_service):
     """Test successful Docker connection check."""
     with patch("asyncio.create_subprocess_exec") as mock_exec:
@@ -59,9 +45,6 @@ async def test_verify_system_requirements_all_pass(mock_setup_service):
             mock_setup_service, "check_database", new_callable=AsyncMock
         ) as mock_db,
         patch.object(
-            mock_setup_service, "check_redis", new_callable=AsyncMock
-        ) as mock_redis,
-        patch.object(
             mock_setup_service, "check_docker", new_callable=AsyncMock
         ) as mock_docker,
         patch.object(
@@ -69,7 +52,6 @@ async def test_verify_system_requirements_all_pass(mock_setup_service):
         ) as mock_dirs,
     ):
         mock_db.return_value = True
-        mock_redis.return_value = True
         mock_docker.return_value = True
         mock_dirs.return_value = True
 
@@ -77,7 +59,6 @@ async def test_verify_system_requirements_all_pass(mock_setup_service):
 
         assert report["status"] == "healthy"
         assert report["database"] is True
-        assert report["redis"] is True
         assert report["docker"] is True
 
 
@@ -89,25 +70,17 @@ async def test_verify_system_requirements_failure(mock_setup_service):
             mock_setup_service, "check_database", new_callable=AsyncMock
         ) as mock_db,
         patch.object(
-            mock_setup_service, "check_redis", new_callable=AsyncMock
-        ) as mock_redis,
+            mock_setup_service, "check_docker", new_callable=AsyncMock
+        ) as m_d,
+        patch.object(
+            mock_setup_service, "check_directories", new_callable=AsyncMock
+        ) as m_dir,
     ):
         mock_db.return_value = False  # Fail DB
-        mock_redis.return_value = True
+        m_d.return_value = True
+        m_dir.return_value = True
 
-        # Mock other checks to pass or be skipped/mocked
-        with (
-            patch.object(
-                mock_setup_service, "check_docker", new_callable=AsyncMock
-            ) as m_d,
-            patch.object(
-                mock_setup_service, "check_directories", new_callable=AsyncMock
-            ) as m_dir,
-        ):
-            m_d.return_value = True
-            m_dir.return_value = True
+        report = await mock_setup_service.verify_system()
 
-            report = await mock_setup_service.verify_system()
-
-            assert report["status"] == "unhealthy"
-            assert report["database"] is False
+        assert report["status"] == "unhealthy"
+        assert report["database"] is False

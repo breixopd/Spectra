@@ -35,8 +35,8 @@ from app.api.schemas import (
     ToolSummary,
 )
 from app.core.config import settings
-from app.core.constants import ARQ_QUEUE_NAME
 from app.core.rate_limit import limiter
+from app.core.rbac import Permission, require_permission
 from app.models.user import User
 from app.services.tools.models import (
     ToolCategory,
@@ -126,9 +126,12 @@ async def sign_plugin_config(
                         status_code=400, detail="Key must be Ed25519 type"
                     )
                 private_key = loaded_key
+            except HTTPException:
+                raise
             except Exception as e:
+                logger.warning("Private key parsing failed: %s", e)
                 raise HTTPException(
-                    status_code=400, detail=f"Invalid private key: {e}"
+                    status_code=400, detail="Invalid private key format"
                 ) from e
         else:
             # Use server key (DEBUG only)
@@ -236,11 +239,11 @@ async def list_tools(
 
     Optionally filter by category or status.
     """
-    # Sync tool status from Redis (set by tools container worker)
+    # Sync tool status from cache (set by tools container worker)
     try:
-        await registry.sync_status_from_redis()
-    except Exception:
-        pass  # Non-critical, will show local status
+        await registry.sync_status_from_cache()
+    except Exception as e:
+        logger.debug("Tool status sync failed: %s", e)
 
     tools = registry.list_tools()
 
@@ -409,23 +412,10 @@ async def upload_plugin(
         # Queue background installation in the tools container
         async def _trigger_install():
             try:
-                from arq import create_pool
-                from arq.connections import RedisSettings
+                from app.core.queue import PostgresJobQueue
 
-                pool = await create_pool(
-                    RedisSettings(
-                        host=settings.REDIS_HOST,
-                        port=settings.REDIS_PORT,
-                        password=settings.REDIS_PASSWORD.get_secret_value(),
-                        database=settings.REDIS_DB,
-                    ),
-                    default_queue_name=ARQ_QUEUE_NAME,
-                )
-                await pool.enqueue_job("install_tool_job", tool.config.id)
-                if hasattr(pool, "aclose"):
-                    await pool.aclose()
-                else:
-                    await pool.close()
+                queue = PostgresJobQueue()
+                await queue.enqueue_job("install_tool_job", tool_id=tool.config.id)
                 logger.info("Queued background install for %s", tool.config.id)
             except Exception as e:
                 logger.error("Failed to queue install for %s: %s", tool.config.id, e)
@@ -454,32 +444,20 @@ async def install_all_tools(
     response: Response,
     background_tasks: BackgroundTasks,
     force: bool = Query(False, description="Reinstall even if already installed"),
-    _current_user: User = Depends(get_current_superuser),
+    _current_user: User = require_permission(Permission.USE_TOOLS),
 ):
     """
     Queue installation of all tools via the tools container.
 
     This is useful for initial setup or reinstalling all tools.
     """
-    from arq import create_pool
-    from arq.connections import RedisSettings
 
     async def _install():
         try:
-            pool = await create_pool(
-                RedisSettings(
-                    host=settings.REDIS_HOST,
-                    port=settings.REDIS_PORT,
-                    password=settings.REDIS_PASSWORD.get_secret_value(),
-                    database=settings.REDIS_DB,
-                ),
-                default_queue_name=ARQ_QUEUE_NAME,
-            )
-            await pool.enqueue_job("install_all_tools_job", force=force)
-            if hasattr(pool, "aclose"):
-                await pool.aclose()
-            else:
-                await pool.close()
+            from app.core.queue import PostgresJobQueue
+
+            queue = PostgresJobQueue()
+            await queue.enqueue_job("install_all_tools_job", force=force)
             logger.info("Queued install_all_tools job")
         except Exception as e:
             logger.error("Failed to queue install_all_tools: %s", e)
@@ -500,7 +478,7 @@ async def install_tool(
     tool_id: str,
     background_tasks: BackgroundTasks,
     registry: ToolRegistry = Depends(get_tool_registry),
-    _current_user: User = Depends(get_current_superuser),
+    _current_user: User = require_permission(Permission.USE_TOOLS),
 ):
     """
     Install a tool via the tools container worker.
@@ -529,26 +507,13 @@ async def install_tool(
             message="Tool installation already in progress",
         )
 
-    # Queue installation via ARQ worker in tools container
+    # Queue installation via job queue worker in tools container
     async def _install():
         try:
-            from arq import create_pool
-            from arq.connections import RedisSettings
+            from app.core.queue import PostgresJobQueue
 
-            pool = await create_pool(
-                RedisSettings(
-                    host=settings.REDIS_HOST,
-                    port=settings.REDIS_PORT,
-                    password=settings.REDIS_PASSWORD.get_secret_value(),
-                    database=settings.REDIS_DB,
-                ),
-                default_queue_name=ARQ_QUEUE_NAME,
-            )
-            await pool.enqueue_job("install_tool_job", tool_id)
-            if hasattr(pool, "aclose"):
-                await pool.aclose()
-            else:
-                await pool.close()
+            queue = PostgresJobQueue()
+            await queue.enqueue_job("install_tool_job", tool_id=tool_id)
             logger.info("Queued install job for %s", tool_id)
         except Exception as e:
             logger.error("Failed to queue install for %s: %s", tool_id, e)
@@ -570,7 +535,7 @@ async def remove_tool(
     response: Response,
     tool_id: str,
     registry: ToolRegistry = Depends(get_tool_registry),
-    _current_user: User = Depends(get_current_superuser),
+    _current_user: User = require_permission(Permission.USE_TOOLS),
 ):
     """Remove a tool plugin from the registry."""
     success = await registry.remove_plugin(tool_id)
@@ -617,36 +582,23 @@ async def test_tool(
         raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
 
     try:
-        from arq import create_pool
-        from arq.connections import RedisSettings
+        from app.core.queue import PostgresJobQueue, Job
 
-        pool = await create_pool(
-            RedisSettings(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                password=settings.REDIS_PASSWORD.get_secret_value(),
-                database=settings.REDIS_DB,
-            ),
-            default_queue_name=ARQ_QUEUE_NAME,
-        )
+        queue = PostgresJobQueue()
 
-        # Execute via ARQ worker
-        job = await pool.enqueue_job(
+        # Execute via job queue worker
+        job_id = await queue.enqueue_job(
             "execute_tool_job",
-            tool_id,
-            target,
-            args or {},
-            timeout or tool.config.execution.timeout,
-            None,  # output_dir - let worker create one
+            tool_id=tool_id,
+            target=target,
+            args=args or {},
+            timeout=timeout or tool.config.execution.timeout,
+            output_dir=None,  # let worker create one
         )
 
         # Wait for result with timeout
+        job = Job(job_id)
         result = await job.result(timeout=timeout or 300)
-
-        if hasattr(pool, "aclose"):
-            await pool.aclose()
-        else:
-            await pool.close()
 
         # Return detailed result for debugging
         return {
@@ -703,9 +655,9 @@ async def get_tool_stats(
 
     try:
         key = f"spectra:tool_stats:{tool_id}"
-        stats = await cache.redis.hgetall(key)  # type: ignore[union-attr]
+        stats = await cache.get(key)
 
-        if not stats:
+        if not stats or not isinstance(stats, dict):
             return {
                 "tool_id": tool_id,
                 "total_count": 0,
@@ -715,24 +667,13 @@ async def get_tool_stats(
                 "last_duration": None,
             }
 
-        # Handle both bytes and string keys depending on Redis client config
-        def get_stat(key_name: str) -> str | bytes | None:
-            return stats.get(key_name) or stats.get(key_name.encode())
-
-        total = get_stat("total_count")
-        success = get_stat("success_count")
-        fail = get_stat("fail_count")
-        last_run = get_stat("last_run")
-        last_dur = get_stat("last_duration")
-
         return {
             "tool_id": tool_id,
-            "total_count": int(total) if total else 0,
-            "success_count": int(success) if success else 0,
-            "fail_count": int(fail) if fail else 0,
-            "last_run": (last_run.decode() if isinstance(last_run, bytes) else last_run)
-            or None,
-            "last_duration": float(last_dur) if last_dur else None,
+            "total_count": int(stats.get("total_count", 0)),
+            "success_count": int(stats.get("success_count", 0)),
+            "fail_count": int(stats.get("fail_count", 0)),
+            "last_run": stats.get("last_run"),
+            "last_duration": float(stats["last_duration"]) if stats.get("last_duration") else None,
         }
     except Exception as e:
         logger.error("Failed to get stats for %s: %s", tool_id, e)

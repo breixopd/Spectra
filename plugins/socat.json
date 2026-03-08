@@ -1,0 +1,76 @@
+{
+  "id": "socat",
+  "name": "Socat",
+  "version": "1.0.0",
+  "category": "post_exploitation",
+  "description": "Multipurpose relay tool for bidirectional data transfer. Supports TCP, UDP, exec, and file relaying.",
+  "metadata": {
+    "ai_description": "Socat is a versatile relay tool that establishes two bidirectional byte streams and transfers data between them. It supports TCP, UDP, UNIX sockets, file descriptors, SSL, and exec. Use it for port forwarding, creating reverse shells, relaying connections, and pivoting. More flexible than netcat with encryption and proxy support.",
+    "capabilities": [
+      "lateral_movement"
+    ],
+    "supported_targets": [
+      "ip",
+      "host"
+    ],
+    "risk_level": "medium",
+    "tags": [
+      "relay",
+      "pivoting",
+      "port-forwarding",
+      "reverse-shell",
+      "post-exploitation",
+      "tunneling"
+    ],
+    "use_cases": [
+      "Port forwarding and relay connections",
+      "Creating encrypted reverse shells",
+      "Pivoting through compromised hosts",
+      "Bridging TCP/UDP connections"
+    ],
+    "limitations": [
+      "Must be installed on target or pivot host",
+      "Complex syntax for advanced usage",
+      "May be monitored by network security tools"
+    ],
+    "complements": [
+      "chisel",
+      "metasploit",
+      "nmap"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y socat"
+    ],
+    "verification_command": "socat -V",
+    "verification_regex": "socat",
+    "uninstall_commands": [
+      "apt-get remove -y socat"
+    ]
+  },
+  "execution": {
+    "command": "socat",
+    "args_template": "{source} {destination}",
+    "timeout": 0,
+    "min_timeout": 0,
+    "max_timeout": 86400
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": []
+  },
+  "ui": {
+    "icon": "arrows-left-right",
+    "color": "green"
+  },
+  "examples": [
+    {"description": "TCP port forwarding", "args": {"source": "TCP-LISTEN:8080,fork", "destination": "TCP:target:80"}},
+    {"description": "Reverse shell listener", "args": {"source": "TCP-LISTEN:4444,reuseaddr,fork", "destination": "EXEC:/bin/bash"}},
+    {"description": "UDP relay", "args": {"source": "UDP-LISTEN:5353,fork", "destination": "UDP:target:53"}}
+  ],
+  "signature": null
+}

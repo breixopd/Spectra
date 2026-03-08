@@ -100,15 +100,6 @@ class TestAPIHealthChecks:
         assert data["status"] == "healthy"
         print(f"API Health: {data}")
 
-    async def test_redis_health(self, api_client: httpx.AsyncClient):
-        """Test Redis connectivity."""
-        response = await api_client.get(f"{API_BASE_URL}/api/health/redis")
-        data = response.json()
-        print(f"Redis Health: {data}")
-        # Don't fail if Redis is unavailable, but log it
-        if data.get("status") != "healthy":
-            print("Redis not healthy - some features may not work")
-
 
 class TestFullWorkflow:
     """Test complete platform workflow via API."""

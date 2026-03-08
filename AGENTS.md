@@ -2,7 +2,7 @@
 
 ## Overview
 
-Spectra is a Multi-Agent System (MAS) for automated security assessments built with FastAPI (Python 3.11+), PostgreSQL, Redis Stack, and Docker Compose. See `README.md` for full architecture and setup instructions.
+Spectra is a Multi-Agent System (MAS) for automated security assessments built with FastAPI (Python 3.11+), PostgreSQL, and Docker Compose. See `README.md` for full architecture and setup instructions.
 
 ## Cursor Cloud specific instructions
 
@@ -10,17 +10,16 @@ Spectra is a Multi-Agent System (MAS) for automated security assessments built w
 
 | Service | Container | Purpose | Required |
 |---------|-----------|---------|----------|
-| **db** | `spectra-db` (postgres:16-alpine) | Primary data store | Yes |
-| **redis** | `spectra-redis` (redis/redis-stack) | Task queue, cache, vector store | Yes |
+| **db** | `spectra-db` (postgres:16-alpine) | Primary data store, cache, task queue | Yes |
 | **app** | `spectra-app` (FastAPI) | API + Web UI on port 5000 | Yes |
-| **tools** | `spectra-tools` (Kali Linux worker) | Security tool execution via Arq | Optional for basic UI testing |
+| **tools** | `spectra-tools` (Kali Linux worker) | Security tool execution | Optional for basic UI testing |
 | **ai** | `spectra-ai` (Ollama) | Local LLM inference (needs GPU) | No - use `AI_PROVIDER=api` instead |
 
 ### Starting the application
 
 Docker must be running first (`sudo dockerd` if not already started). In Docker-in-Docker environments, you may need to fix cgroups first — see Key gotchas below.
 
-Redis is **not** defined in `docker/docker-compose.yml` and must be started as a standalone container. The full startup sequence:
+The full startup sequence:
 
 ```bash
 # 1. Create network and start infrastructure
@@ -28,12 +27,9 @@ docker network create spectra-network 2>/dev/null || true
 docker run -d --name spectra-db --network spectra-network \
   -e POSTGRES_USER=spectra -e POSTGRES_PASSWORD=spectra_dev -e POSTGRES_DB=spectra \
   postgres:16-alpine
-docker run -d --name spectra-redis --network spectra-network \
-  -p 6379:6379 redis/redis-stack:latest redis-server --requirepass changeme
 
-# 2. Add network aliases (start.sh expects hostname "db"; app config expects "redis")
+# 2. Add network aliases (start.sh expects hostname "db")
 docker network connect --alias db spectra-network spectra-db 2>/dev/null || true
-docker network connect --alias redis spectra-network spectra-redis 2>/dev/null || true
 
 # 3. Build and start the app
 cd /workspace
@@ -51,25 +47,45 @@ docker run -d --name spectra-app --network spectra-network -p 5000:5000 \
 
 The app is accessible at `http://localhost:5000`. On first run it redirects to `/setup` for admin user creation.
 
-The `.env` file must include `REDIS_HOST=redis`, `REDIS_PASSWORD=changeme`, and `REDIS_PORT=6379` (copy from `.env.example` and add these).
-
 The Ollama AI service (`ai`) requires an NVIDIA GPU and is skipped in cloud agent environments. The tools worker (`tools`) is based on Kali Linux and is large; it's only needed for running actual security scans.
 
 ### Running tests
 
-Unit tests use mocks and do **not** require running Docker services:
+Use Docker-only validation paths for this repo. For the settings/router/setup workflow, run the targeted containerized suite:
 
 ```bash
-python3 -m pytest tests/unit/ --no-cov -q
+docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
 ```
 
-Integration tests under `tests/integration/` require live services (Redis, LLM, tools container). Expected failures when running outside Docker network:
-- RAG tests need Redis Stack on `localhost:6379`
+Integration tests under `tests/integration/` require live services (PostgreSQL, LLM, tools container). Expected failures when running outside Docker network:
+- RAG tests need PostgreSQL
 - LLM tests need a configured AI provider
 - Real tool workflow tests need security tools (nmap, etc.) installed
 - Tool execution tests need Docker socket access
 
-To run only unit tests: `python3 -m pytest tests/unit/ --no-cov`
+For live integration coverage, use `./tests/run_live_tests.sh`. For browser coverage, use `./tests/run_ui_tests.sh`.
+
+If `docker/docker-compose.test.yml` hits a local subnet conflict, fall back to a containerized one-off runner instead of host-local pytest:
+
+```bash
+docker build -f docker/Dockerfile.tools -t spectra-tools-test .
+docker run --rm \
+  -e DATABASE_URL=sqlite+aiosqlite:///test.db \
+  -e AI_PROVIDER=mock \
+  -e JWT_SECRET_KEY=test-secret-key \
+  -e FULLY_AUTOMATED=true \
+  -e PLUGIN_SAFE_MODE=false \
+  -v "$PWD/app:/app/app:ro" \
+  -v "$PWD/tests:/app/tests:ro" \
+  -v "$PWD/pytest.ini:/app/pytest.ini:ro" \
+  -v "$PWD/.env.test:/app/.env.test:ro" \
+  -v "$PWD/alembic:/app/alembic:ro" \
+  -v "$PWD/alembic.ini:/app/alembic.ini:ro" \
+  -v "$PWD/plugins:/app/plugins:ro" \
+  -v "$PWD/reports:/app/reports" \
+  --entrypoint sh spectra-tools-test \
+  -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx && python3 -m pytest tests/unit/test_runtime_settings.py tests/unit/test_system_setup.py tests/unit/test_smart_router.py tests/unit/test_settings_runtime_api.py tests/unit/test_settings_templates.py -q --override-ini=addopts="
+```
 
 ### Linting
 

@@ -492,7 +492,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
     let currentData = {};
     
     // Tab switching

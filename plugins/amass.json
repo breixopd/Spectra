@@ -70,5 +70,10 @@
     "icon": "globe",
     "color": "blue"
   },
+  "examples": [
+    {"description": "Passive subdomain enumeration", "args": {"target": "example.com"}},
+    {"description": "Active enumeration with brute-forcing", "args": {"target": "example.com", "flags": "-brute"}},
+    {"description": "Intel gathering for organization", "args": {"target": "example.com", "flags": "-whois -d example.com"}}
+  ],
   "signature": "2190d3c977d4d6cf5127aeabead3c49e6010617c1eb517ee66e3894ec4737da245dee5d5ef4d7c14c2182b07153bc376ef10545d889af819892901429d6d130a"
 }

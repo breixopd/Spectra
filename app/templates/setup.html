@@ -2,17 +2,16 @@
 
 {% block content %}
 <div class="w-full py-8">
-    <div class="glass-panel p-8 rounded-2xl w-full max-w-2xl mx-auto max-h-[85vh] overflow-y-auto animate-fade-in-up shadow-2xl shadow-violet-500/5">
+    <div class="glass-panel p-8 rounded-2xl w-full max-w-4xl mx-auto max-h-[88vh] overflow-y-auto animate-fade-in-up shadow-2xl shadow-violet-500/5">
         <div class="text-center mb-8">
             <div class="w-16 h-16 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center mx-auto mb-4">
                 <i class="fa-solid fa-shield-halved text-3xl"></i>
             </div>
             <h1 class="text-2xl font-bold text-white">System Setup</h1>
-            <p class="text-gray-400 mt-2">Configure your admin account, AI provider, and infrastructure.</p>
+            <p class="text-gray-400 mt-2">Create the admin account, pick one default AI profile, and keep advanced routing optional.</p>
         </div>
 
         <form id="setup-form" class="space-y-6">
-            <!-- Admin Account Section -->
             <div class="space-y-4 border-b border-white/10 pb-6">
                 <h2 class="text-lg font-semibold text-white flex items-center gap-2">
                     <i class="fa-solid fa-user"></i> Admin Account
@@ -29,59 +28,159 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Password</label>
-                    <input type="password" name="password" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    <input type="password" name="password" id="password" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    <p class="text-xs text-gray-500 mt-1">Min 8 characters, with uppercase, lowercase, and a digit</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Confirm Password</label>
+                    <input type="password" id="confirm-password" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" placeholder="Confirm password">
                 </div>
             </div>
 
-            <!-- AI Configuration Section -->
-            <div class="space-y-4 border-b border-white/10 pb-6">
-                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-microchip"></i> AI Configuration
-                </h2>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Provider</label>
-                    <select name="llm_provider" id="provider-select" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
-                        <option value="ollama">Ollama (Local)</option>
-                        <option value="api">OpenAI Compatible API (Cloud)</option>
-                    </select>
-                </div>
-
-                <!-- Ollama Settings -->
-                <div id="ollama-settings" class="space-y-4">
+            <div class="space-y-5 border-b border-white/10 pb-6">
+                <div class="flex items-start justify-between gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Ollama Host</label>
-                        <input type="text" name="ollama_host" value="http://localhost:11434" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-microchip"></i> Quick Setup
+                        </h2>
+                        <p class="text-sm text-gray-400 mt-1">Choose one default provider profile. Everything inherits from it unless you open Advanced Routing.</p>
                     </div>
-                </div>
-
-                <!-- API Settings -->
-                <div id="api-settings" class="space-y-4 hidden">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">API Base URL</label>
-                        <input type="text" name="llm_api_base" placeholder="https://api.openai.com/v1" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">API Key</label>
-                        <input type="password" name="llm_api_key" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Model Name</label>
-                    <input type="text" name="llm_model" value="qwen2.5:3b" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
-                    <p class="text-xs text-gray-500 mt-1">e.g., qwen2.5:3b, gpt-4o, deepseek-coder</p>
-                </div>
-
-                <div class="flex items-center gap-4 pt-2">
-                    <button type="button" id="test-llm-btn" class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors border border-white/10">
-                        Test Connection
+                    <button type="button" id="test-default-profile" class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors border border-white/10">
+                        Test Default Profile
                     </button>
-                    <span id="test-status" class="text-sm"></span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-4">
+                    <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-white">Default Profile</p>
+                                <p class="text-xs text-gray-500">Profile ID: default</p>
+                            </div>
+                            <span class="text-[11px] uppercase tracking-[0.2em] text-violet-300">Primary Route</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Provider</label>
+                                <select name="default_provider" id="default_provider" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                    <option value="ollama">Ollama (Local)</option>
+                                    <option value="litellm">LiteLLM (Cloud/API Gateway)</option>
+                                    <option value="mock">Mock</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Model / Route</label>
+                                <input type="text" name="default_model" id="default_model" value="qwen2.5:3b" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            </div>
+                        </div>
+                        <div class="profile-api-fields space-y-4 hidden" data-profile="default">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Gateway / API Base URL</label>
+                                <input type="text" name="default_api_base_url" placeholder="https://api.openai.com/v1" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">API Key</label>
+                                <input type="password" name="default_api_key" placeholder="sk-..." class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            </div>
+                        </div>
+                        <div class="profile-ollama-fields space-y-4" data-profile="default">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Ollama Host</label>
+                                <input type="text" name="default_ollama_host" value="http://localhost:11434" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-cyan-500/5 p-4 space-y-3">
+                        <p class="text-sm font-medium text-white">What stays simple</p>
+                        <p class="text-xs text-gray-400">One profile powers all three tiers by default.</p>
+                        <p class="text-xs text-gray-400">Advanced routing is optional and hidden until you need it.</p>
+                        <p class="text-xs text-gray-400">Fallback profiles only run if the default route fails.</p>
+                        <div id="test-status" class="text-xs text-gray-500 pt-2 border-t border-white/10">Connection tests run against the default profile only during setup.</div>
+                    </div>
+                </div>
+
+                <div class="border border-white/10 rounded-xl overflow-hidden">
+                    <button type="button" id="toggle-advanced-ai" class="w-full flex items-center justify-between px-4 py-3 text-left bg-black/20 hover:bg-black/30 transition-colors">
+                        <div>
+                            <p class="text-sm font-medium text-gray-200">Advanced Routing</p>
+                            <p class="text-xs text-gray-500">Override individual tiers and add an ordered fallback chain.</p>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-gray-500 text-xs transition-transform" id="advanced-ai-chevron"></i>
+                    </button>
+                    <div id="advanced-ai-section" class="hidden px-4 pb-4 pt-3 space-y-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            {% for tier, title, description in [("tier1", "Tier 1", "Fast and cheap work like parsing and tool selection"), ("tier2", "Tier 2", "Balanced planning, steering, and reporting"), ("tier3", "Tier 3", "High-capability exploit and post-exploitation tasks")] %}
+                            <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3" data-tier-card="{{ tier }}">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div>
+                                        <p class="text-sm font-medium text-white">{{ title }}</p>
+                                        <p class="text-xs text-gray-500">{{ description }}</p>
+                                    </div>
+                                    <label class="inline-flex items-center gap-2 text-xs text-gray-300">
+                                        <input type="checkbox" class="tier-toggle rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500" data-tier="{{ tier }}">
+                                        Override
+                                    </label>
+                                </div>
+                                <input type="hidden" name="{{ tier }}_profile_id" value="{{ tier }}">
+                                <div class="tier-fields hidden space-y-3" data-tier-fields="{{ tier }}">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-400 mb-1">Provider</label>
+                                        <select name="{{ tier }}_provider" class="profile-provider w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" data-profile-prefix="{{ tier }}">
+                                            <option value="ollama">Ollama (Local)</option>
+                                            <option value="litellm">LiteLLM (Cloud/API Gateway)</option>
+                                            <option value="mock">Mock</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-400 mb-1">Model / Route</label>
+                                        <input type="text" name="{{ tier }}_model" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" placeholder="Copied from the default profile when you enable override">
+                                    </div>
+                                    <div class="profile-api-fields space-y-3 hidden" data-profile="{{ tier }}">
+                                        <input type="text" name="{{ tier }}_api_base_url" placeholder="https://api.openai.com/v1" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                        <input type="password" name="{{ tier }}_api_key" placeholder="API key" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                    </div>
+                                    <div class="profile-ollama-fields space-y-3" data-profile="{{ tier }}">
+                                        <input type="text" name="{{ tier }}_ollama_host" value="http://localhost:11434" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-4">
+                            <div class="flex items-center justify-between gap-4">
+                                <div>
+                                    <p class="text-sm font-medium text-white">Fallback Chain</p>
+                                    <p class="text-xs text-gray-500">Fallback profiles run in order if the default route fails. Leave empty if you do not need failover.</p>
+                                </div>
+                                <button type="button" id="add-fallback-profile" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-colors border border-white/10">
+                                    Add Fallback
+                                </button>
+                            </div>
+                            <div id="fallback-profiles" class="space-y-3"></div>
+                        </div>
+
+                        <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                            <p class="text-sm font-medium text-white">Embedding Profile</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Embedding Provider</label>
+                                    <select name="embedding_provider" id="embedding-provider-select" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                        <option value="local">Local</option>
+                                        <option value="api">Use the default LiteLLM cloud profile</option>
+                                    </select>
+                                </div>
+                                <div id="embedding-model-wrapper">
+                                    <label class="block text-xs font-medium text-gray-400 mb-1">Embedding Model</label>
+                                    <input type="text" name="embedding_model" value="all-MiniLM-L6-v2" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Infrastructure Section (Advanced) -->
             <div class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold text-white flex items-center gap-2">
@@ -91,11 +190,9 @@
                         Show Options
                     </button>
                 </div>
-                
+
                 <div id="infra-settings" class="space-y-4 hidden">
                     <p class="text-xs text-gray-500">Leave blank to use Docker containers (recommended).</p>
-                    
-                    <!-- Database Settings -->
                     <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="custom-db" name="use_custom_db" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
@@ -105,24 +202,6 @@
                             <input type="text" name="database_url" placeholder="postgresql+asyncpg://user:pass@host:5432/dbname" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
                         </div>
                     </div>
-
-                    <!-- Redis Settings -->
-                    <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="custom-redis" name="use_custom_redis" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
-                            <label for="custom-redis" class="text-sm text-gray-300">Use external Redis instance</label>
-                        </div>
-                        <div id="redis-fields" class="space-y-3 hidden">
-                            <div class="grid grid-cols-2 gap-3">
-                                <input type="text" name="redis_host" placeholder="Host (e.g., redis.example.com)" class="bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
-                                <input type="text" name="redis_port" placeholder="Port (default: 6379)" class="bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
-                            </div>
-                            <div>
-                                <input type="password" name="redis_password" placeholder="Password" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
-                                <p id="redis-pwd-warning" class="text-xs text-yellow-400 mt-1 hidden"><i class="fa-solid fa-triangle-exclamation"></i> Warning: Using default password is insecure.</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -130,164 +209,350 @@
                 Complete Setup
             </button>
         </form>
-        
+
         <div id="error-msg" class="mt-4 text-center text-red-400 text-sm hidden bg-red-500/10 border border-red-500/20 p-3 rounded-lg"></div>
     </div>
 </div>
 
-<script>
-    const providerSelect = document.getElementById('provider-select');
-    const ollamaSettings = document.getElementById('ollama-settings');
-    const apiSettings = document.getElementById('api-settings');
-    const modelInput = document.querySelector('input[name="llm_model"]');
+<template id="fallback-profile-template">
+    <div class="fallback-row rounded-lg border border-white/10 bg-black/30 p-4 space-y-3">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <p class="text-sm font-medium text-white">Fallback Profile <span class="fallback-order text-violet-300"></span></p>
+                <p class="text-xs text-gray-500">Runs after the profile above it fails.</p>
+            </div>
+            <button type="button" class="remove-fallback text-xs text-rose-300 hover:text-rose-200">Remove</button>
+        </div>
+        <input type="hidden" class="fallback-profile-id">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">Provider</label>
+                <select class="fallback-provider w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                    <option value="ollama">Ollama (Local)</option>
+                    <option value="litellm">LiteLLM (Cloud/API Gateway)</option>
+                    <option value="mock">Mock</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">Model / Route</label>
+                <input type="text" class="fallback-model w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+            </div>
+        </div>
+        <div class="fallback-api-fields space-y-3 hidden">
+            <input type="text" class="fallback-api-base-url w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" placeholder="https://api.openai.com/v1">
+            <input type="password" class="fallback-api-key w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" placeholder="API key">
+        </div>
+        <div class="fallback-ollama-fields">
+            <input type="text" class="fallback-ollama-host w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" value="http://localhost:11434">
+        </div>
+    </div>
+</template>
 
-    // Toggle settings based on provider
-    providerSelect.addEventListener('change', (e) => {
-        if (e.target.value === 'ollama') {
-            ollamaSettings.classList.remove('hidden');
-            apiSettings.classList.add('hidden');
-            modelInput.value = 'qwen2.5:3b';
-        } else {
-            ollamaSettings.classList.add('hidden');
-            apiSettings.classList.remove('hidden');
-            modelInput.value = 'gpt-4o-mini';
+<script nonce="{{ request.state.csp_nonce }}">
+    const setupForm = document.getElementById('setup-form');
+    const errorMsg = document.getElementById('error-msg');
+    const advancedToggle = document.getElementById('toggle-advanced-ai');
+    const advancedSection = document.getElementById('advanced-ai-section');
+    const advancedChevron = document.getElementById('advanced-ai-chevron');
+    const infraToggle = document.getElementById('toggle-infra');
+    const infraSettings = document.getElementById('infra-settings');
+    const customDb = document.getElementById('custom-db');
+    const dbFields = document.getElementById('db-fields');
+    const embeddingProvider = document.getElementById('embedding-provider-select');
+    const embeddingModelWrapper = document.getElementById('embedding-model-wrapper');
+    const testStatus = document.getElementById('test-status');
+    const fallbackContainer = document.getElementById('fallback-profiles');
+    const fallbackTemplate = document.getElementById('fallback-profile-template');
+
+    function defaultModelFor(provider) {
+        if (provider === 'litellm') return 'gpt-4o-mini';
+        if (provider === 'mock') return 'mock';
+        return 'qwen2.5:3b';
+    }
+
+    function toggleProfileFields(prefix) {
+        const provider = document.querySelector(`[name="${prefix}_provider"]`).value;
+        const apiFields = document.querySelector(`.profile-api-fields[data-profile="${prefix}"]`);
+        const ollamaFields = document.querySelector(`.profile-ollama-fields[data-profile="${prefix}"]`);
+        if (apiFields) apiFields.classList.toggle('hidden', provider !== 'litellm');
+        if (ollamaFields) ollamaFields.classList.toggle('hidden', provider !== 'ollama');
+        const modelField = document.querySelector(`[name="${prefix}_model"]`);
+        if (modelField && !modelField.value.trim()) {
+            modelField.value = defaultModelFor(provider);
         }
-    });
+    }
 
-    // Infrastructure toggle
-    document.getElementById('toggle-infra').addEventListener('click', function() {
-        const infraSettings = document.getElementById('infra-settings');
-        infraSettings.classList.toggle('hidden');
-        this.textContent = infraSettings.classList.contains('hidden') ? 'Show Options' : 'Hide Options';
-    });
-
-    // Custom DB toggle
-    document.getElementById('custom-db').addEventListener('change', function() {
-        document.getElementById('db-fields').classList.toggle('hidden', !this.checked);
-    });
-
-    // Custom Redis toggle
-    document.getElementById('custom-redis').addEventListener('change', function() {
-        document.getElementById('redis-fields').classList.toggle('hidden', !this.checked);
-    });
-
-    // Redis Password Check
-    const redisPwdInput = document.querySelector('input[name="redis_password"]');
-    const redisWarning = document.getElementById('redis-pwd-warning');
-
-    redisPwdInput.addEventListener('input', function() {
-        const val = this.value;
-        if (val === 'changeme' || val === 'default') {
-            redisWarning.classList.remove('hidden');
-        } else {
-            redisWarning.classList.add('hidden');
-        }
-    });
-
-    // Test LLM Connection
-    document.getElementById('test-llm-btn').addEventListener('click', async () => {
-        const statusEl = document.getElementById('test-status');
-        const btn = document.getElementById('test-llm-btn');
-        
-        statusEl.textContent = 'Testing...';
-        statusEl.className = 'text-sm text-gray-400';
-        btn.disabled = true;
-
-        const formData = new FormData(document.getElementById('setup-form'));
-        const data = Object.fromEntries(formData.entries());
-        
-        const payload = {
-            provider: data.llm_provider,
-            model: data.llm_model,
-            api_key: data.llm_api_key,
-            base_url: data.llm_api_base,
-            ollama_host: data.ollama_host
-        };
-
-        try {
-            const res = await fetch('/test-llm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            
-            const result = await res.json();
-            
-            if (result.success) {
-                statusEl.innerHTML = '<i class="fa-solid fa-circle-check text-green-400"></i> Connected';
-                statusEl.className = 'text-sm text-green-400 flex items-center gap-1';
-            } else {
-                statusEl.innerHTML = '<i class="fa-solid fa-circle-xmark text-red-400"></i> Failed: ' + (result.error || 'Unknown error');
-                statusEl.className = 'text-sm text-red-400 flex items-center gap-1';
+    function toggleTierFields(tier) {
+        const enabled = document.querySelector(`.tier-toggle[data-tier="${tier}"]`).checked;
+        const fields = document.querySelector(`[data-tier-fields="${tier}"]`);
+        fields.classList.toggle('hidden', !enabled);
+        if (enabled) {
+            const modelField = document.querySelector(`[name="${tier}_model"]`);
+            if (modelField && !modelField.value.trim()) {
+                copyProfileValues('default', tier);
             }
-        } catch (err) {
-            statusEl.textContent = 'Error: ' + err.message;
-            statusEl.className = 'text-sm text-red-400';
+            toggleProfileFields(tier);
+        }
+    }
+
+    function copyProfileValues(sourcePrefix, targetPrefix) {
+        const provider = document.querySelector(`[name="${sourcePrefix}_provider"]`)?.value;
+        const model = document.querySelector(`[name="${sourcePrefix}_model"]`)?.value;
+        if (provider) {
+            document.querySelector(`[name="${targetPrefix}_provider"]`).value = provider;
+        }
+        if (model) {
+            document.querySelector(`[name="${targetPrefix}_model"]`).value = model;
+        }
+
+        const sourceApiBaseUrl = document.querySelector(`[name="${sourcePrefix}_api_base_url"]`)?.value;
+        const sourceOllamaHost = document.querySelector(`[name="${sourcePrefix}_ollama_host"]`)?.value;
+        if (sourceApiBaseUrl !== undefined) {
+            document.querySelector(`[name="${targetPrefix}_api_base_url"]`).value = sourceApiBaseUrl;
+        }
+        if (sourceOllamaHost !== undefined) {
+            document.querySelector(`[name="${targetPrefix}_ollama_host"]`).value = sourceOllamaHost;
+        }
+    }
+
+    function toggleEmbeddingFields() {
+        embeddingModelWrapper.classList.toggle('hidden', embeddingProvider.value === 'api');
+    }
+
+    function updateFallbackLabels() {
+        Array.from(fallbackContainer.querySelectorAll('.fallback-row')).forEach((row, index) => {
+            row.querySelector('.fallback-order').textContent = `#${index + 1}`;
+            row.querySelector('.fallback-profile-id').value = `fallback_${index + 1}`;
+        });
+    }
+
+    function toggleFallbackFields(row) {
+        const provider = row.querySelector('.fallback-provider').value;
+        row.querySelector('.fallback-api-fields').classList.toggle('hidden', provider !== 'litellm');
+        row.querySelector('.fallback-ollama-fields').classList.toggle('hidden', provider !== 'ollama');
+        const modelField = row.querySelector('.fallback-model');
+        if (!modelField.value.trim()) {
+            modelField.value = defaultModelFor(provider);
+        }
+    }
+
+    function addFallbackRow(profile) {
+        const row = fallbackTemplate.content.firstElementChild.cloneNode(true);
+        fallbackContainer.appendChild(row);
+        if (profile) {
+            row.querySelector('.fallback-profile-id').value = profile.id || '';
+            row.querySelector('.fallback-provider').value = profile.provider || 'litellm';
+            row.querySelector('.fallback-model').value = profile.model || '';
+            row.querySelector('.fallback-api-base-url').value = profile.base_url || '';
+            row.querySelector('.fallback-api-key').value = profile.api_key || '';
+            row.querySelector('.fallback-ollama-host').value = profile.base_url || 'http://localhost:11434';
+        }
+        row.querySelector('.fallback-provider').addEventListener('change', () => toggleFallbackFields(row));
+        row.querySelector('.remove-fallback').addEventListener('click', () => {
+            row.remove();
+            updateFallbackLabels();
+        });
+        toggleFallbackFields(row);
+        updateFallbackLabels();
+    }
+
+    function collectProfile(prefix) {
+        const provider = document.querySelector(`[name="${prefix}_provider"]`).value;
+        const model = document.querySelector(`[name="${prefix}_model"]`).value.trim();
+        if (!model) {
+            throw new Error(`Model is required for ${prefix === 'default' ? 'the default profile' : prefix.toUpperCase()}`);
+        }
+        const profile = { provider, model };
+        if (provider === 'ollama') {
+            const host = document.querySelector(`[name="${prefix}_ollama_host"]`).value.trim();
+            if (host) profile.base_url = host;
+        }
+        if (provider === 'litellm') {
+            const baseUrl = document.querySelector(`[name="${prefix}_api_base_url"]`).value.trim();
+            const apiKey = document.querySelector(`[name="${prefix}_api_key"]`).value.trim();
+            if (baseUrl) profile.base_url = baseUrl;
+            if (apiKey) profile.api_key = apiKey;
+        }
+        return profile;
+    }
+
+    function collectFallbackProfiles() {
+        const profiles = {};
+        const chain = [];
+        Array.from(fallbackContainer.querySelectorAll('.fallback-row')).forEach((row, index) => {
+            const profileId = row.querySelector('.fallback-profile-id').value || `fallback_${index + 1}`;
+            const provider = row.querySelector('.fallback-provider').value;
+            const model = row.querySelector('.fallback-model').value.trim();
+            if (!model) return;
+            const profile = { provider, model };
+            if (provider === 'ollama') {
+                const host = row.querySelector('.fallback-ollama-host').value.trim();
+                if (host) profile.base_url = host;
+            }
+            if (provider === 'litellm') {
+                const baseUrl = row.querySelector('.fallback-api-base-url').value.trim();
+                const apiKey = row.querySelector('.fallback-api-key').value.trim();
+                if (baseUrl) profile.base_url = baseUrl;
+                if (apiKey) profile.api_key = apiKey;
+            }
+            profiles[profileId] = profile;
+            chain.push(profileId);
+        });
+        return { profiles, chain };
+    }
+
+    async function testDefaultProfile() {
+        const button = document.getElementById('test-default-profile');
+        button.disabled = true;
+        testStatus.textContent = 'Testing default profile...';
+        testStatus.className = 'text-xs text-gray-400 pt-2 border-t border-white/10';
+        try {
+            const profile = collectProfile('default');
+            const payload = {
+                provider: profile.provider,
+                model: profile.model,
+                api_key: profile.api_key || null,
+                base_url: profile.base_url || null,
+                ollama_host: profile.base_url || null,
+            };
+            const response = await fetch('/test-llm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(payload),
+            });
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.error || 'Connection test failed');
+            }
+            testStatus.textContent = 'Default profile is reachable.';
+            testStatus.className = 'text-xs text-emerald-400 pt-2 border-t border-white/10';
+        } catch (error) {
+            testStatus.textContent = error.message;
+            testStatus.className = 'text-xs text-rose-300 pt-2 border-t border-white/10';
         } finally {
-            btn.disabled = false;
+            button.disabled = false;
+        }
+    }
+
+    document.querySelectorAll('.profile-provider').forEach((select) => {
+        select.addEventListener('change', () => toggleProfileFields(select.dataset.profilePrefix));
+        toggleProfileFields(select.dataset.profilePrefix);
+    });
+    document.querySelectorAll('.tier-toggle').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => toggleTierFields(checkbox.dataset.tier));
+    });
+    advancedToggle.addEventListener('click', () => {
+        advancedSection.classList.toggle('hidden');
+        advancedChevron.classList.toggle('rotate-90');
+    });
+    infraToggle.addEventListener('click', () => {
+        infraSettings.classList.toggle('hidden');
+        infraToggle.textContent = infraSettings.classList.contains('hidden') ? 'Show Options' : 'Hide Options';
+    });
+    customDb.addEventListener('change', () => {
+        dbFields.classList.toggle('hidden', !customDb.checked);
+    });
+    embeddingProvider.addEventListener('change', toggleEmbeddingFields);
+    document.getElementById('add-fallback-profile').addEventListener('click', () => addFallbackRow());
+    document.getElementById('test-default-profile').addEventListener('click', testDefaultProfile);
+    toggleEmbeddingFields();
+
+    setupForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        errorMsg.classList.add('hidden');
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        if (password !== confirmPassword) {
+            errorMsg.textContent = 'Passwords do not match';
+            errorMsg.classList.remove('hidden');
+            return;
+        }
+
+        const submitButton = setupForm.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Setting up...';
+
+        try {
+            const providerProfiles = { default: collectProfile('default') };
+            const providerRouting = { default: 'default' };
+
+            ['tier1', 'tier2', 'tier3'].forEach((tier) => {
+                if (!document.querySelector(`.tier-toggle[data-tier="${tier}"]`).checked) {
+                    return;
+                }
+                const profileId = document.querySelector(`[name="${tier}_profile_id"]`).value || tier;
+                providerProfiles[profileId] = collectProfile(tier);
+                providerRouting[tier] = profileId;
+            });
+
+            const fallbackData = collectFallbackProfiles();
+            Object.assign(providerProfiles, fallbackData.profiles);
+
+            const payload = {
+                user: {
+                    username: setupForm.username.value.trim(),
+                    email: setupForm.email.value.trim(),
+                    password,
+                },
+                provider_profiles: providerProfiles,
+                provider_routing: providerRouting,
+                provider_fallbacks: { default: fallbackData.chain },
+                embedding_provider: setupForm.embedding_provider.value || null,
+                embedding_model: embeddingProvider.value === 'local' ? (setupForm.embedding_model.value.trim() || null) : null,
+                use_custom_db: customDb.checked,
+                database_url: setupForm.database_url.value.trim() || null,
+            };
+
+            const setupResponse = await fetch('/api/auth/setup', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!setupResponse.ok) {
+                const error = await setupResponse.json();
+                if (Array.isArray(error.detail)) {
+                    throw new Error(error.detail.map((item) => item.msg || item.message || 'Invalid input').join('. '));
+                }
+                throw new Error(error.detail || 'Setup failed. Please review the form and try again.');
+            }
+
+            const loginResponse = await fetch('/api/auth/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: new URLSearchParams({
+                    username: payload.user.username,
+                    password: payload.user.password,
+                }),
+            });
+
+            if (loginResponse.ok) {
+                const tokenData = await loginResponse.json();
+                localStorage.setItem('token', tokenData.access_token);
+                if (tokenData.refresh_token) {
+                    localStorage.setItem('refresh_token', tokenData.refresh_token);
+                }
+                window.location.href = '/dashboard';
+                return;
+            }
+
+            window.location.href = '/login?setup=complete';
+        } catch (error) {
+            errorMsg.textContent = error.message;
+            errorMsg.classList.remove('hidden');
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
         }
     });
-
-    document.getElementById('setup-form').onsubmit = async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const rawData = Object.fromEntries(formData.entries());
-        
-        const data = {
-            user: {
-                username: rawData.username,
-                email: rawData.email,
-                password: rawData.password
-            },
-            llm_provider: rawData.llm_provider,
-            llm_model: rawData.llm_model,
-            llm_api_key: rawData.llm_api_key || null,
-            llm_api_base: rawData.llm_api_base || null,
-            ollama_host: rawData.ollama_host || null,
-            use_custom_db: rawData.use_custom_db === 'on',
-            database_url: rawData.database_url || null,
-            use_custom_redis: rawData.use_custom_redis === 'on',
-            redis_host: rawData.redis_host || null,
-            redis_port: rawData.redis_port || null,
-            redis_password: rawData.redis_password || null
-        };
-        
-        const btn = e.target.querySelector('button[type="submit"]');
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.textContent = 'Setting up...';
-        
-        try {
-            const res = await fetch('/api/auth/setup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            
-            if (!res.ok) throw new Error((await res.json()).detail);
-            
-            const loginRes = await fetch('/api/auth/token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    username: data.user.username,
-                    password: data.user.password
-                })
-            });
-            
-            if (!loginRes.ok) throw new Error('Login failed after setup');
-            
-            const tokenData = await loginRes.json();
-            localStorage.setItem('token', tokenData.access_token);
-            window.location.href = '/dashboard';
-            
-        } catch (err) {
-            const msg = document.getElementById('error-msg');
-            msg.textContent = err.message;
-            msg.classList.remove('hidden');
-            btn.disabled = false;
-            btn.textContent = originalText;
-        }
-    };
 </script>
 {% endblock %}

@@ -306,7 +306,7 @@ class TestToolSelectorExecution:
             registry_instance = mock_registry.return_value
             registry_instance.get_tool.return_value = mock_tool
             registry_instance.list_tools.return_value = [mock_tool]
-            registry_instance.sync_status_from_redis = AsyncMock()
+            registry_instance.sync_status_from_cache = AsyncMock()
 
             result = await agent.execute(context, input_data)
 

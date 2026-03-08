@@ -360,11 +360,11 @@ class TestTelemetryCollector:
         """Test service health status updates."""
         collector = TelemetryCollector()
 
-        collector.update_service_status("redis", healthy=True, latency_ms=5.5)
+        collector.update_service_status("cache", healthy=True, latency_ms=5.5)
         collector.update_service_status("db", healthy=False, error="Connection refused")
 
         health = collector.get_service_health()
-        assert health["redis"]["healthy"] is True
+        assert health["cache"]["healthy"] is True
         assert health["db"]["healthy"] is False
         assert health["db"]["error"] == "Connection refused"
 

@@ -1,14 +1,18 @@
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 from app.services.system.setup import SystemSetupService
 from app.api.schemas import SystemSetupRequest, UserCreate
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.config import SystemConfig
 from app.models.user import User
 
 
 @pytest.fixture
 def mock_session():
     session = AsyncMock(spec=AsyncSession)
+    execute_result = MagicMock()
+    execute_result.scalar_one_or_none.return_value = None
+    session.execute.return_value = execute_result
     return session
 
 
@@ -25,25 +29,22 @@ def setup_request():
             email="admin@example.com",
             password="SecurePassword123!",  # Meets complexity reqs
         ),
-        llm_provider="api",
+        llm_provider="litellm",
         llm_model="gpt-4",
         llm_api_key="sk-test",
         use_custom_db=False,
-        use_custom_redis=False,
     )
 
 
 @pytest.mark.asyncio
 @patch("app.services.system.setup.get_password_hash")
-@patch("app.services.system.setup.close_global_llm_client", new_callable=AsyncMock)
-@patch("app.services.system.setup.get_llm_client")
+@patch("app.services.system.setup.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
 @patch("app.services.system.setup.SystemSetupService._generate_signing_keys")
 @patch("app.services.system.setup.SystemSetupService._save_infra_config")
 async def test_perform_setup_success(
     mock_save_infra,
     mock_gen_keys,
-    mock_get_llm,
-    mock_close_llm,
+    mock_hydrate,
     mock_hash,
     service,
     setup_request,
@@ -63,9 +64,8 @@ async def test_perform_setup_success(
     mock_session.commit.assert_called_once()
     mock_session.refresh.assert_called_once_with(user)
 
+    mock_hydrate.assert_awaited_once()
     mock_gen_keys.assert_called_once()
-    mock_close_llm.assert_called_once()
-    mock_get_llm.assert_called_once()
     mock_save_infra.assert_not_called()  # No infra changes
 
 
@@ -87,6 +87,78 @@ async def test_configure_system(service, setup_request, mock_session):
 
 
 @pytest.mark.asyncio
+async def test_configure_system_persists_db_backed_profiles_and_fallbacks(
+    service, mock_session
+):
+    setup_request = SystemSetupRequest(
+        user=UserCreate(
+            username="admin",
+            email="admin@example.com",
+            password="SecurePassword123!",
+        ),
+        provider_profiles={
+            "default": {
+                "provider": "litellm",
+                "model": "gpt-4o-mini",
+                "base_url": "https://example.test/v1",
+                "api_key": "sk-primary",
+            },
+            "tier1": {
+                "provider": "ollama",
+                "model": "qwen2.5:3b",
+                "base_url": "http://ollama:11434",
+            },
+            "fallback_1": {
+                "provider": "litellm",
+                "model": "gpt-4.1-mini",
+                "base_url": "https://backup.test/v1",
+                "api_key": "sk-backup",
+            },
+        },
+        provider_routing={
+            "default": "default",
+            "tier1": "tier1",
+        },
+        provider_fallbacks={
+            "default": ["fallback_1"],
+        },
+        embedding_provider="local",
+        embedding_model="all-MiniLM-L6-v2",
+    )
+
+    await service._configure_system(setup_request)
+
+    added_configs = [
+        call.args[0]
+        for call in mock_session.add.call_args_list
+        if isinstance(call.args[0], SystemConfig)
+    ]
+    config_map = {config.key: config for config in added_configs}
+
+    assert "AI_PROVIDER_PROFILES" in config_map
+    assert "AI_PROVIDER_ROUTING" in config_map
+    assert "AI_PROVIDER_FALLBACKS" in config_map
+    assert '"tier1": "tier1"' in config_map["AI_PROVIDER_ROUTING"].value
+    assert '"fallback_1"' in config_map["AI_PROVIDER_FALLBACKS"].value
+    assert config_map["EMBEDDING_PROVIDER"].value == "local"
+
+
+def test_system_setup_request_normalizes_legacy_api_provider_to_litellm():
+    request = SystemSetupRequest(
+        user=UserCreate(
+            username="admin",
+            email="admin@example.com",
+            password="SecurePassword123!",
+        ),
+        llm_provider="api",
+        llm_model="gpt-4o-mini",
+        llm_api_key="sk-test",
+    )
+
+    assert request.llm_provider == "litellm"
+
+
+@pytest.mark.asyncio
 @patch("app.services.system.setup.json.dump")
 @patch("builtins.open", new_callable=mock_open)
 @patch("app.services.system.setup.Path.exists")
@@ -97,24 +169,6 @@ async def test_save_infra_config(mock_exists, mock_file, mock_json_dump, service
 
     mock_file.assert_called()
     mock_json_dump.assert_called()
-
-
-@pytest.mark.asyncio
-@patch("app.services.system.setup.settings")
-async def test_check_redis_success(mock_settings, service):
-    mock_settings.REDIS_HOST = "localhost"
-    mock_settings.REDIS_PORT = 6379
-    mock_settings.REDIS_PASSWORD = None
-
-    with patch("redis.asyncio.Redis") as mock_redis_cls:
-        mock_redis = AsyncMock()
-        mock_redis_cls.return_value = mock_redis
-
-        result = await service.check_redis()
-
-        assert result is True
-        mock_redis.ping.assert_called_once()
-        mock_redis.close.assert_called_once()
 
 
 @pytest.mark.asyncio

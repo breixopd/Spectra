@@ -81,5 +81,10 @@
     "icon": "globe-hemisphere-west",
     "color": "blue"
   },
+  "examples": [
+    {"description": "Enumerate WordPress plugins and users", "args": {"target": "http://192.168.1.10/wordpress", "flags": "--enumerate ap,u"}},
+    {"description": "Brute-force WordPress admin", "args": {"target": "http://192.168.1.10/wordpress", "flags": "--passwords passwords.txt --usernames admin"}},
+    {"description": "Full enumeration with API token", "args": {"target": "http://192.168.1.10/wordpress", "flags": "--enumerate vp,vt,u --api-token YOUR_TOKEN"}}
+  ],
   "signature": "4b3f5da11d9594f0aaa25cade9dc1b62b40cac50deaf10354fe2c2ee4c186f60964f2a07fd65c3cb17859231dd06dd7d128720fa9ce387339daa10b51725c20f"
 }

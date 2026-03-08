@@ -1,15 +1,14 @@
-version: '3.8'
-
 # Test environment for E2E testing as specified in testplan.md
 # Includes Metasploitable2 as a vulnerable target
 #
 # Usage:
 #   docker compose -f docker-compose.test.yml up -d
 #   docker compose -f docker-compose.test.yml run --rm test-runner
+#   docker compose -f docker-compose.test.yml run --rm settings-test-runner
 
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: spectra
       POSTGRES_PASSWORD: spectra_test
@@ -43,8 +42,6 @@ services:
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
-    ports:
-      - "5000:5000"
     volumes:
       - ../app:/app/app:ro
       - ../alembic:/app/alembic:ro
@@ -60,7 +57,9 @@ services:
       # ai:
         # condition: service_started
     networks:
-      - spectra_test
+      spectra_test:
+        aliases:
+          - spectra-ui-app
 
   tools:
     build:
@@ -142,6 +141,65 @@ services:
         condition: service_started
       tools:
         condition: service_started
+    networks:
+      - spectra_test
+
+  # Targeted settings/setup/router validation that stays containerized without
+  # depending on the fixed test subnet or the full live test stack.
+  settings-test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    user: root
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        python -m pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite &&
+        python -m pytest
+        tests/unit/test_runtime_settings.py
+        tests/unit/test_system_setup.py
+        tests/unit/test_smart_router.py
+        tests/unit/test_settings_runtime_api.py
+        tests/unit/test_settings_templates.py
+        -q --override-ini=addopts=
+    env_file:
+      - ../.env.test
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///tmp/settings-flow.db
+      - AI_PROVIDER=mock
+      - FULLY_AUTOMATED=true
+      - PLUGIN_SAFE_MODE=false
+    volumes:
+      - ../.env.test:/app/.env.test:ro
+      - ../app:/app/app:ro
+      - ../tests:/app/tests:ro
+      - ../pytest.ini:/app/pytest.ini:ro
+      - ../alembic:/app/alembic:ro
+      - ../alembic.ini:/app/alembic.ini:ro
+      - ../plugins:/app/plugins:ro
+      - ../reports:/app/reports
+      - ../logs:/app/logs
+
+  # Playwright browser test runner
+  ui-test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.playwright
+    entrypoint: ["python3", "-m", "pytest"]
+    command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--confcutdir=tests/e2e/ui", "--override-ini=addopts="]
+    env_file:
+      - ../.env.test
+    environment:
+      - APP_BASE_URL=http://spectra-ui-app:5000
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+    volumes:
+      - ../tests:/app/tests:ro
+      - ../app:/app/app:ro
+    depends_on:
+      app:
+        condition: service_started
+      db:
+        condition: service_healthy
     networks:
       - spectra_test
 

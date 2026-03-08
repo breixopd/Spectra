@@ -171,3 +171,32 @@ def analyze_unexpected_output(
         analysis["suggestions"].append("Try default credentials or brute force")
 
     return analysis
+
+
+def auto_expand_scope(findings: list[dict[str, Any]], current_scope: dict[str, Any]) -> list[dict[str, Any]]:
+    """Suggest scope expansions based on findings.
+
+    Returns a list of expansion dicts with type, value, and source.
+    """
+    expansions: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    current_values = {str(v) for v in current_scope.values()} if current_scope else set()
+
+    for finding in findings:
+        ftype = finding.get("type", "")
+        value = finding.get("value", "")
+
+        if not value or value in seen:
+            continue
+
+        # New hosts discovered via DNS/subdomain tools
+        if ftype == "subdomain" and value not in current_values:
+            expansions.append({"type": "domain", "value": value, "source": "auto-discovered"})
+            seen.add(value)
+
+        # New IPs from pivot/enumeration
+        if ftype == "host" and value not in current_values:
+            expansions.append({"type": "ip", "value": value, "source": "pivot-discovered"})
+            seen.add(value)
+
+    return expansions

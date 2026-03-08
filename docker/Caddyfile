@@ -1,0 +1,62 @@
+# Spectra Caddy Reverse Proxy
+# All traffic proxied through Caddy, even when not exposed externally.
+# In production, replace :5050 with your domain and Caddy handles TLS automatically.
+
+{
+	# Development: no automatic HTTPS
+	auto_https off
+	admin off
+}
+
+:80 {
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self';"
+		# Remove server identification
+		-Server
+	}
+
+	# WebSocket support for /ws/*
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	handle @websocket {
+		reverse_proxy spectra-app:5000
+	}
+
+	# Rate limit: API endpoints
+	# (Caddy enterprise feature — handled at app level instead)
+
+	# Proxy everything to the Spectra app
+	reverse_proxy spectra-app:5000 {
+		# Health checks
+		health_uri /api/health
+		health_interval 10s
+		health_timeout 5s
+
+		# Timeouts for long-running operations (scans, LLM calls)
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+			dial_timeout 10s
+		}
+
+		# Trust headers from app
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	# Access logging
+	log {
+		output stdout
+		format console
+		level INFO
+	}
+}

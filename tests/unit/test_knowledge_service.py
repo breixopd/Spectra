@@ -186,7 +186,7 @@ class TestRAGBackendSelection:
     async def test_exception_returns_empty_string(self):
         with patch(
             "app.services.ai.knowledge.get_rag_service",
-            side_effect=RuntimeError("Redis connection failed"),
+            side_effect=RuntimeError("Connection failed"),
         ):
             result = await get_exploit_context("query")
 
@@ -415,7 +415,7 @@ class TestGetAvailableToolsContext:
         ]
 
         mock_registry = MagicMock()
-        mock_registry.sync_status_from_redis = AsyncMock()
+        mock_registry.sync_status_from_cache = AsyncMock()
         mock_registry.list_tools.return_value = tools
 
         with patch(
@@ -446,7 +446,7 @@ class TestGetAvailableToolsContext:
         ]
 
         mock_registry = MagicMock()
-        mock_registry.sync_status_from_redis = AsyncMock()
+        mock_registry.sync_status_from_cache = AsyncMock()
         mock_registry.list_tools.return_value = tools
 
         with patch(
@@ -475,7 +475,7 @@ class TestGetAvailableToolsContext:
         ]
 
         mock_registry = MagicMock()
-        mock_registry.sync_status_from_redis = AsyncMock()
+        mock_registry.sync_status_from_cache = AsyncMock()
         mock_registry.list_tools.return_value = tools
 
         with patch(
@@ -488,7 +488,7 @@ class TestGetAvailableToolsContext:
     @pytest.mark.asyncio
     async def test_empty_registry(self):
         mock_registry = MagicMock()
-        mock_registry.sync_status_from_redis = AsyncMock()
+        mock_registry.sync_status_from_cache = AsyncMock()
         mock_registry.list_tools.return_value = []
 
         with patch(
@@ -510,12 +510,12 @@ class TestGetAvailableToolsContext:
 
     @pytest.mark.asyncio
     async def test_sync_status_failure_still_returns_tools(self):
-        """If sync_status_from_redis fails, tools should still be listed."""
+        """If sync_status_from_cache fails, tools should still be listed."""
         tools = [_make_mock_tool("Nmap", "nmap", "scanner", True)]
 
         mock_registry = MagicMock()
-        mock_registry.sync_status_from_redis = AsyncMock(
-            side_effect=Exception("redis down")
+        mock_registry.sync_status_from_cache = AsyncMock(
+            side_effect=Exception("cache down")
         )
         mock_registry.list_tools.return_value = tools
 

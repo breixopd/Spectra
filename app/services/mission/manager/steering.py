@@ -25,16 +25,25 @@ class MissionSteeringManager:
         phase: str | None = None,
         target: str | None = None,
         vulnerability: str | None = None,
+        task: dict | None = None,
+        param_key: str | None = None,
+        param_value: str | None = None,
+        automation_level: str | None = None,
     ) -> dict[str, str]:
         """
         Steer a running mission.
 
         Args:
             mission_id: ID of the mission to steer
-            action: Steering action (skip_phase, prioritize_target, focus_vuln)
-            phase: Phase to skip (for skip_phase)
-            target: Target to prioritize (for prioritize_target)
-            vulnerability: Vuln to focus on (for focus_vuln)
+            action: Steering action (skip_phase, prioritize_target, focus_vuln,
+                    inject_task, set_param, set_automation_level, go_back, skip_target)
+            phase: Phase to skip or go back to
+            target: Target to prioritize or skip
+            vulnerability: Vuln to focus on
+            task: Task definition to inject
+            param_key: Parameter key for set_param
+            param_value: Parameter value for set_param
+            automation_level: Automation level (full_auto, semi_auto, manual)
 
         Returns:
             Dict with result message
@@ -68,6 +77,57 @@ class MissionSteeringManager:
         elif action == "focus_vuln" and vulnerability:
             mission.log(f"[STEER] Focusing on vulnerability: {vulnerability}")
             return {"message": f"Focusing on vulnerability: {vulnerability}"}
+
+        elif action == "inject_task" and task:
+            if not mission.plan:
+                raise ValueError("No plan exists to inject tasks into")
+            from app.services.ai.agents.mission_controller import Task, AssessmentPhase
+            new_task = Task(
+                task_id=str(uuid.uuid4()),
+                phase=AssessmentPhase(task.get("phase", "discovery")),
+                description=task.get("description", "Injected task"),
+                agent_type=task.get("agent_type", "tool_selector"),
+                priority=task.get("priority", 5),
+            )
+            insert_idx = mission.current_task_index + 1
+            mission.plan.tasks.insert(insert_idx, new_task)
+            mission.log(f"[STEER] Injected task: {new_task.description}")
+            return {"message": f"Task '{new_task.description}' injected at position {insert_idx}"}
+
+        elif action == "set_param" and param_key and param_value is not None:
+            if not hasattr(mission, "steering_params"):
+                mission.steering_params = {}
+            mission.steering_params[param_key] = param_value
+            mission.log(f"[STEER] Set parameter: {param_key}={param_value}")
+            return {"message": f"Parameter '{param_key}' set to '{param_value}'"}
+
+        elif action == "set_automation_level" and automation_level:
+            valid_levels = ("full_auto", "semi_auto", "manual")
+            if automation_level not in valid_levels:
+                raise ValueError(f"Invalid automation level. Choose from: {valid_levels}")
+            mission.automation_level = automation_level
+            mission.log(f"[STEER] Automation level set to: {automation_level}")
+            return {"message": f"Automation level set to '{automation_level}'"}
+
+        elif action == "go_back" and phase:
+            if not mission.plan:
+                raise ValueError("No plan exists to navigate")
+            # Remove phase from skipped if it was skipped
+            mission.skipped_phases.discard(phase)
+            # Find first task of the requested phase
+            for i, t in enumerate(mission.plan.tasks):
+                if t.phase.value == phase:
+                    mission.current_task_index = max(0, i - 1)
+                    mission.log(f"[STEER] Going back to phase: {phase} (task {i})")
+                    return {"message": f"Returned to phase '{phase}'"}
+            raise ValueError(f"Phase '{phase}' not found in plan")
+
+        elif action == "skip_target" and target:
+            mission.log(f"[STEER] Skipping target: {target}")
+            if not hasattr(mission, "skipped_targets"):
+                mission.skipped_targets = set()
+            mission.skipped_targets.add(target)
+            return {"message": f"Target '{target}' will be skipped"}
 
         else:
             raise ValueError(

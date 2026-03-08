@@ -1,12 +1,13 @@
 """Base Agent class for the MAKER Swarm Architecture."""
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, Callable, ClassVar, Generic, TypeVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.ai.llm import LLMClient
 from app.services.ai.prompts import BASE_SYSTEM_PROMPT
@@ -28,6 +29,11 @@ class AgentRole(str, Enum):
     SAFETY_SUPERVISOR = "safety_supervisor"  # Blocks dangerous actions
     EXPLOIT_CRAFTER = "exploit_crafter"  # Crafts exploits
     EXPLOIT_VERIFIER = "exploit_verifier"  # Verifies exploit success
+    POC_DEVELOPER = "poc_developer"  # Writes custom exploit scripts
+    POST_EXPLOITATION = "post_exploitation"  # Plans post-exploitation activities
+    VECTOR_GENERATOR = "vector_generator"  # Generates attack vectors
+    DEBRIEF = "debrief"  # Post-mission analysis and lessons learned
+    REPORTER = "reporter"  # Generates assessment reports
 
 
 class ActionRisk(str, Enum):
@@ -60,6 +66,9 @@ class AgentContext(BaseModel):
     stealth_mode: bool = Field(False, description="Minimize detection")
     max_concurrency: int = Field(3, description="Max parallel operations")
 
+    # Extra context from blackboard/intelligence
+    extra_context: str = Field("", description="Additional context from blackboard")
+
 
 # --- Action Models ---
 
@@ -72,12 +81,7 @@ class AgentAction(BaseModel):
     risk_level: ActionRisk = Field(ActionRisk.LOW, description="Risk assessment")
     reasoning: str = Field(..., description="Explanation for the decision")
 
-    class Config:
-        use_enum_values = True
-        # Pydantic V2 compatibility
-        from pydantic import ConfigDict
-
-        model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ToolAction(AgentAction):
@@ -125,6 +129,23 @@ class AgentResult:
 
 # --- Base Agent ---
 
+# Maps AgentRole → task_type string used by LiteLLMRouter for tier routing
+ROLE_TASK_MAP: dict[AgentRole, str] = {
+    AgentRole.SCOPE: "scope",
+    AgentRole.TOOL_SELECTOR: "tool_selection",
+    AgentRole.PARAMETER_TUNER: "tool_selection",
+    AgentRole.PARSER: "parsing",
+    AgentRole.MISSION_CONTROLLER: "planning",
+    AgentRole.SAFETY_SUPERVISOR: "safety_check",
+    AgentRole.EXPLOIT_CRAFTER: "exploit_crafting",
+    AgentRole.EXPLOIT_VERIFIER: "exploit_crafting",
+    AgentRole.POC_DEVELOPER: "poc_generation",
+    AgentRole.POST_EXPLOITATION: "post_exploitation",
+    AgentRole.VECTOR_GENERATOR: "vector_generation",
+    AgentRole.DEBRIEF: "reporting",
+    AgentRole.REPORTER: "reporting",
+}
+
 
 InputT = TypeVar("InputT", bound=BaseModel)
 OutputT = TypeVar("OutputT", bound=AgentAction)
@@ -149,6 +170,21 @@ class Agent(ABC, Generic[InputT, OutputT]):
         """
         self.llm = llm
 
+    @property
+    def _task_type(self) -> str | None:
+        """Get the task_type string for this agent's role (used for tier routing)."""
+        return ROLE_TASK_MAP.get(self.role)
+
+    async def _llm_generate(self, **kwargs: Any) -> Any:
+        """Call self.llm.generate() with automatic task_type injection."""
+        kwargs.setdefault("task_type", self._task_type)
+        return await self.llm.generate(**kwargs)
+
+    async def _llm_generate_structured(self, **kwargs: Any) -> Any:
+        """Call self.llm.generate_structured() with automatic task_type injection."""
+        kwargs.setdefault("task_type", self._task_type)
+        return await self.llm.generate_structured(**kwargs)
+
     def _build_system_prompt(self, context: AgentContext) -> str:
         """Build the system prompt from context."""
         return self.system_prompt_template.format(
@@ -160,10 +196,11 @@ class Agent(ABC, Generic[InputT, OutputT]):
             mission=context.mission or "Standard security assessment",
         )
 
-    def _get_temperature(self, input_data: Any) -> float:
+    def _get_temperature(self, input_data: Any, attempt: int = 1) -> float:
         """
         Determine the temperature for LLM generation based on task complexity.
 
+        On retries, increase temperature by 0.1 per attempt (capped at 1.0).
         Can be overridden by subclasses.
         """
         # Default logic:
@@ -175,13 +212,25 @@ class Agent(ABC, Generic[InputT, OutputT]):
             AgentRole.PARSER,
             AgentRole.SAFETY_SUPERVISOR,
         ):
-            return 0.1
-        elif self.role == AgentRole.EXPLOIT_CRAFTER:
-            return 0.7
-        elif self.role == AgentRole.MISSION_CONTROLLER:
-            return 0.4
+            base = 0.1
+        elif self.role in (
+            AgentRole.EXPLOIT_CRAFTER,
+            AgentRole.POC_DEVELOPER,
+        ):
+            base = 0.7
+        elif self.role in (
+            AgentRole.MISSION_CONTROLLER,
+            AgentRole.POST_EXPLOITATION,
+            AgentRole.VECTOR_GENERATOR,
+            AgentRole.DEBRIEF,
+        ):
+            base = 0.4
         else:
-            return 0.3
+            base = 0.3
+
+        # Adaptive: increase temperature on retries
+        adjusted = base + 0.1 * (attempt - 1)
+        return min(adjusted, 1.0)
 
     @abstractmethod
     async def execute(
@@ -245,6 +294,48 @@ class Agent(ABC, Generic[InputT, OutputT]):
             content=content,
             role=self.role.value,
         )
+
+    async def _execute_with_retry(
+        self,
+        func: Callable[..., Any],
+        *args: Any,
+        max_retries: int = 2,
+        backoff_factor: float = 1.5,
+        **kwargs: Any,
+    ) -> Any:
+        """Execute a coroutine with retry and exponential backoff.
+
+        Args:
+            func: Async callable to execute.
+            *args: Positional arguments for func.
+            max_retries: Maximum number of retries after initial failure.
+            backoff_factor: Multiplier for exponential backoff.
+            **kwargs: Keyword arguments for func.
+
+        Returns:
+            The result of the successful call.
+
+        Raises:
+            The last exception if all retries are exhausted.
+        """
+        last_error: Exception | None = None
+        for attempt in range(max_retries + 1):
+            try:
+                return await func(*args, **kwargs)
+            except Exception as exc:
+                last_error = exc
+                if attempt < max_retries:
+                    delay = backoff_factor ** attempt
+                    logger.warning(
+                        "%s retry %d/%d after error: %s (backoff %.1fs)",
+                        self.name,
+                        attempt + 1,
+                        max_retries,
+                        exc,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+        raise last_error  # type: ignore[misc]
 
     async def __call__(
         self,

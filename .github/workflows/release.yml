@@ -1,0 +1,206 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      patch:
+        description: "Same-day patch number (leave empty for first release of the day)"
+        required: false
+        default: ""
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  APP_IMAGE: ghcr.io/breixopd14/spectra-app
+  TOOLS_IMAGE: ghcr.io/breixopd14/spectra-tools
+
+jobs:
+  release:
+    name: Build, Push & Release
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ── Determine version ─────────────────────────────────────
+      - name: Set version
+        id: version
+        run: |
+          TODAY=$(date -u +"%Y.%m.%d")
+          PATCH="${{ github.event.inputs.patch }}"
+          if [ -n "$PATCH" ] && [ "$PATCH" != "0" ]; then
+            VERSION="${TODAY}.${PATCH}"
+          else
+            VERSION="${TODAY}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Release version: ${VERSION}"
+
+      # ── Update version file ───────────────────────────────────
+      - name: Update app/version.py
+        run: |
+          cat > app/version.py << 'PYEOF'
+          """Spectra version — updated automatically by CI on release."""
+
+          __version__ = "${{ steps.version.outputs.version }}"
+          PYEOF
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' app/version.py
+          echo "Updated version.py:"
+          cat app/version.py
+
+      # ── Run tests before release ──────────────────────────────
+      - name: Install dependencies
+        run: pip install -r requirements.txt numpy
+
+      - name: Run unit tests
+        run: python3 -m pytest tests/unit/ -q --override-ini="addopts="
+        env:
+          AI_PROVIDER: mock
+          DATABASE_URL: "sqlite+aiosqlite:///test.db"
+          JWT_SECRET_KEY: test-key
+          PLUGIN_SAFE_MODE: "false"
+          FULLY_AUTOMATED: "true"
+
+      # ── Security gate ─────────────────────────────────────────
+      - name: Security scan (bandit)
+        run: |
+          pip install bandit[toml]
+          bandit -r app/ -c pyproject.toml --severity-filter HIGH --confidence-filter HIGH
+
+      # ── Build & push Docker images ────────────────────────────
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push spectra-app
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.app
+          push: true
+          tags: |
+            ${{ env.APP_IMAGE }}:latest
+            ${{ env.APP_IMAGE }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push spectra-tools
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.tools
+          push: true
+          tags: |
+            ${{ env.TOOLS_IMAGE }}:latest
+            ${{ env.TOOLS_IMAGE }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Commit version bump ───────────────────────────────────
+      - name: Commit version update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add app/version.py
+          git diff --cached --quiet && exit 0
+          git commit -m "release: ${{ steps.version.outputs.version }}"
+          git push origin HEAD:main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Tag & GitHub Release ──────────────────────────────────
+      - name: Tag release
+        run: |
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Release ${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          chmod +x .github/scripts/generate_changelog.sh
+          CHANGELOG=$(.github/scripts/generate_changelog.sh "${{ steps.version.outputs.version }}")
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          tag_name: "v${{ steps.version.outputs.version }}"
+          name: "v${{ steps.version.outputs.version }}"
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Deploy (separate job, gated by 'production' environment) ──
+  deploy:
+    name: Deploy to production
+    needs: release
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/spectra
+
+            export VERSION=${{ needs.release.outputs.version }}
+
+            # Pull latest images
+            docker compose -f docker/docker-compose.prod.yml pull
+
+            # Deploy
+            docker compose -f docker/docker-compose.prod.yml up -d --remove-orphans
+
+            # Health check (wait up to 60s)
+            HEALTH_PORT="${HEALTH_PORT:-5050}"
+            echo "Waiting for health check on port ${HEALTH_PORT}..."
+            for i in $(seq 1 12); do
+              if curl -sf "http://localhost:${HEALTH_PORT}/api/health" > /dev/null 2>&1; then
+                echo "Deployed ${VERSION} successfully."
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "Health check failed after deploy."
+            exit 1

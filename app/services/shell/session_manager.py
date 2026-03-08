@@ -50,7 +50,7 @@ class ShellSession:
             try:
                 self.socket.sendall(data.encode())
             except Exception as e:
-                logger.error(f"Failed to write to shell socket: {e}")
+                logger.error("Failed to write to shell socket: %s", e)
                 self.active = False
 
     def broadcast_output(self, data: bytes):
@@ -65,7 +65,7 @@ class ShellSession:
                     self.websocket.send_text(text), self._loop
                 )
             except Exception as e:
-                logger.error(f"Failed to broadcast output: {e}")
+                logger.error("Failed to broadcast output: %s", e)
         else:
             # Buffer if no listener
             self.buffer += data
@@ -81,13 +81,15 @@ class ShellSessionManager:
             cls._instance = super(ShellSessionManager, cls).__new__(cls)
             cls._instance.sessions = {}  # type: ignore
             cls._instance.listeners = {}  # type: ignore
-            cls._instance.loop = asyncio.get_event_loop()  # Capture main loop
+            cls._instance.loop = None  # Set lazily via asyncio.get_running_loop()
         return cls._instance
 
     def __init__(self):
+        if hasattr(self, '_initialized'):
+            return
+        self._initialized = True
         self.sessions: Dict[str, ShellSession] = {}
         self.listeners: Dict[int, socket.socket] = {}
-        self.loop = None
 
         # Range for dynamic port allocation
         self.port_range_start = 4444
@@ -132,7 +134,7 @@ class ShellSessionManager:
             port = self.allocate_port()
 
         if port in self.listeners:
-            logger.warning(f"Listener already active on port {port}")
+            logger.warning("Listener already active on port %s", port)
             return port
 
         # Ensure we have the loop captured
@@ -152,13 +154,14 @@ class ShellSessionManager:
                 server.bind(("0.0.0.0", port))
                 server.listen(1)
                 logger.info(
-                    f"Shell listener started on port {port} for session {session_id}"
+                    "Shell listener started on port %s for session %s",
+                    port, session_id,
                 )
 
                 self.listeners[port] = server
 
                 conn, addr = server.accept()
-                logger.info(f"Connection received from {addr} on port {port}")
+                logger.info("Connection received from %s on port %s", addr, port)
 
                 session = ShellSession(session_id, target, mission_id)
                 session.socket = conn
@@ -176,10 +179,10 @@ class ShellSessionManager:
                         session.broadcast_output(data)
 
                     except Exception as e:
-                        logger.error(f"Socket error: {e}")
+                        logger.error("Socket error: %s", e)
                         break
 
-                logger.info(f"Shell session {session_id} ended")
+                logger.info("Shell session %s ended", session_id)
                 if session_id in self.sessions:
                     del self.sessions[session_id]
                 if port in self.listeners:
@@ -188,7 +191,7 @@ class ShellSessionManager:
                 server.close()
 
             except Exception as e:
-                logger.error(f"Listener error on port {port}: {e}")
+                logger.error("Listener error on port %s: %s", port, e)
                 if port in self.listeners:
                     del self.listeners[port]
 
@@ -216,20 +219,21 @@ class ShellSessionManager:
     async def kill_session(self, session_id: str):
         if session_id in self.sessions:
             session = self.sessions[session_id]
-            logger.info(f"Killing shell session {session_id}")
+            logger.info("Killing shell session %s", session_id)
             if session.socket:
                 try:
                     session.socket.shutdown(socket.SHUT_RDWR)
                     session.socket.close()
                 except Exception as e:
                     logger.warning(
-                        f"Error closing socket for session {session_id}: {e}"
+                        "Error closing socket for session %s: %s",
+                        session_id, e,
                     )
             del self.sessions[session_id]
 
     def notify_mission_complete(self, finished_mission_id: str):
         """Notify that a mission has completed, to update shell TTLs."""
-        logger.info(f"Updating shell TTLs after mission {finished_mission_id} complete")
+        logger.info("Updating shell TTLs after mission %s complete", finished_mission_id)
 
         # We need to iterate over a copy of items because we might delete some
         for session_id, session in list(self.sessions.items()):
@@ -255,8 +259,8 @@ class ShellSessionManager:
                         try:
                             session.socket.shutdown(socket.SHUT_RDWR)
                             session.socket.close()
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug("Socket cleanup error for expired session: %s", e)
 
 
 shell_manager = ShellSessionManager()

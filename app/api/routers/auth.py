@@ -4,8 +4,12 @@ Authentication Router.
 Handles user login, setup, and token generation.
 """
 
+import json
 import logging
+import time
+import threading
 from datetime import timedelta
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
@@ -23,14 +27,101 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    invalidate_token,
     verify_password,
 )
 from app.core.telemetry import telemetry
+from app.models.audit_log import AuditEventType
 from app.models.user import User
+from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger("spectra.api.auth")
 
 router = APIRouter()
+
+
+# --- Persistent Account Lockout ---
+_LOCKOUT_FILE = Path("reports/memory/.lockout_state.json")
+
+_login_failures: dict[str, dict] = {}  # ip -> {"count": int, "locked_until": float}
+_lockout_lock = threading.Lock()
+_lockout_loaded = False
+
+LOCKOUT_THRESHOLD_1 = 5   # failures before first lockout
+LOCKOUT_DURATION_1 = 300  # 5 minutes in seconds
+LOCKOUT_THRESHOLD_2 = 10  # failures before extended lockout
+LOCKOUT_DURATION_2 = 1800 # 30 minutes in seconds
+
+
+def _ensure_lockout_loaded() -> None:
+    """Load lockout state from persistent storage once."""
+    global _lockout_loaded
+    if _lockout_loaded:
+        return
+    with _lockout_lock:
+        if _lockout_loaded:
+            return
+        try:
+            if _LOCKOUT_FILE.exists():
+                data = json.loads(_LOCKOUT_FILE.read_text())
+                now = time.time()
+                for ip, entry in data.items():
+                    locked_until = entry.get("locked_until", 0)
+                    # Only load entries that are still locked or have recent failures
+                    if locked_until > now or entry.get("count", 0) > 0:
+                        _login_failures[ip] = entry
+        except Exception as exc:
+            logger.warning("Failed to load lockout state: %s", exc)
+        _lockout_loaded = True
+
+
+def _persist_lockout() -> None:
+    """Save lockout state to file (call while holding lock)."""
+    try:
+        _LOCKOUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _LOCKOUT_FILE.write_text(json.dumps(_login_failures))
+    except Exception as exc:
+        logger.warning("Failed to persist lockout state: %s", exc)
+
+
+def _check_lockout(ip: str) -> None:
+    """Raise 429 if the IP is currently locked out."""
+    _ensure_lockout_loaded()
+    with _lockout_lock:
+        entry = _login_failures.get(ip)
+        if not entry:
+            return
+        locked_until = entry.get("locked_until", 0)
+        if locked_until and time.time() < locked_until:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Account temporarily locked due to too many failed attempts",
+            )
+        # If lockout expired, keep count for escalation but clear lock
+        if locked_until and time.time() >= locked_until:
+            entry["locked_until"] = 0
+
+
+def _record_failure(ip: str) -> None:
+    """Record a failed login attempt and apply lockout if threshold reached."""
+    _ensure_lockout_loaded()
+    with _lockout_lock:
+        entry = _login_failures.setdefault(ip, {"count": 0, "locked_until": 0})
+        entry["count"] = entry.get("count", 0) + 1
+        count = entry["count"]
+        if count >= LOCKOUT_THRESHOLD_2:
+            entry["locked_until"] = time.time() + LOCKOUT_DURATION_2
+        elif count >= LOCKOUT_THRESHOLD_1:
+            entry["locked_until"] = time.time() + LOCKOUT_DURATION_1
+        _persist_lockout()
+
+
+def _reset_failures(ip: str) -> None:
+    """Reset failure count on successful login."""
+    _ensure_lockout_loaded()
+    with _lockout_lock:
+        _login_failures.pop(ip, None)
+        _persist_lockout()
 
 
 @router.post("/token", response_model=Token)
@@ -48,6 +139,9 @@ async def login_for_access_token(
     """
     client_ip = request.client.host if request.client else "unknown"
 
+    # Check account lockout before attempting auth
+    _check_lockout(client_ip)
+
     # Find user
     stmt = select(User).where(User.username == form_data.username)
     result = await session.execute(stmt)
@@ -64,6 +158,8 @@ async def login_for_access_token(
             "Failed login attempt for user '%s' from %s", form_data.username, client_ip
         )
 
+        _record_failure(client_ip)
+
         # Emit failed login event
         await events.emit(
             EventType.LOGIN_FAILED,
@@ -73,6 +169,14 @@ async def login_for_access_token(
         )
         telemetry.increment_counter(
             "login_failed", 1, {"reason": "invalid_credentials"}
+        )
+
+        # Audit log
+        await audit_log_event(
+            session,
+            AuditEventType.LOGIN_FAILED,
+            details={"username": form_data.username, "ip": client_ip},
+            request=request,
         )
 
         raise HTTPException(
@@ -104,6 +208,17 @@ async def login_for_access_token(
         client_ip=client_ip,
     )
     telemetry.increment_counter("login_success", 1)
+
+    # Audit log
+    await audit_log_event(
+        session,
+        AuditEventType.LOGIN,
+        user_id=str(user.id),
+        details={"username": user.username, "ip": client_ip},
+        request=request,
+    )
+
+    _reset_failures(client_ip)
 
     return {
         "access_token": access_token,
@@ -211,3 +326,24 @@ async def check_setup_status(
     result = await session.execute(stmt)
     is_setup = result.scalar_one_or_none() is not None
     return {"is_setup": is_setup}
+
+
+@router.post("/logout")
+async def logout(request: Request):
+    """Logout by blacklisting the current access token."""
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing bearer token",
+        )
+    token = auth_header[7:]
+    try:
+        decode_token(token)  # Validate token is still valid
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+    invalidate_token(token)
+    return {"detail": "Successfully logged out"}

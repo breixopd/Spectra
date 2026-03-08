@@ -1,3 +1,6 @@
+import logging
+import secrets
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -5,11 +8,16 @@ from starlette.status import HTTP_403_FORBIDDEN
 
 from app.core.config import settings
 
+logger = logging.getLogger("spectra.middleware")
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
 
     async def dispatch(self, request: Request, call_next) -> Response:
+        nonce = secrets.token_urlsafe(16)
+        request.state.csp_nonce = nonce
+
         # Origin validation for state-changing requests
         if request.method in ("POST", "PUT", "DELETE", "PATCH"):
             origin = request.headers.get("origin")
@@ -21,7 +29,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                         break
 
                 if not allowed:
+                    logger.warning("Blocked cross-origin request from %s to %s %s", origin, request.method, request.url.path)
                     return Response("Invalid Origin", status_code=HTTP_403_FORBIDDEN)
+            elif origin and settings.DEBUG:
+                allowed_origins = settings.CORS_ORIGINS
+                if origin not in allowed_origins:
+                    logger.debug("Cross-origin request from %s allowed (DEBUG mode)", origin)
 
         response = await call_next(request)
 
@@ -40,7 +53,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if not request.url.path.startswith("/api/"):
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline'; "
+                f"script-src 'self' 'nonce-{nonce}'; "
                 "style-src 'self' 'unsafe-inline'; "
                 "font-src 'self'; "
                 "img-src 'self' data:; "

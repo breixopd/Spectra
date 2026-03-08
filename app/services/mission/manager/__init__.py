@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -37,16 +38,28 @@ class MissionManager:
         self.execution = MissionExecutionManager(self.lifecycle, self.steering)
         self._agents_initialized = False
 
+        # Concurrent mission isolation
+        from app.core.constants import MAX_CONCURRENT_MISSIONS
+        self._global_semaphore = asyncio.Semaphore(MAX_CONCURRENT_MISSIONS)
+        self._mission_llm_semaphores: dict[str, asyncio.Semaphore] = {}
+
     async def _ensure_agents(self) -> None:
         """Initialize agents."""
         if not self._agents_initialized:
             await self.execution.ensure_agents()
             self._agents_initialized = True
 
+    async def _run_mission_with_limit(self, mission: Mission) -> None:
+        """Run mission loop within global concurrency semaphore."""
+        async with self._global_semaphore:
+            await self.execution.run_mission_loop(mission)
+        self._mission_llm_semaphores.pop(mission.id, None)
+
     # --- Public API ---
 
     async def start_mission(
-        self, target: str, directive: str, requirements: str | None = None
+        self, target: str, directive: str, requirements: str | None = None,
+        vpn_config: str | None = None,
     ) -> str:
         """
         Start a new security assessment mission.
@@ -55,18 +68,20 @@ class MissionManager:
             target: Target IP, domain, or CIDR
             directive: High-level user directive
             requirements: Optional scope, requirements, or constraints
+            vpn_config: Optional VPN config name to use for this mission
 
         Returns:
             Mission ID
         """
         await self._ensure_agents()
 
-        mission = await self.lifecycle.start_mission(target, directive, requirements)
+        mission = await self.lifecycle.start_mission(target, directive, requirements, vpn_config=vpn_config)
 
-        # Start execution loop in background
-        import asyncio
+        # Create per-mission LLM semaphore (max 1 concurrent LLM call)
+        self._mission_llm_semaphores[mission.id] = asyncio.Semaphore(1)
 
-        asyncio.create_task(self.execution.run_mission_loop(mission))
+        # Start execution loop in background with global concurrency limit
+        asyncio.create_task(self._run_mission_with_limit(mission))
 
         return mission.id
 
@@ -82,6 +97,21 @@ class MissionManager:
         """Resume a paused mission."""
         return await self.lifecycle.resume_mission(mission_id)
 
+    async def resume_mission_from_checkpoint(self, mission_id: str) -> str | None:
+        """Resume a mission from its DB checkpoint.
+
+        Returns the mission ID on success, None on failure.
+        """
+        await self._ensure_agents()
+        mission = await self.lifecycle.resume_mission_from_db(mission_id)
+        if not mission:
+            return None
+
+        import asyncio
+
+        asyncio.create_task(self.execution.run_mission_loop(mission))
+        return mission.id
+
     async def get_mission(self, mission_id: str) -> Mission | None:
         """Get mission by ID."""
         return self.lifecycle.get_mission(mission_id)
@@ -93,16 +123,19 @@ class MissionManager:
         phase: str | None = None,
         target: str | None = None,
         vulnerability: str | None = None,
+        **kwargs: Any,
     ) -> dict[str, str]:
         """
         Steer a running mission.
 
         Args:
             mission_id: ID of the mission to steer
-            action: Steering action (skip_phase, prioritize_target, focus_vuln)
+            action: Steering action (skip_phase, prioritize_target, focus_vuln,
+                    inject_task, set_param, set_automation_level, go_back, skip_target)
             phase: Phase to skip (for skip_phase)
             target: Target to prioritize (for prioritize_target)
             vulnerability: Vuln to focus on (for focus_vuln)
+            **kwargs: Additional args for extended actions
 
         Returns:
             Dict with result message
@@ -111,7 +144,7 @@ class MissionManager:
             ValueError: If mission not found or input invalid
         """
         return await self.steering.steer_mission(
-            mission_id, action, phase, target, vulnerability
+            mission_id, action, phase, target, vulnerability, **kwargs
         )
 
     def list_missions(self) -> list[dict[str, Any]]:

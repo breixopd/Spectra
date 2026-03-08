@@ -76,5 +76,10 @@
     "icon": "folder-open",
     "color": "green"
   },
+  "examples": [
+    {"description": "Directory brute-force with common wordlist", "args": {"target": "http://192.168.1.10"}},
+    {"description": "Scan with extensions", "args": {"target": "http://192.168.1.10", "extensions": "php,html,txt"}},
+    {"description": "DNS subdomain enumeration", "args": {"target": "example.com", "flags": "-m dns -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt"}}
+  ],
   "signature": "0bb655e66e54e3fe13bd76470993feb8846b0b9847cc85bb93555cba5a841b355384314b1a262d72a866576809646a3097892f9b5dd02b4faca97de6823afd02"
 }

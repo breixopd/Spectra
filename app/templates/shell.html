@@ -23,7 +23,7 @@
     </div>
     <div id="terminal"></div>
 
-    <script>
+    <script nonce="{{ request.state.csp_nonce }}">
         const term = new Terminal({
             cursorBlink: true,
             theme: {
@@ -44,7 +44,8 @@
 
         // WebSocket Connection
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/api/shell/{{ session_id }}`;
+        const sessionId = {{ session_id|tojson }};
+        const wsUrl = `${protocol}//${window.location.host}/api/shell/${sessionId}`;
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {

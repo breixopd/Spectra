@@ -8,15 +8,15 @@ Provides CRUD operations and finding associations.
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
 
-# Pagination limits
-MAX_PAGE_SIZE = 100
-DEFAULT_PAGE_SIZE = 20
+from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE, API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.api.dependencies import get_current_active_user
 from app.api.schemas import FindingResponse, TargetCreate, TargetResponse, TargetUpdate
+from app.core.rbac import Permission, require_permission
 from app.models.user import User
 from app.repositories.finding import FindingRepository
 from app.repositories.target import TargetRepository
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/targets", tags=["Targets"])
 async def create_target(
     target_in: TargetCreate,
     db: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ):
     """Create a new target."""
     repo = TargetRepository(db)
@@ -124,7 +124,7 @@ async def get_target(
 async def delete_target(
     target_id: str,
     db: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ):
     """Delete a target."""
     repo = TargetRepository(db)
@@ -201,3 +201,94 @@ async def get_target_findings(
         )
         for f in findings
     ]
+
+
+class BulkTargetItem(BaseModel):
+    """Single target in a bulk import."""
+
+    address: str
+    description: str = ""
+
+
+class BulkImportRequest(BaseModel):
+    """Request body for bulk importing targets (max 500)."""
+
+    targets: List[BulkTargetItem] = Field(..., max_length=500)
+
+
+class BulkImportResponse(BaseModel):
+    """Response for bulk import."""
+
+    imported: int
+    skipped: int
+    errors: List[str]
+
+
+@router.post("/bulk-import", response_model=BulkImportResponse)
+async def bulk_import_targets(
+    request: BulkImportRequest,
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = require_permission(Permission.MANAGE_TARGETS),
+):
+    """Import multiple targets at once."""
+    repo = TargetRepository(db)
+    imported = 0
+    skipped = 0
+    errors: List[str] = []
+
+    for item in request.targets:
+        addr = item.address.strip()
+        if not addr:
+            continue
+        try:
+            existing = await repo.find_one_by(address=addr)
+            if existing:
+                skipped += 1
+                continue
+            await repo.create(
+                address=addr,
+                description=item.description,
+                status="pending",
+                os="Unknown",
+            )
+            imported += 1
+        except Exception as e:
+            errors.append(f"{addr}: {str(e)}")
+
+    await db.commit()
+    return BulkImportResponse(imported=imported, skipped=skipped, errors=errors)
+
+
+class BulkDeleteRequest(BaseModel):
+    """Request body for bulk deleting targets."""
+
+    target_ids: List[str]
+
+
+class BulkDeleteResponse(BaseModel):
+    """Response for bulk delete."""
+
+    deleted: int
+
+
+@router.post("/bulk-delete", response_model=BulkDeleteResponse)
+async def bulk_delete_targets(
+    request: BulkDeleteRequest,
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = require_permission(Permission.MANAGE_TARGETS),
+):
+    """Bulk delete targets."""
+    if len(request.target_ids) > 100:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Maximum 100 targets per batch",
+        )
+
+    repo = TargetRepository(db)
+    deleted_count = 0
+    for tid in request.target_ids:
+        if await repo.delete(tid):
+            deleted_count += 1
+    await db.commit()
+
+    return BulkDeleteResponse(deleted=deleted_count)

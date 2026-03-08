@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from sqlalchemy import DateTime, Integer, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
@@ -37,7 +37,6 @@ class JSONBType(TypeDecorator):
 class SystemCache(InfrastructureBase):
     """
     PostgreSQL-backed key-value cache.
-    Replaces Redis cache functionality.
     """
 
     __tablename__ = "system_cache"
@@ -45,7 +44,7 @@ class SystemCache(InfrastructureBase):
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class JobQueue(InfrastructureBase):
@@ -66,7 +65,7 @@ class JobQueue(InfrastructureBase):
     result: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    enqueued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    enqueued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -76,11 +75,27 @@ class JobQueue(InfrastructureBase):
 class SystemStatus(InfrastructureBase):
     """
     PostgreSQL-backed system state storage.
-    Replaces Redis hash maps used for operations tracking and readiness checks.
+    Used for operations tracking and readiness checks.
     """
 
     __tablename__ = "system_status"
 
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.utcnow(), onupdate=lambda: datetime.utcnow())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class CacheEntry(InfrastructureBase):
+    """
+    PostgreSQL-backed key-value cache with TTL support.
+
+    NOTE: Periodic cleanup of expired entries should be handled externally
+    (e.g., a scheduled task running DELETE WHERE expires_at < now()).
+    """
+
+    __tablename__ = "cache_entries"
+
+    key: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)  # JSON serialized
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

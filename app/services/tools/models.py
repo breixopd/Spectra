@@ -8,7 +8,7 @@ execution, parsing, and UI configuration.
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.enums import RiskLevel
 
@@ -366,12 +366,7 @@ class ToolConfig(BaseModel):
         description="Whether this is a built-in system tool that cannot be removed",
     )
 
-    class Config:
-        use_enum_values = True
-        # Pydantic V2 compatibility
-        from pydantic import ConfigDict
-
-        model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True)
 
     def get_ai_summary(self) -> str:
         """Generate a comprehensive summary for AI tool selection."""

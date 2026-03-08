@@ -87,5 +87,10 @@
     "icon": "database",
     "color": "red"
   },
+  "examples": [
+    {"description": "Test URL parameter for SQLi", "args": {"target": "http://example.com/page?id=1"}},
+    {"description": "Dump database contents", "args": {"target": "http://example.com/page?id=1", "flags": "--dump --dbs"}},
+    {"description": "SQLi with tamper scripts", "args": {"target": "http://example.com/page?id=1", "tamper": "space2comment,charencode", "flags": "--level 5 --risk 3"}}
+  ],
   "signature": "353cb29fed64d0aff1c2fcbd481692e30adefb0e95009d6c3b72e8538b7fcc1b6aca8472e3b0f53eec159525f8691e300fd3b6c17ddf47bb9326513764111603"
 }

@@ -1,4 +1,5 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -11,6 +12,11 @@ from alembic import context
 # access to the values within the .ini file in use.
 config = context.config
 
+# Override sqlalchemy.url from environment variable if set
+db_url = os.environ.get("DATABASE_URL")
+if db_url:
+    config.set_main_option("sqlalchemy.url", db_url)
+
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
@@ -21,6 +27,7 @@ if config.config_file_name is not None:
 from app.models.base import Base  # noqa: E402
 # Import all models to ensure they are registered with Base.metadata
 from app.models import (  # noqa: E402, F401
+    AuditLog,
     Target,
     Finding,
     User,

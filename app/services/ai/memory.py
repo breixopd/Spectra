@@ -2,7 +2,7 @@
 Persistent Mission Memory — Learn from every engagement.
 
 Stores structured lessons from past missions as JSON on disk.
-No RAG, no embeddings, no Redis — just deterministic pattern matching
+No RAG, no embeddings — just deterministic pattern matching
 that gets more useful with every mission.
 
 What it remembers:
@@ -21,6 +21,7 @@ How it's used:
 
 import json
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -88,6 +89,8 @@ class MissionMemory:
     - false_positives.json — findings to skip
     """
 
+    MAX_BACKUPS = 5
+
     def __init__(self, memory_dir: Path | str = MEMORY_DIR):
         self.memory_dir = Path(memory_dir)
         self.memory_dir.mkdir(parents=True, exist_ok=True)
@@ -96,6 +99,14 @@ class MissionMemory:
         self.exploit_lessons: list[ExploitLesson] = []
         self.target_profiles: dict[str, TargetProfile] = {}
         self.false_positives: set[str] = set()
+
+        # In-memory indexes for fast lookups (MEM-002)
+        self._tool_index: dict[str, list[int]] = {}
+        self._service_index: dict[str, list[int]] = {}
+
+        # Debounce saves: skip if <5s since last save
+        self._last_save_time: float = 0.0
+        self._dirty: bool = False
 
         self._load()
 
@@ -109,8 +120,10 @@ class MissionMemory:
         for key, data in profiles_raw.items():
             try:
                 self.target_profiles[key] = TargetProfile(**data)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to load target profile: %s", e)
+
+        self._rebuild_indexes()
 
         logger.info(
             "Loaded memory: %d tool lessons, %d exploit lessons, %d profiles, %d false positives",
@@ -120,17 +133,33 @@ class MissionMemory:
             len(self.false_positives),
         )
 
+    def _rebuild_indexes(self) -> None:
+        """Rebuild in-memory indexes from tool_lessons."""
+        self._tool_index.clear()
+        self._service_index.clear()
+        for i, lesson in enumerate(self.tool_lessons):
+            self._tool_index.setdefault(lesson.tool_id, []).append(i)
+            svc_key = lesson.target_service.lower()
+            self._service_index.setdefault(svc_key, []).append(i)
+
+    def _index_tool_lesson(self, index: int, lesson: ToolLesson) -> None:
+        """Add a single lesson to the indexes."""
+        self._tool_index.setdefault(lesson.tool_id, []).append(index)
+        svc_key = lesson.target_service.lower()
+        self._service_index.setdefault(svc_key, []).append(index)
+
     def _load_file(self, filename: str, model_cls: type) -> list:
-        """Load a list of Pydantic models from a JSON file."""
+        """Load a list of Pydantic models from a JSON file, falling back to backups."""
         path = self.memory_dir / filename
         if not path.exists():
-            return []
+            # Try loading from backup
+            return self._load_with_fallback(filename, model_cls)
         try:
             data = json.loads(path.read_text())
             return [model_cls(**item) for item in data if isinstance(item, dict)]
         except Exception as e:
-            logger.warning("Failed to load %s: %s", filename, e)
-            return []
+            logger.warning("Failed to load %s: %s — trying backups", filename, e)
+            return self._load_with_fallback(filename, model_cls)
 
     def _load_raw(self, filename: str) -> Any:
         """Load raw JSON data."""
@@ -140,10 +169,58 @@ class MissionMemory:
         try:
             return json.loads(path.read_text())
         except Exception:
+            # Try backups for raw files too
+            for i in range(1, self.MAX_BACKUPS + 1):
+                bak = self.memory_dir / f"{filename}.{i}.bak"
+                if bak.exists():
+                    try:
+                        return json.loads(bak.read_text())
+                    except Exception:
+                        continue
             return None
 
+    def _load_with_fallback(self, filename: str, model_cls: type) -> list:
+        """Try loading from backup files when primary fails."""
+        for i in range(1, self.MAX_BACKUPS + 1):
+            bak = self.memory_dir / f"{filename}.{i}.bak"
+            if bak.exists():
+                try:
+                    data = json.loads(bak.read_text())
+                    logger.info("Recovered %s from backup %d", filename, i)
+                    return [model_cls(**item) for item in data if isinstance(item, dict)]
+                except Exception:
+                    continue
+        return []
+
+    def _rotate_backup(self, filepath: Path) -> None:
+        """Rotate backup files before writing. Keeps last MAX_BACKUPS copies."""
+        if not filepath.exists():
+            return
+        # Shift existing backups: .4.bak -> .5.bak, .3.bak -> .4.bak, etc.
+        for i in range(self.MAX_BACKUPS, 1, -1):
+            older = filepath.parent / f"{filepath.name}.{i}.bak"
+            newer = filepath.parent / f"{filepath.name}.{i - 1}.bak"
+            if newer.exists():
+                try:
+                    newer.rename(older)
+                except OSError:
+                    pass
+        # Current file becomes .1.bak
+        bak1 = filepath.parent / f"{filepath.name}.1.bak"
+        try:
+            # Copy content rather than rename, so the original stays for atomic write
+            bak1.write_bytes(filepath.read_bytes())
+        except OSError as e:
+            logger.warning("Backup rotation failed for %s: %s", filepath.name, e)
+
     def _save(self) -> None:
-        """Persist all memory to disk."""
+        """Persist all memory to disk with time-based debounce."""
+        now = time.monotonic()
+        if now - self._last_save_time < 5:
+            self._dirty = True
+            return
+        self._dirty = False
+        self._last_save_time = now
         self._save_file(
             "tool_lessons.json",
             [l.model_dump() for l in self.tool_lessons[-500:]],
@@ -158,9 +235,29 @@ class MissionMemory:
         )
         self._save_file("false_positives.json", list(self.false_positives))
 
+    def force_save(self) -> None:
+        """Flush pending changes to disk immediately."""
+        if self._dirty:
+            self._dirty = False
+            self._last_save_time = time.monotonic()
+            self._save_file(
+                "tool_lessons.json",
+                [l.model_dump() for l in self.tool_lessons[-500:]],
+            )
+            self._save_file(
+                "exploit_lessons.json",
+                [l.model_dump() for l in self.exploit_lessons[-200:]],
+            )
+            self._save_file(
+                "target_profiles.json",
+                {k: v.model_dump() for k, v in self.target_profiles.items()},
+            )
+            self._save_file("false_positives.json", list(self.false_positives))
+
     def _save_file(self, filename: str, data: Any) -> None:
-        """Save data to a JSON file atomically."""
+        """Save data to a JSON file atomically with backup rotation."""
         path = self.memory_dir / filename
+        self._rotate_backup(path)
         tmp = path.with_suffix(".tmp")
         try:
             tmp.write_text(json.dumps(data, indent=2, default=str))
@@ -185,20 +282,36 @@ class MissionMemory:
         args_used: dict[str, Any] | None = None,
     ) -> None:
         """Record what happened when we ran a tool."""
-        self.tool_lessons.append(
-            ToolLesson(
-                tool_id=tool_id,
-                target_service=target_service,
-                target_product=target_product,
-                target_version=target_version,
-                target_os=target_os,
-                args_used=args_used or {},
-                success=success,
-                findings_count=findings_count,
-                finding_types=finding_types or [],
-                timestamp=datetime.now().isoformat(),
-            )
+        lesson = ToolLesson(
+            tool_id=tool_id,
+            target_service=target_service,
+            target_product=target_product,
+            target_version=target_version,
+            target_os=target_os,
+            args_used=args_used or {},
+            success=success,
+            findings_count=findings_count,
+            finding_types=finding_types or [],
+            timestamp=datetime.now().isoformat(),
         )
+        # Deduplicate: update existing entry if same tool+service+product+outcome
+        deduplicated = False
+        for existing in self.tool_lessons:
+            if (
+                existing.tool_id == lesson.tool_id
+                and existing.target_service == lesson.target_service
+                and existing.target_product == lesson.target_product
+                and existing.success == lesson.success
+            ):
+                existing.findings_count = max(existing.findings_count, lesson.findings_count)
+                existing.timestamp = lesson.timestamp
+                existing.success = lesson.success
+                deduplicated = True
+                break
+        if not deduplicated:
+            idx = len(self.tool_lessons)
+            self.tool_lessons.append(lesson)
+            self._index_tool_lesson(idx, lesson)
         self._save()
 
     def record_exploit_success(
@@ -235,6 +348,22 @@ class MissionMemory:
     def record_false_positive(self, template_id: str) -> None:
         """Mark a finding template as a known false positive."""
         self.false_positives.add(template_id)
+        self._save()
+
+    def record_tool_lesson(
+        self, tool: str, lesson: str, context: str = ""
+    ) -> None:
+        """Record a freeform lesson (e.g. from debrief) as a ToolLesson note."""
+        entry = ToolLesson(
+            tool_id=tool,
+            target_service=context,
+            success=True,
+            notes=lesson,
+            timestamp=datetime.now().isoformat(),
+        )
+        idx = len(self.tool_lessons)
+        self.tool_lessons.append(entry)
+        self._index_tool_lesson(idx, entry)
         self._save()
 
     def update_target_profile(
@@ -278,6 +407,16 @@ class MissionMemory:
 
     # --- Querying Lessons ---
 
+    def get_lessons_for_tool(self, tool_id: str) -> list[ToolLesson]:
+        """Get all lessons for a specific tool using the index."""
+        indices = self._tool_index.get(tool_id, [])
+        return [self.tool_lessons[i] for i in indices if i < len(self.tool_lessons)]
+
+    def get_lessons_for_service(self, service: str) -> list[ToolLesson]:
+        """Get all lessons for a specific service using the index."""
+        indices = self._service_index.get(service.lower(), [])
+        return [self.tool_lessons[i] for i in indices if i < len(self.tool_lessons)]
+
     def get_tool_recommendations(
         self,
         service: str,
@@ -286,16 +425,18 @@ class MissionMemory:
     ) -> list[dict[str, Any]]:
         """Get tool recommendations based on past experience."""
         recommendations = []
-        seen_tools = set()
+        seen_tools: set[str] = set()
 
-        for lesson in reversed(self.tool_lessons):
+        # Use service index for faster lookup instead of scanning all lessons
+        service_indices = self._service_index.get(service.lower(), [])
+        for idx in reversed(service_indices):
+            if idx >= len(self.tool_lessons):
+                continue
+            lesson = self.tool_lessons[idx]
             if lesson.tool_id in seen_tools:
                 continue
 
-            if lesson.target_service.lower() != service.lower():
-                continue
-
-            if not lesson.success or lesson.findings_count == 0:
+            if lesson.tool_id != "debrief" and (not lesson.success or lesson.findings_count == 0):
                 continue
 
             relevance = 0.5
@@ -368,6 +509,27 @@ class MissionMemory:
         This is the key integration point — agents get smarter over time
         because this context grows with each mission.
         """
+        # Flush any pending saves before reading
+        self.force_save()
+
+        if not service and not product and not os_family:
+            sections = []
+            # Top tools by frequency
+            tool_counts: dict[str, int] = {}
+            for lesson in self.tool_lessons[-100:]:
+                tid = lesson.tool_id
+                if tid and tid != "debrief":
+                    tool_counts[tid] = tool_counts.get(tid, 0) + 1
+            if tool_counts:
+                top = sorted(tool_counts.items(), key=lambda x: -x[1])[:3]
+                sections.append("Most effective tools: " + ", ".join(f"{t}({c} uses)" for t, c in top))
+            # Recent exploit successes
+            recent_exploits = self.exploit_lessons[-3:]
+            if recent_exploits:
+                names = [e.exploit_tool for e in recent_exploits]
+                sections.append("Recent successful exploits: " + ", ".join(names))
+            return "\n".join(sections) if sections else ""
+
         parts = []
 
         # Tool recommendations from past experience
@@ -431,6 +593,58 @@ class MissionMemory:
             "false_positives": len(self.false_positives),
             "profiles": list(self.target_profiles.keys()),
         }
+
+    def aggregate_knowledge(self) -> dict[str, Any]:
+        """Aggregate cross-mission knowledge by (tool_id, service)."""
+        from collections import defaultdict
+
+        combos: dict[tuple[str, str], list[ToolLesson]] = defaultdict(list)
+        for lesson in self.tool_lessons:
+            key = (lesson.tool_id, lesson.target_service.lower())
+            combos[key].append(lesson)
+
+        service_profiles: dict[str, dict[str, Any]] = {}
+        for (tool_id, service), lessons in combos.items():
+            svc_key = service
+            if svc_key not in service_profiles:
+                service_profiles[svc_key] = {
+                    "best_tools": [],
+                    "common_findings": [],
+                    "success_rate": {},
+                    "total_assessments": 0,
+                }
+
+            total = len(lessons)
+            successes = sum(1 for l in lessons if l.success and l.findings_count > 0)
+            rate = successes / total if total > 0 else 0.0
+
+            profile = service_profiles[svc_key]
+            profile["success_rate"][tool_id] = round(rate, 2)
+            profile["total_assessments"] += total
+
+            if rate > 0.5 and tool_id not in profile["best_tools"]:
+                profile["best_tools"].append(tool_id)
+
+            for lesson in lessons:
+                for ft in lesson.finding_types:
+                    if ft not in profile["common_findings"]:
+                        profile["common_findings"].append(ft)
+
+        result = {
+            "service_profiles": service_profiles,
+            "last_aggregated": datetime.now().isoformat(),
+        }
+
+        # Persist aggregated knowledge
+        output_dir = Path("reports/memory")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            out_path = output_dir / "aggregated_knowledge.json"
+            out_path.write_text(json.dumps(result, indent=2, default=str))
+        except Exception as e:
+            logger.warning("Failed to save aggregated knowledge: %s", e)
+
+        return result
 
 
 # --- OS Detection ---

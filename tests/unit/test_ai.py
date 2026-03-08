@@ -74,7 +74,7 @@ def mock_registry():
 
     registry.get_available_tools.return_value = tools
     registry.list_tools.return_value = tools
-    registry.sync_status_from_redis = AsyncMock()
+    registry.sync_status_from_cache = AsyncMock()
     registry.get_tool.side_effect = lambda x: next(
         (t for t in tools if t.config.id == x), None
     )
@@ -186,21 +186,25 @@ class TestLLMFactory:
         assert isinstance(client, MockLLMClient)
 
     def test_get_ollama_client(self):
-        """Test creating an Ollama client."""
-        from app.services.ai.llm import OllamaClient
+        """Test creating an Ollama-routed LiteLLM client."""
+        from app.services.ai.router import LiteLLMRouter
 
-        client = get_llm_client("ollama", host="http://localhost:11434")
-        assert isinstance(client, OllamaClient)
+        client = get_llm_client("ollama", host="http://localhost:11434", model="test-model")
+        assert isinstance(client, LiteLLMRouter)
 
     def test_get_openai_client_requires_key(self):
-        """Test that OpenAI client requires API key."""
-        with pytest.raises(ValueError, match="API key is required"):
-            get_llm_client("openai")
+        """Test that OpenAI client works without key via LiteLLM."""
+        from app.services.ai.router import LiteLLMRouter
 
-    def test_unknown_provider_raises(self):
-        """Test that unknown provider raises error."""
-        with pytest.raises(ValueError, match="Unknown LLM provider"):
-            get_llm_client("unknown")
+        client = get_llm_client("openai", model="gpt-4")
+        assert isinstance(client, LiteLLMRouter)
+
+    def test_unknown_provider_returns_litellm(self):
+        """Test that unknown providers are handled via LiteLLM."""
+        from app.services.ai.router import LiteLLMRouter
+
+        client = get_llm_client("unknown_provider", model="test")
+        assert isinstance(client, LiteLLMRouter)
 
 
 # --- Agent Tests ---

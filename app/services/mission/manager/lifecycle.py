@@ -24,10 +24,11 @@ class MissionLifecycleManager:
         self.active_missions = active_missions
 
     async def start_mission(
-        self, target: str, directive: str, requirements: str | None = None
+        self, target: str, directive: str, requirements: str | None = None,
+        vpn_config: str | None = None,
     ) -> Mission:
         """Create and start a new mission."""
-        mission = Mission(target, directive, requirements=requirements)
+        mission = Mission(target, directive, requirements=requirements, vpn_config=vpn_config)
         self.active_missions[mission.id] = mission
 
         # Persist to DB
@@ -42,6 +43,7 @@ class MissionLifecycleManager:
                         status="created",
                         logs=[],
                         summary={},
+                        vpn_config=vpn_config,
                     )
         except SQLAlchemyError as e:
             logger.error("Failed to persist mission start (DB error): %s", e)
@@ -53,9 +55,19 @@ class MissionLifecycleManager:
     async def stop_mission(self, mission_id: str) -> bool:
         """Stop a running mission."""
         if mission_id in self.active_missions:
-            self.active_missions[mission_id].stop()
+            mission = self.active_missions[mission_id]
+            # Disconnect VPN if configured
+            if getattr(mission, 'vpn_config', None):
+                try:
+                    from app.services.tools.vpn import VPNManager
+                    vpn_mgr = VPNManager()
+                    await vpn_mgr.disconnect(mission.vpn_config)
+                    logger.info("VPN disconnected for stopped mission %s", mission_id)
+                except Exception as e:
+                    logger.error("Failed to disconnect VPN for mission %s: %s", mission_id, e)
+            mission.stop()
             # Update DB status immediately
-            await self.update_db_status(self.active_missions[mission_id])
+            await self.update_db_status(mission)
             return True
         return False
 
@@ -101,11 +113,81 @@ class MissionLifecycleManager:
         except Exception as e:
             logger.error("Failed to update mission DB (Unexpected): %s", e)
 
+    async def save_checkpoint(self, mission: Mission) -> None:
+        """Save mission checkpoint state to DB."""
+        try:
+            checkpoint = mission.save_checkpoint()
+            async with async_session_maker() as session:
+                async with session.begin():
+                    repo = MissionRepository(session)
+                    await repo.update(
+                        mission.id,
+                        checkpoint_data=checkpoint,
+                        resume=True,
+                    )
+            logger.info("Checkpoint saved for mission %s", mission.id)
+        except Exception as e:
+            logger.error("Failed to save checkpoint for mission %s: %s", mission.id, e)
+
+    async def resume_mission_from_db(self, mission_id: str) -> Mission | None:
+        """Reconstruct a mission from checkpoint data stored in DB."""
+        try:
+            async with async_session_maker() as session:
+                async with session.begin():
+                    repo = MissionRepository(session)
+                    db_mission = await repo.get(mission_id)
+                    if not db_mission or not db_mission.checkpoint_data:
+                        logger.warning("No checkpoint data for mission %s", mission_id)
+                        return None
+
+                    mission = Mission.from_checkpoint(db_mission.checkpoint_data)
+                    self.active_missions[mission.id] = mission
+                    mission.log("[RESUME] Mission resumed from checkpoint")
+                    return mission
+        except Exception as e:
+            logger.error("Failed to resume mission %s: %s", mission_id, e)
+            return None
+
     async def initialize_mission(self, mission: Mission) -> AgentContext | None:
         """Initialize mission and return context."""
         try:
             mission.set_status("running")
             mission.log(f"Starting mission against {mission.target}")
+
+            # Connect per-mission VPN if configured
+            if mission.vpn_config:
+                try:
+                    from app.services.tools.vpn import VPNManager
+                    vpn_mgr = VPNManager()
+                    result = await vpn_mgr.connect(mission.vpn_config)
+                    mission.log(f"[VPN] Connected via '{mission.vpn_config}' (job: {result.get('job_id', 'N/A')})")
+                    # Wait for VPN tunnel to establish
+                    job_id = result.get("job_id")
+                    if job_id:
+                        try:
+                            from app.core.queue import Job
+                            job = Job(job_id)
+                            await job.result(timeout=30)
+                            mission.log("[VPN] Tunnel established successfully")
+                        except Exception:
+                            mission.log("[VPN] Warning: tunnel not confirmed after 30s, proceeding anyway")
+                            logger.warning("VPN tunnel not confirmed for mission %s after 30s", mission.id)
+                except Exception as vpn_err:
+                    mission.log(f"[VPN] Failed to connect '{mission.vpn_config}': {vpn_err}")
+                    logger.error("VPN connect failed for mission %s: %s", mission.id, vpn_err)
+            else:
+                # Log VPN status
+                try:
+                    from app.services.tools.vpn import VPNManager
+                    vpn_mgr = VPNManager()
+                    configs = await vpn_mgr.list_configs()
+                    if configs:
+                        mission.log(f"[VPN] {len(configs)} VPN config(s) available")
+                    else:
+                        mission.log("[VPN] No VPN connection active - using direct network")
+                except Exception:
+                    mission.log("[VPN] Could not check VPN status")
+
             self._broadcast_state(
                 mission.id, "mission_controller", "running", plan="Initializing..."
             )

@@ -66,8 +66,23 @@
       "type": "Type",
       "platform": "Platform",
       "path": "Path"
-    }
+    },
+    "regex_patterns": [
+      {
+        "pattern": "(?P<title>.+?)\\s*\\|\\s*(?P<path>exploits/.+)",
+        "type": "info"
+      },
+      {
+        "pattern": "Exploit Title\\s*\\|\\s*Path",
+        "type": "info"
+      }
+    ]
   },
+  "examples": [
+    {"description": "Search for Apache exploits", "args": {"target": "apache 2.4"}},
+    {"description": "Search with exact version match", "args": {"target": "OpenSSH 7.2", "flags": "--exact"}},
+    {"description": "Search for WordPress exploits", "args": {"target": "wordpress", "flags": "--www"}}
+  ],
   "ui": {
     "icon": "bug",
     "color": "red"
