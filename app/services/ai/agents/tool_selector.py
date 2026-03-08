@@ -8,6 +8,7 @@ Responsible for:
 """
 
 import logging
+import re
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
@@ -25,6 +26,10 @@ from app.services.tools.registry import get_registry
 from app.services.ai.prompts import TOOL_SELECTION_PROMPT
 
 logger = logging.getLogger("spectra.ai.agents.tool_selector")
+
+# Pre-compiled regular expressions for tool argument validation
+LIST_SYNTAX_RE = re.compile(r"'([^']+)'")
+FLAG_PREFIX_RE = re.compile(r"^-\w+\s*(.*)$")
 
 
 # --- Input/Output Models ---
@@ -552,9 +557,8 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 logger.warning(
                     f"Removing malformed list syntax from arg {key}: {val_str}"
                 )
-                import re
 
-                items = re.findall(r"'([^']+)'", val_str)
+                items = LIST_SYNTAX_RE.findall(val_str)
                 if items:
                     valid_items = [
                         i
@@ -571,11 +575,9 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             # Remove flag prefix that LLM might incorrectly include
             # e.g., "-t cves/" -> "cves/", "-w /path" -> "/path", "-tcves/" -> "cves/"
             elif val_str.startswith("-"):
-                import re
-
                 # Try to extract the actual value after the flag
                 # Pattern: -<letter(s)> optionally followed by space, then the value
-                match = re.match(r"^-\w+\s*(.*)$", val_str)
+                match = FLAG_PREFIX_RE.match(val_str)
                 if match:
                     clean_val = match.group(1).strip()
                     if clean_val:

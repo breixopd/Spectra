@@ -13,3 +13,7 @@
 ## 2026-03-05 - Optimized Repeated String Manipulations inside List and Generator Comprehensions
 **Learning:** Performing `str.lower()` on either dynamic inputs or static indicators inside list/generator comprehensions (e.g., `any(ind.lower() in output.lower() for ind in indicators)`) is extremely costly, particularly when `output` is a large block of text like tool stdout/stderr. Repeating `.lower()` on a large text object inside an inner loop causes unnecessary memory allocation overhead and dramatically increases CPU time.
 **Action:** When searching for text, extract the `.lower()` operation on the main text to *outside* the loop (e.g., `output_lower = output.lower()`). Furthermore, pre-compute lowercased versions of static indicator arrays/dictionaries at the module level.
+
+## 2026-03-05 - Optimized Regular Expressions in Hot Paths
+**Learning:** Re-importing the `re` module and calling `re.findall()` or `re.match()` with raw string patterns inside a loop forces the Python runtime to re-parse and compile the regex pattern repeatedly, incurring unnecessary CPU overhead and garbage collection pressure, particularly when parsing a large number of arguments or outputs.
+**Action:** Always extract regular expression definitions to the module level as pre-compiled constants using `re.compile()`, and use these compiled pattern objects (e.g., `PATTERN.match()`) within loops and hot paths.
