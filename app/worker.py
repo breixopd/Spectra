@@ -151,11 +151,11 @@ async def execute_tool_job(
     effective_timeout = max(effective_timeout, config.execution.min_timeout)
 
     # Execute command with timeout
-    wrapped_cmd = f"timeout -k 10s {effective_timeout}s {command}"
+    wrapped_cmd = ["timeout", "-k", "10s", f"{effective_timeout}s", "sh", "-c", command]
     logger.info("Running: %s (timeout: %ds)", command, effective_timeout)
 
     start_time = time.time()
-    returncode, stdout, stderr = await _run_command(wrapped_cmd, effective_timeout + 30)
+    returncode, stdout, stderr = await _run_command(wrapped_cmd, effective_timeout + 30, allow_shell=False)
     duration = time.time() - start_time
 
     # Check success based on configured exit codes
@@ -459,8 +459,8 @@ async def run_command_job(
     """
     logger.info("Running command: %s", command[:100])
 
-    wrapped = f"timeout -k 10s {timeout}s {command}"
-    returncode, stdout, stderr = await _run_command(wrapped, timeout + 30, cwd)
+    wrapped = ["timeout", "-k", "10s", f"{timeout}s", "sh", "-c", command]
+    returncode, stdout, stderr = await _run_command(wrapped, timeout + 30, cwd, allow_shell=False)
 
     return {
         "success": returncode == 0,
@@ -509,7 +509,7 @@ async def execute_script_job(
             script_path.write_text(content)
             # Compile then run
             compile_cmd = ["go", "build", "-o", f"{work_dir}/exploit", str(script_path)]
-            r_code, r_out, r_err = await _run_command(compile_cmd, GO_COMPILE_TIMEOUT, str(work_dir))
+            r_code, r_out, r_err = await _run_command(compile_cmd, GO_COMPILE_TIMEOUT, str(work_dir), allow_shell=False)
             if r_code != 0:
                 return {
                     "success": False,
@@ -522,7 +522,7 @@ async def execute_script_job(
         elif language.lower() in ("bash", "sh"):
             script_path = work_dir / "exploit.sh"
             script_path.write_text(content)
-            await _run_command(["chmod", "+x", str(script_path)], 5)
+            await _run_command(["chmod", "+x", str(script_path)], 5, allow_shell=False)
             cmd = [str(script_path), str(target)]
 
         else:
@@ -542,7 +542,7 @@ async def execute_script_job(
         # Run
         wrapped = ["timeout", "-k", "10s", f"{timeout}s"] + cmd
         returncode, stdout, stderr = await _run_command(
-            wrapped, timeout + 30, str(work_dir)
+            wrapped, timeout + 30, str(work_dir), allow_shell=False
         )
 
         return {
@@ -613,6 +613,7 @@ async def _run_command(
     command: str | list[str],
     timeout: int,
     cwd: str | None = None,
+    allow_shell: bool = False,
 ) -> tuple[int, str, str]:
     """Run a shell command with timeout."""
     env = os.environ.copy()
@@ -631,6 +632,8 @@ async def _run_command(
                 start_new_session=True,
             )
         else:
+            if not allow_shell:
+                raise ValueError("allow_shell=True is required to execute string commands via shell")
             proc = await asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
