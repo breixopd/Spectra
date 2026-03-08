@@ -2,7 +2,7 @@
 CVE Ingestion Script.
 
 Loads NVD JSON feeds from cve_data/ directory, generates embeddings,
-and stores them in Redis for RAG retrieval.
+and stores them for RAG retrieval.
 """
 
 import asyncio
@@ -111,7 +111,6 @@ async def main():
                 logger.error("Failed to index batch: %s", e)
 
     logger.info("Ingestion complete. Total CVEs indexed: %d", total_cves)
-    await redis.close()
 
 
 if __name__ == "__main__":

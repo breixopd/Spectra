@@ -1,0 +1,105 @@
+{
+  "id": "linpeas",
+  "name": "LinPEAS",
+  "version": "1.0.0",
+  "category": "post_exploitation",
+  "description": "Linux Privilege Escalation Awesome Script. Enumerates SUID binaries, crontabs, writable dirs, kernel vulns, and more.",
+  "metadata": {
+    "ai_description": "LinPEAS is the most comprehensive Linux privilege escalation enumeration script. It checks for SUID/SGID binaries, writable directories, crontab entries, kernel vulnerabilities, sudo misconfigurations, sensitive files, and hundreds of other privesc vectors. Upload and run it on a compromised Linux host to find privilege escalation paths.",
+    "capabilities": [
+      "privilege_escalation"
+    ],
+    "supported_targets": [
+      "ip",
+      "host"
+    ],
+    "risk_level": "low",
+    "tags": [
+      "linux",
+      "privilege-escalation",
+      "post-exploitation",
+      "enumeration",
+      "suid",
+      "crontab",
+      "kernel"
+    ],
+    "use_cases": [
+      "Enumerating privilege escalation vectors on Linux",
+      "Finding SUID/SGID binaries for abuse",
+      "Discovering writable crontabs and services",
+      "Identifying kernel exploits for privilege escalation",
+      "Finding sensitive files and credentials"
+    ],
+    "limitations": [
+      "Requires shell access on the target",
+      "Output can be very large and noisy",
+      "May trigger host-based security monitoring",
+      "Linux targets only"
+    ],
+    "complements": [
+      "metasploit",
+      "nmap"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "binary",
+    "commands": [
+      "mkdir -p /opt/spectra_tools/privesc",
+      "curl -sL -o /opt/spectra_tools/privesc/linpeas.sh https://github.com/peass-ng/PEASS-ng/releases/latest/download/linpeas.sh",
+      "chmod +x /opt/spectra_tools/privesc/linpeas.sh"
+    ],
+    "verification_command": "test -f /opt/spectra_tools/privesc/linpeas.sh && echo 'linpeas ready'",
+    "verification_regex": "linpeas ready",
+    "uninstall_commands": [
+      "rm -f /opt/spectra_tools/privesc/linpeas.sh"
+    ]
+  },
+  "execution": {
+    "command": "/opt/spectra_tools/privesc/linpeas.sh",
+    "args_template": "{flags}",
+    "timeout": 600,
+    "min_timeout": 120,
+    "max_timeout": 1200,
+    "env": {
+      "PEAS_OUTPUT": "text"
+    }
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "╔══════════╣\\s+(?P<section>.+)",
+        "type": "info"
+      },
+      {
+        "pattern": "-rwsr[x-]r[x-].*\\s+(?P<suid_binary>/\\S+)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "\\*\\s+\\*\\s+\\*\\s+\\*\\s+\\*\\s+(?P<cron_user>\\S+)\\s+(?P<cron_cmd>.+)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "(?P<writable_dir>/[^\\s]+)\\s+.*writable",
+        "type": "vuln"
+      },
+      {
+        "pattern": "(?:CVE-\\d{4}-\\d+).*(?P<kernel_vuln>.+)",
+        "type": "vuln"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract SUID binaries, writable directories, crontab entries, kernel vulnerabilities, sudo misconfigurations, and sensitive files found"
+  },
+  "ui": {
+    "icon": "arrow-circle-up",
+    "color": "yellow"
+  },
+  "examples": [
+    {"description": "Run all checks", "args": {"flags": "-a"}},
+    {"description": "Quick scan without network checks", "args": {"flags": "-s -n"}},
+    {"description": "Run specific check (SUID)", "args": {"flags": "-o suid"}}
+  ],
+  "signature": null
+}

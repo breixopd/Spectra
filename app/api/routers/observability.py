@@ -4,6 +4,7 @@ Observability API Router.
 Provides endpoints for telemetry, metrics, and system health monitoring.
 """
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -14,6 +15,8 @@ from app.core.circuit_breaker import circuit_breakers
 from app.core.events import events
 from app.core.telemetry import telemetry
 from app.models.user import User
+
+logger = logging.getLogger("spectra.api.observability")
 
 router = APIRouter(prefix="/observability", tags=["Observability"])
 
@@ -28,6 +31,14 @@ async def get_observability_stats(
     Returns telemetry, circuit breaker status, cache stats, and events.
     """
     cache = get_cache()
+    cache_stats: dict[str, Any] = {}
+    cache_available = False
+    try:
+        if cache:
+            cache_stats = cache.get_stats() or {}
+            cache_available = True
+    except Exception:
+        logger.warning("Cache unavailable for observability stats")
 
     return {
         "overview": telemetry.get_overview_stats(),
@@ -35,7 +46,8 @@ async def get_observability_stats(
         "traces": telemetry.get_traces(limit=100),
         "circuit_breakers": circuit_breakers.get_all_stats(),
         "events": [e.to_dict() for e in events.get_history(limit=100)],
-        "cache": cache.get_stats() if cache else {},
+        "cache": cache_stats,
+        "cache_available": cache_available,
     }
 
 
@@ -124,16 +136,14 @@ async def get_cache_stats(
 ) -> dict[str, Any]:
     """Get cache statistics."""
     cache = get_cache()
-    if not cache:
-        return {"error": "Cache not initialized"}
-
-    stats = cache.get_stats()
-    redis_stats = await cache.get_redis_stats()
-
-    return {
-        **stats,
-        "redis": redis_stats,
-    }
+    try:
+        if not cache:
+            return {"cache_available": False}
+        stats = cache.get_stats()
+        return {**stats, "cache_available": True}
+    except Exception:
+        logger.warning("Cache unavailable for stats endpoint")
+        return {"cache_available": False}
 
 
 @router.get("/events")

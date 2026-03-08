@@ -8,11 +8,12 @@ Responsible for:
 """
 
 import logging
+import uuid
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
 
-from app.models.attack_surface import AttackVector
+from app.models.attack_surface import AttackVector, VectorPriority
 from app.services.ai.agents.base import (
     ActionRisk,
     Agent,
@@ -21,6 +22,7 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
+from app.services.ai.context import ContextManager, ContextSection, Priority
 
 logger = logging.getLogger("spectra.ai.agents.vector_generator")
 
@@ -49,18 +51,91 @@ class VectorGeneratorAgent(Agent[VectorGeneratorInput, VectorGeneratorOutput]):
     of security tools and vulnerabilities.
     """
 
-    role: ClassVar[AgentRole] = AgentRole.MISSION_CONTROLLER  # Sub-role of controller
+    role: ClassVar[AgentRole] = AgentRole.VECTOR_GENERATOR
     name: ClassVar[str] = "VectorGenerator"
     description: ClassVar[str] = "Generates attack vectors for discovered assets"
+
+    # Deterministic vector templates keyed by service keyword
+    DETERMINISTIC_VECTORS: ClassVar[dict[str, list[dict[str, Any]]]] = {
+        "http": [
+            {"name": "Directory Brute Force", "tools": ["dirsearch", "gobuster", "ffuf"], "phase": "recon"},
+            {"name": "Web Vulnerability Scan", "tools": ["nuclei", "nikto"], "phase": "vuln_scan"},
+            {"name": "SQL Injection", "tools": ["sqlmap"], "phase": "exploitation"},
+            {"name": "CMS Detection + Exploitation", "tools": ["whatweb", "wpscan"], "phase": "recon"},
+        ],
+        "smb": [
+            {"name": "SMB Enumeration", "tools": ["enum4linux", "crackmapexec"], "phase": "recon"},
+            {"name": "EternalBlue Check", "tools": ["nmap"], "nmap_scripts": ["smb-vuln-ms17-010"], "phase": "vuln_scan"},
+            {"name": "SMB Brute Force", "tools": ["hydra", "crackmapexec"], "phase": "exploitation"},
+        ],
+        "ssh": [
+            {"name": "SSH Version Check", "tools": ["nmap"], "phase": "recon"},
+            {"name": "SSH Brute Force", "tools": ["hydra"], "phase": "exploitation"},
+        ],
+        "ftp": [
+            {"name": "Anonymous FTP Check", "tools": ["nmap"], "nmap_scripts": ["ftp-anon"], "phase": "recon"},
+            {"name": "FTP Version Exploit", "tools": ["searchsploit", "metasploit"], "phase": "exploitation"},
+        ],
+        "mysql": [
+            {"name": "MySQL Brute Force", "tools": ["hydra"], "phase": "exploitation"},
+            {"name": "MySQL Enumeration", "tools": ["nmap"], "nmap_scripts": ["mysql-info", "mysql-databases"], "phase": "recon"},
+        ],
+        "dns": [
+            {"name": "DNS Zone Transfer", "tools": ["nmap"], "nmap_scripts": ["dns-zone-transfer"], "phase": "recon"},
+            {"name": "Subdomain Enumeration", "tools": ["subfinder", "amass"], "phase": "recon"},
+        ],
+    }
+
+    @classmethod
+    def generate_deterministic_vectors(cls, services: dict[int, str]) -> list[dict[str, Any]]:
+        """Generate attack vectors based on detected services without LLM."""
+        vectors: list[dict[str, Any]] = []
+        for port, service in services.items():
+            service_lower = service.lower()
+            for key, vecs in cls.DETERMINISTIC_VECTORS.items():
+                if key in service_lower:
+                    for vec in vecs:
+                        vectors.append({**vec, "target_port": port, "target_service": service})
+        return vectors
 
     async def execute(
         self,
         context: AgentContext,
         input_data: VectorGeneratorInput,
     ) -> AgentResult:
-        """Generate attack vectors."""
+        """Generate attack vectors: deterministic first, then LLM for creative vectors."""
         try:
+            # 1. Deterministic vectors from service data
+            det_vectors: list[AttackVector] = []
+            target_data = input_data.target_data
+            if target_data.get("port") and target_data.get("service"):
+                services = {int(target_data["port"]): str(target_data["service"])}
+                raw = self.generate_deterministic_vectors(services)
+                phase_priorities = {
+                    "recon": VectorPriority.MEDIUM,
+                    "vuln_scan": VectorPriority.HIGH,
+                    "exploitation": VectorPriority.HIGH,
+                }
+                for rv in raw:
+                    host = target_data.get("host", "unknown")
+                    port = rv.get("target_port", target_data.get("port", 0))
+                    det_vectors.append(AttackVector(
+                        id=f"det-{uuid.uuid4().hex[:8]}",
+                        name=rv["name"],
+                        description=f"Deterministic vector for {rv.get('target_service', '')}",
+                        priority=phase_priorities.get(rv.get("phase", ""), VectorPriority.MEDIUM),
+                        suggested_tools=rv["tools"],
+                        target_type=input_data.target_type,
+                        target_ref=f"{host}:{port}",
+                    ))
+
+            # 2. LLM-generated creative vectors
             action = await self._generate_with_llm(context, input_data)
+
+            # Merge: deterministic first, then LLM
+            if det_vectors:
+                action.vectors = det_vectors + action.vectors
+
             return AgentResult(success=True, action=action)
         except Exception as e:
             logger.error("VectorGenerator failed: %s", e)
@@ -96,15 +171,9 @@ class VectorGeneratorAgent(Agent[VectorGeneratorInput, VectorGeneratorOutput]):
         # Get available tools using centralized service
         tools_context = await get_available_tools_context(grouped=False)
 
-        prompt = f"""Analyze this target and generate a list of attack vectors.
+        base_prompt = f"""Analyze this target and generate a list of attack vectors.
 
 Target Type: {input_data.target_type}
-Target Data: {input_data.target_data}
-Context: {input_data.context_notes or "None"}
-
-{rag_context}
-
-{tools_context}
 
 For each vector, specify:
 1. A unique ID (e.g., "ssh-brute-192.168.1.1")
@@ -122,13 +191,21 @@ Think like an experienced penetration tester following PTES methodology:
 - What would you try first based on the service?
 - What past successful exploits are relevant?
 - What tools are available that can help?
-- Consider default credentials, known CVEs, misconfigurations, and protocol-specific attacks.
-"""
+- Consider default credentials, known CVEs, misconfigurations, and protocol-specific attacks."""
+
+        ctx = ContextManager(max_context_tokens=6000)
+        prompt = ctx.build([
+            ContextSection("task", base_prompt, Priority.CRITICAL),
+            ContextSection("target_data", f"Target Data: {input_data.target_data}", Priority.HIGH, max_tokens=500),
+            ContextSection("tools", tools_context, Priority.HIGH, max_tokens=800),
+            ContextSection("rag", rag_context, Priority.MEDIUM, max_tokens=500),
+            ContextSection("context_notes", f"Context: {input_data.context_notes or 'None'}", Priority.LOW, max_tokens=200),
+        ])
 
         system_prompt = self._build_system_prompt(context)
 
         try:
-            response = await self.llm.generate_structured(
+            response = await self._llm_generate_structured(
                 prompt=prompt,
                 response_model=VectorGeneratorOutput,
                 system_prompt=system_prompt,

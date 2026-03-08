@@ -33,7 +33,6 @@ from app.core.constants import (
     GO_COMPILE_TIMEOUT,
     MAX_EXPLOIT_ITERATIONS,
     MAX_HOSTS_DEFAULT,
-    REDIS_HEALTH_CHECK_INTERVAL,
     SHELL_SOCKET_RECV_BYTES,
 )
 from app.core.database import async_session_maker, engine, get_async_session
@@ -86,7 +85,6 @@ __all__ = [
     "ARQ_JOB_TIMEOUT",
     "ARQ_KEEP_RESULT",
     "ARQ_HEALTH_CHECK_INTERVAL",
-    "REDIS_HEALTH_CHECK_INTERVAL",
     "MAX_HOSTS_DEFAULT",
     "MAX_EXPLOIT_ITERATIONS",
     "EXPLOIT_OUTPUT_LOG_CHARS",

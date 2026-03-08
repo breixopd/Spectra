@@ -1,0 +1,731 @@
+plan_id: spectra-round6-2026-03-08
+objective: "Deep research into 12 UI, auth, RAG, settings, health, and branding issues"
+focus_area: ui_auth_rag
+created_at: "2026-03-08T00:00:00Z"
+created_by: researcher
+status: completed
+
+tldr: |
+  - "Connecting to server" appears from base.html system status polling (L432, L496) when /api/system/status returns non-200 or network error; it's a catch-all fallback message in the global status bar that fires on every page load.
+  - API docs at /api/docs work via FastAPI's built-in Swagger (main.py L78-80); blank page likely caused by CSP blocking CDN JS or Swagger UI assets not loaded properly.
+  - Auth flow uses localStorage for JWT token (login.html L56) but UI router checks cookies (ui.py L37), causing a split-brain: navigation pages that check _get_ui_user() always redirect to /login because no cookie is ever set.
+  - Local embeddings are NOT supported; only LiteLLM API embeddings or SHA256 fallback exist. sentence-transformers is commented out in requirements.txt.
+  - Health endpoint only checks database; missing checks for RAG, embeddings, LLM, tool container, cache.
+  - 10 old plan files in docs/plan/ from prior rounds can be cleaned up.
+
+research_metadata:
+  methodology: "Multi-pass file reads with grep_search for cross-cutting concerns"
+  tools_used:
+    - read_file
+    - grep_search
+    - file_search
+    - list_dir
+  scope: "Templates, static JS, routers, middleware, config, embeddings, models"
+  confidence: high
+  coverage: 92
+
+# =============================================================================
+# ISSUE 1: Login "Connecting to server" message
+# =============================================================================
+issue_1_connecting_to_server:
+  summary: "Global status bar shows 'Connecting to server...' on login page"
+  files:
+    - file: app/templates/base.html
+      lines: [415-500]
+      role: "Contains checkSystemStatus() function that polls /api/system/status"
+    - file: app/api/routers/system.py
+      lines: [310-410]
+      role: "GET /api/system/status endpoint requires authentication (get_current_active_user)"
+
+  current_behavior: |
+    base.html includes a global status bar (#global-status-bar, initially hidden) and a
+    checkSystemStatus() JS function that polls GET /api/system/status every 5 seconds.
+
+    Two paths show "Connecting to server...":
+      1. Line 432: When response is not OK (e.g. 401 Unauthorized because user is not logged in)
+      2. Line 496: In the catch block for network/fetch errors
+
+    The status bar is rendered on ALL pages including /login and /setup. Since the user is not
+    authenticated on /login, the /api/system/status call returns 401, triggering the "Connecting
+    to server..." message. The polling starts immediately via setInterval at bottom of base.html.
+
+  root_cause: |
+    The /api/system/status endpoint requires authentication (Depends(get_current_active_user)),
+    but checkSystemStatus() runs on every page including unauthenticated pages (/login, /setup).
+    When the fetch returns 401, the catch-all sets statusMsg to "Connecting to server...".
+
+  fix_approach: |
+    1. Skip status polling on public pages: In the checkSystemStatus() JS, check if current path
+       is in publicPaths and return early without showing the status bar.
+    2. OR: Make the status endpoint unauthenticated (return minimal data without auth).
+    3. Add to the polling init: `if (publicPaths.includes(window.location.pathname)) return;`
+
+# =============================================================================
+# ISSUE 2: API docs blank
+# =============================================================================
+issue_2_api_docs_blank:
+  summary: "FastAPI Swagger UI at /api/docs renders blank"
+  files:
+    - file: app/main.py
+      lines: [63-80]
+      role: "FastAPI app configured with docs_url='/api/docs', redoc_url='/api/redoc', openapi_url='/api/openapi.json'"
+    - file: app/core/middleware.py
+      lines: [52-62]
+      role: "CSP header blocks external scripts for non-API paths"
+
+  current_behavior: |
+    FastAPI is configured with standard Swagger UI:
+      docs_url="/api/docs"
+      redoc_url="/api/redoc"
+      openapi_url="/api/openapi.json"
+
+    The Swagger UI page renders blank. The openapi.json is likely accessible but the
+    Swagger UI HTML page loads JS from CDN (cdn.jsdelivr.net) by default.
+
+  root_cause: |
+    The CSP middleware in middleware.py (L52-62) sets:
+      script-src 'self' 'nonce-{nonce}'
+    for all non-API paths.
+
+    However, /api/docs IS an API path (starts with /api/), so CSP is NOT applied.
+    The likely issue is that FastAPI's Swagger UI loads JS from cdn.jsdelivr.net, but:
+    1. The swagger_ui_params are set (L63-72) but don't affect JS loading
+    2. If running in an air-gapped/firewalled environment, CDN is unreachable
+    3. The /api/docs page itself doesn't have the nonce, so inline scripts may fail
+
+    Actually, since the path starts with "/api/", the CSP header is skipped entirely
+    (line 55: `if not request.url.path.startswith("/api/")`). So CSP is NOT the blocker.
+
+    The real issue is likely: Swagger UI tries to load from CDN and either the network
+    blocks it, or there's a browser security policy. Also possible: no routers define
+    any response models, so the OpenAPI schema is minimal/empty.
+
+  fix_approach: |
+    1. Test if /api/openapi.json returns valid content (curl http://localhost:5000/api/openapi.json)
+    2. If CDN is blocked, serve Swagger UI locally by overriding swagger_ui_default_parameters
+       or using app = FastAPI(swagger_ui_oauth2_redirect_url=..., docs_url=None) and serving
+       a custom docs page with local JS assets.
+    3. Alternatively, download swagger-ui-bundle.js and swagger-ui.css to /static/vendor/js/
+       and configure FastAPI to use them via swagger_js_url and swagger_css_url parameters.
+
+# =============================================================================
+# ISSUE 3: Getting started tip
+# =============================================================================
+issue_3_getting_started_tip:
+  summary: "Getting started card on dashboard links to /api/docs"
+  files:
+    - file: app/templates/dashboard.html
+      lines: [103-117]
+      role: "Getting started card HTML with links"
+    - file: app/templates/dashboard.html
+      lines: [359-367]
+      role: "JS that shows/hides card based on mission count"
+
+  current_behavior: |
+    The #getting-started card is hidden by default. It shows when loadMetrics() finds no
+    missions (dashboard.html L362-365). The card contains:
+    - Link to /targets ("Go to Targets")
+    - Link to /dashboard ("Mission Control")
+    - Help link to /api/docs ("API documentation") at L117
+
+  root_cause: |
+    The help link at line 117 says:
+      <a href="/api/docs" class="text-indigo-400 hover:text-indigo-300">API documentation</a>
+    This links to the Swagger docs which (per issue 2) may be blank and is not useful for
+    new users who need a getting-started guide.
+
+  fix_approach: |
+    Replace the /api/docs link with something more useful:
+    - Link to a /help or /guide page (if created)
+    - Link to the README on GitHub
+    - Or remove the help link entirely and make the card self-contained
+    - The card content itself is good — steps 1-4 are a reasonable guide
+
+# =============================================================================
+# ISSUE 4: Mobile layout issues
+# =============================================================================
+issue_4_mobile_layout:
+  summary: "Mobile responsive layout has issues despite viewport meta and breakpoints"
+  files:
+    - file: app/templates/base.html
+      lines: [4]
+      role: "Viewport meta tag present"
+    - file: app/templates/base.html
+      lines: [80-95]
+      role: "Mobile sidebar CSS with @media (max-width: 768px)"
+    - file: app/templates/base.html
+      lines: [275-290]
+      role: "Mobile header and sidebar toggle"
+    - file: app/templates/dashboard.html
+      lines: [1-100]
+      role: "Dashboard header with fixed-width elements"
+
+  current_behavior: |
+    Base template has:
+    1. Viewport meta tag: <meta name="viewport" content="width=device-width, initial-scale=1.0"> (L4) ✓
+    2. Mobile sidebar with hamburger menu at @media max-width: 768px (L80-95) ✓
+    3. Mobile header shown on small screens (L275)
+
+    But the dashboard has problematic elements:
+    - Mission control inputs with fixed style="width: 220px;" (dashboard.html L18)
+    - Flex layout that doesn't wrap on mobile (L7: flex-col md:flex-row)
+    - Preset dropdown, VPN select, and playbook select are squeezed on mobile
+    - Network graph and map have min-height: 220px which is fine
+    - The body has overflow-hidden h-screen which prevents scrolling
+
+  root_cause: |
+    1. body class="overflow-hidden h-screen" prevents any vertical scrolling on mobile
+    2. Fixed width input style="width: 220px;" on mission-target doesn't collapse on mobile
+    3. Dashboard header uses flex with many elements that don't wrap properly
+    4. The main-content has padding that gets overridden to 0.75rem on mobile but the
+       body overflow-hidden prevents seeing content that extends beyond viewport
+
+  fix_approach: |
+    1. Add responsive overflow: on mobile, allow vertical scroll (overflow-y-auto on body/main)
+    2. Remove fixed width on mission-target input; use w-full or responsive widths
+    3. Stack dashboard header controls vertically on mobile with flex-wrap
+    4. Consider hiding less-used controls (VPN, playbook select) behind a button on mobile
+
+# =============================================================================
+# ISSUE 5: Blank buttons
+# =============================================================================
+issue_5_blank_buttons:
+  summary: "Some buttons appear blank or icon-only without accessible text"
+  files:
+    - file: app/templates/settings.html
+      lines: [5-8]
+      role: "Top Save Changes button has text — not blank"
+    - file: app/templates/dashboard.html
+      lines: [70-72, 74-76]
+      role: "Pause/Stop buttons are icon-only with no visible text"
+    - file: app/templates/dashboard.html
+      lines: [44-47]
+      role: "Requirements toggle button is icon-only"
+
+  current_behavior: |
+    Several buttons use icon-only rendering: <button><i class="fa-solid fa-pause"></i></button>
+    These have aria-label attributes for accessibility but no visible text.
+
+    The most likely "blank buttons" are:
+    1. dashboard.html L70-72: Pause button — icon-only (fa-pause), has data-tooltip and aria-label
+    2. dashboard.html L74-76: Stop button — icon-only (fa-stop), has data-tooltip and aria-label
+    3. dashboard.html L45: Requirements toggle — icon-only (fa-file-lines), has aria-label
+
+    If FontAwesome fails to load, these buttons appear completely blank (no text, no icon).
+
+  root_cause: |
+    If FontAwesome CSS at /static/vendor/css/fontawesome.min.css fails to load or the
+    associated webfont files (fa-solid-900.woff2) fail to load, ALL icon-only buttons
+    render as empty rectangles with no visible content.
+
+    Additionally, the buttons have no text fallback — they rely entirely on FontAwesome
+    icons being rendered.
+
+  fix_approach: |
+    1. Add visible text labels next to icons for important buttons, or use sr-only spans
+       with visual text (e.g., "Pause" text next to the icon)
+    2. Add a CSS fallback: icon buttons could use ::before pseudo-elements with text
+       content as a no-font fallback
+    3. Ensure FontAwesome woff2 files are correctly served (check /static/vendor/webfonts/)
+    4. The dashboard Launch button (L62) already has text + icon — follow this pattern
+
+# =============================================================================
+# ISSUE 6: Navigation takes back to login
+# =============================================================================
+issue_6_nav_to_login:
+  summary: "Navigating to pages redirects to login despite being authenticated"
+  files:
+    - file: app/templates/login.html
+      lines: [55-57]
+      role: "Login stores token in localStorage"
+    - file: app/api/routers/ui.py
+      lines: [33-43]
+      role: "_get_ui_user() checks cookies, NOT localStorage"
+    - file: app/api/routers/ui.py
+      lines: [90-200]
+      role: "All page routes check _get_ui_user(request) and redirect to /login"
+    - file: app/templates/base.html
+      lines: [203-220]
+      role: "JS auth check uses localStorage token"
+    - file: app/api/routers/ui.py
+      lines: [70-83]
+      role: "Dashboard does NOT check auth — just checks if setup is done"
+
+  current_behavior: |
+    TWO PARALLEL AUTH SYSTEMS exist that are incompatible:
+
+    1. FRONTEND (JavaScript) — base.html L203-220:
+       - Reads token from localStorage
+       - If no token and not on public page, redirects to /login
+       - Patches window.fetch to add Authorization: Bearer header
+       - Handles 401 responses by clearing token and redirecting
+
+    2. BACKEND (Python) — ui.py L33-43:
+       - _get_ui_user() reads token from request.cookies.get("access_token")
+       - Used by most page routes: /targets, /history, /reports, /overseer, /toolbox…
+       - If _get_ui_user() returns None → redirect to /login
+
+    CRITICAL SPLIT:
+    - Login page (login.html L56) stores token in localStorage: localStorage.setItem('token', data.access_token)
+    - Login page NEVER sets a cookie
+    - Backend _get_ui_user() reads from cookies → always returns None
+    - Therefore: every click to /targets, /history, /reports, etc. redirects to /login
+
+    EXCEPTION: /dashboard and /login and /setup do NOT call _get_ui_user() — they only check
+    if setup is done (select User.id). So /dashboard always renders, but other pages redirect.
+
+  root_cause: |
+    The login flow stores the JWT in localStorage but the server-side page routes check
+    cookies for authentication. No code ever sets document.cookie with the access_token.
+
+    This is a fundamental mismatch between client-side SPA-style auth (localStorage + Bearer headers)
+    and server-side template rendering auth (cookie-based).
+
+  fix_approach: |
+    Option A (recommended — cookie-based auth):
+      1. In the login success handler (login.html), also set a cookie:
+         document.cookie = `access_token=${data.access_token}; path=/; SameSite=Strict; Secure`;
+      2. Keep localStorage for API calls (Bearer header via fetch wrapper)
+      3. On logout, clear both localStorage and the cookie
+
+    Option B (JS-only auth — remove server-side checks):
+      1. Remove _get_ui_user() checks from UI routes
+      2. Serve all pages unconditionally (like /dashboard already does)
+      3. Let the JS auth check in base.html handle redirection
+      4. API calls are already protected by Bearer token
+
+    Option A is more secure (prevents accessing pages without valid token even if JS is disabled).
+
+# =============================================================================
+# ISSUE 7: Favicon and branding
+# =============================================================================
+issue_7_favicon_branding:
+  summary: "Favicon is an inline SVG circle; branding uses a violet circle + shield icon"
+  files:
+    - file: app/templates/base.html
+      lines: [7]
+      role: "Inline SVG favicon — violet circle with dark inner circle"
+    - file: app/templates/base.html
+      lines: [280-282]
+      role: "Sidebar logo: small violet circle dot + 'SPECTRA' text"
+    - file: app/templates/base.html
+      lines: [272-274]
+      role: "Mobile header: small violet circle dot + APP_NAME"
+    - file: app/templates/login.html
+      lines: [7-9]
+      role: "Login: violet circle with fa-shield-halved icon"
+    - file: app/templates/setup.html
+      lines: [7-9]
+      role: "Setup: same violet circle with fa-shield-halved icon"
+
+  current_behavior: |
+    Favicon (base.html L7): Inline data URI SVG with two circles:
+      <circle cx='16' cy='16' r='14' fill='%238b5cf6'/>  (violet outer)
+      <circle cx='16' cy='16' r='6' fill='%230a0e1a'/>   (dark inner)
+    This is the "circle element" the user sees — it's a donut/ring shape.
+
+    Sidebar logo: A 3x3px violet dot (w-3 h-3 rounded-full bg-violet-500) next to "SPECTRA" text.
+    Login/Setup pages: A 16x16 violet circle (w-16 h-16 rounded-full bg-violet-500/20) containing
+    the fa-shield-halved FontAwesome icon.
+
+  root_cause: |
+    No actual favicon file exists (no favicon.ico or favicon.png in /static/).
+    The inline SVG is functional but looks like a generic circle in browser tabs.
+    The branding is inconsistent: sidebar uses a dot, login uses shield icon.
+
+  fix_approach: |
+    1. Create a proper favicon.svg or favicon.ico file in /static/ with matching branding
+    2. Update <link rel="icon"> to point to the static file
+    3. Add apple-touch-icon and other sizes for better mobile support
+    4. Consider making the sidebar logo match the login shield icon for consistency
+    5. The shield-halved icon is a good security branding choice — use it everywhere
+
+# =============================================================================
+# ISSUE 8: RAG local embeddings
+# =============================================================================
+issue_8_rag_local_embeddings:
+  summary: "No local embedding support; only LiteLLM API or SHA256 fallback"
+  files:
+    - file: app/services/ai/embeddings.py
+      lines: [1-150]
+      role: "Full EmbeddingService — LiteLLM API or SHA256 fallback only"
+    - file: app/services/ai/rag.py
+      lines: [130-155]
+      role: "RAG warns about SHA256 fallback and sentence-transformers"
+    - file: app/core/config.py
+      lines: [57]
+      role: "EMBEDDING_MODEL defaults to 'text-embedding-3-small'"
+    - file: requirements.txt
+      lines: [33]
+      role: "sentence-transformers commented out"
+
+  current_behavior: |
+    EmbeddingService (embeddings.py) has exactly two modes:
+    1. LiteLLM API: Uses litellm.aembedding() with the configured API key and model.
+       Activated when AI_PROVIDER != "mock" AND LLM_API_KEY is set.
+    2. SHA256 fallback: Deterministic hash-based fake embeddings (L131-150).
+       Used when no API key, mock provider, or litellm import fails.
+
+    The SHA256 fallback produces 384-dimensional vectors from hashing, but these have
+    NO semantic meaning — cosine similarity on them is meaningless.
+
+    RAG system (rag.py L143-145) explicitly warns:
+      "Install sentence-transformers for proper embeddings"
+    But this is a dead message — sentence-transformers is never imported or used in
+    the codebase. The EmbeddingService never attempts to load sentence-transformers.
+
+    EMBEDDING_MODEL defaults to "text-embedding-3-small" (OpenAI's cheap model).
+    It's used via LiteLLM and requires an API key to function.
+
+  root_cause: |
+    Local embedding support was planned (requirements.txt has the commented line) but never
+    implemented. The EmbeddingService only supports LiteLLM's API-based embeddings.
+    The RAG warning message references sentence-transformers but no code uses it.
+
+  fix_approach: |
+    To add local embedding support:
+    1. Add a third mode to EmbeddingService that loads sentence-transformers when
+       EMBEDDING_MODEL matches a known local model (e.g., "all-MiniLM-L6-v2")
+    2. In _load_model(), check if model name is a HuggingFace model ID → load via
+       sentence-transformers' SentenceTransformer class
+    3. Implement async embed() using asyncio.to_thread() since sentence-transformers is sync
+    4. Uncomment sentence-transformers in requirements.txt
+    5. Add EMBEDDING_PROVIDER setting (api, local, fallback) or auto-detect from model name
+    6. Alternative: use fastembed (lighter than sentence-transformers) for local embeddings
+
+# =============================================================================
+# ISSUE 9: Settings — DB vs env
+# =============================================================================
+issue_9_settings_db_vs_env:
+  summary: "Dual persistence: JSON file for non-sensitive, DB SystemConfig for secrets"
+  files:
+    - file: app/core/config.py
+      lines: [1-260]
+      role: "Settings class with save/load_runtime_settings (JSON file)"
+    - file: app/models/config.py
+      lines: [1-31]
+      role: "SystemConfig model — key/value table with is_secret flag"
+    - file: reports/runtime_settings.json
+      lines: [1-17]
+      role: "Current persisted runtime settings"
+    - file: app/api/routers/ui.py
+      lines: [250-330]
+      role: "POST /api/settings — updates both JSON and DB"
+    - file: app/api/routers/ui.py
+      lines: [331-370]
+      role: "GET /api/settings — reads from in-memory settings"
+
+  current_behavior: |
+    THREE-LAYER settings system:
+    1. Environment variables / .env file → Pydantic Settings (loaded at startup)
+    2. reports/runtime_settings.json → Overrides env for non-sensitive fields on startup
+    3. system_config DB table → Stores LLM_API_KEY (and potentially other secrets)
+
+    Flow:
+    - On startup: Settings loads from env → then load_runtime_settings() overrides from JSON
+    - On save (POST /api/settings): Updates in-memory → saves JSON → saves LLM_API_KEY to DB
+    - On read (GET /api/settings): Returns in-memory values
+
+    JSON file currently stores:
+    AI_PROVIDER, OLLAMA_HOST, OLLAMA_MODEL, LLM_API_BASE_URL, LLM_MODEL,
+    LLM_TIER1_MODEL, LLM_TIER2_MODEL, LLM_TIER3_MODEL, LOG_LEVEL,
+    PLUGIN_SAFE_MODE, CONNECT_BACK_HOST, TOOL_CONTAINER_NAME, REQUIRE_APPROVAL,
+    PLATFORM_DOMAIN, PLATFORM_BASE_URL, PLATFORM_EXPOSED
+
+    DB currently stores only: LLM_API_KEY (via SystemConfig with is_secret=True)
+
+  root_cause: |
+    The system works but has issues:
+    1. JSON file is on filesystem — not shared across containers/replicas
+    2. SystemConfig DB table exists but is underutilized (only stores API key)
+    3. EMBEDDING_MODEL, NOTIFICATION_WEBHOOK, VPN settings are NOT persisted
+    4. FULLY_AUTOMATED is env-only but should be runtime-toggleable
+    5. No migration path from JSON to full DB storage
+
+  settings_that_should_be_in_db:
+    - EMBEDDING_MODEL: "Currently env-only; should be changeable at runtime"
+    - NOTIFICATION_WEBHOOK: "Saved in memory but not in JSON or DB"
+    - FULLY_AUTOMATED: "Important operational toggle, env-only"
+    - ACCESS_TOKEN_EXPIRE_MINUTES: "Security setting, env-only"
+    - VPN_ENABLED: "Operational toggle, env-only"
+    - CORS_ORIGINS: "May need runtime updates for new domains"
+
+  fix_approach: |
+    1. Migrate all runtime settings from JSON to SystemConfig DB table
+    2. Keep JSON file as a cache/fallback for startup before DB is available
+    3. Add missing settings to the save/load cycle (EMBEDDING_MODEL, NOTIFICATION_WEBHOOK)
+    4. Add a settings migration: on startup, if JSON exists but DB doesn't have the keys,
+       import from JSON to DB
+
+# =============================================================================
+# ISSUE 10: Health check gaps
+# =============================================================================
+issue_10_health_check_gaps:
+  summary: "Health endpoint only checks database; many components unchecked"
+  files:
+    - file: app/api/routers/health.py
+      lines: [1-48]
+      role: "Full health endpoint — only checks DB with SELECT 1"
+    - file: app/api/routers/system.py
+      lines: [310-410]
+      role: "System status endpoint — checks DB, cache, tools, embeddings (but requires auth)"
+
+  current_behavior: |
+    GET /api/health checks ONLY database connectivity:
+      await db.execute(text("SELECT 1"))
+    Returns 200 if DB is up, 503 if down. Reports version number.
+
+    GET /api/system/status (authenticated) checks more:
+    - Database (SELECT 1)
+    - Cache (existence check only)
+    - Tool installation status
+    - Embeddings loading status
+    - Ongoing operations
+
+    But neither endpoint checks:
+    - LLM provider connectivity (can we reach OpenAI/Ollama?)
+    - Embedding service readiness (is_functional)
+    - RAG system health (table exists, embeddings working)
+    - Tool container health (is spectra-tools running?)
+    - Docker socket accessibility
+    - Disk space (reports directory writable)
+    - WebSocket connectivity
+
+  root_cause: |
+    The health endpoint was written as a minimal liveness check. The system status
+    endpoint has more checks but requires authentication and is designed for UI display,
+    not for monitoring/orchestration health probes.
+
+  fix_approach: |
+    1. Add component checks to /api/health:
+       - "rag": Check if EmbeddingService.is_functional
+       - "llm": Quick health check via LLM client
+       - "cache": Verify cache read/write with a test key
+       - "tools_container": Check if TOOL_CONTAINER_NAME is accessible via Docker API
+    2. Keep /api/health unauthenticated for load balancer probes
+    3. Add optional ?verbose=true parameter for detailed component status
+    4. Add a separate /api/health/ready endpoint for readiness probes (all components up)
+       vs /api/health/live for liveness probes (app process running)
+
+# =============================================================================
+# ISSUE 11: Setup multi-provider
+# =============================================================================
+issue_11_setup_multi_provider:
+  summary: "Setup page supports only ollama and generic API; no multi-provider config"
+  files:
+    - file: app/templates/setup.html
+      lines: [50-90]
+      role: "Provider select with only 'ollama' and 'api' options"
+    - file: app/templates/setup.html
+      lines: [96-134]
+      role: "Advanced Model Routing — per-tier models during setup"
+    - file: app/api/routers/auth.py
+      lines: [300-330]
+      role: "POST /api/auth/setup — delegates to SystemSetupService"
+    - file: app/core/config.py
+      lines: [43-58]
+      role: "AI provider config fields"
+
+  current_behavior: |
+    Setup page (setup.html) has:
+    - Provider dropdown: "Ollama (Local)" or "OpenAI Compatible API (Cloud)"
+    - Ollama settings: host URL only
+    - API settings: base URL + API key
+    - Model name field (single model for all)
+    - Advanced: Per-tier model routing (tier 1/2/3)
+    - Test Connection button
+
+    The settings page (settings.html) adds Quick Setup presets for Z.AI and Qwen.
+
+    Multi-provider means different providers for different tiers (e.g., Tier 1 uses local
+    Ollama for fast tasks, Tier 3 uses cloud GPT-4 for complex tasks).
+
+  root_cause: |
+    The setup form only configures a single provider. Tier model routing allows different
+    models but all go through the same provider/API endpoint. There's no way to say
+    "Tier 1 uses Ollama, Tier 3 uses OpenAI API" in the current setup.
+
+  fix_approach: |
+    1. Add per-tier provider selection in setup.html (not just model names)
+    2. In config.py, add:
+       LLM_TIER1_PROVIDER, LLM_TIER1_API_KEY, LLM_TIER1_BASE_URL
+       LLM_TIER2_PROVIDER, LLM_TIER2_API_KEY, LLM_TIER2_BASE_URL
+       LLM_TIER3_PROVIDER, LLM_TIER3_API_KEY, LLM_TIER3_BASE_URL
+    3. Update the LLM router to use per-tier provider configs
+    4. In the setup form, allow selecting provider per tier in the Advanced section
+    5. Keep it simple: the basic setup is "one provider for all" and advanced allows overrides
+
+# =============================================================================
+# ISSUE 12: Old plan files to delete
+# =============================================================================
+issue_12_old_plan_files:
+  summary: "docs/plan/ contains files from previous rounds"
+  files:
+    - directory: docs/plan/spectra-comprehensive-audit-2026-03-08/
+      contents:
+        - plan.yaml
+        - research_findings_bugs_vpn_rag_context.yaml
+        - research_findings_docker_learning_optimization.yaml
+        - research_findings_final_deep_audit.yaml
+        - research_findings_final_sweep.yaml
+        - research_findings_round3.yaml
+        - research_findings_round4.yaml
+        - research_findings_round5.yaml
+    - directory: docs/plan/spectra-round5-2026-03-08/
+      contents:
+        - research_findings_audit.yaml
+        - research_findings_infra.yaml
+
+  current_behavior: |
+    Two directories with 10 total files from previous research rounds.
+    These are historical research artifacts, not used by the application.
+
+  fix_approach: |
+    Safe to delete both directories if previous rounds are complete:
+    - rm -rf docs/plan/spectra-comprehensive-audit-2026-03-08/
+    - rm -rf docs/plan/spectra-round5-2026-03-08/
+    Keep the new docs/plan/spectra-round6-2026-03-08/ directory.
+
+# =============================================================================
+# Cross-cutting patterns
+# =============================================================================
+patterns_found:
+  - category: architecture
+    pattern: "Dual auth system — localStorage vs cookies"
+    description: |
+      Frontend uses localStorage + Bearer headers for API auth.
+      Backend UI routes use cookie-based auth via _get_ui_user().
+      These don't talk to each other — login never sets a cookie.
+    examples:
+      - file: app/templates/login.html
+        location: "login.html:56"
+        snippet: "localStorage.setItem('token', data.access_token);"
+      - file: app/api/routers/ui.py
+        location: "ui.py:37"
+        snippet: "token = request.cookies.get('access_token')"
+    prevalence: common
+
+  - category: architecture
+    pattern: "Three-layer settings persistence"
+    description: "Env vars → JSON file → DB. Settings loaded in order, DB only for secrets."
+    examples:
+      - file: app/core/config.py
+        location: "config.py:131-175"
+        snippet: "save_runtime_settings / load_runtime_settings"
+    prevalence: common
+
+  - category: error_handling
+    pattern: "Silent fallback on embedding failure"
+    description: |
+      EmbeddingService silently falls back to SHA256 without raising errors.
+      RAG warns but still stores documents with useless embeddings.
+    examples:
+      - file: app/services/ai/embeddings.py
+        location: "embeddings.py:60"
+        snippet: "self._use_fallback = True"
+    prevalence: common
+
+  - category: structure
+    pattern: "Global status polling on all pages"
+    description: "checkSystemStatus() polls /api/system/status every 5s on all pages including login"
+    examples:
+      - file: app/templates/base.html
+        location: "base.html:415-500"
+        snippet: "statusPollingInterval = setInterval(checkSystemStatus, 5000)"
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: "SecurityHeadersMiddleware"
+      responsibility: "CSP, security headers, origin validation"
+      location: "app/core/middleware.py"
+      relationship_to_domain: "Affects Swagger UI and API docs rendering"
+    - component: "UI Router"
+      responsibility: "Serves HTML pages, settings API, LLM test"
+      location: "app/api/routers/ui.py"
+      relationship_to_domain: "Contains auth check logic and settings CRUD"
+    - component: "Auth Router"
+      responsibility: "Login, setup, token management"
+      location: "app/api/routers/auth.py"
+      relationship_to_domain: "Token creation but no cookie setting"
+    - component: "EmbeddingService"
+      responsibility: "Text embeddings for RAG"
+      location: "app/services/ai/embeddings.py"
+      relationship_to_domain: "No local model support, API or fallback only"
+    - component: "Health Router"
+      responsibility: "Health check endpoint"
+      location: "app/api/routers/health.py"
+      relationship_to_domain: "Minimal — only DB check"
+
+  data_flow_involving_domain: |
+    Login: POST /api/auth/token → JWT in response → stored in localStorage (NOT cookie)
+    Page nav: GET /targets → ui.py._get_ui_user(request) reads cookie → None → redirect /login
+    Settings: GET /api/settings → reads in-memory → POST /api/settings → JSON + DB
+    Status: GET /api/system/status → checks DB, cache, tools → returns JSON for status bar
+    Embeddings: EmbeddingService → LiteLLM API or SHA256 fallback → RAG stores vectors
+
+  key_relationships_to_domain:
+    - from: "login.html"
+      to: "localStorage"
+      relationship: "stores JWT token"
+    - from: "ui.py._get_ui_user()"
+      to: "request.cookies"
+      relationship: "reads 'access_token' cookie (never set)"
+    - from: "base.html"
+      to: "/api/system/status"
+      relationship: "polls every 5s, shows global status bar"
+    - from: "EmbeddingService"
+      to: "litellm"
+      relationship: "calls litellm.aembedding() for real embeddings"
+    - from: "config.py"
+      to: "reports/runtime_settings.json"
+      relationship: "save/load non-sensitive settings"
+
+related_conventions:
+  naming_patterns_in_domain: "Snake case for Python, camelCase for JS, kebab-case for CSS classes"
+  structure_of_domain: "Templates in app/templates/, JS in app/static/js/, routers in app/api/routers/"
+  error_handling_in_domain: "Try/catch with fallback behavior; status bar shows generic 'Connecting...'"
+  testing_in_domain: "Unit tests mock embeddings; no UI/integration tests for auth flow"
+  documentation_in_domain: "Docstrings on router functions; no JSDoc on frontend"
+
+related_dependencies:
+  internal:
+    - component: "app.core.security"
+      relationship_to_domain: "JWT creation/validation used by auth and UI routers"
+      direction: inbound
+    - component: "app.core.database"
+      relationship_to_domain: "Session for user queries in UI routes and health check"
+      direction: inbound
+    - component: "app.services.ai.llm"
+      relationship_to_domain: "LLM client used by test-llm endpoint and health"
+      direction: inbound
+  external:
+    - name: "litellm"
+      purpose_for_domain: "Embedding API calls — only external embedding provider"
+    - name: "FontAwesome"
+      purpose_for_domain: "All UI icons; icon-only buttons depend on it loading"
+    - name: "Tailwind CSS (local)"
+      purpose_for_domain: "Responsive layout and styling via CDN-less local build"
+    - name: "Cytoscape.js"
+      purpose_for_domain: "Network topology graph on dashboard"
+
+open_questions:
+  - question: "Is the SystemConfig DB table actually populated on setup?"
+    context: "POST /api/auth/setup delegates to SystemSetupService but unclear if it writes config keys to DB"
+  - question: "Does the settings page work end-to-end given the auth redirect issue?"
+    context: "If every page except /dashboard redirects to /login, users can never reach /settings"
+  - question: "Is CDN access needed for Swagger UI or is it intentionally air-gapped?"
+    context: "All other assets are local but Swagger UI still loads from CDN by default"
+  - question: "Should the favicon be a proper .svg/.ico file or is inline SVG intentional?"
+    context: "Inline SVG works but has limited browser support for tab icons"
+
+gaps:
+  - area: "SystemSetupService implementation"
+    description: "Did not read app/services/system/setup.py to verify what setup persists"
+    impact: "Low — setup flow is documented via the router code"
+  - area: "Full mobile testing"
+    description: "CSS analysis only; no actual rendering verification on mobile viewports"
+    impact: "Medium — some issues may be viewport-specific"
+  - area: "Swagger UI CDN vs local"
+    description: "Did not verify if CDN is reachable in the deployment environment"
+    impact: "Medium — blank docs page root cause depends on this"

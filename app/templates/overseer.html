@@ -52,7 +52,7 @@
                         <span class="text-xs text-slate-400 font-mono" id="status-mission-controller">Idle</span>
                     </div>
                 </div>
-                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-mission-controller"></div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-mission-controller" data-tooltip="Agent status indicator"></div>
             </div>
             <div class="flex-1 space-y-3 relative z-10">
                 <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
@@ -77,7 +77,7 @@
                         <span class="text-xs text-slate-400 font-mono" id="status-scope-agent">Idle</span>
                     </div>
                 </div>
-                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-scope-agent"></div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-scope-agent" data-tooltip="Agent status indicator"></div>
             </div>
             <div class="flex-1 space-y-3 relative z-10">
                 <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
@@ -102,7 +102,7 @@
                         <span class="text-xs text-slate-400 font-mono" id="status-tool-selector">Idle</span>
                     </div>
                 </div>
-                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-tool-selector"></div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-tool-selector" data-tooltip="Agent status indicator"></div>
             </div>
             <div class="flex-1 space-y-3 relative z-10">
                 <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
@@ -127,7 +127,7 @@
                         <span class="text-xs text-slate-400 font-mono" id="status-vector-generator">Idle</span>
                     </div>
                 </div>
-                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-vector-generator"></div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-vector-generator" data-tooltip="Agent status indicator"></div>
             </div>
             <div class="flex-1 space-y-3 relative z-10">
                 <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
@@ -152,7 +152,7 @@
                         <span class="text-xs text-slate-400 font-mono" id="status-exploit-crafter">Idle</span>
                     </div>
                 </div>
-                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-exploit-crafter"></div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-exploit-crafter" data-tooltip="Agent status indicator"></div>
             </div>
             <div class="flex-1 space-y-3 relative z-10">
                 <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
@@ -177,7 +177,7 @@
                         <span class="text-xs text-slate-400 font-mono" id="status-post-exploitation">Idle</span>
                     </div>
                 </div>
-                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-post-exploitation"></div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-post-exploitation" data-tooltip="Agent status indicator"></div>
             </div>
             <div class="flex-1 space-y-3 relative z-10">
                 <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
@@ -202,7 +202,7 @@
                         <span class="text-xs text-slate-400 font-mono" id="status-reporter">Idle</span>
                     </div>
                 </div>
-                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-reporter"></div>
+                <div class="w-2 h-2 rounded-full bg-slate-700" id="led-reporter" data-tooltip="Agent status indicator"></div>
             </div>
             <div class="flex-1 space-y-3 relative z-10">
                 <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
@@ -227,7 +227,7 @@
                         <span class="text-xs text-slate-400 font-mono" id="status-safety-supervisor">Monitoring</span>
                     </div>
                 </div>
-                <div class="w-2 h-2 rounded-full bg-emerald-500" id="led-safety-supervisor"></div>
+                <div class="w-2 h-2 rounded-full bg-emerald-500" id="led-safety-supervisor" data-tooltip="Always monitoring"></div>
             </div>
             <div class="flex-1 space-y-3 relative z-10">
                 <div class="bg-slate-900/50 rounded-lg p-3 border border-white/5">
@@ -300,10 +300,55 @@
     </div>
 </div>
 
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
     // Track safety stats
     let safetyAllowed = 0;
     let safetyBlocked = 0;
+    let safetyFlagged = 0;
+
+    function updateSafetyDisplay() {
+        const el = document.getElementById('safety-stats');
+        if (el) el.textContent = `${safetyAllowed} allowed / ${safetyBlocked} blocked`;
+    }
+
+    async function loadSafetyStats() {
+        try {
+            // Try dedicated safety endpoint first
+            let res = await fetch('/api/system/safety-stats');
+            if (res.ok) {
+                const data = await res.json();
+                safetyAllowed = data.allowed || 0;
+                safetyBlocked = data.blocked || 0;
+                safetyFlagged = data.flagged || 0;
+                updateSafetyDisplay();
+                return;
+            }
+        } catch {}
+        // Fall back to system status
+        try {
+            const res = await fetch('/api/system/status');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.safety) {
+                    safetyAllowed = data.safety.allowed || 0;
+                    safetyBlocked = data.safety.blocked || 0;
+                    safetyFlagged = data.safety.flagged || 0;
+                }
+                // Also try tool_stats as a proxy for allowed commands
+                if (data.tool_stats && !data.safety) {
+                    safetyAllowed = (data.tool_stats.total_executions || 0);
+                    safetyBlocked = (data.tool_stats.failed_executions || 0);
+                }
+                updateSafetyDisplay();
+            }
+        } catch {}
+    }
+
+    // Load safety stats on page load
+    loadSafetyStats();
+    // Auto-refresh every 30 seconds
+    setInterval(loadSafetyStats, 30000);
+    }
 
     // WebSocket handler for Overseer
     const originalOnMessage = window.onSocketMessage;
@@ -326,6 +371,17 @@
                 showConsensusMonitor(msg.data);
             } else if (msg.type === 'consensus_vote_result') {
                 hideConsensusMonitor(msg.data);
+            } else if (msg.type === 'safety_check') {
+                if (msg.data && msg.data.allowed) {
+                    safetyAllowed++;
+                } else {
+                    safetyBlocked++;
+                }
+                updateSafetyDisplay();
+            } else if (msg.type === 'tool_result') {
+                // Each completed tool execution passed safety
+                safetyAllowed++;
+                updateSafetyDisplay();
             }
         } catch (e) {
             console.error("Overseer parse error", e);
@@ -454,5 +510,33 @@
             monitor.classList.add('border-amber-500', 'animate-pulse');
         }, 5000);
     }
+
+    // Fetch initial system status on page load
+    (async function fetchInitialState() {
+        try {
+            const res = await fetch('/api/system/status');
+            if (!res.ok) return;
+            const data = await res.json();
+
+            // Populate agent cards from agents array if present
+            if (data.agents && Array.isArray(data.agents)) {
+                data.agents.forEach(agent => updateAgentState(agent));
+            }
+
+            // Populate attack surface if present
+            if (data.attack_surface) {
+                updateAttackSurface(data.attack_surface);
+            }
+
+            // Populate safety stats if present
+            if (data.safety) {
+                safetyAllowed = data.safety.allowed || 0;
+                safetyBlocked = data.safety.blocked || 0;
+                updateSafetyDisplay();
+            }
+        } catch (e) {
+            console.warn('Failed to fetch initial system status:', e);
+        }
+    })();
 </script>
 {% endblock %}

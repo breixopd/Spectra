@@ -1,0 +1,876 @@
+plan_id: spectra-round7-2026-03-08
+objective: >-
+  Assess the current codebase against clarified requirements for per-tier provider
+  selection, simple fallback-capable setup, DB-first settings/runtime config, and
+  Docker-only workflows.
+focus_area: tier_providers_db
+created_at: '2026-03-08'
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+
+tldr: |
+  - Current setup UX supports selecting one or two global providers during first-run setup, but both setup and post-setup settings still collapse to a single primary `AI_PROVIDER` plus a global optional `OLLAMA_ENABLED` secondary; there is no persisted per-tier provider profile.
+  - Current router architecture supports per-tier model names only. Tier groups inherit one global credential/base URL strategy, so the code cannot correctly express tier-specific `provider + model + base_url + api_key` and can mis-encode cross-provider tier strings.
+  - Database is not the runtime source of truth today. Runtime state is layered as env -> `reports/runtime_settings.json` -> mutable in-memory singleton, with an unused DB loader defined separately and not called during startup.
+  - Startup initializes the database engine, cache, embeddings, tools, and later LLM clients before any DB settings hydration, so DB-backed runtime config cannot be authoritative even if stored.
+  - Docker testing is only partially standardized. Compose-based test infrastructure exists, but core docs and helper scripts still direct host-side `python3 -m pytest`, and the previously run unit command likely failed first on a missing file: `tests/unit/test_runtime_config.py`.
+
+research_metadata:
+  methodology: >-
+    Three-pass codebase inspection using semantic discovery, exact pattern search,
+    targeted file reads, memory review, and focused verification of startup,
+    settings persistence, router construction, UI payloads, and test entrypoints.
+  tools_used:
+    - memory
+    - semantic_search
+    - grep_search
+    - read_file
+    - file_search
+    - get_errors
+    - run_in_terminal
+    - list_dir
+  scope: >-
+    Settings UX, setup flow, AI router/model config, settings persistence,
+    startup initialization, Docker test workflow, and targeted unit tests.
+  confidence: high
+  coverage: 88
+
+files_analyzed:
+  - file: config.py
+    path: app/core/config.py
+    purpose: Global settings definition, runtime JSON persistence, and initial settings load.
+    key_elements:
+      - element: Settings
+        type: class
+        location: app/core/config.py:16
+        description: Defines global AI, DB, platform, and runtime config fields.
+      - element: save_runtime_settings
+        type: function
+        location: app/core/config.py:132
+        description: Persists non-secret runtime settings to `reports/runtime_settings.json`.
+      - element: load_runtime_settings
+        type: function
+        location: app/core/config.py:183
+        description: Loads JSON runtime settings and overrides environment-derived settings.
+      - element: get_settings
+        type: function
+        location: app/core/config.py:219
+        description: Creates cached singleton settings and applies JSON overrides at import time.
+    language: python
+    lines: 252
+
+  - file: ui.py
+    path: app/api/routers/ui.py
+    purpose: Settings API, AI status API, and optional DB-to-settings hydration function.
+    key_elements:
+      - element: SettingsUpdate
+        type: class
+        location: app/api/routers/ui.py:223
+        description: Settings write schema with one global provider and tier model strings only.
+      - element: update_settings
+        type: function
+        location: app/api/routers/ui.py:248
+        description: Mutates in-memory settings, writes runtime JSON, upserts DB settings, and resets only the global LLM client.
+      - element: get_settings_api
+        type: function
+        location: app/api/routers/ui.py:385
+        description: Returns current settings from the in-memory singleton rather than querying DB.
+      - element: get_ai_status
+        type: function
+        location: app/api/routers/ui.py:418
+        description: Reports one global provider and one model summary.
+      - element: load_settings_from_db
+        type: function
+        location: app/api/routers/ui.py:484
+        description: DB hydration helper that is defined but not wired into startup.
+    language: python
+    lines: 549
+
+  - file: schemas.py
+    path: app/api/schemas.py
+    purpose: Setup request schema for first-run configuration.
+    key_elements:
+      - element: SystemSetupRequest
+        type: class
+        location: app/api/schemas.py:291
+        description: Allows only global `llm_provider` plus optional provider flags and tier model strings.
+    language: python
+    lines: 322
+
+  - file: setup.py
+    path: app/services/system/setup.py
+    purpose: First-run setup orchestration, DB config inserts, runtime JSON writes, and optional infra JSON persistence.
+    key_elements:
+      - element: perform_setup
+        type: function
+        location: app/services/system/setup.py:29
+        description: Orchestrates admin creation, config persistence, runtime mutation, JSON write, and LLM reinitialization.
+      - element: _configure_system
+        type: function
+        location: app/services/system/setup.py:149
+        description: Persists setup settings to `SystemConfig` with one primary provider and optional Ollama enablement.
+      - element: _handle_infrastructure_changes
+        type: function
+        location: app/services/system/setup.py:212
+        description: Writes external DB configuration to `reports/infra_config.json`.
+      - element: _save_infra_config
+        type: function
+        location: app/services/system/setup.py:224
+        description: Persists infra settings to JSON; no reader was found.
+      - element: _reinitialize_llm
+        type: function
+        location: app/services/system/setup.py:244
+        description: Recreates only the global LLM client based on one provider choice.
+    language: python
+    lines: 365
+
+  - file: router.py
+    path: app/services/ai/router.py
+    purpose: LiteLLM router construction, fallback wiring, and tier-to-model mapping.
+    key_elements:
+      - element: PROVIDER_PRESETS
+        type: variable
+        location: app/services/ai/router.py:49
+        description: Preset metadata for cloud API providers.
+      - element: build_model_config_from_settings
+        type: function
+        location: app/services/ai/router.py:251
+        description: Builds model configs from one global provider plus optional secondary Ollama fallback.
+      - element: create_smart_router
+        type: function
+        location: app/services/ai/router.py:394
+        description: Creates router and maps tiers to static group names `tier1`, `tier2`, `tier3`.
+      - element: get_smart_router
+        type: function
+        location: app/services/ai/router.py:437
+        description: Caches router singleton independently of the global LLM client.
+    language: python
+    lines: 450
+
+  - file: llm.py
+    path: app/services/ai/llm.py
+    purpose: Global LLM client factory and singleton lifecycle.
+    key_elements:
+      - element: get_default_llm_client
+        type: function
+        location: app/services/ai/llm.py:876
+        description: Uses `create_smart_router()` and falls back to one direct provider client.
+      - element: get_global_llm_client
+        type: function
+        location: app/services/ai/llm.py:919
+        description: Caches a singleton LLM client instance.
+      - element: close_global_llm_client
+        type: function
+        location: app/services/ai/llm.py:927
+        description: Clears the global LLM singleton but not the router singleton.
+    language: python
+    lines: 932
+
+  - file: database.py
+    path: app/core/database.py
+    purpose: Async engine and session maker construction.
+    key_elements:
+      - element: _configure_database_url
+        type: function
+        location: app/core/database.py:20
+        description: Normalizes DB URL before engine creation.
+      - element: engine initialization
+        type: variable
+        location: app/core/database.py:60
+        description: Creates engine from `settings.DATABASE_URL` at module import time.
+      - element: async_session_maker
+        type: variable
+        location: app/core/database.py:76
+        description: Binds sessions to the import-time engine.
+    language: python
+    lines: 101
+
+  - file: lifespan.py
+    path: app/core/lifespan.py
+    purpose: Startup and shutdown orchestration.
+    key_elements:
+      - element: lifespan
+        type: function
+        location: app/core/lifespan.py:129
+        description: Initializes cache, embeddings, tool registry, and background tasks without DB settings hydration.
+    language: python
+    lines: 273
+
+  - file: setup.html
+    path: app/templates/setup.html
+    purpose: First-run setup UX and payload shaping.
+    key_elements:
+      - element: provider_ollama checkbox
+        type: variable
+        location: app/templates/setup.html:51
+        description: Enables Ollama selection in setup.
+      - element: provider_api checkbox
+        type: variable
+        location: app/templates/setup.html:58
+        description: Enables cloud API selection in setup.
+      - element: multi-provider tier note
+        type: variable
+        location: app/templates/setup.html:116
+        description: Claims tier models can reference either provider.
+      - element: submit payload selection
+        type: pattern
+        location: app/templates/setup.html:346
+        description: Forces `llm_provider = 'api'` when both providers are chosen.
+    language: html
+    lines: 449
+
+  - file: settings.html
+    path: app/templates/settings.html
+    purpose: Post-setup settings UX.
+    key_elements:
+      - element: AI Provider select
+        type: pattern
+        location: app/templates/settings.html:51
+        description: Exposes one provider selector with only `api` as an option.
+      - element: Advanced Model Routing fields
+        type: pattern
+        location: app/templates/settings.html:110
+        description: Exposes tier model strings without provider-specific settings.
+    language: html
+    lines: 604
+
+  - file: settings.js
+    path: app/static/js/settings.js
+    purpose: Settings page load/save behavior.
+    key_elements:
+      - element: loadSettings
+        type: function
+        location: app/static/js/settings.js:85
+        description: Hydrates the form from `/api/settings` response.
+      - element: saveSettings
+        type: function
+        location: app/static/js/settings.js:122
+        description: Posts form fields only; omitted backend fields fall back to schema defaults.
+      - element: testConnection
+        type: function
+        location: app/static/js/settings.js:41
+        description: Contains dead Ollama test wiring not matched by current UI.
+    language: javascript
+    lines: 226
+
+  - file: docker-compose.test.yml
+    path: docker/docker-compose.test.yml
+    purpose: Compose-based test environment.
+    key_elements:
+      - element: app service
+        type: pattern
+        location: docker/docker-compose.test.yml:29
+        description: Builds and runs the app in Docker against test Postgres.
+      - element: test-runner service
+        type: pattern
+        location: docker/docker-compose.test.yml:87
+        description: Runs pytest inside Docker, but via `Dockerfile.tools` and broad `tests/` target.
+      - element: ui-test-runner service
+        type: pattern
+        location: docker/docker-compose.test.yml:129
+        description: Runs browser tests inside Docker.
+    language: yaml
+    lines: 177
+
+  - file: Dockerfile.app
+    path: docker/Dockerfile.app
+    purpose: Runtime image for the app.
+    key_elements:
+      - element: runtime image
+        type: pattern
+        location: docker/Dockerfile.app:19
+        description: App runtime image used by the Docker test app service.
+    language: dockerfile
+    lines: 77
+
+  - file: test_system_setup.py
+    path: tests/unit/test_system_setup.py
+    purpose: Unit coverage for setup service.
+    key_elements:
+      - element: test_perform_setup_success
+        type: function
+        location: tests/unit/test_system_setup.py:31
+        description: Verifies current setup orchestration for one primary provider.
+    language: python
+    lines: 147
+
+  - file: test_smart_router.py
+    path: tests/unit/test_smart_router.py
+    purpose: Unit coverage for smart router behavior.
+    key_elements:
+      - element: TestBuildModelConfig
+        type: class
+        location: tests/unit/test_smart_router.py:136
+        description: Verifies current single-provider plus fallback router assembly.
+      - element: TestCreateSmartRouterTierWiring
+        type: class
+        location: tests/unit/test_smart_router.py:230
+        description: Verifies tier model wiring by static tier group names.
+    language: python
+    lines: 294
+
+patterns_found:
+  - category: architecture
+    pattern: Global singleton settings with layered overrides
+    description: >-
+      Runtime config is centered on one cached `settings` object loaded from env and
+      overridden by JSON. DB hydration exists as a separate helper and is not part of
+      the main initialization path.
+    examples:
+      - file: app/core/config.py
+        location: app/core/config.py:219-252
+        snippet: |
+          settings_instance = Settings()
+          settings_instance.load_runtime_settings()
+          ...
+          settings = get_settings()
+      - file: app/api/routers/ui.py
+        location: app/api/routers/ui.py:484-549
+        snippet: |
+          async def load_settings_from_db() -> None:
+              ...
+              if row.key in secret_fields:
+                  settings.LLM_API_KEY = SecretStr(row.value)
+    prevalence: common
+
+  - category: architecture
+    pattern: Single primary provider with optional global secondary fallback
+    description: >-
+      Router construction assumes one global `AI_PROVIDER` and one shared credential/
+      base URL path, with `OLLAMA_ENABLED` used only as a coarse secondary option.
+    examples:
+      - file: app/services/ai/router.py
+        location: app/services/ai/router.py:255-332
+        snippet: |
+          provider = settings.AI_PROVIDER
+          if provider == "ollama":
+              ...
+              fallbacks.append({"default": ["cloud-fallback"]})
+          elif provider in ("api", "openai"):
+              ...
+              if settings.OLLAMA_ENABLED:
+                  ...
+                  fallbacks.append({"default": ["ollama-local"]})
+    prevalence: common
+
+  - category: structure
+    pattern: Tier routing stores models only, not provider profiles
+    description: >-
+      Tier fields are three strings (`LLM_TIER1_MODEL`, `LLM_TIER2_MODEL`,
+      `LLM_TIER3_MODEL`). Provider, credential, and base URL are inferred from global
+      state rather than stored per tier.
+    examples:
+      - file: app/core/config.py
+        location: app/core/config.py:54-56
+        snippet: |
+          LLM_TIER1_MODEL: str = ""
+          LLM_TIER2_MODEL: str = ""
+          LLM_TIER3_MODEL: str = ""
+      - file: app/api/routers/ui.py
+        location: app/api/routers/ui.py:238-240
+        snippet: |
+          llm_tier1_model: str | None = None
+          llm_tier2_model: str | None = None
+          llm_tier3_model: str | None = None
+    prevalence: common
+
+  - category: error_handling
+    pattern: UI claims broader multi-provider support than router implementation can honor
+    description: >-
+      Setup UI tells users tier models may reference either provider, but router logic
+      rewrites tier model strings based on global base URL/provider rules, which breaks
+      cross-provider tier references.
+    examples:
+      - file: app/templates/setup.html
+        location: app/templates/setup.html:116
+        snippet: |
+          When multiple providers are configured, tier models can reference either provider.
+      - file: app/services/ai/router.py
+        location: app/services/ai/router.py:369-380
+        snippet: |
+          if settings.LLM_API_BASE_URL:
+              litellm_tier = f"openai/{tier_model_name}"
+          elif provider == "ollama":
+              litellm_tier = f"ollama/{tier_model_name}"
+    prevalence: occasional
+
+  - category: testing
+    pattern: Mixed Docker and host-local test execution guidance
+    description: >-
+      Docker compose test services exist, but project guidance and helper scripts still
+      instruct host-side pytest invocation.
+    examples:
+      - file: docker/docker-compose.test.yml
+        location: docker/docker-compose.test.yml:87-146
+        snippet: |
+          test-runner:
+            entrypoint: ["python3", "-m", "pytest"]
+      - file: README.md
+        location: README.md:172-175
+        snippet: |
+          python3 -m pytest tests/unit/ --no-cov
+          python3 -m pytest tests/unit/
+      - file: AGENTS.md
+        location: AGENTS.md:57-66
+        snippet: |
+          python3 -m pytest tests/unit/ --no-cov -q
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: Settings singleton
+      responsibility: Holds active runtime configuration for providers, routing, platform, and operational toggles.
+      location: app/core/config.py:16-252
+      relationship_to_domain: Primary runtime source currently read by UI, router, DB engine, and services.
+    - component: SystemConfig key-value table
+      responsibility: Persists dynamic settings and secrets in the database.
+      location: app/models/config.py:13-26
+      relationship_to_domain: Intended persistence layer, but not authoritative at process start.
+    - component: System setup service
+      responsibility: First-run settings creation and limited runtime reinitialization.
+      location: app/services/system/setup.py:29-268
+      relationship_to_domain: Persists initial provider settings to DB and JSON.
+    - component: UI settings router
+      responsibility: Post-setup read/write API for settings.
+      location: app/api/routers/ui.py:248-549
+      relationship_to_domain: Writes to both JSON and DB, reads from in-memory settings.
+    - component: Smart router
+      responsibility: Builds model groups and fallback chains for LiteLLM routing.
+      location: app/services/ai/router.py:251-450
+      relationship_to_domain: Encodes the single-primary-provider assumption.
+    - component: Database engine/session maker
+      responsibility: Establishes the live DB connection for the process.
+      location: app/core/database.py:60-84
+      relationship_to_domain: Locks DB URL from import-time settings before DB config can be applied.
+    - component: Lifespan manager
+      responsibility: Startup/shutdown orchestration for cache, embeddings, tools, and service readiness.
+      location: app/core/lifespan.py:129-273
+      relationship_to_domain: Starts runtime services without DB config hydration.
+  interfaces_used_by_domain:
+    - interface: POST /api/auth/setup
+      location: app/api/routers/auth.py:285-314
+      usage_pattern: First-run setup submits one primary provider plus optional flags.
+    - interface: POST /api/settings
+      location: app/api/routers/ui.py:248-381
+      usage_pattern: Mutates runtime singleton, writes JSON, upserts DB, and partially resets LLM state.
+    - interface: GET /api/settings
+      location: app/api/routers/ui.py:385-415
+      usage_pattern: Returns in-memory settings snapshot to the settings page.
+    - interface: GET /api/ai/status
+      location: app/api/routers/ui.py:418-445
+      usage_pattern: Returns single-provider health and model metadata.
+  data_flow_involving_domain: >-
+    Setup page posts `SystemSetupRequest` -> `SystemSetupService` writes `SystemConfig`
+    rows and runtime JSON -> mutable global `settings` updated in process -> later LLM
+    client created from the singleton. Post-setup settings page posts `SettingsUpdate`
+    -> UI router mutates `settings`, writes runtime JSON, upserts DB, then resets only
+    the global LLM singleton. On process start, config loads env then runtime JSON,
+    database engine binds immediately, and lifespan initializes services before any DB
+    settings loader executes.
+  key_relationships_to_domain:
+    - from: app/templates/setup.html
+      to: app/api/routers/auth.py
+      relationship: calls
+    - from: app/api/routers/auth.py
+      to: app/services/system/setup.py
+      relationship: calls
+    - from: app/services/system/setup.py
+      to: app/models/config.py
+      relationship: composes
+    - from: app/api/routers/ui.py
+      to: app/core/config.py
+      relationship: imports
+    - from: app/api/routers/ui.py
+      to: app/models/config.py
+      relationship: imports
+    - from: app/services/ai/llm.py
+      to: app/services/ai/router.py
+      relationship: calls
+    - from: app/core/database.py
+      to: app/core/config.py
+      relationship: imports
+    - from: app/core/lifespan.py
+      to: app/core/database.py
+      relationship: imports
+
+related_conventions:
+  naming_patterns_in_domain: >-
+    Settings are stored as uppercase global fields and DB keys (`AI_PROVIDER`,
+    `LLM_MODEL`, `LLM_TIER1_MODEL`). UI payloads use lower_snake_case request fields.
+  structure_of_domain: >-
+    Configuration is spread across Pydantic settings, DB key-value persistence, JSON
+    persistence files under `reports/`, and separate singleton caches for settings,
+    router, and LLM client.
+  error_handling_in_domain: >-
+    Settings persistence errors are logged and suppressed in JSON load/save paths;
+    DB hydration logs warnings on conversion errors and silently skips unavailable DB
+    initialization during startup-adjacent use.
+  testing_in_domain: >-
+    Unit tests patch module-level `settings` objects heavily. Existing tests cover
+    single-provider routing and setup but not DB-first hydration or per-tier provider
+    profiles.
+  documentation_in_domain: >-
+    Runtime testing guidance is split across README, AGENTS, deployment docs, and shell
+    scripts, with inconsistent host-vs-Docker instructions.
+
+related_dependencies:
+  internal:
+    - component: app.core.config.settings
+      relationship_to_domain: Supplies global runtime configuration to all settings and router flows.
+      direction: bidirectional
+    - component: app.models.config.SystemConfig
+      relationship_to_domain: Persists settings and secrets in the database.
+      direction: outbound
+    - component: app.core.database.engine / async_session_maker
+      relationship_to_domain: Consumes DB URL before DB-resident config can be applied.
+      direction: outbound
+    - component: app.services.ai.router.LiteLLMRouter
+      relationship_to_domain: Consumes settings to create model groups and fallbacks.
+      direction: outbound
+    - component: app.services.ai.llm global client
+      relationship_to_domain: Caches router/client runtime state across requests.
+      direction: outbound
+  external:
+    - name: Pydantic Settings
+      purpose_for_domain: Environment-backed configuration model.
+    - name: SQLAlchemy async
+      purpose_for_domain: SystemConfig persistence and DB session management.
+    - name: LiteLLM
+      purpose_for_domain: Model routing and provider abstraction.
+    - name: Docker Compose
+      purpose_for_domain: Containerized test environment orchestration.
+
+requirement_assessment:
+  requirement_1_per_tier_different_providers:
+    current_state: partially_met_in_ui_claims_only
+    evidence:
+      - app/templates/setup.html:51-58
+      - app/templates/setup.html:116
+      - app/services/ai/router.py:356-383
+      - app/api/routers/ui.py:223-245
+    findings: |
+      First-run setup allows selecting both provider checkboxes, but the payload still
+      collapses to one primary `llm_provider`, choosing `api` when both are selected
+      (`app/templates/setup.html:348`).
+
+      Tier routing is limited to three model strings. There is no tier-level provider,
+      base URL, or API key field in either `SystemSetupRequest` or `SettingsUpdate`
+      (`app/api/schemas.py:291-312`, `app/api/routers/ui.py:223-245`).
+
+      Router assembly infers tier config from global state. If `LLM_API_BASE_URL` is
+      set, every tier model is prefixed with `openai/`; if the primary provider is
+      `ollama`, every tier model is prefixed with `ollama/` (`app/services/ai/router.py:369-372`).
+      This breaks the setup page guidance that tiers may reference either provider.
+
+      Example failure mode: with global API provider and custom base URL, entering
+      `ollama/qwen2.5:3b` as a tier model becomes `openai/ollama/qwen2.5:3b`, which is
+      not a valid intended cross-provider reference.
+    exact_changes_needed: |
+      Replace the current global-tier-string shape with an explicit provider-profile
+      model for the default path and each tier. Each tier needs persisted fields for at
+      least `provider`, `model`, `base_url`, `api_key_secret_ref` (or provider-profile
+      reference), plus optional ordered fallbacks.
+
+      Router construction needs to stop inferring tier credentials from global state.
+      Instead, build each LiteLLM model group directly from its own tier/provider
+      profile, preserving already-prefixed LiteLLM model strings only when the selected
+      provider mode is explicitly `litellm`.
+
+      Setup and settings APIs need schema changes to accept per-tier provider profiles,
+      not only `llm_tier{n}_model` strings.
+
+  requirement_2_simple_setup_with_optional_fallbacks:
+    current_state: partially_met
+    evidence:
+      - app/templates/setup.html:94-113
+      - app/templates/setup.html:346-356
+      - app/services/system/setup.py:152-182
+      - app/services/ai/router.py:255-332
+    findings: |
+      Setup is simple because it asks for one primary model and optionally one second
+      provider, but that simplicity is achieved by collapsing configuration to a single
+      primary provider plus one coarse fallback flag.
+
+      Current fallback behavior is only global:
+      - primary Ollama -> optional cloud fallback (`app/services/ai/router.py:271-288`)
+      - primary API -> optional Ollama fallback when `OLLAMA_ENABLED` is true
+        (`app/services/ai/router.py:319-332`)
+
+      There is no persisted notion of tier-specific fallback chains, and no way to say
+      "tier 1 uses Ollama with API fallback, tier 3 uses API only" in current schemas
+      or storage.
+    exact_changes_needed: |
+      Preserve simple setup by letting first-run and settings forms offer provider
+      profiles at the top level, then optionally map tiers to those profiles. A minimal
+      simple path is:
+      - define one or more provider profiles
+      - choose which profile is default
+      - optionally override per tier
+      - optionally attach fallback profile lists per tier and/or for default routing
+
+      Current `OLLAMA_ENABLED` should be replaced by explicit fallback definitions or a
+      profile registry; otherwise the system remains limited to one hard-coded fallback
+      relationship.
+
+  requirement_3_database_single_source_of_truth:
+    current_state: not_met
+    evidence:
+      - app/core/config.py:132-224
+      - app/api/routers/ui.py:248-381
+      - app/api/routers/ui.py:385-445
+      - app/api/routers/ui.py:484-549
+      - app/core/database.py:60-84
+      - app/services/system/setup.py:202-226
+      - reports/runtime_settings.json:1-20
+    findings: |
+      Non-secret runtime config is currently persisted to `reports/runtime_settings.json`
+      and loaded in `get_settings()` before the process singleton is created
+      (`app/core/config.py:132-224`). The current file includes provider, model, tier,
+      embedding, and operational fields.
+
+      `POST /api/settings` updates the in-memory singleton, saves JSON, and also upserts
+      DB rows. `GET /api/settings` does not read DB; it simply returns the in-memory
+      singleton (`app/api/routers/ui.py:385-415`).
+
+      The DB loader is defined in `app/api/routers/ui.py`, not in the core config or
+      startup path, and is not invoked during startup. DB therefore is not the runtime
+      source of truth.
+
+      `DATABASE_URL` is stored by setup in `SystemConfig` and optionally in
+      `reports/infra_config.json`, but `load_settings_from_db()` does not load
+      `DATABASE_URL` at all (`app/api/routers/ui.py:505-538`), and no reader for
+      `reports/infra_config.json` was found.
+
+      The live SQLAlchemy engine is created from `settings.DATABASE_URL` at module import
+      time (`app/core/database.py:60-84`). Once imported, later DB-config persistence
+      cannot rebind the active engine.
+    exact_changes_needed: |
+      Remove `reports/runtime_settings.json` and `reports/infra_config.json` from the
+      authoritative settings path. Runtime writes should go to DB only.
+
+      Move DB settings hydration out of `app/api/routers/ui.py` into a core settings
+      service or startup bootstrap module that can load DB-backed config before dependent
+      services are initialized.
+
+      Stop returning settings from the mutable singleton as the authoritative read path.
+      Either rehydrate the singleton from DB on startup and after writes, or read a DB-
+      backed settings service directly for admin/settings endpoints.
+
+      `DATABASE_URL` cannot remain in `SystemConfig` if the engine is created before DB
+      hydration. To make DB the source of truth for DB connectivity itself, bootstrap
+      must first establish a bootstrap connection source distinct from application runtime
+      settings, or a dedicated bootstrap DB/source must be defined. In the current
+      architecture, storing `DATABASE_URL` in the same DB cannot control first connect.
+
+  requirement_4_docker_only_workflows:
+    current_state: partially_met
+    evidence:
+      - docker/docker-compose.test.yml:1-177
+      - tests/run_ui_tests.sh:10-31
+      - tests/run_live_tests.sh:35
+      - README.md:172-175
+      - AGENTS.md:57-66
+      - docs/deployment.md:54
+    findings: |
+      Compose-based test infrastructure exists and the UI test helper already runs via
+      Docker (`tests/run_ui_tests.sh:10-31`).
+
+      Host-local pytest remains documented and scripted:
+      - `README.md` runs unit tests with `python3 -m pytest`
+      - `AGENTS.md` instructs host-local unit pytest
+      - `tests/run_live_tests.sh` invokes host-local `python3 -m pytest`
+      - `docs/deployment.md` still documents plain `pytest tests/unit/`
+
+      The compose `test-runner` service uses `docker/Dockerfile.tools` and runs the full
+      `tests/` tree, which is broader than the feature-specific settings/router suites
+      and not clearly separated into unit vs integration execution.
+    exact_changes_needed: |
+      Standardize all test entrypoints on Docker Compose. Replace host-local test
+      documentation and helper scripts with compose invocations only.
+
+      Add a dedicated unit-test runner service or command path for settings/router/setup
+      tests so these suites execute inside Docker without pulling in the full live test
+      matrix.
+
+      Update `tests/run_live_tests.sh` to run pytest inside a compose service instead of
+      on the host. Update README, AGENTS, and deployment docs to remove host-local pytest
+      commands.
+
+current_setup_and_settings_ux:
+  setup_page:
+    current_behavior: |
+      The setup page lets the user select `provider_ollama` and `provider_api`
+      independently (`app/templates/setup.html:51-58`). If both are selected, the page
+      shows separate model inputs and tells the user tier models can target either
+      provider (`app/templates/setup.html:94-116`).
+
+      On submit, however, both-provider selection is normalized to one primary provider:
+      `llm_provider = 'api'`, `llm_model = api_model`, and `ollama_model` is carried as
+      side data (`app/templates/setup.html:346-356`).
+    why_per_tier_providers_are_not_supported: |
+      The UI never collects per-tier provider/base URL/API key settings. It collects only
+      per-tier model strings, so any later provider choice must be guessed from global
+      state.
+  settings_page:
+    current_behavior: |
+      The post-setup settings page is narrower than the setup page. The `AI Provider`
+      select contains only `api` (`app/templates/settings.html:51-53`), and the page has
+      no controls for `ollama_enabled` or `fully_automated`.
+    why_per_tier_providers_are_not_supported: |
+      The page exposes only one provider field and three tier model strings. Saving from
+      this form cannot express or preserve multiple provider profiles.
+    additional_behavioral_risk: |
+      Because `SettingsUpdate` defaults `ollama_enabled` to `False` and `fully_automated`
+      to `True` (`app/api/routers/ui.py:230,236`), and `settings.js` does not populate
+      either field into the save payload (`app/static/js/settings.js:122-141`), a save
+      from the current settings page can silently overwrite unexposed state with schema
+      defaults.
+
+router_and_model_config_architecture:
+  current_architecture: |
+    Router assembly uses one global provider discriminator (`settings.AI_PROVIDER`) and
+    one global credential/base URL path. Tier routing is implemented by registering
+    extra model groups `tier1`, `tier2`, `tier3` from the three model string settings,
+    then mapping task tiers to those group names (`app/services/ai/router.py:356-423`).
+
+    Fallbacks are attached only to the `default` group and are derived from the global
+    provider mode (`app/services/ai/router.py:271-332`).
+  exact_changes_needed: |
+    Replace the current global-shared config builder with a profile-aware builder.
+
+    Persist at least these logical objects:
+    - provider profiles: provider type, base URL, secret reference, optional host,
+      default model, enabled flag
+    - routing map: default profile/model and per-tier overrides
+    - optional fallback map: ordered fallback profile/model references per default/tier
+
+    Then change `build_model_config_from_settings()` so it:
+    - iterates over resolved provider-profile references instead of global settings
+    - emits one LiteLLM group per resolved route target
+    - emits fallbacks for each route target, not only `default`
+    - stops prefix-rewriting tier models based on global `AI_PROVIDER` or
+      `LLM_API_BASE_URL`
+
+    `create_smart_router()` can keep task-tier mapping, but the source mapping should be
+    tier -> route config object instead of tier -> string derived from shared globals.
+
+settings_persistence_flow:
+  current_flow: |
+    First-run setup:
+    - writes `SystemConfig` rows (`app/services/system/setup.py:156-205`)
+    - mutates runtime `settings` singleton (`app/services/system/setup.py:55-75`)
+    - writes `reports/runtime_settings.json` (`app/services/system/setup.py:76`)
+    - optionally writes `reports/infra_config.json` for `DATABASE_URL`
+      (`app/services/system/setup.py:218-242`)
+
+    Post-setup settings save:
+    - mutates runtime `settings` singleton (`app/api/routers/ui.py:263-317`)
+    - writes `reports/runtime_settings.json` (`app/api/routers/ui.py:318`)
+    - upserts DB `SystemConfig` rows (`app/api/routers/ui.py:321-370`)
+
+    Settings read:
+    - admin UI reads the in-memory singleton via `GET /api/settings`
+      (`app/api/routers/ui.py:385-415`)
+  places_runtime_cache_or_json_still_act_as_source_of_truth:
+    - location: app/core/config.py:132-224
+      detail: Runtime JSON is loaded into the settings singleton before the app serves traffic.
+    - location: app/api/routers/ui.py:385-445
+      detail: Settings read and AI status read return singleton state, not DB state.
+    - location: app/services/system/setup.py:76
+      detail: Setup still saves authoritative-looking runtime settings to JSON after DB writes.
+    - location: app/services/system/setup.py:224-242
+      detail: Custom DB infrastructure is persisted to `reports/infra_config.json`, not consumed from DB.
+    - location: app/services/ai/llm.py:919-932
+      detail: Global LLM client caches runtime config after first creation.
+    - location: app/services/ai/router.py:437-450
+      detail: Router singleton caches model routing independently and is not reset by settings writes.
+
+startup_path:
+  current_startup_sequence: |
+    1. `app/core/config.py` creates `settings = get_settings()` at import time
+       (`app/core/config.py:252`).
+    2. `get_settings()` loads env-backed settings and then `load_runtime_settings()` from
+       `reports/runtime_settings.json` (`app/core/config.py:219-224`).
+    3. `app/core/database.py` builds `engine` and `async_session_maker` from
+       `settings.DATABASE_URL` at import time (`app/core/database.py:60-84`).
+    4. FastAPI startup enters `lifespan()` and initializes cache, embeddings preload,
+       tool registry, and background startup tasks (`app/core/lifespan.py:129-210`).
+    5. No call to `load_settings_from_db()` is made in `lifespan()` or `main.py`.
+  what_must_change_for_db_first_behavior: |
+    DB-backed runtime settings must be hydrated before any runtime service that depends
+    on them is created.
+
+    At minimum, startup needs a core bootstrap step that loads DB-backed settings before:
+    - embedding preload
+    - tool registry init if plugin behavior depends on runtime toggles
+    - first global LLM/router creation
+
+    For the live database connection itself, the current import-time engine creation is
+    incompatible with DB-first configuration of `DATABASE_URL`. That setting must either
+    remain bootstrap/environment controlled, or the architecture must introduce a
+    bootstrap connection stage distinct from application runtime settings.
+
+docker_test_workflow:
+  current_workflow: |
+    `docker/docker-compose.test.yml` provides Docker services for Postgres, app, tools,
+    vulnerable targets, a generic `test-runner`, and a browser `ui-test-runner`.
+
+    `tests/run_ui_tests.sh` already uses Docker Compose.
+    `tests/run_live_tests.sh` still shells out to host-local `python3 -m pytest`.
+
+    Project docs still advertise host-local unit pytest commands.
+  what_must_change: |
+    The feature-relevant test path for settings/router/setup needs a Docker-native unit
+    runner and updated docs/scripts that invoke only compose-based commands.
+
+    The previously requested feature tests should be runnable via a dedicated Docker
+    command target, rather than by host-local pytest or by the broad `tests/` compose
+    runner.
+
+likely_failing_tests_from_code_inspection:
+  - test_or_collection_issue: tests/unit/test_runtime_config.py
+    confidence: high
+    reason: >-
+      The file does not exist in `tests/unit/`, so the previously run command
+      `pytest tests/unit/test_runtime_config.py ...` is expected to fail during test
+      collection before executing other targeted tests.
+    evidence:
+      - list_dir tests/unit showed no `test_runtime_config.py`
+      - file_search for `tests/unit/test_runtime_config.py` returned no results
+
+  - test_risk: settings page save path can overwrite hidden multi-provider state
+    confidence: medium
+    reason: >-
+      Current settings UI omits `ollama_enabled` and `fully_automated`, while the backend
+      schema supplies defaults. Tests that begin asserting preservation of existing
+      settings state across partial form saves are likely to fail against current code.
+    evidence:
+      - app/templates/settings.html:51-203
+      - app/static/js/settings.js:122-141
+      - app/api/routers/ui.py:230,236
+
+  - test_risk: cross-provider tier routing claims do not match router construction
+    confidence: medium
+    reason: >-
+      Any new or recently changed tests that expect tier strings like `ollama/model` to
+      work under API-primary configuration with `LLM_API_BASE_URL` set will fail because
+      current router logic rewrites them via `openai/{tier_model_name}`.
+    evidence:
+      - app/templates/setup.html:116
+      - app/services/ai/router.py:369-380
+
+open_questions:
+  - question: Should per-tier configuration store raw provider credentials on each tier or reference reusable provider profiles?
+    context: Current code stores one global API secret and one optional global Ollama endpoint only.
+  - question: Should embedding configuration follow the same provider-profile model as generation tiers, or remain a separate global runtime setting?
+    context: Embeddings currently use global `EMBEDDING_PROVIDER` and `EMBEDDING_MODEL` fields independent of generation routing.
+  - question: Is `DATABASE_URL` intended to remain a bootstrap/environment concern even if other runtime settings become DB-first?
+    context: Current architecture cannot read DB-resident `DATABASE_URL` before first DB connection is established.
+
+gaps:
+  - area: Existing DB contents
+    description: The research inspected code paths and the current `reports/runtime_settings.json`, but not live `SystemConfig` table rows.
+    impact: Low. The authoritative architectural issues are visible in code regardless of current row contents.
+  - area: Exact prior pytest stderr
+    description: The earlier failed terminal output was not available directly; failure attribution for the previous command is based on file presence and code inspection.
+    impact: Low. Missing `tests/unit/test_runtime_config.py` is sufficient to explain collection failure for the recorded command.

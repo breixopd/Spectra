@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING
 
 from app.core.config import settings
-from app.core.constants import ARQ_QUEUE_NAME
 from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.models import ToolExecutionRequest, ToolExecutionResult
 from app.services.tools.registry import get_registry
@@ -33,6 +32,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("spectra.tools.service")
 
+from app.services.ai.context import truncate_for_llm
+
 
 class StandaloneMissionAdapter:
     """Adapts a standalone execution to the Mission interface."""
@@ -47,7 +48,7 @@ class StandaloneMissionAdapter:
         self.tool_runs: list[str] = []
 
     def log(self, message: str) -> None:
-        logger.info(f"[{self.id}] {message}")
+        logger.info("[%s] %s", self.id, message)
 
     def add_finding(self, finding: dict[str, Any]) -> None:
         self.findings.append(finding)
@@ -65,7 +66,7 @@ class ToolExecutionService:
     2. Enforce SafetySupervisor checks on ALL commands
     3. Enforce VotingSystem (Consensus) for high-risk actions
     4. Manage consistent output directories
-    5. Execute tools via ARQ worker in the tools container
+    5. Execute tools via PostgreSQL job queue worker in the tools container
     """
 
     def __init__(self, llm_client: Any):
@@ -115,23 +116,22 @@ class ToolExecutionService:
         """
         mission.log(f"[EXEC] Running custom {language} script against {target}")
 
-        # We don't use safety checks here because this is AI-generated code
-        # that was already approved by the payload crafter agent workflow (conceptually).
-        # But we DO need to run it in the worker container.
-
-        from arq import create_pool
-        from arq.connections import RedisSettings
-
-        redis_settings = RedisSettings(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD.get_secret_value(),
-            database=settings.REDIS_DB,
+        # Safety check: validate script content before execution
+        is_safe, reason = await self._perform_safety_check(
+            mission, script_content, f"custom_{language}_script", target, {}
         )
+        if not is_safe:
+            mission.log(f"[BLOCK] Custom script blocked by safety check: {reason}")
+            return self._create_error_result(
+                f"custom_{language}_script", target,
+                f"Blocked by Safety Supervisor: {reason}",
+            )
+
+        from app.core.queue import PostgresJobQueue, Job
 
         try:
-            pool = await create_pool(redis_settings, default_queue_name=ARQ_QUEUE_NAME)
-            job = await pool.enqueue_job(
+            queue = PostgresJobQueue()
+            job_id = await queue.enqueue_job(
                 "execute_script_job",
                 content=script_content,
                 language=language,
@@ -140,11 +140,7 @@ class ToolExecutionService:
                 timeout=timeout,
             )
 
-            if not job:
-                return self._create_error_result(
-                    "custom_script", target, "Failed to enqueue job"
-                )
-
+            job = Job(job_id)
             result_data = await job.result(timeout=timeout + 60)
 
             if not result_data:
@@ -168,11 +164,8 @@ class ToolExecutionService:
             )
 
         except Exception as e:
-            logger.error(f"Failed to execute custom script: {e}")
+            logger.error("Failed to execute custom script: %s", e)
             return self._create_error_result("custom_script", target, str(e))
-        finally:
-            if pool:
-                await pool.close()
 
     async def execute_request(
         self,
@@ -196,8 +189,8 @@ class ToolExecutionService:
             # 1. Validation
             registry = get_registry()
 
-            # Sync tool status from Redis (set by worker in tools container)
-            await registry.sync_status_from_redis()
+            # Sync tool status from cache (set by worker in tools container)
+            await registry.sync_status_from_cache()
 
             tool = registry.get_tool(tool_name)
 
@@ -254,7 +247,9 @@ class ToolExecutionService:
             )
 
             # 3. Safety Check (Pre-flight) with retry on failure
-            full_command = adapter.build_command(request, output_dir=str(output_dir))
+            # Use the raw command (without docker exec wrapping) for safety
+            # validation — this is the actual command the worker executes.
+            full_command = adapter.builder.build_command(request, output_dir=str(output_dir))
 
             # Log detailed command info
             args_str = (
@@ -306,7 +301,18 @@ class ToolExecutionService:
                         tool_name, target, "Blocked by Consensus"
                     )
 
-            # 5. Execution via ARQ worker in tools container
+            # 5. Execution via job queue worker in tools container
+            # Apply stealth delay if configured
+            stealth = tool.config.stealth
+            if stealth and isinstance(getattr(stealth, 'delay_ms', None), (int, float)) and stealth.delay_ms:
+                delay_s = stealth.delay_ms / 1000.0
+                mission.log(f"[STEALTH] Applying {stealth.delay_ms}ms delay before execution")
+                await asyncio.sleep(delay_s)
+
+            # Apply stealth rate_limit args to command if configured
+            if stealth and getattr(stealth, 'extra_args', None):
+                full_command = adapter.builder.apply_stealth_args(full_command, stealth)
+
             async with self._semaphore:
                 result = await self._execute_via_worker(
                     tool_id=request.tool_id,
@@ -317,6 +323,9 @@ class ToolExecutionService:
                 )
 
             if result.success:
+                # Truncate raw output before it enters LLM-facing pipelines
+                result.stdout = truncate_for_llm(result.stdout, max_chars=3000, label="stdout")
+                result.stderr = truncate_for_llm(result.stderr, max_chars=500, label="stderr")
                 self._log_success(mission, tool_name, result)
                 for finding in result.parsed_findings:
                     mission.add_finding(finding)
@@ -350,95 +359,6 @@ class ToolExecutionService:
             logger.error(msg, exc_info=True)
             return self._create_error_result(tool_name, target, str(e))
 
-    async def _execute_with_retry(
-        self,
-        mission: "Mission",
-        request: ToolExecutionRequest,
-        output_dir: Path,
-        max_retries: int = 1,
-    ) -> ToolExecutionResult:
-        """Execute the tool via ARQ worker in the tools container."""
-
-        last_result = None
-        last_error = None
-
-        async with self._semaphore:
-            for attempt in range(max_retries + 1):
-                if attempt > 0:
-                    mission.log(
-                        f"[RETRY] Retrying {request.tool_id} (Attempt {attempt + 1})..."
-                    )
-                    if request.timeout:
-                        request.timeout *= 2
-
-                try:
-                    # Execute via ARQ worker in the tools container
-                    result = await self._execute_via_worker(
-                        tool_id=request.tool_id,
-                        target=request.target,
-                        args=request.args,
-                        timeout=request.timeout,
-                        output_dir=str(output_dir),
-                    )
-                    last_result = result
-
-                    if result.success:
-                        self._log_success(mission, request.tool_id, result)
-
-                        for finding in result.parsed_findings:
-                            mission.add_finding(finding)
-                            # Update attack surface from findings
-                            self._update_attack_surface_from_finding(mission, finding)
-
-                        # Record successful execution with details
-                        mission.record_tool_run(
-                            request.tool_id,
-                            args=request.args,
-                            command=result.command
-                            if hasattr(result, "command")
-                            else None,
-                            success=True,
-                        )
-                        return result
-                    else:
-                        last_error = (
-                            result.stderr[:500] if result.stderr else "No error message"
-                        )
-                        mission.log(
-                            f"[ERROR] {request.tool_id} failed: {last_error[:200]}"
-                        )
-
-                        # Provide detailed error for LLM learning
-                        if result.stderr:
-                            mission.log(f"[INFO] Error details: {result.stderr[:500]}")
-                        if result.stdout:
-                            mission.log(f"[INFO] Output preview: {result.stdout[:300]}")
-
-                        if result.stderr and (
-                            "command not found" in result.stderr
-                            or "permission denied" in result.stderr.lower()
-                        ):
-                            break
-
-                except Exception as e:
-                    last_error = str(e)
-                    mission.log(f"[ERROR] Execution error: {e}")
-                    last_result = self._create_error_result(
-                        request.tool_id, request.target, str(e)
-                    )
-
-                if attempt < max_retries:
-                    await asyncio.sleep(2)
-
-        # Record failed execution for learning
-        mission.record_tool_run(
-            request.tool_id, args=request.args, success=False, error=last_error
-        )
-
-        return last_result or self._create_error_result(
-            request.tool_id, request.target, "Unknown failure"
-        )
-
     async def _execute_via_worker(
         self,
         tool_id: str,
@@ -447,8 +367,9 @@ class ToolExecutionService:
         timeout: int | None,
         output_dir: str,
     ) -> ToolExecutionResult:
-        """Execute tool via ARQ worker and wait for result."""
-        from app.core.optimizations import get_arq_pool, tool_cache
+        """Execute tool via PostgreSQL job queue worker and wait for result."""
+        from app.core.optimizations import tool_cache
+        from app.core.queue import PostgresJobQueue, Job
 
         # Check cache first
         cached = tool_cache.get(tool_id, target, args or {})
@@ -456,26 +377,22 @@ class ToolExecutionService:
             logger.info("Using cached result for %s against %s", tool_id, target)
             return cached
 
-        pool = await get_arq_pool()
+        queue = PostgresJobQueue()
 
         try:
             # Enqueue the job
-            job = await pool.enqueue_job(
+            job_id = await queue.enqueue_job(
                 "execute_tool_job",
-                tool_id,
-                target,
-                args,
-                timeout,
-                output_dir,
+                tool_id=tool_id,
+                target=target,
+                args=args,
+                timeout=timeout,
+                output_dir=output_dir,
             )
-
-            if not job:
-                return self._create_error_result(
-                    tool_id, target, "Failed to enqueue job"
-                )
 
             # Wait for result with timeout
             job_timeout = (timeout or 300) + 60  # Add buffer for job overhead
+            job = Job(job_id)
             result_data = await job.result(timeout=job_timeout)
 
             if result_data is None:
@@ -499,22 +416,13 @@ class ToolExecutionService:
 
     async def _ensure_tool_installed(self, tool_id: str) -> bool:
         """Ensure a tool is installed via the worker."""
-        from arq import create_pool
-        from arq.connections import RedisSettings
+        from app.core.queue import PostgresJobQueue, Job
 
-        redis_settings = RedisSettings(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            password=settings.REDIS_PASSWORD.get_secret_value(),
-            database=settings.REDIS_DB,
-        )
-
-        pool = await create_pool(redis_settings, default_queue_name=ARQ_QUEUE_NAME)
+        queue = PostgresJobQueue()
 
         try:
-            job = await pool.enqueue_job("install_tool_job", tool_id)
-            if not job:
-                return False
+            job_id = await queue.enqueue_job("install_tool_job", tool_id=tool_id)
+            job = Job(job_id)
 
             # Wait for installation (can take a while for large tools)
             result = await job.result(timeout=600)  # 10 min timeout
@@ -533,11 +441,6 @@ class ToolExecutionService:
         except Exception as e:
             logger.error("Tool installation failed: %s", e)
             return False
-        finally:
-            if hasattr(pool, "aclose"):
-                await pool.aclose()
-            else:
-                await pool.close()
 
     def _create_error_result(
         self, tool_id: str, target: str, error: str
@@ -644,7 +547,7 @@ class ToolExecutionService:
                         args=fixed_args,
                         timeout=None,
                     )
-                    current_command = builder.build_command(
+                    current_command = builder.builder.build_command(
                         fixed_request, output_dir=str(output_dir)
                     )
                     mission.log(f"[INFO] Retrying with fixed args: {fixed_args}")
@@ -825,7 +728,7 @@ Example response format:
                     )
 
         except Exception as e:
-            logger.debug("Memory recording failed (non-critical): %s", e)
+            logger.warning("Memory recording failed: %s", e)
 
     def _prepare_output_directory(self, mission_id: str, run_id: str) -> Path:
         """Create and return the output directory path."""

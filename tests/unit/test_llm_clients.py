@@ -2,18 +2,14 @@
 
 import json
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
-import httpx
 import pytest
 from pydantic import BaseModel
 
-from app.core.exceptions import LLMConnectionError, LLMResponseError, LLMTimeoutError
 from app.services.ai.llm import (
-    APIClient,
     LLMResponse,
     MockLLMClient,
-    OllamaClient,
     get_default_llm_client,
     get_llm_client,
 )
@@ -171,361 +167,6 @@ class TestMockLLMClient:
 
 
 # ===================================================================
-# OllamaClient Tests
-# ===================================================================
-
-
-class TestOllamaClient:
-    """Tests for OllamaClient with mocked httpx."""
-
-    def _make_client(self, host="http://localhost:11434", model="test-model"):
-        return OllamaClient(host=host, model=model)
-
-    @pytest.mark.asyncio
-    async def test_generate_successful(self):
-        client = self._make_client()
-        mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "response": "generated text",
-            "prompt_eval_count": 10,
-            "eval_count": 20,
-        }
-        mock_response.raise_for_status = MagicMock()
-
-        mock_http = AsyncMock()
-        mock_http.post = AsyncMock(return_value=mock_response)
-        client._http_client = mock_http
-
-        with patch("app.services.ai.llm.get_llm_circuit_breaker") as mock_cb:
-            mock_cb.return_value = _noop_circuit_breaker()
-            result = await client.generate("hello", system_prompt="be nice")
-
-        assert isinstance(result, LLMResponse)
-        assert result.content == "generated text"
-        assert result.model == "test-model"
-        assert result.provider == "ollama"
-        assert result.usage["prompt_tokens"] == 10
-        assert result.usage["completion_tokens"] == 20
-        assert result.usage["total_tokens"] == 30
-
-        call_kwargs = mock_http.post.call_args
-        payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
-        assert payload["system"] == "be nice"
-
-    @pytest.mark.asyncio
-    async def test_generate_timeout_error(self):
-        client = self._make_client()
-        mock_http = AsyncMock()
-        mock_http.post = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
-        client._http_client = mock_http
-
-        with patch("app.services.ai.llm.get_llm_circuit_breaker") as mock_cb:
-            mock_cb.return_value = _noop_circuit_breaker()
-            with pytest.raises(LLMTimeoutError):
-                await client.generate("hello")
-
-    @pytest.mark.asyncio
-    async def test_generate_http_status_error(self):
-        client = self._make_client()
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        error = httpx.HTTPStatusError(
-            "Server Error", request=MagicMock(), response=mock_response
-        )
-
-        mock_http = AsyncMock()
-        mock_http.post = AsyncMock(side_effect=error)
-        client._http_client = mock_http
-
-        with patch("app.services.ai.llm.get_llm_circuit_breaker") as mock_cb:
-            mock_cb.return_value = _noop_circuit_breaker()
-            with pytest.raises(LLMResponseError):
-                await client.generate("hello")
-
-    @pytest.mark.asyncio
-    async def test_generate_connection_error(self):
-        client = self._make_client()
-        mock_http = AsyncMock()
-        mock_http.post = AsyncMock(side_effect=httpx.ConnectError("connection refused"))
-        client._http_client = mock_http
-
-        with patch("app.services.ai.llm.get_llm_circuit_breaker") as mock_cb:
-            mock_cb.return_value = _noop_circuit_breaker()
-            with pytest.raises(LLMConnectionError):
-                await client.generate("hello")
-
-    @pytest.mark.asyncio
-    async def test_health_check_healthy(self):
-        client = self._make_client()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_http = AsyncMock()
-        mock_http.get = AsyncMock(return_value=mock_response)
-        client._http_client = mock_http
-
-        with patch("app.services.ai.llm.telemetry") as mock_tel:
-            result = await client.health_check()
-
-        assert result is True
-        mock_tel.update_service_status.assert_called_once()
-        call_kwargs = mock_tel.update_service_status.call_args
-        assert call_kwargs[0][0] == "ollama"
-        assert call_kwargs[1]["healthy"] is True
-
-    @pytest.mark.asyncio
-    async def test_health_check_unhealthy(self):
-        client = self._make_client()
-        mock_http = AsyncMock()
-        mock_http.get = AsyncMock(side_effect=httpx.ConnectError("refused"))
-        client._http_client = mock_http
-
-        with patch("app.services.ai.llm.telemetry") as mock_tel:
-            result = await client.health_check()
-
-        assert result is False
-        mock_tel.update_service_status.assert_called_once()
-        call_kwargs = mock_tel.update_service_status.call_args
-        assert call_kwargs[0][0] == "ollama"
-        assert call_kwargs[1]["healthy"] is False
-
-    @pytest.mark.asyncio
-    async def test_health_check_non_200(self):
-        client = self._make_client()
-        mock_response = MagicMock()
-        mock_response.status_code = 503
-        mock_http = AsyncMock()
-        mock_http.get = AsyncMock(return_value=mock_response)
-        client._http_client = mock_http
-
-        with patch("app.services.ai.llm.telemetry"):
-            result = await client.health_check()
-
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_close_closes_client(self):
-        client = self._make_client()
-        mock_http = AsyncMock()
-        client._http_client = mock_http
-        await client.close()
-        mock_http.aclose.assert_awaited_once()
-        assert client._http_client is None
-
-    @pytest.mark.asyncio
-    async def test_close_noop_when_no_client(self):
-        client = self._make_client()
-        await client.close()
-
-    @pytest.mark.asyncio
-    async def test_host_trailing_slash_stripped(self):
-        client = OllamaClient(host="http://localhost:11434/")
-        assert client.host == "http://localhost:11434"
-
-
-# ===================================================================
-# APIClient Tests
-# ===================================================================
-
-
-class TestAPIClient:
-    """Tests for APIClient with mocked openai."""
-
-    def _make_client(self, api_key="test-key", model="gpt-test", base_url=None):
-        return APIClient(api_key=api_key, model=model, base_url=base_url)
-
-    @pytest.mark.asyncio
-    async def test_generate_successful(self):
-        client = self._make_client()
-
-        mock_usage = MagicMock()
-        mock_usage.prompt_tokens = 5
-        mock_usage.completion_tokens = 15
-        mock_usage.total_tokens = 20
-
-        mock_message = MagicMock()
-        mock_message.content = "API response text"
-
-        mock_choice = MagicMock()
-        mock_choice.message = mock_message
-
-        mock_completion = MagicMock()
-        mock_completion.choices = [mock_choice]
-        mock_completion.usage = mock_usage
-        mock_completion.model_dump.return_value = {"id": "test"}
-
-        mock_openai_client = AsyncMock()
-        mock_openai_client.chat.completions.create = AsyncMock(
-            return_value=mock_completion
-        )
-        client._client = mock_openai_client
-
-        result = await client.generate("prompt", system_prompt="system")
-
-        assert isinstance(result, LLMResponse)
-        assert result.content == "API response text"
-        assert result.model == "gpt-test"
-        assert result.provider == "api"
-        assert result.usage["prompt_tokens"] == 5
-        assert result.usage["completion_tokens"] == 15
-        assert result.usage["total_tokens"] == 20
-
-    @pytest.mark.asyncio
-    async def test_generate_with_system_prompt_messages(self):
-        client = self._make_client()
-
-        mock_usage = MagicMock()
-        mock_usage.prompt_tokens = 1
-        mock_usage.completion_tokens = 1
-        mock_usage.total_tokens = 2
-
-        mock_message = MagicMock()
-        mock_message.content = "ok"
-
-        mock_choice = MagicMock()
-        mock_choice.message = mock_message
-
-        mock_completion = MagicMock()
-        mock_completion.choices = [mock_choice]
-        mock_completion.usage = mock_usage
-        mock_completion.model_dump.return_value = {}
-
-        mock_openai_client = AsyncMock()
-        mock_openai_client.chat.completions.create = AsyncMock(
-            return_value=mock_completion
-        )
-        client._client = mock_openai_client
-
-        await client.generate("user msg", system_prompt="sys msg")
-
-        call_kwargs = mock_openai_client.chat.completions.create.call_args[1]
-        messages = call_kwargs["messages"]
-        assert len(messages) == 2
-        assert messages[0] == {"role": "system", "content": "sys msg"}
-        assert messages[1] == {"role": "user", "content": "user msg"}
-
-    @pytest.mark.asyncio
-    async def test_generate_without_system_prompt(self):
-        client = self._make_client()
-
-        mock_usage = MagicMock()
-        mock_usage.prompt_tokens = 1
-        mock_usage.completion_tokens = 1
-        mock_usage.total_tokens = 2
-
-        mock_message = MagicMock()
-        mock_message.content = "ok"
-
-        mock_choice = MagicMock()
-        mock_choice.message = mock_message
-
-        mock_completion = MagicMock()
-        mock_completion.choices = [mock_choice]
-        mock_completion.usage = mock_usage
-        mock_completion.model_dump.return_value = {}
-
-        mock_openai_client = AsyncMock()
-        mock_openai_client.chat.completions.create = AsyncMock(
-            return_value=mock_completion
-        )
-        client._client = mock_openai_client
-
-        await client.generate("user msg")
-
-        call_kwargs = mock_openai_client.chat.completions.create.call_args[1]
-        messages = call_kwargs["messages"]
-        assert len(messages) == 1
-        assert messages[0] == {"role": "user", "content": "user msg"}
-
-    @pytest.mark.asyncio
-    async def test_generate_none_content_returns_empty(self):
-        client = self._make_client()
-
-        mock_usage = MagicMock()
-        mock_usage.prompt_tokens = 0
-        mock_usage.completion_tokens = 0
-        mock_usage.total_tokens = 0
-
-        mock_message = MagicMock()
-        mock_message.content = None
-
-        mock_choice = MagicMock()
-        mock_choice.message = mock_message
-
-        mock_completion = MagicMock()
-        mock_completion.choices = [mock_choice]
-        mock_completion.usage = mock_usage
-        mock_completion.model_dump.return_value = {}
-
-        mock_openai_client = AsyncMock()
-        mock_openai_client.chat.completions.create = AsyncMock(
-            return_value=mock_completion
-        )
-        client._client = mock_openai_client
-
-        result = await client.generate("prompt")
-        assert result.content == ""
-
-    @pytest.mark.asyncio
-    async def test_generate_no_usage(self):
-        client = self._make_client()
-
-        mock_message = MagicMock()
-        mock_message.content = "ok"
-
-        mock_choice = MagicMock()
-        mock_choice.message = mock_message
-
-        mock_completion = MagicMock()
-        mock_completion.choices = [mock_choice]
-        mock_completion.usage = None
-        mock_completion.model_dump.return_value = {}
-
-        mock_openai_client = AsyncMock()
-        mock_openai_client.chat.completions.create = AsyncMock(
-            return_value=mock_completion
-        )
-        client._client = mock_openai_client
-
-        result = await client.generate("prompt")
-        assert result.usage["prompt_tokens"] == 0
-        assert result.usage["completion_tokens"] == 0
-        assert result.usage["total_tokens"] == 0
-
-    @pytest.mark.asyncio
-    async def test_generate_exception_propagates(self):
-        client = self._make_client()
-
-        mock_openai_client = AsyncMock()
-        mock_openai_client.chat.completions.create = AsyncMock(
-            side_effect=Exception("API error")
-        )
-        client._client = mock_openai_client
-
-        with pytest.raises(Exception, match="API error"):
-            await client.generate("prompt")
-
-    @pytest.mark.asyncio
-    async def test_health_check_healthy(self):
-        client = self._make_client()
-
-        mock_openai_client = AsyncMock()
-        mock_openai_client.models.list = AsyncMock(return_value=[])
-        client._client = mock_openai_client
-
-        assert await client.health_check() is True
-
-    @pytest.mark.asyncio
-    async def test_health_check_unhealthy(self):
-        client = self._make_client()
-
-        mock_openai_client = AsyncMock()
-        mock_openai_client.models.list = AsyncMock(side_effect=Exception("auth error"))
-        client._client = mock_openai_client
-
-        assert await client.health_check() is False
-
-
-# ===================================================================
 # generate_structured (LLMClient base class) Tests
 # ===================================================================
 
@@ -601,39 +242,30 @@ class TestGenerateStructured:
 class TestGetLLMClient:
     """Tests for the get_llm_client factory function."""
 
-    def test_ollama_provider(self):
+    def test_ollama_provider_returns_litellm_router(self):
+        from app.services.ai.router import LiteLLMRouter
         client = get_llm_client("ollama", host="http://myhost:1234", model="mymodel")
-        assert isinstance(client, OllamaClient)
-        assert client.host == "http://myhost:1234"
-        assert client.model == "mymodel"
+        assert isinstance(client, LiteLLMRouter)
 
-    def test_ollama_defaults(self):
-        client = get_llm_client("ollama")
-        assert isinstance(client, OllamaClient)
-        assert client.host == "http://localhost:11434"
-        assert client.model == "qwen2.5:3b"
+    def test_litellm_provider(self):
+        from app.services.ai.router import LiteLLMRouter
+        client = get_llm_client("litellm", model="gpt-4", api_key="sk-test")
+        assert isinstance(client, LiteLLMRouter)
 
-    def test_api_provider(self):
+    def test_api_provider_returns_litellm_router(self):
+        from app.services.ai.router import LiteLLMRouter
         client = get_llm_client("api", api_key="sk-test", model="gpt-4")
-        assert isinstance(client, APIClient)
-        assert client.model == "gpt-4"
+        assert isinstance(client, LiteLLMRouter)
 
     def test_openai_legacy_alias(self):
+        from app.services.ai.router import LiteLLMRouter
         client = get_llm_client("openai", api_key="sk-test")
-        assert isinstance(client, APIClient)
-
-    def test_api_without_key_raises(self):
-        with pytest.raises(ValueError, match="API key is required"):
-            get_llm_client("api")
+        assert isinstance(client, LiteLLMRouter)
 
     def test_mock_provider(self):
         client = get_llm_client("mock", responses=["hi"])
         assert isinstance(client, MockLLMClient)
         assert client.responses == ["hi"]
-
-    def test_unknown_provider_raises(self):
-        with pytest.raises(ValueError, match="Unknown LLM provider"):
-            get_llm_client("nonexistent")
 
 
 # ===================================================================
@@ -662,7 +294,7 @@ class TestGetDefaultLLMClient:
             client = get_default_llm_client()
             from app.services.ai.router import LiteLLMRouter
 
-            assert isinstance(client, (OllamaClient, LiteLLMRouter))
+            assert isinstance(client, LiteLLMRouter)
 
     def test_api_provider(self):
         mock_settings = MagicMock()
@@ -680,7 +312,7 @@ class TestGetDefaultLLMClient:
             client = get_default_llm_client()
             from app.services.ai.router import LiteLLMRouter
 
-            assert isinstance(client, (APIClient, LiteLLMRouter))
+            assert isinstance(client, LiteLLMRouter)
 
     def test_openai_legacy_provider(self):
         mock_settings = MagicMock()
@@ -698,19 +330,33 @@ class TestGetDefaultLLMClient:
             client = get_default_llm_client()
             from app.services.ai.router import LiteLLMRouter
 
-            assert isinstance(client, (APIClient, LiteLLMRouter))
+            assert isinstance(client, LiteLLMRouter)
 
+    @patch("app.services.ai.router.settings")
     @patch("app.services.ai.llm.settings")
-    def test_mock_provider(self, mock_settings):
-        mock_settings.AI_PROVIDER = "mock"
+    def test_mock_provider(self, mock_llm_settings, mock_router_settings):
+        mock_llm_settings.AI_PROVIDER = "mock"
+        mock_router_settings.AI_PROVIDER = "mock"
         client = get_default_llm_client()
         assert isinstance(client, MockLLMClient)
 
+    @patch("app.services.ai.router.settings")
     @patch("app.services.ai.llm.settings")
-    def test_unknown_provider_falls_back_to_mock(self, mock_settings):
-        mock_settings.AI_PROVIDER = "unknown_provider"
+    def test_unknown_provider_returns_litellm(self, mock_llm_settings, mock_router_settings):
+        """Unknown providers now normalize to litellm instead of raising."""
+        mock_llm_settings.AI_PROVIDER = "unknown_provider"
+        mock_router_settings.AI_PROVIDER = "unknown_provider"
+        mock_router_settings.LLM_API_KEY = MagicMock()
+        mock_router_settings.LLM_API_KEY.get_secret_value.return_value = ""
+        mock_router_settings.LLM_API_BASE_URL = None
+        mock_router_settings.LLM_MODEL = "test-model"
+        mock_router_settings.LLM_TIMEOUT = 600.0
+        mock_router_settings.OLLAMA_HOST = "http://ai:11434"
+        mock_router_settings.OLLAMA_MODEL = "qwen2.5:3b"
+        mock_llm_settings.LLM_MODEL = "test-model"
+        from app.services.ai.router import LiteLLMRouter
         client = get_default_llm_client()
-        assert isinstance(client, MockLLMClient)
+        assert isinstance(client, LiteLLMRouter)
 
 
 # ===================================================================

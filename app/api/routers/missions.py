@@ -4,26 +4,28 @@ Mission API Router.
 Endpoints for managing security missions.
 """
 
+import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import get_current_active_user, get_current_superuser
 from app.api.schemas import MissionResponse, StartMissionRequest
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
+from app.core.rbac import Permission, require_permission
+from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.repositories.mission import MissionRepository
 from app.services.mission import mission_manager
+from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger("spectra.api.missions")
 
-# Pagination limits
-MAX_PAGE_SIZE = 100
-DEFAULT_PAGE_SIZE = 20
+from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE, API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 
 router = APIRouter(prefix="/missions", tags=["Missions"])
 
@@ -40,14 +42,18 @@ class SteerMissionRequest(BaseModel):
 
 
 @router.get("/presets")
-async def get_scan_presets():
+async def get_scan_presets(
+    _current_user: User = Depends(get_current_active_user),
+):
     """Get available scan presets."""
     from app.services.mission.presets import SCAN_PRESETS
     return SCAN_PRESETS
 
 
 @router.get("/adversary-playbooks")
-async def get_adversary_playbooks():
+async def get_adversary_playbooks(
+    _current_user: User = Depends(get_current_active_user),
+):
     """List available adversary simulation playbooks."""
     from app.services.ai.adversary_playbooks import list_adversary_playbooks
 
@@ -55,7 +61,10 @@ async def get_adversary_playbooks():
 
 
 @router.get("/adversary-playbooks/{playbook_id}")
-async def get_adversary_playbook_detail(playbook_id: str):
+async def get_adversary_playbook_detail(
+    playbook_id: str,
+    _current_user: User = Depends(get_current_active_user),
+):
     """Get full details of an adversary playbook."""
     from app.services.ai.adversary_playbooks import get_adversary_playbook
 
@@ -66,11 +75,40 @@ async def get_adversary_playbook_detail(playbook_id: str):
 
 
 @router.get("/exploit-chains")
-async def get_exploit_chains():
-    """List available exploit chains."""
-    from app.services.mission.chain_builder import get_builtin_chains
+async def get_exploit_chains(
+    _current_user: User = Depends(get_current_active_user),
+):
+    """List available exploit chains (builtin + custom)."""
+    from app.services.mission.chain_builder import get_builtin_chains, load_custom_chains
 
-    return [c.model_dump() for c in get_builtin_chains()]
+    builtin = [c.model_dump() for c in get_builtin_chains()]
+    custom = [c.model_dump() for c in load_custom_chains()]
+    return builtin + custom
+
+
+class CreateChainRequest(BaseModel):
+    """Schema for creating a custom exploit chain."""
+
+    name: str = Field(..., max_length=200)
+    description: str = Field("", max_length=1000)
+    stages: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@router.post("/exploit-chains")
+async def create_exploit_chain(
+    chain_in: CreateChainRequest,
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Create a custom exploit chain."""
+    from app.services.mission.chain_builder import save_custom_chain, ChainBuilder
+
+    chain = ChainBuilder.create_chain(chain_in.name, chain_in.stages)
+    chain.description = chain_in.description
+
+    warnings = ChainBuilder.validate_chain(chain)
+    save_custom_chain(chain)
+
+    return {"chain": chain.model_dump(), "warnings": warnings}
 
 
 @router.get("/attack-summary")
@@ -101,7 +139,8 @@ async def start_mission(
     request: Request,
     response: Response,
     mission_request: StartMissionRequest,
-    _current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
 ):
     """Start a new mission.
 
@@ -111,11 +150,21 @@ async def start_mission(
         mission_request.target,
         mission_request.directive,
         requirements=mission_request.requirements,
+        vpn_config=mission_request.vpn_config,
     )
     mission = await mission_manager.get_mission(mission_id)
 
     if not mission:
         raise HTTPException(status_code=500, detail="Failed to create mission")
+
+    # Audit log
+    await audit_log_event(
+        db,
+        AuditEventType.MISSION_LAUNCHED,
+        user_id=str(_current_user.id),
+        details={"mission_id": mission_id, "target": mission_request.target},
+        request=request,
+    )
 
     current_phase = None
     if mission.plan and hasattr(mission.plan, "current_phase"):
@@ -152,15 +201,61 @@ async def list_missions(
         le=MAX_PAGE_SIZE,
         description="Max records to return",
     ),
+    status_filter: str | None = Query(None, alias="status", description="Comma-separated statuses"),
+    target: str | None = Query(None, description="Filter by target (partial match)"),
+    date_from: str | None = Query(None, description="ISO date lower bound"),
+    date_to: str | None = Query(None, description="ISO date upper bound"),
+    search: str | None = Query(None, max_length=200, description="Search in directive"),
+    sort_by: str | None = Query(None, pattern="^(created_at|status|target)$", description="Sort field"),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):
     """List all missions (active and historical).
 
+    Supports filtering by status, target, date range, and free-text search.
     Pagination: max 100 items per page.
     """
-    repo = MissionRepository(db)
-    missions = await repo.get_all(skip=skip, limit=min(limit, MAX_PAGE_SIZE))
+    from sqlalchemy import select
+    from app.models.mission import Mission
+    from datetime import datetime as dt
+
+    stmt = select(Mission)
+
+    if status_filter:
+        statuses = [s.strip() for s in status_filter.split(",") if s.strip()]
+        if statuses:
+            stmt = stmt.where(Mission.status.in_(statuses))
+
+    if target:
+        stmt = stmt.where(Mission.target.contains(target))
+
+    if date_from:
+        try:
+            from_dt = dt.fromisoformat(date_from)
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Invalid date_from format: {date_from}. Use ISO 8601.")
+        stmt = stmt.where(Mission.created_at >= from_dt)
+
+    if date_to:
+        try:
+            to_dt = dt.fromisoformat(date_to)
+        except ValueError:
+            raise HTTPException(status_code=422, detail=f"Invalid date_to format: {date_to}. Use ISO 8601.")
+        stmt = stmt.where(Mission.created_at <= to_dt)
+
+    if search:
+        stmt = stmt.where(Mission.directive.contains(search))
+
+    if sort_by == "status":
+        stmt = stmt.order_by(Mission.status)
+    elif sort_by == "target":
+        stmt = stmt.order_by(Mission.target)
+    else:
+        stmt = stmt.order_by(Mission.created_at.desc())
+
+    stmt = stmt.offset(skip).limit(min(limit, MAX_PAGE_SIZE))
+    result = await db.execute(stmt)
+    missions = result.scalars().all()
 
     return [
         MissionResponse(
@@ -212,6 +307,57 @@ async def download_pdf_report(
         headers={
             "Content-Disposition": f"attachment; filename=spectra_report_{mission_id[:8]}.pdf"
         },
+    )
+
+
+@router.get("/{mission_id}/export/json")
+async def export_mission_json(
+    mission_id: str,
+    encrypted: bool = Query(False),
+    password: str | None = Header(None, alias="X-Export-Password"),
+    session: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Export mission + findings as a JSON file."""
+    from fastapi.responses import Response as FastAPIResponse
+
+    repo = MissionRepository(session)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    summary = mission.summary or {}
+    export_data = {
+        "mission": {
+            "id": mission.id,
+            "target": mission.target,
+            "status": mission.status,
+            "directive": mission.directive,
+            "created_at": mission.created_at.isoformat() if mission.created_at else None,
+        },
+        "findings": summary.get("findings", []),
+        "tools_used": summary.get("tools_run", []),
+        "timeline": summary.get("timeline", []),
+        "attack_surface": mission.attack_surface or {},
+    }
+
+    payload = json.dumps(export_data, indent=2, default=str).encode()
+
+    if encrypted:
+        if not password:
+            raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
+        from app.core.encryption import encrypt_data_with_password
+        payload = encrypt_data_with_password(payload, password)
+        return FastAPIResponse(
+            content=payload,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename=spectra_export_{mission_id[:8]}.json.enc"},
+        )
+
+    return FastAPIResponse(
+        content=payload,
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=spectra_export_{mission_id[:8]}.json"},
     )
 
 
@@ -276,10 +422,12 @@ async def stop_mission(
     request: Request,
     response: Response,
     mission_id: str,
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
 ):
-    """Stop a running mission."""
-    await mission_manager.stop_mission(mission_id)
+    """Stop a running mission. Requires superuser privileges."""
+    result = await mission_manager.stop_mission(mission_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Mission not found or not active")
     return {"message": "Mission stopping"}
 
 
@@ -292,7 +440,9 @@ async def pause_mission(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Pause a running mission."""
-    await mission_manager.pause_mission(mission_id)
+    result = await mission_manager.pause_mission(mission_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Mission not found or not active")
     return {"message": "Mission paused"}
 
 
@@ -305,7 +455,9 @@ async def resume_mission(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Resume a paused mission."""
-    await mission_manager.resume_mission(mission_id)
+    result = await mission_manager.resume_mission(mission_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Mission not found or not active")
     return {"message": "Mission resumed"}
 
 
@@ -396,3 +548,27 @@ async def steer_mission(
         if "not found" in str(e):
             raise HTTPException(status_code=404, detail="Mission or target not found")
         raise HTTPException(status_code=400, detail="Invalid steering request")
+
+
+@router.get("/{mission_id}/task-tree")
+async def get_task_tree(
+    mission_id: str,
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Get the task tree for a mission."""
+    mission = await mission_manager.get_mission(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    return mission.task_tree.to_dict()
+
+
+@router.get("/{mission_id}/progress")
+async def get_mission_progress(
+    mission_id: str,
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Get estimated mission progress."""
+    mission = await mission_manager.get_mission(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    return mission.get_progress()

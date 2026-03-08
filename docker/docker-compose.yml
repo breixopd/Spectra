@@ -1,11 +1,12 @@
 # Spectra Security Assessment Platform - Docker Compose
 # Usage:
-#   docker compose up -d
+#   cd docker && docker compose --env-file ../.env up -d
+#   OR: docker compose -f docker/docker-compose.yml --env-file .env up -d
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database (with pgvector for RAG)
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: spectra-db
     environment:
       POSTGRES_USER: spectra
@@ -27,14 +28,32 @@ services:
     networks:
       - spectra-network
 
-  # Spectra App (FastAPI Backend)
+  # Caddy Reverse Proxy — all traffic goes through here
+  caddy:
+    image: caddy:2-alpine
+    container_name: spectra-caddy
+    ports:
+      - "${SPECTRA_PORT:-80}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - spectra-network
+
+  # Spectra App (FastAPI Backend) — internal only, proxied via Caddy
   app:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
     container_name: spectra-app
-    ports:
-      - "5000:5000"
+    # No public port — Caddy proxies to app:5000 internally
+    expose:
+      - "5000"
     depends_on:
       db:
         condition: service_healthy
@@ -56,7 +75,13 @@ services:
       - ../reports:/app/reports
       - ../alembic:/app/alembic
       - ../alembic.ini:/app/alembic.ini
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     restart: unless-stopped
     deploy:
       resources:
@@ -74,7 +99,7 @@ services:
           path: ../app
           target: /app/app
         - action: rebuild
-          path: ../requirements.txt
+          path: ../requirements-app.txt
 
   # Spectra Tools (Worker & Security Tools)
   tools:
@@ -85,11 +110,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      app:
+        condition: service_healthy
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
       - IS_TOOLS_CONTAINER=true
       - PLUGIN_SAFE_MODE=false
+      - TZ=UTC
     volumes:
       - ../app:/app/app:ro
       - ../tests:/app/tests:ro
@@ -98,10 +126,14 @@ services:
       - ../keys:/app/keys:ro
       - spectra_tools_data:/opt/spectra_tools
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: ["arq", "app.worker.WorkerSettings"]
+    command: ["python", "-m", "app.worker"]
     cap_add:
       - NET_ADMIN
       - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
     restart: unless-stopped
     networks:
       - spectra-network
@@ -122,3 +154,33 @@ networks:
 volumes:
   postgres_data:
   spectra_tools_data:
+  caddy_data:
+  caddy_config:
+
+# =============================================================================
+# Vulnerable Target Containers (for testing)
+# Start with: docker compose --profile targets up -d
+# =============================================================================
+#  target-easy:
+#    build:
+#      context: targets/easy
+#    container_name: spectra-target-easy
+#    profiles: ["targets"]
+#    networks:
+#      - spectra-network
+#
+#  target-medium:
+#    build:
+#      context: targets/medium
+#    container_name: spectra-target-medium
+#    profiles: ["targets"]
+#    networks:
+#      - spectra-network
+#
+#  target-hard:
+#    build:
+#      context: targets/hard
+#    container_name: spectra-target-hard
+#    profiles: ["targets"]
+#    networks:
+#      - spectra-network

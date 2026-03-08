@@ -1,129 +1,365 @@
 # API Reference
 
-This document provides a detailed reference for the Spectra API.
+Comprehensive reference for the Spectra REST API.
 
 ## Base URL
 
-All API endpoints are prefixed with `/api`. The base URL for the API is `http://localhost:5000/api`.
+All API endpoints are prefixed with `/api`.
+
+- **Development:** `http://localhost:5000/api`
+- **Production:** `https://<your-domain>/api` (via Caddy)
 
 ## Authentication
 
-Most endpoints require authentication using a JWT token.
+Most endpoints require a JWT token (exceptions: `/api/health`, `/api/auth/setup`, `/api/auth/setup/status`).
 
 - **Header:** `Authorization: Bearer <token>`
-- **Obtaining a Token:** Use `/api/auth/token` with username and password.
+- **Obtaining a Token:** `POST /api/auth/token` with username and password.
 
 ---
 
-## Core Endpoints
+## Health
 
-### Health Check
-
-- **GET `/health`**
-  - **Description:** Check if the API server is running.
-  - **Response:** `{"status": "ok"}`
-
-### System Status
-
-- **GET `/system/status`**
-  - **Description:** detailed system health including DB and Tool readiness.
-  - **Response:**
-    ```json
-    {
-      "status": "ready",
-      "components": {
-        "database": true
-      },
-      "initialization": {
-        "tools_installed": 10,
-        "tools_total": 12
-      }
-    }
-    ```
-
----
-
-## Mission Management
-
-### Create Mission
-
-- **POST `/missions`**
-  - **Description:** Start a new security assessment mission.
-  - **Body:**
-    ```json
-    {
-      "target": "example.com",
-      "directive": "Full security audit focusing on web vulnerabilities."
-    }
-    ```
-  - **Response:** `Mission` object with `id`.
-
-### Get Mission Status
-
-- **GET `/missions/{mission_id}`**
-  - **Description:** Retrieve current status, logs, and findings for a mission.
-
-### Stop Mission
-
-- **POST `/missions/{mission_id}/stop`**
-  - **Description:** Gracefully stop a running mission.
-
----
-
-## Tool Management
-
-### List Tools
-
-- **GET `/tools`**
-  - **Description:** List all registered tool plugins.
-
-### Get Tool Details
-
-- **GET `/tools/{tool_id}`**
-  - **Description:** Get configuration and status for a specific tool.
-
----
-
-## Exploitation & POCs
-
-### List Exploits
-
-- **GET `/exploits`**
-  - **Description:** List history of exploit attempts.
-
-### Web Shell Connection
-
-- **WebSocket `/shell/{session_id}`**
-  - **Description:** Connect to an interactive reverse shell session.
-  - **Protocol:** WebSocket
-  - **Data:** Raw text input/output.
-
----
-
-## Targets
-
-### List Targets
-
-- **GET `/targets`**
-  - **Description:** List all scoped targets and their status.
-
-### Add Target manually
-
-- **POST `/targets`**
-  - **Body:** `{"address": "192.168.1.1", "description": "Manual target"}`
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| GET | `/api/health` | Basic health check. Returns `{"status": "ok"}`. No auth required. |
 
 ---
 
 ## Authentication & Setup
 
-### Setup System
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| POST | `/api/auth/token` | Login — returns JWT access + refresh tokens |
+| POST | `/api/auth/refresh` | Refresh an expired access token |
+| POST | `/api/auth/logout` | Invalidate current token |
+| POST | `/api/auth/setup` | Create initial admin account (only available when no users exist) |
+| GET | `/api/auth/setup/status` | Check if setup has been completed |
 
-- **POST `/auth/setup`**
-  - **Description:** Initialize the admin account (only available if no users exist).
+### POST `/api/auth/token`
 
-### Login
+```text
+Content-Type: application/x-www-form-urlencoded
 
-- **POST `/auth/token`**
-  - **Content-Type:** `application/x-www-form-urlencoded`
-  - **Body:** `username=...&password=...`
-  - **Response:** `{"access_token": "...", "token_type": "bearer"}`
+username=admin&password=secret
+```
+
+**Response:**
+
+```json
+{
+  "access_token": "eyJ...",
+  "token_type": "bearer"
+}
+```
+
+Rate-limited with IP-based lockout after repeated failures.
+
+### POST `/api/auth/setup`
+
+```json
+{
+  "username": "admin",
+  "password": "secure-password"
+}
+```
+
+Returns a `UserResponse` object. Only callable once (before any users exist).
+
+---
+
+## Missions
+
+All mission endpoints require authentication.
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| POST | `/api/missions` | Create and start a new mission |
+| GET | `/api/missions` | List all missions |
+| GET | `/api/missions/presets` | List mission presets |
+| GET | `/api/missions/attack-summary` | Global attack summary across missions |
+| GET | `/api/missions/adversary-playbooks` | List adversary playbooks |
+| GET | `/api/missions/adversary-playbooks/{id}` | Get playbook details |
+| GET | `/api/missions/exploit-chains` | List exploit chains |
+| POST | `/api/missions/exploit-chains` | Create exploit chain |
+| GET | `/api/missions/{id}` | Get mission details |
+| POST | `/api/missions/{id}/stop` | Stop a running mission |
+| POST | `/api/missions/{id}/pause` | Pause a mission |
+| POST | `/api/missions/{id}/resume` | Resume a paused mission |
+| POST | `/api/missions/{id}/steer` | Steer a running mission (modify objectives) |
+| GET | `/api/missions/{id}/progress` | Get mission progress |
+| GET | `/api/missions/{id}/task-tree` | Get mission task tree |
+| GET | `/api/missions/{id}/diff/{other_id}` | Compare two missions |
+| GET | `/api/missions/{id}/report/pdf` | Download PDF report |
+| GET | `/api/missions/{id}/export/json` | Export mission as JSON |
+
+### POST `/api/missions`
+
+```json
+{
+  "target": "192.168.1.100",
+  "directive": "Full security audit focusing on web vulnerabilities."
+}
+```
+
+**Response:** `MissionResponse` with mission `id`, status, and metadata.
+
+### POST `/api/missions/{id}/steer`
+
+Send instructions to modify a running mission's direction:
+
+```json
+{
+  "instruction": "Focus on SQL injection vectors, skip brute force"
+}
+```
+
+---
+
+## Targets
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| POST | `/api/targets` | Add a target |
+| GET | `/api/targets` | List all targets |
+| GET | `/api/targets/{id}` | Get target details |
+| PATCH | `/api/targets/{id}` | Update target |
+| DELETE | `/api/targets/{id}` | Delete a target |
+| GET | `/api/targets/{id}/findings` | Get findings for a target |
+| POST | `/api/targets/bulk-import` | Import multiple targets |
+| POST | `/api/targets/bulk-delete` | Delete multiple targets |
+
+### POST `/api/targets`
+
+```json
+{
+  "address": "192.168.1.1",
+  "description": "Web server"
+}
+```
+
+---
+
+## Findings
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| POST | `/api/findings` | Create a finding |
+| GET | `/api/findings` | List findings (filterable) |
+| GET | `/api/findings/{id}` | Get finding details |
+| PATCH | `/api/findings/{id}` | Update a finding |
+| DELETE | `/api/findings/{id}` | Delete a finding |
+| POST | `/api/findings/{id}/verify` | Mark finding as verified |
+| POST | `/api/findings/{id}/confirm` | Confirm a finding |
+| POST | `/api/findings/{id}/dismiss` | Dismiss a finding |
+| POST | `/api/findings/{id}/false-positive` | Mark as false positive |
+| POST | `/api/findings/{id}/retest` | Queue finding for retest |
+| POST | `/api/findings/bulk-update` | Bulk update findings |
+| GET | `/api/findings/export/csv` | Export findings as CSV |
+| GET | `/api/findings/export/json` | Export findings as JSON |
+
+---
+
+## Tools
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| GET | `/api/tools` | List all registered tools |
+| GET | `/api/tools/available` | List installed/available tools |
+| GET | `/api/tools/for-ai` | Tool list formatted for AI agents |
+| GET | `/api/tools/{id}` | Get tool details |
+| GET | `/api/tools/{id}/config` | Get tool configuration |
+| POST | `/api/tools/{id}/test` | Test-run a tool |
+| POST | `/api/tools/{id}/install` | Install a specific tool |
+| DELETE | `/api/tools/{id}` | Remove a tool plugin |
+| POST | `/api/tools/validate` | Validate a plugin JSON |
+| POST | `/api/tools/sign` | Sign a plugin |
+| POST | `/api/tools/save-unsigned` | Save unsigned plugin |
+| POST | `/api/tools/upload` | Upload a plugin file |
+| POST | `/api/tools/install-all` | Install all registered tools |
+
+### POST `/api/tools/{id}/test`
+
+Runs a tool with provided arguments and returns output:
+
+```json
+{
+  "target": "192.168.1.1",
+  "args": "-sV -p 80,443"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "exit_code": 0,
+  "duration_seconds": 12.5,
+  "stdout": "...",
+  "stderr": "...",
+  "parsed_findings_count": 3,
+  "parsed_findings": [...]
+}
+```
+
+---
+
+## Exploits
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| GET | `/api/exploits` | List exploit attempts |
+| GET | `/api/exploits/recent` | Recent exploit attempts |
+| GET | `/api/exploits/stats` | Exploit statistics |
+| GET | `/api/exploits/{id}` | Get exploit details |
+| GET | `/api/exploits/by-name/{name}` | Search exploits by name |
+
+---
+
+## CVE Intelligence
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| GET | `/api/cve/lookup` | Lookup CVEs by service/version |
+| GET | `/api/cve/cve/{cve_id}/exploits` | Get exploits for a CVE |
+| GET | `/api/cve/cve/{cve_id}/enriched` | Get enriched CVE data |
+| GET | `/api/cve/searchsploit/{query}` | Search ExploitDB |
+
+### GET `/api/cve/lookup?service=apache&version=2.4.49`
+
+**Response:** list of matching CVEs with severity, description, and exploit references.
+
+---
+
+## System
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| GET | `/api/system/status` | System health, DB state, tool install progress |
+| GET | `/api/system/safety-stats` | Safety supervisor statistics |
+| GET | `/api/system/audit-log` | Audit log entries |
+| GET | `/api/system/data-sources` | Available data sources (CVE DBs, etc.) |
+| POST | `/api/system/data-sources/download` | Download/update a data source |
+| POST | `/api/system/clear/tools` | Clear tool cache |
+| POST | `/api/system/clear/missions` | Clear all missions |
+| POST | `/api/system/clear/cache` | Clear application cache |
+| POST | `/api/system/operations/add` | Register a background operation |
+| POST | `/api/system/operations/remove` | Remove a background operation |
+| POST | `/api/system/operations/update-progress` | Update operation progress |
+
+---
+
+## Settings
+
+Settings are managed via the UI router:
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| GET | `/api/settings` | Get current runtime settings |
+| POST | `/api/settings` | Update runtime settings |
+| GET | `/api/ai/status` | AI provider connection status |
+| POST | `/test-llm` | Test LLM connectivity |
+
+---
+
+## Observability
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| GET | `/api/observability/stats` | Overall system metrics |
+| GET | `/api/observability/metrics` | Prometheus-style metrics |
+| GET | `/api/observability/traces` | Request traces |
+| GET | `/api/observability/traces/{id}` | Trace details |
+| GET | `/api/observability/slow-operations` | Slow operation report |
+| GET | `/api/observability/errors` | Error log |
+| GET | `/api/observability/services/health` | Per-service health |
+| GET | `/api/observability/circuit-breakers` | Circuit breaker states |
+| POST | `/api/observability/circuit-breakers/reset` | Reset circuit breakers |
+| GET | `/api/observability/cache/stats` | Cache hit/miss stats |
+| GET | `/api/observability/events` | Event stream |
+| GET | `/api/observability/events/stats` | Event statistics |
+
+---
+
+## Pentest Sessions
+
+Manual/hybrid pentest sessions (for guided assessments):
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| POST | `/api/pentest-sessions` | Create a session |
+| GET | `/api/pentest-sessions` | List sessions |
+| GET | `/api/pentest-sessions/{id}` | Get session details |
+| POST | `/api/pentest-sessions/{id}/log` | Add log entry |
+| POST | `/api/pentest-sessions/{id}/complete` | Mark complete |
+| GET | `/api/pentest-sessions/{id}/export` | Export session |
+| POST | `/api/pentest-sessions/{id}/notes` | Add note |
+| GET | `/api/pentest-sessions/{id}/notes` | List notes |
+| PUT | `/api/pentest-sessions/{id}/notes` | Update notes |
+| DELETE | `/api/pentest-sessions/{id}/notes/{nid}` | Delete note |
+| POST | `/api/pentest-sessions/{id}/history` | Add history entry |
+| GET | `/api/pentest-sessions/{id}/history` | Get history |
+| POST | `/api/pentest-sessions/{id}/evidence` | Upload evidence |
+| GET | `/api/pentest-sessions/{id}/evidence` | List evidence |
+| DELETE | `/api/pentest-sessions/{id}/evidence/{eid}` | Delete evidence |
+| PUT | `/api/pentest-sessions/{id}/scope` | Update session scope |
+
+---
+
+## VPN
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| POST | `/api/vpn` | Upload VPN config |
+| GET | `/api/vpn/configs` | List VPN configs |
+| DELETE | `/api/vpn/configs/{name}` | Delete a VPN config |
+| POST | `/api/vpn/connect/{name}` | Connect to VPN |
+| POST | `/api/vpn/disconnect/{name}` | Disconnect from VPN |
+| GET | `/api/vpn/status` | Current VPN status |
+| POST | `/api/vpn/test` | Test VPN connectivity |
+
+---
+
+## Wordlists
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| GET | `/api/wordlists` | List available wordlists |
+| POST | `/api/wordlists/upload` | Upload a wordlist |
+| POST | `/api/wordlists/download-preset/{id}` | Download a preset wordlist |
+| DELETE | `/api/wordlists/{filename}` | Delete a wordlist |
+
+---
+
+## Manual Helpers
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| GET | `/api/manual-helpers/checklists` | List pentest checklists |
+| GET | `/api/manual-helpers/checklists/{id}` | Get checklist details |
+| GET | `/api/manual-helpers/payloads` | List payload templates |
+| GET | `/api/manual-helpers/gtfobins` | GTFOBins reference |
+| POST | `/api/manual-helpers/cvss/calculate` | Calculate CVSS score |
+| GET | `/api/manual-helpers/reports/templates` | List report templates |
+| POST | `/api/manual-helpers/reports/generate` | Generate a report |
+
+---
+
+## Shell (WebSocket)
+
+| Method | Path | Description |
+| -------- | ------ | ------------- |
+| WebSocket | `/api/shell/{session_id}` | Interactive reverse shell session |
+| GET | `/api/shell/sessions` | List active shell sessions |
+| POST | `/api/shell/reconnect/{finding_id}` | Reconnect to a shell |
+
+---
+
+## WebSocket (Real-time)
+
+| Protocol | Path | Description |
+| ---------- | ------ | ------------- |
+| WebSocket | `/ws?token=<jwt>` | Real-time mission updates, logs, findings stream |
+
+Pass JWT as query parameter. Connection rejected if token is invalid or missing.

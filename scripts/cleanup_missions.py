@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Clean up missions and redis data while preserving config."""
+"""Clean up missions and cached data while preserving config."""
 
 import asyncio
 import os
@@ -11,45 +11,26 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-async def cleanup_redis():
-    """Clean up Redis data except config keys."""
-    import redis.asyncio as redis
-    
-    redis_host = os.environ.get("REDIS_HOST", "localhost")
-    redis_port = int(os.environ.get("REDIS_PORT", "6379"))
-    redis_password = os.environ.get("REDIS_PASSWORD", "spectra_redis_secret")
-    
+async def cleanup_cache():
+    """Clean up cache entries except config keys."""
     try:
-        r = redis.Redis(
-            host=redis_host,
-            port=redis_port,
-            password=redis_password,
-            decode_responses=True
-        )
-        
-        # Get all keys
-        all_keys = []
-        async for key in r.scan_iter("*"):
-            all_keys.append(key)
-        
-        # Keys to preserve (config-related)
-        preserve_patterns = ["config:", "settings:", "llm:", "setup"]
-        
-        keys_to_delete = []
-        for key in all_keys:
-            should_preserve = any(pattern in key.lower() for pattern in preserve_patterns)
-            if not should_preserve:
-                keys_to_delete.append(key)
-        
-        if keys_to_delete:
-            await r.delete(*keys_to_delete)
-            print(f"Deleted {len(keys_to_delete)} Redis keys")
-        else:
-            print("No Redis keys to delete")
-        
-        await r.aclose()
+        from sqlalchemy import delete, text
+        from app.core.database import get_async_session
+        from app.models.infrastructure import CacheEntry
+
+        async for session in get_async_session():
+            try:
+                result = await session.execute(delete(CacheEntry))
+                await session.commit()
+                print(f"Deleted {result.rowcount} cache entries")
+            except Exception as e:
+                print(f"Cache cleanup error: {e}")
+                await session.rollback()
+            finally:
+                await session.close()
+            break
     except Exception as e:
-        print(f"Redis cleanup failed: {e}")
+        print(f"Cache cleanup failed: {e}")
 
 
 async def cleanup_database():
@@ -103,8 +84,8 @@ def cleanup_reports():
 async def main():
     print("Cleaning up missions and data (preserving config)...\n")
     
-    # Clean up Redis
-    await cleanup_redis()
+    # Clean up cache
+    await cleanup_cache()
     
     # Clean up database
     await cleanup_database()

@@ -74,8 +74,27 @@
   },
   "parsing": {
     "format": "text",
-    "mapping": {}
+    "mapping": {},
+    "regex_patterns": [
+      {
+        "pattern": "\\[(\\d+)\\]\\[(\\w+)\\] host: (.+)\\s+login: (.+)\\s+password: (.+)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "(\\d+) valid passwords? found",
+        "type": "info"
+      },
+      {
+        "pattern": "\\[ERROR\\]\\s+(?P<error>.+)",
+        "type": "info"
+      }
+    ]
   },
+  "examples": [
+    {"description": "Brute-force SSH login", "args": {"target": "192.168.1.10", "service": "ssh", "userlist": "users.txt", "passlist": "passwords.txt"}},
+    {"description": "HTTP POST form brute-force", "args": {"target": "192.168.1.10", "service": "http-post-form", "flags": "-l admin -P passwords.txt '/login:user=^USER^&pass=^PASS^:Invalid'"}},
+    {"description": "FTP credential spray", "args": {"target": "192.168.1.10", "service": "ftp", "userlist": "users.txt", "passlist": "passwords.txt", "flags": "-t 4"}}
+  ],
   "ui": {
     "icon": "key",
     "color": "orange"

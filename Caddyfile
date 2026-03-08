@@ -1,0 +1,25 @@
+# Spectra — Caddy reverse proxy configuration
+#
+# For production, replace :443 with your domain:
+#   spectra.example.com {
+#
+# Caddy auto-provisions TLS via Let's Encrypt when a real domain is used.
+
+:443 {
+	reverse_proxy spectra-app:5000
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		-Server
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 100mb
+			roll_keep 5
+		}
+	}
+}

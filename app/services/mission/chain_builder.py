@@ -12,7 +12,9 @@ Each stage has:
 """
 
 import logging
+import json
 import re
+from pathlib import Path
 from typing import Any
 from pydantic import BaseModel, Field
 
@@ -140,3 +142,38 @@ def get_builtin_chains() -> list[ExploitChain]:
             stages=stages,
         ))
     return chains
+
+
+CUSTOM_CHAINS_PATH = Path("reports/memory/custom_chains.json")
+
+
+def load_custom_chains() -> list[ExploitChain]:
+    """Load user-created exploit chains from disk."""
+    if not CUSTOM_CHAINS_PATH.exists():
+        return []
+    try:
+        data = json.loads(CUSTOM_CHAINS_PATH.read_text())
+        chains = []
+        for item in data:
+            stages = [ChainStage(**s) for s in item.get("stages", [])]
+            chains.append(ExploitChain(
+                id=item["id"],
+                name=item["name"],
+                description=item.get("description", ""),
+                stages=stages,
+                metadata=item.get("metadata", {}),
+            ))
+        return chains
+    except Exception as e:
+        logger.warning("Failed to load custom chains: %s", e)
+        return []
+
+
+def save_custom_chain(chain: ExploitChain) -> None:
+    """Append a custom chain to disk storage."""
+    existing = load_custom_chains()
+    existing.append(chain)
+    CUSTOM_CHAINS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CUSTOM_CHAINS_PATH.write_text(
+        json.dumps([c.model_dump() for c in existing], indent=2, default=str)
+    )

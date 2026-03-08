@@ -4,6 +4,14 @@
 
 FROM kalilinux/kali-rolling:latest
 
+LABEL org.opencontainers.image.title="Spectra Tools" \
+      org.opencontainers.image.description="Security tools worker (Kali Linux)" \
+      org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
+      org.opencontainers.image.vendor="breixopd14"
+
+ARG BUILD_VERSION=dev
+LABEL org.opencontainers.image.version="${BUILD_VERSION}"
+
 WORKDIR /app
 
 RUN apt-get update && \
@@ -11,7 +19,8 @@ RUN apt-get update && \
     python3 python3-pip python3-venv python3-dev \
     gcc libpq-dev libffi-dev pkg-config libpcap-dev \
     curl wget git jq unzip \
-    iputils-ping iproute2 netcat-openbsd \
+    iputils-ping iproute2 netcat-openbsd iptables \
+    wireguard-tools openvpn \
     golang \
     nmap nikto sqlmap hydra whatweb \
     seclists \
@@ -27,7 +36,8 @@ ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"
 
 COPY requirements-tools.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements-tools.txt
+    pip install --no-cache-dir -r requirements-tools.txt && \
+    pip install --no-cache-dir dirsearch
 
 RUN mkdir -p /opt/spectra_tools
 
@@ -36,4 +46,4 @@ COPY app/ ./app/
 HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
     CMD python3 -c "import app.worker" || exit 1
 
-CMD ["arq", "app.worker.WorkerSettings"]
+CMD ["python", "-m", "app.worker"]

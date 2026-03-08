@@ -28,6 +28,8 @@ class FindingStatus(str, Enum):
     VERIFIED = "verified"  # Consensus reached (K-threshold)
     EXPLOITED = "exploited"  # Successfully exploited
     FALSE_POSITIVE = "false_positive"
+    DISMISSED = "dismissed"
+    RETEST_PENDING = "retest_pending"
 
 
 class Finding(Base):
@@ -66,6 +68,7 @@ class Finding(Base):
         SQLEnum(FindingStatus),
         default=FindingStatus.POTENTIAL,
         nullable=False,
+        index=True,
     )
     cvss_score: Mapped[Optional[float]] = mapped_column(nullable=True)
     cve_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)

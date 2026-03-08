@@ -30,47 +30,51 @@ CVE_CACHE_TTL = 86400  # 24 hours
 
 
 # =============================================================================
-# Built-in CVE database (offline fallback)
+# Metasploit module database — now provided by ExploitDatabase service
+# (see app/services/ai/exploit_db.py).
 # =============================================================================
 
-BUILTIN_CVES: list[dict[str, Any]] = [
-    # Apache
-    {"cve": "CVE-2021-41773", "product": "apache", "versions": "2.4.49", "type": "path_traversal", "severity": "critical", "description": "Path traversal in Apache 2.4.49 via %2e encoding"},
-    {"cve": "CVE-2021-42013", "product": "apache", "versions": "2.4.49,2.4.50", "type": "rce", "severity": "critical", "description": "RCE via path traversal in Apache 2.4.49-2.4.50"},
-    {"cve": "CVE-2019-0211", "product": "apache", "versions": "2.4.17-2.4.38", "type": "privilege_escalation", "severity": "high", "description": "Local privilege escalation in Apache 2.4.17-2.4.38"},
-    {"cve": "CVE-2017-9798", "product": "apache", "versions": "2.2.x,2.4.x", "type": "info_leak", "severity": "medium", "description": "Optionsbleed - memory leak via OPTIONS method"},
-    # Nginx
-    {"cve": "CVE-2021-23017", "product": "nginx", "versions": "0.6.18-1.20.0", "type": "dns_resolver", "severity": "high", "description": "DNS resolver vulnerability allowing RCE"},
-    {"cve": "CVE-2019-20372", "product": "nginx", "versions": "<1.17.7", "type": "request_smuggling", "severity": "medium", "description": "HTTP request smuggling via error pages"},
-    # OpenSSH
-    {"cve": "CVE-2024-6387", "product": "openssh", "versions": "8.5p1-9.7p1", "type": "rce", "severity": "critical", "description": "regreSSHion - unauthenticated RCE in OpenSSH signal handler race"},
-    {"cve": "CVE-2023-38408", "product": "openssh", "versions": "<9.3p2", "type": "rce", "severity": "critical", "description": "Remote code execution via ssh-agent forwarding"},
-    {"cve": "CVE-2020-15778", "product": "openssh", "versions": "<8.4", "type": "command_injection", "severity": "medium", "description": "Command injection via scp filename"},
-    # PHP
-    {"cve": "CVE-2024-4577", "product": "php", "versions": "8.1.x,8.2.x,8.3.x", "type": "rce", "severity": "critical", "description": "CGI argument injection RCE on Windows"},
-    {"cve": "CVE-2019-11043", "product": "php", "versions": "7.1.x-7.3.x", "type": "rce", "severity": "critical", "description": "PHP-FPM RCE via malformed fastcgi request"},
-    # MySQL / MariaDB
-    {"cve": "CVE-2012-2122", "product": "mysql", "versions": "5.1.x,5.5.x", "type": "auth_bypass", "severity": "critical", "description": "Authentication bypass via timing attack (1/256 chance)"},
-    # WordPress
-    {"cve": "CVE-2022-21661", "product": "wordpress", "versions": "<5.8.3", "type": "sqli", "severity": "high", "description": "SQL injection in WP_Query"},
-    {"cve": "CVE-2021-29447", "product": "wordpress", "versions": "5.6-5.7", "type": "xxe", "severity": "high", "description": "XXE via media library upload"},
-    # Node.js / Express
-    {"cve": "CVE-2022-24999", "product": "express", "versions": "<4.17.3", "type": "prototype_pollution", "severity": "high", "description": "Prototype pollution via qs library"},
-    {"cve": "CVE-2024-21896", "product": "node.js", "versions": "<18.19.1,<20.11.1", "type": "path_traversal", "severity": "high", "description": "Path traversal via experimental permission model"},
-    # FTP
-    {"cve": "CVE-2015-3306", "product": "proftpd", "versions": "1.3.5", "type": "rce", "severity": "critical", "description": "mod_copy allows unauthenticated file copy → RCE"},
-    {"cve": "CVE-2011-2523", "product": "vsftpd", "versions": "2.3.4", "type": "backdoor", "severity": "critical", "description": "Backdoor in vsftpd 2.3.4 triggered by :) in username"},
-    # SMB
-    {"cve": "CVE-2017-7494", "product": "samba", "versions": "3.5.0-4.6.4", "type": "rce", "severity": "critical", "description": "SambaCry - remote code execution via writable share"},
-    {"cve": "CVE-2017-0144", "product": "smb", "versions": "smbv1", "type": "rce", "severity": "critical", "description": "EternalBlue - MS17-010 SMBv1 remote code execution"},
-    # Redis
-    {"cve": "CVE-2022-0543", "product": "redis", "versions": "<6.2.7,<7.0.0", "type": "rce", "severity": "critical", "description": "Lua sandbox escape → RCE via eval"},
-    # Log4j
-    {"cve": "CVE-2021-44228", "product": "log4j", "versions": "2.0-2.14.1", "type": "rce", "severity": "critical", "description": "Log4Shell - JNDI injection RCE via ${jndi:ldap://}"},
-    # Tomcat
-    {"cve": "CVE-2020-1938", "product": "tomcat", "versions": "<9.0.31,<8.5.51", "type": "file_read", "severity": "critical", "description": "Ghostcat - AJP file read/inclusion"},
-    {"cve": "CVE-2017-12617", "product": "tomcat", "versions": "<9.0.1,<8.5.23", "type": "rce", "severity": "high", "description": "RCE via PUT method when readonly=false"},
-]
+
+# =============================================================================
+# CVE Knowledge Base — loaded from downloaded JSON, not hardcoded
+# =============================================================================
+
+_cve_knowledge_base: list[dict[str, Any]] | None = None
+
+
+def _load_cve_knowledge_base() -> list[dict[str, Any]]:
+    """Load CVE knowledge base from downloaded JSON file.
+
+    Returns empty list if data hasn't been downloaded yet.
+    Use Settings → Data Sources or ``python scripts/update_exploit_db.py``
+    to populate.
+    """
+    global _cve_knowledge_base
+    if _cve_knowledge_base is not None:
+        return _cve_knowledge_base
+
+    from app.core.constants import EXPLOIT_DB_CACHE_DIR
+
+    kb_path = Path(EXPLOIT_DB_CACHE_DIR) / "cve_knowledge_base.json"
+    if not kb_path.exists():
+        _cve_knowledge_base = []
+        return _cve_knowledge_base
+
+    try:
+        _cve_knowledge_base = json.loads(kb_path.read_text())
+        logger.info("Loaded CVE knowledge base: %d entries", len(_cve_knowledge_base))
+    except Exception as exc:
+        logger.warning("Failed to load CVE knowledge base: %s", exc)
+        _cve_knowledge_base = []
+
+    return _cve_knowledge_base
+
+
+def reload_cve_knowledge_base() -> int:
+    """Force reload of the CVE knowledge base from disk. Returns entry count."""
+    global _cve_knowledge_base
+    _cve_knowledge_base = None
+    return len(_load_cve_knowledge_base())
 
 
 # =============================================================================
@@ -110,7 +114,7 @@ async def fetch_cves_from_nvd(
             "resultsPerPage": min(max_results, 50),
         }
 
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0)) as client:
             _last_nvd_request = time.time()
             response = await client.get(NVD_API_BASE, params=params)
 
@@ -255,6 +259,44 @@ def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
 
 
 # =============================================================================
+# Exploit enrichment helpers
+# =============================================================================
+
+
+def get_metasploit_modules(cve_id: str) -> list[dict]:
+    """Get exploit modules for a CVE ID from all sources."""
+    from app.services.ai.exploit_db import get_exploit_db
+
+    db = get_exploit_db()
+    return db.lookup(cve_id)
+
+
+def enrich_cve_with_exploits(cve: dict) -> dict:
+    """Enrich a CVE result with exploit availability from all sources."""
+    cve_id = cve.get("cve", "")
+    modules = get_metasploit_modules(cve_id)
+
+    from app.services.ai.exploit_db import get_exploit_db
+
+    db = get_exploit_db()
+
+    cve["metasploit_modules"] = [m for m in modules if m.get("source") == "metasploit"]
+    cve["exploitdb_refs"] = [m for m in modules if m.get("source") == "exploitdb"]
+    cve["exploit_available"] = len(modules) > 0
+    cve["exploit_count"] = len(modules)
+    cve["kev_exploited"] = db.is_kev(cve_id)
+    return cve
+
+
+async def search_exploitdb(query: str) -> list[dict]:
+    """Search ExploitDB from local index."""
+    from app.services.ai.exploit_db import get_exploit_db
+
+    db = get_exploit_db()
+    return db.search_exploitdb(query)
+
+
+# =============================================================================
 # Unified Lookup (builtin + live API)
 # =============================================================================
 
@@ -281,7 +323,7 @@ def lookup_cves(
     version_major = version_lower.split(".")[0] if version_lower and "." in version_lower else version_lower
 
     matches = []
-    for cve in BUILTIN_CVES:
+    for cve in _load_cve_knowledge_base():
         # Performance Optimization: Avoid repeated .lower() calls on builtin dict elements
         # which are already lowercased and static. Also avoid dict expansion overhead ({**cve}).
         if search_term in cve["product"]:
@@ -306,7 +348,7 @@ def lookup_cves(
         )
     )
 
-    return matches
+    return [enrich_cve_with_exploits(m) for m in matches]
 
 
 async def lookup_cves_live(
@@ -362,7 +404,7 @@ async def lookup_cves_live(
         )
     )
 
-    return builtin
+    return [enrich_cve_with_exploits(c) for c in builtin]
 
 
 def get_cve_context_for_services(services: list[dict[str, Any]]) -> str:

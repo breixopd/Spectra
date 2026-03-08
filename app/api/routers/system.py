@@ -5,17 +5,16 @@ Provides endpoints for:
 - Overall system status and health
 - Clearing tool statistics
 - Clearing missions
-- Clearing Redis cache
+- Clearing cache
 """
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from redis.asyncio import Redis
 from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +22,7 @@ from app.api.dependencies import (
     get_current_active_user,
     get_current_superuser,
 )
+from app.core.cache import CacheService, get_cache
 from app.core.database import get_async_session
 from app.models.mission import Mission
 from app.models.user import User
@@ -30,21 +30,17 @@ from app.services.tools.models import ToolStatus
 from app.services.tools.registry import ToolRegistry, get_registry
 
 
-async def get_redis_client(request: Request) -> Redis:
-    """Dependency to get the Redis client from app state."""
-    return request.app.state.redis
-
 logger = logging.getLogger("spectra.api.system")
 
 router = APIRouter(prefix="/system", tags=["System"])
 
 
-# --- Redis Key Constants ---
+# --- Cache Key Constants ---
 class SystemKeys:
-    """Redis key constants for system state."""
+    """Cache key constants for system state."""
 
     STATUS = "spectra:system:status"
-    OPERATIONS = "spectra:system:operations"
+    OPERATIONS_PREFIX = "spectra:system:operations:"
     TOOL_STATS = "spectra:tool:*"
     TOOL_STATUS = "spectra:tools:status:*"
     EMBEDDINGS_STATUS = "spectra:embeddings:status"
@@ -95,7 +91,7 @@ class SystemStatusResponse(BaseModel):
 
     # Component statuses
     database: ComponentStatus
-    redis: ComponentStatus
+    cache: ComponentStatus
 
     # Tool status
     tools_installing: bool = False
@@ -108,6 +104,12 @@ class SystemStatusResponse(BaseModel):
     # Setup progress info
     setup_complete: bool = True
     setup_message: str | None = None
+
+    # RAG status
+    rag_status: str = "unknown"
+
+    # Tool cache stats
+    tool_cache_stats: dict[str, int] | None = None
 
 
 class ClearResponse(BaseModel):
@@ -139,27 +141,43 @@ def get_tool_registry() -> ToolRegistry:
     return get_registry()
 
 
-async def get_system_operations(redis: Redis) -> list[OngoingOperation]:
+def _get_cache() -> CacheService | None:
+    """Get the cache service instance."""
+    return get_cache()
+
+
+def _get_tool_cache_stats() -> dict[str, int]:
+    """Get tool result cache statistics."""
+    try:
+        from app.core.optimizations import tool_cache
+        return tool_cache.stats
+    except Exception:
+        return {"size": 0, "hits": 0, "misses": 0, "hit_rate_pct": 0}
+
+
+async def get_system_operations(cache: CacheService | None) -> list[OngoingOperation]:
     """
-    Retrieve current ongoing operations from Redis.
+    Retrieve current ongoing operations from cache.
 
     Args:
-        redis: Redis client instance.
+        cache: CacheService instance.
 
     Returns:
         List of ongoing operations.
     """
-    operations = []
+    operations: list[OngoingOperation] = []
+
+    if not cache:
+        return operations
 
     try:
-        # Operations are stored as a Redis HASH (key=op_id, value=JSON)
-        ops_data = await redis.hgetall(SystemKeys.OPERATIONS)
-        for op_id, op_json in ops_data.items():
+        # Operations are stored as individual cache keys
+        ops_data = await cache.get_by_pattern(f"{SystemKeys.OPERATIONS_PREFIX}*")
+        for op in ops_data:
             try:
-                op = json.loads(op_json)
                 operations.append(
                     OngoingOperation(
-                        id=op.get("id", op_id.decode() if isinstance(op_id, bytes) else str(op_id)),
+                        id=op.get("id", "unknown"),
                         type=op.get("type", "unknown"),
                         description=op.get("description", "Unknown operation"),
                         started_at=op.get("started_at"),
@@ -167,96 +185,125 @@ async def get_system_operations(redis: Redis) -> list[OngoingOperation]:
                         details=op.get("details"),
                     )
                 )
-            except (json.JSONDecodeError, TypeError):
+            except (TypeError, KeyError):
                 continue
 
         # Check for tool installation progress
-        install_progress = await redis.get(SystemKeys.INSTALL_PROGRESS)
+        install_progress = await cache.get(SystemKeys.INSTALL_PROGRESS)
         if install_progress:
-            try:
-                progress = json.loads(install_progress)
-                if progress.get("active"):
-                    operations.append(
-                        OngoingOperation(
-                            id="tool_installation",
-                            type="installing_tools",
-                            description=f"Installing tools: {progress.get('current', 'unknown')}",
-                            started_at=progress.get("started_at"),
-                            progress=progress.get("progress", 0),
-                            details={
-                                "current_tool": progress.get("current"),
-                                "total": progress.get("total", 0),
-                                "completed": progress.get("completed", 0),
-                            },
-                        )
+            if isinstance(install_progress, dict) and install_progress.get("active"):
+                operations.append(
+                    OngoingOperation(
+                        id="tool_installation",
+                        type="installing_tools",
+                        description=f"Installing tools: {install_progress.get('current', 'unknown')}",
+                        started_at=install_progress.get("started_at"),
+                        progress=install_progress.get("progress", 0),
+                        details={
+                            "current_tool": install_progress.get("current"),
+                            "total": install_progress.get("total", 0),
+                            "completed": install_progress.get("completed", 0),
+                        },
                     )
-            except (json.JSONDecodeError, TypeError):
-                pass
+                )
 
         # Check for embeddings loading
-        embeddings_status = await redis.get(SystemKeys.EMBEDDINGS_STATUS)
+        embeddings_status = await cache.get(SystemKeys.EMBEDDINGS_STATUS)
         if embeddings_status:
-            try:
-                emb_data = json.loads(embeddings_status)
-                if emb_data.get("loading"):
-                    operations.append(
-                        OngoingOperation(
-                            id="embeddings_loading",
-                            type="loading_embeddings",
-                            description="Loading knowledge base embeddings",
-                            started_at=emb_data.get("started_at"),
-                            progress=emb_data.get("progress"),
-                            details=emb_data.get("details"),
-                        )
+            if isinstance(embeddings_status, dict) and embeddings_status.get("loading"):
+                operations.append(
+                    OngoingOperation(
+                        id="embeddings_loading",
+                        type="loading_embeddings",
+                        description="Loading knowledge base embeddings",
+                        started_at=embeddings_status.get("started_at"),
+                        progress=embeddings_status.get("progress"),
+                        details=embeddings_status.get("details"),
                     )
-            except (json.JSONDecodeError, TypeError):
-                pass
+                )
 
     except Exception as e:
-        logger.warning("Failed to retrieve operations from Redis: %s", e)
+        logger.warning("Failed to retrieve operations from cache: %s", e)
 
     return operations
 
 
-async def check_tools_installing(redis: Redis) -> bool:
+async def check_tools_installing(cache: CacheService | None) -> bool:
     """Check if tools are currently being installed."""
+    if not cache:
+        return False
     try:
-        progress = await redis.get(SystemKeys.INSTALL_PROGRESS)
-        if progress:
-            data = json.loads(progress)
-            return data.get("active", False)
-    except Exception:
-        pass
+        progress = await cache.get(SystemKeys.INSTALL_PROGRESS)
+        if isinstance(progress, dict):
+            return progress.get("active", False)
+    except Exception as e:
+        logger.debug("System status check failed: %s", e)
     return False
 
 
-async def check_embeddings_loading(redis: Redis) -> bool:
+async def check_embeddings_loading(cache: CacheService | None) -> bool:
     """Check if embeddings are currently loading."""
+    if not cache:
+        return False
     try:
-        status = await redis.get(SystemKeys.EMBEDDINGS_STATUS)
-        if status:
-            data = json.loads(status)
-            return data.get("loading", False)
-    except Exception:
-        pass
+        emb_status = await cache.get(SystemKeys.EMBEDDINGS_STATUS)
+        if isinstance(emb_status, dict):
+            return emb_status.get("loading", False)
+    except Exception as e:
+        logger.debug("System status check failed: %s", e)
     return False
 
 
 # --- API Endpoints ---
 
 
+@router.get("/safety-stats")
+async def get_safety_stats(
+    _current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Get safety supervisor statistics from EventBus history."""
+    try:
+        from app.core.events import event_bus
+
+        allowed = 0
+        blocked = 0
+        flagged = 0
+        for event in getattr(event_bus, "history", []):
+            etype = getattr(event, "type", "") or (
+                event.get("type", "") if isinstance(event, dict) else ""
+            )
+            if etype == "safety_check":
+                data = (
+                    getattr(event, "data", {})
+                    if hasattr(event, "data")
+                    else (event.get("data", {}) if isinstance(event, dict) else {})
+                )
+                if data.get("allowed"):
+                    allowed += 1
+                else:
+                    blocked += 1
+            elif etype == "tool_result":
+                allowed += 1
+            elif etype == "safety_flag":
+                flagged += 1
+
+        return {"allowed": allowed, "blocked": blocked, "flagged": flagged}
+    except Exception:
+        return {"allowed": 0, "blocked": 0, "flagged": 0}
+
+
 @router.get("/status", response_model=SystemStatusResponse)
 async def get_system_status(
     db: AsyncSession = Depends(get_async_session),
     registry: ToolRegistry = Depends(get_tool_registry),
-    redis: Redis = Depends(get_redis_client),
     _current_user: User = Depends(get_current_active_user),
 ) -> SystemStatusResponse:
     """
     Get comprehensive system status.
 
     Returns overall system health including:
-    - Database and Redis connectivity
+    - Database connectivity
+    - Cache health
     - Tool installation status
     - Embeddings loading status
     - Number of tools by status
@@ -264,14 +311,18 @@ async def get_system_status(
 
     Use this endpoint to show appropriate UI messages during setup/initialization.
     """
-    timestamp = datetime.utcnow().isoformat() + "Z"
+    timestamp = datetime.now(timezone.utc).isoformat()
+    cache = _get_cache()
 
     # Initialize component statuses
     db_status = ComponentStatus(status="unknown")
-    redis_status = ComponentStatus(status="healthy", message="Connected (Postgres Mock)")
+    cache_status = ComponentStatus(
+        status="healthy" if cache else "unavailable",
+        message="PostgreSQL-backed cache" if cache else "Cache not initialized",
+    )
 
     overall_status = "ready"
-    status_messages = []
+    status_messages: list[str] = []
 
     # Check database
     try:
@@ -286,8 +337,7 @@ async def get_system_status(
     # Get tool statistics
     tool_stats = ToolStats()
     try:
-        # Sync from Redis first
-        await registry.sync_status_from_redis()
+        await registry.sync_status_from_cache()
         tools = registry.list_tools()
 
         tool_stats.total = len(tools)
@@ -305,10 +355,10 @@ async def get_system_status(
     except Exception as e:
         logger.warning("Failed to get tool stats: %s", e)
 
-    # Check ongoing operations via Redis
-    tools_installing = await check_tools_installing(redis)
-    embeddings_loading = await check_embeddings_loading(redis)
-    operations = await get_system_operations(redis)
+    # Check ongoing operations via cache
+    tools_installing = await check_tools_installing(cache)
+    embeddings_loading = await check_embeddings_loading(cache)
+    operations = await get_system_operations(cache)
 
     # Determine setup status
     setup_complete = True
@@ -326,6 +376,20 @@ async def get_system_status(
         if overall_status != "degraded":
             overall_status = "initializing"
         status_messages.append("Embeddings loading")
+
+    # Check RAG/embedding service health
+    rag_status = "unknown"
+    try:
+        from app.services.ai.rag import RAGService
+        rag = RAGService()
+        if rag.is_functional:
+            rag_status = "healthy"
+        else:
+            rag_status = "fallback"
+            if overall_status == "ready":
+                status_messages.append("RAG using fallback embeddings")
+    except Exception:
+        rag_status = "unavailable"
 
     if tool_stats.installing > 0:
         setup_complete = False
@@ -348,27 +412,35 @@ async def get_system_status(
         message=message,
         timestamp=timestamp,
         database=db_status,
-        redis=redis_status,
+        cache=cache_status,
         tools_installing=tools_installing,
         embeddings_loading=embeddings_loading,
         tool_stats=tool_stats,
         operations=operations,
         setup_complete=setup_complete,
         setup_message=setup_message,
+        rag_status=rag_status,
+        tool_cache_stats=_get_tool_cache_stats(),
     )
 
 
 @router.post("/clear/tools", response_model=ClearResponse)
 async def clear_tool_statistics(
-    redis: Redis = Depends(get_redis_client),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """
-    Clear tool statistics and status from Redis.
+    Clear tool statistics and status from cache.
 
     This clears cached tool status information, forcing a refresh on next query.
     Requires superuser privileges.
     """
+    cache = _get_cache()
+    if not cache:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Cache service not available",
+        )
+
     cleared_count = 0
 
     try:
@@ -376,14 +448,13 @@ async def clear_tool_statistics(
             "spectra:tool:*",
             "spectra:tools:status:*",
             "spectra:tools:install:*",
+            "spectra:tool_status:*",
         ]
 
         for pattern in patterns:
-            async for key in redis.scan_iter(match=pattern):
-                await redis.delete(key)
-                cleared_count += 1
+            cleared_count += await cache.delete_pattern(pattern)
 
-        logger.info("Cleared %d tool statistic keys from Cache", cleared_count)
+        logger.info("Cleared %d tool statistic keys from cache", cleared_count)
 
         return ClearResponse(
             success=True,
@@ -403,7 +474,6 @@ async def clear_tool_statistics(
 async def clear_missions(
     request: ClearMissionsRequest,
     db: AsyncSession = Depends(get_async_session),
-    redis: Redis = Depends(get_redis_client),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """
@@ -434,16 +504,17 @@ async def clear_missions(
 
         deleted_count: int = result.rowcount or 0  # type: ignore[assignment]
 
-        redis_cleared = 0
-        async for key in redis.scan_iter(match="cache:mission:*"):
-            await redis.delete(key)
-            redis_cleared += 1
+        # Clear mission cache entries
+        cache_cleared = 0
+        cache = _get_cache()
+        if cache:
+            cache_cleared = await cache.delete_pattern("cache:mission:*")
 
         logger.info(
             "Cleared %d missions%s (and %d cache entries)",
             deleted_count,
             filter_msg,
-            redis_cleared,
+            cache_cleared,
         )
 
         return ClearResponse(
@@ -465,13 +536,12 @@ async def clear_missions(
 async def clear_cache(
     pattern: str = Query(
         default="cache:*",
-        description="Redis key pattern to clear (default: cache:*)",
+        description="Cache key pattern to clear (default: cache:*)",
     ),
-    redis: Redis = Depends(get_redis_client),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """
-    Clear Redis cache.
+    Clear cache entries.
 
     By default clears all cache entries (pattern: cache:*).
     Can specify a custom pattern to clear specific cache types:
@@ -491,11 +561,15 @@ async def clear_cache(
             detail="Invalid cache pattern. Must start with 'cache:' or 'spectra:cache:'",
         )
 
+    cache = _get_cache()
+    if not cache:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Cache service not available",
+        )
+
     try:
-        cleared_count = 0
-        async for key in redis.scan_iter(match=pattern):
-            await redis.delete(key)
-            cleared_count += 1
+        cleared_count = await cache.delete_pattern(pattern)
 
         logger.info(
             "Cleared %d cache keys matching pattern '%s'", cleared_count, pattern
@@ -537,25 +611,17 @@ async def add_operation(
         "id": operation_id,
         "type": operation_type,
         "description": description,
-        "started_at": datetime.utcnow().isoformat() + "Z",
+        "started_at": datetime.now(timezone.utc).isoformat(),
         "progress": 0,
     }
 
-    # In postgres we map this to SystemStatus table manually here
-    from app.models.infrastructure import SystemStatus
-    from app.core.database import async_session_maker
-    from sqlalchemy import select
-
-    async with async_session_maker() as session:
-        result = await session.execute(select(SystemStatus).where(SystemStatus.key == SystemKeys.OPERATIONS))
-        status_record = result.scalar_one_or_none()
-        ops = status_record.value if status_record and status_record.value else []
-        ops.append(operation)
-        if not status_record:
-            session.add(SystemStatus(key=SystemKeys.OPERATIONS, value=ops))
-        else:
-            status_record.value = ops
-        await session.commit()
+    cache = _get_cache()
+    if cache:
+        await cache.set(
+            f"{SystemKeys.OPERATIONS_PREFIX}{operation_id}",
+            operation,
+            ttl=3600,
+        )
 
     return {"success": True, "operation": operation}
 
@@ -569,24 +635,12 @@ async def remove_operation(
     Remove a completed operation from the tracking list.
     """
     try:
-        from app.models.infrastructure import SystemStatus
-        from app.core.database import async_session_maker
-        from sqlalchemy import select, delete
-
-        async with async_session_maker() as session:
-            result = await session.execute(select(SystemStatus).where(SystemStatus.key == SystemKeys.OPERATIONS))
-            status_record = result.scalar_one_or_none()
-            ops = status_record.value if status_record and status_record.value else []
-
-            remaining = [op for op in ops if op.get("id") != operation_id]
-            removed = len(remaining) < len(ops)
-
-            if removed:
-                if not remaining:
-                    await session.execute(delete(SystemStatus).where(SystemStatus.key == SystemKeys.OPERATIONS))
-                else:
-                    status_record.value = remaining
-                await session.commit()
+        cache = _get_cache()
+        removed = False
+        if cache:
+            removed = await cache.delete(
+                f"{SystemKeys.OPERATIONS_PREFIX}{operation_id}"
+            )
 
         return {
             "success": removed,
@@ -614,36 +668,25 @@ async def update_operation_progress(
     Update progress for an ongoing operation.
     """
     try:
-        from app.models.infrastructure import SystemStatus
-        from app.core.database import async_session_maker
-        from sqlalchemy import select
+        cache = _get_cache()
+        if not cache:
+            return {"success": False, "message": "Cache not available"}
 
-        found = False
-        async with async_session_maker() as session:
-            result = await session.execute(select(SystemStatus).where(SystemStatus.key == SystemKeys.OPERATIONS))
-            status_record = result.scalar_one_or_none()
-            ops = status_record.value if status_record and status_record.value else []
+        key = f"{SystemKeys.OPERATIONS_PREFIX}{operation_id}"
+        op = await cache.get(key)
+        if not op or not isinstance(op, dict):
+            return {"success": False, "message": "Operation not found"}
 
-            for op in ops:
-                if op.get("id") == operation_id:
-                    op["progress"] = progress
-                    if details:
-                        try:
-                            op["details"] = json.loads(details)
-                        except json.JSONDecodeError:
-                            op["details"] = {"message": details}
-                    found = True
-                    break
+        op["progress"] = progress
+        if details:
+            try:
+                op["details"] = json.loads(details)
+            except json.JSONDecodeError:
+                op["details"] = {"message": details}
 
-            if found:
-                # Assign back to trigger JSONB update
-                status_record.value = list(ops)
-                await session.commit()
+        await cache.set(key, op, ttl=3600)
 
-        return {
-            "success": found,
-            "message": "Progress updated" if found else "Operation not found",
-        }
+        return {"success": True, "message": "Progress updated"}
 
     except Exception as e:
         logger.error("Failed to update operation progress: %s", e)
@@ -651,3 +694,74 @@ async def update_operation_progress(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update operation progress due to an internal error",
         )
+
+
+# --- Data Sources ---
+
+
+@router.get("/data-sources")
+async def get_data_source_status(
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Get status of all downloadable data sources (exploit DB, CVE KB, etc.)."""
+    from app.services.ai.exploit_db import get_exploit_db
+
+    db = get_exploit_db()
+    return db.data_status()
+
+
+@router.post("/data-sources/download")
+async def download_data_sources(
+    _current_user: User = Depends(get_current_superuser),
+) -> dict[str, Any]:
+    """Download/update all exploit intelligence data sources.
+
+    Downloads MSF modules, CISA KEV, and writes the CVE knowledge base.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    from app.core.constants import EXPLOIT_DB_CACHE_DIR
+    from app.services.ai.exploit_db import get_exploit_db
+
+    db = get_exploit_db()
+
+    # Write CVE knowledge base from the update script's data
+    try:
+        from scripts.update_exploit_db import _CVE_KNOWLEDGE_BASE
+
+        cache_dir = _Path(EXPLOIT_DB_CACHE_DIR)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        kb_path = cache_dir / "cve_knowledge_base.json"
+        kb_path.write_text(_json.dumps(_CVE_KNOWLEDGE_BASE, indent=2))
+        kb_count = len(_CVE_KNOWLEDGE_BASE)
+    except Exception as exc:
+        logger.warning("Failed to write CVE knowledge base: %s", exc)
+        kb_count = 0
+
+    # Reload CVE knowledge base in memory
+    from app.services.ai.cve_intel import reload_cve_knowledge_base
+
+    reload_cve_knowledge_base()
+
+    # Download exploit sources
+    stats = await db.update()
+    stats["cve_kb_entries"] = kb_count
+
+    return {"success": True, "message": "Data sources updated", "stats": stats}
+
+
+@router.get("/audit-log")
+async def get_audit_log(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=200),
+    event_type: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_superuser),
+):
+    """Get audit log entries. Superuser only."""
+    from app.repositories.audit_log import AuditLogRepository
+
+    repo = AuditLogRepository(db)
+    entries = await repo.list_events(skip=skip, limit=limit, event_type=event_type)
+    return [e.to_dict() for e in entries]

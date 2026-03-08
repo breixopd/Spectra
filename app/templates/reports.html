@@ -4,70 +4,242 @@
 <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3 animate-fade-in-up">
     <h1 class="text-2xl font-semibold text-white tracking-tight">Assessment Reports</h1>
     <div class="flex space-x-2">
-        <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors">
-            <i class="fa-solid fa-filter mr-2 text-slate-400"></i>
-            Filter
-        </button>
-        <button class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+        <button onclick="openNewReportModal()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
             <i class="fa-solid fa-plus mr-2"></i>
             New Report
         </button>
     </div>
 </div>
 
+<!-- Filters -->
+<div class="glass-panel rounded-xl p-4 mb-4 animate-fade-in-up stagger-1">
+    <div class="flex flex-wrap items-center gap-3">
+        <select id="filter-status" onchange="applyFilters()" class="px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all">
+            <option value="">All Statuses</option>
+            <option value="completed">Completed</option>
+            <option value="running">Running</option>
+            <option value="failed">Failed</option>
+            <option value="paused">Paused</option>
+        </select>
+        <select id="filter-severity" onchange="applyFilters()" class="px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all">
+            <option value="">All Severities</option>
+            <option value="critical">Has Critical</option>
+            <option value="high">Has High</option>
+            <option value="medium">Has Medium</option>
+            <option value="low">Has Low</option>
+        </select>
+        <div class="flex-1 min-w-[200px]">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-search text-slate-500"></i>
+                </div>
+                <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Search missions..."
+                    class="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-all">
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Empty State -->
-<div id="reports-empty" class="empty-state glass-panel rounded-xl animate-fade-in-up stagger-1">
+<div id="reports-empty" class="empty-state glass-panel rounded-xl animate-fade-in-up stagger-1 hidden">
     <i class="fa-solid fa-file-lines text-amber-400/40"></i>
     <h3>No reports generated</h3>
     <p>Reports will appear here after completing a security assessment mission.</p>
 </div>
 
-<!-- Reports List -->
-<div class="glass-panel rounded-xl overflow-hidden animate-fade-in-up stagger-1 hidden sm:block">
-    <div class="overflow-x-auto">
-    <table class="w-full text-left text-sm">
-        <thead class="bg-white/5 text-slate-400 font-medium border-b border-white/5">
-            <tr>
-                <th class="px-6 py-4">Report Name</th>
-                <th class="px-6 py-4">Target</th>
-                <th class="px-6 py-4">Date</th>
-                <th class="px-6 py-4">Findings</th>
-                <th class="px-6 py-4 text-right">Actions</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-white/5 text-slate-300" id="reports-list">
-            <!-- Report Row Template (Hidden) -->
-            <template id="report-row-template">
-                <tr class="hover:bg-white/5 transition-colors group">
-                    <td class="px-6 py-4 font-medium text-white report-name">Executive Summary</td>
-                    <td class="px-6 py-4 font-mono text-xs text-slate-400 report-target">10.10.10.5</td>
-                    <td class="px-6 py-4 text-slate-500 report-date">Oct 24, 2023</td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center space-x-2">
-                            <span class="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 text-[10px] font-mono border border-rose-500/20 report-critical">2</span>
-                            <span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px] font-mono border border-amber-500/20 report-high">5</span>
-                            <span class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-mono border border-blue-500/20 report-medium">8</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        <button class="text-slate-500 hover:text-violet-400 transition-colors mr-3" title="View HTML" aria-label="View HTML Report">
-                            <i class="fa-solid fa-eye"></i>
-                        </button>
-                        <button class="text-slate-500 hover:text-white transition-colors mr-3" title="Download PDF" aria-label="Download PDF Report">
-                            <i class="fa-solid fa-file-pdf"></i>
-                        </button>
-                        <button class="text-slate-500 hover:text-white transition-colors" title="Download JSON" aria-label="Download JSON Report">
-                            <i class="fa-solid fa-file-code"></i>
-                        </button>
-                    </td>
-                </tr>
-            </template>
-        </tbody>
-    </table>
+<!-- Reports Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-fade-in-up stagger-1" id="reports-grid"></div>
+
+<!-- Pagination -->
+<div class="flex items-center justify-center gap-2 mt-6" id="pagination-controls"></div>
+
+<!-- New Report Modal -->
+<div id="new-report-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeNewReportModal()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-xl p-6 border border-white/10 shadow-2xl">
+        <h2 class="text-lg font-semibold text-white mb-4">Generate New Report</h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Mission</label>
+                <select id="report-mission-select" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                    <option value="">Select a mission...</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Template</label>
+                <select id="report-template-select" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                    <option value="executive">Executive Summary</option>
+                    <option value="technical">Technical Report</option>
+                    <option value="compliance">Compliance Report</option>
+                </select>
+            </div>
+        </div>
+        <div class="flex justify-end space-x-3 mt-6">
+            <button type="button" onclick="closeNewReportModal()" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
+            <button onclick="generateReport()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Generate
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- View Report Modal -->
+<div id="view-report-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeViewReportModal()"></div>
+    <div class="absolute inset-4 md:inset-10 glass-panel rounded-xl flex flex-col overflow-hidden border border-white/10 shadow-2xl">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
+            <h2 class="text-lg font-semibold text-white" id="view-report-title">Report</h2>
+            <div class="flex items-center gap-2">
+                <button onclick="printReport()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs transition-colors">
+                    <i class="fa-solid fa-print mr-1"></i> Print / PDF
+                </button>
+                <button onclick="closeViewReportModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6" id="view-report-content"></div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/reports.js"></script>
+<script nonce="{{ request.state.csp_nonce }}">
+let allReports = [];
+let currentPage = 1;
+const pageSize = 12;
+
+document.addEventListener('DOMContentLoaded', () => { loadReports(); });
+
+async function loadReports() {
+    try {
+        const res = await fetch('/api/missions');
+        if (!res.ok) throw new Error('Failed');
+        const missions = await res.json();
+
+        allReports = await Promise.all(missions.map(async (m) => {
+            const counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+            try {
+                const fRes = await fetch(`/api/missions/${m.id}/findings`);
+                if (fRes.ok) {
+                    const findings = await fRes.json();
+                    findings.forEach(f => {
+                        const s = (f.severity || 'info').toLowerCase();
+                        if (s in counts) counts[s]++;
+                    });
+                }
+            } catch {}
+            return { ...m, counts, totalFindings: Object.values(counts).reduce((a, b) => a + b, 0) };
+        }));
+
+        renderReports();
+    } catch (e) {
+        console.error('Error loading reports:', e);
+    }
+}
+
+function applyFilters() { currentPage = 1; renderReports(); }
+
+function getFilteredReports() {
+    const statusFilter = document.getElementById('filter-status').value;
+    const severityFilter = document.getElementById('filter-severity').value;
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    return allReports.filter(r => {
+        if (statusFilter && r.status !== statusFilter) return false;
+        if (severityFilter && (r.counts[severityFilter] || 0) === 0) return false;
+        if (search) {
+            const haystack = `${r.target || ''} ${r.directive || ''} ${r.id || ''}`.toLowerCase();
+            if (!haystack.includes(search)) return false;
+        }
+        return true;
+    });
+}
+
+function renderReports() {
+    const filtered = getFilteredReports();
+    const grid = document.getElementById('reports-grid');
+    const empty = document.getElementById('reports-empty');
+    if (filtered.length === 0) { grid.innerHTML = ''; empty.classList.remove('hidden'); document.getElementById('pagination-controls').innerHTML = ''; return; }
+    empty.classList.add('hidden');
+    const totalPages = Math.ceil(filtered.length / pageSize);
+    const start = (currentPage - 1) * pageSize;
+    const page = filtered.slice(start, start + pageSize);
+
+    grid.innerHTML = page.map(r => {
+        const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
+        const sc = { completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', running: 'bg-blue-500/10 text-blue-400 border-blue-500/20', failed: 'bg-rose-500/10 text-rose-400 border-rose-500/20', paused: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }[r.status] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        const si = { completed: 'fa-check', running: 'fa-spinner fa-spin', failed: 'fa-xmark', paused: 'fa-pause' }[r.status] || 'fa-question';
+        return `<div class="glass-panel rounded-xl p-5 flex flex-col gap-3 group hover:border-violet-500/20 transition-all">
+            <div class="flex items-start justify-between"><div class="flex-1 min-w-0"><h3 class="text-white font-medium truncate">${escapeHtml(r.target || 'Unknown Target')}</h3><p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(r.directive || 'Security Assessment')}</p></div><span class="px-2 py-0.5 rounded text-[10px] font-mono border ${sc} ml-2 shrink-0"><i class="fa-solid ${si} mr-1"></i>${r.status || 'unknown'}</span></div>
+            <div class="flex items-center gap-4 text-xs text-slate-500"><span><i class="fa-solid fa-calendar mr-1"></i>${date}</span><span><i class="fa-solid fa-bug mr-1"></i>${r.totalFindings} findings</span></div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+                ${r.counts.critical > 0 ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 text-[10px] font-mono border border-rose-500/20">${r.counts.critical} Crit</span>` : ''}
+                ${r.counts.high > 0 ? `<span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-[10px] font-mono border border-amber-500/20">${r.counts.high} High</span>` : ''}
+                ${r.counts.medium > 0 ? `<span class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] font-mono border border-blue-500/20">${r.counts.medium} Med</span>` : ''}
+                ${r.counts.low > 0 ? `<span class="px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-400 text-[10px] font-mono border border-slate-500/20">${r.counts.low} Low</span>` : ''}
+                ${r.totalFindings === 0 ? '<span class="text-[10px] text-slate-600">No findings</span>' : ''}
+            </div>
+            <div class="flex items-center gap-2 mt-auto pt-2 border-t border-white/5">
+                <button onclick="viewReport('${r.id}')" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors text-center"><i class="fa-solid fa-eye mr-1 text-violet-400"></i>View</button>
+                <button onclick="downloadReportHTML('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Download HTML"><i class="fa-solid fa-file-code text-blue-400"></i></button>
+                <button onclick="downloadReportPDF('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Print / PDF"><i class="fa-solid fa-file-pdf text-rose-400"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+
+    const pagEl = document.getElementById('pagination-controls');
+    if (totalPages <= 1) { pagEl.innerHTML = ''; return; }
+    let h = `<button onclick="goToPage(${currentPage-1})" class="px-3 py-1.5 rounded text-xs ${currentPage===1?'text-slate-600 cursor-not-allowed':'text-slate-300 bg-slate-800 hover:bg-slate-700'}" ${currentPage===1?'disabled':''}>&laquo;</button>`;
+    for (let i = 1; i <= totalPages; i++) h += `<button onclick="goToPage(${i})" class="px-3 py-1.5 rounded text-xs ${i===currentPage?'bg-violet-600 text-white':'text-slate-300 bg-slate-800 hover:bg-slate-700'}">${i}</button>`;
+    h += `<button onclick="goToPage(${currentPage+1})" class="px-3 py-1.5 rounded text-xs ${currentPage===totalPages?'text-slate-600 cursor-not-allowed':'text-slate-300 bg-slate-800 hover:bg-slate-700'}" ${currentPage===totalPages?'disabled':''}>&raquo;</button>`;
+    pagEl.innerHTML = h;
+}
+
+function goToPage(p) { const t = Math.ceil(getFilteredReports().length / pageSize); if (p < 1 || p > t) return; currentPage = p; renderReports(); }
+
+async function viewReport(missionId) {
+    const r = allReports.find(m => m.id === missionId);
+    if (!r) return;
+    document.getElementById('view-report-title').textContent = `Report: ${r.target || 'Unknown'}`;
+    let findings = [];
+    try { const res = await fetch(`/api/missions/${missionId}/findings`); if (res.ok) findings = await res.json(); } catch {}
+    const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+    findings.sort((a, b) => (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5));
+    const sevBadge = s => { const c = { critical:'bg-rose-500/20 text-rose-400', high:'bg-amber-500/20 text-amber-400', medium:'bg-blue-500/20 text-blue-400', low:'bg-slate-500/20 text-slate-400', info:'bg-slate-700/30 text-slate-500' }; return `<span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase ${c[s]||c.info}">${s}</span>`; };
+    document.getElementById('view-report-content').innerHTML = `<div class="max-w-4xl mx-auto space-y-6"><div class="border-b border-white/10 pb-4"><h2 class="text-xl font-bold text-white">${escapeHtml(r.target||'Unknown')}</h2><p class="text-sm text-slate-400 mt-1">${escapeHtml(r.directive||'Security Assessment')}</p><p class="text-xs text-slate-500 mt-2">Date: ${r.created_at?new Date(r.created_at).toLocaleString():'N/A'} | Status: ${r.status} | Total: ${findings.length}</p></div><div><h3 class="text-lg font-semibold text-white mb-3">Findings (${findings.length})</h3>${findings.length===0?'<p class="text-slate-500 text-sm">No findings.</p>':''}<div class="space-y-3">${findings.map(f=>`<div class="glass-panel rounded-lg p-4 border-l-2 ${f.severity==='critical'?'border-rose-500':f.severity==='high'?'border-amber-500':f.severity==='medium'?'border-blue-500':'border-slate-600'}"><div class="flex items-center gap-2 mb-2">${sevBadge(f.severity)}<span class="text-white font-medium text-sm">${escapeHtml(f.title||'Untitled')}</span></div><p class="text-xs text-slate-400">${escapeHtml(f.description||'No description')}</p>${f.tool_source?`<p class="text-[10px] text-slate-500 mt-2">Tool: ${escapeHtml(f.tool_source)}</p>`:''}</div>`).join('')}</div></div></div>`;
+    document.getElementById('view-report-modal').classList.remove('hidden');
+}
+
+function closeViewReportModal() { document.getElementById('view-report-modal').classList.add('hidden'); }
+
+function printReport() {
+    const content = document.getElementById('view-report-content').innerHTML;
+    const w = window.open('', '_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>Report</title><style>body{font-family:sans-serif;padding:2rem;color:#1e293b}h2{font-size:1.25rem}h3{font-size:1rem;margin-top:1.5rem}.finding{border:1px solid #e2e8f0;border-radius:0.5rem;padding:1rem;margin:0.5rem 0}</style></head><body>${content}</body></html>`);
+    w.document.close();
+    w.print();
+}
+
+function downloadReportHTML(id) { viewReport(id).then(() => printReport()); }
+function downloadReportPDF(id) { viewReport(id).then(() => printReport()); }
+
+async function openNewReportModal() {
+    const sel = document.getElementById('report-mission-select');
+    sel.innerHTML = '<option value="">Select a mission...</option>';
+    try { const res = await fetch('/api/missions'); if (res.ok) { (await res.json()).forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = `${m.target||'Unknown'} (${m.status})`; sel.appendChild(o); }); } } catch {}
+    document.getElementById('new-report-modal').classList.remove('hidden');
+}
+function closeNewReportModal() { document.getElementById('new-report-modal').classList.add('hidden'); }
+
+async function generateReport() {
+    const mid = document.getElementById('report-mission-select').value;
+    if (!mid) { alert('Select a mission'); return; }
+    const tpl = document.getElementById('report-template-select').value;
+    try { await fetch('/api/reports/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mission_id:mid,template:tpl}) }); } catch {}
+    closeNewReportModal();
+    viewReport(mid);
+}
+
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+</script>
 {% endblock %}

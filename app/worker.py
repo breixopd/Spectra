@@ -1,16 +1,16 @@
 """
-ARQ Worker for Spectra Tools Container.
+PostgreSQL Job Queue Worker for Spectra Tools Container.
 
 This worker runs ONLY inside the tools container and handles:
 - Tool execution (runs commands directly, no docker exec)
 - Tool installation/uninstallation
-- Tool status syncing to Redis
+- Tool status syncing to cache
 - Background plugin installation when new plugins are uploaded
 
 Architecture:
-- App container enqueues jobs to Redis via ARQ
+- App container enqueues jobs to PostgreSQL via PostgresJobQueue
 - This worker picks up jobs and executes them locally
-- Results are returned via ARQ and status is synced to Redis
+- Results are returned via PostgreSQL and status is synced to cache
 """
 
 from __future__ import annotations
@@ -27,16 +27,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from arq import create_pool
-from arq.connections import ArqRedis, RedisSettings
-
 from app.core.config import settings
 from app.core.constants import (
-    ARQ_HEALTH_CHECK_INTERVAL,
-    ARQ_JOB_TIMEOUT,
-    ARQ_KEEP_RESULT,
-    ARQ_MAX_JOBS,
-    ARQ_QUEUE_NAME,
     GO_COMPILE_TIMEOUT,
     MAX_HOSTS_DEFAULT,
 )
@@ -55,7 +47,6 @@ logger = logging.getLogger("spectra.worker")
 
 
 async def execute_tool_job(
-    ctx: dict[str, Any],
     tool_id: str,
     target: str,
     args: dict[str, Any] | None = None,
@@ -66,7 +57,6 @@ async def execute_tool_job(
     Execute a security tool locally in the tools container.
 
     Args:
-        ctx: ARQ context with redis connection.
         tool_id: ID of the tool to run.
         target: Target for the tool.
         args: Additional arguments.
@@ -92,7 +82,7 @@ async def execute_tool_job(
     # Auto-install if not available
     if not tool.is_available:
         logger.info("Tool %s not installed, attempting install...", tool_id)
-        install_result = await install_tool_job(ctx, tool_id)
+        install_result = await install_tool_job(tool_id)
         if not install_result.get("success"):
             return _error_result(
                 tool_id,
@@ -179,10 +169,8 @@ async def execute_tool_job(
         except Exception as e:
             logger.warning("Failed to parse output for %s: %s", tool_id, e)
 
-    # Track job stats in Redis
-    redis: ArqRedis | None = ctx.get("redis")
-    if redis:
-        await _track_tool_stats(redis, tool_id, success, duration)
+    # Track job stats in cache
+    await _track_tool_stats(tool_id, success, duration)
 
     return ToolExecutionResult(
         tool_id=tool_id,
@@ -203,14 +191,12 @@ async def execute_tool_job(
 
 
 async def install_tool_job(
-    ctx: dict[str, Any],
     tool_id: str,
 ) -> dict[str, Any]:
     """
     Install a tool in the tools container.
 
     Args:
-        ctx: ARQ context with redis connection.
         tool_id: ID of the tool to install.
 
     Returns:
@@ -222,23 +208,19 @@ async def install_tool_job(
     installer = ToolInstaller()
     result = await installer.install(tool_id)
 
-    # Sync status to Redis
-    redis: ArqRedis | None = ctx.get("redis")
-    if redis:
-        await _sync_tool_status(redis, tool_id, result)
+    # Sync status to cache
+    await _sync_tool_status(tool_id, result)
 
     return result
 
 
 async def uninstall_tool_job(
-    ctx: dict[str, Any],
     tool_id: str,
 ) -> dict[str, Any]:
     """
     Uninstall a tool from the tools container.
 
     Args:
-        ctx: ARQ context with redis connection.
         tool_id: ID of the tool to uninstall.
 
     Returns:
@@ -250,30 +232,25 @@ async def uninstall_tool_job(
     installer = ToolInstaller()
     result = await installer.uninstall(tool_id)
 
-    # Sync status to Redis
-    redis: ArqRedis | None = ctx.get("redis")
-    if redis:
-        await _sync_tool_status(
-            redis,
-            tool_id,
-            {
-                "success": result.get("success"),
-                "status": "pending" if result.get("success") else "failed",
-            },
-        )
+    # Sync status to cache
+    await _sync_tool_status(
+        tool_id,
+        {
+            "success": result.get("success"),
+            "status": "pending" if result.get("success") else "failed",
+        },
+    )
 
     return result
 
 
 async def install_all_tools_job(
-    ctx: dict[str, Any],
     force: bool = False,
 ) -> dict[str, Any]:
     """
     Install all registered tools that aren't already installed.
 
     Args:
-        ctx: ARQ context.
         force: If True, reinstall even if already installed.
 
     Returns:
@@ -295,7 +272,7 @@ async def install_all_tools_job(
             continue
 
         # Install
-        result = await install_tool_job(ctx, tool_id)
+        result = await install_tool_job(tool_id)
         if result.get("success"):
             results["installed"].append(tool_id)
         else:
@@ -312,7 +289,6 @@ async def install_all_tools_job(
 
 
 async def reload_plugins_job(
-    ctx: dict[str, Any],
     install_new: bool = True,
 ) -> dict[str, Any]:
     """
@@ -321,7 +297,6 @@ async def reload_plugins_job(
     Called when new plugins are uploaded via the web UI.
 
     Args:
-        ctx: ARQ context.
         install_new: If True, automatically install newly discovered plugins.
 
     Returns:
@@ -343,14 +318,14 @@ async def reload_plugins_job(
     added = new_tool_ids - old_tool_ids
 
     # Sync all statuses
-    await sync_all_status_job(ctx)
+    await sync_all_status_job()
 
     # Install new tools if requested
     installed = []
     if install_new and added:
         logger.info("Installing %d new plugins: %s", len(added), list(added))
         for tool_id in added:
-            result = await install_tool_job(ctx, tool_id)
+            result = await install_tool_job(tool_id)
             if result.get("success"):
                 installed.append(tool_id)
 
@@ -367,14 +342,12 @@ async def reload_plugins_job(
 
 
 async def get_tool_status_job(
-    ctx: dict[str, Any],
     tool_id: str,
 ) -> dict[str, Any]:
     """
     Get the current status of a tool.
 
     Args:
-        ctx: ARQ context.
         tool_id: ID of the tool to check.
 
     Returns:
@@ -399,11 +372,9 @@ async def get_tool_status_job(
     }
 
 
-async def sync_all_status_job(
-    ctx: dict[str, Any],
-) -> dict[str, Any]:
+async def sync_all_status_job() -> dict[str, Any]:
     """
-    Sync status of all tools to Redis.
+    Sync status of all tools to cache.
 
     Returns:
         Dict with count of tools synced.
@@ -412,21 +383,18 @@ async def sync_all_status_job(
 
     registry = get_registry()
     tools = registry.list_tools()
-    redis: ArqRedis | None = ctx.get("redis")
 
     synced = 0
     for tool in tools:
         is_installed = _is_tool_installed(tool)
         tool.status = ToolStatus.READY if is_installed else ToolStatus.PENDING
 
-        if redis:
-            await _sync_tool_status(
-                redis,
-                tool.config.id,
-                {
-                    "status": tool.status.value,
-                },
-            )
+        await _sync_tool_status(
+            tool.config.id,
+            {
+                "status": tool.status.value,
+            },
+        )
         synced += 1
 
     return {"synced": synced, "total": len(tools)}
@@ -438,7 +406,6 @@ async def sync_all_status_job(
 
 
 async def run_command_job(
-    ctx: dict[str, Any],
     command: str,
     timeout: int = 300,
     cwd: str | None = None,
@@ -449,7 +416,6 @@ async def run_command_job(
     Used for custom scripts, one-off commands, etc.
 
     Args:
-        ctx: ARQ context.
         command: Shell command to execute.
         timeout: Timeout in seconds.
         cwd: Working directory.
@@ -458,6 +424,19 @@ async def run_command_job(
         Dict with exit code, stdout, stderr.
     """
     logger.info("Running command: %s", command[:100])
+
+    # Safety check: validate command against blocklists before execution
+    from app.services.ai.agents.safety import SafetySupervisorAgent
+
+    allowed, reason = SafetySupervisorAgent.check_blocklist(command)
+    if not allowed:
+        logger.warning("Command blocked by safety check: %s", reason)
+        return {
+            "success": False,
+            "exit_code": -1,
+            "stdout": "",
+            "stderr": f"Blocked by safety check: {reason}",
+        }
 
     wrapped = f"timeout -k 10s {timeout}s {command}"
     returncode, stdout, stderr = await _run_command(wrapped, timeout + 30, cwd)
@@ -471,7 +450,6 @@ async def run_command_job(
 
 
 async def execute_script_job(
-    ctx: dict[str, Any],
     content: str,
     language: str,
     target: str,
@@ -482,7 +460,6 @@ async def execute_script_job(
     Execute a custom script (Python/Go/Bash).
 
     Args:
-        ctx: ARQ context.
         content: Script content.
         language: Language (python, go, bash).
         target: Target IP/Domain (passed as arg).
@@ -537,7 +514,7 @@ async def execute_script_job(
         if args:
             cmd.extend([str(arg) for arg in args])
 
-        logger.info(f"Executing custom script ({language}) against {target}")
+        logger.info("Executing custom script (%s) against %s", language, target)
 
         # Run
         wrapped = ["timeout", "-k", "10s", f"{timeout}s"] + cmd
@@ -553,7 +530,7 @@ async def execute_script_job(
         }
 
     except Exception as e:
-        logger.error(f"Script execution failed: {e}")
+        logger.error("Script execution failed: %s", e)
         return {
             "success": False,
             "exit_code": -1,
@@ -564,8 +541,8 @@ async def execute_script_job(
         # Cleanup
         try:
             shutil.rmtree(work_dir)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Cleanup failed: %s", e)
 
 
 # =============================================================================
@@ -663,35 +640,41 @@ async def _run_command(
 
 
 async def _track_tool_stats(
-    redis: ArqRedis,
     tool_id: str,
     success: bool,
     duration: float,
 ) -> None:
-    """Track tool execution statistics in Redis."""
-    key = f"spectra:tool_stats:{tool_id}"
+    """Track tool execution statistics via cache."""
+    from app.core.cache import CacheService
+
+    cache = CacheService()
+    stats_key = f"spectra:tool_stats:{tool_id}"
 
     try:
-        # Increment counters atomically
+        stats = await cache.get(stats_key) or {
+            "success_count": 0,
+            "fail_count": 0,
+            "total_count": 0,
+            "total_duration": 0.0,
+        }
+        stats["total_count"] += 1
         if success:
-            await redis.hincrby(key, "success_count", 1)  # type: ignore[arg-type]
+            stats["success_count"] += 1
         else:
-            await redis.hincrby(key, "fail_count", 1)  # type: ignore[arg-type]
-
-        await redis.hincrby(key, "total_count", 1)  # type: ignore[arg-type]
-        await redis.hset(key, "last_run", datetime.now().isoformat())  # type: ignore[arg-type]
-        await redis.hset(key, "last_duration", str(duration))  # type: ignore[arg-type]
-        await redis.expire(key, 86400 * 7)  # 7 day TTL  # type: ignore[arg-type]
+            stats["fail_count"] += 1
+        stats["total_duration"] += duration
+        stats["last_run"] = datetime.now().isoformat()
+        stats["last_duration"] = str(duration)
+        await cache.set(stats_key, stats, ttl=604800)  # 7 days
     except Exception as e:
         logger.warning("Failed to track tool stats for %s: %s", tool_id, e)
 
 
 async def _sync_tool_status(
-    redis: Any,
     tool_id: str,
     result: dict[str, Any],
 ) -> None:
-    """Sync tool status to Postgres Cache."""
+    """Sync tool status to PostgreSQL cache."""
     from app.core.cache import CacheService
 
     cache = CacheService()
@@ -706,8 +689,8 @@ async def _sync_tool_status(
             "last_updated": datetime.now().isoformat(),
             "error": error,
         },
+        ttl=3600,  # 1 hour
     )
-    await redis.expire(key, 3600)  # type: ignore[arg-type] # 1 hour TTL
 
 
 # =============================================================================
@@ -715,10 +698,10 @@ async def _sync_tool_status(
 # =============================================================================
 
 
-async def startup(ctx: dict[str, Any]) -> None:
+async def startup() -> None:
     """Worker startup hook."""
     logger.info("=" * 60)
-    logger.info("Spectra ARQ Worker starting in tools container...")
+    logger.info("Spectra PostgreSQL Worker starting in tools container...")
     logger.info("=" * 60)
 
     # Initialize tool registry
@@ -753,7 +736,6 @@ async def _auto_install_pending() -> None:
 
         # Sync initial status
         await _sync_tool_status(
-            None,
             tool.config.id,
             {
                 "status": tool.status.value,
@@ -781,11 +763,10 @@ async def _auto_install_pending() -> None:
                         "[FAIL] Failed to install %s: %s", tool_id, result.get("error")
                     )
 
-                await _sync_tool_status(None, tool_id, result)
+                await _sync_tool_status(tool_id, result)
             except Exception as e:
                 logger.error("Error installing %s: %s", tool_id, e)
                 await _sync_tool_status(
-                    None,
                     tool_id,
                     {
                         "status": "failed",
@@ -794,67 +775,157 @@ async def _auto_install_pending() -> None:
                 )
 
 
-async def shutdown(ctx: dict[str, Any]) -> None:
+async def shutdown() -> None:
     """Worker shutdown hook."""
-    logger.info("Spectra ARQ Worker shutting down...")
+    logger.info("Spectra PostgreSQL Worker shutting down...")
 
 
 # =============================================================================
-# Worker Configuration
+# VPN Jobs
 # =============================================================================
 
 
-class WorkerSettings:
-    """ARQ worker configuration."""
+async def vpn_connect_job(config_path: str, vpn_type: str) -> dict[str, Any]:
+    """Start a VPN connection inside the tools container."""
+    logger.info("VPN connect: %s (%s)", config_path, vpn_type)
+    try:
+        if vpn_type == "wireguard":
+            cmd = f"wg-quick up {config_path}"
+        elif vpn_type == "openvpn":
+            name = Path(config_path).stem
+            pid_file = f"/run/openvpn_{name}.pid"
+            cmd = f"openvpn --daemon --config {config_path} --writepid {pid_file}"
+        else:
+            return {"success": False, "error": f"Unknown VPN type: {vpn_type}"}
 
-    redis_settings = RedisSettings(
-        host=settings.REDIS_HOST,
-        port=settings.REDIS_PORT,
-        password=settings.REDIS_PASSWORD.get_secret_value(),
-        database=settings.REDIS_DB,
-    )
+        returncode, stdout, stderr = await _run_command(cmd, 30)
+        success = returncode == 0
+        return {
+            "success": success,
+            "type": vpn_type,
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": returncode,
+        }
+    except Exception as e:
+        logger.error("VPN connect failed: %s", e)
+        return {"success": False, "error": str(e)}
 
-    functions = [
-        # Tool execution
-        execute_tool_job,
-        # Installation
-        install_tool_job,
-        uninstall_tool_job,
-        install_all_tools_job,
-        # Plugin management
-        reload_plugins_job,
-        # Status
-        get_tool_status_job,
-        sync_all_status_job,
-        # Generic command
-        run_command_job,
-        execute_script_job,
-    ]
 
-    on_startup = startup
-    on_shutdown = shutdown
+async def vpn_disconnect_job(config_name: str, vpn_type: str) -> dict[str, Any]:
+    """Stop a VPN connection inside the tools container."""
+    logger.info("VPN disconnect: %s (%s)", config_name, vpn_type)
+    try:
+        if vpn_type == "wireguard":
+            # wg-quick down expects the config path or interface name
+            from app.core.config import settings as _s
+            config_path = f"{_s.VPN_CONFIG_DIR}/{config_name}.conf"
+            cmd = f"wg-quick down {config_path}"
+        elif vpn_type == "openvpn":
+            pid_file = f"/run/openvpn_{config_name}.pid"
+            cmd = f"test -f {pid_file} && kill $(cat {pid_file}) && rm -f {pid_file} || echo 'no pid file'"
+        else:
+            return {"success": False, "error": f"Unknown VPN type: {vpn_type}"}
 
-    max_jobs = ARQ_MAX_JOBS
-    job_timeout = ARQ_JOB_TIMEOUT
-    keep_result = ARQ_KEEP_RESULT
-    health_check_interval = ARQ_HEALTH_CHECK_INTERVAL
-    queue_name = ARQ_QUEUE_NAME
+        returncode, stdout, stderr = await _run_command(cmd, 15)
+        return {
+            "success": returncode == 0,
+            "type": vpn_type,
+            "stdout": stdout,
+            "stderr": stderr,
+            "exit_code": returncode,
+        }
+    except Exception as e:
+        logger.error("VPN disconnect failed: %s", e)
+        return {"success": False, "error": str(e)}
+
+
+async def vpn_status_job() -> dict[str, Any]:
+    """Check VPN interface status inside the tools container."""
+    result: dict[str, Any] = {"connected": False, "interfaces": []}
+    try:
+        # Check for WireGuard interface
+        rc_wg, out_wg, _ = await _run_command("ip link show type wireguard 2>/dev/null", 5)
+        if rc_wg == 0 and out_wg.strip():
+            result["connected"] = True
+            result["type"] = "wireguard"
+            result["interface"] = "wg0"
+            result["interfaces"].append("wg0")
+
+        # Check for OpenVPN tun interface
+        rc_tun, out_tun, _ = await _run_command("ip link show tun0 2>/dev/null", 5)
+        if rc_tun == 0 and out_tun.strip():
+            result["connected"] = True
+            result.setdefault("type", "openvpn")
+            result["interface"] = result.get("interface", "tun0")
+            result["interfaces"].append("tun0")
+
+        # Get public IP if connected
+        if result["connected"]:
+            rc_ip, out_ip, _ = await _run_command(
+                "curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo unknown", 10
+            )
+            result["public_ip"] = out_ip.strip() if rc_ip == 0 else "unknown"
+
+    except Exception as e:
+        logger.warning("VPN status check failed: %s", e)
+        result["error"] = str(e)
+    return result
+
+
+async def vpn_test_job() -> dict[str, Any]:
+    """Test VPN connectivity by checking the public IP."""
+    logger.info("VPN connectivity test")
+    try:
+        rc, stdout, stderr = await _run_command(
+            "curl -s --max-time 10 https://ifconfig.me 2>/dev/null", 15
+        )
+        if rc == 0 and stdout.strip():
+            return {
+                "success": True,
+                "public_ip": stdout.strip(),
+                "message": "VPN connectivity confirmed",
+            }
+        return {
+            "success": False,
+            "public_ip": None,
+            "message": f"Connectivity check failed: {stderr or 'no response'}",
+        }
+    except Exception as e:
+        logger.error("VPN test failed: %s", e)
+        return {"success": False, "error": str(e)}
 
 
 # =============================================================================
-# Utility for App Container
+# Worker Entry Point
 # =============================================================================
 
-
-async def get_arq_pool() -> ArqRedis:
-    """Get ARQ Redis pool for enqueuing jobs from app container."""
-    return await create_pool(
-        WorkerSettings.redis_settings,
-        default_queue_name=WorkerSettings.queue_name,
-    )
+_WORKER_FUNCTIONS = [
+    execute_tool_job,
+    install_tool_job,
+    uninstall_tool_job,
+    install_all_tools_job,
+    reload_plugins_job,
+    get_tool_status_job,
+    sync_all_status_job,
+    run_command_job,
+    execute_script_job,
+    vpn_connect_job,
+    vpn_disconnect_job,
+    vpn_status_job,
+    vpn_test_job,
+]
 
 
 if __name__ == "__main__":
-    from arq import run_worker
+    import asyncio
+    from app.core.queue import worker_loop
 
-    run_worker(WorkerSettings)  # type: ignore[arg-type]
+    async def _main() -> None:
+        await startup()
+        try:
+            await worker_loop(_WORKER_FUNCTIONS)
+        finally:
+            await shutdown()
+
+    asyncio.run(_main())

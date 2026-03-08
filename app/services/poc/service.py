@@ -106,5 +106,5 @@ class POCService:
             )
 
         except Exception as e:
-            logger.error(f"POC Service error: {e}", exc_info=True)
+            logger.error("POC Service error: %s", e, exc_info=True)
             return POCResult(success=False, error=str(e))

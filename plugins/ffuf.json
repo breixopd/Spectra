@@ -82,5 +82,10 @@
     "icon": "crosshair",
     "color": "yellow"
   },
+  "examples": [
+    {"description": "Directory fuzzing", "args": {"target": "http://192.168.1.10/FUZZ"}},
+    {"description": "Parameter fuzzing with filter", "args": {"target": "http://192.168.1.10/page?id=FUZZ", "flags": "-fw 10"}},
+    {"description": "Virtual host discovery", "args": {"target": "http://192.168.1.10", "flags": "-H 'Host: FUZZ.example.com' -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt"}}
+  ],
   "signature": "e505b7f51376a082923b82f8bc11e2afea03962d038f60d353b272ccd5d41a323d0647974bdab2c900f37713116c014d0b3bb222c43ec16648ddb7504228060a"
 }

@@ -101,14 +101,14 @@ class TestPluginLifecycle:
         assert plugin_path.exists()
 
         from app.core.queue import PostgresJobQueue, worker_loop
-        from app.worker import WorkerSettings
+        from app.worker import _WORKER_FUNCTIONS
 
-        pool = PostgresJobQueue(queue_name=WorkerSettings.queue_name)
-        job_id = await pool.enqueue_job("install_tool_job", "test-plugin")
+        pool = PostgresJobQueue()
+        job_id = await pool.enqueue_job("install_tool_job", tool_id="test-plugin")
         assert job_id is not None, "Failed to enqueue installation"
 
         # Run worker to process the job
-        worker_task = asyncio.create_task(worker_loop(WorkerSettings.functions, queue_name=WorkerSettings.queue_name))
+        worker_task = asyncio.create_task(worker_loop(_WORKER_FUNCTIONS))
 
         result = await wait_for_job(job_id)
         assert result["success"] is True
@@ -126,14 +126,14 @@ class TestPluginLifecycle:
         assert tool.status == ToolStatus.PENDING
 
         from app.core.queue import PostgresJobQueue, worker_loop
-        from app.worker import WorkerSettings
+        from app.worker import _WORKER_FUNCTIONS
 
-        pool = PostgresJobQueue(queue_name=WorkerSettings.queue_name)
-        job_id = await pool.enqueue_job("install_tool_job", "broken-plugin")
+        pool = PostgresJobQueue()
+        job_id = await pool.enqueue_job("install_tool_job", tool_id="broken-plugin")
         assert job_id is not None, "Failed to enqueue installation"
 
         # Run worker to process the job
-        worker_task = asyncio.create_task(worker_loop(WorkerSettings.functions, queue_name=WorkerSettings.queue_name))
+        worker_task = asyncio.create_task(worker_loop(_WORKER_FUNCTIONS))
 
         result = await wait_for_job(job_id)
         assert result["success"] is False

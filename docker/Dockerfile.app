@@ -9,6 +9,9 @@ WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
+    libcairo2-dev \
+    pkg-config \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python -m venv /opt/venv
@@ -21,23 +24,47 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # --- Runtime Stage ---
 FROM python:3.11-slim AS runtime
 
+LABEL org.opencontainers.image.title="Spectra App" \
+      org.opencontainers.image.description="AI-Driven Security Assessment Platform" \
+      org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
+      org.opencontainers.image.vendor="breixopd14"
+
+ARG BUILD_VERSION=dev
+LABEL org.opencontainers.image.version="${BUILD_VERSION}"
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    libcairo2 \
     curl \
     netcat-openbsd \
+    ca-certificates \
+    gnupg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN useradd --create-home --shell /bin/bash spectra && \
+    groupadd -f docker && usermod -aG docker spectra && \
     chown -R spectra:spectra /app
 USER spectra
 
 COPY --chown=spectra:spectra scripts/start.sh /app/scripts/start.sh
 RUN chmod +x /app/scripts/start.sh
+
+# Copy application code (overridden by volume mounts in dev)
+COPY --chown=spectra:spectra app/ ./app/
+COPY --chown=spectra:spectra alembic/ ./alembic/
+COPY --chown=spectra:spectra alembic.ini ./alembic.ini
+COPY --chown=spectra:spectra plugins/ ./plugins/
+COPY --chown=spectra:spectra keys/ ./keys/
+COPY --chown=spectra:spectra scripts/ ./scripts/
 
 RUN mkdir -p /app/reports /app/logs
 
@@ -47,4 +74,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/api/health || exit 1
 
 ENTRYPOINT ["/app/scripts/start.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "1"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "1", "--proxy-headers", "--forwarded-allow-ips", "*"]

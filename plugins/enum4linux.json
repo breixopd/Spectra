@@ -1,0 +1,103 @@
+{
+  "id": "enum4linux",
+  "name": "enum4linux-ng",
+  "version": "1.0.0",
+  "category": "enumeration",
+  "description": "SMB and NetBIOS enumeration tool for Windows and Samba systems. Enumerates shares, users, groups, policies, and more.",
+  "metadata": {
+    "ai_description": "enum4linux-ng is the next-generation version of enum4linux for enumerating information from Windows and Samba hosts via SMB and NetBIOS. Use it to discover shares, users, groups, password policies, and OS info. Essential for AD reconnaissance when you find SMB (445) or NetBIOS (139) open.",
+    "capabilities": [
+      "service_detection",
+      "credential_harvest"
+    ],
+    "supported_targets": [
+      "ip",
+      "host"
+    ],
+    "risk_level": "low",
+    "tags": [
+      "smb",
+      "netbios",
+      "enumeration",
+      "windows",
+      "samba",
+      "active-directory",
+      "shares",
+      "users"
+    ],
+    "use_cases": [
+      "Enumerating SMB shares on Windows/Samba hosts",
+      "Discovering domain users and groups",
+      "Extracting password policies",
+      "Identifying OS version and domain information",
+      "Null session enumeration"
+    ],
+    "limitations": [
+      "Only works against SMB/NetBIOS services",
+      "Null sessions may be disabled on hardened systems",
+      "May produce incomplete results without credentials"
+    ],
+    "complements": [
+      "crackmapexec",
+      "nmap",
+      "impacket"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "apt",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y smbclient rpcclient",
+      "pip3 install enum4linux-ng || apt-get install -y enum4linux"
+    ],
+    "verification_command": "enum4linux-ng --help || enum4linux -h",
+    "verification_regex": "(enum4linux|usage)",
+    "uninstall_commands": [
+      "pip3 uninstall -y enum4linux-ng"
+    ]
+  },
+  "execution": {
+    "command": "enum4linux-ng",
+    "args_template": "{target} {flags}",
+    "timeout": 300,
+    "timeout_per_host": 120,
+    "min_timeout": 60,
+    "max_timeout": 600
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "\\[\\+\\]\\s+(?P<finding>.+)",
+        "type": "info"
+      },
+      {
+        "pattern": "\\|\\s+(?P<share>\\S+)\\s+\\|\\s+Mapping:\\s+(?P<access>\\w+)",
+        "type": "service"
+      },
+      {
+        "pattern": "user:\\[(?P<username>[^\\]]+)\\]\\s+rid:\\[(?P<rid>[^\\]]+)\\]",
+        "type": "info"
+      },
+      {
+        "pattern": "group:\\[(?P<group>[^\\]]+)\\]\\s+rid:\\[(?P<rid>[^\\]]+)\\]",
+        "type": "info"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract discovered shares, users, groups, password policies, and OS information"
+  },
+  "ui": {
+    "icon": "list-magnifying-glass",
+    "color": "indigo"
+  },
+  "examples": [
+    {"description": "Full enumeration with all checks", "args": {"target": "192.168.1.10", "flags": "-A"}},
+    {"description": "Authenticated enumeration", "args": {"target": "192.168.1.10", "flags": "-u admin -p Password1 -A"}},
+    {"description": "Enumerate shares only", "args": {"target": "192.168.1.10", "flags": "-S"}}
+  ],
+  "signature": null
+}

@@ -24,7 +24,7 @@ def mock_service_context():
         patch("app.services.tools.service.CommandToolAdapter") as MockAdapter,
     ):
         registry = MagicMock()
-        registry.sync_status_from_redis = AsyncMock()
+        registry.sync_status_from_cache = AsyncMock()
         mock_get_registry.return_value = registry
 
         service = ToolExecutionService(llm_client=MagicMock())
@@ -62,6 +62,7 @@ async def test_execute_tool_success(mock_service_context):
     # Config adapter instance
     mock_adapter_instance = MockAdapter.return_value
     mock_adapter_instance.build_command.return_value = "nmap -p 80 127.0.0.1"
+    mock_adapter_instance.builder.build_command.return_value = "nmap -p 80 127.0.0.1"
 
     result_obj = ToolExecutionResult(
         tool_id="nmap",
@@ -149,6 +150,7 @@ async def test_execute_tool_safety_block(mock_service_context):
 
     # Adapter setup needed for build_command
     MockAdapter.return_value.build_command.return_value = "cmd"
+    MockAdapter.return_value.builder.build_command.return_value = "cmd"
 
     result = await service.execute_request(mission, "nmap", "127.0.0.1")
     assert result.success is False
@@ -185,6 +187,7 @@ async def test_execute_tool_consensus_block(mock_service_context):
     service.safety_supervisor.execute.return_value = safety_result
 
     MockAdapter.return_value.build_command.return_value = "cmd"
+    MockAdapter.return_value.builder.build_command.return_value = "cmd"
 
     # Consensus blocks
     vote_result = MagicMock()

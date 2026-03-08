@@ -171,36 +171,36 @@ class MissionController(
         methodology_summary = get_full_methodology()
 
         # Get learned context from persistent memory
+        memory_context = ""
         try:
             from app.services.ai.memory import get_memory
 
             memory = get_memory()
             memory_context = memory.get_context_for_prompt()
-            if memory_context:
-                rag_context += (
-                    f"\n\n--- Learned from Past Missions ---\n{memory_context}"
-                )
             stats = memory.get_stats()
             if stats["tool_lessons"] > 0 or stats["exploit_lessons"] > 0:
-                rag_context += f"\n(Memory: {stats['tool_lessons']} tool lessons, {stats['exploit_lessons']} exploit patterns, {stats['target_profiles']} OS profiles)"
-        except Exception:
-            pass
+                memory_context += f"\n(Memory: {stats['tool_lessons']} tool lessons, {stats['exploit_lessons']} exploit patterns, {stats['target_profiles']} OS profiles)"
+        except Exception as e:
+            logger.debug("Memory context fetch failed: %s", e)
 
-        prompt = MISSION_PLAN_PROMPT.format(
+        from app.services.ai.context import ContextManager, ContextSection, Priority
+
+        plan_prompt_text = MISSION_PLAN_PROMPT.format(
             directive=input_data.directive,
             target=context.target or "Not specified",
-            methodology=methodology_summary,
-            tools_context=tools_context,
-            rag_context=rag_context,
+            methodology="",
+            tools_context="",
+            rag_context="",
         )
 
-        system_prompt = MISSION_CONTROLLER_SYSTEM_PROMPT.format(
-            description=self.description,
-            session_id=context.session_id or context.mission_id,
-            target=context.target or "Not specified",
-            phase=context.phase,
-            mission=context.mission or "Standard security assessment",
-        )
+        ctx = ContextManager(max_context_tokens=6000)
+        prompt = ctx.build([
+            ContextSection("task", plan_prompt_text, Priority.CRITICAL),
+            ContextSection("tools", tools_context, Priority.HIGH, max_tokens=800),
+            ContextSection("methodology", methodology_summary, Priority.LOW, max_tokens=400),
+            ContextSection("memory", memory_context, Priority.MEDIUM, max_tokens=500),
+            ContextSection("rag", rag_context, Priority.LOW, max_tokens=500),
+        ])
 
         system_prompt = (
             self._build_system_prompt(context)
@@ -219,7 +219,7 @@ Your plan must be:
             max_retries = 3
             for attempt in range(max_retries):
                 try:
-                    plan = await self.llm.generate_structured(
+                    plan = await self._llm_generate_structured(
                         prompt=prompt,
                         response_model=MissionPlan,
                         system_prompt=system_prompt,
@@ -355,7 +355,7 @@ Determine:
 3. Any targets to focus on or exclude"""
 
         try:
-            return await self.llm.generate_structured(
+            return await self._llm_generate_structured(
                 prompt=prompt,
                 response_model=SteeringAction,
                 system_prompt=self._build_system_prompt(context),

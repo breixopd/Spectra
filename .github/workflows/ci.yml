@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint
@@ -16,7 +19,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install ruff
-      - run: ruff check app/ --select F821,F841,E722
+      - run: ruff check app/
 
   test:
     name: Tests
@@ -28,19 +31,46 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt numpy
-      - run: python -m pytest tests/unit/ --no-cov -q
+      - run: python3 -m pytest tests/unit/ -q --override-ini="addopts="
         env:
           AI_PROVIDER: mock
           DATABASE_URL: "sqlite+aiosqlite:///test.db"
-          REDIS_HOST: localhost
-          REDIS_PASSWORD: changeme
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
           FULLY_AUTOMATED: "true"
 
-  docker:
-    name: Docker Build
+  security:
+    name: Security Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -f docker/Dockerfile.app -t spectra-app .
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install bandit[toml]
+      - run: bandit -r app/ -c pyproject.toml -f json -o bandit-report.json || true
+      - run: bandit -r app/ -c pyproject.toml --severity-filter HIGH --confidence-filter HIGH
+
+  deps:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pip-audit
+      - run: pip install -r requirements-app.txt
+      - run: pip-audit --fix --dry-run || true  # Report only, don't fail CI
+
+  version-check:
+    name: Version file check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify app/version.py exists and has __version__
+        run: >-
+          python -c "from app.version import __version__; print(f\"Version: {__version__}\")"

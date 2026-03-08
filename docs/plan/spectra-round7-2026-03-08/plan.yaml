@@ -1,0 +1,201 @@
+plan_id: spectra-round7-2026-03-08
+objective: >-
+  Produce an implementation plan for per-tier provider selection with simple UX,
+  optional fallbacks, DB-backed runtime settings as the source of truth, and
+  Docker-only validation workflows.
+created_at: '2026-03-08'
+created_by: GitHub Copilot (GPT-5.4)
+status: completed
+research_confidence: high
+
+tldr: |
+  Move AI runtime configuration to a DB-backed provider-profile and routing model,
+  keep DATABASE_URL as a bootstrap concern outside DB-sourced runtime settings,
+  update setup/settings UX to expose simple per-tier overrides with optional
+  fallbacks, and standardize validation on Docker Compose-only entrypoints.
+
+open_questions:
+  - Should embedding provider/model stay as a separate global runtime setting in this round, or be folded into the provider-profile model in a later follow-up?
+
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: Legacy SystemConfig rows are migrated incorrectly, changing current provider behavior during upgrade.
+      likelihood: medium
+      impact: high
+      mitigation: Introduce deterministic normalization for existing AI keys, cover it with migration-focused unit tests, and keep a compatibility reader until new rows are persisted successfully.
+    - scenario: Startup still initializes router or LLM singletons before DB-backed runtime settings are hydrated.
+      likelihood: medium
+      impact: critical
+      mitigation: Centralize hydration in a core bootstrap path that runs before AI initialization and require cache/router reset hooks after settings writes.
+    - scenario: Docker validation remains split across host and container commands, so the new flow is not reproducible.
+      likelihood: medium
+      impact: medium
+      mitigation: Replace host-side helpers and docs with one compose-based unit path plus existing UI/live wrappers, then verify those commands in the containerized test workflow.
+  assumptions:
+    - DATABASE_URL remains bootstrap or environment controlled because the app cannot read DB-resident DB connectivity before the first connection exists.
+    - Provider profiles, routing maps, and fallback chains can be stored in SystemConfig without requiring a new relational table in this round.
+    - Existing AI settings rows must continue to load during rollout until they are normalized into the new DB-backed config shape.
+
+implementation_specification:
+  code_structure: >-
+    Add a core DB-backed runtime settings/bootstrap service that owns provider
+    profile persistence, route resolution, legacy-row normalization, and cache
+    invalidation. Setup, settings, and router code should become adapters over
+    this service instead of mutating singleton state and JSON files directly.
+  affected_areas:
+    - app/core runtime configuration and startup bootstrap
+    - app/services/ai routing and client lifecycle
+    - setup/settings API and UI payload handling
+    - docker test entrypoints and operator documentation
+  component_details:
+    - component: Runtime settings bootstrap service
+      responsibility: Load authoritative runtime settings from SystemConfig, normalize legacy keys, and expose resolved route/profile state to the rest of the app.
+      interfaces:
+        - Startup bootstrap hydrates runtime settings before AI client or router initialization.
+        - Setup and admin settings writes go through one DB-backed persistence path.
+        - Post-write hooks reset router and LLM caches from the resolved DB state.
+    - component: Provider profile and routing model
+      responsibility: Represent default routing, per-tier overrides, and optional ordered fallback chains without inferring provider details from one global flag.
+      interfaces:
+        - Setup and settings payloads accept provider profiles plus route assignments.
+        - Router consumes resolved route objects for default and tier-specific groups.
+    - component: Docker validation workflow
+      responsibility: Provide compose-only commands and scripts for targeted unit, UI, and live validation of the new settings model.
+      interfaces:
+        - Compose command for settings/router/setup unit suites.
+        - Compose-backed wrappers for UI and live test scripts.
+        - Docs reference only Docker validation paths.
+  dependencies:
+    - component: app.models.config.SystemConfig
+      relationship: Stores provider profile, route map, fallback map, and legacy compatibility keys during rollout.
+    - component: FastAPI setup and admin settings endpoints
+      relationship: Become thin adapters over the DB-backed runtime settings service.
+    - component: LiteLLM router and global LLM client singletons
+      relationship: Must rebuild from resolved DB-backed routing state after startup hydration and settings writes.
+  integration_points:
+    - First-run setup persists initial provider profiles, default route, per-tier overrides, and optional fallbacks.
+    - Admin settings reads and writes resolved DB-backed runtime state instead of singleton-only state.
+    - Lifespan/bootstrap hydrates runtime settings before AI/router initialization.
+    - Docker Compose test services validate legacy-row normalization, provider routing, and user-facing setup/settings flows.
+
+tasks:
+  - id: task-001
+    title: Establish DB-backed provider profiles, routing, and legacy settings normalization
+    description: |
+      Deliver a single runtime settings architecture that treats SystemConfig as the
+      source of truth for AI runtime behavior. This includes defining the provider
+      profile plus routing plus fallback shape, moving startup hydration into a core
+      bootstrap path, removing JSON files from the authoritative path, and adding
+      backward-compatible normalization for existing settings rows.
+    agent: developer
+    priority: high
+    status: completed
+    dependencies: []
+    context_files:
+      - app/core/config.py: Current singleton and JSON-backed runtime settings path.
+      - app/core/lifespan.py: Startup ordering that must hydrate DB-backed settings before AI initialization.
+      - app/services/ai/router.py: Current global-provider router construction and fallback behavior.
+    estimated_effort: large
+    estimated_files: 3
+    estimated_lines: 450
+    focus_area: architecture/settings
+    verification:
+      - Add unit coverage for legacy row normalization into provider profile plus routing plus fallback objects.
+      - Add startup-path coverage proving DB-backed settings are loaded before router or global LLM creation.
+      - Verify settings writes invalidate and rebuild both router and LLM caches from DB-backed state.
+    acceptance_criteria:
+      - Runtime AI settings are read from SystemConfig through one core service, not from reports/runtime_settings.json or reports/infra_config.json.
+      - Existing rows for AI_PROVIDER, LLM_MODEL, LLM_TIER1_MODEL, LLM_TIER2_MODEL, LLM_TIER3_MODEL, OLLAMA_ENABLED, and LLM_API_BASE_URL are normalized into the new config shape without changing current effective behavior.
+      - DATABASE_URL is explicitly kept outside DB-sourced runtime settings and treated as bootstrap configuration only.
+      - Router and LLM initialization consume resolved provider profile and routing objects rather than inferring tier behavior from one global provider flag.
+    failure_modes:
+      - scenario: Legacy settings are only partially normalized, causing mixed old and new runtime reads.
+        likelihood: medium
+        impact: high
+        mitigation: Keep compatibility reads centralized in the new settings service and add tests for old-only, new-only, and mixed-row states.
+    tech_stack:
+      - Python 3.11
+      - FastAPI
+      - SQLAlchemy
+      - LiteLLM
+    test_coverage: Add focused unit coverage for normalization, bootstrap ordering, and router cache invalidation.
+
+  - id: task-002
+    title: Ship a simple setup and settings UX for per-tier provider selection with optional fallbacks
+    description: |
+      Replace the current single-provider forms with a simple provider-profile workflow
+      that supports one default path, optional per-tier overrides, and optional ordered
+      fallbacks without exposing unnecessary complexity on the happy path. Align setup,
+      admin settings, schemas, and status reads with the DB-backed architecture.
+    agent: developer
+    priority: high
+    status: completed
+    dependencies:
+      - task-001
+    context_files:
+      - app/templates/setup.html: First-run setup currently collapses two providers into one primary provider.
+      - app/templates/settings.html: Post-setup settings page only exposes one provider and tier model strings.
+      - app/api/routers/ui.py: Settings payloads and reads currently use singleton-backed state.
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 350
+    focus_area: ui/setup
+    verification:
+      - Add endpoint coverage for setup and settings payloads that include default routes, per-tier overrides, and optional fallback chains.
+      - Add UI or request-shaping coverage proving saves do not silently drop unedited runtime state.
+      - Verify AI status and settings reads return resolved DB-backed configuration.
+    acceptance_criteria:
+      - First-run setup supports a simple path with one provider profile and no tier overrides, plus an advanced path for per-tier overrides and optional ordered fallbacks.
+      - Admin settings can create or edit provider profiles, choose the default route, override individual tiers, and preserve existing runtime state on partial edits.
+      - API schemas and persistence paths accept provider-profile and routing payloads rather than only llm_provider plus tier-model strings.
+      - Settings and AI status responses reflect the resolved DB-backed configuration users just saved.
+    failure_modes:
+      - scenario: The UI exposes advanced routing fields in a way that makes first-run setup harder for single-provider users.
+        likelihood: medium
+        impact: medium
+        mitigation: Keep one default-provider flow prominent and gate per-tier overrides plus fallbacks behind explicit optional controls.
+    tech_stack:
+      - HTML templates
+      - Vanilla JavaScript
+      - FastAPI
+      - Pydantic
+    test_coverage: Add request and UI-flow coverage for simple setup, per-tier overrides, and fallback persistence.
+
+  - id: task-003
+    title: Standardize Docker-only validation, scripts, and operator documentation for the new settings flow
+    description: |
+      Deliver one containerized validation workflow for the feature so settings,
+      routing, migration, and UI behavior are exercised through Docker Compose rather
+      than host-local pytest commands. Update helper scripts and docs to point to the
+      same Docker-only entrypoints.
+    agent: devops
+    priority: medium
+    status: completed
+    dependencies:
+      - task-001
+      - task-002
+    context_files:
+      - docker/docker-compose.test.yml: Existing compose-based test infrastructure.
+      - tests/run_live_tests.sh: Still shells out to host-local pytest.
+      - README.md: Still documents host-local pytest for unit validation.
+    estimated_effort: medium
+    estimated_files: 3
+    estimated_lines: 220
+    focus_area: docker/testing/docs
+    verification:
+      - Provide a compose-based command path for targeted settings/router/setup tests.
+      - Update scripts and docs so they no longer direct host-local pytest for this workflow.
+      - Run or document verification of the compose-based unit and UI paths for the new provider-profile feature.
+    acceptance_criteria:
+      - A dedicated Docker Compose test entrypoint exists for the settings, router, setup, and legacy-normalization suites.
+      - tests/run_live_tests.sh, README.md, AGENTS.md, and deployment documentation reference Docker-only validation commands instead of host-local pytest.
+      - The documented validation workflow covers migration of existing settings rows plus simple and advanced provider-routing scenarios.
+    failure_modes:
+      - scenario: The Docker test runner remains too broad, making feature validation slow or flaky.
+        likelihood: medium
+        impact: medium
+        mitigation: Add a targeted compose runner or command override for feature-specific tests instead of reusing the full tests/ matrix.
+    environment: development
+    requires_approval: false
+    security_sensitive: false

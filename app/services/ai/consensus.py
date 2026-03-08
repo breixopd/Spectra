@@ -121,6 +121,19 @@ class VotingConfig:
     # Actions at this risk level always require human approval
     human_approval_risk: ActionRisk = ActionRisk.CRITICAL
 
+    # Risk-aware consensus thresholds
+    # LOW risk → skip consensus entirely
+    # MEDIUM risk → require 2/3 agreement
+    # HIGH+ risk → full 3/3 consensus
+    consensus_threshold: dict[str, tuple[int, int, float]] = field(
+        default_factory=lambda: {
+            ActionRisk.LOW.value: (0, 0, 0.0),       # Skip consensus
+            ActionRisk.MEDIUM.value: (3, 2, 0.5),     # 2 of 3, moderate confidence
+            ActionRisk.HIGH.value: (3, 3, 0.7),       # 3 of 3, high confidence
+            ActionRisk.CRITICAL.value: (3, 3, 0.8),   # 3 of 3, strict confidence
+        }
+    )
+
     # Quality gate specific configurations
     # Maps gate -> (num_voters, k_threshold, min_confidence)
     gate_configs: dict[str, tuple[int, int, float]] = field(
@@ -206,6 +219,14 @@ class VotingSystem:
         )
         num_voters, k_threshold, min_confidence = gate_config
 
+        # Skip voting for low-risk actions
+        if not self.requires_voting(action):
+            return ConsensusResult(
+                status=ConsensusStatus.APPROVED,
+                votes=[],
+                final_decision=True,
+            )
+
         # Check if it needs human approval regardless
         if self.requires_human_approval(action):
             return ConsensusResult(
@@ -260,7 +281,18 @@ class VotingSystem:
         return self._analyze_votes(votes, action)
 
     def requires_voting(self, action: AgentAction) -> bool:
-        """Check if an action requires consensus voting."""
+        """Check if an action requires consensus voting.
+
+        Uses risk-aware consensus_threshold: LOW risk skips voting entirely.
+        """
+        risk = action.risk_level
+        risk_str = risk.value if hasattr(risk, 'value') else str(risk)
+        threshold_entry = self.config.consensus_threshold.get(risk_str)
+        if threshold_entry is not None:
+            num_voters, _k, _conf = threshold_entry
+            if num_voters == 0:
+                return False
+
         risk_levels = [
             ActionRisk.LOW,
             ActionRisk.MEDIUM,

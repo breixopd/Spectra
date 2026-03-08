@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title | default(app_name + " | Dashboard") }}</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%238b5cf6'/><circle cx='16' cy='16' r='6' fill='%230a0e1a'/></svg>">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 
     <!-- Tailwind CSS (local) -->
     <script src="/static/vendor/js/tailwind.js"></script>
-    <script>
+    <script nonce="{{ request.state.csp_nonce }}">
         tailwind.config = {
             theme: {
                 extend: {
@@ -104,8 +104,95 @@
         .glass-panel { transition: border-color 0.3s ease, box-shadow 0.3s ease; }
         .glass-panel:hover { border-color: rgba(255,255,255,0.08); }
 
-        /* Tooltip styling */
-        [title] { position: relative; }
+        /* Tooltip system */
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+        }
+        [data-tooltip]::before,
+        [data-tooltip]::after {
+            position: absolute;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            z-index: 100;
+        }
+        [data-tooltip]::before {
+            content: attr(data-tooltip);
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: rgba(15, 15, 25, 0.95);
+            color: #e2e8f0;
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+            max-width: 300px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            line-height: 1.4;
+        }
+        [data-tooltip]::after {
+            content: '';
+            bottom: calc(100% + 2px);
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: rgba(15, 15, 25, 0.95);
+        }
+        [data-tooltip]:hover::before,
+        [data-tooltip]:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+        /* Bottom tooltip variant */
+        [data-tooltip-pos="bottom"]::before {
+            bottom: auto;
+            top: calc(100% + 8px);
+        }
+        [data-tooltip-pos="bottom"]::after {
+            bottom: auto;
+            top: calc(100% + 2px);
+            border-top-color: transparent;
+            border-bottom-color: rgba(15, 15, 25, 0.95);
+        }
+        /* Left tooltip variant */
+        [data-tooltip-pos="left"]::before {
+            bottom: auto;
+            top: 50%;
+            left: auto;
+            right: calc(100% + 8px);
+            transform: translateY(-50%);
+        }
+        [data-tooltip-pos="left"]::after {
+            bottom: auto;
+            top: 50%;
+            left: auto;
+            right: calc(100% + 2px);
+            transform: translateY(-50%);
+            border-top-color: transparent;
+            border-left-color: rgba(15, 15, 25, 0.95);
+        }
+        /* Right tooltip variant */
+        [data-tooltip-pos="right"]::before {
+            bottom: auto;
+            top: 50%;
+            left: calc(100% + 8px);
+            right: auto;
+            transform: translateY(-50%);
+        }
+        [data-tooltip-pos="right"]::after {
+            bottom: auto;
+            top: 50%;
+            left: calc(100% + 2px);
+            right: auto;
+            transform: translateY(-50%);
+            border-top-color: transparent;
+            border-right-color: rgba(15, 15, 25, 0.95);
+        }
 
         /* Loading spinner */
         .spinner { animation: spin 1s linear infinite; }
@@ -113,7 +200,7 @@
     </style>
     {% block extra_css %}{% endblock %}
     <!-- Auth Check -->
-    <script>
+    <script nonce="{{ request.state.csp_nonce }}">
         // Check if user is authenticated
         const publicPaths = ['/login', '/setup'];
         const token = localStorage.getItem('token');
@@ -146,6 +233,7 @@
             
             if (response.status === 401 && !publicPaths.includes(window.location.pathname)) {
                 localStorage.removeItem('token');
+                document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
                 window.location.href = '/login';
             }
             
@@ -153,7 +241,7 @@
         };
     </script>
 </head>
-<body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
+<body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-y-auto md:overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
 
     <!-- Global Status Bar (shown when setup in progress) -->
     <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-900/90 to-slate-900/90 backdrop-blur-sm border-b border-violet-500/30">
@@ -183,7 +271,7 @@
                 <i class="fa-solid fa-bars text-lg"></i>
             </button>
             <div class="flex items-center">
-                <div class="w-2.5 h-2.5 rounded-full bg-violet-500 mr-2"></div>
+                <i class="fa-solid fa-shield-halved text-violet-400 text-sm mr-2"></i>
                 <span class="font-mono font-bold text-sm tracking-wider text-white">{{ app_name | upper }}</span>
             </div>
             <div class="w-10"></div>
@@ -196,43 +284,43 @@
         <aside class="sidebar w-64 glass-sidebar flex flex-col justify-between h-full shrink-0" id="sidebar">
             <div>
                 <div class="h-16 flex items-center px-6 border-b border-white/5">
-                    <div class="w-3 h-3 rounded-full bg-violet-500 mr-3"></div>
+                    <i class="fa-solid fa-shield-halved text-violet-400 text-sm mr-3"></i>
                     <span class="font-mono font-bold text-lg tracking-wider text-white">{{ app_name | upper }}</span>
                 </div>
                 <nav class="p-4 space-y-1">
-                    <a href="/dashboard" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/dashboard' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/dashboard" data-tooltip="Mission control & live assessment" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/dashboard' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-gauge text-lg mr-3 {% if request.path == '/dashboard' %}text-violet-400{% else %}group-hover:text-violet-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Dashboard</span>
                     </a>
-                    <a href="/history" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/history' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/history" data-tooltip="Past assessments & results" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/history' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-clock-rotate-left text-lg mr-3 {% if request.path == '/history' %}text-blue-400{% else %}group-hover:text-blue-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">History</span>
                     </a>
-                    <a href="/targets" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/targets' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/targets" data-tooltip="Manage assessment targets" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/targets' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-bullseye text-lg mr-3 {% if request.path == '/targets' %}text-emerald-400{% else %}group-hover:text-emerald-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Targets</span>
                     </a>
-                    <a href="/reports" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/reports' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/reports" data-tooltip="Generated security reports" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/reports' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-file-lines text-lg mr-3 {% if request.path == '/reports' %}text-amber-400{% else %}group-hover:text-amber-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Reports</span>
                     </a>
-                    <a href="/overseer" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/overseer' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/overseer" data-tooltip="Real-time agent monitoring" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/overseer' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-users-gear text-lg mr-3 {% if request.path == '/overseer' %}text-cyan-400{% else %}group-hover:text-cyan-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Agents</span>
                     </a>
-                    <a href="/toolbox" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/toolbox' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/toolbox" data-tooltip="Security tools & plugins" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/toolbox' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-toolbox text-lg mr-3 {% if request.path == '/toolbox' %}text-rose-400{% else %}group-hover:text-rose-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Toolbox</span>
                     </a>
-                    <a href="/manual" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/manual' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/manual" data-tooltip="Run tools manually" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/manual' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-terminal text-lg mr-3 {% if request.path == '/manual' %}text-orange-400{% else %}group-hover:text-orange-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Manual Mode</span>
                     </a>
-                    <a href="/observability" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/observability" data-tooltip="System metrics & performance" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-chart-line text-lg mr-3 {% if request.path == '/observability' %}text-teal-400{% else %}group-hover:text-teal-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Observability</span>
                     </a>
-                    <a href="/settings" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/settings' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/settings" data-tooltip="Application configuration" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/settings' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-gear text-lg mr-3 {% if request.path == '/settings' %}text-slate-200{% else %}group-hover:text-slate-200{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Settings</span>
                     </a>
@@ -262,7 +350,7 @@
     </div>
 
     <!-- Native WebSocket (for real-time updates) -->
-    <script>
+    <script nonce="{{ request.state.csp_nonce }}">
         // Initialize WebSocket connection with authentication
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsToken = localStorage.getItem('token');
@@ -294,6 +382,7 @@
                 if (event.code === 4001) {
                     console.error('WebSocket auth failed - redirecting to login');
                     localStorage.removeItem('token');
+                    document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
                     if (!publicPaths.includes(window.location.pathname)) {
                         window.location.href = '/login';
                     }
@@ -329,6 +418,9 @@
         let systemReady = false;
 
         async function checkSystemStatus() {
+            const publicPaths = ['/login', '/setup'];
+            if (publicPaths.includes(window.location.pathname)) return;
+
             const statusBar = document.getElementById('global-status-bar');
             const statusMsg = document.getElementById('status-message');
             const statusDetails = document.getElementById('status-details');
@@ -416,7 +508,7 @@
         statusPollingInterval = setInterval(checkSystemStatus, 3000);
     </script>
     <!-- Sidebar Toggle -->
-    <script>
+    <script nonce="{{ request.state.csp_nonce }}">
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');

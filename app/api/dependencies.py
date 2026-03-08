@@ -1,18 +1,19 @@
 """
 FastAPI Dependencies.
 
-Provides dependency injection for database sessions, Redis, and repositories.
+Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_async_session
+from app.core.security import decode_token
 from app.models.user import User
 from app.repositories.exploit import ExploitRepository
 from app.repositories.finding import FindingRepository
@@ -34,11 +35,7 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY.get_secret_value(),
-            algorithms=[settings.JWT_ALGORITHM],
-        )
+        payload = decode_token(token)
         username: str | None = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -144,11 +141,7 @@ async def validate_websocket_token(token: str | None) -> User | None:
         return None
 
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY.get_secret_value(),
-            algorithms=[settings.JWT_ALGORITHM],
-        )
+        payload = decode_token(token)
         username: str | None = payload.get("sub")
         if username is None:
             return None

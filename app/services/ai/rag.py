@@ -7,13 +7,13 @@ similarity ranking in application code.
 
 import json
 import logging
-import math
 from typing import Any
 
 from pydantic import BaseModel, Field
 from dataclasses import dataclass
 from sqlalchemy import text
 
+from app.core.config import settings
 from app.core.database import async_session_maker
 from app.services.ai.embeddings import EmbeddingService
 
@@ -55,8 +55,8 @@ class RAGConfig:
     doc_prefix: str = "spectra:rag:doc:"
 
     # Embedding configuration
-    embedding_dim: int = 384  # Dimension for sentence-transformers
-    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_dim: int = 0  # 0 = auto-detect from embedding service
+    embedding_model: str = ""  # Empty = use settings.EMBEDDING_MODEL
 
     # Search configuration
     default_top_k: int = 5
@@ -84,53 +84,56 @@ class RAGService:
 
     def __init__(self, config: RAGConfig | None = None):
         self.config = config or RAGConfig()
-        self.embeddings = EmbeddingService(self.config.embedding_model)
+        model = self.config.embedding_model or settings.EMBEDDING_MODEL
+        self.embeddings = EmbeddingService(model)
         self._table_ready = False
+
+    @property
+    def is_functional(self) -> bool:
+        """Return False when using SHA256 fallback embeddings (non-functional RAG)."""
+        return self.embeddings.is_functional
 
     async def initialize(self) -> bool:
         """Ensure RAG storage table exists."""
         try:
+            dim = self.config.embedding_dim
+            if dim == 0:
+                await self.embeddings._load_model()
+                dim = self.embeddings.embedding_dim or 384
+                self.config.embedding_dim = dim
             async with async_session_maker() as session:
-                dialect = session.bind.dialect.name
-
-                if dialect == "sqlite":
-                    create_sql = """
-                        CREATE TABLE IF NOT EXISTS rag_documents (
-                            id TEXT PRIMARY KEY,
-                            content TEXT NOT NULL,
-                            doc_type TEXT NOT NULL,
-                            cve_id TEXT NULL,
-                            severity TEXT NULL,
-                            target TEXT NULL,
-                            session_id TEXT NULL,
-                            metadata TEXT NOT NULL DEFAULT '{}',
-                            embedding TEXT NOT NULL
-                        )
-                        """
-                else:
-                    create_sql = """
-                        CREATE TABLE IF NOT EXISTS rag_documents (
-                            id TEXT PRIMARY KEY,
-                            content TEXT NOT NULL,
-                            doc_type TEXT NOT NULL,
-                            cve_id TEXT NULL,
-                            severity TEXT NULL,
-                            target TEXT NULL,
-                            session_id TEXT NULL,
-                            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-                            embedding JSONB NOT NULL
-                        )
-                        """
-
-                await session.execute(text(create_sql))
-                await session.execute(
-                    text(
-                        "CREATE INDEX IF NOT EXISTS idx_rag_documents_doc_type ON rag_documents (doc_type)"
+                await session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+                await session.execute(text(f"""
+                    CREATE TABLE IF NOT EXISTS rag_documents (
+                        id TEXT PRIMARY KEY,
+                        content TEXT NOT NULL,
+                        doc_type TEXT NOT NULL,
+                        cve_id TEXT NULL,
+                        severity TEXT NULL,
+                        target TEXT NULL,
+                        session_id TEXT NULL,
+                        metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+                        embedding vector({dim}) NOT NULL,
+                        created_at TIMESTAMPTZ DEFAULT now()
                     )
-                )
+                """))
+                await session.execute(text(
+                    "CREATE INDEX IF NOT EXISTS idx_rag_documents_doc_type ON rag_documents (doc_type)"
+                ))
+                await session.execute(text(
+                    "CREATE INDEX IF NOT EXISTS idx_rag_embedding_hnsw "
+                    "ON rag_documents USING hnsw (embedding vector_cosine_ops)"
+                ))
                 await session.commit()
 
             self._table_ready = True
+            # Initialize embedding service (async load)
+            await self.embeddings._load_model()
+            if self.is_functional:
+                model_info = "local" if self.embeddings._use_local else self.embeddings._litellm_model
+                logger.info("RAG initialized: pgvector + %s embeddings", model_info)
+            else:
+                logger.warning("RAG table ready but embeddings using SHA256 fallback — semantic search disabled")
             return True
         except Exception as e:
             logger.error("Failed to initialize Postgres RAG table: %s", e)
@@ -141,27 +144,30 @@ class RAGService:
         if not self._table_ready:
             await self.initialize()
 
+        if not self.is_functional:
+            logger.warning(
+                "RAG is using SHA256 fallback — semantic search will not work. "
+                "Install sentence-transformers for proper embeddings. Storing document %s without usable embeddings.",
+                doc.id,
+            )
+
         try:
             embedding = await self.embeddings.embed(doc.content)
+            embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
             async with async_session_maker() as session:
                 await session.execute(
-                    text(
-                        """
+                    text("""
                         INSERT INTO rag_documents
                             (id, content, doc_type, cve_id, severity, target, session_id, metadata, embedding)
                         VALUES
-                            (:id, :content, :doc_type, :cve_id, :severity, :target, :session_id, CAST(:metadata AS JSONB), CAST(:embedding AS JSONB))
+                            (:id, :content, :doc_type, :cve_id, :severity, :target, :session_id,
+                             CAST(:metadata AS JSONB), CAST(:embedding AS vector))
                         ON CONFLICT (id) DO UPDATE SET
-                            content = EXCLUDED.content,
-                            doc_type = EXCLUDED.doc_type,
-                            cve_id = EXCLUDED.cve_id,
-                            severity = EXCLUDED.severity,
-                            target = EXCLUDED.target,
-                            session_id = EXCLUDED.session_id,
-                            metadata = EXCLUDED.metadata,
-                            embedding = EXCLUDED.embedding
-                        """
-                    ),
+                            content = EXCLUDED.content, doc_type = EXCLUDED.doc_type,
+                            cve_id = EXCLUDED.cve_id, severity = EXCLUDED.severity,
+                            target = EXCLUDED.target, session_id = EXCLUDED.session_id,
+                            metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding
+                    """),
                     {
                         "id": doc.id,
                         "content": doc.content,
@@ -171,7 +177,7 @@ class RAGService:
                         "target": doc.target,
                         "session_id": doc.session_id,
                         "metadata": json.dumps(doc.metadata),
-                        "embedding": json.dumps(embedding),
+                        "embedding": embedding_str,
                     },
                 )
                 await session.commit()
@@ -201,44 +207,61 @@ class RAGService:
         if not self._table_ready:
             await self.initialize()
 
+        if not self.is_functional:
+            logger.warning("RAG search skipped: embeddings are non-functional (SHA256 fallback active)")
+            return []
+
         top_k = top_k or self.config.default_top_k
 
         try:
             query_embedding = await self.embeddings.embed(query)
 
-            async with async_session_maker() as session:
-                rows = (
-                    await session.execute(
-                        text(
-                            """
-                            SELECT id, content, doc_type, cve_id, severity, target, session_id, metadata, embedding
-                            FROM rag_documents
-                            """
-                        ),
-                    )
-                ).mappings().all()
+            # Build SQL with pre-filtering to avoid fetching ALL documents
+            where_clauses: list[str] = []
+            params: dict[str, Any] = {}
 
-            scored: list[SearchResult] = []
+            if doc_type:
+                where_clauses.append("doc_type = :doc_type")
+                params["doc_type"] = doc_type
+
             normalized_filters = {
                 self.FILTER_COLUMNS[k]: v
                 for k, v in (filters or {}).items()
                 if k in self.FILTER_COLUMNS
             }
+            for i, (field, value) in enumerate(normalized_filters.items()):
+                placeholder = f"filter_{i}"
+                where_clauses.append(f"{field} = :{placeholder}")
+                params[placeholder] = value
+
+            where_sql = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+
+            # Native pgvector search — O(log N) with HNSW index
+            embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+            extra_where = "AND" if where_clauses else "WHERE"
+            sql = f"""
+                SELECT id, content, doc_type, cve_id, severity, target, session_id, metadata,
+                       1 - (embedding <=> CAST(:q_emb AS vector)) AS similarity
+                FROM rag_documents
+                {where_sql}
+                {extra_where} embedding IS NOT NULL
+                ORDER BY embedding <=> CAST(:q_emb AS vector)
+                LIMIT :top_k
+            """
+            params["q_emb"] = embedding_str
+            params["top_k"] = top_k
+
+            async with async_session_maker() as session:
+                rows = (
+                    await session.execute(text(sql), params)
+                ).mappings().all()
+
+            results: list[SearchResult] = []
             for row in rows:
-                if doc_type and row.get("doc_type") != doc_type:
-                    continue
-                if any(row.get(field) != value for field, value in normalized_filters.items()):
-                    continue
-
-                embedding = row.get("embedding")
-                if not isinstance(embedding, list):
-                    continue
-
-                similarity = self._cosine_similarity(query_embedding, embedding)
+                similarity = float(row["similarity"])
                 if similarity < self.config.min_score:
                     continue
-
-                scored.append(
+                results.append(
                     SearchResult(
                         document=Document(
                             id=row["id"],
@@ -253,9 +276,7 @@ class RAGService:
                         score=similarity,
                     )
                 )
-
-            scored.sort(key=lambda item: item.score, reverse=True)
-            return scored[:top_k]
+            return results
         except Exception as e:
             logger.error("Postgres RAG search failed: %s", e)
             return []
@@ -312,7 +333,7 @@ class RAGService:
                 result = await session.execute(
                     text("DELETE FROM rag_documents WHERE id = :id"), {"id": doc_id}
                 )
-                deleted = result.rowcount > 0
+                deleted = result.rowcount > 0  # type: ignore[union-attr]
                 await session.commit()
                 return deleted
         except Exception as e:
@@ -392,14 +413,3 @@ class RAGService:
         if not context_parts:
             return ""
         return "Relevant Context:\n\n" + "\n\n---\n\n".join(context_parts)
-
-    @staticmethod
-    def _cosine_similarity(a: list[float], b: list[float]) -> float:
-        if not a or not b or len(a) != len(b):
-            return 0.0
-        dot = sum(x * y for x, y in zip(a, b))
-        norm_a = math.sqrt(sum(x * x for x in a))
-        norm_b = math.sqrt(sum(y * y for y in b))
-        if norm_a == 0.0 or norm_b == 0.0:
-            return 0.0
-        return dot / (norm_a * norm_b)

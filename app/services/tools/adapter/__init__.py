@@ -160,8 +160,8 @@ class CommandToolAdapter(ToolAdapter):
                     if output_dir
                     else None,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to parse tool output: %s", e)
 
             return ToolExecutionResult(
                 tool_id=request.tool_id,
@@ -179,8 +179,8 @@ class CommandToolAdapter(ToolAdapter):
         except (TimeoutError, asyncio.TimeoutError):
             try:
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to kill process group: %s", e)
             return ToolExecutionResult(
                 tool_id=request.tool_id,
                 target=request.target,

@@ -2,14 +2,14 @@
 AI Services package for the MAKER Framework.
 
 Contains:
-- LLM clients (Ollama, API, Mock) and LiteLLM smart router
+- LLM clients (LiteLLM smart router, Mock) — all providers unified through LiteLLM
 - Agent swarm architecture (scope, tool selector, exploit, safety, etc.)
 - Consensus engine (K-threshold voting system)
 - Persistent memory (cross-mission learning)
 - Playbook engine (deterministic attack patterns)
 - CVE intelligence (version-to-exploit correlation)
 - Grounding framework (anti-hallucination)
-- RAG engine (knowledge retrieval via Redis Vector Search)
+- RAG engine (knowledge retrieval via PostgreSQL)
 """
 
 from app.services.ai.consensus import (
@@ -21,19 +21,15 @@ from app.services.ai.consensus import (
     VotingSystem,
 )
 from app.services.ai.llm import (
-    APIClient,
     LLMClient,
     LLMResponse,
     MockLLMClient,
-    OllamaClient,
     get_llm_client,
 )
 
 __all__ = [
     "LLMClient",
     "LLMResponse",
-    "OllamaClient",
-    "APIClient",
     "MockLLMClient",
     "get_llm_client",
     "VotingSystem",

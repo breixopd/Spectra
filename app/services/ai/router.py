@@ -20,7 +20,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 
 from app.core.config import settings
-from app.services.ai.llm import LLMClient, LLMResponse, MockLLMClient
+from app.services.ai.llm import LLMClient, LLMResponse, PentestMockLLMClient
 
 logger = logging.getLogger("spectra.ai.router")
 
@@ -60,16 +60,33 @@ PROVIDER_PRESETS = {
     },
     "qwen": {
         "name": "Qwen (Alibaba DashScope)",
-        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
         "models": {
-            "qwen3-235b-a22b": {"tier": 3, "description": "Flagship MoE, 22B active"},
+            "qwen3.5-397b-a17b": {"tier": 3, "description": "Qwen 3.5 flagship MoE, 397B params"},
+            "qwen3.5-plus": {"tier": 2, "description": "Qwen 3.5 Plus, multimodal, 1M context"},
+            "qwen3.5-flash": {"tier": 1, "description": "Qwen 3.5 Flash, fast, 1M context"},
+            "qwen3-235b-a22b": {"tier": 3, "description": "Qwen 3 MoE, 22B active"},
             "qwen3-32b": {"tier": 2, "description": "32B dense, 128K context"},
-            "qwen3-14b": {"tier": 2, "description": "14B dense, 128K context"},
             "qwen3-8b": {"tier": 1, "description": "8B dense, 128K context, fast"},
         },
-        "default_model": "qwen3-32b",
+        "default_model": "qwen3.5-plus",
     },
 }
+
+_CLOUD_PROVIDER_ALIASES = {"api", "openai", "litellm", "ollama"}
+
+
+def _normalize_provider_name(provider: str | None) -> str:
+    normalized = (provider or "mock").strip().lower() or "mock"
+    if normalized in _CLOUD_PROVIDER_ALIASES:
+        return "litellm"
+    return normalized
+
+
+def _resolve_litellm_model_name(model: str, *, base_url: str | None = None) -> str:
+    if base_url and "/" not in model:
+        return f"openai/{model}"
+    return model
 
 
 class LiteLLMRouter(LLMClient):
@@ -97,6 +114,7 @@ class LiteLLMRouter(LLMClient):
         self._fallbacks = fallbacks or []
         self._default_model = default_model
         self._task_model_map: dict[int, str] = {}
+        self._direct_fallback_warned = False
 
     def _get_router(self):
         """Lazy-initialize the LiteLLM router."""
@@ -187,6 +205,9 @@ class LiteLLMRouter(LLMClient):
                     timeout=timeout or settings.LLM_TIMEOUT,
                 )
             else:
+                if not self._direct_fallback_warned:
+                    logger.warning("LiteLLM router unavailable, using direct API call (no fallback chain)")
+                    self._direct_fallback_warned = True
                 response = await litellm.acompletion(
                     model=model,
                     messages=messages,
@@ -240,15 +261,16 @@ class LiteLLMRouter(LLMClient):
         self._router = None
 
 
-def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
-    """Build LiteLLM model configs from current app settings."""
+def _build_legacy_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
+    """Build LiteLLM model configs from legacy flat settings."""
     model_list = []
     fallbacks = []
     default_model = "openai/gpt-4.1-mini"
 
-    provider = settings.AI_PROVIDER
+    raw_provider = settings.AI_PROVIDER
+    raw_lower = str(raw_provider or "mock").strip().lower()
 
-    if provider == "ollama":
+    if raw_lower == "ollama":
         ollama_model = f"ollama/{settings.OLLAMA_MODEL}"
         model_list.append(
             {
@@ -281,25 +303,27 @@ def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
             )
             fallbacks.append({"default": ["cloud-fallback"]})
 
-    elif provider in ("api", "openai"):
+    elif raw_lower != "mock":
         api_key = settings.LLM_API_KEY.get_secret_value()
-        if not api_key:
+        if raw_lower in ("api", "openai") and not api_key:
             return [], [], default_model
 
         cloud_model = settings.LLM_MODEL or "glm-4.7"
-
-        # Custom base URL means OpenAI-compatible provider (Z.AI, Kimi, Qwen, etc.)
-        if settings.LLM_API_BASE_URL:
-            litellm_model = f"openai/{cloud_model}"
-        else:
-            litellm_model = cloud_model
+        litellm_model = _resolve_litellm_model_name(
+            cloud_model,
+            base_url=settings.LLM_API_BASE_URL,
+        )
 
         model_list.append(
             {
                 "model_name": "default",
                 "litellm_params": {
                     "model": litellm_model,
-                    "api_key": api_key,
+                    **(
+                        {"api_key": api_key}
+                        if api_key
+                        else {}
+                    ),
                     **(
                         {"api_base": settings.LLM_API_BASE_URL}
                         if settings.LLM_API_BASE_URL
@@ -310,13 +334,121 @@ def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
         )
         default_model = "default"
 
+        # Only add explicit Ollama fallback when the compatibility flag is actually enabled.
+        if getattr(settings, "OLLAMA_ENABLED", False) is True:
+            ollama_model = f"ollama/{settings.OLLAMA_MODEL}"
+            model_list.append(
+                {
+                    "model_name": "ollama-local",
+                    "litellm_params": {
+                        "model": ollama_model,
+                        "api_base": settings.OLLAMA_HOST,
+                    },
+                }
+            )
+            # Ollama can serve as fallback for the API provider
+            fallbacks.append({"default": ["ollama-local"]})
+
+    # Register per-tier models as separate model groups in the LiteLLM router
+    # so tier routing can reference them by name
+    api_key_val = settings.LLM_API_KEY.get_secret_value() if settings.LLM_API_KEY else ""
+    tier_models = {
+        settings.LLM_TIER1_MODEL: "tier1",
+        settings.LLM_TIER2_MODEL: "tier2",
+        settings.LLM_TIER3_MODEL: "tier3",
+    }
+    registered_names = {cfg["model_name"] for cfg in model_list}
+    for tier_model_name, group_name in tier_models.items():
+        if not isinstance(tier_model_name, str) or not tier_model_name.strip():
+            continue
+        if group_name in registered_names:
+            continue
+        # Detect Ollama-style models by prefix or legacy provider
+        if tier_model_name.startswith("ollama/") or raw_lower == "ollama":
+            litellm_tier = tier_model_name if tier_model_name.startswith("ollama/") else f"ollama/{tier_model_name}"
+        else:
+            litellm_tier = _resolve_litellm_model_name(
+                tier_model_name,
+                base_url=settings.LLM_API_BASE_URL,
+            )
+
+        tier_params: dict[str, Any] = {"model": litellm_tier}
+        if api_key_val:
+            tier_params["api_key"] = api_key_val
+        if settings.LLM_API_BASE_URL:
+            tier_params["api_base"] = settings.LLM_API_BASE_URL
+        elif raw_lower == "ollama" or litellm_tier.startswith("ollama/"):
+            tier_params["api_base"] = settings.OLLAMA_HOST
+
+        model_list.append(
+            {
+                "model_name": group_name,
+                "litellm_params": tier_params,
+            }
+        )
+    return model_list, fallbacks, default_model
+
+
+def _build_model_config_for_profile(
+    profile_name: str,
+    profile: dict[str, Any],
+) -> dict[str, Any]:
+    model = str(profile.get("model", "")).strip()
+    litellm_params: dict[str, Any] = {}
+
+    if model.startswith("ollama/"):
+        litellm_params = {
+            "model": model,
+            "api_base": profile.get("base_url") or settings.OLLAMA_HOST,
+        }
+    else:
+        base_url = profile.get("base_url")
+        litellm_params = {
+            "model": _resolve_litellm_model_name(model, base_url=base_url),
+        }
+        if profile.get("api_key"):
+            litellm_params["api_key"] = profile["api_key"]
+        if base_url:
+            litellm_params["api_base"] = base_url
+
+    return {
+        "model_name": profile_name,
+        "litellm_params": litellm_params,
+    }
+
+
+def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
+    """Build LiteLLM model configs from the resolved provider-profile settings."""
+    profiles = getattr(settings, "AI_PROVIDER_PROFILES", {}) or {}
+    routing = getattr(settings, "AI_PROVIDER_ROUTING", {}) or {}
+    fallbacks_map = getattr(settings, "AI_PROVIDER_FALLBACKS", {}) or {}
+
+    if not profiles or routing.get("default") not in profiles:
+        return _build_legacy_model_config_from_settings()
+
+    model_list = [
+        _build_model_config_for_profile(profile_name, profile)
+        for profile_name, profile in profiles.items()
+    ]
+    default_model = routing.get("default", "default")
+    fallbacks: list[dict[str, list[str]]] = []
+    seen_sources: set[str] = set()
+
+    for route_name, fallback_profiles in fallbacks_map.items():
+        source_profile = routing.get(route_name, default_model)
+        filtered_targets = [name for name in fallback_profiles if name in profiles]
+        if source_profile in profiles and filtered_targets and source_profile not in seen_sources:
+            fallbacks.append({source_profile: filtered_targets})
+            seen_sources.add(source_profile)
+
     return model_list, fallbacks, default_model
 
 
 def create_smart_router() -> LLMClient:
     """Create a SmartRouter from current settings."""
-    if settings.AI_PROVIDER == "mock":
-        return MockLLMClient()
+    normalized_provider = _normalize_provider_name(settings.AI_PROVIDER)
+    if normalized_provider == "mock":
+        return PentestMockLLMClient()
 
     model_list, fallbacks, default_model = build_model_config_from_settings()
 
@@ -329,6 +461,27 @@ def create_smart_router() -> LLMClient:
         fallbacks=fallbacks,
         default_model=default_model,
     )
+
+    routing = getattr(settings, "AI_PROVIDER_ROUTING", {}) or {}
+    if routing:
+        tier1 = routing.get("tier1")
+        tier2 = routing.get("tier2")
+        tier3 = routing.get("tier3")
+    else:
+        tier1 = settings.LLM_TIER1_MODEL
+        tier2 = settings.LLM_TIER2_MODEL
+        tier3 = settings.LLM_TIER3_MODEL
+
+    if tier1 or tier2 or tier3:
+        router.configure_task_models(
+            tier1_model=tier1 or None,
+            tier2_model=tier2 or None,
+            tier3_model=tier3 or None,
+        )
+        logger.info(
+            "Tier routing configured: T1=%s T2=%s T3=%s",
+            tier1 or "(default)", tier2 or "(default)", tier3 or "(default)",
+        )
 
     return router
 

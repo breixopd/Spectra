@@ -64,7 +64,8 @@ function handleFinding(data) {
         countEl.textContent = parseInt(countEl.textContent) + 1;
     }
     
-    // Add to graph (if applicable)
+    // Add to graph - ensure graph is initialized
+    if (!cy) initGraph();
     if (cy) {
         addFindingNode(data);
     }
@@ -83,9 +84,8 @@ function updateTaskList(data) {
 function handleAttackSurface(data) {
     // Update node count with attack surface info
     const nodeCount = document.getElementById('node-count');
-    if (nodeCount) {
-        const total = (data.services || 0) + (data.vulnerabilities || 0);
-        nodeCount.textContent = `${total} nodes`;
+    if (nodeCount && cy) {
+        nodeCount.textContent = `${cy.nodes().length} nodes`;
     }
     
     // Log attack surface updates
@@ -165,8 +165,9 @@ function launchFromForm() {
         return;
     }
 
-    addTerminalLine(`[USER] ${target} ${directive}`, 'command');
-    startMission(target, directive);
+    const playbookId = document.getElementById('adversary-playbook')?.value || null;
+    addTerminalLine(`[USER] ${target} ${directive}${playbookId ? ' [' + playbookId + ']' : ''}`, 'command');
+    startMission(target, directive, playbookId);
 }
 
 // Enter key on either field launches
@@ -182,23 +183,65 @@ function toggleRequirements() {
     if (panel) panel.classList.toggle('hidden');
 }
 
-function startMission(target, directive) {
+// Load adversary playbooks into dropdown
+(async function loadAdversaryPlaybooks() {
+    const select = document.getElementById('adversary-playbook');
+    if (!select) return;
+    try {
+        const res = await fetch('/api/missions/adversary-playbooks');
+        if (!res.ok) return;
+        const playbooks = await res.json();
+        for (const pb of playbooks) {
+            const opt = document.createElement('option');
+            opt.value = pb.id;
+            const badge = pb.difficulty === 'hard' ? '\u26a0\ufe0f' : '\u2699\ufe0f';
+            opt.textContent = `${badge} ${pb.name} (${pb.step_count} steps)`;
+            opt.title = `${pb.threat_actor} \u2014 ${pb.description}`;
+            select.appendChild(opt);
+        }
+    } catch { /* playbooks unavailable */ }
+})();
+
+// Load VPN configs into dropdown
+(async function loadVPNConfigs() {
+    const select = document.getElementById('vpn-config');
+    if (!select) return;
+    try {
+        const res = await fetch('/api/vpn/configs');
+        if (!res.ok) return;
+        const configs = await res.json();
+        for (const cfg of configs) {
+            const opt = document.createElement('option');
+            opt.value = cfg.name;
+            opt.textContent = `\uD83D\uDD12 ${cfg.name} (${cfg.type})`;
+            select.appendChild(opt);
+        }
+    } catch { /* VPN configs unavailable */ }
+})();
+
+function startMission(target, directive, playbookId) {
     addTerminalLine(`Starting assessment against ${target}...`, 'info');
     
     const reqEl = document.getElementById('mission-requirements');
     const requirements = reqEl && reqEl.value.trim() ? reqEl.value.trim() : null;
     if (requirements) addTerminalLine(`[SCOPE] Requirements attached (${requirements.length} chars)`, 'info');
 
+    const payload = { target: target, directive: directive, requirements: requirements };
+    if (playbookId) payload.playbook_id = playbookId;
+    const vpnConfig = document.getElementById('vpn-config')?.value || null;
+    if (vpnConfig) payload.vpn_config = vpnConfig;
+
     fetch('/api/missions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: target, directive: directive, requirements: requirements })
+        body: JSON.stringify(payload)
     })
     .then(res => res.json())
     .then(data => {
         if (data.id) {
             currentMissionId = data.id;
             addTerminalLine(`[SUCCESS] Mission started: ${data.id}`, 'success');
+            initGraphWithTarget(target);
         } else {
             addTerminalLine(`[ERROR] Failed to start: ${JSON.stringify(data)}`, 'error');
         }
@@ -303,6 +346,14 @@ async function switchModel(modelId) {
 
 // --- Network Graph (Cytoscape.js) ---
 let cy;
+let graphPlaceholderVisible = true;
+
+function showGraphPlaceholder() {
+    const container = document.getElementById('network-graph');
+    if (!container) return;
+    graphPlaceholderVisible = true;
+    container.innerHTML = '<div class="text-center text-slate-700"><i class="fa-solid fa-diagram-project text-3xl mb-2"></i><p class="text-xs">Discovered services and hosts appear here</p></div>';
+}
 
 function initGraph() {
     const container = document.getElementById('network-graph');
@@ -310,6 +361,7 @@ function initGraph() {
 
     // Clear placeholder
     container.innerHTML = '';
+    graphPlaceholderVisible = false;
 
     cy = cytoscape({
         container: container,
@@ -365,9 +417,23 @@ function initGraph() {
         }
     });
 
-    // Graph initialized empty, waiting for mission data
-    cy.layout({ name: 'cose', animate: true }).run();
     updateNodeCount();
+
+    // Handle container resize
+    const observer = new ResizeObserver(() => { if (cy) cy.resize(); });
+    observer.observe(container);
+}
+
+function initGraphWithTarget(targetLabel) {
+    if (!cy) initGraph();
+    if (!cy) return;
+
+    // Add target node if not present
+    if (cy.getElementById('target').length === 0) {
+        cy.add({ group: 'nodes', data: { id: 'target', label: targetLabel || 'Target', type: 'target' } });
+        cy.layout({ name: 'cose', animate: true }).run();
+        updateNodeCount();
+    }
 }
 
 // --- Threat Map (Leaflet) ---
@@ -377,6 +443,10 @@ let markers = {};
 function initMap() {
     const mapContainer = document.getElementById('threat-map');
     if (!mapContainer) return;
+
+    // Clean up placeholder before Leaflet init
+    const placeholder = document.getElementById('map-placeholder');
+    if (placeholder) placeholder.remove();
 
     map = L.map('threat-map', {
         zoomControl: false,
@@ -395,7 +465,6 @@ function initMap() {
 
     // Leaflet requires invalidateSize when container is resized or initially hidden
     setTimeout(() => { if (map) map.invalidateSize(); }, 200);
-    // Also revalidate on window resize
     window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
     // Observer for container visibility changes
     const observer = new ResizeObserver(() => { if (map) map.invalidateSize(); });
@@ -453,8 +522,43 @@ function updateNodeCount() {
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
-    initGraph();
     initMap();
     updateShellList(); // Initial fetch
     addTerminalLine('Dashboard ready.', 'success');
+
+    // Check for active mission and initialize graph with its data
+    fetch('/api/missions?status=running&limit=1')
+        .then(res => res.ok ? res.json() : [])
+        .then(missions => {
+            const mission = Array.isArray(missions) && missions.length > 0 ? missions[0] : null;
+            if (mission && mission.id) {
+                currentMissionId = mission.id;
+                initGraph();
+                initGraphWithTarget(mission.target || 'Target');
+                addTerminalLine(`[SYSTEM] Resumed active mission: ${mission.id}`, 'info');
+
+                // Load existing findings for this mission
+                fetch(`/api/missions/${mission.id}/findings`)
+                    .then(res => res.ok ? res.json() : [])
+                    .then(findings => {
+                        if (Array.isArray(findings)) {
+                            findings.forEach(f => {
+                                // Update counts
+                                const sev = (f.severity || 'info').toLowerCase();
+                                const el = document.getElementById(`count-${sev}`);
+                                if (el) el.textContent = parseInt(el.textContent) + 1;
+                                // Add to graph
+                                if (cy) addFindingNode(f);
+                            });
+                        }
+                    })
+                    .catch(() => {});
+            } else {
+                // No active mission — show placeholder, don't init graph yet
+                showGraphPlaceholder();
+            }
+        })
+        .catch(() => {
+            showGraphPlaceholder();
+        });
 });

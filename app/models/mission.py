@@ -40,6 +40,13 @@ class Mission(Base):
     attack_surface: Mapped[Optional[dict]] = mapped_column(
         JSON, nullable=True, default=dict
     )
+    checkpoint_data: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True, default=None
+    )
+    resume: Mapped[bool] = mapped_column(default=False, nullable=False)
+    vpn_config: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True, default=None
+    )
 
     def __repr__(self) -> str:
         """String representation of the mission."""

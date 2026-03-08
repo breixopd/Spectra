@@ -1,31 +1,19 @@
 import pytest
 import pytest_asyncio
-import asyncio
 from app.services.ai.rag import RAGService, Document
-from redis.asyncio import Redis
 
 
 @pytest_asyncio.fixture
-async def redis_client():
-    """Get a real Redis client."""
-    client = Redis(host="redis", port=6379, decode_responses=True)
-    yield client
-    await client.aclose()
-
-
-@pytest.fixture
-def redis_client():
-    """Get a real Redis client."""
-    client = Redis(host="redis", port=6379, decode_responses=True, password="changeme")
-    return client
-    # Clean up handled by container teardown
+async def rag_service():
+    """Get an initialized RAG service (PostgreSQL-backed)."""
+    service = RAGService()
+    await service.initialize()
+    yield service
 
 
 @pytest.mark.asyncio
-async def test_rag_indexing_and_search(redis_client):
+async def test_rag_indexing_and_search(rag_service):
     """Test full RAG flow: Index -> Search -> Retrieve."""
-    rag_service = RAGService(redis_client)
-    await rag_service.initialize()
 
     doc = Document(
         id="test-doc-1",
@@ -46,10 +34,8 @@ async def test_rag_indexing_and_search(redis_client):
 
 
 @pytest.mark.asyncio
-async def test_rag_cve_search(redis_client):
+async def test_rag_cve_search(rag_service):
     """Test specialized CVE search."""
-    rag_service = RAGService(redis_client)
-    await rag_service.initialize()
 
     doc = Document(
         id="cve-2024-0001",
@@ -67,10 +53,8 @@ async def test_rag_cve_search(redis_client):
 
 
 @pytest.mark.asyncio
-async def test_batch_indexing(redis_client):
+async def test_batch_indexing(rag_service):
     """Test batch indexing."""
-    rag_service = RAGService(redis_client)
-    await rag_service.initialize()
 
     docs = [
         Document(id=f"batch-{i}", content=f"Batch document number {i}", doc_type="test")
@@ -86,11 +70,8 @@ async def test_batch_indexing(redis_client):
 
 
 @pytest.mark.asyncio
-async def test_delete_document(redis_client):
+async def test_delete_document(rag_service):
     """Test document deletion."""
-    rag_service = RAGService(redis_client)
-    await rag_service.initialize()
-
     doc = Document(id="del-1", content="Delete me", doc_type="temp")
     await rag_service.index_document(doc)
     await rag_service.delete_document("del-1")

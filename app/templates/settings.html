@@ -3,7 +3,7 @@
 {% block content %}
 <div class="flex items-center justify-between mb-6 animate-fade-in-up">
     <h1 class="text-2xl font-semibold text-white tracking-tight">System Settings</h1>
-    <button class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+    <button type="submit" form="settings-form" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
         Save Changes
     </button>
 </div>
@@ -28,6 +28,14 @@
                 <i class="fa-solid fa-server mr-3 text-slate-500"></i>
                 System Status
             </a>
+            <a href="#vpn" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+                <i class="fa-solid fa-shield-halved mr-3 text-slate-500"></i>
+                VPN
+            </a>
+            <a href="#platform" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+                <i class="fa-solid fa-globe mr-3 text-slate-500"></i>
+                Platform
+            </a>
         </nav>
     </div>
 
@@ -35,118 +43,269 @@
     <div class="md:col-span-9 space-y-6">
         
         <!-- General Settings -->
-        <div class="glass-panel rounded-xl p-6">
+        <div class="glass-panel rounded-xl p-6" id="general">
             <h2 class="text-lg font-semibold text-white mb-4">General Configuration</h2>
-            <form id="settings-form" class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">AI Provider</label>
-                        <select name="ai_provider" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                            <option value="api">Cloud API</option>
-                        </select>
+            <form id="settings-form" class="space-y-5">
+                <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] gap-4">
+                    <div class="space-y-4">
+                        <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-4">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <p class="text-sm font-medium text-white">Quick Setup</p>
+                                    <p class="text-xs text-slate-500 mt-1">Pick one default profile. All tiers inherit from it unless you enable overrides.</p>
+                                </div>
+                                <button type="button" id="test-default-profile-btn" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
+                                    Test Default Profile
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Default Provider</label>
+                                    <select name="default_provider" id="default_provider" class="profile-provider w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" data-profile-prefix="default">
+                                        <option value="ollama">Ollama (Local)</option>
+                                        <option value="litellm">LiteLLM (Cloud/API Gateway)</option>
+                                        <option value="mock">Mock</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Default Model / Route</label>
+                                    <input type="text" name="default_model" id="default_model" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                </div>
+                            </div>
+
+                            <div class="profile-api-fields hidden space-y-3" data-profile="default">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Gateway / API Base URL</label>
+                                    <input type="text" name="default_api_base_url" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="https://api.openai.com/v1">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">API Key</label>
+                                    <input type="password" name="default_api_key" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="Leave blank to keep the current secret">
+                                </div>
+                            </div>
+
+                            <div class="profile-ollama-fields space-y-3" data-profile="default">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Ollama Host</label>
+                                    <input type="text" name="default_ollama_host" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border border-white/10 rounded-lg overflow-hidden">
+                            <button type="button" id="toggle-advanced-routing" class="w-full flex items-center justify-between px-4 py-3 text-left bg-slate-900/40 hover:bg-slate-900/70 transition-colors">
+                                <div>
+                                    <p class="text-sm font-medium text-white">Advanced Routing</p>
+                                    <p class="text-xs text-slate-500">Override tiers and add fallback profiles without cluttering the default path.</p>
+                                </div>
+                                <i id="advanced-routing-chevron" class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform"></i>
+                            </button>
+                            <div id="advanced-routing-section" class="hidden px-4 pb-4 pt-3 space-y-4">
+                                <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                                    {% for tier, title, description in [("tier1", "Tier 1", "Fast parsing, tool selection, and safety checks"), ("tier2", "Tier 2", "Balanced planning, reporting, and supervision"), ("tier3", "Tier 3", "High-capability exploit and post-exploitation work")] %}
+                                    <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-3">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p class="text-sm font-medium text-white">{{ title }}</p>
+                                                <p class="text-xs text-slate-500">{{ description }}</p>
+                                            </div>
+                                            <label class="inline-flex items-center gap-2 text-xs text-slate-300">
+                                                <input type="checkbox" class="tier-toggle rounded bg-slate-900/50 border-white/20 text-violet-500 focus:ring-violet-500" data-tier="{{ tier }}">
+                                                Override
+                                            </label>
+                                        </div>
+                                        <input type="hidden" name="{{ tier }}_profile_id" value="{{ tier }}">
+                                        <div class="tier-fields hidden space-y-3" data-tier-fields="{{ tier }}">
+                                            <div>
+                                                <label class="block text-xs font-medium text-slate-400 mb-1">Provider</label>
+                                                <select name="{{ tier }}_provider" class="profile-provider w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" data-profile-prefix="{{ tier }}">
+                                                    <option value="ollama">Ollama (Local)</option>
+                                                    <option value="litellm">LiteLLM (Cloud/API Gateway)</option>
+                                                    <option value="mock">Mock</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-slate-400 mb-1">Model / Route</label>
+                                                <input type="text" name="{{ tier }}_model" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="Copied from the default profile when you enable override">
+                                            </div>
+                                            <div class="profile-api-fields hidden space-y-3" data-profile="{{ tier }}">
+                                                <input type="text" name="{{ tier }}_api_base_url" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="https://api.openai.com/v1">
+                                                <input type="password" name="{{ tier }}_api_key" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="Leave blank to keep the current secret">
+                                            </div>
+                                            <div class="profile-ollama-fields space-y-3" data-profile="{{ tier }}">
+                                                <input type="text" name="{{ tier }}_ollama_host" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="http://localhost:11434">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-4">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div>
+                                            <p class="text-sm font-medium text-white">Default Fallback Chain</p>
+                                            <p class="text-xs text-slate-500">Fallback profiles run in order when the default route fails. Leave empty if you do not need failover.</p>
+                                        </div>
+                                        <button type="button" id="add-fallback-profile" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
+                                            Add Fallback
+                                        </button>
+                                    </div>
+                                    <div id="fallback-profiles" class="space-y-3"></div>
+                                </div>
+
+                                <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-3">
+                                    <p class="text-sm font-medium text-white">Embedding Configuration</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-xs font-medium text-slate-400 mb-1">Embedding Provider</label>
+                                            <select name="embedding_provider" id="embedding_provider" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                                <option value="local">Local</option>
+                                                <option value="api">Use the default LiteLLM cloud profile</option>
+                                            </select>
+                                        </div>
+                                        <div id="embedding-model-group">
+                                            <label class="block text-xs font-medium text-slate-400 mb-1">Embedding Model</label>
+                                            <input type="text" name="embedding_model" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Log Level</label>
+                                <select name="log_level" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                    <option value="DEBUG">DEBUG</option>
+                                    <option value="INFO">INFO</option>
+                                    <option value="WARNING">WARNING</option>
+                                    <option value="ERROR">ERROR</option>
+                                    <option value="CRITICAL">CRITICAL</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">Connect Back Host (LHOST)</label>
+                                <input type="text" name="connect_back_host" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between py-2 border-t border-white/5 pt-4">
+                            <div>
+                                <p class="text-sm font-medium text-white">Plugin Safe Mode</p>
+                                <p class="text-xs text-slate-500">Require valid signatures for all plugins</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="plugin_safe_mode" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="border border-white/10 rounded-lg p-4">
+                            <h3 class="text-sm font-medium text-white mb-3">Advanced Configuration</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Tool Container Name</label>
+                                    <input type="text" name="tool_container_name" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                    <p class="text-xs text-slate-500 mt-1">Optional: execute tools in a separate container.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Notification Webhook</label>
+                                    <input type="text" name="notification_webhook" placeholder="https://ntfy.sh/your-topic or Slack/Discord webhook URL" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between py-2 mt-4">
+                                <div>
+                                    <p class="text-sm font-medium text-white">Require Approval</p>
+                                    <p class="text-xs text-slate-500">Wait for human review on high-risk actions.</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="require_approval" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                                </label>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Log Level</label>
-                        <select name="log_level" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                            <option value="DEBUG">DEBUG</option>
-                            <option value="INFO">INFO</option>
-                            <option value="WARNING">WARNING</option>
-                            <option value="ERROR">ERROR</option>
-                        </select>
+
+                    <div class="rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-cyan-500/5 p-4 space-y-3 h-fit" id="resolved-ai-summary">
+                        <p class="text-sm font-medium text-white">Resolved Runtime</p>
+                        <div class="text-xs text-slate-400">Loading current provider routes...</div>
                     </div>
                 </div>
 
-                <!-- Cloud API Settings -->
-                <div class="border border-white/10 rounded-lg p-4 mt-4">
-                    <h3 class="text-sm font-medium text-white mb-3">API Settings</h3>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">API Key</label>
-                        <input type="password" name="llm_api_key" placeholder="sk-..." class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                        <p class="text-xs text-slate-500 mt-1">Works with OpenAI, OpenRouter, vLLM, LocalAI, etc.</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mt-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1">API Base URL</label>
-                            <input type="text" name="llm_api_base_url" placeholder="https://openrouter.ai/api/v1" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                            <p class="text-xs text-slate-500 mt-1">Leave empty for OpenAI default</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1">Model</label>
-                            <input type="text" name="llm_model" placeholder="gpt-4o-mini" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                        </div>
-                    </div>
-                    <div class="mt-3 flex justify-end">
-                        <button type="button" id="test-api-btn" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
-                            Test Connection
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Provider Presets -->
-                <div class="border border-white/10 rounded-lg p-4 mt-4">
-                    <h3 class="text-sm font-medium text-white mb-3">Quick Setup</h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button type="button" onclick="applyPreset('z.ai')" class="p-3 bg-slate-800/50 hover:bg-violet-500/10 border border-white/5 hover:border-violet-500/30 rounded-lg text-left transition-all">
-                            <div class="text-sm font-medium text-white">Z.AI (GLM)</div>
-                            <div class="text-[10px] text-slate-500 mt-0.5">GLM-4.7-Flash (free) · Coding optimized</div>
-                        </button>
-                        <button type="button" onclick="applyPreset('qwen')" class="p-3 bg-slate-800/50 hover:bg-violet-500/10 border border-white/5 hover:border-violet-500/30 rounded-lg text-left transition-all">
-                            <div class="text-sm font-medium text-white">Qwen (Alibaba)</div>
-                            <div class="text-[10px] text-slate-500 mt-0.5">Qwen3-32B · Free trial</div>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between py-2 border-t border-white/5 mt-4 pt-4">
-                    <div>
-                        <p class="text-sm font-medium text-white">Plugin Safe Mode</p>
-                        <p class="text-xs text-slate-500">Require valid signatures for all plugins</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="plugin_safe_mode" class="sr-only peer">
-                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
-                    </label>
-                </div>
-
-                <!-- Advanced Configuration -->
-                <div class="border border-white/10 rounded-lg p-4 mt-4">
-                    <h3 class="text-sm font-medium text-white mb-3">Advanced Configuration</h3>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1">Connect Back Host (LHOST)</label>
-                            <input type="text" name="connect_back_host" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                            <p class="text-xs text-slate-500 mt-1">IP/Hostname for reverse shells</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-medium text-slate-400 mb-1">Tool Container Name</label>
-                            <input type="text" name="tool_container_name" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                            <p class="text-xs text-slate-500 mt-1">Optional: Execute tools in separate container</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between py-2 mt-4">
-                        <div>
-                            <p class="text-sm font-medium text-white">Require Approval</p>
-                            <p class="text-xs text-slate-500">Wait for user approval on high-risk actions</p>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" name="require_approval" class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
-                        </label>
-                    </div>
-
-                    <div class="mt-4 pt-4 border-t border-white/5">
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Notification Webhook</label>
-                        <input type="text" name="notification_webhook" placeholder="https://ntfy.sh/your-topic or Slack/Discord webhook URL" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                        <p class="text-xs text-slate-500 mt-1">Receive notifications when missions start, complete, or find critical vulns</p>
-                    </div>
-                </div>
-                
                 <div class="flex justify-end mt-4">
                     <button type="submit" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
                         Save Configuration
                     </button>
+                </div>
+            </form>
+        </div>
+
+        <template id="fallback-profile-template">
+            <div class="fallback-row rounded-lg border border-white/10 bg-slate-900/50 p-4 space-y-3">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-medium text-white">Fallback Profile <span class="fallback-order text-violet-300"></span></p>
+                        <p class="text-xs text-slate-500">Runs after the profile above it fails.</p>
+                    </div>
+                    <button type="button" class="remove-fallback text-xs text-rose-300 hover:text-rose-200">Remove</button>
+                </div>
+                <input type="hidden" class="fallback-profile-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Provider</label>
+                        <select class="fallback-provider w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <option value="ollama">Ollama (Local)</option>
+                            <option value="litellm">LiteLLM (Cloud/API Gateway)</option>
+                            <option value="mock">Mock</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Model / Route</label>
+                        <input type="text" class="fallback-model w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                    </div>
+                </div>
+                <div class="fallback-api-fields hidden space-y-3">
+                    <input type="text" class="fallback-api-base-url w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="https://api.openai.com/v1">
+                    <input type="password" class="fallback-api-key w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="Leave blank to keep the current secret">
+                </div>
+                <div class="fallback-ollama-fields">
+                    <input type="text" class="fallback-ollama-host w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="http://localhost:11434">
+                </div>
+            </div>
+        </template>
+
+        <!-- Platform Settings -->
+        <div class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-globe text-sky-400"></i>
+                Platform
+            </h2>
+            <form id="platform-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Domain</label>
+                        <input type="text" name="platform_domain" id="platform_domain" placeholder="spectra.example.com" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Public domain name for this instance</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Base URL</label>
+                        <input type="text" name="platform_base_url" id="platform_base_url" placeholder="https://spectra.example.com" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Full base URL (auto-populated from domain)</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between py-2">
+                    <div>
+                        <p class="text-sm font-medium text-white">Platform is publicly exposed</p>
+                        <p class="text-xs text-slate-500">Enable if this instance is accessible from the internet</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="platform_exposed" id="platform_exposed" class="sr-only peer" onchange="document.getElementById('platform-exposed-warning').classList.toggle('hidden', !this.checked)">
+                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                    </label>
+                </div>
+                <div id="platform-exposed-warning" class="hidden p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <p class="text-xs text-amber-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Ensure HTTPS is configured via reverse proxy (e.g. Caddy, nginx) before exposing to the internet.</p>
                 </div>
             </form>
         </div>
@@ -185,7 +344,7 @@
                 <!-- Clear Cache -->
                 <div class="flex items-center justify-between py-3 border-b border-white/5">
                     <div>
-                        <p class="text-sm font-medium text-white">Redis Cache</p>
+                        <p class="text-sm font-medium text-white">Application Cache</p>
                         <p class="text-xs text-slate-500">Clear cached data (RAG embeddings, tool configs)</p>
                     </div>
                     <button onclick="clearCache()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
@@ -206,6 +365,61 @@
             </div>
         </div>
 
+        <!-- VPN Management -->
+        <div id="vpn" class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                VPN Management
+            </h2>
+
+            <!-- VPN Status -->
+            <div class="flex items-center gap-3 mb-4 p-3 rounded-lg bg-slate-900/50 border border-white/5">
+                <div id="vpn-status-dot" class="w-3 h-3 rounded-full bg-slate-600"></div>
+                <span id="vpn-status-text" class="text-sm text-slate-400">Checking...</span>
+            </div>
+
+            <!-- Upload Config -->
+            <div class="border border-white/10 rounded-lg p-4 mb-4">
+                <h3 class="text-sm font-medium text-white mb-3">Upload VPN Config</h3>
+                <form id="vpn-upload-form" class="space-y-3">
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Config Name</label>
+                            <input type="text" name="vpn_name" placeholder="my-vpn" pattern="[a-zA-Z0-9][a-zA-Z0-9\-]{0,63}" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Type</label>
+                            <select name="vpn_type" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                <option value="wireguard">WireGuard</option>
+                                <option value="openvpn">OpenVPN</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Config File</label>
+                            <input type="file" name="vpn_file" accept=".conf,.ovpn" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-violet-600 file:text-white">
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs font-medium transition-colors">
+                            <i class="fa-solid fa-upload mr-1"></i> Upload
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Config List -->
+            <div id="vpn-configs-list" class="space-y-2">
+                <div class="text-sm text-slate-500">Loading configs...</div>
+            </div>
+
+            <!-- Test Button -->
+            <div class="mt-4 pt-3 border-t border-white/5">
+                <button onclick="testVpnConnection()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
+                    <i class="fa-solid fa-wifi mr-1"></i> Test Connection
+                </button>
+            </div>
+        </div>
+
         <!-- System Status -->
         <div class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
@@ -223,7 +437,8 @@
 </div>
 
 <!-- Clear Missions Confirmation Modal -->
-<div id="clear-missions-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center">
+<div id="clear-missions-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50">
+    <div class="w-full h-full flex items-center justify-center">
     <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4">
         <h3 class="text-lg font-semibold text-white mb-2">
             <i class="fa-solid fa-exclamation-triangle text-rose-400 mr-2"></i>
@@ -242,12 +457,13 @@
             </button>
         </div>
     </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/settings.js"></script>
-<script>
+<script nonce="{{ request.state.csp_nonce }}">
     // Data Management Functions
     async function clearToolStats() {
         if (!confirm('Clear all tool statistics?')) return;
@@ -288,7 +504,7 @@
     }
 
     async function clearCache() {
-        if (!confirm('Clear Redis cache? This may affect performance temporarily.')) return;
+        if (!confirm('Clear application cache? This may affect performance temporarily.')) return;
         try {
             const res = await fetch('/api/system/clear/cache', { method: 'POST' });
             const data = await res.json();
@@ -327,10 +543,6 @@
             const dbStatus = data.database?.status === 'connected' ? 
                 '<span class="text-emerald-400"><i class="fa-solid fa-check-circle"></i> Connected</span>' :
                 '<span class="text-rose-400"><i class="fa-solid fa-times-circle"></i> Error</span>';
-            
-            const redisStatus = data.redis?.status === 'connected' ?
-                '<span class="text-emerald-400"><i class="fa-solid fa-check-circle"></i> Connected</span>' :
-                '<span class="text-rose-400"><i class="fa-solid fa-times-circle"></i> Error</span>';
 
             const ts = data.tool_stats || {};
             
@@ -339,10 +551,6 @@
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-400">Database</span>
                         ${dbStatus}
-                    </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-slate-400">Redis</span>
-                        ${redisStatus}
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-400">Tools Ready</span>
@@ -367,5 +575,101 @@
 
     loadSystemStatus();
     setInterval(loadSystemStatus, 10000);
+
+    // === VPN Management ===
+    async function loadVpnConfigs() {
+        const container = document.getElementById('vpn-configs-list');
+        try {
+            const res = await fetch('/api/vpn/configs');
+            if (!res.ok) { container.innerHTML = '<span class="text-slate-500 text-sm">No configs found</span>'; return; }
+            const configs = await res.json();
+            if (!configs.length) { container.innerHTML = '<span class="text-slate-500 text-sm">No configs uploaded yet</span>'; return; }
+            container.innerHTML = configs.map(c => `
+                <div class="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-white/5">
+                    <div>
+                        <span class="text-sm font-medium text-white">${c.name}</span>
+                        <span class="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-slate-700 text-slate-300">${c.type}</span>
+                        <span class="ml-2 text-xs text-slate-500">${(c.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="vpnConnect('${c.name}')" class="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs transition-colors">Connect</button>
+                        <button onclick="vpnDisconnect('${c.name}')" class="px-2 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs transition-colors">Disconnect</button>
+                        <button onclick="vpnDelete('${c.name}')" class="px-2 py-1 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs transition-colors">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) { container.innerHTML = '<span class="text-rose-400 text-sm">Failed to load</span>'; }
+    }
+
+    async function vpnConnect(name) {
+        try {
+            const res = await fetch(`/api/vpn/connect/${encodeURIComponent(name)}`, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) alert('VPN connect job queued: ' + data.job_id);
+            else alert('Error: ' + (data.detail || 'Failed'));
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function vpnDisconnect(name) {
+        try {
+            const res = await fetch(`/api/vpn/disconnect/${encodeURIComponent(name)}`, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) alert('VPN disconnect job queued: ' + data.job_id);
+            else alert('Error: ' + (data.detail || 'Failed'));
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function vpnDelete(name) {
+        if (!confirm(`Delete VPN config "${name}"?`)) return;
+        try {
+            const res = await fetch(`/api/vpn/configs/${encodeURIComponent(name)}`, { method: 'DELETE' });
+            if (res.ok) { loadVpnConfigs(); } else { const d = await res.json(); alert('Error: ' + (d.detail || 'Failed')); }
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function testVpnConnection() {
+        try {
+            const res = await fetch('/api/vpn/test', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) alert('VPN test job queued: ' + data.job_id);
+            else alert('Error: ' + (data.detail || 'Failed'));
+        } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    document.getElementById('vpn-upload-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const fd = new FormData();
+        fd.append('name', form.vpn_name.value);
+        fd.append('vpn_type', form.vpn_type.value);
+        fd.append('file', form.vpn_file.files[0]);
+        try {
+            const res = await fetch('/api/vpn/configs', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (res.ok) { alert('Config uploaded: ' + data.name); form.reset(); loadVpnConfigs(); }
+            else alert('Error: ' + (data.detail || 'Upload failed'));
+        } catch (e) { alert('Error: ' + e.message); }
+    });
+
+    async function loadVpnStatus() {
+        const dot = document.getElementById('vpn-status-dot');
+        const text = document.getElementById('vpn-status-text');
+        try {
+            const res = await fetch('/api/vpn/status');
+            if (res.ok) {
+                text.textContent = 'Status check queued (runs in tools container)';
+                dot.className = 'w-3 h-3 rounded-full bg-slate-500';
+            } else {
+                text.textContent = 'VPN status unavailable';
+                dot.className = 'w-3 h-3 rounded-full bg-rose-500';
+            }
+        } catch {
+            text.textContent = 'Could not reach API';
+            dot.className = 'w-3 h-3 rounded-full bg-rose-500';
+        }
+    }
+
+    loadVpnConfigs();
+    loadVpnStatus();
 </script>
 {% endblock %}

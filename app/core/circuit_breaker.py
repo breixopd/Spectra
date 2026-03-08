@@ -3,6 +3,7 @@ Circuit Breaker Pattern Implementation.
 
 Prevents cascading failures by temporarily blocking calls to failing services.
 Implements the standard circuit breaker states: CLOSED, OPEN, HALF_OPEN.
+State is persisted via the CacheService (PostgreSQL-backed).
 """
 
 import asyncio
@@ -96,7 +97,7 @@ class CircuitBreaker:
         self._state = CircuitBreakerState()
         self._lock = asyncio.Lock()
 
-    async def _get_state_from_redis(self) -> CircuitBreakerState | None:
+    async def _get_persisted_state(self) -> CircuitBreakerState | None:
         from app.core.cache import get_cache
 
         cache = get_cache()
@@ -113,10 +114,10 @@ class CircuitBreaker:
             state_dict["state"] = CircuitState(state_dict["state"])
             return CircuitBreakerState(**state_dict)
         except Exception as e:
-            logger.warning(f"Failed to deserialize circuit state: {e}")
+            logger.warning("Failed to deserialize circuit state: %s", e)
             return None
 
-    async def _save_state_to_redis(self):
+    async def _save_persisted_state(self):
         from app.core.cache import get_cache
 
         cache = get_cache()
@@ -219,7 +220,7 @@ class CircuitBreaker:
                 if self._state.success_count >= self.config.success_threshold:
                     self._transition_to_closed()
 
-            await self._save_state_to_redis()
+            await self._save_persisted_state()
 
     async def _record_failure(self, exc: Exception) -> None:
         """Record a failed call."""
@@ -235,7 +236,7 @@ class CircuitBreaker:
                 if self._state.failure_count >= self.config.failure_threshold:
                     self._transition_to_open()
 
-            await self._save_state_to_redis()
+            await self._save_persisted_state()
 
     def _should_allow_request(self) -> bool:
         """Determine if a request should be allowed."""
@@ -253,10 +254,10 @@ class CircuitBreaker:
         Raises:
             CircuitBreakerOpenError: If circuit is open
         """
-        # Sync from Redis
-        redis_state = await self._get_state_from_redis()
-        if redis_state:
-            self._state = redis_state
+        # Sync persisted state
+        persisted_state = await self._get_persisted_state()
+        if persisted_state:
+            self._state = persisted_state
 
         await self._check_state()
 
@@ -295,10 +296,10 @@ class CircuitBreaker:
 
     async def __aenter__(self) -> "CircuitBreaker":
         """Async context manager entry."""
-        # Sync from Redis
-        redis_state = await self._get_state_from_redis()
-        if redis_state:
-            self._state = redis_state
+        # Sync persisted state
+        persisted_state = await self._get_persisted_state()
+        if persisted_state:
+            self._state = persisted_state
 
         await self._check_state()
 
@@ -391,10 +392,10 @@ def get_llm_circuit_breaker() -> CircuitBreaker:
     )
 
 
-def get_redis_circuit_breaker() -> CircuitBreaker:
-    """Get circuit breaker for Redis."""
+def get_cache_circuit_breaker() -> CircuitBreaker:
+    """Get circuit breaker for cache/DB layer."""
     return circuit_breakers.get(
-        "redis",
+        "cache",
         CircuitBreakerConfig(
             failure_threshold=5,
             recovery_timeout=30,
@@ -410,5 +411,5 @@ __all__ = [
     "CircuitBreakerRegistry",
     "circuit_breakers",
     "get_llm_circuit_breaker",
-    "get_redis_circuit_breaker",
+    "get_cache_circuit_breaker",
 ]

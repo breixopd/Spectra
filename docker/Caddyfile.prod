@@ -1,0 +1,48 @@
+# Spectra Production Caddyfile
+# Replace {$SPECTRA_DOMAIN} with your actual domain, or set the env var.
+# Caddy automatically provisions TLS via Let's Encrypt.
+
+{$SPECTRA_DOMAIN:localhost} {
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; font-src 'self';"
+		-Server
+	}
+
+	# WebSocket upgrade
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	handle @websocket {
+		reverse_proxy spectra-app:5000
+	}
+
+	# Proxy to Spectra
+	reverse_proxy spectra-app:5000 {
+		health_uri /api/health
+		health_interval 15s
+		health_timeout 5s
+
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+			dial_timeout 10s
+		}
+
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	log {
+		output stdout
+		format json
+		level WARN
+	}
+}

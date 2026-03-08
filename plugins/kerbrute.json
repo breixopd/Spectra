@@ -1,0 +1,92 @@
+{
+  "id": "kerbrute",
+  "name": "Kerbrute",
+  "version": "1.0.0",
+  "category": "enumeration",
+  "description": "Kerberos brute-forcing tool for Active Directory. Supports user enumeration, brute-force, and password spraying.",
+  "metadata": {
+    "ai_description": "Kerbrute performs Kerberos pre-authentication brute-forcing against Active Directory. It can enumerate valid usernames, brute-force passwords, or perform password spraying — all via Kerberos, which is faster and stealthier than SMB-based attacks. Use it when you find Kerberos (88) open on a domain controller.",
+    "capabilities": [
+      "brute_force",
+      "credential_spray"
+    ],
+    "supported_targets": [
+      "ip",
+      "host",
+      "domain"
+    ],
+    "risk_level": "medium",
+    "tags": [
+      "kerberos",
+      "active-directory",
+      "brute-force",
+      "password-spray",
+      "user-enumeration"
+    ],
+    "use_cases": [
+      "Enumerating valid Active Directory usernames via Kerberos",
+      "Password spraying against AD accounts",
+      "Brute-forcing Kerberos authentication",
+      "Stealthier alternative to SMB-based brute-forcing"
+    ],
+    "limitations": [
+      "Requires domain controller with Kerberos (port 88)",
+      "Account lockout policies still apply",
+      "Requires a valid domain name"
+    ],
+    "complements": [
+      "crackmapexec",
+      "impacket",
+      "nmap"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "binary",
+    "commands": [
+      "curl -sL -o /opt/spectra_tools/kerbrute https://github.com/ropnop/kerbrute/releases/latest/download/kerbrute_linux_amd64",
+      "chmod +x /opt/spectra_tools/kerbrute",
+      "ln -sf /opt/spectra_tools/kerbrute /usr/local/bin/kerbrute"
+    ],
+    "verification_command": "kerbrute --help",
+    "verification_regex": "kerbrute",
+    "uninstall_commands": [
+      "rm -f /opt/spectra_tools/kerbrute /usr/local/bin/kerbrute"
+    ]
+  },
+  "execution": {
+    "command": "kerbrute",
+    "args_template": "{mode} --dc {dc} -d {domain} {flags}",
+    "timeout": 600,
+    "timeout_per_host": 300,
+    "min_timeout": 60,
+    "max_timeout": 1800
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "\\[\\+\\]\\s+VALID USERNAME:\\s+(?P<username>\\S+@\\S+)",
+        "type": "info"
+      },
+      {
+        "pattern": "\\[\\+\\]\\s+VALID LOGIN:\\s+(?P<username>\\S+)@(?P<domain>\\S+):(?P<password>.+)",
+        "type": "vuln"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract valid usernames and successful logins"
+  },
+  "ui": {
+    "icon": "key",
+    "color": "purple"
+  },
+  "examples": [
+    {"description": "Enumerate valid AD usernames", "args": {"mode": "userenum", "dc": "dc01.corp.local", "domain": "corp.local", "flags": "--users users.txt"}},
+    {"description": "Password spray against domain", "args": {"mode": "passwordspray", "dc": "dc01.corp.local", "domain": "corp.local", "flags": "--users users.txt --password 'Summer2024!'"}},
+    {"description": "Brute-force a single user", "args": {"mode": "bruteuser", "dc": "dc01.corp.local", "domain": "corp.local", "flags": "--passwords passwords.txt --user admin"}}
+  ],
+  "signature": null
+}

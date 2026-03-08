@@ -272,16 +272,19 @@ def generate_html_report(mission_data: dict) -> str:
 
 def save_report(mission_id: str, html_content: str) -> str:
     """
-    Persist an HTML report to disk.
+    Persist an HTML report to disk (encrypted at rest).
 
     Returns the absolute path of the saved file.
     """
+    from app.core.encryption import encrypt_file
+
     report_dir = os.path.join("reports", "missions", mission_id)
     os.makedirs(report_dir, exist_ok=True)
     path = os.path.join(report_dir, "report.html")
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(html_content)
-    logger.info("Report saved → %s", path)
+    encrypt_file(Path(path))
+    logger.info("Report saved (encrypted) → %s", path)
     return path
 
 
@@ -315,13 +318,16 @@ def generate_pdf_report(mission_data: dict) -> bytes | None:
 
 
 def save_pdf_report(mission_id: str, pdf_bytes: bytes) -> str | None:
-    """Save PDF report to disk."""
+    """Save PDF report to disk (encrypted at rest)."""
+    from app.core.encryption import encrypt_file
+
     output_dir = Path("reports/missions") / mission_id
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
 
     try:
         output_path.write_bytes(pdf_bytes)
+        encrypt_file(output_path)
         return str(output_path)
     except Exception as e:
         logger.error("Failed to save PDF: %s", e)

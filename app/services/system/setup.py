@@ -10,12 +10,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.services.ai.llm as llm_module
 
 from app.api.schemas import SystemSetupRequest
+from app.core.config import settings
 from app.core.security import get_password_hash
 from app.models.config import SystemConfig
 from app.models.user import User
 from app.services.ai.llm import close_global_llm_client, get_llm_client
+from app.services.system.runtime_settings import (
+    build_runtime_ai_config_from_payload,
+    hydrate_runtime_settings_from_db,
+    serialize_runtime_ai_config_values,
+    upsert_system_config_values,
+)
 from sqlalchemy import text
-from app.core.config import settings
 
 logger = logging.getLogger("spectra.services.system")
 
@@ -32,14 +38,14 @@ class SystemSetupService:
 
         1. Create Admin User
         2. Configure AI/LLM
-        3. Configure Infrastructure (DB, Redis)
+        3. Configure Infrastructure (DB)
         4. Re-initialize services
         """
         try:
             # 1. Create User
             user = await self._create_admin_user(setup_in)
 
-            # 2. Configure System Configs (DB, Redis, LLM)
+            # 2. Configure System Configs (DB, LLM)
             await self._configure_system(setup_in)
 
             # 3. Handle Infrastructure persistence (JSON) & Docker
@@ -49,11 +55,14 @@ class SystemSetupService:
             await self.session.commit()
             await self.session.refresh(user)
 
+            await hydrate_runtime_settings_from_db(
+                self.session,
+                persist_normalized=True,
+                commit=True,
+            )
+
             # 4. Generate Security Keys (for Plugin Signing)
             self._generate_signing_keys()
-
-            # 5. Re-init runtime services
-            await self._reinitialize_llm(setup_in)
 
             return user
 
@@ -124,60 +133,59 @@ class SystemSetupService:
         return user
 
     async def _configure_system(self, setup_in: SystemSetupRequest) -> None:
-        """Create SystemConfig entries in the database."""
-        configs = [
-            SystemConfig(key="AI_PROVIDER", value=setup_in.llm_provider),
-            SystemConfig(key="LLM_MODEL", value=setup_in.llm_model),
-        ]
+        """Create or update SystemConfig entries in the database."""
+        runtime_ai_config = build_runtime_ai_config_from_payload(
+            provider_profiles=(
+                {
+                    name: profile.model_dump(exclude_none=True)
+                    for name, profile in setup_in.provider_profiles.items()
+                }
+                if setup_in.provider_profiles
+                else None
+            ),
+            provider_routing=(
+                setup_in.provider_routing.as_dict()
+                if setup_in.provider_routing
+                else None
+            ),
+            provider_fallbacks=(
+                setup_in.provider_fallbacks.as_dict()
+                if setup_in.provider_fallbacks
+                else None
+            ),
+            legacy_provider=setup_in.llm_provider,
+            legacy_model=setup_in.llm_model,
+            legacy_api_key=setup_in.llm_api_key,
+            legacy_api_base_url=setup_in.llm_api_base,
+            legacy_ollama_host=setup_in.ollama_host,
+            legacy_ollama_model=setup_in.ollama_model,
+            legacy_ollama_enabled=(
+                setup_in.provider_ollama
+                or (setup_in.provider_api and setup_in.provider_ollama)
+            ),
+            legacy_tier_models={
+                "LLM_TIER1_MODEL": setup_in.llm_tier1_model,
+                "LLM_TIER2_MODEL": setup_in.llm_tier2_model,
+                "LLM_TIER3_MODEL": setup_in.llm_tier3_model,
+            },
+        )
 
-        if setup_in.llm_provider == "api":
-            if setup_in.llm_api_key:
-                configs.append(
-                    SystemConfig(
-                        key="LLM_API_KEY", value=setup_in.llm_api_key, is_secret=True
-                    )
-                )
-            if setup_in.llm_api_base:
-                configs.append(
-                    SystemConfig(key="LLM_API_BASE_URL", value=setup_in.llm_api_base)
-                )
-        elif setup_in.llm_provider == "ollama":
-            if setup_in.ollama_host:
-                configs.append(
-                    SystemConfig(key="OLLAMA_HOST", value=setup_in.ollama_host)
-                )
-            # OLLAMA_MODEL defaults to LLM_MODEL for compatibility
-            configs.append(SystemConfig(key="OLLAMA_MODEL", value=setup_in.llm_model))
+        config_values = serialize_runtime_ai_config_values(runtime_ai_config)
+
+        # Embedding configuration
+        if setup_in.embedding_model:
+            config_values["EMBEDDING_MODEL"] = (setup_in.embedding_model, False)
+        if setup_in.embedding_provider is not None:
+            config_values["EMBEDDING_PROVIDER"] = (setup_in.embedding_provider, False)
+
+        # Automation setting
+        config_values["FULLY_AUTOMATED"] = (str(settings.FULLY_AUTOMATED).lower(), False)
 
         # Database Configs (Stored in DB for reference, even if used via JSON)
         if setup_in.use_custom_db and setup_in.database_url:
-            configs.append(
-                SystemConfig(
-                    key="DATABASE_URL", value=setup_in.database_url, is_secret=True
-                )
-            )
+            config_values["DATABASE_URL"] = (setup_in.database_url, True)
 
-        # Redis Configs
-        if setup_in.use_custom_redis:
-            if setup_in.redis_host:
-                configs.append(
-                    SystemConfig(key="REDIS_HOST", value=setup_in.redis_host)
-                )
-            if setup_in.redis_port:
-                configs.append(
-                    SystemConfig(key="REDIS_PORT", value=str(setup_in.redis_port))
-                )
-            if setup_in.redis_password:
-                configs.append(
-                    SystemConfig(
-                        key="REDIS_PASSWORD",
-                        value=setup_in.redis_password,
-                        is_secret=True,
-                    )
-                )
-
-        for config in configs:
-            self.session.add(config)
+        await upsert_system_config_values(self.session, config_values)
 
     async def _handle_infrastructure_changes(
         self, setup_in: SystemSetupRequest
@@ -188,20 +196,8 @@ class SystemSetupService:
         if setup_in.use_custom_db and setup_in.database_url:
             infra_updates["DATABASE_URL"] = setup_in.database_url
 
-        if setup_in.use_custom_redis:
-            if setup_in.redis_host:
-                infra_updates["REDIS_HOST"] = setup_in.redis_host
-            if setup_in.redis_port:
-                infra_updates["REDIS_PORT"] = setup_in.redis_port
-            if setup_in.redis_password:
-                infra_updates["REDIS_PASSWORD"] = setup_in.redis_password
-
         if infra_updates:
             self._save_infra_config(infra_updates)
-
-        # Attempt to stop local redis container if we are sure we are using external
-        if setup_in.use_custom_redis:
-            await self._stop_container("redis")
 
     def _save_infra_config(self, updates: dict) -> None:
         """Save infrastructure config to persistent file."""
@@ -262,27 +258,7 @@ class SystemSetupService:
             await self.session.execute(text("SELECT 1"))
             return True
         except Exception as e:
-            logger.error(f"Database check failed: {e}")
-            return False
-
-    async def check_redis(self) -> bool:
-        """Check Redis connectivity."""
-        try:
-            from redis.asyncio import Redis
-
-            client = Redis(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                password=settings.REDIS_PASSWORD.get_secret_value()
-                if settings.REDIS_PASSWORD
-                else None,
-                socket_timeout=5,
-            )
-            await client.ping()
-            await client.close()
-            return True
-        except Exception as e:
-            logger.error(f"Redis check failed: {e}")
+            logger.error("Database check failed: %s", e)
             return False
 
     async def check_docker(self) -> bool:
@@ -300,12 +276,12 @@ class SystemSetupService:
             stdout, stderr = await proc.communicate()
 
             if proc.returncode == 0:
-                logger.debug(f"Docker version: {stdout.decode().strip()}")
+                logger.debug("Docker version: %s", stdout.decode().strip())
                 return True
-            logger.error(f"Docker check failed: {stderr.decode()}")
+            logger.error("Docker check failed: %s", stderr.decode())
             return False
         except Exception as e:
-            logger.error(f"Docker check failed: {e}")
+            logger.error("Docker check failed: %s", e)
             return False
 
     async def _stop_container(self, container_name_suffix: str) -> None:
@@ -346,18 +322,17 @@ class SystemSetupService:
                 path = Path(d)
                 path.mkdir(parents=True, exist_ok=True)
                 if not path.exists():
-                    logger.error(f"Directory missing: {d}")
+                    logger.error("Directory missing: %s", d)
                     return False
             return True
         except Exception as e:
-            logger.error(f"Directory check failed: {e}")
+            logger.error("Directory check failed: %s", e)
             return False
 
     async def verify_system(self) -> dict:
         """Run all system checks and return status report."""
         checks = {
             "database": await self.check_database(),
-            "redis": await self.check_redis(),
             "docker": await self.check_docker(),
             "directories": await self.check_directories(),
         }

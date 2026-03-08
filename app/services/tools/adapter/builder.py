@@ -99,6 +99,27 @@ class CommandBuilder:
 
         return command
 
+    def apply_stealth_args(self, command: str, stealth_config: Any) -> str:
+        """Apply stealth mode extra_args to the built command.
+
+        Appends stealth arguments (e.g., rate-limit flags) that the tool
+        supports. Skips args that are already present in the command.
+        """
+        if not stealth_config or not stealth_config.extra_args:
+            return command
+
+        for flag, value in stealth_config.extra_args.items():
+            # Don't duplicate flags already in the command
+            if flag in command:
+                continue
+            if value and str(value).lower() not in ("true", ""):
+                safe_value = shlex.quote(str(value))
+                command = f"{command} {flag} {safe_value}"
+            else:
+                command = f"{command} {flag}"
+
+        return command
+
     def _apply_arg_modifiers(self, args: dict) -> dict:
         """Apply arg_modifiers from tool config to transform argument values.
 

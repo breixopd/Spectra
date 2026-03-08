@@ -9,8 +9,8 @@
 
     <!-- Mission Control -->
     <div class="flex-1 max-w-3xl md:mx-4">
-        <div class="flex items-center gap-2">
-            <div class="relative" style="width: 220px;">
+        <div class="flex items-center gap-2 flex-wrap">
+            <div class="relative w-full md:w-56">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fa-solid fa-crosshairs text-slate-500"></i>
                 </div>
@@ -23,10 +23,23 @@
                     class="block w-full px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all"
                     placeholder="Directive (e.g., Full security assessment)">
             </div>
-            <button onclick="toggleRequirements()" class="p-2 rounded-lg bg-slate-900/50 border border-white/10 text-slate-500 hover:text-violet-400 hover:border-violet-500/30 transition-all" title="Add scope / requirements" aria-label="Toggle requirements">
-                <i class="fa-solid fa-file-lines text-sm"></i>
+            <button onclick="toggleRequirements()" class="p-2 rounded-lg bg-slate-900/50 border border-white/10 text-slate-500 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center gap-1" data-tooltip="Add scope / requirements" data-tooltip-pos="bottom" aria-label="Toggle requirements">
+                <i class="fa-solid fa-file-lines text-sm"></i><span class="text-xs">Reqs</span>
             </button>
-            <button onclick="launchFromForm()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-lg shadow-violet-500/20">
+            <!-- Adversary Profile -->
+            <select id="vpn-config"
+                class="px-2 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all appearance-none cursor-pointer"
+                style="min-width:110px;"
+                data-tooltip="VPN config for this mission" data-tooltip-pos="bottom">
+                <option value="">No VPN</option>
+            </select>
+            <select id="adversary-playbook"
+                class="px-2 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-xs text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all appearance-none cursor-pointer"
+                style="min-width:130px;"
+                data-tooltip="Adversary simulation profile" data-tooltip-pos="bottom">
+                <option value="">Standard</option>
+            </select>
+            <button onclick="launchFromForm()" id="launch-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all flex items-center gap-2 shadow-lg shadow-violet-500/20">
                 <i class="fa-solid fa-rocket"></i> Launch
             </button>
         </div>
@@ -70,11 +83,11 @@
             </div>
         </div>
 
-        <button onclick="pauseMission()" class="p-2 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-white/5 transition-colors" title="Pause" aria-label="Pause Mission">
-            <i class="fa-solid fa-pause"></i>
+        <button onclick="pauseMission()" class="p-2 rounded-lg text-slate-500 hover:text-amber-400 hover:bg-white/5 transition-colors flex items-center gap-1" data-tooltip="Pause assessment" data-tooltip-pos="bottom" aria-label="Pause Mission">
+            <i class="fa-solid fa-pause"></i><span class="text-xs">Pause</span>
         </button>
-        <button onclick="stopMission()" class="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-white/5 transition-colors" title="Stop" aria-label="Stop Mission">
-            <i class="fa-solid fa-stop"></i>
+        <button onclick="stopMission()" class="p-2 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-white/5 transition-colors flex items-center gap-1" data-tooltip="Stop assessment" data-tooltip-pos="bottom" aria-label="Stop Mission">
+            <i class="fa-solid fa-stop"></i><span class="text-xs">Stop</span>
         </button>
     </div>
 </header>
@@ -85,6 +98,19 @@
         <div class="bg-violet-500 h-full w-[0%] transition-all duration-500" id="progress-bar"></div>
     </div>
     <span class="text-[11px] font-mono text-slate-500 w-16 text-right" id="status-text">Ready</span>
+</div>
+
+<!-- Getting Started Card - shown when no missions exist -->
+<div id="getting-started" class="hidden bg-gradient-to-r from-indigo-900/50 to-purple-900/50 rounded-xl p-6 border border-indigo-500/30 mb-6">
+    <h3 class="text-xl font-bold text-white mb-3">Welcome to Spectra!</h3>
+    <p class="text-gray-300 mb-4">Get started with your first security assessment:</p>
+    <ol class="list-decimal list-inside text-gray-300 space-y-2 mb-4">
+        <li>Go to <a href="/targets" class="text-indigo-400 hover:text-indigo-300">Targets</a> and add your target IP or hostname</li>
+        <li>Navigate to the <a href="/dashboard" class="text-indigo-400 hover:text-indigo-300">Mission Control</a> and create a new mission</li>
+        <li>Set your scope, objectives, and stealth level</li>
+        <li>Launch the mission and watch Spectra work!</li>
+    </ol>
+    <p class="text-sm text-gray-400">Need help? <a href="/settings" class="text-indigo-400 hover:text-indigo-300">Configure Settings</a> to set up your AI provider.</p>
 </div>
 
 <!-- Main Content Grid -->
@@ -111,19 +137,19 @@
         <div class="glass-panel rounded-xl p-4">
             <span class="text-[10px] font-mono tracking-widest text-slate-500 uppercase block mb-3">Findings</span>
             <div class="grid grid-cols-4 gap-2">
-                <div class="bg-rose-500/10 border border-rose-500/20 rounded-lg flex flex-col items-center justify-center py-3">
+                <div class="bg-rose-500/10 border border-rose-500/20 rounded-lg flex flex-col items-center justify-center py-3" data-tooltip="CVSS 9.0-10.0" data-tooltip-pos="bottom">
                     <span class="text-xl font-bold text-rose-500 font-mono" id="count-critical">0</span>
                     <span class="text-[9px] text-rose-400/70 uppercase mt-0.5">Critical</span>
                 </div>
-                <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg flex flex-col items-center justify-center py-3">
+                <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg flex flex-col items-center justify-center py-3" data-tooltip="CVSS 7.0-8.9" data-tooltip-pos="bottom">
                     <span class="text-xl font-bold text-amber-500 font-mono" id="count-high">0</span>
                     <span class="text-[9px] text-amber-400/70 uppercase mt-0.5">High</span>
                 </div>
-                <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg flex flex-col items-center justify-center py-3">
+                <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg flex flex-col items-center justify-center py-3" data-tooltip="CVSS 4.0-6.9" data-tooltip-pos="bottom">
                     <span class="text-xl font-bold text-blue-500 font-mono" id="count-medium">0</span>
                     <span class="text-[9px] text-blue-400/70 uppercase mt-0.5">Medium</span>
                 </div>
-                <div class="bg-slate-700/20 border border-slate-700/30 rounded-lg flex flex-col items-center justify-center py-3">
+                <div class="bg-slate-700/20 border border-slate-700/30 rounded-lg flex flex-col items-center justify-center py-3" data-tooltip="CVSS 0.0-3.9 / Informational" data-tooltip-pos="bottom">
                     <span class="text-xl font-bold text-slate-400 font-mono" id="count-info">0</span>
                     <span class="text-[9px] text-slate-500 uppercase mt-0.5">Info</span>
                 </div>
@@ -159,6 +185,12 @@
                     <span id="node-count">0 nodes</span>
                 </div>
             </div>
+            <!-- Graph Legend -->
+            <div class="absolute bottom-3 left-3 z-10 flex items-center gap-3 text-[10px] font-mono text-slate-500">
+                <span class="flex items-center gap-1" data-tooltip="Target host"><span class="w-2 h-2 rounded-full bg-violet-500"></span>Target</span>
+                <span class="flex items-center gap-1" data-tooltip="Discovered service"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Service</span>
+                <span class="flex items-center gap-1" data-tooltip="Vulnerability finding"><span class="w-2 h-2 rounded-full bg-rose-500"></span>Vuln</span>
+            </div>
         </div>
 
         <!-- Activity Log (replaces old "Console Output" tile) -->
@@ -180,8 +212,415 @@
         </div>
     </div>
 </div>
+
+<!-- Task Tree Panel (visible during active missions) -->
+<div class="glass-panel rounded-xl mt-4 animate-fade-in-up hidden" id="task-tree-panel">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-white/5">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-list-tree text-violet-400 text-sm"></i>
+            <span class="text-sm font-medium text-white">Task Tree</span>
+        </div>
+        <span class="text-[10px] font-mono text-slate-500" id="task-tree-status"></span>
+    </div>
+    <div class="p-4 max-h-64 overflow-y-auto font-mono text-xs" id="task-tree-content">
+        <div class="text-slate-600 text-center py-4">No active tasks</div>
+    </div>
+</div>
+
+<!-- Attack Paths Panel (visible after exploitation) -->
+<div class="glass-panel rounded-xl mt-4 animate-fade-in-up hidden" id="attack-paths-panel">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-white/5">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-route text-rose-400 text-sm"></i>
+            <span class="text-sm font-medium text-white">Attack Paths</span>
+        </div>
+    </div>
+    <div id="attack-paths-graph" class="bg-slate-950" style="min-height: 250px;">
+        <div class="flex items-center justify-center h-full text-slate-700 py-8">
+            <div class="text-center"><i class="fa-solid fa-route text-2xl mb-2"></i><p class="text-xs">Attack paths appear after exploitation</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- Metrics & Trends Section -->
+<div class="glass-panel rounded-xl mt-4 animate-fade-in-up stagger-2" id="metrics-section">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-white/5">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-emerald-400 text-sm"></i>
+            <span class="text-sm font-medium text-white">Metrics &amp; Trends</span>
+        </div>
+        <select id="metrics-timerange" onchange="loadMetrics()" class="px-2 py-1 bg-slate-900/50 border border-white/10 rounded text-[10px] text-slate-300 focus:outline-none">
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+            <option value="90">90 days</option>
+            <option value="0">All time</option>
+        </select>
+    </div>
+    <div class="p-5">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
+                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Findings Over Time</span>
+                <canvas id="chart-findings-time" height="160"></canvas>
+            </div>
+            <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
+                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Missions Per Week</span>
+                <canvas id="chart-missions-week" height="160"></canvas>
+            </div>
+            <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
+                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Top Vulnerabilities</span>
+                <div id="top-vulns-list" class="space-y-1.5 max-h-40 overflow-y-auto text-xs"></div>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
+                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Severity Breakdown</span>
+                <div class="flex items-center justify-center" style="max-height:200px;"><canvas id="chart-severity" height="180"></canvas></div>
+            </div>
+            <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
+                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Top Targets</span>
+                <canvas id="chart-top-targets" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Playbook Detail Modal -->
+<div id="playbook-detail-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closePlaybookDetail()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-xl p-6 border border-white/10 shadow-2xl">
+        <h2 class="text-lg font-semibold text-white mb-1" id="pb-detail-title">Playbook</h2>
+        <p class="text-xs text-slate-400 mb-4" id="pb-detail-desc"></p>
+        <div class="space-y-3">
+            <div>
+                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Phases</span>
+                <div id="pb-detail-phases" class="mt-2 space-y-1.5"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
+                <div><span class="text-[10px] text-slate-500">Stealth</span><p class="text-sm text-white" id="pb-detail-stealth">N/A</p></div>
+                <div><span class="text-[10px] text-slate-500">Auto-exploit</span><p class="text-sm text-white" id="pb-detail-autoexploit">N/A</p></div>
+            </div>
+        </div>
+        <div class="flex justify-end space-x-3 mt-6">
+            <button onclick="closePlaybookDetail()" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Close</button>
+            <button onclick="launchPlaybook()" id="pb-launch-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                <i class="fa-solid fa-rocket mr-2"></i>Launch
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Finding Detail Modal -->
+<div id="finding-detail-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeFindingDetail()"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[80vh] glass-panel rounded-xl flex flex-col border border-white/10 shadow-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
+            <h2 class="text-lg font-semibold text-white truncate" id="fd-title">Finding</h2>
+            <button onclick="closeFindingDetail()" class="text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <!-- Tabs -->
+        <div class="flex border-b border-white/5 px-6 shrink-0">
+            <button class="fd-tab px-4 py-2 text-xs text-violet-400 border-b-2 border-violet-500" data-tab="details" onclick="switchFDTab('details')">Details</button>
+            <button class="fd-tab px-4 py-2 text-xs text-slate-400 border-b-2 border-transparent hover:text-white" data-tab="evidence" onclick="switchFDTab('evidence')">Evidence</button>
+            <button class="fd-tab px-4 py-2 text-xs text-slate-400 border-b-2 border-transparent hover:text-white" data-tab="remediation" onclick="switchFDTab('remediation')">Remediation</button>
+            <button class="fd-tab px-4 py-2 text-xs text-slate-400 border-b-2 border-transparent hover:text-white" data-tab="notes" onclick="switchFDTab('notes')">Notes</button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6">
+            <div id="fd-tab-details"></div>
+            <div id="fd-tab-evidence" class="hidden"></div>
+            <div id="fd-tab-remediation" class="hidden"></div>
+            <div id="fd-tab-notes" class="hidden"></div>
+        </div>
+        <div class="flex items-center gap-2 px-6 py-3 border-t border-white/5 shrink-0">
+            <button onclick="markFalsePositive()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs text-slate-300 transition-colors">Mark False Positive</button>
+            <button onclick="retestFinding()" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 rounded text-xs text-white transition-colors">Retest</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="/static/js/dashboard.js"></script>
+<script nonce="{{ request.state.csp_nonce }}">
+// --- Metrics & Trends (Chart.js) ---
+let chartInstances = {};
+
+async function loadMetrics() {
+    const days = parseInt(document.getElementById('metrics-timerange').value) || 0;
+    let missions = [], allFindings = [];
+    try {
+        const res = await fetch('/api/missions');
+        if (res.ok) missions = await res.json();
+    } catch {}
+
+    const cutoff = days > 0 ? new Date(Date.now() - days * 86400000) : null;
+    if (cutoff) missions = missions.filter(m => new Date(m.created_at) >= cutoff);
+
+    // Show getting started card when no missions exist
+    const gettingStarted = document.getElementById('getting-started');
+    if (gettingStarted) {
+        if (missions.length === 0) {
+            gettingStarted.classList.remove('hidden');
+        } else {
+            gettingStarted.classList.add('hidden');
+        }
+    }
+
+    // Gather all findings
+    for (const m of missions) {
+        try {
+            const r = await fetch(`/api/missions/${m.id}/findings`);
+            if (r.ok) { const f = await r.json(); f.forEach(x => { x._mission = m; }); allFindings.push(...f); }
+        } catch {}
+    }
+
+    renderFindingsOverTime(allFindings, days);
+    renderMissionsPerWeek(missions);
+    renderSeverityBreakdown(allFindings);
+    renderTopVulns(allFindings);
+    renderTopTargets(allFindings, missions);
+}
+
+function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+
+function renderFindingsOverTime(findings, days) {
+    destroyChart('findings-time');
+    const grouped = {};
+    findings.forEach(f => { const d = (f.created_at || '').split('T')[0]; if (d) grouped[d] = (grouped[d] || 0) + 1; });
+    const labels = Object.keys(grouped).sort();
+    const data = labels.map(l => grouped[l]);
+    const ctx = document.getElementById('chart-findings-time');
+    if (!ctx) return;
+    chartInstances['findings-time'] = new Chart(ctx, {
+        type: 'line', data: { labels, datasets: [{ label: 'Findings', data, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.3, pointRadius: 2 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } }, y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } } } }
+    });
+}
+
+function renderMissionsPerWeek(missions) {
+    destroyChart('missions-week');
+    const grouped = {};
+    missions.forEach(m => {
+        const d = new Date(m.created_at);
+        const weekStart = new Date(d); weekStart.setDate(d.getDate() - d.getDay());
+        const key = weekStart.toISOString().split('T')[0];
+        grouped[key] = (grouped[key] || 0) + 1;
+    });
+    const labels = Object.keys(grouped).sort();
+    const data = labels.map(l => grouped[l]);
+    const ctx = document.getElementById('chart-missions-week');
+    if (!ctx) return;
+    chartInstances['missions-week'] = new Chart(ctx, {
+        type: 'bar', data: { labels, datasets: [{ label: 'Missions', data, backgroundColor: '#10b981', borderRadius: 4 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { display: false } }, y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } } } }
+    });
+}
+
+function renderSeverityBreakdown(findings) {
+    destroyChart('severity');
+    const counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+    findings.forEach(f => { const s = (f.severity || 'info').toLowerCase(); if (s in counts) counts[s]++; });
+    const ctx = document.getElementById('chart-severity');
+    if (!ctx) return;
+    chartInstances['severity'] = new Chart(ctx, {
+        type: 'doughnut', data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: ['#f43f5e', '#f59e0b', '#3b82f6', '#64748b', '#475569'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 10, family: 'JetBrains Mono' }, padding: 8, usePointStyle: true, pointStyleWidth: 8 } } } }
+    });
+}
+
+function renderTopVulns(findings) {
+    const typeCounts = {};
+    findings.forEach(f => { const t = f.title || 'Unknown'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
+    const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const el = document.getElementById('top-vulns-list');
+    if (!el) return;
+    el.innerHTML = sorted.length === 0 ? '<div class="text-slate-600 text-center py-4">No findings</div>' :
+        sorted.map(([name, count], i) => `<div class="flex items-center gap-2"><span class="text-[10px] text-slate-600 w-4">${i + 1}.</span><span class="flex-1 text-slate-300 truncate">${name}</span><span class="text-[10px] font-mono text-slate-500">${count}</span></div>`).join('');
+}
+
+function renderTopTargets(findings, missions) {
+    destroyChart('top-targets');
+    const targetCounts = {};
+    findings.forEach(f => { const t = f._mission?.target || 'Unknown'; targetCounts[t] = (targetCounts[t] || 0) + 1; });
+    const sorted = Object.entries(targetCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const ctx = document.getElementById('chart-top-targets');
+    if (!ctx) return;
+    chartInstances['top-targets'] = new Chart(ctx, {
+        type: 'bar', data: { labels: sorted.map(s => s[0]), datasets: [{ label: 'Findings', data: sorted.map(s => s[1]), backgroundColor: '#8b5cf6', borderRadius: 4 }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } }, y: { ticks: { color: '#94a3b8', font: { size: 9, family: 'JetBrains Mono' } }, grid: { display: false } } } }
+    });
+}
+
+// --- Playbook Detail Modal ---
+let selectedPlaybookData = null;
+
+function showPlaybookDetail(playbook) {
+    selectedPlaybookData = playbook;
+    document.getElementById('pb-detail-title').textContent = playbook.name || 'Playbook';
+    document.getElementById('pb-detail-desc').textContent = playbook.description || '';
+    const phasesEl = document.getElementById('pb-detail-phases');
+    const steps = playbook.steps || playbook.phases || [];
+    phasesEl.innerHTML = steps.map((s, i) => `<div class="flex items-center gap-2 text-xs"><span class="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-mono shrink-0">${i + 1}</span><span class="text-slate-300">${typeof s === 'string' ? s : s.name || s.description || JSON.stringify(s)}</span></div>`).join('');
+    document.getElementById('pb-detail-stealth').textContent = playbook.stealth ? 'On' : 'Off';
+    document.getElementById('pb-detail-autoexploit').textContent = playbook.auto_exploit !== false ? 'Yes' : 'No';
+    document.getElementById('playbook-detail-modal').classList.remove('hidden');
+}
+function closePlaybookDetail() { document.getElementById('playbook-detail-modal').classList.add('hidden'); }
+function launchPlaybook() {
+    if (!selectedPlaybookData) return;
+    const target = document.getElementById('mission-target')?.value?.trim();
+    if (!target) { closePlaybookDetail(); document.getElementById('mission-target')?.focus(); return; }
+    closePlaybookDetail();
+    startMission(target, selectedPlaybookData.description || 'Playbook execution', selectedPlaybookData.id);
+}
+
+// Add info icon handler to adversary-playbook dropdown
+(function setupPlaybookInfo() {
+    const sel = document.getElementById('adversary-playbook');
+    if (!sel) return;
+    sel.addEventListener('dblclick', async () => {
+        const val = sel.value;
+        if (!val) return;
+        try {
+            const res = await fetch('/api/missions/adversary-playbooks');
+            if (!res.ok) return;
+            const playbooks = await res.json();
+            const pb = playbooks.find(p => p.id === val);
+            if (pb) showPlaybookDetail(pb);
+        } catch {}
+    });
+})();
+
+// --- Finding Detail Modal ---
+let currentFinding = null;
+
+function openFindingDetail(finding) {
+    currentFinding = finding;
+    document.getElementById('fd-title').textContent = finding.title || 'Finding';
+    const sevColors = { critical: 'text-rose-400', high: 'text-amber-400', medium: 'text-blue-400', low: 'text-slate-400', info: 'text-slate-500' };
+    const sev = (finding.severity || 'info').toLowerCase();
+
+    document.getElementById('fd-tab-details').innerHTML = `
+        <div class="space-y-3">
+            <div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 uppercase w-20">Severity</span><span class="${sevColors[sev] || 'text-slate-400'} font-medium uppercase text-sm">${sev}</span></div>
+            <div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 uppercase w-20">Tool</span><span class="text-sm text-white">${finding.tool_source || 'N/A'}</span></div>
+            <div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 uppercase w-20">Status</span><span class="text-sm text-white">${finding.status || 'confirmed'}</span></div>
+            <div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 uppercase w-20">Found</span><span class="text-sm text-white">${finding.created_at ? new Date(finding.created_at).toLocaleString() : 'N/A'}</span></div>
+            <div class="pt-2 border-t border-white/5"><span class="text-[10px] text-slate-500 uppercase block mb-1">Description</span><p class="text-sm text-slate-300">${finding.description || 'No description available.'}</p></div>
+        </div>`;
+    document.getElementById('fd-tab-evidence').innerHTML = `<div class="text-sm text-slate-500">No evidence uploaded yet.</div>`;
+    document.getElementById('fd-tab-remediation').innerHTML = `<div class="space-y-2 text-sm text-slate-300">${finding.remediation ? `<p>${finding.remediation}</p>` : '<p class="text-slate-500">No remediation steps available.</p>'}</div>`;
+    document.getElementById('fd-tab-notes').innerHTML = `<textarea class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 outline-none resize-none" rows="4" placeholder="Add notes about this finding..."></textarea>`;
+
+    switchFDTab('details');
+    document.getElementById('finding-detail-modal').classList.remove('hidden');
+}
+function closeFindingDetail() { document.getElementById('finding-detail-modal').classList.add('hidden'); }
+
+function switchFDTab(tab) {
+    document.querySelectorAll('.fd-tab').forEach(t => { t.classList.remove('text-violet-400', 'border-violet-500'); t.classList.add('text-slate-400', 'border-transparent'); });
+    const active = document.querySelector(`.fd-tab[data-tab="${tab}"]`);
+    if (active) { active.classList.add('text-violet-400', 'border-violet-500'); active.classList.remove('text-slate-400', 'border-transparent'); }
+    ['details', 'evidence', 'remediation', 'notes'].forEach(t => {
+        const el = document.getElementById(`fd-tab-${t}`);
+        if (el) el.classList.toggle('hidden', t !== tab);
+    });
+}
+
+function markFalsePositive() {
+    if (!currentFinding) return;
+    fetch(`/api/findings/${currentFinding.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'false_positive' }) }).catch(() => {});
+    closeFindingDetail();
+}
+function retestFinding() { closeFindingDetail(); }
+
+// Make findings clickable in the dashboard
+const origHandleFinding = handleFinding;
+handleFinding = function(data) {
+    origHandleFinding(data);
+    // Store finding data for click access
+    if (!window._dashboardFindings) window._dashboardFindings = [];
+    window._dashboardFindings.push(data);
+};
+
+// --- Task Tree ---
+function renderTaskTree(tasks) {
+    const panel = document.getElementById('task-tree-panel');
+    const content = document.getElementById('task-tree-content');
+    if (!tasks || tasks.length === 0) { panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+
+    const icons = { completed: '☑', running: '●', pending: '○', failed: '✗' };
+    const colors = { completed: 'text-emerald-400', running: 'text-amber-400 animate-pulse', pending: 'text-slate-500', failed: 'text-rose-400' };
+
+    function renderNode(task, depth = 0) {
+        const indent = depth * 20;
+        const icon = icons[task.status] || '○';
+        const color = colors[task.status] || 'text-slate-500';
+        let html = `<div class="flex items-center gap-2 py-0.5 hover:bg-white/5 rounded px-2 cursor-pointer" style="padding-left:${indent + 8}px" onclick='openFindingDetail(${JSON.stringify(task).replace(/'/g, "&#39;")})'>
+            <span class="${color}">${icon}</span>
+            <span class="text-slate-300">${task.name || task.tool || 'Task'}</span>
+            ${task.status === 'running' ? '<span class="text-[10px] text-amber-400 ml-auto">running...</span>' : ''}
+        </div>`;
+        if (task.children) task.children.forEach(c => { html += renderNode(c, depth + 1); });
+        return html;
+    }
+
+    content.innerHTML = tasks.map(t => renderNode(t)).join('');
+    const running = tasks.filter(t => t.status === 'running').length;
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    document.getElementById('task-tree-status').textContent = `${completed}/${tasks.length} complete, ${running} active`;
+}
+
+// --- Attack Paths Graph ---
+let attackPathCy = null;
+
+function renderAttackPaths(paths) {
+    const panel = document.getElementById('attack-paths-panel');
+    if (!paths || paths.length === 0) { panel.classList.add('hidden'); return; }
+    panel.classList.remove('hidden');
+    const container = document.getElementById('attack-paths-graph');
+    container.innerHTML = '';
+
+    attackPathCy = cytoscape({
+        container,
+        style: [
+            { selector: 'node', style: { 'label': 'data(label)', 'color': '#94a3b8', 'font-size': '9px', 'font-family': 'JetBrains Mono', 'text-valign': 'bottom', 'text-margin-y': 4, 'width': 24, 'height': 24 } },
+            { selector: 'node[type="entry"]', style: { 'background-color': '#3b82f6' } },
+            { selector: 'node[type="exploit"]', style: { 'background-color': '#f43f5e' } },
+            { selector: 'node[type="pivot"]', style: { 'background-color': '#f59e0b' } },
+            { selector: 'node[type="goal"]', style: { 'background-color': '#10b981' } },
+            { selector: 'edge', style: { 'width': 2, 'line-color': '#475569', 'target-arrow-color': '#475569', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'label': 'data(label)', 'font-size': '8px', 'color': '#64748b' } }
+        ],
+        layout: { name: 'dagre', rankDir: 'LR', animate: true }
+    });
+
+    paths.forEach((path, pi) => {
+        path.forEach((step, si) => {
+            const nodeId = `ap-${pi}-${si}`;
+            attackPathCy.add({ group: 'nodes', data: { id: nodeId, label: step.name || step.title || 'Step', type: step.type || (si === 0 ? 'entry' : 'exploit') } });
+            if (si > 0) {
+                attackPathCy.add({ group: 'edges', data: { source: `ap-${pi}-${si-1}`, target: nodeId, label: step.technique || '' } });
+            }
+        });
+    });
+
+    try { attackPathCy.layout({ name: 'dagre', rankDir: 'LR', animate: true }).run(); } catch { attackPathCy.layout({ name: 'cose', animate: true }).run(); }
+}
+
+// Listen for task/path updates via WebSocket
+const origOnSocket = window.onSocketMessage;
+window.onSocketMessage = function(data) {
+    if (origOnSocket) origOnSocket(data);
+    try {
+        const msg = JSON.parse(data);
+        if (msg.type === 'task_tree') renderTaskTree(msg.data);
+        if (msg.type === 'attack_paths') renderAttackPaths(msg.data);
+        if (msg.type === 'task_update' && msg.data?.tasks) renderTaskTree(msg.data.tasks);
+    } catch {}
+};
+
+// Load metrics on page load
+document.addEventListener('DOMContentLoaded', () => { loadMetrics(); });
+</script>
 {% endblock %}

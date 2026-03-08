@@ -21,6 +21,7 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
+from app.services.ai.context import ContextManager, ContextSection, Priority
 from app.services.ai.prompts import REPORTING_PROMPT
 
 logger = logging.getLogger("spectra.ai.agents.reporter")
@@ -82,7 +83,7 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
     - Saves reports to disk in multiple formats
     """
 
-    role: ClassVar[AgentRole] = AgentRole.PARSER  # Closest available
+    role: ClassVar[AgentRole] = AgentRole.REPORTER
     name: ClassVar[str] = "ReporterAgent"
     description: ClassVar[str] = "Generates structured security assessment reports"
 
@@ -176,18 +177,25 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
 - Low: {severity_counts.get("low", 0)}
 - Informational: {severity_counts.get("info", 0)}"""
 
-        prompt = REPORTING_PROMPT.format(
+        base_prompt = REPORTING_PROMPT.format(
             target=input_data.target,
             date=context.session_id or context.mission_id,
-            mission_summary=input_data.mission_summary,
-            findings_summary=findings_summary,
+            mission_summary="{mission_summary}",
+            findings_summary="{findings_summary}",
         )
+
+        ctx = ContextManager(max_context_tokens=4000)
+        prompt = ctx.build([
+            ContextSection("task", base_prompt, Priority.CRITICAL),
+            ContextSection("mission_summary", f"Mission Summary: {input_data.mission_summary}", Priority.HIGH, max_tokens=800),
+            ContextSection("findings_summary", f"Findings Summary:\n{findings_summary}", Priority.HIGH, max_tokens=600),
+        ])
 
         system_prompt = self._build_system_prompt(context)
 
         try:
             # Use LLM to generate summary
-            response = await self.llm.generate(
+            response = await self._llm_generate(
                 prompt=prompt,
                 system_prompt=system_prompt,
                 temperature=0.3,
@@ -255,10 +263,7 @@ Immediate attention is required for critical and high severity findings.
             if severity in by_severity and by_severity[severity]:
                 items = by_severity[severity]
                 content = "\n\n".join(
-                    [
-                        f"- {f.get('title', 'Finding')}: {f.get('description', 'No description')}"
-                        for f in items
-                    ]
+                    self._format_finding(f) for f in items
                 )
 
                 sections.append(
@@ -278,6 +283,53 @@ Immediate attention is required for critical and high severity findings.
         )
 
         return sections
+
+    def _format_finding(self, f: dict) -> str:
+        """Format a single finding for the report, handling various finding schemas."""
+        # Try structured title/description first
+        title = f.get("title") or f.get("name") or f.get("template-id")
+        desc = f.get("description")
+
+        # Service/port findings (nmap-style)
+        port = f.get("port") or f.get("portid")
+        ip = f.get("ip") or f.get("host")
+        product = f.get("product")
+        version = f.get("version")
+        service = f.get("service") or f.get("name")
+
+        if port and ip:
+            svc = f"{service}" if service else "unknown"
+            prod = f"{product} {version}".strip() if product else ""
+            line = f"- **{ip}:{port}** ({svc})"
+            if prod:
+                line += f" — {prod}"
+            if desc:
+                line += f"\n  {desc}"
+            return line
+
+        # URL-based findings (web scanners)
+        url = f.get("url") or f.get("matched-at")
+        if url:
+            line = f"- **{url}**"
+            if title:
+                line += f": {title}"
+            if desc:
+                line += f"\n  {desc}"
+            return line
+
+        # Generic finding with title
+        if title:
+            line = f"- **{title}**"
+            if desc:
+                line += f": {desc}"
+            return line
+
+        # Fallback: dump key-value pairs
+        parts = []
+        for k, v in f.items():
+            if v and k not in ("severity", "source", "confirmed", "mitre_techniques", "count"):
+                parts.append(f"{k}: {v}")
+        return "- " + ", ".join(parts) if parts else "- (no details)"
 
     async def _save_report(
         self, mission_id: str, report: ReportOutput, input_data: ReporterInput

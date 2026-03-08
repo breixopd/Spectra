@@ -7,7 +7,7 @@ directly to pentest workflows.
 
 Why playbooks over RAG for pentesting:
 1. Pentest patterns are highly structured (service → vuln → exploit)
-2. RAG requires embeddings model + Redis Stack = heavy dependencies
+2. RAG requires embeddings model = heavy dependencies
 3. Playbook matches are deterministic, not probabilistic
 4. Easier to debug and audit than vector similarity
 5. Can be version-controlled as JSON/YAML files
@@ -237,12 +237,17 @@ class PlaybookEngine:
     relying on LLM to hallucinate tool names and arguments.
     """
 
-    def __init__(self, custom_playbook_dir: str | Path | None = None):
+    _PATTERNS_FILE = Path("reports/memory/exploit_patterns.json")
+
+    def __init__(self, custom_playbook_dir: str | Path | None = None, patterns_file: str | Path | None = None):
         self.playbooks: list[ServicePlaybook] = []
         self.exploit_patterns: list[ExploitPattern] = []
         self._service_index: dict[str, int] = {}
         self._port_index: dict[int, int] = {}
+        if patterns_file is not None:
+            self._PATTERNS_FILE = Path(patterns_file)
         self._load_defaults()
+        self._load_patterns()
         if custom_playbook_dir:
             self._load_custom(Path(custom_playbook_dir))
         self._rebuild_indices()
@@ -277,6 +282,32 @@ class PlaybookEngine:
                 logger.warning("Failed to load playbook: %s", e)
 
         logger.info("Loaded %d default playbooks", len(self.playbooks))
+
+    def _load_patterns(self) -> None:
+        """Load persisted exploit patterns from disk."""
+        try:
+            if self._PATTERNS_FILE.exists():
+                data = json.loads(self._PATTERNS_FILE.read_text())
+                self.exploit_patterns = [ExploitPattern(**p) for p in data]
+                logger.info("Loaded %d exploit patterns from disk", len(self.exploit_patterns))
+        except Exception as e:
+            logger.warning("Failed to load exploit patterns: %s", e)
+
+    def _save_patterns(self) -> None:
+        """Atomically persist exploit patterns to disk."""
+        tmp = self._PATTERNS_FILE.with_suffix(".tmp")
+        try:
+            self._PATTERNS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(json.dumps(
+                [p.model_dump() for p in self.exploit_patterns],
+                indent=2,
+                default=str,
+            ))
+            tmp.rename(self._PATTERNS_FILE)
+        except Exception as e:
+            logger.warning("Failed to save exploit patterns: %s", e)
+            if tmp.exists():
+                tmp.unlink()
 
     def _load_custom(self, directory: Path) -> None:
         """Load custom playbooks from a directory."""
@@ -419,6 +450,8 @@ class PlaybookEngine:
                     last_used=datetime.now().isoformat(),
                 )
             )
+
+        self._save_patterns()
 
     def get_grounded_prompt_context(
         self,

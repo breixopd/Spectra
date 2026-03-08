@@ -1,0 +1,119 @@
+{
+  "id": "crackmapexec",
+  "name": "CrackMapExec",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "Swiss army knife for pentesting Active Directory / Windows networks. Supports SMB, LDAP, WinRM, MSSQL, SSH.",
+  "metadata": {
+    "ai_description": "CrackMapExec (NetExec) is the go-to tool for Active Directory enumeration and exploitation. It supports multiple protocols (SMB, LDAP, WinRM, MSSQL, SSH) and can enumerate shares, users, groups, perform credential spraying, execute modules like mimikatz, lsassy, and petitpotam. Use it after discovering Windows/AD services with nmap to enumerate and exploit the domain.",
+    "capabilities": [
+      "credential_spray",
+      "brute_force",
+      "lateral_movement",
+      "credential_harvest",
+      "service_detection"
+    ],
+    "supported_targets": [
+      "ip",
+      "ip_range",
+      "cidr",
+      "host"
+    ],
+    "risk_level": "high",
+    "tags": [
+      "active-directory",
+      "smb",
+      "ldap",
+      "winrm",
+      "mssql",
+      "windows",
+      "lateral-movement",
+      "credential-spray"
+    ],
+    "use_cases": [
+      "Enumerating SMB shares, users, and groups in AD environments",
+      "Credential spraying against multiple protocols",
+      "Lateral movement via WinRM, SMB, or MSSQL",
+      "Dumping credentials with mimikatz or lsassy modules",
+      "Triggering PetitPotam or other AD attack primitives"
+    ],
+    "limitations": [
+      "Requires valid credentials for most modules",
+      "Noisy - generates significant authentication logs",
+      "May trigger account lockout policies",
+      "Windows/AD environments only"
+    ],
+    "complements": [
+      "impacket",
+      "kerbrute",
+      "enum4linux",
+      "nmap"
+    ],
+    "prerequisites": [
+      "nmap"
+    ]
+  },
+  "installation": {
+    "method": "pipx",
+    "commands": [
+      "apt-get update",
+      "apt-get install -y libffi-dev libssl-dev",
+      "pip3 install crackmapexec || pip3 install netexec"
+    ],
+    "verification_command": "crackmapexec --version || netexec --version",
+    "verification_regex": "(CrackMapExec|NetExec)",
+    "uninstall_commands": [
+      "pip3 uninstall -y crackmapexec netexec"
+    ]
+  },
+  "execution": {
+    "command": "crackmapexec",
+    "args_template": "{protocol} {target} {flags}",
+    "timeout": 600,
+    "timeout_per_host": 120,
+    "min_timeout": 60,
+    "max_timeout": 1800,
+    "arg_modifiers": {
+      "module": {
+        "prefix": "-M ",
+        "separator": " "
+      }
+    }
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "\\[\\+\\]\\s+(?P<host>[\\d.]+):?(?P<port>\\d*)\\s+(?P<result>.+)",
+        "type": "info"
+      },
+      {
+        "pattern": "\\[\\+\\]\\s+(?P<host>[\\d.]+).*\\(Pwn3d!\\)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "SMBv(?P<version>\\d)\\s+.*signing:(?P<signing>\\w+)",
+        "type": "info"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract enumerated shares, users, groups, successful authentications, and pwned hosts"
+  },
+  "stealth": {
+    "rate_limit": 5,
+    "delay_ms": 2000,
+    "extra_args": {
+      "--jitter": "3"
+    }
+  },
+  "ui": {
+    "icon": "shield",
+    "color": "red"
+  },
+  "examples": [
+    {"description": "Enumerate SMB shares with credentials", "args": {"target": "192.168.1.0/24", "protocol": "smb", "flags": "-u admin -p Password1 --shares"}},
+    {"description": "Credential spray via SMB", "args": {"target": "192.168.1.0/24", "protocol": "smb", "flags": "-u users.txt -p 'Summer2024!' --continue-on-success"}},
+    {"description": "Run mimikatz module on pwned host", "args": {"target": "192.168.1.10", "protocol": "smb", "flags": "-u admin -p Password1 -M mimikatz"}}
+  ],
+  "signature": null
+}

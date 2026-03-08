@@ -3,34 +3,11 @@ import time
 import uuid
 from app.services.ai.rag import RAGService, Document, RAGConfig
 
-class MockRedisPipeline:
-    def __init__(self):
-        self.commands = []
-
-    def hset(self, key, mapping):
-        self.commands.append(("hset", key, mapping))
-
-    async def execute(self):
-        return [1] * len(self.commands)
-
-class MockRedis:
-    def __init__(self):
-        self.hsets = []
-
-    def ft(self, name):
-        class MockInfo:
-            async def info(self): return {}
-        return MockInfo()
-
-    async def hset(self, key, mapping):
-        self.hsets.append((key, mapping))
-
-    def pipeline(self):
-        return MockRedisPipeline()
 
 class MockEmbeddingService:
     async def embed_batch(self, contents):
         return [[0.1] * 384 for _ in contents]
+
 
 class PrecomputedEmbeddings:
     def __init__(self, embeddings):
@@ -39,12 +16,11 @@ class PrecomputedEmbeddings:
     async def embed_batch(self, contents):
         return self._embeddings
 
-async def main():
-    redis = MockRedis()
 
-    config = RAGConfig(index_name="spectra:rag:idx:bench", doc_prefix="spectra:rag:doc:bench:")
-    rag = RAGService(redis, config)
-    rag._index_exists = True  # Skip initialization
+async def main():
+    config = RAGConfig()
+    rag = RAGService(config)
+    rag._table_ready = True  # Skip initialization
 
     num_docs = 10000
     print(f"Benchmarking index_batch with {num_docs} documents...")
@@ -70,13 +46,12 @@ async def main():
     t3 = time.time()
     print(f"  Embedding generation: {t3 - t2:.4f}s  (mocked — {len(embeddings[0])}-dim vectors)")
 
-    # 3. Pipeline enqueue + execute (chunked)
-    # Use pre-computed embeddings to isolate pipeline timing from embedding generation
+    # 3. Index batch (chunked)
     rag.embeddings = PrecomputedEmbeddings(embeddings)
     t4 = time.time()
     success_count = await rag.index_batch(docs)
     t5 = time.time()
-    print(f"  Pipeline enqueue + execute ({config.batch_size} docs/chunk): {t5 - t4:.4f}s")
+    print(f"  Index batch ({config.batch_size} docs/chunk): {t5 - t4:.4f}s")
 
     print(f"\n  Total:                {t5 - t0:.4f}s  ({success_count}/{num_docs} indexed)")
 

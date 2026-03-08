@@ -63,8 +63,27 @@
       "severity": "severity",
       "finding": "finding",
       "id": "id"
-    }
+    },
+    "regex_patterns": [
+      {
+        "pattern": "(VULNERABLE|NOT vulnerable)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "(LOW|MEDIUM|HIGH|CRITICAL)\\s+(?P<finding>.+)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "Certificate\\s+(?P<cert_info>.+)",
+        "type": "info"
+      }
+    ]
   },
+  "examples": [
+    {"description": "Full SSL/TLS scan", "args": {"target": "example.com:443"}},
+    {"description": "Check for specific vulnerabilities", "args": {"target": "example.com:443", "flags": "--vulnerable"}},
+    {"description": "Quick cipher check", "args": {"target": "192.168.1.10:443", "flags": "--fast"}}
+  ],
   "ui": {
     "icon": "shield",
     "color": "blue"

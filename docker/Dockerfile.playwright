@@ -1,0 +1,8 @@
+FROM mcr.microsoft.com/playwright/python:v1.58.0-jammy
+
+WORKDIR /app
+
+# Install only the dependencies needed for browser tests.
+RUN pip install --no-cache-dir pytest pytest-playwright playwright==1.58.0 pytest-asyncio pytest-dotenv
+
+COPY . .

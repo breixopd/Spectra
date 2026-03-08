@@ -5,6 +5,12 @@ Provides secure password hashing using bcrypt and JWT token generation/validatio
 Follows OWASP security best practices.
 """
 
+import asyncio
+import hashlib
+import json
+import logging
+import threading
+import time as _time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -19,8 +25,202 @@ __all__ = [
     "decode_token",
     "verify_password",
     "get_password_hash",
+    "invalidate_token",
+    "is_token_blacklisted",
+    "invalidate_all_user_tokens",
     "JWTError",
 ]
+
+_logger = logging.getLogger("spectra.core.security")
+
+# --- Persistent Token Blacklist ---
+
+# In-memory caches loaded from DB on startup
+_blacklisted_tokens: dict[str, float] = {}  # token_hash -> expiry timestamp
+_user_token_blacklist: dict[str, float] = {}  # username -> invalidated_before timestamp
+_blacklist_lock = threading.Lock()
+_blacklist_loaded = False
+
+
+def _ensure_blacklist_loaded() -> None:
+    """Load blacklist from DB once."""
+    global _blacklist_loaded
+    if _blacklist_loaded:
+        return
+    with _blacklist_lock:
+        if _blacklist_loaded:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_load_from_db())
+        except RuntimeError:
+            pass
+        _blacklist_loaded = True
+
+
+def _persist_blacklist() -> None:
+    """Persist blacklist to DB."""
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_persist_to_db())
+    except RuntimeError:
+        pass
+
+
+async def _persist_to_db() -> None:
+    """Persist blacklist state to database via cache_entries table."""
+    try:
+        from app.core.database import async_session_maker
+        from sqlalchemy import text
+
+        now = _time.time()
+        async with async_session_maker() as session:
+            for token_hash, expiry in _blacklisted_tokens.items():
+                if expiry > now:
+                    await session.execute(text(
+                        "INSERT INTO cache_entries (key, value, expires_at, created_at) "
+                        "VALUES (:key, :value, :expires_at, :created_at) "
+                        "ON CONFLICT (key) DO UPDATE SET value = :value, expires_at = :expires_at"
+                    ), {
+                        "key": f"blacklist:token:{token_hash}",
+                        "value": json.dumps({"type": "token", "expiry": expiry}),
+                        "expires_at": datetime.fromtimestamp(expiry, tz=timezone.utc),
+                        "created_at": datetime.now(timezone.utc),
+                    })
+
+            for username, invalidated_before in _user_token_blacklist.items():
+                await session.execute(text(
+                    "INSERT INTO cache_entries (key, value, expires_at, created_at) "
+                    "VALUES (:key, :value, NULL, :created_at) "
+                    "ON CONFLICT (key) DO UPDATE SET value = :value"
+                ), {
+                    "key": f"blacklist:user:{username}",
+                    "value": json.dumps({"type": "user", "invalidated_before": invalidated_before}),
+                    "created_at": datetime.now(timezone.utc),
+                })
+
+            await session.commit()
+    except Exception as e:
+        _logger.warning("Failed to persist blacklist to DB: %s", e)
+
+
+async def _load_from_db() -> None:
+    """Load blacklist state from database, overlaying in-memory cache."""
+    try:
+        from app.core.database import async_session_maker
+        from sqlalchemy import text
+
+        async with async_session_maker() as session:
+            rows = (await session.execute(text(
+                "SELECT key, value FROM cache_entries WHERE key LIKE 'blacklist:%'"
+            ))).mappings().all()
+
+        now = _time.time()
+        loaded_tokens = 0
+        loaded_users = 0
+        with _blacklist_lock:
+            for row in rows:
+                data = json.loads(row["value"])
+                key: str = row["key"]
+                if key.startswith("blacklist:token:"):
+                    token_hash = key[len("blacklist:token:"):]
+                    expiry = data.get("expiry", 0)
+                    if expiry > now:
+                        _blacklisted_tokens[token_hash] = expiry
+                        loaded_tokens += 1
+                elif key.startswith("blacklist:user:"):
+                    username = key[len("blacklist:user:"):]
+                    _user_token_blacklist[username] = data.get("invalidated_before", 0)
+                    loaded_users += 1
+
+        _logger.info("Loaded %d token + %d user blacklist entries from DB",
+                     loaded_tokens, loaded_users)
+    except Exception as e:
+        _logger.warning("Failed to load blacklist from DB: %s", e)
+
+
+def _token_hash(token: str) -> str:
+    """Create a SHA-256 hash of the token for storage."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _get_token_expiry(token: str) -> float:
+    """Extract expiry timestamp from a JWT token, default to 1h from now."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY.get_secret_value(),
+            algorithms=[settings.JWT_ALGORITHM],
+            options={"verify_exp": False},
+        )
+        return float(payload.get("exp", _time.time() + 3600))
+    except Exception:
+        return _time.time() + 3600
+
+
+def invalidate_token(token: str) -> None:
+    """Add a token to the blacklist and persist."""
+    _ensure_blacklist_loaded()
+    expiry = _get_token_expiry(token)
+    with _blacklist_lock:
+        _blacklisted_tokens[_token_hash(token)] = expiry
+        _persist_blacklist()
+
+
+_cleanup_counter = 0
+
+
+def _cleanup_expired() -> None:
+    """Remove expired entries from the in-memory blacklist."""
+    now = _time.time()
+    expired = [h for h, exp in _blacklisted_tokens.items() if exp <= now]
+    for h in expired:
+        del _blacklisted_tokens[h]
+
+
+def is_token_blacklisted(token: str) -> bool:
+    """Check if a token is blacklisted (by direct blacklist or user-level invalidation)."""
+    global _cleanup_counter
+    _ensure_blacklist_loaded()
+    _cleanup_counter += 1
+    if _cleanup_counter >= 100:
+        _cleanup_counter = 0
+        with _blacklist_lock:
+            _cleanup_expired()
+    token_h = _token_hash(token)
+    with _blacklist_lock:
+        exp = _blacklisted_tokens.get(token_h)
+        if exp is not None and exp > _time.time():
+            return True
+    # Check user-level invalidation
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY.get_secret_value(),
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        username = payload.get("sub")
+        iat = payload.get("iat")
+        if username and iat:
+            with _blacklist_lock:
+                invalidated_before = _user_token_blacklist.get(username)
+            if invalidated_before and iat < invalidated_before:
+                return True
+    except JWTError:
+        pass
+    return False
+
+
+def invalidate_all_user_tokens(username: str) -> None:
+    """Invalidate all tokens for a user by recording current timestamp.
+
+    Uses int(time) + 1 to account for JWT iat being stored as integer seconds.
+    """
+    _ensure_blacklist_loaded()
+    now = int(datetime.now(timezone.utc).timestamp()) + 1
+    with _blacklist_lock:
+        _user_token_blacklist[username] = now
+        _persist_blacklist()
 
 
 def create_access_token(
@@ -113,8 +313,11 @@ def decode_token(token: str) -> dict[str, Any]:
         The decoded token payload.
 
     Raises:
-        JWTError: If the token is invalid or expired.
+        JWTError: If the token is invalid, expired, or blacklisted.
     """
+    if is_token_blacklisted(token):
+        raise JWTError("Token has been revoked")
+
     return jwt.decode(
         token,
         settings.JWT_SECRET_KEY.get_secret_value(),

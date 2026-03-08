@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Any, cast
 
 from app.core.events import events
@@ -12,6 +13,7 @@ from app.core.constants import (
     DEBRIEF_MAX_LOGS,
     DEBRIEF_SUMMARY_LOG_CHARS,
     MAX_HOSTS_DEFAULT,
+    MISSION_TIMEOUT_SECONDS,
 )
 from app.services.ai.agents.base import AgentContext, SteeringAction
 from app.services.ai.agents.mission_controller import (
@@ -65,20 +67,24 @@ class MissionExecutionManager:
                 recorder = DemoRecorder(mission.id, mission.target)
                 recorder.start()
                 mission.log("[RECORD] Demo recording started")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Demo recorder init failed: %s", e)
 
         context = await self.lifecycle.initialize_mission(mission)
         if context is None:
             return
+
+        # Track mission start time for timeout
+        mission_start_time = time.time()
+        mission._start_wall_time = mission_start_time  # type: ignore[attr-defined]
 
         # Send start notification
         try:
             from app.services.notifications import notify_mission_started
 
             await notify_mission_started(mission.target, mission.directive)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to send mission start notification: %s", e)
 
         try:
             # 1. Define Scope
@@ -97,6 +103,7 @@ class MissionExecutionManager:
 
             # 4. Post-mission learning
             self._record_mission_lessons(mission)
+            await self._index_to_rag(mission)
 
             # 5. Run AI debrief
             await self._run_debrief(mission, context)
@@ -128,8 +135,8 @@ class MissionExecutionManager:
                 await notify_mission_completed(
                     mission.target, len(mission.findings), critical
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to send mission completion notification: %s", e)
 
             # Update DB
             await self.lifecycle.update_db_status(mission)
@@ -147,6 +154,16 @@ class MissionExecutionManager:
             self._broadcast_state("mission_controller", "failed")
             await self.lifecycle.update_db_status(mission)
         finally:
+            # Disconnect per-mission VPN if one was connected
+            if getattr(mission, "vpn_config", None):
+                try:
+                    from app.services.tools.vpn import VPNManager
+                    vpn_mgr = VPNManager()
+                    await vpn_mgr.disconnect(mission.vpn_config)
+                    mission.log(f"[VPN] Disconnected '{mission.vpn_config}'")
+                except Exception as vpn_err:
+                    logger.error("VPN disconnect failed for mission %s: %s", mission.id, vpn_err)
+
             # Notify shell manager to update TTLs for active shells from other missions
             try:
                 shell_manager.notify_mission_complete(str(mission.id))
@@ -173,6 +190,23 @@ class MissionExecutionManager:
         )
 
         self._broadcast_state("scope_agent", "idle")
+
+        # Fallback: if scope agent found no targets but we have a raw target string,
+        # treat it as a hostname
+        if (
+            not scope_result.success
+            and scope_result.action
+            and not scope_result.action.targets
+            and mission.target
+        ):
+            from app.services.ai.agents.scope import TargetSpec
+            scope_result.action.targets = [TargetSpec(
+                value=mission.target,
+                target_type="hostname",
+                notes="Direct target from mission input",
+            )]
+            scope_result.success = True
+            scope_result.error = None
 
         if not scope_result.success:
             raise RuntimeError(f"Scoping failed: {scope_result.error}")
@@ -279,6 +313,16 @@ class MissionExecutionManager:
                 mission.log("Mission stopped by user")
                 break
 
+            # Mission-level timeout check
+            elapsed = time.time() - getattr(mission, '_start_wall_time', time.time())
+            if elapsed > MISSION_TIMEOUT_SECONDS:
+                mission.log(
+                    f"[TIMEOUT] Mission timed out after {int(elapsed)}s "
+                    f"(limit: {MISSION_TIMEOUT_SECONDS}s)"
+                )
+                mission.set_status("timed_out")
+                break
+
             await mission.wait_if_paused()
 
             # Skip entire phase if requested
@@ -356,6 +400,8 @@ class MissionExecutionManager:
                             last_adaptation_index = effective_idx
                             last_findings_count = current_findings
                         await self.lifecycle.update_db_status(mission)
+                        # Save checkpoint after each completed task
+                        await self.lifecycle.save_checkpoint(mission)
 
             # --- Run dependent tasks sequentially ---
             for idx, task in dependent:
@@ -394,6 +440,8 @@ class MissionExecutionManager:
                         last_findings_count = current_findings
 
                     await self.lifecycle.update_db_status(mission)
+                    # Save checkpoint after each completed task
+                    await self.lifecycle.save_checkpoint(mission)
                 except Exception as e:
                     await self._handle_task_failure(mission, task, str(e), context)
                     await self.lifecycle.update_db_status(mission)
@@ -556,6 +604,20 @@ class MissionExecutionManager:
                 mission.log(f"[DEBRIEF] {action.executive_summary[:DEBRIEF_SUMMARY_LOG_CHARS]}")
                 for lesson in action.lessons_learned[:3]:
                     mission.log(f"[LEARN] {lesson}")
+
+                # Persist lessons to memory for future missions
+                try:
+                    from app.services.ai.memory import get_memory
+
+                    memory = get_memory()
+                    for lesson in action.lessons_learned[:5]:
+                        memory.record_tool_lesson(
+                            tool="debrief",
+                            lesson=lesson,
+                            context=f"Mission {mission.id} against {mission.target}",
+                        )
+                except Exception:
+                    logger.debug("Failed to persist debrief lessons (non-critical)")
         except Exception as e:
             logger.debug("Debrief failed (non-critical): %s", e)
 
@@ -590,7 +652,7 @@ class MissionExecutionManager:
                 mission.report_path = path
                 mission.log(f"Report saved: {path}")
         except Exception as e:
-            logger.debug("HTML report generation failed: %s", e)
+            logger.warning("HTML report generation failed: %s", e)
 
     def _record_mission_lessons(self, mission: Mission) -> None:
         """Extract lessons from the completed mission and persist them."""
@@ -642,6 +704,107 @@ class MissionExecutionManager:
 
         except Exception as e:
             logger.debug("Post-mission learning failed (non-critical): %s", e)
+
+    async def _index_to_rag(self, mission: Mission) -> None:
+        """Index mission findings and outcomes into RAG for future retrieval."""
+        try:
+            from app.services.ai.knowledge import get_rag_service
+            from app.services.ai.rag import Document
+            from app.models.attack_surface import VectorStatus
+
+            rag = await get_rag_service()
+            if not rag.is_functional:
+                return
+
+            mission_id = str(mission.id)
+            indexed = 0
+
+            # Index findings (max 20)
+            for i, finding in enumerate(mission.findings[:20]):
+                doc = Document(
+                    id=f"finding-{mission_id}-{i}",
+                    content=(
+                        f"Found {finding.get('name', 'unknown')} on "
+                        f"{finding.get('host', mission.target)} using "
+                        f"{finding.get('tool', 'unknown')}. "
+                        f"{finding.get('description', '')}"
+                    ),
+                    doc_type="finding",
+                    severity=finding.get("severity"),
+                    target=mission.target,
+                    session_id=mission_id,
+                    metadata={
+                        "tool": finding.get("tool"),
+                        "template_id": finding.get("template-id"),
+                    },
+                )
+                await rag.index_document(doc)
+                indexed += 1
+
+            # Index successful exploit vectors (max 10)
+            if mission.attack_surface:
+                successful = [
+                    v for v in mission.attack_surface.vectors
+                    if v.status == VectorStatus.SUCCESS
+                ][:10]
+                for vector in successful:
+                    tool = vector.suggested_tools[0] if vector.suggested_tools else "manual"
+                    doc = Document(
+                        id=f"exploit-{mission_id}-{vector.id}",
+                        content=(
+                            f"Successfully exploited {vector.target_ref} on "
+                            f"{mission.target} using {tool}. "
+                            f"Attack: {vector.name}. "
+                            f"Type: {vector.target_type}."
+                        ),
+                        doc_type="exploit_success",
+                        target=mission.target,
+                        session_id=mission_id,
+                        metadata={
+                            "target_type": vector.target_type,
+                            "tool": tool,
+                        },
+                    )
+                    await rag.index_document(doc)
+                    indexed += 1
+
+            # Index mission summary
+            tools_str = ", ".join(mission.tools_run[:8]) if mission.tools_run else "none"
+            doc = Document(
+                id=f"mission-{mission_id}",
+                content=(
+                    f"Pentest of {mission.target}: {len(mission.findings)} findings, "
+                    f"{len(mission.tools_run)} tools used ({tools_str}). "
+                    f"Status: {mission.status}. "
+                    f"Directive: {mission.directive[:200]}"
+                ),
+                doc_type="mission_summary",
+                target=mission.target,
+                session_id=mission_id,
+            )
+            await rag.index_document(doc)
+            indexed += 1
+
+            # Index debrief lessons from logs (max 10)
+            lessons = [
+                entry for entry in (mission.logs or [])
+                if isinstance(entry, str) and "[LEARN]" in entry
+            ][:10]
+            for i, lesson in enumerate(lessons):
+                doc = Document(
+                    id=f"lesson-{mission_id}-{i}",
+                    content=lesson,
+                    doc_type="lesson",
+                    target=mission.target,
+                    session_id=mission_id,
+                    metadata={"source": "debrief", "mission_id": mission_id},
+                )
+                await rag.index_document(doc)
+                indexed += 1
+
+            mission.log(f"[RAG] Indexed {indexed} documents for future reference")
+        except Exception as e:
+            logger.debug("RAG indexing failed (non-critical): %s", e)
 
     def _broadcast_state(self, agent_id: str, status: str, **kwargs) -> None:
         """Broadcast agent state."""

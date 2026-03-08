@@ -98,5 +98,10 @@
     "icon": "network",
     "color": "blue"
   },
+  "examples": [
+    {"description": "Quick SYN scan of top 1000 ports", "args": {"target": "192.168.1.1", "flags": "-sS"}},
+    {"description": "Full port scan with service detection", "args": {"target": "10.0.0.0/24", "flags": "-sV", "ports": "-p-"}},
+    {"description": "Aggressive scan with OS detection and scripts", "args": {"target": "192.168.1.1", "flags": "-A -T4"}}
+  ],
   "signature": "2b7822cad8f5195dd185b0cf72fa31fc3a7966a094433346bd9773c336be61fe82ec6eb8e1b46bd299b6aa6b5588aebce462c1770edd82d4dbd8d738d2280c0b"
 }

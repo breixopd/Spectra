@@ -22,7 +22,6 @@ def mock_dependencies():
     agents = {
         "tool_selector": AsyncMock(),
         "exploit_crafter": AsyncMock(),
-        "payload_crafter": AsyncMock(),
         "exploit_verifier": AsyncMock(),
         "scope_agent": AsyncMock(),
         "reporter": AsyncMock(),
@@ -53,6 +52,10 @@ def mock_mission():
     # Mock plan
     mission.plan = MagicMock()
     mission.plan.tasks = []
+    # Mock blackboard and task tree
+    mission.blackboard = MagicMock()
+    mission.blackboard.get_context_for_agent.return_value = ""
+    mission.task_tree = MagicMock()
     return mission
 
 
@@ -170,41 +173,6 @@ async def test_handle_tool_selector_no_tool(dispatcher, mock_mission, mock_conte
     agent.execute.assert_called_once()
     dispatcher.tool_service.execute_tool_action.assert_not_called()
     mock_mission.log.assert_called()
-
-
-@pytest.mark.asyncio
-async def test_handle_payload_crafter_flow(dispatcher, mock_mission, mock_context):
-    """Test payload crafter with quality gate."""
-    # Ensure attack surface is mocked correctly
-    mock_mission.attack_surface.vulnerabilities = [MagicMock()]
-    mock_mission.attack_surface.vulnerabilities[0].dict.return_value = {"name": "SQLi"}
-
-    task = Task(
-        task_id="t1",
-        description="Exploit",
-        agent_type="payload_crafter",
-        phase=AssessmentPhase.EXPLOITATION,
-    )
-
-    agent = dispatcher.agents["payload_crafter"]
-
-    # We'll use a MagicMock that looks like the output
-    action = MagicMock()
-    action.exploit_name = "sqlmap"
-    action.payload_type = "blind"
-    action.custom_script = None
-
-    agent.execute.return_value = AgentResult(success=True, action=action)
-
-    # Mock consensus to approve
-    dispatcher.consensus.validate_at_gate.return_value = MagicMock(status="approved")
-    # Plan needs tasks list
-    mock_mission.plan.tasks = []
-
-    await dispatcher._handle_payload_crafter(mock_mission, task, mock_context)
-
-    dispatcher.consensus.validate_at_gate.assert_called_once()
-    assert len(mock_mission.plan.tasks) == 1
 
 
 @pytest.mark.asyncio

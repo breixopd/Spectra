@@ -87,6 +87,23 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         "Analyzes context and selects the optimal security tool to run"
     )
 
+    # Deterministic quick-select for known service/phase combinations
+    QUICK_SELECT: ClassVar[dict[tuple[str, str], list[str]]] = {
+        ("http", "recon"): ["whatweb", "dirsearch", "nikto"],
+        ("http", "vuln_scan"): ["nuclei", "sqlmap"],
+        ("http", "vulnerability"): ["nuclei", "sqlmap"],
+        ("https", "recon"): ["whatweb", "testssl", "dirsearch"],
+        ("smb", "recon"): ["enum4linux", "crackmapexec"],
+        ("ssh", "recon"): ["nmap"],
+        ("ssh", "exploitation"): ["hydra"],
+        ("ftp", "recon"): ["nmap"],
+        ("ftp", "exploitation"): ["hydra", "metasploit"],
+        ("dns", "recon"): ["subfinder", "amass"],
+        ("mysql", "exploitation"): ["hydra", "sqlmap"],
+        ("wordpress", "recon"): ["wpscan"],
+        ("kerberos", "recon"): ["kerbrute"],
+    }
+
     # Phase to tool category mapping (primary)
     PHASE_CATEGORIES = {
         "scope": [],  # Scope phase doesn't use scanning tools
@@ -137,6 +154,17 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         "reporting": [],  # No tool capabilities for reporting
     }
 
+    def _quick_select(self, service: str, phase: str, already_run: list[str]) -> list[str] | None:
+        """Deterministic tool selection for known service/phase combos.
+
+        Returns tool IDs not already run, or None to fall through to LLM.
+        """
+        for (svc, ph), tools in self.QUICK_SELECT.items():
+            if svc in service.lower() and phase == ph:
+                remaining = [t for t in tools if t not in already_run]
+                return remaining if remaining else None
+        return None
+
     async def execute(
         self,
         context: AgentContext,
@@ -146,11 +174,11 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         try:
             registry = get_registry()
 
-            # Sync tool status from Redis (set by tools container worker)
+            # Sync tool status from cache (set by tools container worker)
             try:
-                await registry.sync_status_from_redis()
-            except Exception:
-                pass  # Non-critical, tools will auto-install anyway
+                await registry.sync_status_from_cache()
+            except Exception as e:
+                logger.debug("Tool status sync failed: %s", e)
 
             # Get all registered tools (not just available - they auto-install)
             all_tools = registry.list_tools()
@@ -181,12 +209,53 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                     ),
                 )
 
+            # Quick-select: deterministic tool selection if possible (skip LLM)
+            if not input_data.user_preference and input_data.known_services:
+                primary_svc = input_data.known_services[0].get("service", "")
+                quick = self._quick_select(
+                    primary_svc, input_data.current_phase, input_data.tools_already_run,
+                )
+                if quick:
+                    # Find the first quick-select tool that exists in candidates
+                    for tool_id in quick:
+                        matched = next((t for t in candidates if t.config.id == tool_id), None)
+                        if matched:
+                            logger.info("Quick-select: %s for %s/%s", tool_id, primary_svc, input_data.current_phase)
+                            action = ToolSelectorOutput(
+                                tool_name=matched.config.id,
+                                target=input_data.target,
+                                tool_args={},
+                                confidence=0.85,
+                                risk_level=self._map_risk_level(matched.config.metadata.risk_level),
+                                reasoning=f"Deterministic selection for {primary_svc}/{input_data.current_phase}",
+                                alternatives=quick[1:],
+                                estimated_duration=matched.config.execution.timeout,
+                            )
+                            return AgentResult(success=True, action=action)
+
             # Use LLM to select the best tool with rich metadata
             # We no longer hardcode phase filters - we let the LLM decide based on tool descriptions
             action = await self._select_with_llm(context, input_data, candidates)
 
             # Validate and enrich the selection
             selected_tool = registry.get_tool(action.tool_name)
+            if not selected_tool and action.tool_name:
+                # LLM hallucinated a tool name - try fuzzy match
+                available_ids = [t.config.id for t in all_tools]
+                matches = [t for t in available_ids if action.tool_name.lower() in t.lower() or t.lower() in action.tool_name.lower()]
+                if matches:
+                    logger.warning(
+                        "LLM suggested non-existent tool '%s', using closest match '%s'",
+                        action.tool_name, matches[0],
+                    )
+                    action.tool_name = matches[0]
+                    selected_tool = registry.get_tool(action.tool_name)
+                else:
+                    logger.warning("LLM suggested non-existent tool: %s", action.tool_name)
+                    # Fall back to smart selection
+                    action = self._smart_fallback_selection(input_data, candidates)
+                    selected_tool = registry.get_tool(action.tool_name)
+
             if selected_tool:
                 # Apply stealth mode adjustments from tool config
                 if context.stealth_mode:
@@ -337,8 +406,8 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 service=primary_service,
                 os_family=os_family,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Memory context fetch failed: %s", e)
 
         # Get playbook recommendations
         playbook_context = ""
@@ -350,8 +419,8 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 input_data.known_services,
                 input_data.tools_already_run,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Playbook context fetch failed: %s", e)
 
         # Get CVE intelligence for discovered services (live + builtin)
         cve_context = ""
@@ -371,8 +440,8 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                     cve_context = get_cve_context_for_services(
                         input_data.known_services
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("CVE context fetch failed: %s", e)
 
         # Generate smart wordlist context for brute-force and directory tools
         wordlist_context = ""
@@ -392,19 +461,17 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                             f"users=[{','.join(creds['users'][:5])}] "
                             f"passwords=[{','.join(creds['passwords'][:5])}]"
                         )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Wordlist context fetch failed: %s", e)
 
         # Combine all learned context
         learned_context = "\n\n".join(
             filter(None, [memory_context, playbook_context, cve_context, wordlist_context])
         )
-        if learned_context:
-            learned_context = (
-                f"\n--- Learned from Past Missions ---\n{learned_context}\n"
-            )
 
-        prompt = TOOL_SELECTION_PROMPT.format(
+        from app.services.ai.context import ContextManager, ContextSection, Priority
+
+        task_text = TOOL_SELECTION_PROMPT.format(
             target=input_data.target,
             target_type=input_data.target_type,
             phase=input_data.current_phase,
@@ -415,15 +482,24 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             services_info=services_info,
             vulns_info=vulns_info,
             already_run_info=already_run_info,
-            methodology_context=methodology_context,
-            rag_context=rag_context + learned_context,
-            tools_text=tools_text,
+            methodology_context="",
+            rag_context="",
+            tools_text="",
         )
+
+        ctx = ContextManager(max_context_tokens=6000)
+        prompt = ctx.build([
+            ContextSection("task", task_text, Priority.CRITICAL),
+            ContextSection("tools", tools_text, Priority.HIGH, max_tokens=800),
+            ContextSection("methodology", methodology_context, Priority.LOW, max_tokens=400),
+            ContextSection("learned", learned_context, Priority.MEDIUM, max_tokens=500),
+            ContextSection("rag", rag_context, Priority.LOW, max_tokens=400),
+        ])
 
         system_prompt = self._build_system_prompt(context)
 
         try:
-            return await self.llm.generate_structured(
+            return await self._llm_generate_structured(
                 prompt=prompt,
                 response_model=ToolSelectorOutput,
                 system_prompt=system_prompt,
@@ -580,16 +656,17 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                     clean_val = match.group(1).strip()
                     if clean_val:
                         logger.warning(
-                            f"Removing flag prefix from arg {key}: {val_str} -> {clean_val}"
+                            "Removing flag prefix from arg %s: %s -> %s",
+                            key, val_str, clean_val,
                         )
                         args[key] = clean_val
                     else:
                         # Value was just "-t" with no actual value - remove it
-                        logger.warning(f"Removing empty flag arg {key}={val_str}")
+                        logger.warning("Removing empty flag arg %s=%s", key, val_str)
                         keys_to_remove.append(key)
                 else:
                     # Just a flag like "-v" - remove it
-                    logger.warning(f"Removing arg that is just a flag: {key}={val_str}")
+                    logger.warning("Removing arg that is just a flag: %s=%s", key, val_str)
                     keys_to_remove.append(key)
 
         for key in keys_to_remove:

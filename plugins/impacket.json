@@ -1,0 +1,108 @@
+{
+  "id": "impacket",
+  "name": "Impacket",
+  "version": "1.0.0",
+  "category": "exploitation",
+  "description": "Collection of Python classes for working with network protocols. Includes secretsdump, psexec, wmiexec, smbclient, getTGT, getNPUsers.",
+  "metadata": {
+    "ai_description": "Impacket is the essential toolkit for Windows/AD exploitation. It provides Python implementations of SMB, MSRPC, Kerberos, and other protocols. Key sub-tools: secretsdump (dump hashes from SAM/NTDS), psexec/wmiexec/smbexec (remote command execution), getTGT (request Kerberos tickets), getNPUsers (AS-REP roasting). Use after gaining initial credentials.",
+    "capabilities": [
+      "credential_harvest",
+      "lateral_movement",
+      "exploit_framework",
+      "privilege_escalation"
+    ],
+    "supported_targets": [
+      "ip",
+      "host",
+      "domain"
+    ],
+    "risk_level": "critical",
+    "tags": [
+      "active-directory",
+      "windows",
+      "smb",
+      "kerberos",
+      "secretsdump",
+      "psexec",
+      "wmiexec",
+      "pass-the-hash",
+      "lateral-movement"
+    ],
+    "use_cases": [
+      "Dumping password hashes with secretsdump",
+      "Remote command execution via psexec, wmiexec, or smbexec",
+      "Kerberos attacks: AS-REP roasting, Kerberoasting",
+      "Pass-the-hash attacks for lateral movement",
+      "Extracting NTDS.dit for offline cracking"
+    ],
+    "limitations": [
+      "Requires valid credentials or hashes for most tools",
+      "Heavily signatures by AV/EDR",
+      "Requires understanding of AD infrastructure",
+      "Some tools need elevated privileges on target"
+    ],
+    "complements": [
+      "crackmapexec",
+      "kerbrute",
+      "nmap"
+    ],
+    "prerequisites": [
+      "nmap",
+      "crackmapexec"
+    ]
+  },
+  "installation": {
+    "method": "pipx",
+    "commands": [
+      "pip3 install impacket"
+    ],
+    "verification_command": "impacket-secretsdump --help",
+    "verification_regex": "Impacket|secretsdump",
+    "uninstall_commands": [
+      "pip3 uninstall -y impacket"
+    ]
+  },
+  "execution": {
+    "command": "impacket-{sub_tool}",
+    "args_template": "{domain}/{username}:{password}@{target} {flags}",
+    "timeout": 600,
+    "timeout_per_host": 300,
+    "min_timeout": 60,
+    "max_timeout": 1800
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "(?P<username>[^:]+):(?P<rid>\\d+):(?P<lm_hash>[a-f0-9]{32}):(?P<nt_hash>[a-f0-9]{32})",
+        "type": "vuln"
+      },
+      {
+        "pattern": "\\$krb5asrep\\$(?P<username>[^@]+)@(?P<domain>[^:]+):(?P<hash>.+)",
+        "type": "vuln"
+      },
+      {
+        "pattern": "\\[\\*\\]\\s+(?P<info>.+)",
+        "type": "info"
+      }
+    ],
+    "llm_extraction": true,
+    "extraction_hint": "Extract dumped hashes, cracked credentials, Kerberos tickets, and command execution results"
+  },
+  "stealth": {
+    "rate_limit": null,
+    "delay_ms": 3000,
+    "extra_args": {}
+  },
+  "ui": {
+    "icon": "terminal",
+    "color": "red"
+  },
+  "examples": [
+    {"description": "Dump secrets from domain controller", "args": {"sub_tool": "secretsdump", "domain": "corp.local", "username": "admin", "password": "Password1", "target": "dc01.corp.local", "flags": "-just-dc-ntlm"}},
+    {"description": "Remote shell via psexec", "args": {"sub_tool": "psexec", "domain": "corp.local", "username": "admin", "password": "Password1", "target": "192.168.1.10", "flags": ""}},
+    {"description": "AS-REP roast users without preauth", "args": {"sub_tool": "GetNPUsers", "domain": "corp.local", "username": "", "password": "", "target": "dc01.corp.local", "flags": "-usersfile users.txt -no-pass -dc-ip dc01.corp.local"}}
+  ],
+  "signature": null
+}

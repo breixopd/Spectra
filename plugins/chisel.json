@@ -1,0 +1,85 @@
+{
+  "id": "chisel",
+  "name": "Chisel",
+  "version": "1.0.0",
+  "category": "post_exploitation",
+  "description": "Fast TCP/UDP tunnel over HTTP. Enables pivoting through compromised hosts.",
+  "metadata": {
+    "ai_description": "Chisel is a fast TCP/UDP tunnel transported over HTTP, secured via SSH. Use it for pivoting through compromised hosts to reach internal networks. Supports forward and reverse tunnels. Single binary, no dependencies on target. Essential for reaching internal networks after initial compromise.",
+    "capabilities": [
+      "lateral_movement",
+      "persistence"
+    ],
+    "supported_targets": [
+      "ip",
+      "host"
+    ],
+    "risk_level": "medium",
+    "tags": [
+      "tunneling",
+      "pivoting",
+      "post-exploitation",
+      "port-forwarding",
+      "reverse-tunnel",
+      "http-tunnel"
+    ],
+    "use_cases": [
+      "Pivoting through compromised hosts to internal networks",
+      "Forward and reverse port forwarding",
+      "Bypassing firewalls via HTTP tunneling",
+      "SOCKS proxy through compromised hosts"
+    ],
+    "limitations": [
+      "Requires uploading binary to target",
+      "May be detected by EDR",
+      "Requires network connectivity between attacker and target"
+    ],
+    "complements": [
+      "socat",
+      "metasploit",
+      "nmap"
+    ],
+    "prerequisites": []
+  },
+  "installation": {
+    "method": "binary",
+    "commands": [
+      "curl -sL -o /tmp/chisel.gz https://github.com/jpillora/chisel/releases/latest/download/chisel_linux_amd64.gz",
+      "gunzip -f /tmp/chisel.gz",
+      "mv /tmp/chisel /opt/spectra_tools/chisel",
+      "chmod +x /opt/spectra_tools/chisel",
+      "ln -sf /opt/spectra_tools/chisel /usr/local/bin/chisel"
+    ],
+    "verification_command": "chisel --help",
+    "verification_regex": "chisel",
+    "uninstall_commands": [
+      "rm -f /opt/spectra_tools/chisel /usr/local/bin/chisel"
+    ]
+  },
+  "execution": {
+    "command": "chisel",
+    "args_template": "{mode} {flags}",
+    "timeout": 0,
+    "min_timeout": 0,
+    "max_timeout": 86400
+  },
+  "parsing": {
+    "format": "text",
+    "regex_patterns": [
+      {
+        "pattern": "session#(?P<session>\\d+):.*(?P<status>connected|disconnected)",
+        "type": "info"
+      }
+    ]
+  },
+  "ui": {
+    "icon": "arrows-left-right",
+    "color": "violet"
+  },
+  "examples": [
+    {"description": "Start chisel server", "args": {"mode": "server", "flags": "--reverse --port 8080"}},
+    {"description": "Connect as client with reverse tunnel", "args": {"mode": "client", "flags": "attacker:8080 R:9050:socks"}},
+    {"description": "Forward port through tunnel", "args": {"mode": "client", "flags": "attacker:8080 3389:target:3389"}}
+  ],
+  "signature": null
+}

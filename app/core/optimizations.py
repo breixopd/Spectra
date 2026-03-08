@@ -1,7 +1,7 @@
 """
 Architecture optimizations for production performance.
 
-1. ARQ connection pooling
+1. PostgreSQL job queue pooling
 2. Lazy model loading
 3. Tool result caching
 4. Prompt token budgeting
@@ -18,46 +18,32 @@ from typing import Any
 logger = logging.getLogger("spectra.core.optimizations")
 
 
-# --- 1. ARQ Connection Pool ---
+# --- 1. PostgreSQL Job Queue ---
 
-_arq_pool = None
-_arq_pool_lock = asyncio.Lock()
-
-
-async def get_arq_pool():
-    """Get or create a shared ARQ Redis pool (reused across requests)."""
-    global _arq_pool
-    if _arq_pool is not None:
-        return _arq_pool
-
-    async with _arq_pool_lock:
-        if _arq_pool is not None:
-            return _arq_pool
-
-        from arq import create_pool
-        from arq.connections import RedisSettings
-
-        from app.core.config import settings
-        from app.core.constants import ARQ_QUEUE_NAME
-
-        _arq_pool = await create_pool(
-            RedisSettings(
-                host=settings.REDIS_HOST,
-                port=settings.REDIS_PORT,
-                password=settings.REDIS_PASSWORD.get_secret_value(),
-                database=settings.REDIS_DB,
-            ),
-            default_queue_name=ARQ_QUEUE_NAME,
-        )
-        return _arq_pool
+_pg_queue = None
+_pg_queue_lock = asyncio.Lock()
 
 
-async def close_arq_pool():
-    """Close the shared ARQ pool."""
-    global _arq_pool
-    if _arq_pool:
-        await _arq_pool.close()
-        _arq_pool = None
+async def get_pg_queue():
+    """Get or create a shared PostgresJobQueue instance (reused across requests)."""
+    global _pg_queue
+    if _pg_queue is not None:
+        return _pg_queue
+
+    async with _pg_queue_lock:
+        if _pg_queue is not None:
+            return _pg_queue
+
+        from app.core.queue import PostgresJobQueue
+
+        _pg_queue = PostgresJobQueue()
+        return _pg_queue
+
+
+async def close_pg_queue():
+    """Clean up job queue resources."""
+    global _pg_queue
+    _pg_queue = None
 
 
 # --- 2. Lazy Model Loading ---
@@ -91,22 +77,29 @@ lazy = LazyLoader()
 class ToolResultCache:
     """Cache recent tool results to avoid duplicate scans."""
 
-    def __init__(self, ttl_seconds: int = 300):
+    def __init__(self, ttl_seconds: int = 3600):
         self.ttl = ttl_seconds
         self._cache: dict[str, tuple[float, Any]] = {}
+        self._hits = 0
+        self._misses = 0
 
     def _key(self, tool_id: str, target: str, args: dict) -> str:
         raw = f"{tool_id}:{target}:{json.dumps(args, sort_keys=True)}"
-        return hashlib.md5(raw.encode()).hexdigest()
+        return hashlib.sha256(raw.encode()).hexdigest()
 
-    def get(self, tool_id: str, target: str, args: dict) -> Any | None:
+    def get(self, tool_id: str, target: str, args: dict, force: bool = False) -> Any | None:
+        if force:
+            self._misses += 1
+            return None
         key = self._key(tool_id, target, args)
         if key in self._cache:
             ts, result = self._cache[key]
             if time.time() - ts < self.ttl:
                 logger.debug("Cache hit for %s against %s", tool_id, target)
+                self._hits += 1
                 return result
             del self._cache[key]
+        self._misses += 1
         return None
 
     def set(self, tool_id: str, target: str, args: dict, result: Any) -> None:
@@ -115,10 +108,21 @@ class ToolResultCache:
 
     def clear(self):
         self._cache.clear()
+        self._hits = 0
+        self._misses = 0
 
     @property
     def size(self) -> int:
         return len(self._cache)
+
+    @property
+    def stats(self) -> dict[str, int]:
+        return {
+            "size": self.size,
+            "hits": self._hits,
+            "misses": self._misses,
+            "hit_rate_pct": round(self._hits / max(self._hits + self._misses, 1) * 100, 1),
+        }
 
 
 tool_cache = ToolResultCache()

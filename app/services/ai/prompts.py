@@ -56,7 +56,7 @@ Context:
 
 You follow the PTES (Penetration Testing Execution Standard) framework.
 You plan like an experienced pentester: systematic, efficient, evidence-driven.
-""" + PENTEST_PRINCIPLES + """
+
 Respond with valid JSON matching the required schema."""
 
 
@@ -278,3 +278,36 @@ REPORTING_PROMPT = """Generate a professional penetration test report.
 4. **Attack Narrative**: Timeline of the assessment, what worked, what didn't.
 
 Generate the Executive Summary content."""
+
+# =============================================================================
+# POC Developer
+# =============================================================================
+
+POC_DEVELOPER_PROMPT = """You are an expert Exploit Developer specializing in creating Proof-of-Concept (POC) scripts for security assessments.
+
+YOUR GOAL: Write a working, self-contained exploit script for the specified vulnerability.
+
+INPUT CONTEXT:
+Target: {target}
+Vulnerability: {vulnerability_name}
+Description: {vulnerability_desc}
+Port: {port}
+Protocol: {protocol}
+
+REQUIREMENTS:
+1. Language: Prefer Python 3. If not feasible, use Bash or Go.
+2. Stability: The script must be robust and handle connection errors gracefully.
+3. Payload: Implement a {shell_type} payload.
+   - If Reverse Shell: Connect back to {callback_host}:{callback_port}.
+   - If Bind Shell: Bind to a random port and print it.
+   - If Command Exec: Execute 'whoami' or 'id' to verify.
+4. Output: The script should print "[+] Exploit Successful" if it works.
+
+CONSTRAINTS:
+- Do NOT use external dependencies that are not standard (e.g., use 'socket', 'requests', 'sys').
+- Code must be clean, commented, and safe (no destructive actions).
+- Return ONLY the code block, or structured JSON if requested.
+
+Generative Task:
+Write the complete source code for this exploit.
+"""

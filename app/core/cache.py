@@ -1,16 +1,20 @@
 """
-Redis Caching Layer for Spectra.
+PostgreSQL Caching Layer for Spectra.
 
 Provides a centralized caching service with:
 - TTL-based expiration
 - JSON serialization for complex objects
 - Cache invalidation patterns
 - Statistics and monitoring
+
+NOTE: Periodic cleanup of expired entries should be handled externally
+(e.g., a scheduled task running DELETE FROM cache_entries WHERE expires_at < now()).
 """
 
 import hashlib
 import json
 import logging
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, Callable, ParamSpec, TypeVar
 
@@ -19,7 +23,12 @@ try:
 except ImportError:
     orjson = None  # type: ignore
 
-from redis.asyncio import Redis
+from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.core.database import async_session_maker
+from app.models.infrastructure import CacheEntry
 
 logger = logging.getLogger("spectra.core.cache")
 
@@ -27,18 +36,22 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def _json_dumps(obj: Any) -> bytes:
-    """Serialize object to JSON bytes."""
+def _json_dumps(obj: Any) -> str:
+    """Serialize object to JSON string."""
     if orjson:
-        return orjson.dumps(obj)
-    return json.dumps(obj).encode("utf-8")
+        return orjson.dumps(obj, default=str).decode("utf-8")
+    return json.dumps(obj, default=str)
 
 
-def _json_loads(data: bytes | str) -> Any:
-    """Deserialize JSON bytes/str to object."""
+def _json_loads(data: str | bytes) -> Any:
+    """Deserialize JSON string to object."""
     if orjson:
         return orjson.loads(data)
     return json.loads(data)
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class CacheConfig:
@@ -60,10 +73,10 @@ class CacheConfig:
 
 class CacheService:
     """
-    Redis-based caching service.
+    PostgreSQL-based caching service.
 
     Usage:
-        cache = CacheService(redis_client)
+        cache = CacheService()
 
         # Simple get/set
         await cache.set("key", {"data": "value"}, ttl=300)
@@ -75,8 +88,8 @@ class CacheService:
             ...
     """
 
-    def __init__(self, redis: Redis):
-        self.redis = redis
+    def __init__(self, session_maker: async_sessionmaker[AsyncSession] | None = None):
+        self._session_maker = session_maker or async_session_maker
         self._stats = {
             "hits": 0,
             "misses": 0,
@@ -92,15 +105,22 @@ class CacheService:
             key: Cache key
 
         Returns:
-            Cached value or None if not found
+            Cached value or None if not found/expired
         """
         try:
-            data = await self.redis.get(key)
-            if data:
-                self._stats["hits"] += 1
-                return orjson.loads(data)
-            self._stats["misses"] += 1
-            return None
+            async with self._session_maker() as session:
+                now = _now()
+                stmt = select(CacheEntry.value).where(
+                    CacheEntry.key == key,
+                    (CacheEntry.expires_at.is_(None)) | (CacheEntry.expires_at > now),
+                )
+                result = await session.execute(stmt)
+                row = result.scalar_one_or_none()
+                if row is not None:
+                    self._stats["hits"] += 1
+                    return _json_loads(row)
+                self._stats["misses"] += 1
+                return None
         except Exception as e:
             logger.warning("Cache get error for %s: %s", key, e)
             self._stats["misses"] += 1
@@ -113,7 +133,7 @@ class CacheService:
         ttl: int = CacheConfig.TTL_MEDIUM,
     ) -> bool:
         """
-        Set a value in cache.
+        Set a value in cache using upsert.
 
         Args:
             key: Cache key
@@ -124,8 +144,42 @@ class CacheService:
             True if successful
         """
         try:
-            data = orjson.dumps(value, default=str)
-            await self.redis.setex(key, ttl, data)
+            now = _now()
+            expires_at = now + timedelta(seconds=ttl)
+            json_value = _json_dumps(value)
+
+            async with self._session_maker() as session:
+                # Use dialect-aware upsert: PostgreSQL ON CONFLICT, SQLite fallback
+                dialect = session.bind.dialect.name if session.bind else "postgresql"
+                if dialect == "postgresql":
+                    stmt = pg_insert(CacheEntry).values(
+                        key=key,
+                        value=json_value,
+                        expires_at=expires_at,
+                        created_at=now,
+                    ).on_conflict_do_update(
+                        index_elements=["key"],
+                        set_={
+                            "value": json_value,
+                            "expires_at": expires_at,
+                            "created_at": now,
+                        },
+                    )
+                    await session.execute(stmt)
+                else:
+                    existing = await session.get(CacheEntry, key)
+                    if existing:
+                        existing.value = json_value
+                        existing.expires_at = expires_at
+                        existing.created_at = now
+                    else:
+                        session.add(CacheEntry(
+                            key=key,
+                            value=json_value,
+                            expires_at=expires_at,
+                            created_at=now,
+                        ))
+                await session.commit()
             self._stats["sets"] += 1
             return True
         except Exception as e:
@@ -135,9 +189,14 @@ class CacheService:
     async def delete(self, key: str) -> bool:
         """Delete a key from cache."""
         try:
-            result = await self.redis.delete(key)
-            self._stats["deletes"] += 1
-            return result > 0
+            async with self._session_maker() as session:
+                stmt = delete(CacheEntry).where(CacheEntry.key == key)
+                result = await session.execute(stmt)
+                await session.commit()
+                deleted = result.rowcount > 0
+                if deleted:
+                    self._stats["deletes"] += 1
+                return deleted
         except Exception as e:
             logger.warning("Cache delete error for %s: %s", key, e)
             return False
@@ -147,29 +206,62 @@ class CacheService:
         Delete all keys matching a pattern.
 
         Args:
-            pattern: Redis glob pattern (e.g., "cache:tool:*")
+            pattern: Glob-style pattern (e.g., "cache:tool:*")
+                     Converted to SQL LIKE: * -> %
 
         Returns:
             Number of keys deleted
         """
         try:
-            keys = []
-            async for key in self.redis.scan_iter(match=pattern):
-                keys.append(key)
-
-            if keys:
-                deleted = await self.redis.delete(*keys)
-                self._stats["deletes"] += deleted
-                return deleted
-            return 0
+            sql_pattern = pattern.replace("*", "%")
+            async with self._session_maker() as session:
+                stmt = delete(CacheEntry).where(CacheEntry.key.like(sql_pattern))
+                result = await session.execute(stmt)
+                await session.commit()
+                count = result.rowcount
+                self._stats["deletes"] += count
+                return count
         except Exception as e:
             logger.warning("Cache delete pattern error for %s: %s", pattern, e)
             return 0
 
-    async def exists(self, key: str) -> bool:
-        """Check if a key exists in cache."""
+    async def get_by_pattern(self, pattern: str) -> list[Any]:
+        """
+        Get all non-expired values matching a key pattern.
+
+        Args:
+            pattern: Glob-style pattern (e.g., "spectra:system:operations:*")
+                     Converted to SQL LIKE: * -> %
+
+        Returns:
+            List of deserialized values
+        """
         try:
-            return bool(await self.redis.exists(key))
+            sql_pattern = pattern.replace("*", "%")
+            async with self._session_maker() as session:
+                now = _now()
+                stmt = select(CacheEntry.value).where(
+                    CacheEntry.key.like(sql_pattern),
+                    (CacheEntry.expires_at.is_(None)) | (CacheEntry.expires_at > now),
+                )
+                result = await session.execute(stmt)
+                rows = result.scalars().all()
+                return [_json_loads(row) for row in rows]
+        except Exception as e:
+            logger.warning("Cache get_by_pattern error for %s: %s", pattern, e)
+            return []
+
+    async def exists(self, key: str) -> bool:
+        """Check if a key exists in cache (and is not expired)."""
+        try:
+            async with self._session_maker() as session:
+                now = _now()
+                stmt = select(func.count()).select_from(CacheEntry).where(
+                    CacheEntry.key == key,
+                    (CacheEntry.expires_at.is_(None)) | (CacheEntry.expires_at > now),
+                )
+                result = await session.execute(stmt)
+                return result.scalar_one() > 0
         except Exception as e:
             logger.warning("Cache exists error for %s: %s", key, e)
             return False
@@ -273,25 +365,6 @@ class CacheService:
             "total_requests": total,
             "hit_rate_percent": round(hit_rate, 2),
         }
-
-    async def get_redis_stats(self) -> dict[str, Any]:
-        """Get Redis server statistics."""
-        try:
-            info = await self.redis.info("memory")
-            keyspace = await self.redis.info("keyspace")
-
-            return {
-                "used_memory_human": info.get("used_memory_human", "unknown"),
-                "used_memory_peak_human": info.get("used_memory_peak_human", "unknown"),
-                "total_keys": sum(
-                    db.get("keys", 0)
-                    for db in keyspace.values()
-                    if isinstance(db, dict)
-                ),
-            }
-        except Exception as e:
-            logger.warning("Failed to get Redis stats: %s", e)
-            return {"error": str(e)}
 
 
 # --- Tool-Specific Cache Functions ---

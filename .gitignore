@@ -16,3 +16,16 @@ reports/knowledge_base/
 logs/test.db
 test.db
 .env
+
+# Runtime memory/learning data
+reports/memory/*.json
+reports/memory/**/*.json
+reports/memory/*.bak
+!reports/memory/.gitkeep
+
+# Runtime session data
+reports/sessions/
+!reports/sessions/.gitkeep
+
+# Runtime settings
+reports/runtime_settings.json
