@@ -4,7 +4,7 @@ Live integration tests against vulnerable Docker targets.
 Requires:
     - spectra-app running at SPECTRA_URL (default: http://localhost:5050)
     - Vulnerable targets on spectra-network
-    - Admin user with password 'admin123'
+    - Admin user auto-created via /api/auth/setup on first run
 
 Run with:
     SPECTRA_URL=http://localhost:5050 python3 -m pytest tests/integration/test_live_targets.py -v --timeout=300
@@ -36,11 +36,29 @@ def _check_ai_provider_is_real(base_url: str, headers: dict) -> bool:
 
 @pytest.fixture(scope="module")
 def auth_headers():
-    """Get auth token from the live API."""
+    """Create admin user via setup API (if needed), then get auth token."""
     with httpx.Client(base_url=SPECTRA_URL, timeout=30) as client:
+        # Check if setup is needed (no users yet)
+        status_resp = client.get("/api/auth/setup/status")
+        if status_resp.status_code == 200 and not status_resp.json().get("setup_complete"):
+            # Run first-time setup: create admin + configure LLM from env
+            setup_payload = {
+                "user": {
+                    "username": "admin",
+                    "email": "admin@spectra.local",
+                    "password": "Admin123!",
+                },
+                "llm_provider": os.getenv("AI_PROVIDER", "litellm"),
+                "llm_model": os.getenv("LLM_MODEL", "gpt-4o-mini"),
+                "llm_api_key": os.getenv("LLM_API_KEY", ""),
+                "llm_api_base": os.getenv("LLM_API_BASE_URL") or None,
+            }
+            setup_resp = client.post("/api/auth/setup", json=setup_payload)
+            assert setup_resp.status_code == 200, f"Setup failed: {setup_resp.text}"
+
         resp = client.post("/api/auth/token", data={
             "username": "admin",
-            "password": "admin123"
+            "password": "Admin123!"
         })
         assert resp.status_code == 200, f"Auth failed: {resp.text}"
         token = resp.json()["access_token"]
@@ -88,7 +106,7 @@ class TestAPISmoke:
     def test_auth_flow(self, client):
         # Get token
         resp = client.post("/api/auth/token", data={
-            "username": "admin", "password": "admin123"
+            "username": "admin", "password": "Admin123!"
         })
         assert resp.status_code == 200
         data = resp.json()
