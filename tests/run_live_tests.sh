@@ -68,5 +68,5 @@ curl -sf http://localhost:5000/api/health > /dev/null || {
 
 echo ""
 echo "Running live integration tests (timeout 600s per test)..."
-$COMPOSE run --rm test-runner \
-    tests/integration/test_live_targets.py -v --timeout=600 --tb=short "$@"
+$COMPOSE run --rm --entrypoint sh test-runner -c \
+    "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && python3 -m pytest tests/integration/test_live_targets.py -v --timeout=600 --tb=short"

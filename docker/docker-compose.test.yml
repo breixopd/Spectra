@@ -106,8 +106,11 @@ services:
       - NET_RAW
     security_opt:
       - seccomp:unconfined
-    entrypoint: ["python3", "-m", "pytest"]
-    command: ["tests/", "-v", "--tb=short", "-x"]
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        pip install -q pytest pytest-asyncio pytest-dotenv httpx aiohttp aiosqlite &&
+        python3 -m pytest tests/ -v --tb=short -x
     env_file:
       - ../.env.test
     environment:
