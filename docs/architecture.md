@@ -85,14 +85,14 @@ PostgreSQL-backed semantic search engine (`app/services/ai/rag.py`).
 | Component          | File            | Purpose                                    |
 | ------------------ | --------------- | ------------------------------------------ |
 | `RAGService`       | `rag.py`        | Document storage, cosine similarity search |
-| `EmbeddingService` | `embeddings.py` | LiteLLM `aembedding()` API integration     |
+| `EmbeddingService` | `embeddings.py` | Embeddings: local sentence-transformers, LiteLLM API, or SHA256 fallback |
 
 ### How It Works
 
-1. **Embedding** — Text is embedded via LiteLLM's embedding API (supports OpenAI, DashScope, any compatible provider)
+1. **Embedding** — Text is embedded via one of three backends: local sentence-transformers (requires `ENABLE_LOCAL_EMBEDDINGS=true` build arg), LiteLLM API (OpenAI, DashScope, any compatible provider), or deterministic SHA256 hashing (testing only)
 2. **Storage** — Embeddings stored as JSONB arrays in a `rag_documents` PostgreSQL table
 3. **Search** — Query embedded, cosine similarity computed in application code against stored vectors
-4. **Fallback** — When no API key is configured (`AI_PROVIDER=mock`), falls back to SHA256 hashing (non-functional RAG)
+4. **Fallback** — Auto-detection order: local → API → SHA256 fallback. SHA256 produces non-semantic embeddings (testing only)
 
 ### Document Types
 
@@ -171,7 +171,7 @@ User enters target + directive
 
 ### Layer 1: Persistent Memory (`memory.py`)
 
-Stored as JSON files in `reports/memory/`:
+Stored as JSON files in `data/cache/`:
 
 - **tool_lessons.json** — which tools produced findings for which services
 - **exploit_lessons.json** — successful exploit chains with CVEs

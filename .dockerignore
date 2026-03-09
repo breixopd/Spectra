@@ -4,9 +4,9 @@
 __pycache__
 *.pyc
 *.pyo
-reports/missions/*
-reports/memory/*.bak
-reports/sessions/*
+data/missions/*
+data/cache/*.bak
+data/sessions/*
 logs/
 .env
 .env.test

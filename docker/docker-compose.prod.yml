@@ -1,11 +1,4 @@
-# Spectra Security Assessment Platform — Production Compose
-#
-# Usage:
-#   docker compose -f docker/docker-compose.prod.yml up -d
-#
-# First run: navigate to http://<host>:5000/setup to create admin user.
-# Configuration: place a .env file in the project root with secrets.
-
+# Spectra — Production Compose
 services:
   # ── PostgreSQL (with pgvector for RAG) ──────────────────────
   db:

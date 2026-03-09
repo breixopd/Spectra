@@ -18,8 +18,14 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements-app.txt .
+COPY requirements-embeddings-local.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements-app.txt
+
+ARG ENABLE_LOCAL_EMBEDDINGS=false
+RUN if [ "$ENABLE_LOCAL_EMBEDDINGS" = "true" ]; then \
+        pip install --no-cache-dir -r requirements-embeddings-local.txt; \
+    fi
 
 # --- Runtime Stage ---
 FROM python:3.11-slim AS runtime

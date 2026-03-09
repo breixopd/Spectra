@@ -42,6 +42,9 @@
                         <button id="download-report-btn" class="p-2 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors" title="Download Report" aria-label="Download Report">
                             <i class="fa-solid fa-download"></i>
                         </button>
+                        <button id="delete-mission-btn" onclick="showDeleteModal()" class="p-2 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors" title="Delete Mission" aria-label="Delete Mission">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -77,6 +80,32 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+<!-- Delete Mission Confirmation Modal -->
+<div id="delete-mission-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50">
+    <div class="w-full h-full flex items-center justify-center">
+    <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold text-white mb-2">
+            <i class="fa-solid fa-exclamation-triangle text-rose-400 mr-2"></i>
+            Delete Mission
+        </h3>
+        <p class="text-slate-400 text-sm mb-4">
+            This will permanently delete this mission and its data. This action cannot be undone.
+            Download the report first if needed.
+        </p>
+        <div class="flex gap-3 justify-end">
+            <button onclick="hideDeleteModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+                Cancel
+            </button>
+            <button id="download-before-delete-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+                <i class="fa-solid fa-download mr-1"></i> Download Report
+            </button>
+            <button onclick="confirmDeleteMission()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
+                <i class="fa-solid fa-trash mr-1"></i> Delete
+            </button>
+        </div>
+    </div>
     </div>
 </div>
 {% endblock %}
@@ -190,6 +219,33 @@
                 const findingsContainer = document.getElementById('tab-findings');
                 findingsContainer.innerHTML = '<div class="text-slate-500 italic">Findings data not in API response yet.</div>';
             });
+    }
+
+    function showDeleteModal() {
+        if (!currentMissionId) return;
+        document.getElementById('download-before-delete-btn').onclick = () => {
+            window.open(`/api/missions/${currentMissionId}/report/pdf`, '_blank');
+        };
+        document.getElementById('delete-mission-modal').classList.remove('hidden');
+    }
+
+    function hideDeleteModal() {
+        document.getElementById('delete-mission-modal').classList.add('hidden');
+    }
+
+    async function confirmDeleteMission() {
+        hideDeleteModal();
+        try {
+            const res = await fetch(`/api/missions/${currentMissionId}`, { method: 'DELETE' });
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                const data = await res.json();
+                alert(data.detail || 'Failed to delete mission');
+            }
+        } catch (e) {
+            alert('Error deleting mission');
+        }
     }
 
     function switchTab(tabName) {

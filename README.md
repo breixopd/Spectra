@@ -204,6 +204,7 @@ docker run --rm \
    -v "$PWD/alembic:/app/alembic:ro" \
    -v "$PWD/alembic.ini:/app/alembic.ini:ro" \
    -v "$PWD/plugins:/app/plugins:ro" \
+   -v "$PWD/data:/app/data" \
    --entrypoint sh spectra-tools-test \
    -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx && python3 -m pytest tests/unit/test_runtime_settings.py tests/unit/test_system_setup.py tests/unit/test_smart_router.py tests/unit/test_settings_runtime_api.py tests/unit/test_settings_templates.py -q --override-ini=addopts="
 ```
@@ -268,7 +269,7 @@ app/
 │   │   ├── agents/   # 12 specialized agents (scope → reporting)
 │   │   ├── context.py # Context window management (token budgeting)
 │   │   ├── rag.py    # PostgreSQL-backed RAG engine
-│   │   ├── embeddings.py # LiteLLM embedding service
+│   │   ├── embeddings.py # Embedding service (local/API/SHA256 fallback)
 │   │   ├── router.py # LiteLLM smart routing
 │   │   ├── memory.py # Persistent cross-mission learning
 │   │   ├── playbook.py # Deterministic attack playbooks
@@ -288,7 +289,8 @@ docker/
 ├── Dockerfile.app           # FastAPI app image
 └── Dockerfile.tools         # Kali tools worker image
 plugins/                     # Tool plugin JSON configs (18 included)
-tests/                       # 1589 unit tests
+data/                        # Runtime data (cache, auth, missions, sessions)
+tests/                       # 1572 unit tests
 docs/                        # Documentation
 ```
 

@@ -350,6 +350,7 @@
     </div>
 
     <!-- Native WebSocket (for real-time updates) -->
+    {% if not is_public_page %}
     <script nonce="{{ request.state.csp_nonce }}">
         // Initialize WebSocket connection with authentication
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -360,9 +361,7 @@
         const maxReconnectAttempts = 5;
 
         function connectWebSocket() {
-            // Don't connect if no token (except on public pages)
-            const publicPaths = ['/login', '/setup'];
-            if (!wsToken && !publicPaths.includes(window.location.pathname)) {
+            if (!wsToken) {
                 console.warn('WebSocket: No auth token, skipping connection');
                 return;
             }
@@ -383,9 +382,7 @@
                     console.error('WebSocket auth failed - redirecting to login');
                     localStorage.removeItem('token');
                     document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-                    if (!publicPaths.includes(window.location.pathname)) {
-                        window.location.href = '/login';
-                    }
+                    window.location.href = '/login';
                     return;
                 }
                 
@@ -507,6 +504,7 @@
         checkSystemStatus();
         statusPollingInterval = setInterval(checkSystemStatus, 3000);
     </script>
+    {% endif %}
     <!-- Sidebar Toggle -->
     <script nonce="{{ request.state.csp_nonce }}">
         function toggleSidebar() {

@@ -1,11 +1,4 @@
-# Test environment for E2E testing as specified in testplan.md
-# Includes Metasploitable2 as a vulnerable target
-#
-# Usage:
-#   docker compose -f docker-compose.test.yml up -d
-#   docker compose -f docker-compose.test.yml run --rm test-runner
-#   docker compose -f docker-compose.test.yml run --rm settings-test-runner
-
+# Test environment — Metasploitable2 + DVWA vulnerable targets
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -18,15 +11,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - spectra_test
-
-  # Ollama for AI capabilities in tests
-  ai:
-    image: ollama/ollama:latest
-    container_name: spectra-test-ai
-    environment:
-      OLLAMA_KEEP_ALIVE: 24h
     networks:
       - spectra_test
 
@@ -53,8 +37,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      # ai:
-        # condition: service_started
     networks:
       spectra_test:
         aliases:
@@ -133,8 +115,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      # ai:
-        # condition: service_started
       metasploitable:
         condition: service_started
       dvwa:
