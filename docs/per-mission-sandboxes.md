@@ -23,7 +23,7 @@
 **Implementation**:
 - **Phase 1 (single server)**: Keep current shared Docker volume (`spectra_data`). No change.
 - **Phase 2 (remote tools)**: NFS mount for `data/missions/` — zero code changes, same filesystem paths.
-- **Phase 3 (multi-node)**: Migrate to S3-compatible object storage (MinIO or cloud S3). Standard S3 API allows swapping providers later.
+- **Phase 3 (multi-node)**: Migrate to S3-compatible object storage (MinIO or cloud S3). Standard S3 API allows swapping providers later. - Is there some self hostable docker S3 we can use and auto set up? Remember when adding a server through the UI everything should be auto set up.
 
 ### Q3: How to configure VPN in an ephemeral sandbox?
 
@@ -178,6 +178,11 @@ Container cold start takes 1-5s; first image pull can take 30-60s. Pre-warm a po
 ### Graceful Cancellation
 
 On user-initiated mission cancel, `SandboxPool` sends SIGTERM to the sandbox container. The worker catches SIGTERM, marks the current job as cancelled, saves checkpoint, and exits gracefully. The container gets a 10s grace period before SIGKILL. This is partially handled by the worker's `CancelledError` handler in `queue.py`.
+
+### Auto Scaling
+
+Admin should be able to add more servers for tools, db, storage (when we add S3), etc.
+When added everything needed for the server type selected is auto installed and set up. For example if it's a tools server the golden image is pulled and a few sandboxes are pre warmed. If it's a db server it joins the cluster and starts accepting connections. If it's a storage server it joins the cluster and starts accepting file uploads. - Applies to any service we might need to scale. -- We can also expose admin API endpoints to use for future auto scaling.
 
 ## 1. Overview
 
