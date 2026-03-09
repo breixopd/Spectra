@@ -237,7 +237,7 @@ class PlaybookEngine:
     relying on LLM to hallucinate tool names and arguments.
     """
 
-    _PATTERNS_FILE = Path("reports/memory/exploit_patterns.json")
+    _PATTERNS_FILE = Path("data/cache/exploit_patterns.json")
 
     def __init__(self, custom_playbook_dir: str | Path | None = None, patterns_file: str | Path | None = None):
         self.playbooks: list[ServicePlaybook] = []

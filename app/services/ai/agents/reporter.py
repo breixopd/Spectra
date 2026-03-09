@@ -340,7 +340,7 @@ Immediate attention is required for critical and high severity findings.
         from pathlib import Path
 
         # Create report directory
-        report_dir = Path("reports/missions") / mission_id
+        report_dir = Path("data/missions") / mission_id
         report_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

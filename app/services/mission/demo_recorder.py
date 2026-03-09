@@ -67,7 +67,7 @@ class DemoRecorder:
         if not self.events:
             return None
 
-        output_dir = Path("reports/missions") / self.mission_id
+        output_dir = Path("data/missions") / self.mission_id
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / "demo.cast"
 

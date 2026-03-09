@@ -199,7 +199,7 @@ class SystemSetupService:
 
     def _save_infra_config(self, updates: dict) -> None:
         """Save infrastructure config to persistent file."""
-        config_path = Path("reports/infra_config.json")
+        config_path = Path("data/config/infra_config.json")
         data = {}
 
         if config_path.exists():

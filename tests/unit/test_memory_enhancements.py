@@ -159,7 +159,7 @@ class TestKnowledgeAggregation:
     def test_aggregate_writes_file(self, memory, tmp_path):
         memory.record_tool_result("nmap", "http", success=True, findings_count=1)
         memory.aggregate_knowledge()
-        out = Path("reports/memory/aggregated_knowledge.json")
+        out = Path("data/cache/aggregated_knowledge.json")
         assert out.exists()
         data = json.loads(out.read_text())
         assert "service_profiles" in data

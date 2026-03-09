@@ -75,7 +75,7 @@ class Mission:
 
         # Mission-scoped logger and output directory
         self._logger = logging.getLogger(f"spectra.mission.{self.id[:8]}")
-        self.output_dir = Path(f"reports/missions/{self.id}")
+        self.output_dir = Path(f"data/missions/{self.id}")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Inter-agent shared blackboard

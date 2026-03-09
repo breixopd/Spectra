@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger("spectra.ai.memory")
 
-MEMORY_DIR = Path("reports/memory")
+MEMORY_DIR = Path("data/cache")
 
 
 class ToolLesson(BaseModel):
@@ -82,7 +82,7 @@ class MissionMemory:
     """
     Persistent learning system that improves with every mission.
 
-    Stores lessons as JSON files in reports/memory/:
+    Stores lessons as JSON files in data/cache/:
     - tool_lessons.json — which tools work for which services
     - exploit_lessons.json — successful exploit chains
     - target_profiles.json — OS-specific strategies
@@ -636,7 +636,7 @@ class MissionMemory:
         }
 
         # Persist aggregated knowledge
-        output_dir = Path("reports/memory")
+        output_dir = Path("data/cache")
         output_dir.mkdir(parents=True, exist_ok=True)
         try:
             out_path = output_dir / "aggregated_knowledge.json"

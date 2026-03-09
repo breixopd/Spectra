@@ -69,7 +69,7 @@ async def cleanup_database():
 
 def cleanup_reports():
     """Clean up mission reports directory."""
-    reports_dir = Path("reports/missions")
+    reports_dir = Path("data/missions")
     if reports_dir.exists():
         # Count directories before
         mission_dirs = list(reports_dir.iterdir())

@@ -83,7 +83,7 @@ docker run --rm \
   -v "$PWD/alembic:/app/alembic:ro" \
   -v "$PWD/alembic.ini:/app/alembic.ini:ro" \
   -v "$PWD/plugins:/app/plugins:ro" \
-  -v "$PWD/reports:/app/reports" \
+  -v "$PWD/data:/app/data" \
   --entrypoint sh spectra-tools-test \
   -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx && python3 -m pytest tests/unit/test_runtime_settings.py tests/unit/test_system_setup.py tests/unit/test_smart_router.py tests/unit/test_settings_runtime_api.py tests/unit/test_settings_templates.py -q --override-ini=addopts="
 ```

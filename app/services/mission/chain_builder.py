@@ -145,7 +145,7 @@ def get_builtin_chains() -> list[ExploitChain]:
     return chains
 
 
-CUSTOM_CHAINS_PATH = Path("reports/memory/custom_chains.json")
+CUSTOM_CHAINS_PATH = Path("data/cache/custom_chains.json")
 
 
 def load_custom_chains() -> list[ExploitChain]:
