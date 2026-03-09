@@ -7,11 +7,10 @@ Represents security findings discovered during assessments.
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON
+from sqlalchemy import JSON, ForeignKey, String, Text
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import Severity
@@ -57,7 +56,7 @@ class Finding(Base):
         index=True,
     )
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     severity: Mapped[Severity] = mapped_column(
         SQLEnum(Severity),
         default=Severity.INFO,
@@ -70,10 +69,10 @@ class Finding(Base):
         nullable=False,
         index=True,
     )
-    cvss_score: Mapped[Optional[float]] = mapped_column(nullable=True)
-    cve_id: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, index=True)
+    cvss_score: Mapped[float | None] = mapped_column(nullable=True)
+    cve_id: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     tool_source: Mapped[str] = mapped_column(String(100), nullable=False)
-    evidence: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Relationship
-    target: Mapped["Target"] = relationship("Target", back_populates="findings")
+    target: Mapped[Target] = relationship("Target", back_populates="findings")

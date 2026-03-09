@@ -335,9 +335,9 @@ Immediate attention is required for critical and high severity findings.
         self, mission_id: str, report: ReportOutput, input_data: ReporterInput
     ) -> str:
         """Save report to disk in multiple formats."""
-        from pathlib import Path
-        from datetime import datetime
         import json
+        from datetime import datetime
+        from pathlib import Path
 
         # Create report directory
         report_dir = Path("reports/missions") / mission_id

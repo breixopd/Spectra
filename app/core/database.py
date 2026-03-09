@@ -4,7 +4,7 @@ Async SQLAlchemy Database Setup.
 Provides async engine, session maker, and a dependency for FastAPI.
 """
 
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
     AsyncSession,

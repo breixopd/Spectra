@@ -7,10 +7,10 @@ similarity ranking in application code.
 
 import json
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel, Field
-from dataclasses import dataclass
 from sqlalchemy import text
 
 from app.core.config import settings

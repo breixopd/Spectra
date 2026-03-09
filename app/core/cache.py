@@ -14,9 +14,10 @@ NOTE: Periodic cleanup of expired entries should be handled externally
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from functools import wraps
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
 
 try:
     import orjson
@@ -51,7 +52,7 @@ def _json_loads(data: str | bytes) -> Any:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class CacheConfig:

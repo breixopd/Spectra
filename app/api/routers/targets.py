@@ -5,17 +5,16 @@ Endpoints for managing assessment targets (IPs, domains, URLs).
 Provides CRUD operations and finding associations.
 """
 
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_session
-
-from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE, API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.api.dependencies import get_current_active_user
 from app.api.schemas import FindingResponse, TargetCreate, TargetResponse, TargetUpdate
+from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
+from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
+from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
 from app.models.user import User
 from app.repositories.finding import FindingRepository
@@ -62,7 +61,7 @@ async def create_target(
     )
 
 
-@router.get("", response_model=List[TargetResponse])
+@router.get("", response_model=list[TargetResponse])
 async def list_targets(
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
     limit: int = Query(
@@ -170,7 +169,7 @@ async def update_target(
     )
 
 
-@router.get("/{target_id}/findings", response_model=List[FindingResponse])
+@router.get("/{target_id}/findings", response_model=list[FindingResponse])
 async def get_target_findings(
     target_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -213,7 +212,7 @@ class BulkTargetItem(BaseModel):
 class BulkImportRequest(BaseModel):
     """Request body for bulk importing targets (max 500)."""
 
-    targets: List[BulkTargetItem] = Field(..., max_length=500)
+    targets: list[BulkTargetItem] = Field(..., max_length=500)
 
 
 class BulkImportResponse(BaseModel):
@@ -221,7 +220,7 @@ class BulkImportResponse(BaseModel):
 
     imported: int
     skipped: int
-    errors: List[str]
+    errors: list[str]
 
 
 @router.post("/bulk-import", response_model=BulkImportResponse)
@@ -234,7 +233,7 @@ async def bulk_import_targets(
     repo = TargetRepository(db)
     imported = 0
     skipped = 0
-    errors: List[str] = []
+    errors: list[str] = []
 
     for item in request.targets:
         addr = item.address.strip()
@@ -262,7 +261,7 @@ async def bulk_import_targets(
 class BulkDeleteRequest(BaseModel):
     """Request body for bulk deleting targets."""
 
-    target_ids: List[str]
+    target_ids: list[str]
 
 
 class BulkDeleteResponse(BaseModel):

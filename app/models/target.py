@@ -6,7 +6,7 @@ Provides the central entity that findings and exploits reference.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import String, Text
@@ -36,22 +36,22 @@ class Target(Base):
     __tablename__ = "targets"
 
     address: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[TargetStatus] = mapped_column(
         SQLEnum(TargetStatus),
         default=TargetStatus.PENDING,
         nullable=False,
     )
-    os: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    os: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # Relationships
-    findings: Mapped[list["Finding"]] = relationship(
+    findings: Mapped[list[Finding]] = relationship(
         "Finding",
         back_populates="target",
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    exploits: Mapped[list["Exploit"]] = relationship(
+    exploits: Mapped[list[Exploit]] = relationship(
         "Exploit",
         back_populates="target",
         cascade="all, delete-orphan",

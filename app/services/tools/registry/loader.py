@@ -67,7 +67,7 @@ class PluginLoader:
         self, path: Path, tools: dict[str, RegisteredTool]
     ) -> str:
         """Load a single plugin file."""
-        async with aiofiles.open(path, "r", encoding="utf-8") as f:
+        async with aiofiles.open(path, encoding="utf-8") as f:
             content = await f.read()
             data = json.loads(content)
 

@@ -10,7 +10,7 @@ Provides endpoints for:
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -28,7 +28,6 @@ from app.models.mission import Mission
 from app.models.user import User
 from app.services.tools.models import ToolStatus
 from app.services.tools.registry import ToolRegistry, get_registry
-
 
 logger = logging.getLogger("spectra.api.system")
 
@@ -311,7 +310,7 @@ async def get_system_status(
 
     Use this endpoint to show appropriate UI messages during setup/initialization.
     """
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     cache = _get_cache()
 
     # Initialize component statuses
@@ -611,7 +610,7 @@ async def add_operation(
         "id": operation_id,
         "type": operation_type,
         "description": description,
-        "started_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": datetime.now(UTC).isoformat(),
         "progress": 0,
     }
 

@@ -3,7 +3,7 @@
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 logger = logging.getLogger("spectra.mission.credentials")
 
@@ -31,7 +31,7 @@ class Credential:
     source: str = ""  # How it was found (e.g., "hydra brute-force", "config file leak")
     credential_type: str = "password"  # password, hash, key, token
     verified: bool = False
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class CredentialStore:

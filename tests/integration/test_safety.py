@@ -22,7 +22,7 @@ from app.services.ai.agents.safety import (
     SafetyAction,
 )
 from app.services.ai.consensus import VotingSystem, QualityGate, ConsensusStatus
-from app.services.ai.llm import MockLLMClient
+from tests.mocks.llm import MockLLMClient
 
 
 pytestmark = [

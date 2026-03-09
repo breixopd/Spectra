@@ -8,12 +8,12 @@ on release.
 
 ## Architecture
 
-| Service | Image | Purpose |
-|---------|-------|---------|
-| **db** | `postgres:16-alpine` | PostgreSQL database (data, cache, queues, RAG) |
-| **caddy** | `caddy:2-alpine` | Reverse proxy — TLS, security headers, rate limiting |
-| **app** | `ghcr.io/breixopd14/spectra-app` | FastAPI backend (internal port 5000) |
-| **tools** | `ghcr.io/breixopd14/spectra-tools` | Kali Linux security worker |
+| Service   | Image                              | Purpose                                              |
+| --------- | ---------------------------------- | ---------------------------------------------------- |
+| **db**    | `postgres:16-alpine`               | PostgreSQL database (data, cache, queues, RAG)       |
+| **caddy** | `caddy:2-alpine`                   | Reverse proxy — TLS, security headers, rate limiting |
+| **app**   | `ghcr.io/breixopd14/spectra-app`   | FastAPI backend (internal port 5000)                 |
+| **tools** | `ghcr.io/breixopd14/spectra-tools` | Kali Linux security worker                           |
 
 In production, Caddy sits in front of the app. External traffic hits Caddy (port 443 by default);
 Caddy proxies to the app container on port 5000 internally. The app container does **not**
@@ -48,12 +48,12 @@ Two workflow files in `.github/workflows/`:
 
 Triggered on every push/PR to `main` or `develop`.
 
-| Job | Purpose |
-|-----|---------|
-| **lint** | `ruff check` on app code |
-| **test** | Containerized validation (`docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner`) |
-| **security** | Bandit security scan (HIGH severity gate) |
-| **deps** | Dependency audit |
+| Job          | Purpose                                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| **lint**     | `ruff check` on app code                                                                                    |
+| **test**     | Containerized validation (`docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner`) |
+| **security** | Bandit security scan (HIGH severity gate)                                                                   |
+| **deps**     | Dependency audit                                                                                            |
 
 For operator validation of the settings/router/setup flow, use the targeted Docker command instead of host-local pytest:
 
@@ -81,11 +81,11 @@ Docker images carry OCI labels: `org.opencontainers.image.version`, `org.opencon
 
 Configure these in **Settings → Secrets and variables → Actions**:
 
-| Secret | Description |
-|--------|-------------|
-| `DEPLOY_HOST` | Production server hostname or IP |
-| `DEPLOY_USER` | SSH username on the production server |
-| `DEPLOY_SSH_KEY` | SSH private key for deployment |
+| Secret           | Description                           |
+| ---------------- | ------------------------------------- |
+| `DEPLOY_HOST`    | Production server hostname or IP      |
+| `DEPLOY_USER`    | SSH username on the production server |
+| `DEPLOY_SSH_KEY` | SSH private key for deployment        |
 
 > `GITHUB_TOKEN` is used automatically for GHCR authentication — no extra token needed.
 
@@ -102,14 +102,14 @@ Production deployments include Caddy (`docker-compose.prod.yml`) as the external
 
 ### What Caddy Handles
 
-| Feature | Details |
-|---------|---------|
-| **Reverse proxy** | Routes all traffic to `spectra-app:5000` internally |
-| **TLS termination** | Auto-provisions Let's Encrypt certs when `SPECTRA_DOMAIN` is set to a real domain |
-| **Security headers** | CSP, HSTS (63072000s, preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, X-XSS-Protection, Referrer-Policy |
-| **WebSocket support** | Detects `Upgrade: websocket` and proxies correctly |
-| **Health checks** | Polls `/api/health` every 15s with 5s timeout |
-| **Timeouts** | 300s read/write for long-running tool executions |
+| Feature               | Details                                                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Reverse proxy**     | Routes all traffic to `spectra-app:5000` internally                                                                     |
+| **TLS termination**   | Auto-provisions Let's Encrypt certs when `SPECTRA_DOMAIN` is set to a real domain                                       |
+| **Security headers**  | CSP, HSTS (63072000s, preload), X-Frame-Options DENY, X-Content-Type-Options nosniff, X-XSS-Protection, Referrer-Policy |
+| **WebSocket support** | Detects `Upgrade: websocket` and proxies correctly                                                                      |
+| **Health checks**     | Polls `/api/health` every 15s with 5s timeout                                                                           |
+| **Timeouts**          | 300s read/write for long-running tool executions                                                                        |
 
 ### Configuration
 
@@ -132,12 +132,12 @@ When using `localhost` (default), Caddy serves on port 443 with a self-signed ce
 
 ### Port Reference
 
-| Port | Context | Service |
-|------|---------|---------|
-| 443 | Production (default `SPECTRA_PORT`) | Caddy → app |
-| 80 | Production | Caddy (HTTP→HTTPS redirect) |
-| 5050 | Deploy health check (`HEALTH_PORT`) | Caddy or direct |
-| 5000 | Development / internal | App container directly |
+| Port | Context                             | Service                     |
+| ---- | ----------------------------------- | --------------------------- |
+| 443  | Production (default `SPECTRA_PORT`) | Caddy → app                 |
+| 80   | Production                          | Caddy (HTTP→HTTPS redirect) |
+| 5050 | Deploy health check (`HEALTH_PORT`) | Caddy or direct             |
+| 5000 | Development / internal              | App container directly      |
 
 ---
 
@@ -294,32 +294,32 @@ docker compose -f docker/docker-compose.prod.yml restart tools
 
 ### Required
 
-| Variable | Description |
-|----------|-------------|
-| `POSTGRES_PASSWORD` | PostgreSQL password |
-| `JWT_SECRET_KEY` | Secret key for JWT token signing |
-| `DATABASE_URL` | Set automatically by compose |
+| Variable            | Description                      |
+| ------------------- | -------------------------------- |
+| `POSTGRES_PASSWORD` | PostgreSQL password              |
+| `JWT_SECRET_KEY`    | Secret key for JWT token signing |
+| `DATABASE_URL`      | Set automatically by compose     |
 
 ### Application
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AI_PROVIDER` | `api` | LLM backend: `api`, `local`, `mock` |
-| `LLM_API_KEY` | — | API key for external LLM |
-| `FULLY_AUTOMATED` | `false` | Skip human approval gates |
-| `PLUGIN_SAFE_MODE` | `true` | Require signed plugins |
-| `DEBUG` | `false` | Enable debug mode |
+| Variable           | Default | Description                         |
+| ------------------ | ------- | ----------------------------------- |
+| `AI_PROVIDER`      | `api`   | LLM backend: `api`, `local`, `mock` |
+| `LLM_API_KEY`      | —       | API key for external LLM            |
+| `FULLY_AUTOMATED`  | `false` | Skip human approval gates           |
+| `PLUGIN_SAFE_MODE` | `true`  | Require signed plugins              |
+| `DEBUG`            | `false` | Enable debug mode                   |
 
 ### Infrastructure
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `TOOL_CONTAINER_NAME` | `spectra-tools` | Name of the tools container |
-| `CONNECT_BACK_HOST` | `spectra-app` | Hostname tools use to reach app |
-| `IS_TOOLS_CONTAINER` | `false` | Set `true` in tools container |
-| `SPECTRA_DOMAIN` | `localhost` | Domain for Caddy TLS |
-| `SPECTRA_PORT` | `443` | External port for Caddy (prod) |
-| `HEALTH_PORT` | `5050` | Port used by deploy health check |
+| Variable              | Default         | Description                      |
+| --------------------- | --------------- | -------------------------------- |
+| `TOOL_CONTAINER_NAME` | `spectra-tools` | Name of the tools container      |
+| `CONNECT_BACK_HOST`   | `spectra-app`   | Hostname tools use to reach app  |
+| `IS_TOOLS_CONTAINER`  | `false`         | Set `true` in tools container    |
+| `SPECTRA_DOMAIN`      | `localhost`     | Domain for Caddy TLS             |
+| `SPECTRA_PORT`        | `443`           | External port for Caddy (prod)   |
+| `HEALTH_PORT`         | `5050`          | Port used by deploy health check |
 
 ---
 

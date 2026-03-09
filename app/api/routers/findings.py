@@ -8,7 +8,6 @@ Provides CRUD operations, status updates, and export endpoints.
 import csv
 import json
 from io import StringIO
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import Response as FastAPIResponse
@@ -17,13 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.api.schemas import FindingResponse
+from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
+from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
 from app.models.finding import FindingStatus, Severity
 from app.models.user import User
 from app.repositories.finding import FindingRepository
 
-from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE, API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 MAX_BULK_SIZE = 100
 
 router = APIRouter(prefix="/findings", tags=["Findings"])
@@ -37,33 +37,33 @@ class FindingCreate(BaseModel):
 
     target_id: str = Field(..., description="ID of the target")
     title: str = Field(..., max_length=500)
-    description: Optional[str] = None
+    description: str | None = None
     severity: Severity = Severity.INFO
     status: FindingStatus = FindingStatus.POTENTIAL
-    cvss_score: Optional[float] = Field(None, ge=0.0, le=10.0)
-    cve_id: Optional[str] = Field(None, max_length=20)
+    cvss_score: float | None = Field(None, ge=0.0, le=10.0)
+    cve_id: str | None = Field(None, max_length=20)
     tool_source: str = Field(..., max_length=100)
-    evidence: Optional[dict] = None
+    evidence: dict | None = None
 
 
 class FindingUpdate(BaseModel):
     """Schema for updating a finding."""
 
-    title: Optional[str] = Field(None, max_length=500)
-    description: Optional[str] = None
-    severity: Optional[Severity] = None
-    status: Optional[FindingStatus] = None
-    cvss_score: Optional[float] = Field(None, ge=0.0, le=10.0)
-    cve_id: Optional[str] = Field(None, max_length=20)
+    title: str | None = Field(None, max_length=500)
+    description: str | None = None
+    severity: Severity | None = None
+    status: FindingStatus | None = None
+    cvss_score: float | None = Field(None, ge=0.0, le=10.0)
+    cve_id: str | None = Field(None, max_length=20)
 
 
 class FindingDetailResponse(FindingResponse):
     """Detailed finding response with all fields."""
 
     target_id: str
-    cvss_score: Optional[float] = None
-    cve_id: Optional[str] = None
-    evidence: Optional[dict] = None
+    cvss_score: float | None = None
+    cve_id: str | None = None
+    evidence: dict | None = None
 
 
 # --- Endpoints ---
@@ -108,7 +108,7 @@ async def create_finding(
     )
 
 
-@router.get("", response_model=List[FindingDetailResponse])
+@router.get("", response_model=list[FindingDetailResponse])
 async def list_findings(
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
     limit: int = Query(
@@ -117,8 +117,8 @@ async def list_findings(
         le=MAX_PAGE_SIZE,
         description="Max records to return",
     ),
-    severity: Optional[Severity] = None,
-    status_filter: Optional[FindingStatus] = Query(None, alias="status"),
+    severity: Severity | None = None,
+    status_filter: FindingStatus | None = Query(None, alias="status"),
     db: AsyncSession = Depends(get_async_session),
     __current_user: User = Depends(get_current_active_user),
 ):
@@ -491,7 +491,7 @@ async def retest_finding(
 
 class BulkUpdateRequest(BaseModel):
     """Request body for bulk-updating findings."""
-    finding_ids: List[str] = Field(..., max_length=MAX_BULK_SIZE)
+    finding_ids: list[str] = Field(..., max_length=MAX_BULK_SIZE)
     update: FindingUpdate
 
 

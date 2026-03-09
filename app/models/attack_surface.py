@@ -5,7 +5,7 @@ Tracks discovered attack surface components and attack vectors
 for iterative exploitation attempts.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 def _utc_now() -> datetime:
     """Return current UTC time as timezone-aware datetime."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class VectorStatus(str, Enum):

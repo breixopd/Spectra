@@ -2,7 +2,7 @@
 Finding Repository for managing vulnerability findings.
 """
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +41,7 @@ class FindingRepository(BaseRepository[Finding]):
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def get_severity_counts(self, target_id: Optional[str] = None) -> dict:
+    async def get_severity_counts(self, target_id: str | None = None) -> dict:
         """
         Get count of findings by severity.
 
@@ -63,6 +63,6 @@ class FindingRepository(BaseRepository[Finding]):
         self,
         finding_id: str,
         status: FindingStatus,
-    ) -> Optional[Finding]:
+    ) -> Finding | None:
         """Update the verification status of a finding."""
         return await self.update(finding_id, status=status)

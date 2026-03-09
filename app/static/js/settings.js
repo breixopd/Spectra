@@ -8,7 +8,6 @@ function authHeaders(extra = {}) {
 
 function defaultModelFor(provider) {
     if (provider === 'litellm') return 'gpt-4o-mini';
-    if (provider === 'mock') return 'mock';
     return 'qwen2.5:3b';
 }
 

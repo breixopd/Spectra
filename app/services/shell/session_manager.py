@@ -8,7 +8,7 @@ import asyncio
 import logging
 import socket
 import threading
-from typing import Dict, Optional
+
 from fastapi import WebSocket
 
 from app.core.constants import SHELL_SOCKET_RECV_BYTES
@@ -24,8 +24,8 @@ class ShellSession:
         self.target = target
         self.mission_id = mission_id
         self.missions_survived = 0
-        self.socket: Optional[socket.socket] = None
-        self.websocket: Optional[WebSocket] = None
+        self.socket: socket.socket | None = None
+        self.websocket: WebSocket | None = None
         self.active = False
         self.buffer = b""
         self._loop = None  # Reference to main event loop
@@ -88,8 +88,8 @@ class ShellSessionManager:
         if hasattr(self, '_initialized'):
             return
         self._initialized = True
-        self.sessions: Dict[str, ShellSession] = {}
-        self.listeners: Dict[int, socket.socket] = {}
+        self.sessions: dict[str, ShellSession] = {}
+        self.listeners: dict[int, socket.socket] = {}
 
         # Range for dynamic port allocation
         self.port_range_start = 4444
@@ -201,7 +201,7 @@ class ShellSessionManager:
 
         return port
 
-    async def get_session(self, session_id: str) -> Optional[ShellSession]:
+    async def get_session(self, session_id: str) -> ShellSession | None:
         return self.sessions.get(session_id)
 
     def list_sessions(self) -> list[dict]:

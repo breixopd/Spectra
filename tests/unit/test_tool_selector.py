@@ -11,7 +11,7 @@ from app.services.ai.agents.tool_selector import (
     ToolSelectorOutput,
 )
 from app.services.ai.agents.base import AgentContext, ActionRisk
-from app.services.ai.llm import MockLLMClient
+from tests.mocks.llm import MockLLMClient
 from app.services.tools.models import RiskLevel
 
 

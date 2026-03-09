@@ -12,11 +12,12 @@ Integrates with Jaeger, Prometheus, or other OTLP-compatible backends.
 
 import logging
 from collections import deque
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import wraps
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
 
 logger = logging.getLogger("spectra.telemetry")
 

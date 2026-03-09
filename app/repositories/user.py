@@ -4,7 +4,7 @@ User Repository for managing user accounts.
 Provides data access operations for user authentication and management.
 """
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,7 @@ class UserRepository(BaseRepository[User]):
         """
         super().__init__(User, session)
 
-    async def get_by_username(self, username: str) -> Optional[User]:
+    async def get_by_username(self, username: str) -> User | None:
         """
         Find a user by username.
 
@@ -41,7 +41,7 @@ class UserRepository(BaseRepository[User]):
         """
         return await self.find_one_by(username=username)
 
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> User | None:
         """
         Find a user by email.
 
@@ -79,7 +79,7 @@ class UserRepository(BaseRepository[User]):
         """
         return await self.find_many_by(is_superuser=True)
 
-    async def deactivate_user(self, user_id: str) -> Optional[User]:
+    async def deactivate_user(self, user_id: str) -> User | None:
         """
         Deactivate a user account.
 
@@ -91,7 +91,7 @@ class UserRepository(BaseRepository[User]):
         """
         return await self.update(user_id, is_active=False)
 
-    async def activate_user(self, user_id: str) -> Optional[User]:
+    async def activate_user(self, user_id: str) -> User | None:
         """
         Activate a user account.
 

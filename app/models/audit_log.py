@@ -4,7 +4,7 @@ Audit Log model for security event tracking.
 
 from enum import Enum
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 

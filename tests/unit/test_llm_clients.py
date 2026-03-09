@@ -9,10 +9,10 @@ from pydantic import BaseModel
 
 from app.services.ai.llm import (
     LLMResponse,
-    MockLLMClient,
     get_default_llm_client,
     get_llm_client,
 )
+from tests.mocks.llm import MockLLMClient
 
 
 # --- Test Models ---

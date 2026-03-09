@@ -5,7 +5,8 @@ Implements the Repository Pattern for clean data access abstraction.
 All entity-specific repositories should inherit from this.
 """
 
-from typing import Generic, Optional, Sequence, Type, TypeVar
+from collections.abc import Sequence
+from typing import Generic, TypeVar
 from uuid import UUID
 
 from sqlalchemy import delete, inspect, select, update
@@ -30,7 +31,7 @@ class BaseRepository(Generic[ModelType]):
                 return await self.find_one_by(value=value)
     """
 
-    def __init__(self, model: Type[ModelType], session: AsyncSession):
+    def __init__(self, model: type[ModelType], session: AsyncSession):
         """
         Initialize repository with model class and database session.
 
@@ -65,7 +66,7 @@ class BaseRepository(Generic[ModelType]):
         await self.session.refresh(instance)
         return instance
 
-    async def get_by_id(self, entity_id: str | UUID) -> Optional[ModelType]:
+    async def get_by_id(self, entity_id: str | UUID) -> ModelType | None:
         """
         Get entity by ID.
 
@@ -98,7 +99,7 @@ class BaseRepository(Generic[ModelType]):
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def find_one_by(self, **kwargs) -> Optional[ModelType]:
+    async def find_one_by(self, **kwargs) -> ModelType | None:
         """
         Find a single entity by field values.
 
@@ -139,7 +140,7 @@ class BaseRepository(Generic[ModelType]):
         self,
         entity_id: str | UUID,
         **kwargs,
-    ) -> Optional[ModelType]:
+    ) -> ModelType | None:
         """
         Update an entity by ID.
 

@@ -7,10 +7,9 @@ Provides endpoints for uploading, managing, and connecting VPN configs
 from __future__ import annotations
 
 import logging
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from pydantic import BaseModel
 
 from app.api.dependencies import get_current_active_user
 from app.core.config import settings

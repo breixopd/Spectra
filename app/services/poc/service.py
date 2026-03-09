@@ -6,14 +6,14 @@ Orchestrates the creation and verification of custom POCs.
 
 import logging
 
-from app.services.poc.models import POCRequest, POCResult, POCMetadata
-from app.services.ai.agents.poc_developer import POCDeveloperAgent, POCDeveloperInput
-from app.services.ai.consensus import VotingSystem, QualityGate
-from app.services.ai.llm import LLMClient
-from app.services.ai.agents.base import AgentContext
-from app.services.tools.service import ToolExecutionService
 from app.core.config import settings
+from app.services.ai.agents.base import AgentContext
+from app.services.ai.agents.poc_developer import POCDeveloperAgent, POCDeveloperInput
+from app.services.ai.consensus import QualityGate, VotingSystem
+from app.services.ai.llm import LLMClient
+from app.services.poc.models import POCMetadata, POCRequest, POCResult
 from app.services.shell.session_manager import shell_manager
+from app.services.tools.service import ToolExecutionService
 
 logger = logging.getLogger("spectra.services.poc")
 

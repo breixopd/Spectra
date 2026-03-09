@@ -7,9 +7,9 @@ Initializes database connections, cache, and other services.
 
 import asyncio
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
@@ -252,7 +252,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 await asyncio.wait_for(
                     asyncio.gather(*tasks, return_exceptions=True), timeout=5.0
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("Timed out waiting for tasks to cancel")
 
         # Close LLM Client

@@ -26,7 +26,7 @@ from app.services.ai.agents.exploit_crafter import ExploitCrafter, ExploitInput
 from app.services.ai.agents.reporter import ReporterAgent
 from app.services.ai.blackboard import MissionBlackboard, get_blackboard, remove_blackboard, _blackboards
 from app.services.ai.consensus import VotingConfig, VotingSystem, ConsensusStatus
-from app.services.ai.llm import MockLLMClient
+from tests.mocks.llm import MockLLMClient
 from app.services.mission.task_tree import PentestTaskTree, TaskNode, TaskStatus
 from app.core.enums import MissionStatus
 from app.core.state_machine import MissionState

@@ -1,0 +1,301 @@
+plan_id: spectra-round10-2026-03-09
+objective: |
+  Fix live tests to use real LLM API, fully separate mock/test code from production,
+  clean up UI provider options, and auto-fix ruff lint errors. Per-mission sandbox
+  design saved to docs/per-mission-sandboxes.md for future implementation.
+created_at: "2026-03-09"
+created_by: planner
+status: pending_approval
+research_confidence: high
+
+tldr: |
+  Five tasks. (1) Auto-fix 257 ruff lint errors. (2) Extract mock LLM clients from app/ to
+  tests/mocks/ — zero mock/test code in production. (3) Remove Mock from UI, unify Ollama as
+  connection type within LiteLLM. (4) Wire live tests to use real AI_PROVIDER via compose
+  override. (5) Verify all changes. Per-mission sandbox design written to
+  docs/per-mission-sandboxes.md for future rounds.
+
+open_questions:
+  - "Which real LLM provider should live tests default to?"
+
+pre_mortem:
+  overall_risk_level: low
+  critical_failure_modes:
+    - scenario: "Mock removal breaks unit tests"
+      likelihood: medium
+      impact: high
+      mitigation: "Audit all call sites. Tests use fixtures. ValueError surfaces issues fast."
+    - scenario: "UI provider unification breaks saved settings"
+      likelihood: medium
+      impact: medium
+      mitigation: "Backend normalizes ollama→litellm. Frontend handles legacy."
+  assumptions:
+    - "Unit tests inject mocks via fixtures — none depend on get_llm_client(provider='mock')"
+    - "Ruff auto-fix won't introduce behavioral changes"
+
+implementation_specification:
+  code_structure: |
+    Mock extraction: app/services/ai/llm.py → tests/mocks/llm.py.
+    UI cleanup: setup.html, settings.html, settings.js, ui.py.
+    Live tests: docker/docker-compose.live.yml + run_live_tests.sh update.
+    Lint: ruff --fix across app/.
+  affected_areas:
+    - app/services/ai/llm.py
+    - tests/mocks/llm.py (new)
+    - tests/mocks/__init__.py (new)
+    - tests/conftest.py
+    - app/templates/setup.html
+    - app/templates/settings.html
+    - app/static/js/settings.js
+    - app/api/routers/ui.py
+    - tests/run_live_tests.sh
+    - docker/docker-compose.live.yml (new)
+    - .env.live.example (new)
+    - "~120 files touched by ruff auto-fix"
+  component_details:
+    - component: tests/mocks/llm.py
+      responsibility: "Host MockLLMClient and PentestMockLLMClient — test-only"
+      interfaces:
+        - "MockLLMClient(LLMClient)"
+        - "PentestMockLLMClient(MockLLMClient)"
+    - component: app/services/ai/llm.py
+      responsibility: "LLM client factory — production only, ValueError on mock"
+      interfaces:
+        - "get_llm_client(provider, **kwargs) -> LLMClient"
+        - "get_default_llm_client() -> LLMClient"
+    - component: docker/docker-compose.live.yml
+      responsibility: "Override AI_PROVIDER for live tests with real LLM"
+      interfaces:
+        - "Compose override layered on docker-compose.test.yml"
+  dependencies:
+    - component: tests/mocks/llm.py
+      relationship: "imported ONLY by tests/"
+    - component: docker-compose.live.yml
+      relationship: "extends docker-compose.test.yml"
+  integration_points:
+    - "get_llm_client() raises ValueError on mock — tests inject via fixtures"
+    - "Live tests layer compose files for real LLM"
+
+tasks:
+  - id: task-001
+    title: "Auto-fix 257 ruff lint errors across app/"
+    description: |
+      Run `ruff check --fix app/` to resolve 257 auto-fixable errors (I001 import sorting,
+      F401 unused imports, W293 trailing whitespace, etc.). Verify with tests.
+    agent: developer
+    priority: low
+    status: pending
+    dependencies: []
+    context_files:
+      - "app/": "Target directory"
+      - "pyproject.toml": "Ruff config"
+    estimated_effort: small
+    estimated_files: 120
+    estimated_lines: 300
+    focus_area: lint
+    verification:
+      - "ruff check app/ shows ≤82 remaining errors"
+      - "Tests pass"
+    acceptance_criteria:
+      - "All auto-fixable errors resolved"
+      - "No regressions"
+    failure_modes:
+      - scenario: "Auto-fix removes runtime-needed import"
+        likelihood: low
+        impact: medium
+        mitigation: "Run tests. Re-add with noqa."
+    tech_stack:
+      - ruff
+    test_coverage: "Existing unit tests"
+    requires_review: false
+    review_depth: null
+    security_sensitive: false
+
+  - id: task-002
+    title: "Fully extract mock LLM clients — zero test code in app/"
+    description: |
+      1. Create tests/mocks/__init__.py and tests/mocks/llm.py with MockLLMClient and
+         PentestMockLLMClient (from app/services/ai/llm.py).
+
+      2. In app/services/ai/llm.py: DELETE both mock classes. Replace mock branches in
+         get_llm_client()/get_default_llm_client() with raise ValueError.
+
+      3. Update all test imports to use tests.mocks.llm.
+
+      4. Verify: grep -r 'class MockLLMClient' app/ → zero; grep -r 'from tests' app/ → zero.
+    agent: developer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - "app/services/ai/llm.py": "Mock classes + factory"
+      - "tests/conftest.py": "MockLLMClient imports"
+    estimated_effort: medium
+    estimated_files: 5
+    estimated_lines: 400
+    focus_area: code-organization
+    verification:
+      - "grep -r 'class MockLLMClient' app/ → zero"
+      - "grep -r 'from tests' app/ → zero"
+      - "tests/mocks/llm.py exists with both classes"
+      - "All tests pass"
+    acceptance_criteria:
+      - "Zero mock/test code in app/"
+      - "get_llm_client('mock') raises ValueError"
+    failure_modes:
+      - scenario: "Test calls get_default_llm_client() without mocking"
+        likelihood: medium
+        impact: medium
+        mitigation: "ValueError surfaces issue immediately."
+    tech_stack:
+      - python
+    test_coverage: "Full unit test suite"
+    requires_review: true
+    review_depth: standard
+    security_sensitive: false
+
+  - id: task-003
+    title: "Remove Mock option and unify Ollama/LiteLLM in UI"
+    description: |
+      setup.html + settings.html: remove mock option; replace separate Ollama/LiteLLM with
+      single LiteLLM provider + Ollama connection toggle.
+
+      settings.js: remove mock; simplify toggle logic.
+
+      ui.py: remove _public_ai_provider() mock mapping.
+
+      Update UI tests to match.
+    agent: developer
+    priority: high
+    status: pending
+    dependencies: []
+    context_files:
+      - "app/templates/setup.html": "Provider dropdowns"
+      - "app/templates/settings.html": "Same"
+      - "app/static/js/settings.js": "Toggle logic"
+      - "app/api/routers/ui.py": "Provider mapping"
+    estimated_effort: medium
+    estimated_files: 4
+    estimated_lines: 200
+    focus_area: ui
+    verification:
+      - "No 'mock' in dropdowns"
+      - "Ollama is toggle within LiteLLM"
+      - "14 UI tests pass"
+    acceptance_criteria:
+      - "Mock removed from UI"
+      - "Unified provider"
+      - "Backward compatible"
+    failure_modes:
+      - scenario: "UI tests break on changed selectors"
+        likelihood: high
+        impact: medium
+        mitigation: "Update selectors in same task."
+    tech_stack:
+      - html
+      - javascript
+      - python
+    test_coverage: "14 UI tests"
+    requires_review: true
+    review_depth: standard
+    security_sensitive: false
+
+  - id: task-004
+    title: "Fix live tests to exercise real LLM"
+    description: |
+      Create docker/docker-compose.live.yml (compose override setting AI_PROVIDER=litellm).
+      Update tests/run_live_tests.sh to source .env.live, layer compose files, skip without
+      credentials, capture app logs. Create .env.live.example.
+    agent: developer
+    priority: high
+    status: pending
+    dependencies:
+      - task-002
+    context_files:
+      - "tests/run_live_tests.sh": "Current orchestration"
+      - "docker/docker-compose.test.yml": "Base test config"
+    estimated_effort: small
+    estimated_files: 4
+    estimated_lines: 100
+    focus_area: testing
+    verification:
+      - "Live tests run with real LLM when .env.live present"
+      - "Graceful skip without credentials"
+      - "App logs captured"
+    acceptance_criteria:
+      - "Full pentest workflow with real LLM"
+      - "Logs captured"
+    failure_modes:
+      - scenario: "Missions timeout"
+        likelihood: medium
+        impact: medium
+        mitigation: "600s timeout. Fast model."
+    tech_stack:
+      - bash
+      - docker-compose
+    test_coverage: "Live integration suite"
+    requires_review: true
+    review_depth: lightweight
+    security_sensitive: false
+
+  - id: task-005
+    title: "Verify all changes"
+    description: |
+      1. ruff check app/ → ≤82 errors
+      2. settings-test-runner → 50 tests pass
+      3. ui-test-runner → 14 tests pass
+      4. grep -r 'class MockLLMClient' app/ → zero
+      5. grep -r 'from tests' app/ → zero
+      6. grep -r 'value="mock"' app/templates/ → zero
+    agent: reviewer
+    priority: high
+    status: pending
+    dependencies:
+      - task-001
+      - task-002
+      - task-003
+      - task-004
+    context_files:
+      - "docker/docker-compose.test.yml": "Test runners"
+      - "app/services/ai/llm.py": "Zero mock code"
+      - "app/templates/": "No mock in UI"
+    estimated_effort: medium
+    estimated_files: 0
+    estimated_lines: 0
+    focus_area: verification
+    verification:
+      - "All tests pass"
+      - "All objectives met"
+    acceptance_criteria:
+      - "Zero regressions"
+      - "All 4 implementation objectives verified"
+    failure_modes:
+      - scenario: "UI tests fail on changed selectors"
+        likelihood: high
+        impact: medium
+        mitigation: "Task-003 updates selectors."
+    requires_review: true
+    review_depth: full
+    security_sensitive: false
+    validation_matrix:
+      - scenario: "Ruff lint"
+        steps:
+          - "ruff check app/"
+        expected_result: "≤82 errors"
+      - scenario: "Settings tests"
+        steps:
+          - "docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner"
+        expected_result: "50 tests pass"
+      - scenario: "UI tests"
+        steps:
+          - "docker compose -f docker/docker-compose.test.yml run --rm ui-test-runner"
+        expected_result: "14 tests pass"
+      - scenario: "Zero mock in production"
+        steps:
+          - "grep -r 'class MockLLMClient' app/"
+          - "grep -r 'from tests' app/"
+        expected_result: "No matches"
+      - scenario: "Zero mock in UI"
+        steps:
+          - "grep -r 'value=\"mock\"' app/templates/"
+        expected_result: "No matches"

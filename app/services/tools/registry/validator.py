@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from app.services.tools.models import ToolConfig
 from app.services.tools.registry.constants import DANGEROUS_PATTERNS
 from app.services.tools.registry.exceptions import (
-    PluginValidationError,
     PluginSignatureError,
+    PluginValidationError,
 )
 
 if TYPE_CHECKING:

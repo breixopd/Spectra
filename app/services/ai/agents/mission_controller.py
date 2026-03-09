@@ -26,7 +26,6 @@ from app.services.ai.agents.base import (
     SteeringAction,
 )
 from app.services.ai.prompts import (
-    MISSION_CONTROLLER_SYSTEM_PROMPT,
     MISSION_PLAN_PROMPT,
 )
 

@@ -1,6 +1,6 @@
+import asyncio
 import logging
 import shutil
-import asyncio
 from pathlib import Path
 
 from app.services.tools.registry import get_registry
@@ -146,7 +146,7 @@ class ToolInstaller:
                             return True
                         return False
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning("Verification timed out for %s", tool.config.id)
                     try:
                         proc.kill()

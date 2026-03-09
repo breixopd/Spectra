@@ -1,10 +1,11 @@
-from datetime import datetime, timezone
 import json
+from datetime import UTC, datetime
+
 from sqlalchemy import DateTime, Integer, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import String as SAString
 
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class InfrastructureBase(DeclarativeBase):
     pass
@@ -44,7 +45,7 @@ class SystemCache(InfrastructureBase):
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
 class JobQueue(InfrastructureBase):
@@ -65,7 +66,7 @@ class JobQueue(InfrastructureBase):
     result: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    enqueued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    enqueued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -82,7 +83,7 @@ class SystemStatus(InfrastructureBase):
 
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
 
 
 class CacheEntry(InfrastructureBase):
@@ -98,4 +99,4 @@ class CacheEntry(InfrastructureBase):
     key: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)  # JSON serialized
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

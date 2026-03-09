@@ -21,9 +21,9 @@ from fastapi import (
     File,
     HTTPException,
     Query,
-    UploadFile,
     Request,
     Response,
+    UploadFile,
 )
 
 from app.api.dependencies import get_current_active_user, get_current_superuser
@@ -582,7 +582,7 @@ async def test_tool(
         raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
 
     try:
-        from app.core.queue import PostgresJobQueue, Job
+        from app.core.queue import Job, PostgresJobQueue
 
         queue = PostgresJobQueue()
 

@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_current_superuser
+from app.api.dependencies import get_current_active_user
 from app.api.schemas import LLMTestRequest, SettingsUpdateRequest
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
@@ -37,10 +37,10 @@ templates.env.globals["app_name"] = settings.APP_NAME
 
 
 def _public_ai_provider(provider: str | None) -> str:
-    normalized = (provider or "mock").strip().lower()
-    if normalized != "mock":
-        return "litellm"
-    return "mock"
+    normalized = (provider or "litellm").strip().lower()
+    if normalized == "ollama":
+        return "ollama"
+    return "litellm"
 
 
 def _get_ui_user(request: Request) -> dict | None:

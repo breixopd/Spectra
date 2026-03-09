@@ -5,14 +5,13 @@ import logging
 from pathlib import Path
 
 from fastapi import HTTPException, status
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.ai.llm as llm_module
-
 from app.api.schemas import SystemSetupRequest
 from app.core.config import settings
 from app.core.security import get_password_hash
-from app.models.config import SystemConfig
 from app.models.user import User
 from app.services.ai.llm import close_global_llm_client, get_llm_client
 from app.services.system.runtime_settings import (
@@ -21,7 +20,6 @@ from app.services.system.runtime_settings import (
     serialize_runtime_ai_config_values,
     upsert_system_config_values,
 )
-from sqlalchemy import text
 
 logger = logging.getLogger("spectra.services.system")
 
@@ -206,7 +204,7 @@ class SystemSetupService:
 
         if config_path.exists():
             try:
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(config_path, encoding="utf-8") as f:
                     data = json.load(f)
             except Exception as e:
                 logger.warning("Could not read existing infra config: %s", e)

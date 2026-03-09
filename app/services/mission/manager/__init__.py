@@ -7,10 +7,11 @@ import logging
 from typing import Any
 
 from app.services.mission.mission import Mission
-from . import lifecycle, steering, execution
+
+from . import execution, lifecycle, steering
+from .execution import MissionExecutionManager
 from .lifecycle import MissionLifecycleManager
 from .steering import MissionSteeringManager
-from .execution import MissionExecutionManager
 
 logger = logging.getLogger("spectra.mission.manager")
 

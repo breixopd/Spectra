@@ -149,7 +149,7 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
     For unit/integration tests, it returns an instance with mocked dependencies.
     """
     from app.services.mission.manager import MissionManager
-    from app.services.ai.llm import MockLLMClient
+    from tests.mocks.llm import MockLLMClient
 
     # If it's a live test, we should ideally use real_mission_manager,
     # but pytest fixtures don't easily allow conditional switching based on markers

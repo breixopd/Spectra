@@ -28,7 +28,7 @@ from app.services.ai.agents.mission_controller import (
     PhaseTransition,
     Task,
 )
-from app.services.ai.llm import MockLLMClient
+from tests.mocks.llm import MockLLMClient
 
 
 # ---------------------------------------------------------------------------

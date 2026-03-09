@@ -4,7 +4,7 @@ Mission Repository for managing mission history.
 Provides data access operations for mission CRUD and status queries.
 """
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -104,7 +104,7 @@ class MissionRepository(BaseRepository[Mission]):
         self,
         mission_id: str,
         status: str | MissionStatus,
-    ) -> Optional[Mission]:
+    ) -> Mission | None:
         """
         Update the status of a mission.
 

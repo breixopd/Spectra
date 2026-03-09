@@ -313,26 +313,26 @@ class UniversalParser:
             return []
 
         try:
+
             from pydantic import BaseModel
-            from typing import List, Optional
 
             class ExtractedFinding(BaseModel):
                 """A single extracted finding."""
 
                 type: str  # service, vulnerability, info, credential
                 title: str
-                description: Optional[str] = None
-                host: Optional[str] = None
-                port: Optional[int] = None
-                service: Optional[str] = None
-                severity: Optional[str] = None
-                cve_id: Optional[str] = None
-                extra: Optional[dict] = None
+                description: str | None = None
+                host: str | None = None
+                port: int | None = None
+                service: str | None = None
+                severity: str | None = None
+                cve_id: str | None = None
+                extra: dict | None = None
 
             class ExtractionResult(BaseModel):
                 """LLM extraction result."""
 
-                findings: List[ExtractedFinding]
+                findings: list[ExtractedFinding]
 
             hint = (
                 self.config.parsing.extraction_hint or "security-relevant information"

@@ -33,9 +33,9 @@ from app.core.constants import (
     MAX_HOSTS_DEFAULT,
 )
 from app.services.tools.models import (
-    ToolStatus,
     ToolExecutionRequest,
     ToolExecutionResult,
+    ToolStatus,
 )
 
 logger = logging.getLogger("spectra.worker")
@@ -66,9 +66,9 @@ async def execute_tool_job(
     Returns:
         ToolExecutionResult as dict.
     """
-    from app.services.tools.registry import get_registry
     from app.services.tools.adapter.builder import CommandBuilder
     from app.services.tools.adapter.parser import OutputParser
+    from app.services.tools.registry import get_registry
 
     logger.info("Executing tool %s against %s", tool_id, target)
 
@@ -630,7 +630,7 @@ async def _run_command(
             stdout_bytes.decode("utf-8", errors="replace"),
             stderr_bytes.decode("utf-8", errors="replace"),
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         try:
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         except ProcessLookupError:
@@ -919,6 +919,7 @@ _WORKER_FUNCTIONS = [
 
 if __name__ == "__main__":
     import asyncio
+
     from app.core.queue import worker_loop
 
     async def _main() -> None:

@@ -20,7 +20,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 
 from app.core.config import settings
-from app.services.ai.llm import LLMClient, LLMResponse, PentestMockLLMClient
+from app.services.ai.llm import LLMClient, LLMResponse
 
 logger = logging.getLogger("spectra.ai.router")
 
@@ -448,6 +448,13 @@ def create_smart_router() -> LLMClient:
     """Create a SmartRouter from current settings."""
     normalized_provider = _normalize_provider_name(settings.AI_PROVIDER)
     if normalized_provider == "mock":
+        try:
+            from tests.mocks.llm import PentestMockLLMClient
+        except ImportError:
+            raise ValueError(
+                "Mock provider requires test dependencies. "
+                "Set AI_PROVIDER to 'litellm' for production use."
+            ) from None
         return PentestMockLLMClient()
 
     model_list, fallbacks, default_model = build_model_config_from_settings()

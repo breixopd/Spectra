@@ -4,15 +4,15 @@ Uses Fernet symmetric encryption derived from the application SECRET_KEY.
 Provides file-level encryption at rest and password-based export encryption.
 """
 
-import hashlib
 import base64
+import hashlib
 import logging
 import os
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 logger = logging.getLogger("spectra.core.encryption")
 

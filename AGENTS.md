@@ -8,12 +8,12 @@ Spectra is a Multi-Agent System (MAS) for automated security assessments built w
 
 ### Services
 
-| Service | Container | Purpose | Required |
-|---------|-----------|---------|----------|
-| **db** | `spectra-db` (postgres:16-alpine) | Primary data store, cache, task queue | Yes |
-| **app** | `spectra-app` (FastAPI) | API + Web UI on port 5000 | Yes |
-| **tools** | `spectra-tools` (Kali Linux worker) | Security tool execution | Optional for basic UI testing |
-| **ai** | `spectra-ai` (Ollama) | Local LLM inference (needs GPU) | No - use `AI_PROVIDER=api` instead |
+| Service   | Container                           | Purpose                               | Required                           |
+| --------- | ----------------------------------- | ------------------------------------- | ---------------------------------- |
+| **db**    | `spectra-db` (postgres:16-alpine)   | Primary data store, cache, task queue | Yes                                |
+| **app**   | `spectra-app` (FastAPI)             | API + Web UI on port 5000             | Yes                                |
+| **tools** | `spectra-tools` (Kali Linux worker) | Security tool execution               | Optional for basic UI testing      |
+| **ai**    | `spectra-ai` (Ollama)               | Local LLM inference (needs GPU)       | No - use `AI_PROVIDER=api` instead |
 
 ### Starting the application
 
@@ -58,6 +58,7 @@ docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
 ```
 
 Integration tests under `tests/integration/` require live services (PostgreSQL, LLM, tools container). Expected failures when running outside Docker network:
+
 - RAG tests need PostgreSQL
 - LLM tests need a configured AI provider
 - Real tool workflow tests need security tools (nmap, etc.) installed

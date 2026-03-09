@@ -11,7 +11,7 @@ import json
 import logging
 import threading
 import time as _time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
@@ -70,8 +70,9 @@ def _persist_blacklist() -> None:
 async def _persist_to_db() -> None:
     """Persist blacklist state to database via cache_entries table."""
     try:
-        from app.core.database import async_session_maker
         from sqlalchemy import text
+
+        from app.core.database import async_session_maker
 
         now = _time.time()
         async with async_session_maker() as session:
@@ -84,8 +85,8 @@ async def _persist_to_db() -> None:
                     ), {
                         "key": f"blacklist:token:{token_hash}",
                         "value": json.dumps({"type": "token", "expiry": expiry}),
-                        "expires_at": datetime.fromtimestamp(expiry, tz=timezone.utc),
-                        "created_at": datetime.now(timezone.utc),
+                        "expires_at": datetime.fromtimestamp(expiry, tz=UTC),
+                        "created_at": datetime.now(UTC),
                     })
 
             for username, invalidated_before in _user_token_blacklist.items():
@@ -96,7 +97,7 @@ async def _persist_to_db() -> None:
                 ), {
                     "key": f"blacklist:user:{username}",
                     "value": json.dumps({"type": "user", "invalidated_before": invalidated_before}),
-                    "created_at": datetime.now(timezone.utc),
+                    "created_at": datetime.now(UTC),
                 })
 
             await session.commit()
@@ -107,8 +108,9 @@ async def _persist_to_db() -> None:
 async def _load_from_db() -> None:
     """Load blacklist state from database, overlaying in-memory cache."""
     try:
-        from app.core.database import async_session_maker
         from sqlalchemy import text
+
+        from app.core.database import async_session_maker
 
         async with async_session_maker() as session:
             rows = (await session.execute(text(
@@ -217,7 +219,7 @@ def invalidate_all_user_tokens(username: str) -> None:
     Uses int(time) + 1 to account for JWT iat being stored as integer seconds.
     """
     _ensure_blacklist_loaded()
-    now = int(datetime.now(timezone.utc).timestamp()) + 1
+    now = int(datetime.now(UTC).timestamp()) + 1
     with _blacklist_lock:
         _user_token_blacklist[username] = now
         _persist_blacklist()
@@ -245,7 +247,7 @@ def create_access_token(
 
     to_encode = data.copy()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -284,7 +286,7 @@ def create_refresh_token(
 
     to_encode = data.copy()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + (expires_delta or timedelta(days=7))
 
     to_encode.update(

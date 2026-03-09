@@ -10,12 +10,12 @@ from typing import ClassVar
 from pydantic import BaseModel
 
 from app.services.ai.agents.base import (
+    ActionRisk,
     Agent,
     AgentContext,
     AgentResult,
     AgentRole,
     ToolAction,
-    ActionRisk,
 )
 from app.services.ai.context import ContextManager, ContextSection, Priority
 from app.services.ai.prompts import POC_DEVELOPER_PROMPT
