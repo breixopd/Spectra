@@ -47,8 +47,14 @@
     <p>Reports will appear here after completing a security assessment mission.</p>
 </div>
 
+<!-- Loading State -->
+<div id="reports-loading" class="empty-state glass-panel rounded-xl animate-fade-in-up stagger-1">
+    <i class="fa-solid fa-spinner fa-spin text-violet-400/40"></i>
+    <h3>Loading reports...</h3>
+</div>
+
 <!-- Reports Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-fade-in-up stagger-1" id="reports-grid"></div>
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 animate-fade-in-up stagger-1 hidden" id="reports-grid"></div>
 
 <!-- Pagination -->
 <div class="flex items-center justify-center gap-2 mt-6" id="pagination-controls"></div>
@@ -101,6 +107,32 @@
         <div class="flex-1 overflow-y-auto p-6" id="view-report-content"></div>
     </div>
 </div>
+<!-- Delete Mission Modal -->
+<div id="delete-mission-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50">
+    <div class="w-full h-full flex items-center justify-center">
+    <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4">
+        <h3 class="text-lg font-semibold text-white mb-2">
+            <i class="fa-solid fa-exclamation-triangle text-rose-400 mr-2"></i>
+            Delete Mission
+        </h3>
+        <p class="text-slate-400 text-sm mb-1">Target: <span id="delete-mission-target" class="text-white"></span></p>
+        <p class="text-slate-400 text-sm mb-4">
+            This will permanently delete this mission and its data. Download the report first if needed.
+        </p>
+        <div class="flex gap-3 justify-end">
+            <button onclick="hideDeleteMissionModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+                Cancel
+            </button>
+            <button id="download-before-delete-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+                <i class="fa-solid fa-download mr-1"></i> Download Report
+            </button>
+            <button onclick="confirmDeleteMission()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
+                <i class="fa-solid fa-trash mr-1"></i> Delete
+            </button>
+        </div>
+    </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -132,9 +164,12 @@ async function loadReports() {
             return { ...m, counts, totalFindings: Object.values(counts).reduce((a, b) => a + b, 0) };
         }));
 
+        document.getElementById('reports-loading').classList.add('hidden');
         renderReports();
     } catch (e) {
         console.error('Error loading reports:', e);
+        document.getElementById('reports-loading').classList.add('hidden');
+        document.getElementById('reports-empty').classList.remove('hidden');
     }
 }
 
@@ -159,8 +194,9 @@ function renderReports() {
     const filtered = getFilteredReports();
     const grid = document.getElementById('reports-grid');
     const empty = document.getElementById('reports-empty');
-    if (filtered.length === 0) { grid.innerHTML = ''; empty.classList.remove('hidden'); document.getElementById('pagination-controls').innerHTML = ''; return; }
+    if (filtered.length === 0) { grid.classList.add('hidden'); grid.innerHTML = ''; empty.classList.remove('hidden'); document.getElementById('pagination-controls').innerHTML = ''; return; }
     empty.classList.add('hidden');
+    grid.classList.remove('hidden');
     const totalPages = Math.ceil(filtered.length / pageSize);
     const start = (currentPage - 1) * pageSize;
     const page = filtered.slice(start, start + pageSize);
@@ -183,6 +219,7 @@ function renderReports() {
                 <button onclick="viewReport('${r.id}')" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors text-center"><i class="fa-solid fa-eye mr-1 text-violet-400"></i>View</button>
                 <button onclick="downloadReportHTML('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Download HTML"><i class="fa-solid fa-file-code text-blue-400"></i></button>
                 <button onclick="downloadReportPDF('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Print / PDF"><i class="fa-solid fa-file-pdf text-rose-400"></i></button>
+                <button onclick="showDeleteMissionModal('${r.id}', '${escapeHtml(r.target || 'Unknown')}')" class="px-3 py-2 bg-slate-800 hover:bg-rose-900/50 rounded text-xs text-white transition-colors" title="Delete Mission"><i class="fa-solid fa-trash text-rose-400"></i></button>
             </div>
         </div>`;
     }).join('');
@@ -241,5 +278,33 @@ async function generateReport() {
 }
 
 function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+let deleteMissionId = null;
+function showDeleteMissionModal(id, target) {
+    deleteMissionId = id;
+    document.getElementById('delete-mission-target').textContent = target;
+    document.getElementById('download-before-delete-btn').onclick = () => {
+        window.open(`/api/missions/${id}/report/pdf`, '_blank');
+    };
+    document.getElementById('delete-mission-modal').classList.remove('hidden');
+}
+function hideDeleteMissionModal() {
+    document.getElementById('delete-mission-modal').classList.add('hidden');
+}
+async function confirmDeleteMission() {
+    hideDeleteMissionModal();
+    try {
+        const res = await fetch(`/api/missions/${deleteMissionId}`, { method: 'DELETE' });
+        if (res.ok) {
+            allReports = allReports.filter(r => r.id !== deleteMissionId);
+            renderReports();
+        } else {
+            const data = await res.json();
+            alert(data.detail || 'Failed to delete mission');
+        }
+    } catch (e) {
+        alert('Error deleting mission');
+    }
+}
 </script>
 {% endblock %}

@@ -126,6 +126,7 @@ Infrastructure direction: start with one server running the full stack, then spl
 - Strict input validation on hostnames/IPs to prevent command injection
 - Network segmentation for tool and RAG workers
 - Audit log for all infrastructure changes
+- **Inter-service encryption**: When expanding beyond a single server, secure all service-to-service communication with mTLS (SPIFFE/SPIRE for automatic identity) or a WireGuard mesh between nodes. PostgreSQL connections should enforce `sslmode=verify-full` with client certificates. Docker daemon access on remote nodes requires Docker TLS with client cert auth.
 
 **Complexity**: Very High | **Impact**: Medium (needed at scale)
 
@@ -182,38 +183,49 @@ Infrastructure direction: start with one server running the full stack, then spl
 - Move reports, artifacts, uploaded files, and generated datasets into S3-compatible object storage
 - Makes app, tool, and RAG workers easier to move across hosts
 - Simplifies retention policies and cross-node artifact access
+- **Phased adoption** (from sandbox design research):
+  - Phase 1: Shared Docker volume (`spectra_data`) — current single-server default
+  - Phase 2: NFS mount for `data/missions/` — zero code changes, works for 2-3 servers
+  - Phase 3: S3-compatible object storage (MinIO self-hosted → AWS S3 / Cloudflare R2) for full multi-node
 
-### 6.3 Coordinator / Control Plane Split
+### 6.3 Private Container Image Registry
+
+- Required for distributing the golden `spectra-tools` image to multiple servers
+- Phase 1: Local Docker `registry:2` container (single server — images stay local)
+- Phase 2: Harbor (self-hosted, includes vulnerability scanning + RBAC + replication) or GHCR (zero infrastructure, CI/CD-friendly)
+- Needed before multi-server tool worker deployment (see Section 4, Phase 2)
+
+### 6.4 Coordinator / Control Plane Split
 
 - Keep the web/API app focused on auth, UI, orchestration, and policy
 - Move scheduling, queue arbitration, worker assignment, and cluster health into a coordinator service
 - Simplifies multi-node expansion later
 
-### 6.4 Custom Model Fine-Tuning Pipeline
+### 6.5 Custom Model Fine-Tuning Pipeline
 
 - In-app workflow to fine-tune LoRA adapters on generated datasets
 - Upload to Ollama or vLLM for immediate deployment
 - A/B testing: compare fine-tuned vs base model on same targets
 
-### 6.5 Collaborative Multi-User Missions
+### 6.6 Collaborative Multi-User Missions
 
 - Team assignments: multiple operators on same mission
 - Role-based views: analyst sees findings, operator controls tools
 - Real-time collaboration via WebSocket presence
 
-### 6.6 Compliance Report Templates
+### 6.7 Compliance Report Templates
 
 - Pre-built templates for PCI-DSS, HIPAA, SOC2, ISO 27001
 - Auto-mapping of findings to compliance controls
 - Executive summary generation with risk scoring
 
-### 6.7 Plugin Marketplace
+### 6.8 Plugin Marketplace
 
 - Community plugin repository with signed submissions
 - One-click install from UI
 - Rating and review system
 
-### 6.8 Notification Integrations
+### 6.9 Notification Integrations
 
 - Slack, Discord, Teams webhooks for mission events
 - Email notifications with configurable triggers

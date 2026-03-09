@@ -10,7 +10,7 @@ on release.
 
 | Service   | Image                              | Purpose                                              |
 | --------- | ---------------------------------- | ---------------------------------------------------- |
-| **db**    | `postgres:16-alpine`               | PostgreSQL database (data, cache, queues, RAG)       |
+| **db**    | `pgvector/pgvector:pg16`           | PostgreSQL + pgvector (data, cache, queues, RAG)     |
 | **caddy** | `caddy:2-alpine`                   | Reverse proxy — TLS, security headers, rate limiting |
 | **app**   | `ghcr.io/breixopd14/spectra-app`   | FastAPI backend (internal port 5000)                 |
 | **tools** | `ghcr.io/breixopd14/spectra-tools` | Kali Linux security worker                           |

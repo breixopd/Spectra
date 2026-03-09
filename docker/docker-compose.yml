@@ -46,6 +46,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
+      args:
+        ENABLE_LOCAL_EMBEDDINGS: ${ENABLE_LOCAL_EMBEDDINGS:-false}
     container_name: spectra-app
     # No public port — Caddy proxies to app:5000 internally
     expose:
@@ -62,12 +64,9 @@ services:
       - CONNECT_BACK_HOST=spectra-app
     volumes:
       - ../app:/app/app
-      - ../tests:/app/tests
       - ../plugins:/app/plugins
       - ../keys:/app/keys:ro
       - ../scripts:/app/scripts:ro
-      - ../pytest.ini:/app/pytest.ini:ro
-      - ../.env.test:/app/.env.test:ro
       - spectra_data:/app/data
       - ../alembic:/app/alembic
       - ../alembic.ini:/app/alembic.ini
@@ -116,7 +115,6 @@ services:
       - TZ=UTC
     volumes:
       - ../app:/app/app:ro
-      - ../tests:/app/tests:ro
       - spectra_data:/app/data
       - ../plugins:/app/plugins
       - ../keys:/app/keys:ro
@@ -144,40 +142,9 @@ networks:
   spectra-network:
     driver: bridge
 
-# =============================================================================
-# Volumes
-# =============================================================================
 volumes:
   postgres_data:
   spectra_data:
   spectra_tools_data:
   caddy_data:
   caddy_config:
-
-# =============================================================================
-# Vulnerable Target Containers (for testing)
-# Start with: docker compose --profile targets up -d
-# =============================================================================
-#  target-easy:
-#    build:
-#      context: targets/easy
-#    container_name: spectra-target-easy
-#    profiles: ["targets"]
-#    networks:
-#      - spectra-network
-#
-#  target-medium:
-#    build:
-#      context: targets/medium
-#    container_name: spectra-target-medium
-#    profiles: ["targets"]
-#    networks:
-#      - spectra-network
-#
-#  target-hard:
-#    build:
-#      context: targets/hard
-#    container_name: spectra-target-hard
-#    profiles: ["targets"]
-#    networks:
-#      - spectra-network

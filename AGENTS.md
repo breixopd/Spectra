@@ -10,7 +10,7 @@ Spectra is a Multi-Agent System (MAS) for automated security assessments built w
 
 | Service   | Container                           | Purpose                               | Required                           |
 | --------- | ----------------------------------- | ------------------------------------- | ---------------------------------- |
-| **db**    | `spectra-db` (postgres:16-alpine)   | Primary data store, cache, task queue | Yes                                |
+| **db**    | `spectra-db` (pgvector/pgvector:pg16) | Primary data store, cache, task queue | Yes                                |
 | **app**   | `spectra-app` (FastAPI)             | API + Web UI on port 5000             | Yes                                |
 | **tools** | `spectra-tools` (Kali Linux worker) | Security tool execution               | Optional for basic UI testing      |
 | **ai**    | `spectra-ai` (Ollama)               | Local LLM inference (needs GPU)       | No - use `AI_PROVIDER=api` instead |
@@ -26,7 +26,7 @@ The full startup sequence:
 docker network create spectra-network 2>/dev/null || true
 docker run -d --name spectra-db --network spectra-network \
   -e POSTGRES_USER=spectra -e POSTGRES_PASSWORD=spectra_dev -e POSTGRES_DB=spectra \
-  postgres:16-alpine
+  pgvector/pgvector:pg16
 
 # 2. Add network aliases (start.sh expects hostname "db")
 docker network connect --alias db spectra-network spectra-db 2>/dev/null || true

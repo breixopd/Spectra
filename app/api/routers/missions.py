@@ -6,6 +6,8 @@ Endpoints for managing security missions.
 
 import json
 import logging
+import shutil
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
@@ -364,6 +366,33 @@ async def export_mission_json(
     )
 
 
+@router.get("/{mission_id}/findings")
+async def get_mission_findings(
+    mission_id: str,
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Get all findings for a specific mission."""
+    repo = MissionRepository(db)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    raw_findings = mission.summary.get("findings", []) if mission.summary else []
+    return [
+        {
+            "id": str(i),
+            "title": f.get("title", "Untitled"),
+            "severity": f.get("severity", "info"),
+            "status": f.get("status", "potential"),
+            "description": f.get("description", ""),
+            "tool_source": f.get("tool_source", f.get("tool", "")),
+            "created_at": f.get("created_at", ""),
+        }
+        for i, f in enumerate(raw_findings)
+        if isinstance(f, dict)
+    ]
+
+
 @router.get("/{mission_id}", response_model=MissionResponse)
 async def get_mission(
     mission_id: str,
@@ -417,6 +446,50 @@ async def get_mission(
         directive=db_mission.directive,
         findings=db_mission.summary.get("findings", []) if db_mission.summary else [],
     )
+
+
+@router.delete("/{mission_id}")
+async def delete_mission(
+    mission_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
+):
+    """Delete a mission and clean up associated filesystem data."""
+    repo = MissionRepository(db)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+
+    active_statuses = {
+        "created", "initializing", "scoping", "planning", "running",
+        "scanning", "analyzing", "executing", "exploiting", "paused",
+    }
+    if mission.status in active_statuses:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete an active mission. Stop it first.",
+        )
+
+    await repo.delete(mission_id)
+    await db.commit()
+
+    # Clean up filesystem data
+    from app.core.constants import DATA_MISSIONS_DIR
+
+    mission_dir = Path(DATA_MISSIONS_DIR) / mission_id
+    if mission_dir.exists():
+        shutil.rmtree(mission_dir, ignore_errors=True)
+
+    await audit_log_event(
+        db,
+        AuditEventType.MISSION_DELETED,
+        user_id=str(_current_user.id),
+        details={"mission_id": mission_id, "target": mission.target},
+        request=request,
+    )
+
+    return {"status": "deleted", "mission_id": mission_id}
 
 
 @router.post("/{mission_id}/stop")

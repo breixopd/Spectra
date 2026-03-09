@@ -92,10 +92,14 @@ class EmbeddingService:
             self._api_ready = True
             self._use_local = True
             logger.info("Local embedding service ready: model=%s (dim=%d)", model_name, self._embedding_dim)
-        except ImportError:
-            raise RuntimeError("sentence-transformers not installed. Install with: pip install sentence-transformers")
+        except ImportError as e:
+            raise RuntimeError(
+                "Local embeddings require sentence-transformers. "
+                "Rebuild with ENABLE_LOCAL_EMBEDDINGS=true or switch to API embeddings "
+                "(EMBEDDING_PROVIDER=api)."
+            ) from e
         except Exception as e:
-            raise RuntimeError(f"Failed to load local embedding model: {e}")
+            raise RuntimeError(f"Failed to load local embedding model: {e}") from e
 
     async def _try_init_local(self) -> bool:
         """Try to initialize local embeddings, return True on success."""
