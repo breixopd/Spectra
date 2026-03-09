@@ -6,8 +6,8 @@ Handles user login, setup, and token generation.
 
 import json
 import logging
-import time
 import threading
+import time
 from datetime import timedelta
 from pathlib import Path
 from typing import Annotated

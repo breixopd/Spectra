@@ -11,6 +11,7 @@ It learns from every engagement via a 3-layer learning system (MissionMemory →
 ## Quick Start
 
 1. **Clone and configure:**
+
    ```bash
    git clone <repo-url> && cd spectra
    cp .env.example .env
@@ -20,20 +21,22 @@ It learns from every engagement via a 3-layer learning system (MissionMemory →
 2. **Start services:**
 
    **Development** (direct access on port 5000):
+
    ```bash
    cd docker
    docker compose up -d
    ```
 
    **Production** (Caddy reverse proxy on port 443/5050):
+
    ```bash
    cd docker
    docker compose -f docker-compose.prod.yml up -d
    ```
 
 3. **Open the web UI:**
-   - **Dev:** http://localhost:5000
-   - **Prod:** https://localhost (or your configured domain)
+   - **Dev:** <http://localhost:5000>
+   - **Prod:** <https://localhost> (or your configured domain)
    - Create your admin account on the setup page
    - Configure your AI provider (LiteLLM-backed cloud/API gateway for hosted models, Ollama for local GPU)
 
@@ -56,17 +59,18 @@ That's it. The tools container auto-installs security tools on first boot.
 
 ### Live-Tested Results
 
-| Target | Findings | Critical | Tools Used |
-|--------|----------|----------|------------|
-| DVWA (web app) | 31 | 3 | nmap, nuclei, nikto, searchsploit, gobuster |
-| Juice Shop (Node.js) | 50 | 4 | nmap, nuclei, sqlmap, searchsploit |
-| SSH Server | 5+ | — | nmap, hydra (default creds only), searchsploit |
+| Target               | Findings | Critical | Tools Used                                     |
+| -------------------- | -------- | -------- | ---------------------------------------------- |
+| DVWA (web app)       | 31       | 3        | nmap, nuclei, nikto, searchsploit, gobuster    |
+| Juice Shop (Node.js) | 50       | 4        | nmap, nuclei, sqlmap, searchsploit             |
+| SSH Server           | 5+       | —        | nmap, hydra (default creds only), searchsploit |
 
 ---
 
 ## Features
 
 ### Autonomous Pentesting
+
 - Multi-agent AI system (12 agents) orchestrates 18 security tools
 - PTES methodology enforced in all planning and execution
 - Mid-mission plan adaptation when new findings emerge
@@ -76,17 +80,20 @@ That's it. The tools container auto-installs security tools on first boot.
 - **Credential reuse** — discovered credentials stored per-mission and fed to subsequent tools
 
 ### RAG Semantic Search
+
 - Mission results automatically indexed into PostgreSQL-backed RAG store
 - LiteLLM embeddings API (OpenAI, DashScope, etc.) — no local PyTorch needed
 - Semantic search across past findings, CVEs, and tool documentation
 - Fallback to SHA256 hashing when no embedding API is configured
 
 ### Manual Mode
+
 - Run any tool directly from the UI without AI orchestration
 - Visual pipeline editor: chain tools together (output of one → input of next)
 - Dynamic argument forms built from each plugin's configuration
 
 ### Learning System (3 Layers)
+
 1. **MissionMemory** — persistent JSON on disk: tool lessons, exploit chains, target profiles, false positives. Debrief lessons auto-saved after every mission.
 2. **PlaybookEngine** — deterministic service-to-tool mappings. Exploit patterns persisted to disk across restarts.
 3. **RAG** — mission outcomes indexed for semantic retrieval in future engagements.
@@ -96,18 +103,21 @@ That's it. The tools container auto-installs security tools on first boot.
 - Agents get richer context with each mission
 
 ### Plugin System
+
 - Drop a JSON file into `plugins/` to add a new tool
 - Auto-installs in the tools container on next boot
 - Ed25519 cryptographic signing for production safety
 - 18 tools included: nmap, nuclei, nikto, gobuster, ffuf, hydra, sqlmap, metasploit, searchsploit, wpscan, amass, naabu, whatweb, dirsearch, subfinder, feroxbuster, httpx, testssl
 
 ### Smart Routing (LiteLLM)
+
 - Routes to any LLM provider: Ollama, OpenAI, Anthropic, Groq, Azure, DashScope, etc.
 - Automatic fallbacks: local model fails → cloud takes over
 - Per-task model selection: cheap models for simple tasks, capable models for exploit crafting
 - 100+ models supported through unified interface
 
 ### Safety
+
 - SafetySupervisor blocks dangerous commands (rm -rf, fork bombs, etc.)
 - Anti-brute-force policy: blocks large wordlists, only allows default credential testing
 - Consensus voting at 5 quality gates before critical actions
@@ -148,18 +158,18 @@ That's it. The tools container auto-installs security tools on first boot.
 
 Copy `.env.example` to `.env` and set:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `AI_PROVIDER` | Yes | `ollama` (local), `litellm` (cloud/API gateway), or `mock` |
-| `OLLAMA_HOST` | If ollama | Ollama server URL (default: `http://ai:11434`) |
-| `OLLAMA_MODEL` | If ollama | Model name (default: `qwen2.5:3b`) |
-| `LLM_API_KEY` | If litellm | API key for the LiteLLM-backed cloud provider |
-| `LLM_API_BASE_URL` | If litellm | Custom base URL (for OpenRouter, vLLM, DashScope, etc.) |
-| `LLM_MODEL` | If litellm | Model name or provider route (default: `gpt-4o-mini`) |
-| `POSTGRES_PASSWORD` | No | PostgreSQL password (default: `spectra_dev`) |
-| `SPECTRA_PORT` | No | Port override (default: `443` prod / `5000` dev) |
-| `SPECTRA_DOMAIN` | No | Domain for Caddy TLS (default: `localhost`) |
-| `JWT_SECRET_KEY` | Yes | Secret key for JWT tokens (change from default!) |
+| Variable            | Required   | Description                                                |
+| ------------------- | ---------- | ---------------------------------------------------------- |
+| `AI_PROVIDER`       | Yes        | `litellm` (cloud/API gateway) or `ollama` (local GPU)      |
+| `OLLAMA_HOST`       | If ollama  | Ollama server URL (default: `http://ai:11434`)             |
+| `OLLAMA_MODEL`      | If ollama  | Model name (default: `qwen2.5:3b`)                         |
+| `LLM_API_KEY`       | If litellm | API key for the LiteLLM-backed cloud provider              |
+| `LLM_API_BASE_URL`  | If litellm | Custom base URL (for OpenRouter, vLLM, DashScope, etc.)    |
+| `LLM_MODEL`         | If litellm | Model name or provider route (default: `gpt-4o-mini`)      |
+| `POSTGRES_PASSWORD` | No         | PostgreSQL password (default: `spectra_dev`)               |
+| `SPECTRA_PORT`      | No         | Port override (default: `443` prod / `5000` dev)           |
+| `SPECTRA_DOMAIN`    | No         | Domain for Caddy TLS (default: `localhost`)                |
+| `JWT_SECRET_KEY`    | Yes        | Secret key for JWT tokens (change from default!)           |
 
 Everything else has sensible defaults. See `.env.example` for the full list.
 
@@ -215,13 +225,13 @@ cd docker/targets
 docker compose -f docker-compose.targets.yml up -d
 ```
 
-| Target | Difficulty | Services | Key Vulns |
-|--------|-----------|----------|-----------|
-| Easy Web | Easy | HTTP, SSH | Default creds, phpinfo, directory listing |
-| Medium Multi | Medium | HTTP, FTP, MySQL, SSH | FTP anon, LFI, weak DB creds |
-| Hard Hardened | Hard | HTTPS API, SSH | CORS, SSRF, hidden endpoints, weak JWT |
-| DVWA | Easy | HTTP | Classic web vulns (SQLi, XSS, etc.) |
-| Juice Shop | Medium | HTTP | OWASP Top 10 |
+| Target        | Difficulty | Services              | Key Vulns                                 |
+| ------------- | ---------- | --------------------- | ----------------------------------------- |
+| Easy Web      | Easy       | HTTP, SSH             | Default creds, phpinfo, directory listing |
+| Medium Multi  | Medium     | HTTP, FTP, MySQL, SSH | FTP anon, LFI, weak DB creds              |
+| Hard Hardened | Hard       | HTTPS API, SSH        | CORS, SSRF, hidden endpoints, weak JWT    |
+| DVWA          | Easy       | HTTP                  | Classic web vulns (SQLi, XSS, etc.)       |
+| Juice Shop    | Medium     | HTTP                  | OWASP Top 10                              |
 
 ---
 
@@ -230,6 +240,7 @@ docker compose -f docker-compose.targets.yml up -d
 Spectra uses **CalVer**: `YYYY.MM.DD[.patch]` (e.g., `2026.03.07`, `2026.03.07.1`).
 
 Releases are automated via GitHub Actions (`release.yml`):
+
 1. Manual dispatch (`gh workflow run release`) or push a tag matching `v*`
 2. CI runs tests + security scan (bandit)
 3. Docker images built and pushed to GHCR with version + `latest` tags
@@ -242,14 +253,14 @@ See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| **[Penetration Testing Workflow](docs/pentest.md)** | How Spectra executes pentests phase by phase |
-| **[Plugin Guide](docs/plugins.md)** | Creating, configuring, and signing tool plugins |
-| **[Architecture](docs/architecture.md)** | Technical deep-dive into the agent system |
-| **[API Reference](docs/api_reference.md)** | REST API endpoints |
-| **[Deployment](docs/deployment.md)** | Production deployment, Caddy, and CI/CD |
-| **[CHANGELOG](CHANGELOG.md)** | Release history (CalVer) |
+| Document                                            | Description                                     |
+| --------------------------------------------------- | ----------------------------------------------- |
+| **[Penetration Testing Workflow](docs/pentest.md)** | How Spectra executes pentests phase by phase    |
+| **[Plugin Guide](docs/plugins.md)**                 | Creating, configuring, and signing tool plugins |
+| **[Architecture](docs/architecture.md)**            | Technical deep-dive into the agent system       |
+| **[API Reference](docs/api_reference.md)**          | REST API endpoints                              |
+| **[Deployment](docs/deployment.md)**                | Production deployment, Caddy, and CI/CD         |
+| **[CHANGELOG](CHANGELOG.md)**                       | Release history (CalVer)                        |
 
 ---
 
@@ -299,15 +310,15 @@ docs/                        # Documentation
 
 ## Troubleshooting
 
-| Issue | Solution |
-|-------|----------|
-| Port 5000 already in use | Set `SPECTRA_PORT=8080` in `.env` |
-| Database connection fails | Check `POSTGRES_PASSWORD` matches in `.env` and `docker-compose.yml` |
-| "Container unhealthy" | Wait 30s for DB init, then check `docker logs spectra-app` |
-| Migrations fail | Ensure `DATABASE_URL` matches your `POSTGRES_PASSWORD` |
-| Ollama not connecting | Use `http://ai:11434` in Docker, or `http://localhost:11434` for host install |
-| Setup page not loading | Check `docker logs spectra-app` for startup errors |
-| PDF export not working | PDF export requires `xhtml2pdf` which is optional |
-| Caddy not starting (prod) | Ensure port 443/80 are free; check `docker logs spectra-caddy` |
-| Caddy TLS errors | Set `SPECTRA_DOMAIN` to your real domain; Caddy auto-provisions Let's Encrypt |
-| RAG search returns no results | Verify `LLM_API_KEY` is set — RAG needs an embedding API to function |
+| Issue                         | Solution                                                                      |
+| ----------------------------- | ----------------------------------------------------------------------------- |
+| Port 5000 already in use      | Set `SPECTRA_PORT=8080` in `.env`                                             |
+| Database connection fails     | Check `POSTGRES_PASSWORD` matches in `.env` and `docker-compose.yml`          |
+| "Container unhealthy"         | Wait 30s for DB init, then check `docker logs spectra-app`                    |
+| Migrations fail               | Ensure `DATABASE_URL` matches your `POSTGRES_PASSWORD`                        |
+| Ollama not connecting         | Use `http://ai:11434` in Docker, or `http://localhost:11434` for host install |
+| Setup page not loading        | Check `docker logs spectra-app` for startup errors                            |
+| PDF export not working        | PDF export requires `xhtml2pdf` which is optional                             |
+| Caddy not starting (prod)     | Ensure port 443/80 are free; check `docker logs spectra-caddy`                |
+| Caddy TLS errors              | Set `SPECTRA_DOMAIN` to your real domain; Caddy auto-provisions Let's Encrypt |
+| RAG search returns no results | Verify `LLM_API_KEY` is set — RAG needs an embedding API to function          |

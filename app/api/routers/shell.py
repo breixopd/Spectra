@@ -4,16 +4,18 @@ Shell Router.
 Handles WebSocket connections for interactive shells.
 """
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, HTTPException, Query
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from sqlalchemy import select
+
 from app.api.dependencies import get_current_active_user, validate_websocket_token
-from app.services.shell.session_manager import shell_manager
+from app.core.database import async_session_maker
+from app.models.audit_log import AuditEventType
 from app.models.finding import Finding
 from app.models.user import User
-from app.models.audit_log import AuditEventType
+from app.services.shell.session_manager import shell_manager
 from app.services.system.audit import log_event as audit_log_event
-from sqlalchemy import select
-from app.core.database import async_session_maker
-import logging
 
 router = APIRouter(prefix="", tags=["Shell"])  # Prefix is handled in main.py
 logger = logging.getLogger("spectra.api.shell")

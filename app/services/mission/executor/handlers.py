@@ -5,17 +5,18 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from typing import TYPE_CHECKING, Any, cast, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING, Any, cast
 
-from app.core.events import events
 from app.core.constants import MAX_HOSTS_DEFAULT
+from app.core.events import events
 from app.services.ai.agents.base import AgentContext, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
+from app.services.ai.output_intelligence import extract_intelligence
+from app.services.mission.executor.analysis import auto_expand_scope
 from app.services.mission.executor.utils import detect_target_type
 from app.services.mission.task_tree import TaskStatus
 from app.services.mission.tool_chain_rules import get_triggered_rules
-from app.services.ai.output_intelligence import extract_intelligence
-from app.services.mission.executor.analysis import auto_expand_scope
 
 # Phase transition rules for autonomous decision making
 PHASE_TRANSITION_RULES: dict[str, dict[str, Any]] = {
@@ -45,11 +46,11 @@ PHASE_TRANSITION_RULES: dict[str, dict[str, Any]] = {
 MAX_CHAIN_DEPTH = 10  # Prevent infinite chaining
 
 if TYPE_CHECKING:
+    from app.services.ai.agents.base import BaseAgent
+    from app.services.ai.consensus import VotingSystem
+    from app.services.mission.exploitation import ExploitationManager
     from app.services.mission.mission import Mission
     from app.services.tools.service import ToolExecutionService
-    from app.services.mission.exploitation import ExploitationManager
-    from app.services.ai.consensus import VotingSystem
-    from app.services.ai.agents.base import BaseAgent
 
 logger = logging.getLogger("spectra.mission.executor.handlers")
 

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, R
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user, get_current_superuser
+from app.api.dependencies import get_current_active_user
 from app.api.schemas import MissionResponse, StartMissionRequest
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
@@ -25,7 +25,8 @@ from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger("spectra.api.missions")
 
-from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE, API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
+from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
+from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 
 router = APIRouter(prefix="/missions", tags=["Missions"])
 
@@ -100,7 +101,7 @@ async def create_exploit_chain(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Create a custom exploit chain."""
-    from app.services.mission.chain_builder import save_custom_chain, ChainBuilder
+    from app.services.mission.chain_builder import ChainBuilder, save_custom_chain
 
     chain = ChainBuilder.create_chain(chain_in.name, chain_in.stages)
     chain.description = chain_in.description
@@ -215,9 +216,11 @@ async def list_missions(
     Supports filtering by status, target, date range, and free-text search.
     Pagination: max 100 items per page.
     """
-    from sqlalchemy import select
-    from app.models.mission import Mission
     from datetime import datetime as dt
+
+    from sqlalchemy import select
+
+    from app.models.mission import Mission
 
     stmt = select(Mission)
 

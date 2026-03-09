@@ -378,7 +378,7 @@ class TestToolIntegrationWithMission:
             ToolSelectorInput,
         )
         from app.services.ai.agents.base import AgentContext
-        from app.services.ai.llm import MockLLMClient
+        from tests.mocks.llm import MockLLMClient
 
         mock_llm = MockLLMClient(
             structured_responses={

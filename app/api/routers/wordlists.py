@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
-from fastapi.responses import FileResponse
 
 from app.api.dependencies import get_current_active_user
 from app.models.user import User

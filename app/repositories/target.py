@@ -2,7 +2,7 @@
 Target Repository for managing scan targets.
 """
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,11 +16,11 @@ class TargetRepository(BaseRepository[Target]):
     def __init__(self, session: AsyncSession):
         super().__init__(Target, session)
 
-    async def find_by_address(self, address: str) -> Optional[Target]:
+    async def find_by_address(self, address: str) -> Target | None:
         """Find target by its address (IP, domain, CIDR)."""
         return await self.find_one_by(address=address)
 
-    async def get_by_address(self, address: str) -> Optional[Target]:
+    async def get_by_address(self, address: str) -> Target | None:
         """Find target by address (alias for find_by_address)."""
         return await self.find_by_address(address)
 
@@ -41,6 +41,6 @@ class TargetRepository(BaseRepository[Target]):
         self,
         target_id: str,
         status: TargetStatus,
-    ) -> Optional[Target]:
+    ) -> Target | None:
         """Update the status of a target."""
         return await self.update(target_id, status=status)

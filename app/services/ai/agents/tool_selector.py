@@ -20,9 +20,9 @@ from app.services.ai.agents.base import (
     AgentRole,
     ToolAction,
 )
+from app.services.ai.prompts import TOOL_SELECTION_PROMPT
 from app.services.tools.models import RiskLevel, ToolCapability, ToolCategory
 from app.services.tools.registry import get_registry
-from app.services.ai.prompts import TOOL_SELECTION_PROMPT
 
 logger = logging.getLogger("spectra.ai.agents.tool_selector")
 
@@ -389,7 +389,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         # Get learned context from persistent memory
         memory_context = ""
         try:
-            from app.services.ai.memory import get_memory, detect_os_from_services
+            from app.services.ai.memory import detect_os_from_services, get_memory
 
             memory = get_memory()
             # Detect OS from known services

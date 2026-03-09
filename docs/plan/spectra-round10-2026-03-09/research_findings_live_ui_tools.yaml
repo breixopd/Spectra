@@ -1,0 +1,751 @@
+plan_id: spectra-round10-2026-03-09
+objective: "Research live test configuration, test code in production, UI completeness, tool container architecture, and current errors"
+focus_area: live_tests_ui_tools
+created_at: "2026-03-09"
+created_by: researcher
+status: completed
+
+tldr: |
+  - Live tests (tests/integration/test_live_targets.py) use HTTP against containerized app — no LLM mocking or direct LLM exercises; AI_PROVIDER comes from docker-compose.test.yml env_file (.env.test → mock) unless overridden at Docker level.
+  - MockLLMClient and PentestMockLLMClient (343 lines combined) live inside app/services/ai/llm.py — production code — and are only used by tests and the mock provider path. Should be moved to tests/.
+  - Both setup.html and settings.html still expose three provider options [ollama, litellm, mock] including separate Ollama fields that are now redundant since Ollama goes through LiteLLM via `ollama/` prefix internally.
+  - Tool execution architecture: app sends jobs to a PostgreSQL queue, the Kali-based tools container polls and runs them. All tools run in one shared container (no per-tool isolation). Installation via plugin JSON install specs (apt, binary, go, pip methods).
+  - Ruff reports 339 lint errors: 61 unsorted imports (I001), 29 unused imports (F401), 27 trailing whitespace (W293), 22 missing `from` in raise-from (B904), 7 hardcoded passwords (S105), plus minor issues. No type errors from IDE.
+
+research_metadata:
+  methodology: "Hybrid retrieval: file reads, grep_search, ruff lint, get_errors tool. 3 passes: broad discovery, focused reads, gap-filling."
+  tools_used:
+    - read_file
+    - grep_search
+    - file_search
+    - list_dir
+    - run_in_terminal (ruff)
+    - get_errors
+  scope: "tests/, app/templates/, app/static/js/, app/services/ai/llm.py, app/services/tools/, docker/, plugins/"
+  confidence: high
+  coverage: 90
+
+# ═══════════════════════════════════════════════════════════════
+# AREA 1: LIVE TESTING CONFIGURATION
+# ═══════════════════════════════════════════════════════════════
+
+area_1_live_testing:
+  summary: |
+    Live tests run inside Docker via docker-compose.test.yml. The test runner
+    hits the Spectra HTTP API — it does NOT import LLM code directly. AI_PROVIDER
+    is set to "mock" in .env.test (loaded by env_file). The run_live_tests.sh
+    script does not override AI_PROVIDER. The only way live tests exercise a
+    real LLM is if someone manually sets AI_PROVIDER to a real value in the
+    compose env or container env.
+
+  files_analyzed:
+    - file: run_live_tests.sh
+      path: tests/run_live_tests.sh
+      purpose: "Orchestrates live integration tests via docker compose"
+      key_elements:
+        - element: "docker compose -f docker-compose.test.yml up -d db tools metasploitable dvwa app"
+          type: pattern
+          location: "tests/run_live_tests.sh:21"
+          description: "Starts all live services including vulnerable targets"
+        - element: "curl -sf http://localhost:5000/api/health"
+          type: pattern
+          location: "tests/run_live_tests.sh:24"
+          description: "Polls health endpoint before running tests"
+        - element: "docker compose run --rm test-runner tests/integration/test_live_targets.py"
+          type: pattern
+          location: "tests/run_live_tests.sh:34"
+          description: "Runs tests inside test-runner container"
+      language: bash
+      lines: 35
+
+    - file: test_live_targets.py
+      path: tests/integration/test_live_targets.py
+      purpose: "Live integration tests against vulnerable Docker targets"
+      key_elements:
+        - element: auth_headers
+          type: function
+          location: "tests/integration/test_live_targets.py:31"
+          description: "Gets auth token from live API via HTTP POST — no LLM usage"
+        - element: TestAPISmoke
+          type: class
+          location: "tests/integration/test_live_targets.py:50"
+          description: "Health, auth, and smoke tests"
+        - element: TestToolRegistry
+          type: class
+          location: "tests/integration/test_live_targets.py:92"
+          description: "Tests tool listing and config endpoints"
+        - element: TestMissionExecution
+          type: class
+          location: "tests/integration/test_live_targets.py:~380"
+          description: "Launches missions via API — indirectly exercises LLM if configured as real"
+      language: python
+      lines: 400+
+
+    - file: conftest.py
+      path: tests/conftest.py
+      purpose: "Root test configuration with auto-mock fixtures for unit tests"
+      key_elements:
+        - element: _is_live_test
+          type: function
+          location: "tests/conftest.py:17"
+          description: "Detects live tests by marker or filename pattern"
+        - element: mock_websocket_for_unit_tests
+          type: function
+          location: "tests/conftest.py:71"
+          description: "autouse fixture that skips mocking for live tests"
+        - element: mock_database_for_unit_tests
+          type: function
+          location: "tests/conftest.py:100"
+          description: "autouse fixture that skips DB mocking for live tests"
+        - element: real_mission_manager
+          type: function
+          location: "tests/conftest.py:26"
+          description: "Uses get_default_llm_client() for real LLM — only if explicitly requested by test"
+        - element: mission_manager
+          type: function
+          location: "tests/conftest.py:143"
+          description: "Default fixture — uses MockLLMClient (imports from app.services.ai.llm)"
+      language: python
+      lines: 190
+
+    - file: .env.test
+      path: .env.test
+      purpose: "Test environment variables loaded by pytest-dotenv"
+      key_elements:
+        - element: "AI_PROVIDER=mock"
+          type: variable
+          location: ".env.test:5"
+          description: "Forces mock AI provider for all tests"
+        - element: "DATABASE_URL=sqlite+aiosqlite:///test.db"
+          type: variable
+          location: ".env.test:4"
+          description: "Uses SQLite for unit tests"
+        - element: "FULLY_AUTOMATED=true"
+          type: variable
+          location: ".env.test:9"
+          description: "Disables human approval requirements"
+      language: env
+      lines: 9
+
+  findings:
+    - finding: "Live tests do NOT exercise real LLM"
+      detail: |
+        test_live_targets.py communicates only via HTTP to the app container.
+        The app container loads .env.test (AI_PROVIDER=mock). The test-runner
+        container in docker-compose.test.yml also gets env_file: ../.env.test.
+        No test in the live suite explicitly sets AI_PROVIDER to a real value.
+        The TestMissionExecution tests launch missions via API, but the app
+        will use MockLLMClient because AI_PROVIDER=mock.
+    - finding: "conftest.py correctly separates live vs unit mock paths"
+      detail: |
+        autouse fixtures check _is_live_test() and skip mocking for live tests.
+        But since test_live_targets.py uses HTTP client (not direct imports),
+        conftest fixtures are mostly irrelevant for live tests.
+    - finding: "real_mission_manager fixture exists but is never used by live tests"
+      detail: |
+        The fixture at conftest.py:26 calls get_default_llm_client() which
+        would use the real AI_PROVIDER setting. However, test_live_targets.py
+        never requests this fixture — it only uses auth_headers and client.
+
+# ═══════════════════════════════════════════════════════════════
+# AREA 2: TEST CODE IN PRODUCTION CODEBASE
+# ═══════════════════════════════════════════════════════════════
+
+area_2_test_code_in_production:
+  summary: |
+    MockLLMClient (65 lines) and PentestMockLLMClient (~280 lines) are defined
+    in app/services/ai/llm.py — production code. They are used by:
+    (1) get_llm_client() when provider=="mock",
+    (2) tests/conftest.py mission_manager fixture,
+    (3) get_default_llm_client() when AI_PROVIDER=="mock".
+    No production routers or services import test utilities directly.
+    No __debug__ branches found in production code.
+
+  files_analyzed:
+    - file: llm.py
+      path: app/services/ai/llm.py
+      purpose: "LLM client abstraction layer with mock implementations"
+      key_elements:
+        - element: MockLLMClient
+          type: class
+          location: "app/services/ai/llm.py:206"
+          description: "Basic mock returning canned responses — 65 lines"
+        - element: PentestMockLLMClient
+          type: class
+          location: "app/services/ai/llm.py:349"
+          description: "Context-aware mock with pentest domain responses — ~280 lines"
+        - element: get_llm_client
+          type: function
+          location: "app/services/ai/llm.py:610"
+          description: "Factory that returns PentestMockLLMClient when provider=='mock'"
+        - element: get_default_llm_client
+          type: function
+          location: "app/services/ai/llm.py:659"
+          description: "Reads settings.AI_PROVIDER, returns mock if 'mock'"
+      language: python
+      lines: 698
+
+  findings:
+    - finding: "MockLLMClient and PentestMockLLMClient should be in tests/"
+      detail: |
+        These classes are ~350 lines of test infrastructure living in production.
+        They are only triggered when AI_PROVIDER=mock. In production, this is
+        never the intended state. They could be moved to tests/mocks/llm.py
+        and imported via a lazy/conditional pattern in the factory.
+    - finding: "No test utility imports in production routers/services"
+      detail: |
+        grep for 'import.*test|from.*test.*import' in app/ found no matches
+        apart from vendor JS files (tailwind.js) which are false positives.
+    - finding: "No __debug__ branches found"
+      detail: "No references to __debug__ in app/ directory."
+    - finding: "Mock references in app/ are limited to provider normalization"
+      detail: |
+        app/api/routers/ui.py:_public_ai_provider() maps non-mock providers to
+        'litellm' for display. The string 'mock' appears in templates as a
+        provider option value. No other mock-related code in production paths.
+
+# ═══════════════════════════════════════════════════════════════
+# AREA 3: UI COMPLETENESS AUDIT
+# ═══════════════════════════════════════════════════════════════
+
+area_3_ui_completeness:
+  summary: |
+    14 templates exist. All have corresponding routes in ui.py. Both setup.html
+    and settings.html still show three provider options [ollama, litellm, mock]
+    with separate Ollama host fields. The "Mock" option is exposed to end users
+    in production UI. No TODO/FIXME/HACK markers found in templates (only
+    placeholder attributes which are normal). CSS conflict warnings exist
+    (hidden vs flex) in history.html and manual_tools.html.
+
+  templates:
+    - template: base.html
+      route: "N/A — base template extended by all others"
+      notes: "Layout wrapper"
+    - template: login.html
+      route: "GET /login"
+      notes: "Redirects to /setup if no users exist"
+    - template: setup.html
+      route: "GET /setup"
+      notes: "First-run admin user creation + AI provider configuration"
+    - template: dashboard.html
+      route: "GET /dashboard"
+      notes: "Main dashboard"
+    - template: targets.html
+      route: "GET /targets"
+      notes: "Target management"
+    - template: history.html
+      route: "GET /history"
+      notes: "Mission history — has CSS hidden/flex conflict warning"
+    - template: reports.html
+      route: "GET /reports"
+      notes: "Report generation"
+    - template: overseer.html
+      route: "GET /overseer"
+      notes: "Agent overseer"
+    - template: toolbox.html
+      route: "GET /toolbox"
+      notes: "Tool management"
+    - template: manual_tools.html
+      route: "GET /manual"
+      notes: "Manual pentest tools — has CSS hidden/flex conflict warnings"
+    - template: plugin_creator.html
+      route: "GET /toolbox/create"
+      notes: "Plugin creation wizard"
+    - template: settings.html
+      route: "GET /settings"
+      notes: "Application settings"
+    - template: observability.html
+      route: "GET /observability"
+      notes: "Monitoring/observability"
+    - template: shell.html
+      route: "GET /shell/{session_id}"
+      notes: "Interactive shell per session"
+
+  js_files:
+    - file: settings.js
+      purpose: "Settings page logic — profile management, tier overrides, fallback chains, form submission"
+      notes: |
+        Handles all three providers (ollama, litellm, mock). toggleProfileFields()
+        shows/hides Ollama host vs API fields based on selected provider.
+        defaultModelFor() returns 'qwen2.5:3b' for ollama, 'gpt-4o-mini' for litellm.
+    - file: dashboard.js
+      purpose: "Dashboard page logic — mission launching, stats display, WebSocket updates"
+    - file: targets.js
+      purpose: "Target CRUD, bulk import, and management"
+    - file: reports.js
+      purpose: "Report listing and generation from missions"
+    - file: toolbox.js
+      purpose: "Tool listing, detail view, install/uninstall actions"
+    - file: plugin_creator.js
+      purpose: "Visual plugin JSON builder"
+    - file: helper_data.js
+      purpose: "Static reference data — reverse shells, port references, encoder operations"
+
+  provider_ui_issues:
+    - issue: "setup.html still shows 'Mock' as user choice"
+      location: "app/templates/setup.html:68"
+      snippet: '<option value="mock">Mock</option>'
+      impact: "End users see Mock as a valid provider in first-run setup"
+    - issue: "setup.html still shows separate Ollama option"
+      location: "app/templates/setup.html:66"
+      snippet: '<option value="ollama">Ollama (Local)</option>'
+      impact: "Ollama is now routed through LiteLLM internally; separate option is redundant UI"
+    - issue: "setup.html has separate Ollama host fields"
+      location: "app/templates/setup.html:86-89"
+      snippet: '<div class="profile-ollama-fields"> ... Ollama Host ... </div>'
+      impact: "Users must fill ollama_host separately; could be handled as base_url with ollama/ prefix"
+    - issue: "settings.html mirrors same three-option pattern"
+      location: "app/templates/settings.html:66-68"
+      snippet: |
+        <option value="ollama">Ollama (Local)</option>
+        <option value="litellm">LiteLLM (Cloud/API Gateway)</option>
+        <option value="mock">Mock</option>
+      impact: "Same redundancy as setup.html"
+    - issue: "settings.html has separate Ollama host fields per tier"
+      location: "app/templates/settings.html:88-91,137"
+      impact: "Each tier override also has ollama_host field"
+    - issue: "settings.js toggleProfileFields manages ollama vs litellm visibility"
+      location: "app/static/js/settings.js:58-72"
+      impact: "JS logic tracks the split; unifying providers would simplify this"
+
+  css_warnings:
+    - file: history.html
+      line: 33
+      issue: "'hidden' and 'flex' CSS conflict — hidden has display:none, flex has display:flex"
+    - file: manual_tools.html
+      lines: [278, 333, 370, 403, 425, 457, 485]
+      issue: "Same hidden/flex conflict across multiple panel divs"
+
+  todo_fixme_hack: "None found in templates. Only standard placeholder attributes."
+
+# ═══════════════════════════════════════════════════════════════
+# AREA 4: TOOL CONTAINER ARCHITECTURE
+# ═══════════════════════════════════════════════════════════════
+
+area_4_tool_container:
+  summary: |
+    Security tools run in a single Kali Linux container (spectra-tools).
+    No per-tool isolation. The app communicates via a PostgreSQL job queue
+    (enqueue/dequeue pattern). The tools container polls for jobs and executes
+    them. Tool definitions are JSON plugin files in plugins/ with install
+    specs, execution templates, and output parsing config. The adapter layer
+    builds commands with shlex.quote() for injection prevention.
+
+  files_analyzed:
+    - file: Dockerfile.tools
+      path: docker/Dockerfile.tools
+      purpose: "Kali-based worker container for security tool execution"
+      key_elements:
+        - element: "FROM kalilinux/kali-rolling:latest"
+          type: pattern
+          location: "docker/Dockerfile.tools:6"
+          description: "Base image is Kali rolling release"
+        - element: "apt-get install nmap nikto sqlmap hydra whatweb seclists"
+          type: pattern
+          location: "docker/Dockerfile.tools:18-23"
+          description: "Core tools pre-installed via apt at build time"
+        - element: "pip install dirsearch"
+          type: pattern
+          location: "docker/Dockerfile.tools:32"
+          description: "Python tools installed via pip"
+        - element: 'CMD ["python", "-m", "app.worker"]'
+          type: pattern
+          location: "docker/Dockerfile.tools:40"
+          description: "Runs the worker process"
+      language: dockerfile
+      lines: 40
+
+    - file: docker-compose.yml
+      path: docker/docker-compose.yml
+      purpose: "Development compose — tools container configuration"
+      key_elements:
+        - element: "IS_TOOLS_CONTAINER=true"
+          type: variable
+          location: "docker/docker-compose.yml:95"
+          description: "Flag identifying toolbox container"
+        - element: "cap_add: NET_ADMIN, NET_RAW"
+          type: pattern
+          location: "docker/docker-compose.yml:106-107"
+          description: "Network capabilities for raw socket operations"
+        - element: "/dev/net/tun"
+          type: pattern
+          location: "docker/docker-compose.yml:109"
+          description: "TUN device for VPN support"
+        - element: "spectra_tools_data volume"
+          type: pattern
+          location: "docker/docker-compose.yml:104"
+          description: "Persistent volume for installed tools at /opt/spectra_tools"
+      language: yaml
+      lines: 148
+
+    - file: docker-compose.prod.yml
+      path: docker/docker-compose.prod.yml
+      purpose: "Production compose — stricter resource limits, PLUGIN_SAFE_MODE=true"
+      key_elements:
+        - element: "PLUGIN_SAFE_MODE=true"
+          type: variable
+          location: "docker/docker-compose.prod.yml:96"
+          description: "Safe mode enabled in production (disabled in dev)"
+        - element: "memory: 4G limit, 1G reservation"
+          type: pattern
+          location: "docker/docker-compose.prod.yml:112-114"
+          description: "More generous resource limits for tools in prod"
+      language: yaml
+      lines: 149
+
+    - file: service.py
+      path: app/services/tools/service.py
+      purpose: "Tool execution service with safety checks and consensus validation"
+      key_elements:
+        - element: ToolExecutionService
+          type: class
+          location: "app/services/tools/service.py:67"
+          description: "Orchestrates tool execution with safety supervisor + voting consensus"
+        - element: execute_request
+          type: function
+          location: "app/services/tools/service.py:135"
+          description: "Main execution path: validate → safety check → consensus → enqueue job"
+        - element: execute_custom_script
+          type: function
+          location: "app/services/tools/service.py:106"
+          description: "Executes AI-generated scripts via PostgresJobQueue"
+        - element: PostgresJobQueue
+          type: class
+          location: "app/services/tools/service.py:119 (imported)"
+          description: "Job queue for inter-container communication"
+      language: python
+      lines: 200
+
+    - file: CommandToolAdapter
+      path: app/services/tools/adapter/__init__.py
+      purpose: "Command building, execution, and output parsing"
+      key_elements:
+        - element: build_command
+          type: function
+          location: "app/services/tools/adapter/__init__.py:68"
+          description: "Builds command, wraps with timeout and docker exec"
+        - element: "docker exec {container} bash -c"
+          type: pattern
+          location: "app/services/tools/adapter/__init__.py:82"
+          description: "Commands sent to tools container via docker exec"
+        - element: calculate_timeout
+          type: function
+          location: "app/services/tools/adapter/__init__.py:86"
+          description: "Dynamic timeout based on target CIDR size"
+      language: python
+      lines: 190
+
+    - file: CommandBuilder
+      path: app/services/tools/adapter/builder.py
+      purpose: "Argument templating with shlex.quote for injection prevention"
+      key_elements:
+        - element: "shlex.quote(str_value)"
+          type: pattern
+          location: "app/services/tools/adapter/builder.py:90"
+          description: "All user-provided arguments are shell-quoted"
+        - element: "target always wins (security)"
+          type: pattern
+          location: "app/services/tools/adapter/builder.py:51"
+          description: "Target cannot be overridden by user args"
+      language: python
+      lines: 150
+
+    - file: install_all_tools.py
+      path: scripts/install_all_tools.py
+      purpose: "Bulk tool installation script"
+      key_elements:
+        - element: "registry.install_tool(tool.config.id)"
+          type: function
+          location: "scripts/install_all_tools.py:28"
+          description: "Iterates all plugin configs and installs each"
+      language: python
+      lines: 50
+
+  plugin_json_structure:
+    description: "Each tool has a JSON file in plugins/ defining its full lifecycle"
+    fields:
+      - id: "Unique tool identifier"
+      - name: "Human-readable name"
+      - category: "Tool category (discovery, vulnerability, etc.)"
+      - metadata: "AI description, capabilities, supported targets, risk level, tags"
+      - installation: "method (apt|binary|go|pip), commands, verification_command, verification_regex"
+      - execution: "command, args_template with {placeholders}, timeout config, arg_modifiers"
+      - parsing: "Output format (xml|ndjson|text) and field mapping"
+      - stealth: "Rate limit, delay, extra args for stealth mode"
+      - ui: "Icon and color for dashboard display"
+    install_methods:
+      - apt: "e.g., nmap — 'apt-get install -y nmap'"
+      - binary: "e.g., nuclei — download binary, unzip, chmod, symlink"
+      - go: "e.g., some Go tools — 'go install ...'"
+      - pip: "e.g., some Python tools"
+    examples:
+      nmap: "apt method, verification via 'nmap --version', XML output parsing"
+      nuclei: "binary method (zip download from GitHub), NDJSON output parsing"
+
+  isolation_model:
+    description: |
+      No per-tool isolation. All tools run in a single shared Kali container.
+      The container has NET_ADMIN and NET_RAW capabilities plus /dev/net/tun
+      for VPN tunneling. Commands are wrapped with `timeout` for time limits.
+      PLUGIN_SAFE_MODE controls whether unsigned plugins can be loaded.
+
+# ═══════════════════════════════════════════════════════════════
+# AREA 5: CURRENT ERRORS
+# ═══════════════════════════════════════════════════════════════
+
+area_5_current_errors:
+  summary: |
+    Ruff reports 339 total errors (257 auto-fixable). Dominant categories:
+    unsorted imports (61), unused imports (29), trailing whitespace (27),
+    missing raise-from (22), hardcoded passwords (7). IDE reports CSS
+    class conflicts in templates, markdown lint warnings, and a Dockerfile
+    base image vulnerability. No Python type errors detected.
+
+  ruff_results:
+    total_errors: 339
+    auto_fixable: 257
+    unsafe_fixable: 7
+    by_category:
+      - code: I001
+        count: 61
+        description: "Import block is un-sorted or un-formatted"
+        fixable: true
+      - code: F401
+        count: 29
+        description: "Imported but unused"
+        fixable: true
+      - code: W293
+        count: 27
+        description: "Trailing whitespace"
+        fixable: true
+      - code: B904
+        count: 22
+        description: "Within except clause, raise from original exception"
+        fixable: false
+      - code: S105
+        count: 7
+        description: "Possible hardcoded password assigned to variable"
+        fixable: false
+      - code: E741
+        count: 5
+        description: "Ambiguous variable name"
+        fixable: false
+      - code: E402
+        count: 5
+        description: "Module level import not at top of file"
+        fixable: false
+      - code: S110
+        count: 4
+        description: "try-except-pass detected"
+        fixable: false
+      - code: S104
+        count: 3
+        description: "Possible binding to all interfaces"
+        fixable: false
+      - code: W292
+        count: 2
+        description: "No newline at end of file"
+        fixable: true
+      - code: S112
+        count: 2
+        description: "try-except-continue detected"
+        fixable: false
+      - code: S608
+        count: 1
+        description: "Possible SQL injection via string-based query"
+        fixable: false
+      - code: S314
+        count: 1
+        description: "Using xml.etree.ElementTree to parse untrusted data"
+        fixable: false
+      - code: S106
+        count: 1
+        description: "Possible hardcoded password in function argument"
+        fixable: false
+      - code: F841
+        count: 1
+        description: "Local variable assigned but never used"
+        fixable: true
+      - code: B905
+        count: 1
+        description: "zip() without an explicit strict= parameter"
+        fixable: false
+      - code: B027
+        count: 1
+        description: "Empty method in abstract base class without abstract decorator"
+        fixable: false
+      - code: B024
+        count: 1
+        description: "Abstract base class without abstract methods"
+        fixable: false
+      - code: UP041
+        count: 1
+        description: "Replace aliased asyncio.TimeoutError with TimeoutError"
+        fixable: true
+
+  ide_errors:
+    - file: ".github/workflows/release.yml"
+      issues: "Possibly invalid context accesses (DEPLOY_HOST, etc.) and environment value"
+    - file: "app/templates/history.html"
+      issues: "CSS hidden/flex conflict on line 33"
+    - file: "app/templates/manual_tools.html"
+      issues: "CSS hidden/flex conflict on 7 elements (lines 278,333,370,403,425,457,485)"
+    - file: "docker/Dockerfile.app"
+      issues: "python:3.11-slim base image has 1 high vulnerability"
+    - file: "README.md"
+      issues: "Fenced code blocks missing language specifier"
+
+  security_relevant:
+    - code: S608
+      location: "app/ (1 occurrence)"
+      description: "Possible SQL injection — needs manual review"
+    - code: S314
+      location: "app/ (1 occurrence)"
+      description: "XML parsing of untrusted data — likely tool output parsing, acceptable with caution"
+    - code: S105
+      location: "app/ (7 occurrences)"
+      description: "Hardcoded password strings — likely defaults/test values, not production secrets"
+
+# ═══════════════════════════════════════════════════════════════
+# CROSS-CUTTING PATTERNS
+# ═══════════════════════════════════════════════════════════════
+
+patterns_found:
+  - category: architecture
+    pattern: "PostgreSQL job queue for inter-container tool execution"
+    description: "App enqueues jobs, tools container dequeues and runs them"
+    examples:
+      - file: app/services/tools/service.py
+        location: "app/services/tools/service.py:119"
+        snippet: "queue = PostgresJobQueue(); job_id = await queue.enqueue_job(...)"
+    prevalence: common
+
+  - category: architecture
+    pattern: "LLM provider abstraction via factory pattern"
+    description: "get_llm_client() factory returns appropriate client based on provider string"
+    examples:
+      - file: app/services/ai/llm.py
+        location: "app/services/ai/llm.py:610"
+        snippet: "def get_llm_client(provider='litellm', **kwargs) -> LLMClient"
+    prevalence: common
+
+  - category: architecture
+    pattern: "Safety + Consensus gate before tool execution"
+    description: "Every tool action passes through SafetySupervisorAgent then VotingSystem"
+    examples:
+      - file: app/services/tools/service.py
+        location: "app/services/tools/service.py:67-70"
+        snippet: "self.safety_supervisor = SafetySupervisorAgent(llm_client); self.consensus = VotingSystem(llm_client)"
+    prevalence: common
+
+  - category: naming
+    pattern: "Plugin JSON files named after tool ID"
+    description: "plugins/{tool_id}.json — e.g., nmap.json, nuclei.json"
+    examples:
+      - file: plugins/nmap.json
+        location: "plugins/nmap.json:1"
+        snippet: '{"id": "nmap", "name": "Nmap", ...}'
+    prevalence: common
+
+  - category: error_handling
+    pattern: "Missing raise-from in except clauses"
+    description: "22 instances of raise without 'from e' — loses original traceback"
+    examples:
+      - file: multiple
+        location: "various"
+        snippet: "raise SomeError(...) should be raise SomeError(...) from e"
+    prevalence: common
+
+  - category: testing
+    pattern: "Live vs unit test separation via markers and filename detection"
+    description: "_is_live_test checks for @pytest.mark.live or 'test_live' in filename"
+    examples:
+      - file: tests/conftest.py
+        location: "tests/conftest.py:17-23"
+        snippet: "if item.get_closest_marker('live'): return True"
+    prevalence: common
+
+related_architecture:
+  components_relevant_to_domain:
+    - component: "app/services/tools/"
+      responsibility: "Tool registry, execution, installation, parsing"
+      location: "app/services/tools/"
+      relationship_to_domain: "Core tool execution pipeline"
+    - component: "app/services/ai/llm.py"
+      responsibility: "LLM client abstraction + mock implementations"
+      location: "app/services/ai/llm.py"
+      relationship_to_domain: "Contains test mock code that should be separated"
+    - component: "app/api/routers/ui.py"
+      responsibility: "Serves all HTML templates and settings endpoints"
+      location: "app/api/routers/ui.py"
+      relationship_to_domain: "UI route completeness"
+    - component: "docker/"
+      responsibility: "Container definitions for all services"
+      location: "docker/"
+      relationship_to_domain: "Tool container architecture and test infrastructure"
+
+  data_flow_involving_domain: |
+    UI → FastAPI Router → ToolExecutionService → SafetySupervisor → VotingSystem →
+    PostgresJobQueue.enqueue_job() → [tools container] worker dequeues → subprocess
+    exec → parse output → store results → WebSocket broadcast
+
+  key_relationships_to_domain:
+    - from: app/api/routers/ui.py
+      to: app/templates/
+      relationship: "renders (Jinja2)"
+    - from: app/services/tools/service.py
+      to: app/core/queue.py
+      relationship: "enqueues jobs"
+    - from: app/worker.py
+      to: app/services/tools/adapter/
+      relationship: "uses for command building and execution"
+    - from: tests/conftest.py
+      to: app/services/ai/llm.py
+      relationship: "imports MockLLMClient"
+
+related_conventions:
+  naming_patterns_in_domain: "snake_case for files; PascalCase for classes; {tool_id}.json for plugins"
+  structure_of_domain: "Services layer → Adapter layer → Models; Templates → JS → CSS"
+  error_handling_in_domain: "22 missing raise-from; broad except patterns in tool execution"
+  testing_in_domain: "autouse fixtures with live/unit detection; HTTP-based live tests"
+  documentation_in_domain: "Rich docstrings in service layer; plugin JSON has ai_description field"
+
+related_dependencies:
+  internal:
+    - component: app/core/queue.py
+      relationship_to_domain: "PostgresJobQueue for tool execution"
+      direction: outbound
+    - component: app/core/config.py
+      relationship_to_domain: "settings.AI_PROVIDER, settings.TOOL_CONTAINER_NAME"
+      direction: inbound
+    - component: app/services/ai/agents/safety.py
+      relationship_to_domain: "SafetySupervisorAgent for pre-execution validation"
+      direction: outbound
+  external:
+    - name: litellm
+      purpose_for_domain: "Unified LLM client routing"
+    - name: httpx
+      purpose_for_domain: "HTTP client used in live tests"
+    - name: shlex
+      purpose_for_domain: "Command injection prevention in tool adapter"
+
+open_questions:
+  - question: "Should the Ollama provider option be removed from UI now that it goes through LiteLLM?"
+    context: "get_llm_client() prepends 'ollama/' to models and routes through LiteLLMRouter. The separate ollama fields in setup/settings are redundant but still functional."
+  - question: "Should Mock be hidden from end-user UI (setup + settings)?"
+    context: "Mock is a testing/development feature. Showing it in production setup wizard is confusing for end users."
+  - question: "Is S608 (SQL injection) a real risk or false positive?"
+    context: "Only 1 instance detected by ruff. Needs manual review to determine if parameterized queries are used."
+  - question: "Should live tests override AI_PROVIDER to test real LLM integration?"
+    context: "Currently live tests never exercise real LLM. The TestMissionExecution tests would be more valuable with a real provider."
+
+gaps:
+  - area: "Worker code (app/worker.py)"
+    description: "Did not fully read the 900+ line worker — only confirmed it runs tool jobs"
+    impact: "Low — worker architecture is well-known from previous research"
+  - area: "All 26 plugin JSON files"
+    description: "Only read nmap.json and nuclei.json in detail"
+    impact: "Low — all follow same schema, verified by install_all_tools.py registry"
+  - area: "app/services/tools/registry/ subpackage"
+    description: "Did not read registry internals"
+    impact: "Medium — registry handles plugin loading and validation"

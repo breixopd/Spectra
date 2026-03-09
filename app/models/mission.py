@@ -4,7 +4,6 @@ Mission model for storing mission execution history.
 Tracks security assessment missions, their status, logs, and results.
 """
 
-from typing import Optional
 
 from sqlalchemy import JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -35,16 +34,16 @@ class Mission(Base):
         nullable=False,
         index=True,
     )
-    logs: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
-    summary: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=dict)
-    attack_surface: Mapped[Optional[dict]] = mapped_column(
+    logs: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
+    summary: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
+    attack_surface: Mapped[dict | None] = mapped_column(
         JSON, nullable=True, default=dict
     )
-    checkpoint_data: Mapped[Optional[dict]] = mapped_column(
+    checkpoint_data: Mapped[dict | None] = mapped_column(
         JSON, nullable=True, default=None
     )
     resume: Mapped[bool] = mapped_column(default=False, nullable=False)
-    vpn_config: Mapped[Optional[str]] = mapped_column(
+    vpn_config: Mapped[str | None] = mapped_column(
         String(64), nullable=True, default=None
     )
 

@@ -81,7 +81,7 @@ class MissionSteeringManager:
         elif action == "inject_task" and task:
             if not mission.plan:
                 raise ValueError("No plan exists to inject tasks into")
-            from app.services.ai.agents.mission_controller import Task, AssessmentPhase
+            from app.services.ai.agents.mission_controller import AssessmentPhase, Task
             new_task = Task(
                 task_id=str(uuid.uuid4()),
                 phase=AssessmentPhase(task.get("phase", "discovery")),

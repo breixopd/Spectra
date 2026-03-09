@@ -14,7 +14,7 @@ from app.services.ai.consensus import (
     ConsensusResult,
 )
 from app.services.ai.agents.base import AgentAction, ActionRisk, ToolAction
-from app.services.ai.llm import MockLLMClient
+from tests.mocks.llm import MockLLMClient
 
 
 class TestQualityGateEnum:

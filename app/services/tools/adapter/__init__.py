@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from app.core.constants import MAX_HOSTS_DEFAULT
 from app.services.tools.adapter.base import ToolAdapter, ToolExecutionError
 from app.services.tools.adapter.builder import CommandBuilder
 from app.services.tools.adapter.parser import OutputParser
@@ -22,7 +23,6 @@ from app.services.tools.models import (
     ToolExecutionRequest,
     ToolExecutionResult,
 )
-from app.core.constants import MAX_HOSTS_DEFAULT
 
 if TYPE_CHECKING:
     pass
@@ -176,7 +176,7 @@ class CommandToolAdapter(ToolAdapter):
                 else None,
                 parsed_findings=parsed,
             )
-        except (TimeoutError, asyncio.TimeoutError):
+        except TimeoutError:
             try:
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
             except Exception as e:

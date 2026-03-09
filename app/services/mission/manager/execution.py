@@ -7,7 +7,6 @@ import logging
 import time
 from typing import Any, cast
 
-from app.core.events import events
 from app.core.constants import (
     DEBRIEF_MAX_FINDINGS,
     DEBRIEF_MAX_LOGS,
@@ -15,6 +14,7 @@ from app.core.constants import (
     MAX_HOSTS_DEFAULT,
     MISSION_TIMEOUT_SECONDS,
 )
+from app.core.events import events
 from app.services.ai.agents.base import AgentContext, SteeringAction
 from app.services.ai.agents.mission_controller import (
     MissionController,
@@ -25,9 +25,9 @@ from app.services.ai.agents.scope import ScopeAgent, ScopeInput
 from app.services.ai.consensus import QualityGate, VotingSystem
 from app.services.ai.llm import get_global_llm_client
 from app.services.mission.executor import MissionExecutor
-from app.services.mission.mission import Mission
 from app.services.mission.manager.lifecycle import MissionLifecycleManager
 from app.services.mission.manager.steering import MissionSteeringManager
+from app.services.mission.mission import Mission
 from app.services.shell.session_manager import shell_manager
 
 logger = logging.getLogger("spectra.mission.manager.execution")
@@ -708,9 +708,9 @@ class MissionExecutionManager:
     async def _index_to_rag(self, mission: Mission) -> None:
         """Index mission findings and outcomes into RAG for future retrieval."""
         try:
+            from app.models.attack_surface import VectorStatus
             from app.services.ai.knowledge import get_rag_service
             from app.services.ai.rag import Document
-            from app.models.attack_surface import VectorStatus
 
             rag = await get_rag_service()
             if not rag.is_functional:

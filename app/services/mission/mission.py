@@ -16,7 +16,7 @@ from app.models.attack_surface import (
     Vulnerability,
 )
 from app.services.ai.agents.mission_controller import MissionPlan
-from app.services.ai.blackboard import MissionBlackboard, get_blackboard, remove_blackboard
+from app.services.ai.blackboard import MissionBlackboard, get_blackboard
 from app.services.mission.credentials import CredentialStore
 from app.services.mission.task_tree import PentestTaskTree, TaskStatus
 from app.utils.geoip import GeoLocation

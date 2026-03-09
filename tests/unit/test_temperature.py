@@ -1,6 +1,6 @@
 import pytest
 from app.services.ai.agents.base import Agent, AgentRole, AgentResult
-from app.services.ai.llm import MockLLMClient
+from tests.mocks.llm import MockLLMClient
 
 
 class ScopeAgent(Agent):

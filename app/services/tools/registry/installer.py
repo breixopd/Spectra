@@ -4,15 +4,16 @@ from typing import TYPE_CHECKING, Any
 
 from app.services.tools.models import (
     InstallationMethod,
-    ToolStatus,
     ToolConfig,
+    ToolStatus,
 )
-from app.services.tools.registry.executor import run_command_safe
-from app.services.tools.registry.constants import MAX_REGEX_LENGTH, MAX_OUTPUT_SIZE
+from app.services.tools.registry.constants import MAX_OUTPUT_SIZE, MAX_REGEX_LENGTH
 from app.services.tools.registry.exceptions import PluginInstallationError
+from app.services.tools.registry.executor import run_command_safe
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
+
     from app.services.tools.models import RegisteredTool
 
 logger = logging.getLogger("spectra.tools.registry.installer")

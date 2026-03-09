@@ -10,7 +10,9 @@ Analyzes the full mission log after completion to generate:
 
 import logging
 from typing import Any, ClassVar
+
 from pydantic import BaseModel, Field
+
 from app.services.ai.agents.base import Agent, AgentAction, AgentContext, AgentResult, AgentRole
 from app.services.ai.context import ContextManager, ContextSection, Priority
 
@@ -51,7 +53,7 @@ class DebriefAgent(Agent[DebriefInput, DebriefOutput]):
             name = f.get("name") or f.get("title") or f.get("template-id", "Unknown")
             count = f.get("count", 1)
             findings_summary += f"- [{sev.upper()}] {name}" + (f" (x{count})" if count > 1 else "") + "\n"
-        
+
         # Key log entries only
         key_logs = [entry for entry in input_data.logs[-50:] if any(k in entry for k in ["[OK]", "[ERROR]", "[SUCCESS]", "[FAIL]", "[APPROVED]", "[REJECTED]", "[LEARN]", "[ADAPT]"])]
         logs_text = "\n".join(key_logs[-20:]) if key_logs else "No significant log entries"

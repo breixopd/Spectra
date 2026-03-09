@@ -10,10 +10,11 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, ParamSpec, TypeVar
+from typing import Any, ParamSpec, TypeVar
 
 from app.core.events import EventType, events
 from app.core.exceptions import CircuitBreakerOpenError

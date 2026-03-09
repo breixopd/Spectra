@@ -18,7 +18,6 @@ from app.services.system.gtfobins import search_gtfobins
 from app.services.system.payloads import get_payloads, list_payload_types
 from app.services.system.report_templates import (
     generate_report_data,
-    get_report_template,
     list_report_templates,
 )
 

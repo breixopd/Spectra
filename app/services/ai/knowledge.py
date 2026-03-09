@@ -9,7 +9,7 @@ Centralized module for:
 """
 
 import logging
-from datetime import timezone
+from datetime import UTC
 from typing import Any
 
 from app.services.ai.rag import RAGService
@@ -310,7 +310,7 @@ async def index_exploit_attempt(
         )
 
         doc = Document(
-            id=f"{doc_type}-{vector_name.replace(' ', '-')}-{int(datetime.now(timezone.utc).timestamp())}",
+            id=f"{doc_type}-{vector_name.replace(' ', '-')}-{int(datetime.now(UTC).timestamp())}",
             content=content,
             doc_type=doc_type,
             metadata={

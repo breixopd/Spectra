@@ -9,8 +9,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from app.api.dependencies import get_current_active_user
-from app.models.user import User
 from app.core.constants import CVE_RESULTS_LIMIT
+from app.models.user import User
 
 _CVE_PATTERN = re.compile(r"^CVE-\d{4}-\d{4,}$")
 from app.services.ai.cve_intel import (

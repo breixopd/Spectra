@@ -85,8 +85,8 @@ async def health_check(
 
         # Check tool container connectivity
         try:
-            from app.core.config import settings
             import docker
+            from app.core.config import settings
             client = docker.from_env()
             container = client.containers.get(settings.TOOL_CONTAINER_NAME)
             container_status = container.status

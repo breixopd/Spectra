@@ -11,11 +11,12 @@ Each stage has:
 - Max retries
 """
 
-import logging
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("spectra.mission.chain_builder")
@@ -59,7 +60,7 @@ class ChainExecutionResult(BaseModel):
 
 class ChainBuilder:
     """Builds and validates exploit chains."""
-    
+
     @staticmethod
     def create_chain(name: str, stages: list[dict]) -> ExploitChain:
         """Create a chain from stage definitions."""
@@ -69,24 +70,24 @@ class ChainBuilder:
             name=name,
             stages=chain_stages,
         )
-    
+
     @staticmethod
     def validate_chain(chain: ExploitChain) -> list[str]:
         """Validate chain for issues. Returns list of warnings."""
         warnings = []
         stage_ids = {s.id for s in chain.stages}
-        
+
         for stage in chain.stages:
             if stage.fallback_stage and stage.fallback_stage not in stage_ids:
                 warnings.append(f"Stage '{stage.id}': fallback '{stage.fallback_stage}' not found")
             if not stage.tool and not stage.description:
                 warnings.append(f"Stage '{stage.id}': no tool or description")
-        
+
         if not chain.stages:
             warnings.append("Chain has no stages")
-        
+
         return warnings
-    
+
     @staticmethod
     def check_stage_success(output: str, stage: ChainStage) -> bool:
         """Check if a stage succeeded based on output patterns."""
@@ -94,7 +95,7 @@ class ChainBuilder:
             return bool(re.search(stage.success_regex, output, re.IGNORECASE))
         # If no success regex, consider non-empty output as success
         return bool(output.strip())
-    
+
     @staticmethod
     def check_stage_failure(output: str, stage: ChainStage) -> bool:
         """Check if a stage definitively failed."""

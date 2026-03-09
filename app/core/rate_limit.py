@@ -6,7 +6,7 @@ Protects sensitive endpoints from abuse.
 """
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from slowapi import Limiter

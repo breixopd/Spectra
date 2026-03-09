@@ -23,14 +23,12 @@ from app.services.ai.consensus import (
 from app.services.ai.llm import (
     LLMClient,
     LLMResponse,
-    MockLLMClient,
     get_llm_client,
 )
 
 __all__ = [
     "LLMClient",
     "LLMResponse",
-    "MockLLMClient",
     "get_llm_client",
     "VotingSystem",
     "VotingConfig",

@@ -17,25 +17,25 @@ from app.api.routers import (
     exploits,
     findings,
     health,
+    manual_helpers,
     missions,
     observability,
     pentest_sessions,
+    shell,
     system,
     targets,
     tools,
     ui,
-    shell,
     vpn,
     wordlists,
-    manual_helpers,
 )
+from app.core.bridge import EventWebSocketBridge
 from app.core.config import settings
 from app.core.database import async_session_maker
 from app.core.lifespan import lifespan
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.websocket import manager
 from app.models.user import User
-from app.core.bridge import EventWebSocketBridge
 from app.version import __version__
 
 # Initialize event bridge

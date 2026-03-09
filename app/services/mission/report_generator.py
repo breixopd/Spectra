@@ -9,7 +9,7 @@ dependencies so they work offline / air-gapped.
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -266,7 +266,7 @@ def generate_html_report(mission_data: dict) -> str:
         tools_used=mission_data.get("tools_used", []),
         timeline=mission_data.get("timeline", []),
         mitre_techniques=mission_data.get("mitre_techniques", []),
-        generated_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        generated_at=datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC"),
     )
 
 

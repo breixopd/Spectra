@@ -8,7 +8,7 @@ import json
 import logging
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -68,11 +68,11 @@ class Settings(BaseSettings):
     PLATFORM_EXPOSED: bool = False  # Whether platform is accessible from internet
 
     # --- CORS ---
-    CORS_ORIGINS: List[str] = ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:5050", "http://127.0.0.1:5050"]
+    CORS_ORIGINS: list[str] = ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:5050", "http://127.0.0.1:5050"]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, (list, str)):
@@ -186,7 +186,7 @@ class Settings(BaseSettings):
             return
 
         try:
-            with open(settings_path, "r", encoding="utf-8") as f:
+            with open(settings_path, encoding="utf-8") as f:
                 data = json.load(f)
 
             # Update fields if they exist in the file

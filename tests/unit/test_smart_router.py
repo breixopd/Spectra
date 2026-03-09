@@ -186,7 +186,7 @@ class TestBuildModelConfig:
             mock_settings.AI_PROVIDER_FALLBACKS = {}
             mock_settings.AI_PROVIDER = "mock"
             router = create_smart_router()
-            from app.services.ai.llm import MockLLMClient
+            from tests.mocks.llm import MockLLMClient
 
             assert isinstance(router, MockLLMClient)
 

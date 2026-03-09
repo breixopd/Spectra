@@ -5,13 +5,12 @@ Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.database import get_async_session
 from app.core.security import decode_token
 from app.models.user import User

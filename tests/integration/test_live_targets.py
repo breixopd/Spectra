@@ -23,6 +23,17 @@ TARGET_HARD = os.getenv("TARGET_HARD", "spectra-target-hard")
 # From outside, we use these hostnames when sending API requests - the app resolves them.
 
 
+def _check_ai_provider_is_real(base_url: str, headers: dict) -> bool:
+    """Return True if the app is using a real (non-mock) AI provider."""
+    try:
+        resp = httpx.get(f"{base_url}/api/ai/status", headers=headers, timeout=10)
+        if resp.status_code == 200:
+            return resp.json().get("provider", "mock") != "mock"
+    except Exception:
+        pass
+    return False
+
+
 @pytest.fixture(scope="module")
 def auth_headers():
     """Get auth token from the live API."""
@@ -42,9 +53,27 @@ def client():
     return httpx.Client(base_url=SPECTRA_URL, timeout=60)
 
 
+@pytest.fixture(scope="module")
+def require_real_llm(auth_headers):
+    """Skip mission-execution tests when the app is using mock provider."""
+    if not _check_ai_provider_is_real(SPECTRA_URL, auth_headers):
+        pytest.skip("Live tests require real LLM provider (AI_PROVIDER != mock)")
+
+
 # ============================================================
 # Section 1: API Health & Smoke Tests
 # ============================================================
+
+class TestAIProvider:
+    """Verify AI provider configuration for live tests."""
+
+    def test_ai_provider_is_real(self, client, auth_headers):
+        """Verify we're testing with a real LLM, not mock."""
+        resp = client.get("/api/ai/status", headers=auth_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["provider"] != "mock", "Live tests must use a real LLM provider"
+
 
 class TestAPISmoke:
     """Basic API connectivity and health checks."""
@@ -245,7 +274,7 @@ class TestManualHelpers:
 class TestPentestSessions:
     """Test pentest session workflow."""
 
-    def test_create_session(self, client, auth_headers):
+    def test_create_session(self, client, auth_headers, require_real_llm):
         resp = client.post("/api/pentest-sessions", headers=auth_headers, json={
             "name": "Live Integration Test Session",
             "target": TARGET_EASY,

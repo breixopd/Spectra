@@ -5,25 +5,25 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from app.services.mission.executor.handlers import TaskDispatcher
-from app.services.ai.consensus import VotingSystem
-from app.services.tools.service import ToolExecutionService
-from app.services.mission.exploitation import ExploitationManager
+from app.services.ai.agents.exploit_crafter import ExploitCrafter
+from app.services.ai.agents.exploit_verifier import ExploitVerifierAgent
+from app.services.ai.agents.post_exploitation import PostExploitationAgent
+from app.services.ai.agents.reporter import ReporterAgent
+from app.services.ai.agents.scope import ScopeAgent
 
 # Agents
 from app.services.ai.agents.tool_selector import ToolSelectorAgent
-from app.services.ai.agents.scope import ScopeAgent
-from app.services.ai.agents.exploit_crafter import ExploitCrafter
-from app.services.ai.agents.exploit_verifier import ExploitVerifierAgent
-from app.services.ai.agents.reporter import ReporterAgent
 from app.services.ai.agents.vector_generator import VectorGeneratorAgent
-from app.services.ai.agents.post_exploitation import PostExploitationAgent
+from app.services.ai.consensus import VotingSystem
+from app.services.mission.executor.handlers import TaskDispatcher
+from app.services.mission.exploitation import ExploitationManager
+from app.services.tools.service import ToolExecutionService
 
 if TYPE_CHECKING:
+    from app.services.ai.agents.base import AgentContext
+    from app.services.ai.agents.mission_controller import Task
     from app.services.ai.llm import LLMClient
     from app.services.mission.mission import Mission
-    from app.services.ai.agents.mission_controller import Task
-    from app.services.ai.agents.base import AgentContext
 
 logger = logging.getLogger("spectra.mission.executor")
 

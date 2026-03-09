@@ -135,7 +135,7 @@ class TestLLMRetry:
 
     @pytest.mark.asyncio
     async def test_retry_succeeds_on_first_attempt(self):
-        from app.services.ai.llm import MockLLMClient
+        from tests.mocks.llm import MockLLMClient
 
         client = MockLLMClient()
         result = await client.generate_with_retry("test prompt")

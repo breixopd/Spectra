@@ -20,10 +20,11 @@ Usage:
 import asyncio
 import logging
 from collections import deque
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 from blinker import Signal
 

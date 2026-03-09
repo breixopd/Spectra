@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select, update
@@ -90,7 +90,7 @@ class Job:
                     raise Exception(job.error or "Job failed")
 
             if timeout is not None and (time.monotonic() - start) >= timeout:
-                raise asyncio.TimeoutError(f"Job {self.job_id} timed out after {timeout}s")
+                raise TimeoutError(f"Job {self.job_id} timed out after {timeout}s")
 
             await asyncio.sleep(poll_interval)
             poll_interval = min(poll_interval * 1.5, 5.0)
@@ -149,7 +149,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
 
                 # 2. Mark as in_progress
                 job.status = "in_progress"
-                job.started_at = datetime.now(timezone.utc)
+                job.started_at = datetime.now(UTC)
                 await session.commit()
 
             current_job_id = job.id
@@ -171,7 +171,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                     stmt = update(JobQueue).where(JobQueue.id == job.id).values(
                         status="completed",
                         result=res,
-                        completed_at=datetime.now(timezone.utc)
+                        completed_at=datetime.now(UTC)
                     )
                     await session.execute(stmt)
                     await session.commit()
@@ -184,7 +184,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                     stmt = update(JobQueue).where(JobQueue.id == job.id).values(
                         status="failed",
                         error=str(e),
-                        completed_at=datetime.now(timezone.utc)
+                        completed_at=datetime.now(UTC)
                     )
                     await session.execute(stmt)
                     await session.commit()
@@ -199,7 +199,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                         stmt = update(JobQueue).where(JobQueue.id == current_job_id).values(
                             status="failed",
                             error="Worker shutdown",
-                            completed_at=datetime.now(timezone.utc)
+                            completed_at=datetime.now(UTC)
                         )
                         await session.execute(stmt)
                         await session.commit()

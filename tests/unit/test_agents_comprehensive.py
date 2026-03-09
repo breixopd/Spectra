@@ -9,7 +9,7 @@ Comprehensive tests for agents with low coverage:
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 
-from app.services.ai.llm import MockLLMClient
+from tests.mocks.llm import MockLLMClient
 from app.services.ai.agents.base import (
     AgentContext,
     AgentResult,

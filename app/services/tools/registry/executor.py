@@ -79,7 +79,7 @@ async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, 
             stderr_str,
         )
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         # Cancel stream readers
         for task in (stdout_task, stderr_task):
             if task is not None:
@@ -120,7 +120,7 @@ async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, 
         return (-1, "", str(e))
 
 
-async def _read_stream_limit(stream: "StreamReader") -> str:
+async def _read_stream_limit(stream: StreamReader) -> str:
     """Read from stream with size limit to prevent memory issues."""
     chunks = []
     total_size = 0
