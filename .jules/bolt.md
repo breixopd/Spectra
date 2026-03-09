@@ -13,3 +13,7 @@
 ## 2026-03-05 - Optimized Repeated String Manipulations inside List and Generator Comprehensions
 **Learning:** Performing `str.lower()` on either dynamic inputs or static indicators inside list/generator comprehensions (e.g., `any(ind.lower() in output.lower() for ind in indicators)`) is extremely costly, particularly when `output` is a large block of text like tool stdout/stderr. Repeating `.lower()` on a large text object inside an inner loop causes unnecessary memory allocation overhead and dramatically increases CPU time.
 **Action:** When searching for text, extract the `.lower()` operation on the main text to *outside* the loop (e.g., `output_lower = output.lower()`). Furthermore, pre-compute lowercased versions of static indicator arrays/dictionaries at the module level.
+
+## 2026-03-05 - Safe Copy of Nested Dictionary Literals without `deepcopy`
+**Learning:** When local state requires copying module-level constant dictionaries that contain nested lists (to modify them safely without mutating the global state), using `copy.deepcopy()` is prohibitively slow. However, just using `.copy()` is a shallow copy, meaning mutations to the lists will modify the module-level constant across the whole app.
+**Action:** Use a dictionary comprehension to perform a single-level deep copy of the inner lists while avoiding `deepcopy()` overhead: `{k: list(v) for k, v in base_dict.items()}`.
