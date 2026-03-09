@@ -25,7 +25,7 @@ logger = logging.getLogger("spectra.ai.cve_intel")
 # NVD API configuration
 NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 NVD_RATE_LIMIT_DELAY = 6.5  # seconds between requests (5 req / 30s limit)
-CVE_CACHE_DIR = Path("reports/memory/cve_cache")
+CVE_CACHE_DIR = Path("data/cache/cve_cache")
 CVE_CACHE_TTL = 86400  # 24 hours
 
 

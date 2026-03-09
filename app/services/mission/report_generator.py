@@ -321,7 +321,7 @@ def save_pdf_report(mission_id: str, pdf_bytes: bytes) -> str | None:
     """Save PDF report to disk (encrypted at rest)."""
     from app.core.encryption import encrypt_file
 
-    output_dir = Path("reports/missions") / mission_id
+    output_dir = Path("data/missions") / mission_id
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
 

@@ -731,7 +731,7 @@ Example response format:
 
     def _prepare_output_directory(self, mission_id: str, run_id: str) -> Path:
         """Create and return the output directory path."""
-        path = Path("reports/missions") / mission_id / "scans" / run_id
+        path = Path("data/missions") / mission_id / "scans" / run_id
         path.mkdir(parents=True, exist_ok=True)
         return path
 

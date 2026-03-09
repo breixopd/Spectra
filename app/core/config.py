@@ -143,7 +143,7 @@ class Settings(BaseSettings):
         configuration.
         """
         # We use the reports directory as it is mounted read-write
-        settings_path = Path("reports/runtime_settings.json")
+        settings_path = Path("data/config/runtime_settings.json")
 
         # Only save non-sensitive, non-AI compatibility settings.
         data = {
@@ -181,7 +181,7 @@ class Settings(BaseSettings):
         Runtime AI settings are intentionally ignored here because SystemConfig
         is authoritative for those values.
         """
-        settings_path = Path("reports/runtime_settings.json")
+        settings_path = Path("data/config/runtime_settings.json")
         if not settings_path.exists():
             return
 

@@ -47,7 +47,6 @@ services:
       - ../alembic:/app/alembic:ro
       - ../alembic.ini:/app/alembic.ini:ro
       - ../plugins:/app/plugins
-      - ../reports:/app/reports
       - ../tests:/app/tests:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -71,7 +70,6 @@ services:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
     volumes:
       - ../plugins:/app/plugins
-      - ../reports:/app/reports
       - ../app:/app/app:ro
     depends_on:
       db:
@@ -127,7 +125,6 @@ services:
       - ../app:/app/app:ro
       - ../tests:/app/tests:ro
       - ../plugins:/app/plugins
-      - ../reports:/app/reports
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -177,8 +174,6 @@ services:
       - ../alembic:/app/alembic:ro
       - ../alembic.ini:/app/alembic.ini:ro
       - ../plugins:/app/plugins:ro
-      - ../reports:/app/reports
-      - ../logs:/app/logs
 
   # Playwright browser test runner
   ui-test-runner:

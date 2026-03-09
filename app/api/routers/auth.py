@@ -41,7 +41,7 @@ router = APIRouter()
 
 
 # --- Persistent Account Lockout ---
-_LOCKOUT_FILE = Path("reports/memory/.lockout_state.json")
+_LOCKOUT_FILE = Path("data/auth/.lockout_state.json")
 
 _login_failures: dict[str, dict] = {}  # ip -> {"count": int, "locked_until": float}
 _lockout_lock = threading.Lock()

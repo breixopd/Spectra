@@ -131,8 +131,19 @@ CISA_KEV_URL: str = "https://www.cisa.gov/sites/default/files/feeds/known_exploi
 #: EPSS API base URL.
 EPSS_API_URL: str = "https://api.first.org/data/v1/epss"
 
+# ---------------------------------------------------------------------------
+# Data directory layout
+# ---------------------------------------------------------------------------
+
+DATA_DIR: str = "data"
+DATA_CONFIG_DIR: str = "data/config"
+DATA_MISSIONS_DIR: str = "data/missions"
+DATA_SESSIONS_DIR: str = "data/sessions"
+DATA_CACHE_DIR: str = "data/cache"
+DATA_AUTH_DIR: str = "data/auth"
+
 #: Exploit database cache directory.
-EXPLOIT_DB_CACHE_DIR: str = "reports/memory/exploit_db"
+EXPLOIT_DB_CACHE_DIR: str = "data/cache/exploit_db"
 
 #: Refresh interval for exploit database (7 days in seconds).
 EXPLOIT_DB_REFRESH_INTERVAL: int = 604800

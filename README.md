@@ -40,7 +40,7 @@ It learns from every engagement via a 3-layer learning system (MissionMemory →
    - Create your admin account on the setup page
    - Configure your AI provider (LiteLLM-backed cloud/API gateway for hosted models, Ollama for local GPU)
 
-> **Port conflict?** Set `SPECTRA_PORT=8080` in your `.env` file.
+> **Port conflict?** Change the port mapping in `docker/docker-compose.yml` under the `caddy` service.
 
 That's it. The tools container auto-installs security tools on first boot.
 
@@ -127,7 +127,7 @@ That's it. The tools container auto-installs security tools on first boot.
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │          Caddy Reverse Proxy (TLS, headers)     │
 │          Port 443/5050 (prod) or 5000 (dev)     │
@@ -144,7 +144,7 @@ That's it. The tools container auto-installs security tools on first boot.
 │  └── CVE Intelligence (version correlation)     │
 ├──────────────┬──────────────────────────────────┤
 │  PostgreSQL (data, cache, queues, RAG store)    │
-├──────────────────────────────────────────────────┤
+├─────────────────────────────────────────────────┤
 │  Tools Container (Kali Linux)                   │
 │  ├── Arq Worker (job execution)                 │
 │  ├── 18 security tools (auto-installed)         │
@@ -158,20 +158,13 @@ That's it. The tools container auto-installs security tools on first boot.
 
 Copy `.env.example` to `.env` and set:
 
-| Variable            | Required   | Description                                                |
-| ------------------- | ---------- | ---------------------------------------------------------- |
-| `AI_PROVIDER`       | Yes        | `litellm` (cloud/API gateway) or `ollama` (local GPU)      |
-| `OLLAMA_HOST`       | If ollama  | Ollama server URL (default: `http://ai:11434`)             |
-| `OLLAMA_MODEL`      | If ollama  | Model name (default: `qwen2.5:3b`)                         |
-| `LLM_API_KEY`       | If litellm | API key for the LiteLLM-backed cloud provider              |
-| `LLM_API_BASE_URL`  | If litellm | Custom base URL (for OpenRouter, vLLM, DashScope, etc.)    |
-| `LLM_MODEL`         | If litellm | Model name or provider route (default: `gpt-4o-mini`)      |
-| `POSTGRES_PASSWORD` | No         | PostgreSQL password (default: `spectra_dev`)               |
-| `SPECTRA_PORT`      | No         | Port override (default: `443` prod / `5000` dev)           |
-| `SPECTRA_DOMAIN`    | No         | Domain for Caddy TLS (default: `localhost`)                |
-| `JWT_SECRET_KEY`    | Yes        | Secret key for JWT tokens (change from default!)           |
+| Variable            | Required | Description                                               |
+| ------------------- | -------- | --------------------------------------------------------- |
+| `JWT_SECRET_KEY`    | Yes      | Secret key for JWT tokens (generate a strong random value)|
+| `POSTGRES_PASSWORD` | No       | PostgreSQL password (default: `spectra_dev`)              |
+| `DEBUG`             | No       | Enable debug mode (default: `false`)                      |
 
-Everything else has sensible defaults. See `.env.example` for the full list.
+AI provider, model, API keys, and all other settings are configured through the **web UI** at `/setup` on first launch. They are stored in the database, not in `.env`.
 
 ---
 
@@ -211,7 +204,6 @@ docker run --rm \
    -v "$PWD/alembic:/app/alembic:ro" \
    -v "$PWD/alembic.ini:/app/alembic.ini:ro" \
    -v "$PWD/plugins:/app/plugins:ro" \
-   -v "$PWD/reports:/app/reports" \
    --entrypoint sh spectra-tools-test \
    -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx && python3 -m pytest tests/unit/test_runtime_settings.py tests/unit/test_system_setup.py tests/unit/test_smart_router.py tests/unit/test_settings_runtime_api.py tests/unit/test_settings_templates.py -q --override-ini=addopts="
 ```
@@ -312,7 +304,7 @@ docs/                        # Documentation
 
 | Issue                         | Solution                                                                      |
 | ----------------------------- | ----------------------------------------------------------------------------- |
-| Port 5000 already in use      | Set `SPECTRA_PORT=8080` in `.env`                                             |
+| Port 80 already in use        | Change port mapping in `docker/docker-compose.yml` caddy service              |
 | Database connection fails     | Check `POSTGRES_PASSWORD` matches in `.env` and `docker-compose.yml`          |
 | "Container unhealthy"         | Wait 30s for DB init, then check `docker logs spectra-app`                    |
 | Migrations fail               | Ensure `DATABASE_URL` matches your `POSTGRES_PASSWORD`                        |
@@ -321,4 +313,4 @@ docs/                        # Documentation
 | PDF export not working        | PDF export requires `xhtml2pdf` which is optional                             |
 | Caddy not starting (prod)     | Ensure port 443/80 are free; check `docker logs spectra-caddy`                |
 | Caddy TLS errors              | Set `SPECTRA_DOMAIN` to your real domain; Caddy auto-provisions Let's Encrypt |
-| RAG search returns no results | Verify `LLM_API_KEY` is set — RAG needs an embedding API to function          |
+| RAG search returns no results | Configure an embedding-capable LLM API via the Settings page                  |

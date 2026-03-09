@@ -125,7 +125,7 @@ async def api_generate_report(
     """Generate report data from a session using a template."""
     from pathlib import Path
 
-    session_path = Path("reports/sessions") / f"{req.session_id}.json"
+    session_path = Path("data/sessions") / f"{req.session_id}.json"
     try:
         return generate_report_data(session_path, req.template_id)
     except FileNotFoundError:

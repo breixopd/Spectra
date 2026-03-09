@@ -1,5 +1,33 @@
 # Per-Mission Ephemeral Sandbox Containers — Design Reference
 
+## USER QUESTIONS
+
+- How will things like wordlists work? Do we need a shared cache container for tools to pull from, or do we bake them into the golden image? (baking them will make the image massive although wordlists shoudnt be that big (at least user:password ones since bruting isnt really a pentesting focus, but we can also explore a hybrid approach where we have a shared read-only volume for large static assets like wordlists that all sandboxes can mount, while the golden image contains the tools and smaller dependencies. This way we avoid bloating the image while still providing easy access to necessary resources. - look into it))
+
+- How are are we handling results and even the above wordlists if potentially the ephemeral containers are hosted on another server?
+
+- What about if a VPN is needed for a specific mission? Do we spin up the sandbox with the VPN already configured? - im assuming yes
+
+- How are we securely gonna transfer the data since eventually the containser will be n a separate server (we should already build them assuming they are since they can still work on the same machine and changing later will be easy and instant)
+
+- How are we handling golden image? Im guessing we rebuild in a change and send it over to remote server or have our own private docker image registry?
+
+- How do we handle the case where a sandbox container goes down in the middle of a mission? Do we have some sort of monitoring and auto-restart mechanism, and how do we ensure that the state is preserved or at least recoverable? Do we restart the mission, warn user and let them choose to restart, or have some sort of checkpointing system where we can resume from the last successful step?
+
+- How do we handle concurrent missions if we have a limited number of sandbox containers available? Do we queue them up and run them sequentially, or do we have some sort of load balancing mechanism to distribute them across multiple servers if needed?
+
+- How do we handle the case where a tool execution requires more resources than the sandbox container can provide? Do we have some sort of resource monitoring and scaling mechanism to allocate more resources to the container if needed?
+
+- How do we handle the case where a tool execution takes too long or gets stuck? Do we have some sort of timeout mechanism to kill the execution and free up the container for other tasks? - what about long running tools?
+
+- How do we handle the case where a tool execution produces a large amount of data that needs to be transferred back to the main app? Do we send it all when finished so agents can go over it or stream it or something else?
+
+- How do we handle cases like for example the agent accidentally starting some interactive mode in a tool?
+
+- How do we keep out platform secure? (data transfers, communciation between our services/servers, etc?)
+
+- Please research anything else that we might need to consider for this design that I might have missed and add it to the doc. Also update the FUTURE_IMPROVEMENTS.md doc.
+
 > **Status**: Future work. Saved from Round 10 planning (2026-03-09) for later implementation.
 
 ## 1. Overview

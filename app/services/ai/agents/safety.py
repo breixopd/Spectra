@@ -152,7 +152,7 @@ Dangerous actions that should be BLOCKED (High Risk):
 
 BLOCK if:
 - Command targets out-of-scope IP.
-- Command tries to wipe mounted volumes (reports/plugins).
+- Command tries to wipe mounted volumes (data/plugins).
 - Command is a clear fork bomb or resource exhaustion.
 
 Provide a JSON response with:

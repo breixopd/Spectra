@@ -11,22 +11,19 @@ __pycache__/**
 .venv
 keys/plugin_signing.pem
 .coverage
-reports/missions/
-reports/findings/
-reports/knowledge_base/
 logs/test.db
 test.db
-.env
 
-# Runtime memory/learning data
-reports/memory/*.json
-reports/memory/**/*.json
-reports/memory/*.bak
-!reports/memory/.gitkeep
+# Runtime data (container-managed, never on host)
+data/config/
+data/missions/
+data/sessions/
+data/cache/
+data/auth/
+!data/.gitkeep
+!data/*/.gitkeep
 
-# Runtime session data
-reports/sessions/
-!reports/sessions/.gitkeep
+# Legacy (pre-migration)
+reports/
 
-# Runtime settings
-reports/runtime_settings.json
+docs/plan/
