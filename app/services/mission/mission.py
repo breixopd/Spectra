@@ -7,7 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, ClassVar
 
-from app.core.state_machine import MissionState, MissionStateMachine
+from app.core.enums import MissionStatus
+from app.core.state_machine import MissionStateMachine
 from app.core.websocket import manager as ws_manager
 from app.models.attack_surface import (
     AttackSurface,
@@ -100,7 +101,7 @@ class Mission:
     def set_status(self, status: str) -> None:
         """Update mission status, validating via FSM when possible."""
         try:
-            new_state = MissionState(status)
+            new_state = MissionStatus(status)
             if self.fsm.can_transition_to(new_state):
                 self.fsm.transition_to(new_state)
             else:
@@ -111,8 +112,8 @@ class Mission:
                     self.id,
                 )
         except ValueError:
-            # status string not in MissionState enum — just set raw
-            logger.debug("Status '%s' not in MissionState enum", status)
+            # status string not in MissionStatus enum — just set raw
+            logger.debug("Status '%s' not in MissionStatus enum", status)
         self.status = status
 
     def pause(self) -> None:

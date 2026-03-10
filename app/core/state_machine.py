@@ -7,79 +7,93 @@ Ensures only valid state changes occur and provides audit trail.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 from typing import Any
 
+from app.core.enums import MissionStatus
 from app.core.events import EventType, events
 from app.core.exceptions import MissionStateError
 
-
-class MissionState(str, Enum):
-    """Mission lifecycle states."""
-
-    CREATED = "created"
-    INITIALIZING = "initializing"
-    SCOPING = "scoping"
-    PLANNING = "planning"
-    EXECUTING = "executing"
-    EXPLOITING = "exploiting"
-    REPORTING = "reporting"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-    PAUSED = "paused"
+# Backward-compatible alias — new code should use MissionStatus directly.
+MissionState = MissionStatus
 
 
 # Valid state transitions
-VALID_TRANSITIONS: dict[MissionState, set[MissionState]] = {
-    MissionState.CREATED: {
-        MissionState.INITIALIZING,
-        MissionState.CANCELLED,
+VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
+    MissionStatus.CREATED: {
+        MissionStatus.INITIALIZING,
+        MissionStatus.CANCELLED,
     },
-    MissionState.INITIALIZING: {
-        MissionState.SCOPING,
-        MissionState.FAILED,
-        MissionState.CANCELLED,
+    MissionStatus.INITIALIZING: {
+        MissionStatus.SCOPING,
+        MissionStatus.FAILED,
+        MissionStatus.CANCELLED,
     },
-    MissionState.SCOPING: {
-        MissionState.PLANNING,
-        MissionState.FAILED,
-        MissionState.CANCELLED,
+    MissionStatus.SCOPING: {
+        MissionStatus.PLANNING,
+        MissionStatus.FAILED,
+        MissionStatus.CANCELLED,
     },
-    MissionState.PLANNING: {
-        MissionState.EXECUTING,
-        MissionState.FAILED,
-        MissionState.CANCELLED,
+    MissionStatus.PLANNING: {
+        MissionStatus.EXECUTING,
+        MissionStatus.FAILED,
+        MissionStatus.CANCELLED,
     },
-    MissionState.EXECUTING: {
-        MissionState.EXPLOITING,
-        MissionState.REPORTING,
-        MissionState.COMPLETED,
-        MissionState.FAILED,
-        MissionState.CANCELLED,
-        MissionState.PAUSED,
+    MissionStatus.EXECUTING: {
+        MissionStatus.EXPLOITING,
+        MissionStatus.REPORTING,
+        MissionStatus.COMPLETED,
+        MissionStatus.FAILED,
+        MissionStatus.CANCELLED,
+        MissionStatus.PAUSED,
+        MissionStatus.SCANNING,
+        MissionStatus.ANALYZING,
     },
-    MissionState.EXPLOITING: {
-        MissionState.REPORTING,
-        MissionState.COMPLETED,
-        MissionState.FAILED,
-        MissionState.CANCELLED,
-        MissionState.PAUSED,
+    MissionStatus.SCANNING: {
+        MissionStatus.EXECUTING,
+        MissionStatus.ANALYZING,
+        MissionStatus.FAILED,
+        MissionStatus.CANCELLED,
     },
-    MissionState.REPORTING: {
-        MissionState.COMPLETED,
-        MissionState.FAILED,
-        MissionState.CANCELLED,
+    MissionStatus.ANALYZING: {
+        MissionStatus.EXECUTING,
+        MissionStatus.EXPLOITING,
+        MissionStatus.FAILED,
+        MissionStatus.CANCELLED,
     },
-    MissionState.PAUSED: {
-        MissionState.EXECUTING,
-        MissionState.EXPLOITING,
-        MissionState.CANCELLED,
+    MissionStatus.EXPLOITING: {
+        MissionStatus.REPORTING,
+        MissionStatus.COMPLETED,
+        MissionStatus.FAILED,
+        MissionStatus.CANCELLED,
+        MissionStatus.PAUSED,
+    },
+    MissionStatus.REPORTING: {
+        MissionStatus.COMPLETED,
+        MissionStatus.FAILED,
+        MissionStatus.CANCELLED,
+    },
+    MissionStatus.PAUSED: {
+        MissionStatus.EXECUTING,
+        MissionStatus.EXPLOITING,
+        MissionStatus.CANCELLED,
+    },
+    MissionStatus.RUNNING: {
+        MissionStatus.EXECUTING,
+        MissionStatus.SCANNING,
+        MissionStatus.COMPLETED,
+        MissionStatus.FAILED,
+        MissionStatus.CANCELLED,
+        MissionStatus.STOPPING,
+        MissionStatus.PAUSED,
+    },
+    MissionStatus.STOPPING: {
+        MissionStatus.CANCELLED,
+        MissionStatus.FAILED,
     },
     # Terminal states - no valid transitions out
-    MissionState.COMPLETED: set(),
-    MissionState.FAILED: set(),
-    MissionState.CANCELLED: set(),
+    MissionStatus.COMPLETED: set(),
+    MissionStatus.FAILED: set(),
+    MissionStatus.CANCELLED: set(),
 }
 
 
@@ -87,8 +101,8 @@ VALID_TRANSITIONS: dict[MissionState, set[MissionState]] = {
 class StateTransition:
     """Records a state transition."""
 
-    from_state: MissionState
-    to_state: MissionState
+    from_state: MissionStatus
+    to_state: MissionStatus
     timestamp: datetime = field(default_factory=datetime.now)
     reason: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -117,7 +131,7 @@ class MissionStateMachine:
     """
 
     def __init__(
-        self, mission_id: str, initial_state: MissionState = MissionState.CREATED
+        self, mission_id: str, initial_state: MissionStatus = MissionStatus.CREATED
     ):
         self.mission_id = mission_id
         self._state = initial_state
@@ -133,35 +147,38 @@ class MissionStateMachine:
     def is_terminal(self) -> bool:
         """Check if in a terminal state."""
         return self._state in {
-            MissionState.COMPLETED,
-            MissionState.FAILED,
-            MissionState.CANCELLED,
+            MissionStatus.COMPLETED,
+            MissionStatus.FAILED,
+            MissionStatus.CANCELLED,
         }
 
     @property
     def is_active(self) -> bool:
         """Check if mission is actively running."""
         return self._state in {
-            MissionState.INITIALIZING,
-            MissionState.SCOPING,
-            MissionState.PLANNING,
-            MissionState.EXECUTING,
-            MissionState.EXPLOITING,
-            MissionState.REPORTING,
+            MissionStatus.INITIALIZING,
+            MissionStatus.SCOPING,
+            MissionStatus.PLANNING,
+            MissionStatus.EXECUTING,
+            MissionStatus.SCANNING,
+            MissionStatus.ANALYZING,
+            MissionStatus.EXPLOITING,
+            MissionStatus.REPORTING,
+            MissionStatus.RUNNING,
         }
 
-    def can_transition_to(self, new_state: MissionState) -> bool:
+    def can_transition_to(self, new_state: MissionStatus) -> bool:
         """Check if transition to new_state is valid."""
         valid_targets = VALID_TRANSITIONS.get(self._state, set())
         return new_state in valid_targets
 
-    def get_valid_transitions(self) -> set[MissionState]:
+    def get_valid_transitions(self) -> set[MissionStatus]:
         """Get all valid state transitions from current state."""
         return VALID_TRANSITIONS.get(self._state, set()).copy()
 
     def transition_to(
         self,
-        new_state: MissionState,
+        new_state: MissionStatus,
         reason: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> StateTransition:
@@ -211,7 +228,7 @@ class MissionStateMachine:
 
     def force_transition(
         self,
-        new_state: MissionState,
+        new_state: MissionStatus,
         reason: str = "Forced transition",
     ) -> StateTransition:
         """
@@ -239,7 +256,7 @@ class MissionStateMachine:
         """Get total duration in seconds."""
         return (datetime.now() - self._created_at).total_seconds()
 
-    def get_time_in_state(self, state: MissionState) -> float:
+    def get_time_in_state(self, state: MissionStatus) -> float:
         """Get total time spent in a specific state."""
         total = 0.0
 
