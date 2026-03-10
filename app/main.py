@@ -4,7 +4,7 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
@@ -105,21 +105,44 @@ app.mount(
 )
 
 # --- Include Routers ---
-app.include_router(health.router, prefix="/api", tags=["Health"])
-app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
-app.include_router(tools.router, prefix="/api", tags=["Tools"])
-app.include_router(missions.router, prefix="/api", tags=["Missions"])
-app.include_router(targets.router, prefix="/api", tags=["Targets"])
-app.include_router(findings.router, prefix="/api", tags=["Findings"])
-app.include_router(exploits.router, prefix="/api", tags=["Exploits"])
-app.include_router(observability.router, prefix="/api", tags=["Observability"])
-app.include_router(system.router, prefix="/api", tags=["System"])
-app.include_router(cve.router, prefix="/api", tags=["CVE Intelligence"])
-app.include_router(wordlists.router, prefix="/api", tags=["Wordlists"])
-app.include_router(pentest_sessions.router, prefix="/api", tags=["Pentest Sessions"])
-app.include_router(manual_helpers.router, prefix="/api", tags=["Manual Helpers"])
-app.include_router(shell.router, prefix="/api", tags=["Shell"])
-app.include_router(vpn.router, prefix="/api", tags=["VPN"])
+
+# --- API v1 (canonical versioned prefix) ---
+api_v1 = APIRouter(prefix="/api/v1")
+api_v1.include_router(health.router, tags=["Health"])
+api_v1.include_router(auth.router, prefix="/auth", tags=["Auth"])
+api_v1.include_router(tools.router, tags=["Tools"])
+api_v1.include_router(missions.router, tags=["Missions"])
+api_v1.include_router(targets.router, tags=["Targets"])
+api_v1.include_router(findings.router, tags=["Findings"])
+api_v1.include_router(exploits.router, tags=["Exploits"])
+api_v1.include_router(observability.router, tags=["Observability"])
+api_v1.include_router(system.router, tags=["System"])
+api_v1.include_router(cve.router, tags=["CVE Intelligence"])
+api_v1.include_router(wordlists.router, tags=["Wordlists"])
+api_v1.include_router(pentest_sessions.router, tags=["Pentest Sessions"])
+api_v1.include_router(manual_helpers.router, tags=["Manual Helpers"])
+api_v1.include_router(shell.router, tags=["Shell"])
+api_v1.include_router(vpn.router, tags=["VPN"])
+app.include_router(api_v1)
+
+# --- /api (deprecated alias — kept for backward compatibility) ---
+app.include_router(health.router, prefix="/api", tags=["Health"], deprecated=True)
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"], deprecated=True)
+app.include_router(tools.router, prefix="/api", tags=["Tools"], deprecated=True)
+app.include_router(missions.router, prefix="/api", tags=["Missions"], deprecated=True)
+app.include_router(targets.router, prefix="/api", tags=["Targets"], deprecated=True)
+app.include_router(findings.router, prefix="/api", tags=["Findings"], deprecated=True)
+app.include_router(exploits.router, prefix="/api", tags=["Exploits"], deprecated=True)
+app.include_router(observability.router, prefix="/api", tags=["Observability"], deprecated=True)
+app.include_router(system.router, prefix="/api", tags=["System"], deprecated=True)
+app.include_router(cve.router, prefix="/api", tags=["CVE Intelligence"], deprecated=True)
+app.include_router(wordlists.router, prefix="/api", tags=["Wordlists"], deprecated=True)
+app.include_router(pentest_sessions.router, prefix="/api", tags=["Pentest Sessions"], deprecated=True)
+app.include_router(manual_helpers.router, prefix="/api", tags=["Manual Helpers"], deprecated=True)
+app.include_router(shell.router, prefix="/api", tags=["Shell"], deprecated=True)
+app.include_router(vpn.router, prefix="/api", tags=["VPN"], deprecated=True)
+
+# --- Non-versioned routes (UI pages, public, admin) ---
 app.include_router(public.router, tags=["Public"])
 app.include_router(ui.router, tags=["UI"])
 app.include_router(admin.router, tags=["Admin"])
