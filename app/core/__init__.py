@@ -34,6 +34,7 @@ from app.core.database import async_session_maker, engine, get_async_session
 from app.core.enums import (
     AssessmentPhase,
     EntityStatus,
+    MissionStatus,
     RiskLevel,
     Severity,
 )
@@ -98,6 +99,7 @@ __all__ = [
     "EntityStatus",
     "Severity",
     "RiskLevel",
+    "MissionStatus",
     # Exceptions
     "SpectraError",
     "LLMError",
