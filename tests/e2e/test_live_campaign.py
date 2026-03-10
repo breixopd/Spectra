@@ -38,8 +38,7 @@ class TestLiveCampaign:
     @pytest_asyncio.fixture(autouse=True)
     async def setup_campaign(self):
         """Ensure environment is ready for testing."""
-        # Run tools locally in the test runner container
-        settings.TOOL_CONTAINER_NAME = None
+        # Tools run locally in the test runner container
         settings.PLUGIN_SAFE_MODE = False  # Disable signature checks for tests
 
         # Dispose engine to ensure fresh connection on current loop
@@ -90,8 +89,7 @@ class TestLiveCampaign:
                 text=True,
             )
             if "spectra-tools" in res.stdout:
-                settings.TOOL_CONTAINER_NAME = "spectra-tools"
-                print("DEBUG: specialized 'spectra-tools' container found. Using it.")
+                print("DEBUG: specialized 'spectra-tools' container found.")
             else:
                 print("DEBUG: 'spectra-tools' container NOT found.")
         except Exception:

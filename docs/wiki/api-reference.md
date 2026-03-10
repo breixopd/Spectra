@@ -1,5 +1,9 @@
 # API Reference
 
+[← Wiki Home](home.md) | [Configuration](configuration.md) | [Scaling](scaling.md) | [Architecture](architecture.md)
+
+---
+
 Comprehensive reference for the Spectra REST API.
 
 ## Base URL
@@ -21,7 +25,7 @@ Most endpoints require a JWT token (exceptions: `/api/health`, `/api/auth/setup`
 ## Health
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | GET | `/api/health` | Basic health check. Returns `{"status": "ok"}`. No auth required. |
 
 ---
@@ -29,11 +33,11 @@ Most endpoints require a JWT token (exceptions: `/api/health`, `/api/auth/setup`
 ## Authentication & Setup
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | POST | `/api/auth/token` | Login — returns JWT access + refresh tokens |
 | POST | `/api/auth/refresh` | Refresh an expired access token |
 | POST | `/api/auth/logout` | Invalidate current token |
-| POST | `/api/auth/setup` | Create initial admin account (only available when no users exist) |
+| POST | `/api/auth/setup` | Create initial admin account (only before any users exist) |
 | GET | `/api/auth/setup/status` | Check if setup has been completed |
 
 ### POST `/api/auth/token`
@@ -55,25 +59,12 @@ username=admin&password=secret
 
 Rate-limited with IP-based lockout after repeated failures.
 
-### POST `/api/auth/setup`
-
-```json
-{
-  "username": "admin",
-  "password": "secure-password"
-}
-```
-
-Returns a `UserResponse` object. Only callable once (before any users exist).
-
 ---
 
 ## Missions
 
-All mission endpoints require authentication.
-
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | POST | `/api/missions` | Create and start a new mission |
 | GET | `/api/missions` | List all missions |
 | GET | `/api/missions/presets` | List mission presets |
@@ -102,11 +93,7 @@ All mission endpoints require authentication.
 }
 ```
 
-**Response:** `MissionResponse` with mission `id`, status, and metadata.
-
 ### POST `/api/missions/{id}/steer`
-
-Send instructions to modify a running mission's direction:
 
 ```json
 {
@@ -119,7 +106,7 @@ Send instructions to modify a running mission's direction:
 ## Targets
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | POST | `/api/targets` | Add a target |
 | GET | `/api/targets` | List all targets |
 | GET | `/api/targets/{id}` | Get target details |
@@ -129,21 +116,12 @@ Send instructions to modify a running mission's direction:
 | POST | `/api/targets/bulk-import` | Import multiple targets |
 | POST | `/api/targets/bulk-delete` | Delete multiple targets |
 
-### POST `/api/targets`
-
-```json
-{
-  "address": "192.168.1.1",
-  "description": "Web server"
-}
-```
-
 ---
 
 ## Findings
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | POST | `/api/findings` | Create a finding |
 | GET | `/api/findings` | List findings (filterable) |
 | GET | `/api/findings/{id}` | Get finding details |
@@ -163,7 +141,7 @@ Send instructions to modify a running mission's direction:
 ## Tools
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | GET | `/api/tools` | List all registered tools |
 | GET | `/api/tools/available` | List installed/available tools |
 | GET | `/api/tools/for-ai` | Tool list formatted for AI agents |
@@ -178,37 +156,14 @@ Send instructions to modify a running mission's direction:
 | POST | `/api/tools/upload` | Upload a plugin file |
 | POST | `/api/tools/install-all` | Install all registered tools |
 
-### POST `/api/tools/{id}/test`
-
-Runs a tool with provided arguments and returns output:
-
-```json
-{
-  "target": "192.168.1.1",
-  "args": "-sV -p 80,443"
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "exit_code": 0,
-  "duration_seconds": 12.5,
-  "stdout": "...",
-  "stderr": "...",
-  "parsed_findings_count": 3,
-  "parsed_findings": [...]
-}
-```
+See [Plugins](plugins.md) for the plugin JSON schema.
 
 ---
 
 ## Exploits
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | GET | `/api/exploits` | List exploit attempts |
 | GET | `/api/exploits/recent` | Recent exploit attempts |
 | GET | `/api/exploits/stats` | Exploit statistics |
@@ -220,22 +175,18 @@ Runs a tool with provided arguments and returns output:
 ## CVE Intelligence
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | GET | `/api/cve/lookup` | Lookup CVEs by service/version |
 | GET | `/api/cve/cve/{cve_id}/exploits` | Get exploits for a CVE |
 | GET | `/api/cve/cve/{cve_id}/enriched` | Get enriched CVE data |
 | GET | `/api/cve/searchsploit/{query}` | Search ExploitDB |
-
-### GET `/api/cve/lookup?service=apache&version=2.4.49`
-
-**Response:** list of matching CVEs with severity, description, and exploit references.
 
 ---
 
 ## System
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | GET | `/api/system/status` | System health, DB state, tool install progress |
 | GET | `/api/system/safety-stats` | Safety supervisor statistics |
 | GET | `/api/system/audit-log` | Audit log entries |
@@ -252,21 +203,74 @@ Runs a tool with provided arguments and returns output:
 
 ## Settings
 
-Settings are managed via the UI router:
-
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | GET | `/api/settings` | Get current runtime settings |
 | POST | `/api/settings` | Update runtime settings |
 | GET | `/api/ai/status` | AI provider connection status |
 | POST | `/test-llm` | Test LLM connectivity |
+
+See [Configuration](configuration.md) for all setting details.
+
+---
+
+## Server Pool Management
+
+All server pool endpoints require superuser authentication. See [Scaling](scaling.md) for usage guide.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/admin/servers` | List all registered server nodes |
+| POST | `/api/admin/servers` | Register a new server node |
+| DELETE | `/api/admin/servers/{id}` | Remove a server node |
+| PATCH | `/api/admin/servers/{id}` | Update server node properties |
+| POST | `/api/admin/servers/health-check` | Trigger health check on all nodes |
+| POST | `/api/admin/servers/verify` | Test SSH connectivity to a remote server |
+| POST | `/api/admin/servers/provision` | Auto-install service on remote server (202 Accepted) |
+| POST | `/api/admin/servers/deprovision` | Remove service from remote server |
+
+### POST `/api/admin/servers`
+
+```json
+{
+  "service_type": "sandbox_worker",
+  "name": "tools-server-1",
+  "url": "http://192.168.1.50:9090",
+  "weight": 2,
+  "max_capacity": 20
+}
+```
+
+Valid `service_type` values: `sandbox_worker`, `db`, `storage`.
+
+### POST `/api/admin/servers/provision`
+
+```json
+{
+  "host": "192.168.1.50",
+  "port": 22,
+  "username": "root",
+  "private_key": "...",
+  "service_type": "sandbox_worker",
+  "service_port": 9090
+}
+```
+
+---
+
+## Service Health & Topology
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/system/services/health` | Health check all registered services |
+| GET | `/system/services/topology` | Current service topology (local vs remote) |
 
 ---
 
 ## Observability
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | GET | `/api/observability/stats` | Overall system metrics |
 | GET | `/api/observability/metrics` | Prometheus-style metrics |
 | GET | `/api/observability/traces` | Request traces |
@@ -284,10 +288,8 @@ Settings are managed via the UI router:
 
 ## Pentest Sessions
 
-Manual/hybrid pentest sessions (for guided assessments):
-
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | POST | `/api/pentest-sessions` | Create a session |
 | GET | `/api/pentest-sessions` | List sessions |
 | GET | `/api/pentest-sessions/{id}` | Get session details |
@@ -310,7 +312,7 @@ Manual/hybrid pentest sessions (for guided assessments):
 ## VPN
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | POST | `/api/vpn` | Upload VPN config |
 | GET | `/api/vpn/configs` | List VPN configs |
 | DELETE | `/api/vpn/configs/{name}` | Delete a VPN config |
@@ -324,7 +326,7 @@ Manual/hybrid pentest sessions (for guided assessments):
 ## Wordlists
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | GET | `/api/wordlists` | List available wordlists |
 | POST | `/api/wordlists/upload` | Upload a wordlist |
 | POST | `/api/wordlists/download-preset/{id}` | Download a preset wordlist |
@@ -335,7 +337,7 @@ Manual/hybrid pentest sessions (for guided assessments):
 ## Manual Helpers
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | GET | `/api/manual-helpers/checklists` | List pentest checklists |
 | GET | `/api/manual-helpers/checklists/{id}` | Get checklist details |
 | GET | `/api/manual-helpers/payloads` | List payload templates |
@@ -349,7 +351,7 @@ Manual/hybrid pentest sessions (for guided assessments):
 ## Shell (WebSocket)
 
 | Method | Path | Description |
-| -------- | ------ | ------------- |
+|--------|------|-------------|
 | WebSocket | `/api/shell/{session_id}` | Interactive reverse shell session |
 | GET | `/api/shell/sessions` | List active shell sessions |
 | POST | `/api/shell/reconnect/{finding_id}` | Reconnect to a shell |
@@ -359,7 +361,7 @@ Manual/hybrid pentest sessions (for guided assessments):
 ## WebSocket (Real-time)
 
 | Protocol | Path | Description |
-| ---------- | ------ | ------------- |
+|----------|------|-------------|
 | WebSocket | `/ws?token=<jwt>` | Real-time mission updates, logs, findings stream |
 
 Pass JWT as query parameter. Connection rejected if token is invalid or missing.

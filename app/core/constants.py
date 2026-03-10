@@ -9,8 +9,8 @@ so they are easy to locate and change.
 # Task queue
 # ---------------------------------------------------------------------------
 
-#: Name of the task queue used by the tools worker.
-ARQ_QUEUE_NAME: str = "spectra:tasks"
+#: Default queue name for the tools worker (PG-backed job queue).
+WORKER_DEFAULT_QUEUE: str = "default"
 
 # ---------------------------------------------------------------------------
 # Scope / network scanning
@@ -23,8 +23,10 @@ MAX_HOSTS_DEFAULT: int = 256
 # Concurrency
 # ---------------------------------------------------------------------------
 
-#: Maximum number of missions running simultaneously.
-MAX_CONCURRENT_MISSIONS: int = 3
+#: Maximum number of missions running simultaneously (system-wide safety cap).
+#: Per-user limits are enforced via Plan.max_concurrent_missions in
+#: app.api.dependencies.check_mission_limit — this global cap prevents overload.
+MAX_CONCURRENT_MISSIONS: int = 10
 
 #: Maximum replans per mission to prevent infinite loops.
 MAX_REPLANS_PER_MISSION: int = 3
@@ -43,20 +45,20 @@ EXPLOIT_OUTPUT_LOG_CHARS: int = 300
 MISSION_TIMEOUT_SECONDS: int = 3600
 
 # ---------------------------------------------------------------------------
-# ARQ worker settings
+# Worker settings (PostgreSQL-backed job queue)
 # ---------------------------------------------------------------------------
 
 #: Maximum concurrent jobs in the tools worker.
-ARQ_MAX_JOBS: int = 10
+WORKER_MAX_JOBS: int = 10
 
 #: Default job timeout in seconds (10 minutes).
-ARQ_JOB_TIMEOUT: int = 600
+WORKER_JOB_TIMEOUT: int = 600
 
 #: How long (seconds) job results are kept (1 hour).
-ARQ_KEEP_RESULT: int = 3600
+WORKER_KEEP_RESULT: int = 3600
 
 #: Interval (seconds) between worker health-checks.
-ARQ_HEALTH_CHECK_INTERVAL: int = 30
+WORKER_HEALTH_CHECK_INTERVAL: int = 30
 
 # ---------------------------------------------------------------------------
 # Networking

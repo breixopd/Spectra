@@ -80,13 +80,33 @@
     ]
   },
   "examples": [
-    {"description": "Full SSL/TLS scan", "args": {"target": "example.com:443"}},
-    {"description": "Check for specific vulnerabilities", "args": {"target": "example.com:443", "flags": "--vulnerable"}},
-    {"description": "Quick cipher check", "args": {"target": "192.168.1.10:443", "flags": "--fast"}}
+    {
+      "description": "Full SSL/TLS scan",
+      "args": {
+        "target": "example.com:443"
+      }
+    },
+    {
+      "description": "Check for specific vulnerabilities",
+      "args": {
+        "target": "example.com:443",
+        "flags": "--vulnerable"
+      }
+    },
+    {
+      "description": "Quick cipher check",
+      "args": {
+        "target": "192.168.1.10:443",
+        "flags": "--fast"
+      }
+    }
   ],
   "ui": {
     "icon": "shield",
     "color": "blue"
   },
-  "signature": "3aaabb79e8dec58304a0f7136c4f12b91c6cda9db81d92498e11a41c171c55c3b3c4f5c7cb75fa6201906de62f01c0fc6fec7a5867428c69069bb9c484aa830a"
+  "signature": "3aaabb79e8dec58304a0f7136c4f12b91c6cda9db81d92498e11a41c171c55c3b3c4f5c7cb75fa6201906de62f01c0fc6fec7a5867428c69069bb9c484aa830a",
+  "resources": {
+    "tier": "light"
+  }
 }

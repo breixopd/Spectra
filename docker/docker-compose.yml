@@ -1,5 +1,27 @@
 # Spectra Security Assessment Platform - Docker Compose
 services:
+  # MinIO Object Storage (S3-compatible)
+  minio:
+    image: minio/minio:latest
+    container_name: spectra-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: spectra
+      MINIO_ROOT_PASSWORD: spectra_minio_dev
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - spectra-network
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
   # PostgreSQL Database (with pgvector for RAG)
   db:
     image: pgvector/pgvector:pg16
@@ -46,8 +68,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
-      args:
-        ENABLE_LOCAL_EMBEDDINGS: ${ENABLE_LOCAL_EMBEDDINGS:-false}
+      # ENABLE_LOCAL_EMBEDDINGS arg removed
     container_name: spectra-app
     # No public port — Caddy proxies to app:5000 internally
     expose:
@@ -60,8 +81,10 @@ services:
     environment:
       # Infrastructure (these always point to Docker service names)
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
-      - TOOL_CONTAINER_NAME=spectra-tools
       - CONNECT_BACK_HOST=spectra-app
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=spectra
+      - S3_SECRET_KEY=spectra_minio_dev
     volumes:
       - ../app:/app/app
       - ../plugins:/app/plugins
@@ -111,6 +134,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
       - IS_TOOLS_CONTAINER=true
+      - QUEUE_NAME=default
       - PLUGIN_SAFE_MODE=false
       - TZ=UTC
     volumes:
@@ -148,3 +172,4 @@ volumes:
   spectra_tools_data:
   caddy_data:
   caddy_config:
+  minio_data:

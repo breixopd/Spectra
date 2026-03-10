@@ -44,11 +44,7 @@ class EntityStatus(str, Enum):
 
 
 class MissionStatus(str, Enum):
-    """Status of a mission in the execution pipeline.
-
-    Deprecated: Use MissionState from app.core.state_machine instead.
-    Kept as alias for backward compatibility.
-    """
+    """Status of a mission in the execution pipeline."""
 
     CREATED = "created"
     INITIALIZING = "initializing"

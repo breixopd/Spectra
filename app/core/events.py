@@ -68,6 +68,9 @@ class EventType(str, Enum):
     LOGIN_FAILED = "login_failed"
     RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
 
+    # Plugin events
+    PLUGIN_UPDATED = "plugin_updated"
+
     # System events
     SERVICE_HEALTH_CHANGED = "service_health_changed"
     CIRCUIT_BREAKER_OPENED = "circuit_breaker_opened"

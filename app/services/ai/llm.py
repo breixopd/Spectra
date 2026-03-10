@@ -260,11 +260,12 @@ def get_llm_client(
 
 
 def get_default_llm_client() -> LLMClient:
-    """
-    Get the LLM client configured in settings.
+    """Get the LLM client configured in settings.
 
-    Uses LiteLLM smart router for all non-mock providers.
+    Uses in-process LiteLLM router with provider profiles.
     """
+
+
     from app.services.ai.router import LiteLLMRouter, _normalize_provider_name, create_smart_router
 
     provider = _normalize_provider_name(settings.AI_PROVIDER)

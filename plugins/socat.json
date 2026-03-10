@@ -68,9 +68,30 @@
     "color": "green"
   },
   "examples": [
-    {"description": "TCP port forwarding", "args": {"source": "TCP-LISTEN:8080,fork", "destination": "TCP:target:80"}},
-    {"description": "Reverse shell listener", "args": {"source": "TCP-LISTEN:4444,reuseaddr,fork", "destination": "EXEC:/bin/bash"}},
-    {"description": "UDP relay", "args": {"source": "UDP-LISTEN:5353,fork", "destination": "UDP:target:53"}}
+    {
+      "description": "TCP port forwarding",
+      "args": {
+        "source": "TCP-LISTEN:8080,fork",
+        "destination": "TCP:target:80"
+      }
+    },
+    {
+      "description": "Reverse shell listener",
+      "args": {
+        "source": "TCP-LISTEN:4444,reuseaddr,fork",
+        "destination": "EXEC:/bin/bash"
+      }
+    },
+    {
+      "description": "UDP relay",
+      "args": {
+        "source": "UDP-LISTEN:5353,fork",
+        "destination": "UDP:target:53"
+      }
+    }
   ],
-  "signature": null
+  "signature": null,
+  "resources": {
+    "tier": "light"
+  }
 }

@@ -66,7 +66,7 @@
     "format": "text",
     "regex_patterns": [
       {
-        "pattern": "╔══════════╣\\s+(?P<section>.+)",
+        "pattern": "\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2563\\s+(?P<section>.+)",
         "type": "info"
       },
       {
@@ -90,9 +90,27 @@
     "color": "blue"
   },
   "examples": [
-    {"description": "Run all checks", "args": {"flags": "all"}},
-    {"description": "Check services only", "args": {"flags": "servicesinfo"}},
-    {"description": "Quiet mode with focus on interesting findings", "args": {"flags": "all quiet"}}
+    {
+      "description": "Run all checks",
+      "args": {
+        "flags": "all"
+      }
+    },
+    {
+      "description": "Check services only",
+      "args": {
+        "flags": "servicesinfo"
+      }
+    },
+    {
+      "description": "Quiet mode with focus on interesting findings",
+      "args": {
+        "flags": "all quiet"
+      }
+    }
   ],
-  "signature": null
+  "signature": null,
+  "resources": {
+    "tier": "light"
+  }
 }

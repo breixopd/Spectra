@@ -35,18 +35,41 @@ LEGACY_AI_CONFIG_KEYS = (
     "LLM_API_KEY",
 )
 GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
+        # S3/MinIO Object Storage
+        "S3_ENDPOINT_URL": ("S3_ENDPOINT_URL", "str"),
+        "S3_ACCESS_KEY": ("S3_ACCESS_KEY", "str"),
+        "S3_SECRET_KEY": ("S3_SECRET_KEY", "str"),
+        "S3_REGION": ("S3_REGION", "str"),
     "LOG_LEVEL": ("LOG_LEVEL", "str"),
     "PLUGIN_SAFE_MODE": ("PLUGIN_SAFE_MODE", "bool"),
     "CONNECT_BACK_HOST": ("CONNECT_BACK_HOST", "str"),
-    "TOOL_CONTAINER_NAME": ("TOOL_CONTAINER_NAME", "str"),
     "REQUIRE_APPROVAL": ("REQUIRE_APPROVAL", "bool"),
     "FULLY_AUTOMATED": ("FULLY_AUTOMATED", "bool"),
     "NOTIFICATION_WEBHOOK": ("NOTIFICATION_WEBHOOK", "nullable_str"),
-    "EMBEDDING_PROVIDER": ("EMBEDDING_PROVIDER", "str"),
     "EMBEDDING_MODEL": ("EMBEDDING_MODEL", "str"),
     "PLATFORM_DOMAIN": ("PLATFORM_DOMAIN", "str"),
     "PLATFORM_BASE_URL": ("PLATFORM_BASE_URL", "str"),
     "PLATFORM_EXPOSED": ("PLATFORM_EXPOSED", "bool"),
+    "SANDBOX_MAX_CONTAINERS": ("SANDBOX_MAX_CONTAINERS", "int"),
+    "SANDBOX_MEMORY_LIMIT": ("SANDBOX_MEMORY_LIMIT", "str"),
+    "SANDBOX_CPU_SHARES": ("SANDBOX_CPU_SHARES", "int"),
+    "SANDBOX_MAX_LIFETIME": ("SANDBOX_MAX_LIFETIME", "int"),
+    "SANDBOX_RESOURCE_TIERS": ("SANDBOX_RESOURCE_TIERS", "str"),
+    "SANDBOX_NETWORK_ISOLATION": ("SANDBOX_NETWORK_ISOLATION", "bool"),
+    "SANDBOX_IDLE_TIMEOUT": ("SANDBOX_IDLE_TIMEOUT", "int"),
+    "SANDBOX_HEARTBEAT_INTERVAL": ("SANDBOX_HEARTBEAT_INTERVAL", "int"),
+    "SANDBOX_PER_USER_LIMIT": ("SANDBOX_PER_USER_LIMIT", "int"),
+    "SANDBOX_DEFAULT_PRIORITY": ("SANDBOX_DEFAULT_PRIORITY", "int"),
+    "SANDBOX_OOM_ESCALATION_ENABLED": ("SANDBOX_OOM_ESCALATION_ENABLED", "bool"),
+    "SANDBOX_WARM_POOL_ENABLED": ("SANDBOX_WARM_POOL_ENABLED", "bool"),
+    "SANDBOX_WARM_POOL_SIZE": ("SANDBOX_WARM_POOL_SIZE", "int"),
+    "SANDBOX_AUTO_BUILD_IMAGE": ("SANDBOX_AUTO_BUILD_IMAGE", "bool"),
+    "SANDBOX_IMAGE_SCAN_ENABLED": ("SANDBOX_IMAGE_SCAN_ENABLED", "bool"),
+    "SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL": ("SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL", "bool"),
+    # External Service Endpoints
+    # LLM gateway fields removed
+    "SANDBOX_ORCHESTRATOR_URL": ("SANDBOX_ORCHESTRATOR_URL", "nullable_str"),
+    "SANDBOX_ORCHESTRATOR_TIMEOUT": ("SANDBOX_ORCHESTRATOR_TIMEOUT", "int"),
 }
 _LITELLM_PROVIDER_PREFIXES = {
     "anthropic",
@@ -558,6 +581,11 @@ def _apply_general_runtime_settings(rows: dict[str, str]) -> None:
         value = rows[key]
         if kind == "bool":
             setattr(settings, attr_name, _as_bool(value))
+        elif kind == "int":
+            try:
+                setattr(settings, attr_name, int(value))
+            except (ValueError, TypeError):
+                pass  # Keep default if DB value is invalid
         elif kind == "nullable_str":
             setattr(settings, attr_name, value or None)
         else:

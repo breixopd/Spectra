@@ -85,14 +85,6 @@ function toggleTierFields(tier) {
     }
 }
 
-function toggleEmbeddingFields() {
-    const provider = document.getElementById('embedding_provider');
-    const wrapper = document.getElementById('embedding-model-group');
-    if (provider && wrapper) {
-        wrapper.classList.toggle('hidden', provider.value === 'api');
-    }
-}
-
 function updateFallbackLabels() {
     const rows = Array.from(document.querySelectorAll('.fallback-row'));
     rows.forEach((row, index) => {
@@ -227,13 +219,9 @@ function buildSettingsPayload() {
         log_level: document.querySelector('[name="log_level"]').value,
         plugin_safe_mode: document.querySelector('[name="plugin_safe_mode"]').checked,
         connect_back_host: document.querySelector('[name="connect_back_host"]').value.trim(),
-        tool_container_name: document.querySelector('[name="tool_container_name"]').value.trim(),
         require_approval: document.querySelector('[name="require_approval"]').checked,
         notification_webhook: document.querySelector('[name="notification_webhook"]').value.trim(),
-        embedding_provider: document.querySelector('[name="embedding_provider"]').value,
-        embedding_model: document.querySelector('[name="embedding_provider"]').value === 'local'
-            ? document.querySelector('[name="embedding_model"]').value.trim()
-            : null,
+        embedding_model: document.querySelector('[name="embedding_model"]').value.trim() || null,
     };
 
     ['tier1', 'tier2', 'tier3'].forEach((tier) => {
@@ -253,6 +241,56 @@ function buildSettingsPayload() {
     payload.platform_domain = platformForm.querySelector('[name="platform_domain"]').value.trim();
     payload.platform_base_url = platformForm.querySelector('[name="platform_base_url"]').value.trim();
     payload.platform_exposed = platformForm.querySelector('[name="platform_exposed"]').checked;
+
+    // Sandbox pool settings
+    const sandboxForm = document.getElementById('sandbox-form');
+    if (sandboxForm) {
+        const maxContainers = sandboxForm.querySelector('[name="sandbox_max_containers"]').value;
+        if (maxContainers) payload.sandbox_max_containers = parseInt(maxContainers, 10);
+        payload.sandbox_memory_limit = sandboxForm.querySelector('[name="sandbox_memory_limit"]').value;
+        const cpuShares = sandboxForm.querySelector('[name="sandbox_cpu_shares"]').value;
+        if (cpuShares) payload.sandbox_cpu_shares = parseInt(cpuShares, 10);
+        const maxLifetime = sandboxForm.querySelector('[name="sandbox_max_lifetime"]').value;
+        if (maxLifetime) payload.sandbox_max_lifetime = parseInt(maxLifetime, 10);
+
+        // Advanced sandbox settings
+        const resourceTiers = sandboxForm.querySelector('[name="sandbox_resource_tiers"]');
+        if (resourceTiers && resourceTiers.value.trim()) payload.sandbox_resource_tiers = resourceTiers.value.trim();
+
+        const networkIsolation = sandboxForm.querySelector('[name="sandbox_network_isolation"]');
+        if (networkIsolation) payload.sandbox_network_isolation = networkIsolation.checked;
+
+        const oomEscalation = sandboxForm.querySelector('[name="sandbox_oom_escalation_enabled"]');
+        if (oomEscalation) payload.sandbox_oom_escalation_enabled = oomEscalation.checked;
+
+        const warmPoolEnabled = sandboxForm.querySelector('[name="sandbox_warm_pool_enabled"]');
+        if (warmPoolEnabled) payload.sandbox_warm_pool_enabled = warmPoolEnabled.checked;
+
+        const warmPoolSize = sandboxForm.querySelector('[name="sandbox_warm_pool_size"]');
+        if (warmPoolSize && warmPoolSize.value) payload.sandbox_warm_pool_size = parseInt(warmPoolSize.value, 10);
+
+        const idleTimeout = sandboxForm.querySelector('[name="sandbox_idle_timeout"]');
+        if (idleTimeout && idleTimeout.value) payload.sandbox_idle_timeout = parseInt(idleTimeout.value, 10);
+
+        const heartbeatInterval = sandboxForm.querySelector('[name="sandbox_heartbeat_interval"]');
+        if (heartbeatInterval && heartbeatInterval.value) payload.sandbox_heartbeat_interval = parseInt(heartbeatInterval.value, 10);
+
+        const autoBuild = sandboxForm.querySelector('[name="sandbox_auto_build_image"]');
+        if (autoBuild) payload.sandbox_auto_build_image = autoBuild.checked;
+
+        const scanEnabled = sandboxForm.querySelector('[name="sandbox_image_scan_enabled"]');
+        if (scanEnabled) payload.sandbox_image_scan_enabled = scanEnabled.checked;
+
+        const blockCritical = sandboxForm.querySelector('[name="sandbox_image_scan_block_critical"]');
+        if (blockCritical) payload.sandbox_image_scan_block_critical = blockCritical.checked;
+
+        const perUserLimit = sandboxForm.querySelector('[name="sandbox_per_user_limit"]');
+        if (perUserLimit && perUserLimit.value) payload.sandbox_per_user_limit = parseInt(perUserLimit.value, 10);
+
+        const defaultPriority = sandboxForm.querySelector('[name="sandbox_default_priority"]');
+        if (defaultPriority && defaultPriority.value) payload.sandbox_default_priority = parseInt(defaultPriority.value, 10);
+    }
+
     return payload;
 }
 
@@ -272,15 +310,48 @@ async function loadSettings() {
     setFieldValue('log_level', data.log_level);
     setCheckboxValue('plugin_safe_mode', data.plugin_safe_mode);
     setFieldValue('connect_back_host', data.connect_back_host);
-    setFieldValue('tool_container_name', data.tool_container_name);
     setCheckboxValue('require_approval', data.require_approval);
     setFieldValue('notification_webhook', data.notification_webhook);
-    setFieldValue('embedding_provider', data.embedding_provider || 'local');
     setFieldValue('embedding_model', data.embedding_model);
     setFieldValue('platform_domain', data.platform_domain);
     setFieldValue('platform_base_url', data.platform_base_url);
     setCheckboxValue('platform_exposed', data.platform_exposed);
     document.getElementById('platform-exposed-warning')?.classList.toggle('hidden', !data.platform_exposed);
+
+    // Sandbox pool settings
+    setFieldValue('sandbox_max_containers', data.sandbox_max_containers);
+    setFieldValue('sandbox_memory_limit', data.sandbox_memory_limit);
+    setFieldValue('sandbox_cpu_shares', String(data.sandbox_cpu_shares));
+    setFieldValue('sandbox_max_lifetime', data.sandbox_max_lifetime);
+
+    // Advanced sandbox settings
+    setFieldValue('sandbox_resource_tiers', data.sandbox_resource_tiers);
+    setCheckboxValue('sandbox_network_isolation', data.sandbox_network_isolation);
+    setFieldValue('sandbox_idle_timeout', data.sandbox_idle_timeout);
+    setFieldValue('sandbox_heartbeat_interval', data.sandbox_heartbeat_interval);
+    setFieldValue('sandbox_per_user_limit', data.sandbox_per_user_limit);
+    setFieldValue('sandbox_default_priority', data.sandbox_default_priority);
+    setCheckboxValue('sandbox_oom_escalation_enabled', data.sandbox_oom_escalation_enabled);
+    setCheckboxValue('sandbox_warm_pool_enabled', data.sandbox_warm_pool_enabled);
+    setFieldValue('sandbox_warm_pool_size', data.sandbox_warm_pool_size);
+    setCheckboxValue('sandbox_auto_build_image', data.sandbox_auto_build_image);
+    setCheckboxValue('sandbox_image_scan_enabled', data.sandbox_image_scan_enabled);
+    setCheckboxValue('sandbox_image_scan_block_critical', data.sandbox_image_scan_block_critical);
+
+    // Update sandbox status indicator
+    const statusDot = document.getElementById('sandbox-status-dot');
+    const statusText = document.getElementById('sandbox-status-text');
+    if (data.sandbox_available && statusDot && statusText) {
+        if (data.sandbox_available.available) {
+            statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+            statusText.textContent = data.sandbox_available.message;
+            statusText.className = 'text-xs text-emerald-400';
+        } else {
+            statusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+            statusText.textContent = data.sandbox_available.message;
+            statusText.className = 'text-xs text-amber-400';
+        }
+    }
 
     ['tier1', 'tier2', 'tier3'].forEach((tier) => {
         const routeId = routing[tier];
@@ -389,7 +460,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         chevron.classList.toggle('rotate-90');
     });
     document.getElementById('add-fallback-profile')?.addEventListener('click', () => addFallbackRow());
-    document.getElementById('embedding_provider')?.addEventListener('change', toggleEmbeddingFields);
     document.getElementById('test-default-profile-btn')?.addEventListener('click', testDefaultProfile);
     document.getElementById('settings-form')?.addEventListener('submit', saveSettings);
 

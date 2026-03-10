@@ -161,17 +161,11 @@
 
                         <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
                             <p class="text-sm font-medium text-white">Embedding Profile</p>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
                                 <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Embedding Provider</label>
-                                    <select name="embedding_provider" id="embedding-provider-select" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                                        <option value="local">Local</option>
-                                        <option value="api">Use the default LiteLLM cloud profile</option>
-                                    </select>
-                                </div>
-                                <div id="embedding-model-wrapper">
                                     <label class="block text-xs font-medium text-gray-400 mb-1">Embedding Model</label>
-                                    <input type="text" name="embedding_model" value="all-MiniLM-L6-v2" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                    <input type="text" name="embedding_model" value="text-embedding-3-small" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                    <p class="text-xs text-gray-500 mt-1">Uses your configured LLM API key for embeddings.</p>
                                 </div>
                             </div>
                         </div>
@@ -189,17 +183,44 @@
                     </button>
                 </div>
 
-                <div id="infra-settings" class="space-y-4 hidden">
-                    <p class="text-xs text-gray-500">Leave blank to use Docker containers (recommended).</p>
+
+                    <!-- LLM Gateway -->
                     <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="custom-db" name="use_custom_db" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
-                            <label for="custom-db" class="text-sm text-gray-300">Use external PostgreSQL database</label>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="use-external-llm" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
+                                <label for="use-external-llm" class="text-sm text-gray-300">Use external LLM Gateway</label>
+                            </div>
+                            <span id="llm-status-dot" class="flex items-center gap-1.5 text-xs text-gray-500">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> In-process
+                            </span>
                         </div>
-                        <div id="db-fields" class="space-y-3 hidden">
-                            <input type="text" name="database_url" placeholder="postgresql+asyncpg://user:pass@host:5432/dbname" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                        <div id="llm-gateway-fields" class="space-y-3 hidden">
+                            <p class="text-xs text-gray-500">LLM gateway settings have been removed. Use the LLM API Base URL and API Key fields above to configure your LLM provider directly.</p>
                         </div>
                     </div>
+
+                    <!-- Sandbox Orchestrator -->
+                    <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="use-external-sandbox" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
+                                <label for="use-external-sandbox" class="text-sm text-gray-300">Use external Sandbox Orchestrator</label>
+                            </div>
+                            <span id="sandbox-status-dot" class="flex items-center gap-1.5 text-xs text-gray-500">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> In-process
+                            </span>
+                        </div>
+                        <div id="sandbox-fields" class="space-y-3 hidden">
+                            <p class="text-xs text-gray-500">For Kubernetes or multi-node Docker sandbox management.</p>
+                            <input type="text" id="sandbox_orchestrator_url" name="sandbox_orchestrator_url" placeholder="http://orchestrator:8084" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">API Key</label>
+                                <input type="password" id="sandbox_orchestrator_api_key" name="sandbox_orchestrator_api_key" placeholder="Orchestrator API key" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -255,11 +276,12 @@
     const infraSettings = document.getElementById('infra-settings');
     const customDb = document.getElementById('custom-db');
     const dbFields = document.getElementById('db-fields');
-    const embeddingProvider = document.getElementById('embedding-provider-select');
     const embeddingModelWrapper = document.getElementById('embedding-model-wrapper');
     const testStatus = document.getElementById('test-status');
     const fallbackContainer = document.getElementById('fallback-profiles');
     const fallbackTemplate = document.getElementById('fallback-profile-template');
+    const topologyToggle = document.getElementById('toggle-topology');
+    const topologySettings = document.getElementById('topology-settings');
 
     function defaultModelFor(provider) {
         if (provider === 'litellm') return 'gpt-4o-mini';
@@ -309,10 +331,6 @@
         if (sourceOllamaHost !== undefined) {
             document.querySelector(`[name="${targetPrefix}_ollama_host"]`).value = sourceOllamaHost;
         }
-    }
-
-    function toggleEmbeddingFields() {
-        embeddingModelWrapper.classList.toggle('hidden', embeddingProvider.value === 'api');
     }
 
     function updateFallbackLabels() {
@@ -451,10 +469,31 @@
     customDb.addEventListener('change', () => {
         dbFields.classList.toggle('hidden', !customDb.checked);
     });
-    embeddingProvider.addEventListener('change', toggleEmbeddingFields);
     document.getElementById('add-fallback-profile').addEventListener('click', () => addFallbackRow());
     document.getElementById('test-default-profile').addEventListener('click', testDefaultProfile);
-    toggleEmbeddingFields();
+
+    // Service topology toggles
+    topologyToggle.addEventListener('click', () => {
+        topologySettings.classList.toggle('hidden');
+        topologyToggle.textContent = topologySettings.classList.contains('hidden') ? 'Show Options' : 'Hide Options';
+    });
+
+    function setupServiceToggle(checkboxId, fieldsId, statusDotId, defaultLabel) {
+        const checkbox = document.getElementById(checkboxId);
+        const fields = document.getElementById(fieldsId);
+        const statusDot = document.getElementById(statusDotId);
+        checkbox.addEventListener('change', () => {
+            fields.classList.toggle('hidden', !checkbox.checked);
+            if (statusDot) {
+                statusDot.innerHTML = checkbox.checked
+                    ? '<span class="w-2 h-2 rounded-full bg-blue-400 inline-block"></span> External'
+                    : '<span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> ' + defaultLabel;
+            }
+        });
+    }
+
+    setupServiceToggle('use-external-llm', 'llm-gateway-fields', 'llm-status-dot', 'In-process');
+    setupServiceToggle('use-external-sandbox', 'sandbox-fields', 'sandbox-status-dot', 'In-process');
 
     setupForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -497,10 +536,11 @@
                 provider_profiles: providerProfiles,
                 provider_routing: providerRouting,
                 provider_fallbacks: { default: fallbackData.chain },
-                embedding_provider: setupForm.embedding_provider.value || null,
-                embedding_model: embeddingProvider.value === 'local' ? (setupForm.embedding_model.value.trim() || null) : null,
+                embedding_model: setupForm.embedding_model.value.trim() || null,
                 use_custom_db: customDb.checked,
                 database_url: setupForm.database_url.value.trim() || null,
+                sandbox_orchestrator_url: document.getElementById('use-external-sandbox').checked ? document.getElementById('sandbox_orchestrator_url').value.trim() || null : null,
+                sandbox_orchestrator_api_key: document.getElementById('use-external-sandbox').checked ? document.getElementById('sandbox_orchestrator_api_key').value.trim() || null : null,
             };
 
             const setupResponse = await fetch('/api/auth/setup', {

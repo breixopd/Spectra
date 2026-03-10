@@ -43,18 +43,36 @@ def _make_settings_stub() -> SimpleNamespace:
         LOG_LEVEL="INFO",
         PLUGIN_SAFE_MODE=True,
         CONNECT_BACK_HOST="spectra-app",
-        TOOL_CONTAINER_NAME="spectra-tools",
         REQUIRE_APPROVAL=False,
         FULLY_AUTOMATED=True,
         NOTIFICATION_WEBHOOK="",
         LLM_TIER1_MODEL="ollama/qwen2.5:3b",
         LLM_TIER2_MODEL="",
         LLM_TIER3_MODEL="",
-        EMBEDDING_PROVIDER="local",
         EMBEDDING_MODEL="all-MiniLM-L6-v2",
         PLATFORM_DOMAIN="",
         PLATFORM_BASE_URL="",
         PLATFORM_EXPOSED=False,
+        SANDBOX_MAX_CONTAINERS=10,
+        SANDBOX_MEMORY_LIMIT="2g",
+        SANDBOX_CPU_SHARES=512,
+        SANDBOX_MAX_LIFETIME=7200,
+        SANDBOX_RESOURCE_TIERS='{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}',
+        SANDBOX_NETWORK_ISOLATION=True,
+        SANDBOX_IDLE_TIMEOUT=600,
+        SANDBOX_HEARTBEAT_INTERVAL=30,
+        SANDBOX_PER_USER_LIMIT=3,
+        SANDBOX_DEFAULT_PRIORITY=5,
+        SANDBOX_OOM_ESCALATION_ENABLED=True,
+        SANDBOX_WARM_POOL_ENABLED=False,
+        SANDBOX_WARM_POOL_SIZE=2,
+        SANDBOX_AUTO_BUILD_IMAGE=False,
+        SANDBOX_IMAGE_SCAN_ENABLED=False,
+        SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL=False,
+        SANDBOX_ORCHESTRATOR_URL=None,
+        SANDBOX_ORCHESTRATOR_TIMEOUT=30,
+        S3_ENDPOINT_URL="",
+        S3_REGION="us-east-1",
         save_runtime_settings=MagicMock(),
     )
 
@@ -206,3 +224,125 @@ def test_llm_test_request_normalizes_legacy_api_provider_to_litellm():
     payload = ui.LLMTestRequest(provider="api", model="gpt-4o-mini")
 
     assert payload.provider == "litellm"
+
+
+@pytest.mark.asyncio
+async def test_get_settings_includes_sandbox_fields(test_app):
+    settings_stub = _make_settings_stub()
+
+    with (
+        patch.object(ui, "settings", settings_stub),
+        patch("app.services.ai.router.PROVIDER_PRESETS", {}),
+    ):
+        transport = ASGITransport(app=test_app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.get("/api/settings")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["sandbox_max_containers"] == 10
+    assert data["sandbox_memory_limit"] == "2g"
+    assert data["sandbox_cpu_shares"] == 512
+    assert data["sandbox_max_lifetime"] == 7200
+    assert "sandbox_available" in data
+
+
+@pytest.mark.asyncio
+async def test_update_settings_saves_sandbox_fields(test_app):
+    settings_stub = _make_settings_stub()
+    mock_upsert = AsyncMock()
+    mock_hydrate = AsyncMock()
+
+    with (
+        patch.object(ui, "settings", settings_stub),
+        patch.object(ui, "upsert_system_config_values", mock_upsert),
+        patch.object(ui, "hydrate_runtime_settings_from_db", mock_hydrate),
+    ):
+        transport = ASGITransport(app=test_app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.post(
+                "/api/settings",
+                json={
+                    "sandbox_max_containers": 15,
+                    "sandbox_memory_limit": "4g",
+                    "sandbox_cpu_shares": 1024,
+                    "sandbox_max_lifetime": 3600,
+                },
+            )
+
+    assert response.status_code == 200
+    assert mock_upsert.called
+    call_args = mock_upsert.call_args[0][1]
+    assert "SANDBOX_MAX_CONTAINERS" in call_args
+    assert call_args["SANDBOX_MAX_CONTAINERS"] == ("15", False)
+    assert call_args["SANDBOX_MEMORY_LIMIT"] == ("4g", False)
+    assert call_args["SANDBOX_CPU_SHARES"] == ("1024", False)
+    assert call_args["SANDBOX_MAX_LIFETIME"] == ("3600", False)
+
+
+@pytest.mark.asyncio
+async def test_get_settings_returns_new_sandbox_fields(test_app):
+    """GET /api/settings returns all 12 new sandbox fields."""
+    settings_stub = _make_settings_stub()
+    with patch.object(ui, "settings", settings_stub):
+        transport = ASGITransport(app=test_app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            resp = await client.get("/api/settings")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["sandbox_network_isolation"] is True
+    assert data["sandbox_idle_timeout"] == 600
+    assert data["sandbox_heartbeat_interval"] == 30
+    assert data["sandbox_per_user_limit"] == 3
+    assert data["sandbox_default_priority"] == 5
+    assert data["sandbox_oom_escalation_enabled"] is True
+    assert data["sandbox_warm_pool_enabled"] is False
+    assert data["sandbox_warm_pool_size"] == 2
+    assert data["sandbox_auto_build_image"] is False
+    assert data["sandbox_image_scan_enabled"] is False
+    assert data["sandbox_image_scan_block_critical"] is False
+    assert "sandbox_resource_tiers" in data
+
+
+@pytest.mark.asyncio
+async def test_update_new_sandbox_settings_persists(test_app):
+    """POST /api/settings with new sandbox fields persists to DB."""
+    settings_stub = _make_settings_stub()
+    mock_upsert = AsyncMock()
+    mock_hydrate = AsyncMock()
+
+    with (
+        patch.object(ui, "settings", settings_stub),
+        patch.object(ui, "upsert_system_config_values", mock_upsert),
+        patch.object(ui, "hydrate_runtime_settings_from_db", mock_hydrate),
+    ):
+        transport = ASGITransport(app=test_app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.post(
+                "/api/settings",
+                json={
+                    "sandbox_network_isolation": False,
+                    "sandbox_idle_timeout": 300,
+                    "sandbox_warm_pool_enabled": True,
+                    "sandbox_warm_pool_size": 5,
+                    "sandbox_per_user_limit": 10,
+                    "sandbox_default_priority": 2,
+                    "sandbox_oom_escalation_enabled": False,
+                    "sandbox_auto_build_image": True,
+                    "sandbox_image_scan_enabled": True,
+                    "sandbox_image_scan_block_critical": True,
+                },
+            )
+
+    assert response.status_code == 200
+    persisted = mock_upsert.await_args.args[1]
+    assert persisted["SANDBOX_NETWORK_ISOLATION"] == ("false", False)
+    assert persisted["SANDBOX_IDLE_TIMEOUT"] == ("300", False)
+    assert persisted["SANDBOX_WARM_POOL_ENABLED"] == ("true", False)
+    assert persisted["SANDBOX_WARM_POOL_SIZE"] == ("5", False)
+    assert persisted["SANDBOX_PER_USER_LIMIT"] == ("10", False)
+    assert persisted["SANDBOX_DEFAULT_PRIORITY"] == ("2", False)
+    assert persisted["SANDBOX_OOM_ESCALATION_ENABLED"] == ("false", False)
+    assert persisted["SANDBOX_AUTO_BUILD_IMAGE"] == ("true", False)
+    assert persisted["SANDBOX_IMAGE_SCAN_ENABLED"] == ("true", False)
+    assert persisted["SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL"] == ("true", False)

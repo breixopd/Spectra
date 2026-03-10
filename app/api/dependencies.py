@@ -8,7 +8,7 @@ Follows the Dependency Inversion Principle (DIP) from SOLID.
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
@@ -119,6 +119,85 @@ async def get_exploit_repository(
         Configured ExploitRepository.
     """
     return ExploitRepository(session)
+
+
+# ---------------------------------------------------------------------------
+# Plan enforcement helpers
+# ---------------------------------------------------------------------------
+
+
+def _is_admin_user(user: User) -> bool:
+    """Return True if the user is an admin or superuser."""
+    return user.is_superuser or user.role == "admin"
+
+
+async def _get_user_plan(user: User, session: AsyncSession):
+    """Fetch the Plan for a user, or None."""
+    if not user.plan_id:
+        return None
+    from app.models.plan import Plan
+
+    result = await session.execute(select(Plan).where(Plan.id == user.plan_id))
+    return result.scalar_one_or_none()
+
+
+async def check_mission_limit(user: User, session: AsyncSession) -> None:
+    """Raise 429 if user has hit their plan's concurrent mission limit."""
+    if _is_admin_user(user):
+        return
+    plan = await _get_user_plan(user, session)
+    if not plan or not plan.max_concurrent_missions:
+        return
+    from app.models.mission import Mission
+
+    active_count = (
+        await session.execute(
+            select(func.count(Mission.id)).where(
+                Mission.user_id == str(user.id),
+                Mission.status.in_(["created", "running", "paused"]),
+            )
+        )
+    ).scalar() or 0
+    if active_count >= plan.max_concurrent_missions:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Plan limit reached: max {plan.max_concurrent_missions} concurrent missions",
+        )
+
+
+async def check_target_limit(user: User, session: AsyncSession) -> None:
+    """Raise 429 if user has hit their plan's target limit."""
+    if _is_admin_user(user):
+        return
+    plan = await _get_user_plan(user, session)
+    if not plan or not plan.max_targets:
+        return
+    from app.models.target import Target
+
+    count = (
+        await session.execute(
+            select(func.count(Target.id)).where(Target.user_id == str(user.id))
+        )
+    ).scalar() or 0
+    if count >= plan.max_targets:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Plan limit reached: max {plan.max_targets} targets",
+        )
+
+
+async def check_feature_allowed(user: User, session: AsyncSession, feature: str) -> None:
+    """Raise 403 if a feature is disabled in the user's plan."""
+    if _is_admin_user(user):
+        return
+    plan = await _get_user_plan(user, session)
+    if not plan or not plan.features:
+        return
+    if not plan.features.get(feature, True):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Feature '{feature}' not available on your plan",
+        )
 
 
 async def validate_websocket_token(token: str | None) -> User | None:

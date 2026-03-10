@@ -69,7 +69,7 @@
     "format": "text",
     "regex_patterns": [
       {
-        "pattern": "╔══════════╣\\s+(?P<section>.+)",
+        "pattern": "\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2563\\s+(?P<section>.+)",
         "type": "info"
       },
       {
@@ -97,9 +97,27 @@
     "color": "yellow"
   },
   "examples": [
-    {"description": "Run all checks", "args": {"flags": "-a"}},
-    {"description": "Quick scan without network checks", "args": {"flags": "-s -n"}},
-    {"description": "Run specific check (SUID)", "args": {"flags": "-o suid"}}
+    {
+      "description": "Run all checks",
+      "args": {
+        "flags": "-a"
+      }
+    },
+    {
+      "description": "Quick scan without network checks",
+      "args": {
+        "flags": "-s -n"
+      }
+    },
+    {
+      "description": "Run specific check (SUID)",
+      "args": {
+        "flags": "-o suid"
+      }
+    }
   ],
-  "signature": null
+  "signature": null,
+  "resources": {
+    "tier": "light"
+  }
 }

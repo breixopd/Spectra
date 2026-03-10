@@ -50,6 +50,9 @@ class Finding(Base):
 
     __tablename__ = "findings"
 
+    user_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     target_id: Mapped[str] = mapped_column(
         ForeignKey("targets.id", ondelete="CASCADE"),
         nullable=False,

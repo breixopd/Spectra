@@ -334,20 +334,19 @@ Immediate attention is required for critical and high severity findings.
     async def _save_report(
         self, mission_id: str, report: ReportOutput, input_data: ReporterInput
     ) -> str:
-        """Save report to disk in multiple formats."""
+        """Save report to storage in multiple formats."""
         import json
         from datetime import datetime
-        from pathlib import Path
 
-        # Create report directory
-        report_dir = Path("data/missions") / mission_id
-        report_dir.mkdir(parents=True, exist_ok=True)
+        from app.core.config import settings
+        from app.services.storage import get_storage_service
 
+        storage = get_storage_service()
+        bucket = settings.S3_BUCKET_MISSIONS
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         base_name = f"report_{timestamp}"
 
         # Save JSON format
-        json_path = report_dir / f"{base_name}.json"
         report_data = {
             "mission_id": mission_id,
             "target": report.target,
@@ -370,23 +369,20 @@ Immediate attention is required for critical and high severity findings.
             "findings": input_data.findings,
         }
 
-        with open(json_path, "w") as f:
-            json.dump(report_data, f, indent=2, default=str)
+        json_bytes = json.dumps(report_data, indent=2, default=str).encode()
+        await storage.upload(bucket, f"{mission_id}/reports/{base_name}.json", json_bytes)
 
         # Save Markdown format
-        md_path = report_dir / f"{base_name}.md"
         md_content = self._generate_markdown_report(report, input_data)
-        with open(md_path, "w") as f:
-            f.write(md_content)
+        md_key = f"{mission_id}/reports/{base_name}.md"
+        await storage.upload(bucket, md_key, md_content.encode())
 
         # Save HTML format
-        html_path = report_dir / f"{base_name}.html"
         html_content = self._generate_html_report(report, input_data)
-        with open(html_path, "w") as f:
-            f.write(html_content)
+        await storage.upload(bucket, f"{mission_id}/reports/{base_name}.html", html_content.encode())
 
-        logger.info("Reports saved to %s", report_dir)
-        return str(md_path)
+        logger.info("Reports saved to storage: %s/%s/reports/", bucket, mission_id)
+        return md_key
 
     def _generate_markdown_report(
         self, report: ReportOutput, input_data: ReporterInput

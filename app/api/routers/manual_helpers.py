@@ -4,6 +4,8 @@ Provides checklists, payloads, GTFOBins reference, CVSS calculator,
 and report template endpoints.
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Any
 

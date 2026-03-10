@@ -2,15 +2,22 @@
 
 Endpoints for listing, uploading, and downloading wordlists
 used by tools like gobuster, ffuf, hydra, etc.
+
+System wordlists live in the shared ``wordlists/`` directory.
+User wordlists live in ``wordlists/users/<user_id>/``.
 """
+
+from __future__ import annotations
 
 import logging
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import check_feature_allowed, get_current_active_user
+from app.core.database import get_async_session
 from app.models.user import User
 
 logger = logging.getLogger("spectra.api.wordlists")
@@ -18,6 +25,13 @@ logger = logging.getLogger("spectra.api.wordlists")
 router = APIRouter(prefix="/wordlists", tags=["Wordlists"])
 
 WORDLISTS_DIR = Path("wordlists")
+
+
+def _user_wordlists_dir(user: User) -> Path:
+    """Return the per-user wordlist directory."""
+    d = WORDLISTS_DIR / "users" / str(user.id)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 PRESET_WORDLISTS = {
     "common-web-paths": {
@@ -55,10 +69,11 @@ PRESET_WORDLISTS = {
 async def list_wordlists(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
-    """List available wordlists (local + downloadable presets)."""
+    """List available wordlists (system + user-owned + downloadable presets)."""
     WORDLISTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    local: list[dict[str, Any]] = []
+    # System wordlists (top-level files in wordlists/)
+    system: list[dict[str, Any]] = []
     for f in sorted(WORDLISTS_DIR.iterdir()):
         if f.is_file() and not f.name.startswith("."):
             lines = 0
@@ -67,12 +82,33 @@ async def list_wordlists(
                     lines = sum(1 for _ in fh)
             except Exception as e:
                 logger.debug("Failed to count wordlist lines: %s", e)
-            local.append({
+            system.append({
                 "name": f.stem.replace("-", " ").replace("_", " ").title(),
                 "filename": f.name,
                 "size_bytes": f.stat().st_size,
                 "lines": lines,
                 "path": str(f),
+                "scope": "system",
+            })
+
+    # Per-user wordlists
+    user_dir = _user_wordlists_dir(_current_user)
+    user_local: list[dict[str, Any]] = []
+    for f in sorted(user_dir.iterdir()):
+        if f.is_file() and not f.name.startswith("."):
+            lines = 0
+            try:
+                with f.open("r", errors="ignore") as fh:
+                    lines = sum(1 for _ in fh)
+            except Exception as e:
+                logger.debug("Failed to count wordlist lines: %s", e)
+            user_local.append({
+                "name": f.stem.replace("-", " ").replace("_", " ").title(),
+                "filename": f.name,
+                "size_bytes": f.stat().st_size,
+                "lines": lines,
+                "path": str(f),
+                "scope": "user",
             })
 
     presets = []
@@ -80,15 +116,18 @@ async def list_wordlists(
         downloaded = (WORDLISTS_DIR / f"{key}.txt").exists()
         presets.append({**preset, "id": key, "downloaded": downloaded})
 
-    return {"local": local, "presets": presets}
+    return {"local": system + user_local, "system": system, "user": user_local, "presets": presets}
 
 
 @router.post("/upload")
 async def upload_wordlist(
     file: UploadFile,
     _current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
     """Upload a custom wordlist file."""
+    await check_feature_allowed(_current_user, session, "custom_wordlists")
+
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
 
@@ -96,8 +135,8 @@ async def upload_wordlist(
     if not safe_name:
         raise HTTPException(status_code=400, detail="Invalid filename")
 
-    WORDLISTS_DIR.mkdir(parents=True, exist_ok=True)
-    dest = WORDLISTS_DIR / safe_name
+    user_dir = _user_wordlists_dir(_current_user)
+    dest = user_dir / safe_name
 
     content = await file.read()
     if len(content) > 50 * 1024 * 1024:
@@ -139,11 +178,22 @@ async def delete_wordlist(
     filename: str,
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, str]:
-    """Delete a wordlist file."""
+    """Delete a wordlist file (user scope only; admins can delete system wordlists)."""
     safe_name = "".join(c for c in filename if c.isalnum() or c in "-_.")
-    path = WORDLISTS_DIR / safe_name
-    if not path.exists() or not path.is_file():
-        raise HTTPException(status_code=404, detail="Wordlist not found")
 
-    path.unlink()
-    return {"status": "deleted", "filename": safe_name}
+    # Try user wordlist first
+    user_dir = _user_wordlists_dir(_current_user)
+    user_path = user_dir / safe_name
+    if user_path.exists() and user_path.is_file():
+        user_path.unlink()
+        return {"status": "deleted", "filename": safe_name}
+
+    # System wordlist — admin only
+    sys_path = WORDLISTS_DIR / safe_name
+    if sys_path.exists() and sys_path.is_file():
+        if not _current_user.is_superuser:
+            raise HTTPException(status_code=403, detail="Only admins can delete system wordlists")
+        sys_path.unlink()
+        return {"status": "deleted", "filename": safe_name}
+
+    raise HTTPException(status_code=404, detail="Wordlist not found")

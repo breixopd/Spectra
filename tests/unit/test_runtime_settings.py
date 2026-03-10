@@ -97,7 +97,6 @@ def test_apply_runtime_settings_sets_resolved_fields():
         "AI_PROVIDER": "ollama",
         "OLLAMA_HOST": "http://ollama:11434",
         "OLLAMA_MODEL": "qwen2.5:7b",
-        "EMBEDDING_PROVIDER": "api",
         "EMBEDDING_MODEL": "text-embedding-3-small",
     }
     runtime_ai_config = normalize_runtime_ai_config(rows)
@@ -111,7 +110,6 @@ def test_apply_runtime_settings_sets_resolved_fields():
     assert mock_settings.AI_PROVIDER == "litellm"
     assert mock_settings.AI_PROVIDER_ROUTING == {"default": "default"}
     assert mock_settings.OLLAMA_MODEL == "qwen2.5:7b"
-    assert mock_settings.EMBEDDING_PROVIDER == "api"
     assert mock_settings.EMBEDDING_MODEL == "text-embedding-3-small"
 
 
@@ -165,3 +163,67 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
             pass
 
     assert order[:2] == ["hydrate", "embedding-init"]
+
+
+def test_sandbox_settings_in_general_runtime_field_map():
+    """Sandbox keys are present in GENERAL_RUNTIME_FIELD_MAP with correct types."""
+    from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
+
+    assert "SANDBOX_MAX_CONTAINERS" in GENERAL_RUNTIME_FIELD_MAP
+    assert "SANDBOX_MEMORY_LIMIT" in GENERAL_RUNTIME_FIELD_MAP
+    assert "SANDBOX_CPU_SHARES" in GENERAL_RUNTIME_FIELD_MAP
+    assert "SANDBOX_MAX_LIFETIME" in GENERAL_RUNTIME_FIELD_MAP
+    assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_MAX_CONTAINERS"][1] == "int"
+    assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_MEMORY_LIMIT"][1] == "str"
+    assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_CPU_SHARES"][1] == "int"
+    assert GENERAL_RUNTIME_FIELD_MAP["SANDBOX_MAX_LIFETIME"][1] == "int"
+
+
+class TestGeneralRuntimeFieldMapIncludes:
+    """GENERAL_RUNTIME_FIELD_MAP includes all sandbox entries."""
+
+    def test_field_map_has_original_sandbox_keys(self):
+        from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
+        assert "SANDBOX_MAX_CONTAINERS" in GENERAL_RUNTIME_FIELD_MAP
+        assert "SANDBOX_MEMORY_LIMIT" in GENERAL_RUNTIME_FIELD_MAP
+        assert "SANDBOX_CPU_SHARES" in GENERAL_RUNTIME_FIELD_MAP
+        assert "SANDBOX_MAX_LIFETIME" in GENERAL_RUNTIME_FIELD_MAP
+
+    def test_field_map_has_new_sandbox_keys(self):
+        from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
+        new_keys = [
+            "SANDBOX_RESOURCE_TIERS",
+            "SANDBOX_NETWORK_ISOLATION",
+            "SANDBOX_IDLE_TIMEOUT",
+            "SANDBOX_HEARTBEAT_INTERVAL",
+            "SANDBOX_PER_USER_LIMIT",
+            "SANDBOX_DEFAULT_PRIORITY",
+            "SANDBOX_OOM_ESCALATION_ENABLED",
+            "SANDBOX_WARM_POOL_ENABLED",
+            "SANDBOX_WARM_POOL_SIZE",
+            "SANDBOX_AUTO_BUILD_IMAGE",
+            "SANDBOX_IMAGE_SCAN_ENABLED",
+            "SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL",
+        ]
+        for key in new_keys:
+            assert key in GENERAL_RUNTIME_FIELD_MAP, f"Missing key: {key}"
+
+    def test_field_map_types_correct(self):
+        from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
+        type_checks = {
+            "SANDBOX_NETWORK_ISOLATION": "bool",
+            "SANDBOX_OOM_ESCALATION_ENABLED": "bool",
+            "SANDBOX_WARM_POOL_ENABLED": "bool",
+            "SANDBOX_AUTO_BUILD_IMAGE": "bool",
+            "SANDBOX_IMAGE_SCAN_ENABLED": "bool",
+            "SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL": "bool",
+            "SANDBOX_IDLE_TIMEOUT": "int",
+            "SANDBOX_HEARTBEAT_INTERVAL": "int",
+            "SANDBOX_PER_USER_LIMIT": "int",
+            "SANDBOX_DEFAULT_PRIORITY": "int",
+            "SANDBOX_WARM_POOL_SIZE": "int",
+            "SANDBOX_RESOURCE_TIERS": "str",
+        }
+        for key, expected_type in type_checks.items():
+            _, actual_type = GENERAL_RUNTIME_FIELD_MAP[key]
+            assert actual_type == expected_type, f"{key}: expected {expected_type}, got {actual_type}"

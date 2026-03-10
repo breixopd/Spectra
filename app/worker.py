@@ -172,7 +172,7 @@ async def execute_tool_job(
     # Track job stats in cache
     await _track_tool_stats(tool_id, success, duration)
 
-    return ToolExecutionResult(
+    result = ToolExecutionResult(
         tool_id=tool_id,
         target=target,
         success=success,
@@ -183,6 +183,12 @@ async def execute_tool_job(
         output_file=output_file,
         parsed_findings=parsed_findings,
     ).model_dump()
+
+    # Flag OOM kills so the app side can trigger tier escalation
+    if returncode == 137:
+        result["oom"] = True
+
+    return result
 
 
 # =============================================================================
@@ -917,16 +923,56 @@ _WORKER_FUNCTIONS = [
 ]
 
 
+async def heartbeat_loop(queue_name: str, interval: int = 30) -> None:
+    """Periodically update the sandbox's last_heartbeat in the DB."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import update
+
+    from app.core.database import async_session_maker
+    from app.models.infrastructure import Sandbox
+
+    logger.info("Starting heartbeat loop (interval=%ds, queue=%s)", interval, queue_name)
+    while True:
+        try:
+            async with async_session_maker() as session:
+                await session.execute(
+                    update(Sandbox)
+                    .where(Sandbox.queue_name == queue_name, Sandbox.status == "running")
+                    .values(last_heartbeat=datetime.now(UTC))
+                )
+                await session.commit()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.debug("Heartbeat update failed: %s", e)
+        await asyncio.sleep(interval)
+
+
 if __name__ == "__main__":
     import asyncio
+    import os
 
     from app.core.queue import worker_loop
 
     async def _main() -> None:
         await startup()
+        queue_name = os.environ.get("QUEUE_NAME", "default")
+        heartbeat_interval = int(os.environ.get("SANDBOX_HEARTBEAT_INTERVAL", "30"))
+        heartbeat_task = None
         try:
-            await worker_loop(_WORKER_FUNCTIONS)
+            if queue_name != "default":
+                heartbeat_task = asyncio.create_task(
+                    heartbeat_loop(queue_name, interval=heartbeat_interval)
+                )
+            await worker_loop(_WORKER_FUNCTIONS, queue_name=queue_name)
         finally:
+            if heartbeat_task:
+                heartbeat_task.cancel()
+                try:
+                    await heartbeat_task
+                except asyncio.CancelledError:
+                    pass
             await shutdown()
 
     asyncio.run(_main())

@@ -72,7 +72,7 @@ class TestConcurrentMissionIsolation:
     """Tests for concurrent mission isolation constants."""
 
     def test_max_concurrent_missions_default(self):
-        assert MAX_CONCURRENT_MISSIONS == 3
+        assert MAX_CONCURRENT_MISSIONS == 10
 
     @pytest.mark.asyncio
     async def test_mission_manager_has_global_semaphore(self):

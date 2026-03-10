@@ -4,8 +4,9 @@ Mission model for storing mission execution history.
 Tracks security assessment missions, their status, logs, and results.
 """
 
+from __future__ import annotations
 
-from sqlalchemy import JSON, String, Text
+from sqlalchemy import JSON, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.enums import MissionStatus
@@ -26,6 +27,9 @@ class Mission(Base):
 
     __tablename__ = "missions"
 
+    user_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     target: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     directive: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(

@@ -18,14 +18,8 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements-app.txt .
-COPY requirements-embeddings-local.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements-app.txt
-
-ARG ENABLE_LOCAL_EMBEDDINGS=false
-RUN if [ "$ENABLE_LOCAL_EMBEDDINGS" = "true" ]; then \
-        pip install --no-cache-dir -r requirements-embeddings-local.txt; \
-    fi
 
 # --- Runtime Stage ---
 FROM python:3.11-slim AS runtime
@@ -53,13 +47,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Trivy for container image scanning (optional feature)
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
+
+RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --shell /bin/bash spectra && \
     groupadd -f docker && usermod -aG docker spectra && \
     chown -R spectra:spectra /app
-USER spectra
+# NOTE: We do NOT set USER here — start.sh runs as root to fix Docker socket GID,
+# then drops to spectra via gosu before launching the app.
 
 COPY --chown=spectra:spectra scripts/start.sh /app/scripts/start.sh
 RUN chmod +x /app/scripts/start.sh

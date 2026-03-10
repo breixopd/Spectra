@@ -150,17 +150,11 @@
 
                                 <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-3">
                                     <p class="text-sm font-medium text-white">Embedding Configuration</p>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
                                         <div>
-                                            <label class="block text-xs font-medium text-slate-400 mb-1">Embedding Provider</label>
-                                            <select name="embedding_provider" id="embedding_provider" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                                                <option value="local">Local</option>
-                                                <option value="api">Use the default LiteLLM cloud profile</option>
-                                            </select>
-                                        </div>
-                                        <div id="embedding-model-group">
                                             <label class="block text-xs font-medium text-slate-400 mb-1">Embedding Model</label>
                                             <input type="text" name="embedding_model" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                            <p class="text-xs text-slate-500 mt-1">Uses your configured LLM API key for embeddings.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -198,11 +192,6 @@
                         <div class="border border-white/10 rounded-lg p-4">
                             <h3 class="text-sm font-medium text-white mb-3">Advanced Configuration</h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-400 mb-1">Tool Container Name</label>
-                                    <input type="text" name="tool_container_name" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                                    <p class="text-xs text-slate-500 mt-1">Optional: execute tools in a separate container.</p>
-                                </div>
                                 <div>
                                     <label class="block text-xs font-medium text-slate-400 mb-1">Notification Webhook</label>
                                     <input type="text" name="notification_webhook" placeholder="https://ntfy.sh/your-topic or Slack/Discord webhook URL" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
@@ -301,6 +290,202 @@
                     <p class="text-xs text-amber-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Ensure HTTPS is configured via reverse proxy (e.g. Caddy, nginx) before exposing to the internet.</p>
                 </div>
             </form>
+        </div>
+
+        <!-- Sandbox Pool Settings -->
+        <div class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-box text-emerald-400"></i>
+                Sandbox Pool
+            </h2>
+            <p class="text-sm text-slate-400 mb-4">Configure per-mission ephemeral containers. Each mission spins up its own isolated sandbox running security tools.</p>
+
+            <div id="sandbox-status" class="mb-4 p-3 rounded-lg border border-white/10 bg-slate-900/50">
+                <div class="flex items-center gap-2">
+                    <span id="sandbox-status-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                    <span id="sandbox-status-text" class="text-xs text-slate-400">Checking sandbox pool...</span>
+                </div>
+            </div>
+
+            <form id="sandbox-form" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Max Concurrent Containers</label>
+                        <input type="number" name="sandbox_max_containers" min="1" max="50" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Maximum missions running simultaneously (1-50)</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Memory Limit</label>
+                        <select name="sandbox_memory_limit" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <option value="512m">512 MB</option>
+                            <option value="1g">1 GB</option>
+                            <option value="2g">2 GB (default)</option>
+                            <option value="4g">4 GB</option>
+                            <option value="8g">8 GB</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">RAM allocated per sandbox container</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">CPU Shares</label>
+                        <select name="sandbox_cpu_shares" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <option value="256">Low (256)</option>
+                            <option value="512">Normal (512, default)</option>
+                            <option value="1024">High (1024)</option>
+                            <option value="2048">Very High (2048)</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">Relative CPU weight per container</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Max Lifetime (seconds)</label>
+                        <input type="number" name="sandbox_max_lifetime" min="300" max="86400" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                        <p class="text-xs text-slate-500 mt-1">Auto-destroy container after this duration (300-86400s)</p>
+                    </div>
+                </div>
+
+                <!-- Separator -->
+                <div class="border-t border-white/10 pt-4 mt-4">
+                    <h3 class="text-sm font-medium text-slate-300 mb-3">Security & Isolation</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">Network Isolation</label>
+                                <p class="text-xs text-slate-500">Each sandbox gets its own Docker network</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="sandbox_network_isolation" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">OOM Auto-Escalation</label>
+                                <p class="text-xs text-slate-500">Auto-upgrade tier on out-of-memory (exit 137)</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="sandbox_oom_escalation_enabled" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Resource Tiers (JSON)</label>
+                        <textarea name="sandbox_resource_tiers" rows="4" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-xs font-mono focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder='{"light": {"memory": "512m", "cpu_shares": 256}, ...}'></textarea>
+                        <p class="text-xs text-slate-500 mt-1">Tier definitions mapping: light, medium, heavy, extreme</p>
+                    </div>
+                </div>
+
+                <!-- Performance -->
+                <div class="border-t border-white/10 pt-4 mt-4">
+                    <h3 class="text-sm font-medium text-slate-300 mb-3">Performance</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">Warm Pool</label>
+                                <p class="text-xs text-slate-500">Pre-warm idle containers for faster startup</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="sandbox_warm_pool_enabled" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Warm Pool Size</label>
+                            <input type="number" name="sandbox_warm_pool_size" min="0" max="10" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">Number of pre-warmed containers (0-10)</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Idle Timeout (seconds)</label>
+                            <input type="number" name="sandbox_idle_timeout" min="60" max="7200" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">Destroy sandbox if no heartbeat for this long (60-7200s)</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Heartbeat Interval (seconds)</label>
+                            <input type="number" name="sandbox_heartbeat_interval" min="5" max="300" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">Worker heartbeat frequency (5-300s)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Image Management -->
+                <div class="border-t border-white/10 pt-4 mt-4">
+                    <h3 class="text-sm font-medium text-slate-300 mb-3">Image Management</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">Auto-Build Image</label>
+                                <p class="text-xs text-slate-500">Rebuild on plugin changes</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="sandbox_auto_build_image" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">Image Scanning</label>
+                                <p class="text-xs text-slate-500">Scan with Trivy after build</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="sandbox_image_scan_enabled" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <label class="text-xs font-medium text-slate-400">Block Critical CVEs</label>
+                                <p class="text-xs text-slate-500">Prevent deploy if critical vulns</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="sandbox_image_scan_block_critical" class="sr-only peer">
+                                <div class="w-9 h-5 bg-slate-700 peer-focus:ring-2 peer-focus:ring-violet-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Limits & Priority -->
+                <div class="border-t border-white/10 pt-4 mt-4">
+                    <h3 class="text-sm font-medium text-slate-300 mb-3">Limits & Priority</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Per-User Sandbox Limit</label>
+                            <input type="number" name="sandbox_per_user_limit" min="0" max="20" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">Max concurrent sandboxes per user (0 = unlimited)</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Default Job Priority</label>
+                            <input type="number" name="sandbox_default_priority" min="1" max="10" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-1">1 = highest, 10 = lowest priority</p>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- External Services Summary -->
+        <div class="glass-panel rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-diagram-project text-sky-400"></i>
+                External Services
+            </h2>
+            <p class="text-sm text-slate-400 mb-4">At-a-glance view of service modes and health. Full configuration is available in the Admin Panel.</p>
+
+            <div id="svc-topology-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
+                <div class="col-span-full text-center py-6 text-slate-500 text-sm">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading service topology...
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-white/5">
+                <a href="/admin#services" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">
+                    <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Manage in Admin Panel
+                </a>
+                <span id="svc-topology-refresh-info" class="text-xs text-slate-600"></span>
+            </div>
         </div>
 
         <!-- Data Management Section -->
@@ -757,5 +942,57 @@
 
     loadVpnConfigs();
     loadVpnStatus();
+
+    // === External Services Topology ===
+    let svcTopologyTimer = null;
+
+    async function loadServiceTopology() {
+        const container = document.getElementById('svc-topology-cards');
+        const refreshInfo = document.getElementById('svc-topology-refresh-info');
+        try {
+            const res = await fetch('/system/services/topology');
+            if (!res.ok) throw new Error('Failed to fetch topology');
+            const topology = await res.json();
+            const entries = Object.entries(topology);
+
+            if (!entries.length) {
+                container.innerHTML = '<div class="col-span-full text-center py-6 text-slate-500 text-sm">No services configured</div>';
+                return;
+            }
+
+            const modeColors = { local: 'text-emerald-400', remote: 'text-sky-400' };
+            const modeBg = { local: 'bg-emerald-500/10 border-emerald-500/20', remote: 'bg-sky-500/10 border-sky-500/20' };
+            const modeIcon = { local: 'fa-house', remote: 'fa-cloud' };
+
+            container.innerHTML = entries.map(([name, info]) => {
+                const mode = info.mode || 'local';
+                const url = info.url || '';
+                const healthy = info.healthy;
+                const dotClass = healthy === true ? 'bg-emerald-500' : healthy === false ? 'bg-rose-500' : 'bg-slate-500';
+                const displayName = name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                return `<div class="rounded-xl border ${modeBg[mode] || 'bg-slate-900/50 border-white/10'} p-3">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full ${dotClass}"></span>
+                            <span class="text-sm font-medium text-white">${displayName}</span>
+                        </div>
+                        <span class="text-[10px] uppercase tracking-wider font-semibold ${modeColors[mode] || 'text-slate-400'}">
+                            <i class="fa-solid ${modeIcon[mode] || 'fa-circle-question'} mr-0.5"></i> ${mode}
+                        </span>
+                    </div>
+                    ${url ? `<p class="text-[11px] text-slate-500 font-mono truncate" title="${url}">${url}</p>` : '<p class="text-[11px] text-slate-600">In-process</p>'}
+                </div>`;
+            }).join('');
+
+            const localCount = entries.filter(([, i]) => i.mode === 'local').length;
+            const remoteCount = entries.length - localCount;
+            refreshInfo.textContent = `${localCount} local, ${remoteCount} remote \u00b7 last checked ${new Date().toLocaleTimeString()}`;
+        } catch {
+            container.innerHTML = '<div class="col-span-full text-center py-4 text-rose-400 text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i> Failed to load service topology</div>';
+        }
+    }
+
+    loadServiceTopology();
+    svcTopologyTimer = setInterval(loadServiceTopology, 60000);
 </script>
 {% endblock %}

@@ -90,7 +90,7 @@ class RAGService:
 
     @property
     def is_functional(self) -> bool:
-        """Return False when using SHA256 fallback embeddings (non-functional RAG)."""
+        """Return True if embedding API is available."""
         return self.embeddings.is_functional
 
     async def initialize(self) -> bool:
@@ -130,10 +130,10 @@ class RAGService:
             # Initialize embedding service (async load)
             await self.embeddings._load_model()
             if self.is_functional:
-                model_info = "local" if self.embeddings._use_local else self.embeddings._litellm_model
+                model_info = self.embeddings._litellm_model
                 logger.info("RAG initialized: pgvector + %s embeddings", model_info)
             else:
-                logger.warning("RAG table ready but embeddings using SHA256 fallback — semantic search disabled")
+                logger.warning("RAG table ready but embedding API not configured  semantic search disabled")
             return True
         except Exception as e:
             logger.error("Failed to initialize Postgres RAG table: %s", e)
@@ -146,8 +146,8 @@ class RAGService:
 
         if not self.is_functional:
             logger.warning(
-                "RAG is using SHA256 fallback — semantic search will not work. "
-                "Install sentence-transformers for proper embeddings. Storing document %s without usable embeddings.",
+                "Embedding API not configured  semantic search will not work. "
+                "Storing document %s without usable embeddings.",
                 doc.id,
             )
 
@@ -208,7 +208,7 @@ class RAGService:
             await self.initialize()
 
         if not self.is_functional:
-            logger.warning("RAG search skipped: embeddings are non-functional (SHA256 fallback active)")
+            logger.warning("RAG search skipped: embedding API not configured")
             return []
 
         top_k = top_k or self.config.default_top_k

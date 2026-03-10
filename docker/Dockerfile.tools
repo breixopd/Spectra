@@ -1,5 +1,5 @@
 # Spectra Tools — Kali-based Worker Container
-# Runs security tools via the ARQ job queue.
+# Runs security tools via the PostgreSQL-backed job queue.
 # Tools auto-install from plugin configs on first boot.
 
 FROM kalilinux/kali-rolling:latest

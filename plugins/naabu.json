@@ -81,9 +81,29 @@
     "color": "green"
   },
   "examples": [
-    {"description": "Scan top ports on target", "args": {"target": "192.168.1.1"}},
-    {"description": "Full port scan", "args": {"target": "192.168.1.1", "ports": "1-65535"}},
-    {"description": "Scan CIDR for common web ports", "args": {"target": "10.0.0.0/24", "ports": "80,443,8080,8443"}}
+    {
+      "description": "Scan top ports on target",
+      "args": {
+        "target": "192.168.1.1"
+      }
+    },
+    {
+      "description": "Full port scan",
+      "args": {
+        "target": "192.168.1.1",
+        "ports": "1-65535"
+      }
+    },
+    {
+      "description": "Scan CIDR for common web ports",
+      "args": {
+        "target": "10.0.0.0/24",
+        "ports": "80,443,8080,8443"
+      }
+    }
   ],
-  "signature": "b60d4ba6a638b5c1a309fc2a0c8a6534cd264902b6ab3e4e2155841d60c5b37c7482a5e4d40c095227c3eeb5e1e59a4d0c33492c8801b96f3238d3b81031b007"
+  "signature": "b60d4ba6a638b5c1a309fc2a0c8a6534cd264902b6ab3e4e2155841d60c5b37c7482a5e4d40c095227c3eeb5e1e59a4d0c33492c8801b96f3238d3b81031b007",
+  "resources": {
+    "tier": "light"
+  }
 }

@@ -21,13 +21,16 @@ class PostgresJobQueue:
     """
 
     def __init__(self, queue_name: str = "default"):
-        if not re.match(r'^[a-z_]+$', queue_name):
-            raise ValueError(f"Invalid queue_name: {queue_name!r}. Must match [a-z_]+.")
+        if not re.match(r'^[a-z][a-z0-9_]{0,62}$', queue_name):
+            raise ValueError(f"Invalid queue_name: {queue_name!r}. Must match [a-z][a-z0-9_]{{0,62}}.")
         self.queue_name = queue_name
 
-    async def enqueue_job(self, function_name: str, *args, _timeout: int | None = None, **kwargs) -> str:
+    async def enqueue_job(self, function_name: str, *args, _timeout: int | None = None, _priority: int | None = None, **kwargs) -> str:
         """Enqueue a new job and return its ID."""
+        from app.core.config import get_settings
+
         job_id = str(uuid.uuid4())
+        _settings = get_settings()
 
         async with async_session_maker() as session:
             job = JobQueue(
@@ -37,7 +40,8 @@ class PostgresJobQueue:
                 args=list(args),
                 kwargs=kwargs,
                 status="queued",
-                timeout=_timeout
+                timeout=_timeout,
+                priority=_priority if _priority is not None else _settings.SANDBOX_DEFAULT_PRIORITY,
             )
             session.add(job)
             await session.commit()
@@ -135,6 +139,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                 query = (
                     select(JobQueue)
                     .where(JobQueue.status == "queued", JobQueue.queue_name == queue_name)
+                    .order_by(JobQueue.priority.asc(), JobQueue.enqueued_at.asc())
                     .with_for_update(skip_locked=True)
                     .limit(1)
                 )

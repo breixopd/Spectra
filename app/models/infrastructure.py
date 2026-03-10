@@ -71,6 +71,28 @@ class JobQueue(InfrastructureBase):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     timeout: Mapped[int | None] = mapped_column(Integer, nullable=True) # in seconds
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=5, index=True)
+
+
+class Sandbox(InfrastructureBase):
+    """Tracks per-mission ephemeral sandbox containers."""
+    __tablename__ = "sandboxes"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    mission_id: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    container_id: Mapped[str] = mapped_column(String, nullable=False)
+    container_name: Mapped[str] = mapped_column(String, nullable=False)
+    queue_name: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="creating")
+    image: Mapped[str] = mapped_column(String, nullable=False)
+    resource_tier: Mapped[str | None] = mapped_column(String, nullable=True, default="medium")
+    network_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    escalated: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    destroyed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SystemStatus(InfrastructureBase):

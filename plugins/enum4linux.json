@@ -95,9 +95,30 @@
     "color": "indigo"
   },
   "examples": [
-    {"description": "Full enumeration with all checks", "args": {"target": "192.168.1.10", "flags": "-A"}},
-    {"description": "Authenticated enumeration", "args": {"target": "192.168.1.10", "flags": "-u admin -p Password1 -A"}},
-    {"description": "Enumerate shares only", "args": {"target": "192.168.1.10", "flags": "-S"}}
+    {
+      "description": "Full enumeration with all checks",
+      "args": {
+        "target": "192.168.1.10",
+        "flags": "-A"
+      }
+    },
+    {
+      "description": "Authenticated enumeration",
+      "args": {
+        "target": "192.168.1.10",
+        "flags": "-u admin -p Password1 -A"
+      }
+    },
+    {
+      "description": "Enumerate shares only",
+      "args": {
+        "target": "192.168.1.10",
+        "flags": "-S"
+      }
+    }
   ],
-  "signature": null
+  "signature": null,
+  "resources": {
+    "tier": "medium"
+  }
 }

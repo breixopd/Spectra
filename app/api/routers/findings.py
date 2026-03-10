@@ -5,6 +5,8 @@ Endpoints for managing vulnerability findings.
 Provides CRUD operations, status updates, and export endpoints.
 """
 
+from __future__ import annotations
+
 import csv
 import json
 from io import StringIO
@@ -20,13 +22,21 @@ from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
-from app.models.finding import FindingStatus, Severity
+from app.models.finding import Finding, FindingStatus, Severity
 from app.models.user import User
 from app.repositories.finding import FindingRepository
 
 MAX_BULK_SIZE = 100
 
 router = APIRouter(prefix="/findings", tags=["Findings"])
+
+
+def _check_finding_owner(finding_obj: Finding, user: User) -> None:
+    """Raise 403 if user doesn't own the finding (superusers bypass)."""
+    if user.is_superuser:
+        return
+    if finding_obj.user_id and finding_obj.user_id != str(user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to access this finding")
 
 
 # --- Schemas ---
@@ -90,6 +100,7 @@ async def create_finding(
         cve_id=finding_in.cve_id,
         tool_source=finding_in.tool_source,
         evidence=finding_in.evidence,
+        user_id=str(_current_user.id),
     )
     await db.commit()
 
@@ -130,6 +141,9 @@ async def list_findings(
 
     # Build filter kwargs
     filters = {}
+    # User isolation
+    if not __current_user.is_superuser:
+        filters["user_id"] = str(__current_user.id)
     if severity:
         filters["severity"] = severity
     if status_filter:
@@ -173,9 +187,11 @@ def _sanitize_csv_value(val: object) -> str:
     return s
 
 
-async def _fetch_all_findings(db: AsyncSession) -> list:
+async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> list:
     repo = FindingRepository(db)
-    return await repo.get_all(skip=0, limit=10_000)
+    if user and not user.is_superuser:
+        return list(await repo.find_many_by(user_id=str(user.id), skip=0, limit=10_000))
+    return list(await repo.get_all(skip=0, limit=10_000))
 
 
 @router.get("/export/csv")
@@ -186,7 +202,7 @@ async def export_findings_csv(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Export all findings as CSV."""
-    findings = await _fetch_all_findings(db)
+    findings = await _fetch_all_findings(db, _current_user)
 
     buf = StringIO()
     writer = csv.writer(buf)
@@ -232,7 +248,7 @@ async def export_findings_json(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Export all findings as JSON."""
-    findings = await _fetch_all_findings(db)
+    findings = await _fetch_all_findings(db, _current_user)
 
     data = [
         {
@@ -284,6 +300,7 @@ async def get_finding(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Finding not found",
         )
+    _check_finding_owner(finding, _current_user)
 
     return FindingDetailResponse(
         id=finding.id,
@@ -309,6 +326,14 @@ async def update_finding(
 ):
     """Update a finding."""
     repo = FindingRepository(db)
+
+    existing = await repo.get_by_id(finding_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Finding not found",
+        )
+    _check_finding_owner(existing, _current_user)
 
     # Filter out None values
     update_data = finding_in.model_dump(exclude_unset=True)
@@ -345,13 +370,16 @@ async def delete_finding(
 ):
     """Delete a finding."""
     repo = FindingRepository(db)
-    deleted = await repo.delete(finding_id)
 
-    if not deleted:
+    existing = await repo.get_by_id(finding_id)
+    if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Finding not found",
         )
+    _check_finding_owner(existing, _current_user)
+
+    await repo.delete(finding_id)
     await db.commit()
 
 
@@ -364,13 +392,15 @@ async def verify_finding(
     """Mark a finding as verified."""
     repo = FindingRepository(db)
 
-    updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
-
-    if not updated:
+    existing = await repo.get_by_id(finding_id)
+    if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Finding not found",
         )
+    _check_finding_owner(existing, _current_user)
+
+    updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
     await db.commit()
 
     return FindingDetailResponse(
@@ -397,13 +427,16 @@ async def mark_false_positive(
     """Mark a finding as a false positive."""
     repo = FindingRepository(db)
 
-    updated = await repo.update(finding_id, status=FindingStatus.FALSE_POSITIVE)
-
-    if not updated:
+    existing = await repo.get_by_id(finding_id)
+    if not existing:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Finding not found",
         )
+    _check_finding_owner(existing, _current_user)
+
+    updated = await repo.update(finding_id, status=FindingStatus.FALSE_POSITIVE)
+    await db.commit()
 
     return FindingDetailResponse(
         id=updated.id,
@@ -449,9 +482,11 @@ async def confirm_finding(
 ):
     """Mark a finding as confirmed/verified."""
     repo = FindingRepository(db)
-    updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
-    if not updated:
+    existing = await repo.get_by_id(finding_id)
+    if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+    _check_finding_owner(existing, _current_user)
+    updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
     await db.commit()
     return _finding_to_response(updated)
 
@@ -464,9 +499,11 @@ async def dismiss_finding(
 ):
     """Dismiss a finding."""
     repo = FindingRepository(db)
-    updated = await repo.update(finding_id, status=FindingStatus.DISMISSED)
-    if not updated:
+    existing = await repo.get_by_id(finding_id)
+    if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+    _check_finding_owner(existing, _current_user)
+    updated = await repo.update(finding_id, status=FindingStatus.DISMISSED)
     await db.commit()
     return _finding_to_response(updated)
 
@@ -479,9 +516,11 @@ async def retest_finding(
 ):
     """Request retest for a finding."""
     repo = FindingRepository(db)
-    updated = await repo.update(finding_id, status=FindingStatus.RETEST_PENDING)
-    if not updated:
+    existing = await repo.get_by_id(finding_id)
+    if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+    _check_finding_owner(existing, _current_user)
+    updated = await repo.update(finding_id, status=FindingStatus.RETEST_PENDING)
     await db.commit()
     return _finding_to_response(updated)
 
@@ -523,6 +562,10 @@ async def bulk_update_findings(
 
     updated_count = 0
     for fid in request.finding_ids:
+        existing = await repo.get_by_id(fid)
+        if not existing:
+            continue
+        _check_finding_owner(existing, _current_user)
         result = await repo.update(fid, **update_data)
         if result:
             updated_count += 1

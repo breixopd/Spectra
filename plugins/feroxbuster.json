@@ -76,9 +76,29 @@
     "color": "orange"
   },
   "examples": [
-    {"description": "Recursive directory scan", "args": {"target": "http://192.168.1.10"}},
-    {"description": "Scan with extensions and depth limit", "args": {"target": "http://192.168.1.10", "flags": "--extensions php,html --depth 3"}},
-    {"description": "Stealth scan with rate limit", "args": {"target": "http://192.168.1.10", "flags": "--rate-limit 20 --threads 5"}}
+    {
+      "description": "Recursive directory scan",
+      "args": {
+        "target": "http://192.168.1.10"
+      }
+    },
+    {
+      "description": "Scan with extensions and depth limit",
+      "args": {
+        "target": "http://192.168.1.10",
+        "flags": "--extensions php,html --depth 3"
+      }
+    },
+    {
+      "description": "Stealth scan with rate limit",
+      "args": {
+        "target": "http://192.168.1.10",
+        "flags": "--rate-limit 20 --threads 5"
+      }
+    }
   ],
-  "signature": "20bd01d6b9730fb9f66e9123448d474cf71936f5028a581def779dea711b5e8e29aa5adb2ada7920d772052122344b5e9845f2129026b5301ae56c78c8636906"
+  "signature": "20bd01d6b9730fb9f66e9123448d474cf71936f5028a581def779dea711b5e8e29aa5adb2ada7920d772052122344b5e9845f2129026b5301ae56c78c8636906",
+  "resources": {
+    "tier": "medium"
+  }
 }

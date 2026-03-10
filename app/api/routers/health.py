@@ -83,18 +83,18 @@ async def health_check(
         except Exception as e:
             health_status["components"]["cache"] = f"error: {type(e).__name__}"
 
-        # Check tool container connectivity
+        # Check sandbox pool
         try:
-            import docker
-            from app.core.config import settings
-            client = docker.from_env()
-            container = client.containers.get(settings.TOOL_CONTAINER_NAME)
-            container_status = container.status
-            health_status["components"]["tools_container"] = "running" if container_status == "running" else f"status: {container_status}"
-        except ImportError:
-            health_status["components"]["tools_container"] = "unknown: docker SDK not available"
-        except Exception:
-            health_status["components"]["tools_container"] = "unreachable"
+            from app.services.tools.sandbox import get_sandbox_pool
+            pool = get_sandbox_pool()
+            if pool and pool.available:
+                health_status["components"]["sandbox_pool"] = "healthy"
+            elif pool:
+                health_status["components"]["sandbox_pool"] = "unavailable: Docker not accessible"
+            else:
+                health_status["components"]["sandbox_pool"] = "not initialized"
+        except Exception as e:
+            health_status["components"]["sandbox_pool"] = f"error: {type(e).__name__}"
 
     if not is_healthy:
         health_status["status"] = "degraded"

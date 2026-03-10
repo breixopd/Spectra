@@ -8,7 +8,9 @@ for replay and sharing. Triggered when record_demo=True on mission start.
 import json
 import logging
 import time
-from pathlib import Path
+
+from app.core.config import settings
+from app.services.storage import get_storage_service
 
 logger = logging.getLogger("spectra.mission.demo_recorder")
 
@@ -62,14 +64,10 @@ class DemoRecorder:
         color = colors.get(severity.lower(), "37")
         self.add_output(f"  \\033[{color}m[{severity.upper()}]\\033[0m {title}\\r\\n")
 
-    def save(self) -> str | None:
-        """Save recording as asciinema v2 cast file."""
+    async def save(self) -> str | None:
+        """Save recording as asciinema v2 cast file to storage."""
         if not self.events:
             return None
-
-        output_dir = Path("data/missions") / self.mission_id
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_path = output_dir / "demo.cast"
 
         header = {
             "version": 2,
@@ -80,14 +78,19 @@ class DemoRecorder:
             "env": {"TERM": "xterm-256color", "SHELL": "/bin/bash"},
         }
 
-        try:
-            with open(output_path, "w") as f:
-                f.write(json.dumps(header) + "\n")
-                for ts, event_type, data in self.events:
-                    f.write(json.dumps([round(ts, 6), event_type, data]) + "\n")
+        lines = [json.dumps(header)]
+        for ts, event_type, data in self.events:
+            lines.append(json.dumps([round(ts, 6), event_type, data]))
+        content = "\n".join(lines) + "\n"
 
-            logger.info("Demo recording saved: %s", output_path)
-            return str(output_path)
+        try:
+            storage = get_storage_service()
+            key = f"{self.mission_id}/demo.cast"
+            location = await storage.upload(
+                settings.S3_BUCKET_MISSIONS, key, content.encode()
+            )
+            logger.info("Demo recording saved: %s", location)
+            return location
         except Exception as e:
             logger.error("Failed to save demo: %s", e)
             return None

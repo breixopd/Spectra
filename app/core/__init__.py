@@ -21,11 +21,6 @@ from app.core.cache import CacheService, get_cache, set_cache
 from app.core.circuit_breaker import CircuitBreaker, circuit_breakers
 from app.core.config import get_settings, settings
 from app.core.constants import (
-    ARQ_HEALTH_CHECK_INTERVAL,
-    ARQ_JOB_TIMEOUT,
-    ARQ_KEEP_RESULT,
-    ARQ_MAX_JOBS,
-    ARQ_QUEUE_NAME,
     DEBRIEF_MAX_FINDINGS,
     DEBRIEF_MAX_LOGS,
     DEBRIEF_SUMMARY_LOG_CHARS,
@@ -80,11 +75,6 @@ __all__ = [
     "settings",
     "get_settings",
     # Constants
-    "ARQ_QUEUE_NAME",
-    "ARQ_MAX_JOBS",
-    "ARQ_JOB_TIMEOUT",
-    "ARQ_KEEP_RESULT",
-    "ARQ_HEALTH_CHECK_INTERVAL",
     "MAX_HOSTS_DEFAULT",
     "MAX_EXPLOIT_ITERATIONS",
     "EXPLOIT_OUTPUT_LOG_CHARS",
