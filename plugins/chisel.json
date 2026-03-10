@@ -77,9 +77,30 @@
     "color": "violet"
   },
   "examples": [
-    {"description": "Start chisel server", "args": {"mode": "server", "flags": "--reverse --port 8080"}},
-    {"description": "Connect as client with reverse tunnel", "args": {"mode": "client", "flags": "attacker:8080 R:9050:socks"}},
-    {"description": "Forward port through tunnel", "args": {"mode": "client", "flags": "attacker:8080 3389:target:3389"}}
+    {
+      "description": "Start chisel server",
+      "args": {
+        "mode": "server",
+        "flags": "--reverse --port 8080"
+      }
+    },
+    {
+      "description": "Connect as client with reverse tunnel",
+      "args": {
+        "mode": "client",
+        "flags": "attacker:8080 R:9050:socks"
+      }
+    },
+    {
+      "description": "Forward port through tunnel",
+      "args": {
+        "mode": "client",
+        "flags": "attacker:8080 3389:target:3389"
+      }
+    }
   ],
-  "signature": null
+  "signature": null,
+  "resources": {
+    "tier": "light"
+  }
 }

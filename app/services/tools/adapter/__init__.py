@@ -79,11 +79,6 @@ class CommandToolAdapter(ToolAdapter):
 
         wrapped_cmd = f"timeout -k 5s {timeout}s {raw_cmd}"
 
-        container = runner.settings.TOOL_CONTAINER_NAME
-        if container:
-            escaped = wrapped_cmd.replace("'", "'\\''")
-            wrapped_cmd = f"docker exec {container} bash -c '{escaped}'"
-
         return wrapped_cmd
 
     def calculate_timeout(self, request: ToolExecutionRequest) -> int:

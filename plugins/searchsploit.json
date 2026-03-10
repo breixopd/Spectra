@@ -79,13 +79,33 @@
     ]
   },
   "examples": [
-    {"description": "Search for Apache exploits", "args": {"target": "apache 2.4"}},
-    {"description": "Search with exact version match", "args": {"target": "OpenSSH 7.2", "flags": "--exact"}},
-    {"description": "Search for WordPress exploits", "args": {"target": "wordpress", "flags": "--www"}}
+    {
+      "description": "Search for Apache exploits",
+      "args": {
+        "target": "apache 2.4"
+      }
+    },
+    {
+      "description": "Search with exact version match",
+      "args": {
+        "target": "OpenSSH 7.2",
+        "flags": "--exact"
+      }
+    },
+    {
+      "description": "Search for WordPress exploits",
+      "args": {
+        "target": "wordpress",
+        "flags": "--www"
+      }
+    }
   ],
   "ui": {
     "icon": "bug",
     "color": "red"
   },
-  "signature": "30abea781949bcf3a050fcdb7b66cb4a516f0b9b64f2d8264533ee96ff56c78196fb15528013b43962433ef24c238544c31d467b1bd8cee637436cdd5625fd08"
+  "signature": "30abea781949bcf3a050fcdb7b66cb4a516f0b9b64f2d8264533ee96ff56c78196fb15528013b43962433ef24c238544c31d467b1bd8cee637436cdd5625fd08",
+  "resources": {
+    "tier": "light"
+  }
 }

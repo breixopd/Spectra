@@ -1,4 +1,0 @@
-# Local embedding model support (sentence-transformers + PyTorch)
-# Only needed when EMBEDDING_PROVIDER=local
-# Adds ~2-3GB to the Docker image
-sentence-transformers>=2.2.0

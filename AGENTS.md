@@ -15,6 +15,8 @@ Spectra is a Multi-Agent System (MAS) for automated security assessments built w
 | **tools** | `spectra-tools` (Kali Linux worker) | Security tool execution               | Optional for basic UI testing      |
 | **ai**    | `spectra-ai` (Ollama)               | Local LLM inference (needs GPU)       | No - use `AI_PROVIDER=api` instead |
 
+> **Remote service gateways:** LLM and Sandbox services can each be routed to remote servers via `LLM_GATEWAY_URL` and `SANDBOX_ORCHESTRATOR_URL`. When set, in-process implementations are replaced by HTTP gateway clients transparently. See `app/services/gateway/service_registry.py`.
+
 ### Starting the application
 
 Docker must be running first (`sudo dockerd` if not already started). In Docker-in-Docker environments, you may need to fix cgroups first — see Key gotchas below.
@@ -46,6 +48,8 @@ docker run -d --name spectra-app --network spectra-network -p 5000:5000 \
 ```
 
 The app is accessible at `http://localhost:5000`. On first run it redirects to `/setup` for admin user creation.
+
+> **Multi-server deployment:** To route services to remote servers, set gateway URLs in `.env` before starting (`LLM_GATEWAY_URL`, `SANDBOX_ORCHESTRATOR_URL`), or configure them at runtime via the setup wizard or admin panel → Services tab.
 
 The Ollama AI service (`ai`) requires an NVIDIA GPU and is skipped in cloud agent environments. The tools worker (`tools`) is based on Kali Linux and is large; it's only needed for running actual security scans.
 

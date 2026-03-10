@@ -367,6 +367,25 @@ class CacheService:
             "hit_rate_percent": round(hit_rate, 2),
         }
 
+    async def purge_expired(self) -> int:
+        """Delete all expired cache entries. Returns the number of entries removed."""
+        try:
+            async with self._session_maker() as session:
+                now = _now()
+                stmt = delete(CacheEntry).where(
+                    CacheEntry.expires_at.isnot(None),
+                    CacheEntry.expires_at <= now,
+                )
+                result = await session.execute(stmt)
+                await session.commit()
+                count = result.rowcount
+                if count:
+                    logger.info("Purged %d expired cache entries", count)
+                return count
+        except Exception as e:
+            logger.warning("Cache purge_expired error: %s", e)
+            return 0
+
 
 # --- Tool-Specific Cache Functions ---
 

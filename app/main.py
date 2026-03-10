@@ -9,9 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy import select
 
 from app.api.routers import (
+    admin,
     auth,
     cve,
     exploits,
@@ -21,6 +21,7 @@ from app.api.routers import (
     missions,
     observability,
     pentest_sessions,
+    public,
     shell,
     system,
     targets,
@@ -31,11 +32,9 @@ from app.api.routers import (
 )
 from app.core.bridge import EventWebSocketBridge
 from app.core.config import settings
-from app.core.database import async_session_maker
 from app.core.lifespan import lifespan
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.websocket import manager
-from app.models.user import User
 from app.version import __version__
 
 # Initialize event bridge
@@ -134,7 +133,9 @@ app.include_router(pentest_sessions.router, prefix="/api", tags=["Pentest Sessio
 app.include_router(manual_helpers.router, prefix="/api", tags=["Manual Helpers"])
 app.include_router(shell.router, prefix="/api", tags=["Shell"])
 app.include_router(vpn.router, prefix="/api", tags=["VPN"])
+app.include_router(public.router, tags=["Public"])
 app.include_router(ui.router, tags=["UI"])
+app.include_router(admin.router, tags=["Admin"])
 
 
 # --- WebSocket Endpoint ---
@@ -196,18 +197,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
         await manager.disconnect(websocket)
 
 
-# --- Root Redirect ---
-@app.get("/", include_in_schema=False)
-async def root():
-    """Redirect to appropriate page based on setup status."""
-    from fastapi.responses import RedirectResponse
-
-    async with async_session_maker() as session:
-        is_setup = (
-            await session.execute(select(User.id).limit(1))
-        ).scalar_one_or_none() is not None
-
-    return RedirectResponse(url="/dashboard" if is_setup else "/setup")
+# --- Root route is handled by public.router (landing page) ---
 
 
 if __name__ == "__main__":

@@ -68,6 +68,12 @@ class ToolExecutionService:
     5. Execute tools via PostgreSQL job queue worker in the tools container
     """
 
+    @staticmethod
+    def _get_queue_name(mission_id: str) -> str:
+        """Get the queue name for a mission's sandbox worker."""
+        from app.services.tools.sandbox.models import SandboxInfo
+        return SandboxInfo.make_queue_name(mission_id)
+
     def __init__(self, llm_client: Any):
         """Initialize with LLM client for safety/consensus agents."""
         self.llm = llm_client
@@ -129,7 +135,8 @@ class ToolExecutionService:
         from app.core.queue import Job, PostgresJobQueue
 
         try:
-            queue = PostgresJobQueue()
+            queue_name = self._get_queue_name(mission.id) if hasattr(mission, 'id') and mission.id else "default"
+            queue = PostgresJobQueue(queue_name)
             job_id = await queue.enqueue_job(
                 "execute_script_job",
                 content=script_content,
@@ -319,6 +326,7 @@ class ToolExecutionService:
                     args=request.args,
                     timeout=request.timeout,
                     output_dir=str(output_dir),
+                    mission_id=mission.id,
                 )
 
             if result.success:
@@ -365,6 +373,7 @@ class ToolExecutionService:
         args: dict[str, Any] | None,
         timeout: int | None,
         output_dir: str,
+        mission_id: str = "",
     ) -> ToolExecutionResult:
         """Execute tool via PostgreSQL job queue worker and wait for result."""
         from app.core.optimizations import tool_cache
@@ -376,7 +385,9 @@ class ToolExecutionService:
             logger.info("Using cached result for %s against %s", tool_id, target)
             return cached
 
-        queue = PostgresJobQueue()
+        queue_name = self._get_queue_name(mission_id) if mission_id else "default"
+        queue = PostgresJobQueue(queue_name)
+        logger.debug("Routing job to queue '%s' (mission=%s)", queue_name, mission_id[:8] if mission_id else "none")
 
         try:
             # Enqueue the job
@@ -399,6 +410,23 @@ class ToolExecutionService:
                     tool_id, target, "Job returned no result"
                 )
 
+            # OOM escalation: recreate sandbox at next tier and retry
+            if isinstance(result_data, dict) and result_data.get("oom") and mission_id:
+                from app.services.tools.sandbox.escalation import attempt_oom_escalation
+                escalated, message = await attempt_oom_escalation(mission_id)
+                if escalated:
+                    logger.warning("OOM escalation triggered for mission %s: %s", mission_id[:8], message)
+                    return await self._execute_via_worker(
+                        tool_id=tool_id,
+                        target=target,
+                        args=args,
+                        timeout=timeout,
+                        output_dir=output_dir,
+                        mission_id=mission_id,
+                    )
+                else:
+                    logger.error("OOM escalation failed for mission %s: %s", mission_id[:8], message)
+
             # Convert dict back to ToolExecutionResult and cache
             result = ToolExecutionResult(**result_data)
             if result.success:
@@ -417,6 +445,7 @@ class ToolExecutionService:
         """Ensure a tool is installed via the worker."""
         from app.core.queue import Job, PostgresJobQueue
 
+        # Tool installs are global — always use the default queue
         queue = PostgresJobQueue()
 
         try:

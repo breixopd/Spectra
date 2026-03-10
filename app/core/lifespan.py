@@ -10,6 +10,7 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import Any
 
 from fastapi import FastAPI
 
@@ -23,6 +24,54 @@ from app.services.system.runtime_settings import hydrate_runtime_settings_from_d
 from app.services.tools.models import ToolStatus
 
 logger = logging.getLogger("spectra.lifespan")
+
+
+async def sandbox_watchdog_loop() -> None:
+    """Periodically check sandbox heartbeats and reap stale ones."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from app.models.infrastructure import Sandbox
+    from app.services.tools.sandbox import get_sandbox_pool
+
+    logger.info("Sandbox watchdog started (idle_timeout=%ds)", settings.SANDBOX_IDLE_TIMEOUT)
+    while True:
+        try:
+            await asyncio.sleep(60)
+            pool = get_sandbox_pool()
+            if not pool or not pool.available:
+                continue
+
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(Sandbox).where(Sandbox.status == "running")
+                )
+                sandboxes = list(result.scalars().all())
+
+            now = datetime.now(UTC)
+            for sb in sandboxes:
+                age = (now - sb.created_at).total_seconds()
+                if age < settings.SANDBOX_HEARTBEAT_INTERVAL * 2:
+                    continue
+
+                if sb.last_heartbeat:
+                    idle_seconds = (now - sb.last_heartbeat).total_seconds()
+                else:
+                    idle_seconds = age
+
+                if idle_seconds > settings.SANDBOX_IDLE_TIMEOUT:
+                    logger.warning(
+                        "Watchdog: reaping stale sandbox %s (mission=%s, idle=%.0fs)",
+                        sb.container_name, sb.mission_id[:8], idle_seconds,
+                    )
+                    await pool.destroy(sb.mission_id)
+
+        except asyncio.CancelledError:
+            logger.info("Sandbox watchdog stopped")
+            break
+        except Exception as e:
+            logger.error("Sandbox watchdog error: %s", e)
 
 
 async def set_system_status(status: str, message: str) -> None:
@@ -94,6 +143,137 @@ async def _mark_all_tools_ready() -> None:
         logger.warning("Failed to mark tools as ready: %s", e)
 
 
+async def seed_default_plans() -> None:
+    """Create default plans if none exist."""
+    try:
+        from sqlalchemy import func, select
+
+        from app.models.plan import Plan
+
+        async with async_session_maker() as session:
+            result = await session.execute(select(func.count(Plan.id)))
+            count = result.scalar() or 0
+            if count > 0:
+                return
+
+            default_plans = [
+                Plan(
+                    name="free",
+                    display_name="Free",
+                    description="Get started with basic manual security testing",
+                    is_default=True,
+                    sort_order=0,
+                    max_concurrent_missions=1,
+                    max_missions_per_month=5,
+                    max_targets=10,
+                    sandbox_max_containers=1,
+                    sandbox_resource_tier="small",
+                    max_storage_mb=100,
+                    max_api_requests_per_hour=50,
+                    max_api_requests_per_day=200,
+                    features={
+                        "autonomous_mode": False,
+                        "manual_mode": True,
+                        "report_export": ["json"],
+                        "custom_wordlists": False,
+                        "pipeline_builder": False,
+                        "cve_browser": True,
+                        "shell_access": False,
+                        "api_access": False,
+                        "vpn_support": False,
+                        "advanced_reporting": False,
+                    },
+                ),
+                Plan(
+                    name="starter",
+                    display_name="Starter",
+                    description="For individual security researchers and bug bounty hunters",
+                    is_default=False,
+                    sort_order=1,
+                    max_concurrent_missions=2,
+                    max_missions_per_month=25,
+                    max_targets=50,
+                    sandbox_max_containers=1,
+                    sandbox_resource_tier="medium",
+                    max_storage_mb=500,
+                    max_api_requests_per_hour=100,
+                    max_api_requests_per_day=1000,
+                    features={
+                        "autonomous_mode": True,
+                        "manual_mode": True,
+                        "report_export": ["json", "pdf", "html"],
+                        "custom_wordlists": True,
+                        "pipeline_builder": False,
+                        "cve_browser": True,
+                        "shell_access": True,
+                        "api_access": False,
+                        "vpn_support": False,
+                        "advanced_reporting": False,
+                    },
+                ),
+                Plan(
+                    name="professional",
+                    display_name="Professional",
+                    description="Full-featured assessments for professional pentesters and consultancies",
+                    is_default=False,
+                    sort_order=2,
+                    max_concurrent_missions=5,
+                    max_missions_per_month=None,
+                    max_targets=500,
+                    sandbox_max_containers=3,
+                    sandbox_resource_tier="large",
+                    max_storage_mb=5000,
+                    max_api_requests_per_hour=500,
+                    max_api_requests_per_day=5000,
+                    features={
+                        "autonomous_mode": True,
+                        "manual_mode": True,
+                        "report_export": ["json", "pdf", "html"],
+                        "custom_wordlists": True,
+                        "pipeline_builder": True,
+                        "cve_browser": True,
+                        "shell_access": True,
+                        "api_access": True,
+                        "vpn_support": True,
+                        "advanced_reporting": True,
+                    },
+                ),
+                Plan(
+                    name="enterprise",
+                    display_name="Enterprise",
+                    description="Unlimited access for security teams and large organizations",
+                    is_default=False,
+                    sort_order=3,
+                    max_concurrent_missions=999,
+                    max_missions_per_month=None,
+                    max_targets=None,
+                    sandbox_max_containers=10,
+                    sandbox_resource_tier="xlarge",
+                    max_storage_mb=50000,
+                    max_api_requests_per_hour=5000,
+                    max_api_requests_per_day=50000,
+                    features={
+                        "autonomous_mode": True,
+                        "manual_mode": True,
+                        "report_export": ["json", "pdf", "html"],
+                        "custom_wordlists": True,
+                        "pipeline_builder": True,
+                        "cve_browser": True,
+                        "shell_access": True,
+                        "api_access": True,
+                        "vpn_support": True,
+                        "advanced_reporting": True,
+                        "team_sharing": True,
+                    },
+                ),
+            ]
+            session.add_all(default_plans)
+            await session.commit()
+            logger.info("Created %d default plans", len(default_plans))
+    except Exception as e:
+        logger.warning("Failed to seed default plans: %s", e)
+
+
 async def run_startup_tasks() -> None:
     """Run background tasks on startup."""
     try:
@@ -146,6 +326,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # --- Startup ---
     try:
+        # Initialize storage service (S3 or local)
+        from app.services.storage import get_storage_service, close_storage_service
+        storage = get_storage_service()
+        logger.info("[OK] Storage service initialized (mode: %s)", "s3" if storage.is_s3 else "local")
         # Initialize cache service (PostgreSQL-backed)
         cache = CacheService()
         set_cache(cache)
@@ -163,6 +347,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         await hydrate_runtime_settings_from_db(persist_normalized=True, commit=True)
         logger.info("[OK] Runtime settings hydrated from DB")
+
+        # Seed default plans if none exist
+        await seed_default_plans()
+
+        # Initialize service registry
+        from app.services.gateway.service_registry import get_service_registry
+        registry_svc = get_service_registry()
+        logger.info("[OK] Service registry initialized")
 
         await set_system_status("initializing", "Loading AI models...")
 
@@ -207,6 +399,67 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         await set_system_status("initializing", "Installing tools...")
 
+        # Initialize sandbox pool
+        try:
+            from app.services.tools.sandbox import SandboxPool, set_sandbox_pool
+
+            sandbox_pool = SandboxPool()
+            set_sandbox_pool(sandbox_pool)
+            if sandbox_pool.available:
+                orphans = await sandbox_pool.cleanup_all()
+                if orphans:
+                    logger.info("[OK] Cleaned %d orphaned sandbox containers", orphans)
+                logger.info("[OK] Sandbox pool initialized")
+                asyncio.create_task(sandbox_watchdog_loop())
+                logger.info("[OK] Sandbox watchdog started")
+
+                # Initialize warm pool manager
+                if settings.SANDBOX_WARM_POOL_ENABLED:
+                    from app.services.tools.sandbox import WarmPoolManager, set_warm_pool_manager
+                    warm_manager = WarmPoolManager(sandbox_pool)
+                    set_warm_pool_manager(warm_manager)
+
+                    async def warm_pool_maintain_loop():
+                        while True:
+                            try:
+                                await asyncio.sleep(30)
+                                await warm_manager.maintain()
+                            except asyncio.CancelledError:
+                                break
+                            except Exception as e:
+                                logger.error("Warm pool maintain error: %s", e)
+
+                    asyncio.create_task(warm_pool_maintain_loop())
+                    asyncio.create_task(warm_manager.maintain())
+                    logger.info("[OK] Warm pool manager initialized (size=%d)", settings.SANDBOX_WARM_POOL_SIZE)
+
+                # Initialize golden image builder
+                if settings.SANDBOX_AUTO_BUILD_IMAGE:
+                    from app.services.tools.sandbox import GoldenImageBuilder, set_image_builder
+
+                    builder = GoldenImageBuilder()
+                    set_image_builder(builder)
+
+                    async def on_plugin_change(**kwargs: Any) -> None:
+                        """Trigger golden image rebuild when plugins change."""
+                        asyncio.create_task(builder.build())
+
+                    events.subscribe(EventType.PLUGIN_UPDATED, on_plugin_change)
+                    logger.info("[OK] Golden image builder initialized (auto-build on plugin changes)")
+            else:
+                logger.warning("[WARN] Sandbox pool unavailable — Docker not accessible")
+        except Exception as e:
+            logger.warning("Sandbox pool init failed: %s", e)
+
+        # Initialize server pool manager
+        try:
+            from app.services.scaling import get_pool_manager
+            pool_mgr = get_pool_manager()
+            await pool_mgr.start_health_loop()
+            logger.info("[OK] Server pool manager initialized")
+        except Exception as e:
+            logger.warning("Server pool manager init failed: %s", e)
+
         # Trigger background setup tasks (including tool installation)
         asyncio.create_task(run_startup_tasks())
 
@@ -237,7 +490,42 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield  # Application is running
 
     # --- Shutdown ---
+    # Close storage service
+    try:
+        from app.services.storage import close_storage_service
+        await close_storage_service()
+        logger.info("[OK] Storage service closed")
+    except Exception as e:
+        logger.warning("Storage service close error: %s", e)
     logger.info("[SHUTDOWN] Shutting down Spectra...")
+
+    # Stop server pool health loop
+    try:
+        from app.services.scaling import get_pool_manager
+        pool_mgr = get_pool_manager()
+        await pool_mgr.stop_health_loop()
+    except Exception as e:
+        logger.warning("Server pool shutdown error: %s", e)
+
+    # Clean up warm pool first
+    try:
+        from app.services.tools.sandbox import get_warm_pool_manager
+        wm = get_warm_pool_manager()
+        if wm:
+            await wm.cleanup()
+    except Exception as e:
+        logger.warning("Warm pool cleanup error: %s", e)
+
+    # Clean up sandbox containers (before cancelling tasks)
+    try:
+        from app.services.tools.sandbox import get_sandbox_pool
+
+        pool = get_sandbox_pool()
+        if pool and pool.available:
+            cleaned = await pool.cleanup_all()
+            logger.info("[OK] Cleaned up %d sandbox containers", cleaned)
+    except Exception as e:
+        logger.warning("Sandbox cleanup error: %s", e)
 
     try:
         # Cancel background tasks
@@ -254,6 +542,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 )
             except TimeoutError:
                 logger.warning("Timed out waiting for tasks to cancel")
+
+        # Close service registry (all gateway connections)
+        from app.services.gateway.service_registry import close_service_registry
+        await close_service_registry()
+        logger.info("[OK] Service registry closed")
 
         # Close LLM Client
         await close_global_llm_client()

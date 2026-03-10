@@ -2,7 +2,7 @@
 
 import json
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from pathlib import Path
 
 from app.services.mission.demo_recorder import DemoRecorder
@@ -101,66 +101,46 @@ class TestEventRecording:
 
 
 class TestSaveRecording:
-    def test_save_creates_cast_file(self, recorder, tmp_path):
+    @pytest.mark.asyncio
+    async def test_save_creates_cast_file(self, recorder):
         recorder.start()
         recorder.record_tool_output("test output")
         recorder.stop()
 
-        with patch("app.services.mission.demo_recorder.Path") as MockPath:
-            mock_dir = MagicMock()
-            MockPath.return_value.__truediv__ = MagicMock(return_value=mock_dir)
-            mock_dir.__truediv__ = MagicMock(return_value=tmp_path / "demo.cast")
-            mock_dir.mkdir = MagicMock()
+        mock_storage = MagicMock()
+        mock_storage.upload = AsyncMock(return_value="s3://spectra-missions/test-mission-001/demo.cast")
+        with patch("app.services.mission.demo_recorder.get_storage_service", return_value=mock_storage):
+            result = await recorder.save()
+            assert result is not None
+            mock_storage.upload.assert_called_once()
 
-            # Use real path for actual file writing
-            output_path = tmp_path / "demo.cast"
-            with patch("builtins.open", create=True) as mock_open:
-                mock_open.return_value.__enter__ = MagicMock()
-                mock_open.return_value.__exit__ = MagicMock(return_value=False)
-                mock_file = MagicMock()
-                mock_open.return_value.__enter__.return_value = mock_file
-
-                result = recorder.save()
-                # save() returns path or None
-                # We just verify it doesn't error
-
-    def test_save_empty_recording_returns_none(self):
+    @pytest.mark.asyncio
+    async def test_save_empty_recording_returns_none(self):
         rec = DemoRecorder("m1", "t1")
-        assert rec.save() is None
+        assert await rec.save() is None
 
-    def test_save_writes_asciinema_v2_format(self, recorder, tmp_path):
+    @pytest.mark.asyncio
+    async def test_save_writes_asciinema_v2_format(self, recorder):
         recorder.start()
         recorder.record_tool_output("hello")
         recorder.stop()
 
-        output_dir = tmp_path / "reports" / "missions" / recorder.mission_id
-        output_dir.mkdir(parents=True)
-        cast_path = output_dir / "demo.cast"
+        captured_data = {}
 
-        with patch("app.services.mission.demo_recorder.Path") as MockPath:
-            MockPath.return_value = output_dir.parent
-            # Let it write to real file
-            real_path = str(cast_path)
+        async def capture_upload(bucket, key, data):
+            captured_data["content"] = data.decode()
+            return f"s3://{bucket}/{key}"
 
-            # Simpler: directly write using internal logic
-            header = {
-                "version": 2,
-                "width": 120,
-                "height": 40,
-                "timestamp": int(recorder.start_time),
-                "title": f"Spectra Mission: {recorder.target}",
-                "env": {"TERM": "xterm-256color", "SHELL": "/bin/bash"},
-            }
-            with open(cast_path, "w") as f:
-                f.write(json.dumps(header) + "\n")
-                for ts, event_type, data in recorder.events:
-                    f.write(json.dumps([round(ts, 6), event_type, data]) + "\n")
+        mock_storage = MagicMock()
+        mock_storage.upload = AsyncMock(side_effect=capture_upload)
+        with patch("app.services.mission.demo_recorder.get_storage_service", return_value=mock_storage):
+            await recorder.save()
 
-            content = cast_path.read_text()
-            lines = content.strip().split("\n")
-            parsed_header = json.loads(lines[0])
-            assert parsed_header["version"] == 2
-            assert parsed_header["width"] == 120
+        content = captured_data["content"]
+        lines = content.strip().split("\n")
+        parsed_header = json.loads(lines[0])
+        assert parsed_header["version"] == 2
+        assert parsed_header["width"] == 120
 
     def test_event_count_property(self, recorder):
         assert recorder.event_count == 0

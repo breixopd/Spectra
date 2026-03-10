@@ -5,7 +5,7 @@
   "category": "enumeration",
   "description": "Kerberos brute-forcing tool for Active Directory. Supports user enumeration, brute-force, and password spraying.",
   "metadata": {
-    "ai_description": "Kerbrute performs Kerberos pre-authentication brute-forcing against Active Directory. It can enumerate valid usernames, brute-force passwords, or perform password spraying — all via Kerberos, which is faster and stealthier than SMB-based attacks. Use it when you find Kerberos (88) open on a domain controller.",
+    "ai_description": "Kerbrute performs Kerberos pre-authentication brute-forcing against Active Directory. It can enumerate valid usernames, brute-force passwords, or perform password spraying \u2014 all via Kerberos, which is faster and stealthier than SMB-based attacks. Use it when you find Kerberos (88) open on a domain controller.",
     "capabilities": [
       "brute_force",
       "credential_spray"
@@ -84,9 +84,36 @@
     "color": "purple"
   },
   "examples": [
-    {"description": "Enumerate valid AD usernames", "args": {"mode": "userenum", "dc": "dc01.corp.local", "domain": "corp.local", "flags": "--users users.txt"}},
-    {"description": "Password spray against domain", "args": {"mode": "passwordspray", "dc": "dc01.corp.local", "domain": "corp.local", "flags": "--users users.txt --password 'Summer2024!'"}},
-    {"description": "Brute-force a single user", "args": {"mode": "bruteuser", "dc": "dc01.corp.local", "domain": "corp.local", "flags": "--passwords passwords.txt --user admin"}}
+    {
+      "description": "Enumerate valid AD usernames",
+      "args": {
+        "mode": "userenum",
+        "dc": "dc01.corp.local",
+        "domain": "corp.local",
+        "flags": "--users users.txt"
+      }
+    },
+    {
+      "description": "Password spray against domain",
+      "args": {
+        "mode": "passwordspray",
+        "dc": "dc01.corp.local",
+        "domain": "corp.local",
+        "flags": "--users users.txt --password 'Summer2024!'"
+      }
+    },
+    {
+      "description": "Brute-force a single user",
+      "args": {
+        "mode": "bruteuser",
+        "dc": "dc01.corp.local",
+        "domain": "corp.local",
+        "flags": "--passwords passwords.txt --user admin"
+      }
+    }
   ],
-  "signature": null
+  "signature": null,
+  "resources": {
+    "tier": "medium"
+  }
 }

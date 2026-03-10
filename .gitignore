@@ -23,7 +23,4 @@ data/auth/
 !data/.gitkeep
 !data/*/.gitkeep
 
-# Legacy (pre-migration)
-reports/
-
 docs/plan/

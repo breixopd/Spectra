@@ -236,9 +236,51 @@
                 document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
                 window.location.href = '/login';
             }
+
+            if (response.status === 403 && !publicPaths.includes(window.location.pathname)) {
+                _spectraToast('Access denied — your plan may not include this feature', 'error');
+            }
+
+            if (response.status === 429 && !publicPaths.includes(window.location.pathname)) {
+                _spectraToast('Rate limit exceeded — please wait and try again', 'warning');
+            }
             
             return response;
         };
+
+        function _spectraToast(msg, type) {
+            let c = document.getElementById('spectra-toast-container');
+            if (!c) {
+                c = document.createElement('div');
+                c.id = 'spectra-toast-container';
+                c.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;';
+                document.body.appendChild(c);
+            }
+            const el = document.createElement('div');
+            const colors = {
+                error: 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;',
+                warning: 'background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#fbbf24;',
+            };
+            el.style.cssText = 'padding:0.75rem 1rem;border-radius:0.5rem;font-size:0.85rem;font-weight:500;backdrop-filter:blur(8px);' + (colors[type] || colors.error);
+            el.textContent = msg;
+            c.appendChild(el);
+            setTimeout(() => el.remove(), 5000);
+        }
+
+        // Show admin nav link for admin users
+        if (token && !publicPaths.includes(window.location.pathname)) {
+            fetch('/api/admin/stats').then(r => {
+                if (r.ok) {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const adminLink = document.getElementById('admin-nav-link');
+                        if (adminLink) adminLink.classList.remove('hidden');
+                    });
+                    // Handle case where DOM already loaded
+                    const adminLink = document.getElementById('admin-nav-link');
+                    if (adminLink) adminLink.classList.remove('hidden');
+                }
+            }).catch(() => {});
+        }
     </script>
 </head>
 <body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-y-auto md:overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
@@ -323,6 +365,19 @@
                     <a href="/settings" data-tooltip="Application configuration" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/settings' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-gear text-lg mr-3 {% if request.path == '/settings' %}text-slate-200{% else %}group-hover:text-slate-200{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Settings</span>
+                    </a>
+                    <a href="/admin" id="admin-nav-link" data-tooltip="User & plan management" data-tooltip-pos="right" class="hidden flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-user-shield text-lg mr-3 {% if request.path == '/admin' %}text-red-400{% else %}group-hover:text-red-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Admin</span>
+                    </a>
+                    <div class="border-t border-white/5 my-2"></div>
+                    <a href="/docs/api" data-tooltip="API reference & playground" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/docs/api' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-book-open text-lg mr-3 {% if request.path == '/docs/api' %}text-indigo-400{% else %}group-hover:text-indigo-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">API Docs</span>
+                    </a>
+                    <a href="/help" data-tooltip="Guides & help center" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/help' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-circle-question text-lg mr-3 {% if request.path == '/help' %}text-sky-400{% else %}group-hover:text-sky-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Help</span>
                     </a>
                 </nav>
             </div>

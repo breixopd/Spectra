@@ -25,10 +25,10 @@ class MissionLifecycleManager:
 
     async def start_mission(
         self, target: str, directive: str, requirements: str | None = None,
-        vpn_config: str | None = None,
+        vpn_config: str | None = None, user_id: str | None = None,
     ) -> Mission:
         """Create and start a new mission."""
-        mission = Mission(target, directive, requirements=requirements, vpn_config=vpn_config)
+        mission = Mission(target, directive, requirements=requirements, vpn_config=vpn_config, user_id=user_id)
         self.active_missions[mission.id] = mission
 
         # Persist to DB
@@ -44,6 +44,7 @@ class MissionLifecycleManager:
                         logs=[],
                         summary={},
                         vpn_config=vpn_config,
+                        user_id=user_id,
                     )
         except SQLAlchemyError as e:
             logger.error("Failed to persist mission start (DB error): %s", e)

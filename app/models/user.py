@@ -4,7 +4,7 @@ User model for authentication and authorization.
 Stores user credentials and role information for the Spectra platform.
 """
 
-from sqlalchemy import Boolean, String
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -42,6 +42,10 @@ class User(Base):
     role: Mapped[str] = mapped_column(
         String(20), default="operator", nullable=False, server_default="operator"
     )
+    plan_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    api_key_prefix: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     __exclude_fields__ = {"hashed_password"}
 

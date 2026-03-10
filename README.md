@@ -1,318 +1,73 @@
+<div align="center">
+
 # Spectra
 
-**Autonomous AI-powered penetration testing platform.**
+**AI-Driven Security Assessment Platform**
 
-Spectra runs full security assessments against targets using LLM-orchestrated security tools. Point it at a target, give it a directive, and watch it scan, enumerate, exploit, and report — following real pentesting methodology (PTES).
+[📖 Documentation Wiki](docs/wiki/home.md) · [🚀 Quick Start](#quick-start) · [📡 API Reference](docs/wiki/api-reference.md)
 
-It learns from every engagement via a 3-layer learning system (MissionMemory → PlaybookEngine → RAG), adapts to different system types, and gets better over time.
-
----
-
-## Quick Start
-
-1. **Clone and configure:**
-
-   ```bash
-   git clone <repo-url> && cd spectra
-   cp .env.example .env
-   # Edit .env — at minimum set JWT_SECRET_KEY to a secure random value
-   ```
-
-2. **Start services:**
-
-   **Development** (direct access on port 5000):
-
-   ```bash
-   cd docker
-   docker compose up -d
-   ```
-
-   **Production** (Caddy reverse proxy on port 443/5050):
-
-   ```bash
-   cd docker
-   docker compose -f docker-compose.prod.yml up -d
-   ```
-
-3. **Open the web UI:**
-   - **Dev:** <http://localhost:5000>
-   - **Prod:** <https://localhost> (or your configured domain)
-   - Create your admin account on the setup page
-   - Configure your AI provider (LiteLLM-backed cloud/API gateway for hosted models, Ollama for local GPU)
-
-> **Port conflict?** Change the port mapping in `docker/docker-compose.yml` under the `caddy` service.
-
-That's it. The tools container auto-installs security tools on first boot.
+</div>
 
 ---
 
-## What It Does
-
-1. **You provide a target** (IP, domain, URL) and a directive ("full security assessment")
-2. **12 AI agents plan the pentest** following PTES phases: Scope → Discovery → Enumeration → Vulnerability Analysis → Exploitation → Post-Exploitation → Reporting
-3. **Tools execute autonomously** in a sandboxed Kali container via an Arq worker queue
-4. **Consensus voting** validates critical decisions (planning, exploitation, payload crafting)
-5. **Findings are parsed and tracked** in a live attack surface model
-6. **Discovered credentials are stored** per-mission and reused by subsequent tools
-7. **RAG indexes mission results** for semantic search in future engagements
-8. **A report is generated** with findings, severity ratings, and remediation steps
-
-### Live-Tested Results
-
-| Target               | Findings | Critical | Tools Used                                     |
-| -------------------- | -------- | -------- | ---------------------------------------------- |
-| DVWA (web app)       | 31       | 3        | nmap, nuclei, nikto, searchsploit, gobuster    |
-| Juice Shop (Node.js) | 50       | 4        | nmap, nuclei, sqlmap, searchsploit             |
-| SSH Server           | 5+       | —        | nmap, hydra (default creds only), searchsploit |
-
----
+Spectra is a Multi-Agent System for automated security assessments. It coordinates 12 specialized AI agents to perform end-to-end penetration testing — from reconnaissance to reporting — with human oversight at every step.
 
 ## Features
 
-### Autonomous Pentesting
+- **Autonomous Pentesting** — AI agents plan and execute security assessments following PTES methodology
+- **Multi-Agent Consensus** — 5 quality gates ensure decisions are validated before execution
+- **Plugin System** — 25+ security tools (Nmap, Nuclei, SQLMap, etc.) with JSON-defined configurations
+- **RAG Knowledge Base** — Contextual retrieval from CVE databases, tool documentation, and past assessments
+- **Per-Mission Sandboxes** — Isolated Docker containers with resource limits and network isolation
+- **S3-Compatible Storage** — Mission data stored in MinIO/S3 with local filesystem fallback
+- **Multi-Server Scaling** — Server pool management with health monitoring and load balancing
+- **Web Dashboard** — Real-time mission monitoring, tool management, and admin controls
 
-- Multi-agent AI system (12 agents) orchestrates 18 security tools
-- PTES methodology enforced in all planning and execution
-- Mid-mission plan adaptation when new findings emerge
-- CVE correlation: discovered service versions matched to known exploits
-- Custom exploit (POC) generation when standard tools fail
-- **Context window management** — priority-based token budgeting prevents prompt explosion
-- **Credential reuse** — discovered credentials stored per-mission and fed to subsequent tools
+## Quick Start
 
-### RAG Semantic Search
+```bash
+# Clone and configure
+git clone https://github.com/breixopd14/spectra.git
+cd spectra
+cp .env.example .env  # Edit with your settings
 
-- Mission results automatically indexed into PostgreSQL-backed RAG store
-- LiteLLM embeddings API (OpenAI, DashScope, etc.) — no local PyTorch needed
-- Semantic search across past findings, CVEs, and tool documentation
-- Fallback to SHA256 hashing when no embedding API is configured
+# Start all services
+docker compose -f docker/docker-compose.yml up -d
 
-### Manual Mode
+# Access the dashboard
+open http://localhost:5000  # Redirects to /setup on first run
+```
 
-- Run any tool directly from the UI without AI orchestration
-- Visual pipeline editor: chain tools together (output of one → input of next)
-- Dynamic argument forms built from each plugin's configuration
-
-### Learning System (3 Layers)
-
-1. **MissionMemory** — persistent JSON on disk: tool lessons, exploit chains, target profiles, false positives. Debrief lessons auto-saved after every mission.
-2. **PlaybookEngine** — deterministic service-to-tool mappings. Exploit patterns persisted to disk across restarts.
-3. **RAG** — mission outcomes indexed for semantic retrieval in future engagements.
-
-- Auto-detects OS from tool output (Linux/Windows/macOS/FreeBSD/embedded)
-- False positive detection (repeated low-value findings auto-flagged)
-- Agents get richer context with each mission
-
-### Plugin System
-
-- Drop a JSON file into `plugins/` to add a new tool
-- Auto-installs in the tools container on next boot
-- Ed25519 cryptographic signing for production safety
-- 18 tools included: nmap, nuclei, nikto, gobuster, ffuf, hydra, sqlmap, metasploit, searchsploit, wpscan, amass, naabu, whatweb, dirsearch, subfinder, feroxbuster, httpx, testssl
-
-### Smart Routing (LiteLLM)
-
-- Routes to any LLM provider: Ollama, OpenAI, Anthropic, Groq, Azure, DashScope, etc.
-- Automatic fallbacks: local model fails → cloud takes over
-- Per-task model selection: cheap models for simple tasks, capable models for exploit crafting
-- 100+ models supported through unified interface
-
-### Safety
-
-- SafetySupervisor blocks dangerous commands (rm -rf, fork bombs, etc.)
-- Anti-brute-force policy: blocks large wordlists, only allows default credential testing
-- Consensus voting at 5 quality gates before critical actions
-- All tools run in isolated Docker container
-
----
+See [Getting Started](docs/wiki/development.md#getting-started) for detailed setup instructions.
 
 ## Architecture
 
-```text
-┌─────────────────────────────────────────────────┐
-│          Caddy Reverse Proxy (TLS, headers)     │
-│          Port 443/5050 (prod) or 5000 (dev)     │
-├─────────────────────────────────────────────────┤
-│  Web UI (Jinja2 + Tailwind + WebSockets)        │
-├─────────────────────────────────────────────────┤
-│  FastAPI App Container                          │
-│  ├── 12 AI Agents (scope → reporting)           │
-│  ├── Context Manager (token budgeting)          │
-│  ├── Credential Store (per-mission reuse)       │
-│  ├── LiteLLM Router (model routing)             │
-│  ├── RAG Engine (semantic search)               │
-│  ├── Memory + Playbooks (learning)              │
-│  └── CVE Intelligence (version correlation)     │
-├──────────────┬──────────────────────────────────┤
-│  PostgreSQL (data, cache, queues, RAG store)    │
-├─────────────────────────────────────────────────┤
-│  Tools Container (Kali Linux)                   │
-│  ├── Arq Worker (job execution)                 │
-│  ├── 18 security tools (auto-installed)         │
-│  └── Plugin system (JSON configs)               │
-└─────────────────────────────────────────────────┘
-```
+| Service | Container | Purpose |
+|---------|-----------|---------|
+| **db** | PostgreSQL + pgvector | Primary data store, RAG vector search |
+| **app** | FastAPI | API server + Web UI (port 5000, proxied via Caddy) |
+| **tools** | Kali Linux worker | Security tool execution |
+| **minio** | MinIO | S3-compatible object storage |
+| **caddy** | Caddy | Reverse proxy, TLS termination |
 
----
-
-## Configuration
-
-Copy `.env.example` to `.env` and set:
-
-| Variable            | Required | Description                                               |
-| ------------------- | -------- | --------------------------------------------------------- |
-| `JWT_SECRET_KEY`    | Yes      | Secret key for JWT tokens (generate a strong random value)|
-| `POSTGRES_PASSWORD` | No       | PostgreSQL password (default: `spectra_dev`)              |
-| `DEBUG`             | No       | Enable debug mode (default: `false`)                      |
-
-AI provider, model, API keys, and all other settings are configured through the **web UI** at `/setup` on first launch. They are stored in the database, not in `.env`.
-
----
-
-## Testing
-
-```bash
-# Targeted settings/router/setup validation
-docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
-
-# Live integration tests
-./tests/run_live_tests.sh
-
-# UI tests
-./tests/run_ui_tests.sh
-
-# Lint
-ruff check app/
-```
-
-The settings flow validation path is intentionally narrow and container-only. It runs:
-`test_runtime_settings.py`, `test_system_setup.py`, `test_smart_router.py`, `test_settings_runtime_api.py`, and `test_settings_templates.py`.
-
-If the shared Compose test stack hits a local network or subnet conflict, use this containerized fallback instead of host-local pytest:
-
-```bash
-docker build -f docker/Dockerfile.tools -t spectra-tools-test .
-docker run --rm \
-   -e DATABASE_URL=sqlite+aiosqlite:///test.db \
-   -e AI_PROVIDER=mock \
-   -e JWT_SECRET_KEY=test-secret-key \
-   -e FULLY_AUTOMATED=true \
-   -e PLUGIN_SAFE_MODE=false \
-   -v "$PWD/app:/app/app:ro" \
-   -v "$PWD/tests:/app/tests:ro" \
-   -v "$PWD/pytest.ini:/app/pytest.ini:ro" \
-   -v "$PWD/.env.test:/app/.env.test:ro" \
-   -v "$PWD/alembic:/app/alembic:ro" \
-   -v "$PWD/alembic.ini:/app/alembic.ini:ro" \
-   -v "$PWD/plugins:/app/plugins:ro" \
-   -v "$PWD/data:/app/data" \
-   --entrypoint sh spectra-tools-test \
-   -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx && python3 -m pytest tests/unit/test_runtime_settings.py tests/unit/test_system_setup.py tests/unit/test_smart_router.py tests/unit/test_settings_runtime_api.py tests/unit/test_settings_templates.py -q --override-ini=addopts="
-```
-
-### Test Targets
-
-Custom vulnerable containers are included for live testing:
-
-```bash
-cd docker/targets
-docker compose -f docker-compose.targets.yml up -d
-```
-
-| Target        | Difficulty | Services              | Key Vulns                                 |
-| ------------- | ---------- | --------------------- | ----------------------------------------- |
-| Easy Web      | Easy       | HTTP, SSH             | Default creds, phpinfo, directory listing |
-| Medium Multi  | Medium     | HTTP, FTP, MySQL, SSH | FTP anon, LFI, weak DB creds              |
-| Hard Hardened | Hard       | HTTPS API, SSH        | CORS, SSRF, hidden endpoints, weak JWT    |
-| DVWA          | Easy       | HTTP                  | Classic web vulns (SQLi, XSS, etc.)       |
-| Juice Shop    | Medium     | HTTP                  | OWASP Top 10                              |
-
----
-
-## Versioning & Releases
-
-Spectra uses **CalVer**: `YYYY.MM.DD[.patch]` (e.g., `2026.03.07`, `2026.03.07.1`).
-
-Releases are automated via GitHub Actions (`release.yml`):
-
-1. Manual dispatch (`gh workflow run release`) or push a tag matching `v*`
-2. CI runs tests + security scan (bandit)
-3. Docker images built and pushed to GHCR with version + `latest` tags
-4. GitHub Release created with auto-generated changelog
-5. SSH deploy to production with health check
-
-See [CHANGELOG.md](CHANGELOG.md) for release history.
-
----
+For detailed architecture, see the [Architecture Guide](docs/wiki/architecture.md).
 
 ## Documentation
 
-| Document                                            | Description                                     |
-| --------------------------------------------------- | ----------------------------------------------- |
-| **[Penetration Testing Workflow](docs/pentest.md)** | How Spectra executes pentests phase by phase    |
-| **[Plugin Guide](docs/plugins.md)**                 | Creating, configuring, and signing tool plugins |
-| **[Architecture](docs/architecture.md)**            | Technical deep-dive into the agent system       |
-| **[API Reference](docs/api_reference.md)**          | REST API endpoints                              |
-| **[Deployment](docs/deployment.md)**                | Production deployment, Caddy, and CI/CD         |
-| **[CHANGELOG](CHANGELOG.md)**                       | Release history (CalVer)                        |
+All documentation is in the [Wiki](docs/wiki/home.md):
 
----
+- [Architecture](docs/wiki/architecture.md) — System design, agents, services
+- [Configuration](docs/wiki/configuration.md) — All settings and environment variables
+- [Deployment](docs/wiki/deployment.md) — Production deployment, Docker, CI/CD
+- [Scaling](docs/wiki/scaling.md) — Multi-server setup, S3 storage, server pools
+- [API Reference](docs/wiki/api-reference.md) — REST API endpoints
+- [Plugins](docs/wiki/plugins.md) — Tool plugin system
+- [Pentest Workflow](docs/wiki/pentest-workflow.md) — PTES methodology, quality gates
+- [Sandboxes](docs/wiki/sandboxes.md) — Per-mission isolation
+- [Security](docs/wiki/security.md) — Authentication, encryption, audit
+- [Development](docs/wiki/development.md) — Local setup, testing, contributing
+- [Roadmap](docs/wiki/roadmap.md) — Future improvements
 
-## Project Structure
+## License
 
-```
-app/
-├── api/              # FastAPI routes and schemas
-├── core/             # Config, database, security, WebSocket, events
-├── models/           # SQLAlchemy database models
-├── services/
-│   ├── ai/           # LLM clients, agents, consensus, memory, playbooks
-│   │   ├── agents/   # 12 specialized agents (scope → reporting)
-│   │   ├── context.py # Context window management (token budgeting)
-│   │   ├── rag.py    # PostgreSQL-backed RAG engine
-│   │   ├── embeddings.py # Embedding service (local/API/SHA256 fallback)
-│   │   ├── router.py # LiteLLM smart routing
-│   │   ├── memory.py # Persistent cross-mission learning
-│   │   ├── playbook.py # Deterministic attack playbooks
-│   │   ├── grounding.py # Anti-hallucination framework
-│   │   └── cve_intel.py # CVE correlation database
-│   ├── mission/      # Mission lifecycle, execution, exploitation
-│   │   └── credentials.py # Per-mission credential store
-│   ├── tools/        # Tool registry, adapter, parser, installer
-│   └── shell/        # Reverse shell session management
-├── templates/        # Jinja2 HTML templates
-└── static/           # JavaScript and CSS
-docker/
-├── docker-compose.yml       # Dev stack (app, db, tools)
-├── docker-compose.prod.yml  # Prod stack (+ Caddy reverse proxy)
-├── Caddyfile.prod           # Production Caddy config
-├── targets/                 # Vulnerable test containers
-├── Dockerfile.app           # FastAPI app image
-└── Dockerfile.tools         # Kali tools worker image
-plugins/                     # Tool plugin JSON configs (18 included)
-data/                        # Runtime data (cache, auth, missions, sessions)
-tests/                       # 1572 unit tests
-docs/                        # Documentation
-```
-
----
-
-## Legal
-
-**Use responsibly.** Only scan targets you own or have explicit written permission to test. Spectra includes safety mechanisms but ultimately you are responsible for how you use it.
-
----
-
-## Troubleshooting
-
-| Issue                         | Solution                                                                      |
-| ----------------------------- | ----------------------------------------------------------------------------- |
-| Port 80 already in use        | Change port mapping in `docker/docker-compose.yml` caddy service              |
-| Database connection fails     | Check `POSTGRES_PASSWORD` matches in `.env` and `docker-compose.yml`          |
-| "Container unhealthy"         | Wait 30s for DB init, then check `docker logs spectra-app`                    |
-| Migrations fail               | Ensure `DATABASE_URL` matches your `POSTGRES_PASSWORD`                        |
-| Ollama not connecting         | Use `http://ai:11434` in Docker, or `http://localhost:11434` for host install |
-| Setup page not loading        | Check `docker logs spectra-app` for startup errors                            |
-| PDF export not working        | PDF export requires `xhtml2pdf` which is optional                             |
-| Caddy not starting (prod)     | Ensure port 443/80 are free; check `docker logs spectra-caddy`                |
-| Caddy TLS errors              | Set `SPECTRA_DOMAIN` to your real domain; Caddy auto-provisions Let's Encrypt |
-| RAG search returns no results | Configure an embedding-capable LLM API via the Settings page                  |
+Private — All rights reserved.

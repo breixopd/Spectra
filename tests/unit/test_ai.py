@@ -6,10 +6,10 @@ import pytest
 from pydantic import BaseModel
 
 from app.services.ai.llm import (
-    MockLLMClient,
     LLMResponse,
     get_llm_client,
 )
+from tests.mocks.llm import MockLLMClient
 from app.services.ai.consensus import (
     VotingSystem,
     VotingConfig,

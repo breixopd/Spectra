@@ -122,7 +122,6 @@ async def test_configure_system_persists_db_backed_profiles_and_fallbacks(
         provider_fallbacks={
             "default": ["fallback_1"],
         },
-        embedding_provider="local",
         embedding_model="all-MiniLM-L6-v2",
     )
 
@@ -140,7 +139,6 @@ async def test_configure_system_persists_db_backed_profiles_and_fallbacks(
     assert "AI_PROVIDER_FALLBACKS" in config_map
     assert '"tier1": "tier1"' in config_map["AI_PROVIDER_ROUTING"].value
     assert '"fallback_1"' in config_map["AI_PROVIDER_FALLBACKS"].value
-    assert config_map["EMBEDDING_PROVIDER"].value == "local"
 
 
 def test_system_setup_request_normalizes_legacy_api_provider_to_litellm():

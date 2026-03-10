@@ -173,8 +173,6 @@ class SystemSetupService:
         # Embedding configuration
         if setup_in.embedding_model:
             config_values["EMBEDDING_MODEL"] = (setup_in.embedding_model, False)
-        if setup_in.embedding_provider is not None:
-            config_values["EMBEDDING_PROVIDER"] = (setup_in.embedding_provider, False)
 
         # Automation setting
         config_values["FULLY_AUTOMATED"] = (str(settings.FULLY_AUTOMATED).lower(), False)
@@ -182,6 +180,15 @@ class SystemSetupService:
         # Database Configs (Stored in DB for reference, even if used via JSON)
         if setup_in.use_custom_db and setup_in.database_url:
             config_values["DATABASE_URL"] = (setup_in.database_url, True)
+
+        # Service topology settings
+        service_topology_fields: dict[str, tuple[str | None, bool]] = {
+            "SANDBOX_ORCHESTRATOR_URL": (setup_in.sandbox_orchestrator_url, False),
+            "SANDBOX_ORCHESTRATOR_API_KEY": (setup_in.sandbox_orchestrator_api_key, True),
+        }
+        for key, (value, is_secret) in service_topology_fields.items():
+            if value:
+                config_values[key] = (value, is_secret)
 
         await upsert_system_config_values(self.session, config_values)
 

@@ -161,7 +161,8 @@ jobs:
         with:
           tag_name: "v${{ steps.version.outputs.version }}"
           name: "v${{ steps.version.outputs.version }}"
-          body: ${{ steps.changelog.outputs.changelog }}
+          body: |
+            ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
         env:
@@ -172,7 +173,8 @@ jobs:
     name: Deploy to production
     needs: release
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1

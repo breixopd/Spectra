@@ -72,5 +72,5 @@ jobs:
         with:
           python-version: "3.11"
       - name: Verify app/version.py exists and has __version__
-        run: >-
-          python -c "from app.version import __version__; print(f\"Version: {__version__}\")"
+        run: |
+          python -c "from app.version import __version__; print('Version:', __version__)"

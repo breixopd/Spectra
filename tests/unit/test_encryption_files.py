@@ -93,32 +93,37 @@ class TestPasswordEncryption:
 
 
 class TestReportEncryptionAtRest:
-    def test_save_report_encrypts(self, tmp_path: Path, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_save_report_encrypts(self, tmp_path: Path, monkeypatch):
         monkeypatch.chdir(tmp_path)
 
-        with patch("app.core.encryption._get_default_secret", return_value="test-key"):
+        with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"):
             from app.services.mission.report_generator import save_report
 
-            path = save_report("mission-1", "<html>report</html>")
+            path = await save_report("mission-1", "<html>report</html>")
 
+        # In local-fallback mode, StorageService writes to data/missions/
         saved = Path(path)
         assert saved.exists()
         # Should be encrypted, not plaintext
         assert saved.read_bytes() != b"<html>report</html>"
 
         with patch("app.core.encryption._get_default_secret", return_value="test-key"):
-            from app.core.encryption import decrypt_file
-            content = decrypt_file(saved)
+            from cryptography.fernet import Fernet
+            from app.core.encryption import _derive_fernet_key
+            f = Fernet(_derive_fernet_key("test-key"))
+            content = f.decrypt(saved.read_bytes())
         assert content == b"<html>report</html>"
 
-    def test_save_pdf_report_encrypts(self, tmp_path: Path, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_save_pdf_report_encrypts(self, tmp_path: Path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         pdf_data = b"%PDF-1.4 fake pdf content"
 
-        with patch("app.core.encryption._get_default_secret", return_value="test-key"):
+        with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"):
             from app.services.mission.report_generator import save_pdf_report
 
-            path = save_pdf_report("mission-2", pdf_data)
+            path = await save_pdf_report("mission-2", pdf_data)
 
         assert path is not None
         saved = Path(path)
@@ -126,5 +131,7 @@ class TestReportEncryptionAtRest:
         assert saved.read_bytes() != pdf_data
 
         with patch("app.core.encryption._get_default_secret", return_value="test-key"):
-            from app.core.encryption import decrypt_file
-            assert decrypt_file(saved) == pdf_data
+            from cryptography.fernet import Fernet
+            from app.core.encryption import _derive_fernet_key
+            f = Fernet(_derive_fernet_key("test-key"))
+            assert f.decrypt(saved.read_bytes()) == pdf_data

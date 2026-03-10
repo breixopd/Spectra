@@ -111,9 +111,33 @@
     "color": "red"
   },
   "examples": [
-    {"description": "Enumerate SMB shares with credentials", "args": {"target": "192.168.1.0/24", "protocol": "smb", "flags": "-u admin -p Password1 --shares"}},
-    {"description": "Credential spray via SMB", "args": {"target": "192.168.1.0/24", "protocol": "smb", "flags": "-u users.txt -p 'Summer2024!' --continue-on-success"}},
-    {"description": "Run mimikatz module on pwned host", "args": {"target": "192.168.1.10", "protocol": "smb", "flags": "-u admin -p Password1 -M mimikatz"}}
+    {
+      "description": "Enumerate SMB shares with credentials",
+      "args": {
+        "target": "192.168.1.0/24",
+        "protocol": "smb",
+        "flags": "-u admin -p Password1 --shares"
+      }
+    },
+    {
+      "description": "Credential spray via SMB",
+      "args": {
+        "target": "192.168.1.0/24",
+        "protocol": "smb",
+        "flags": "-u users.txt -p 'Summer2024!' --continue-on-success"
+      }
+    },
+    {
+      "description": "Run mimikatz module on pwned host",
+      "args": {
+        "target": "192.168.1.10",
+        "protocol": "smb",
+        "flags": "-u admin -p Password1 -M mimikatz"
+      }
+    }
   ],
-  "signature": null
+  "signature": null,
+  "resources": {
+    "tier": "heavy"
+  }
 }

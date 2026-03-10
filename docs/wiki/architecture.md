@@ -1,8 +1,10 @@
 # Architecture
 
-Technical deep-dive into Spectra's agent system, execution pipeline, and learning mechanisms.
+[← Wiki Home](home.md) | [Configuration](configuration.md) | [Deployment](deployment.md) | [Plugins](plugins.md)
 
 ---
+
+Technical deep-dive into Spectra's agent system, execution pipeline, and learning mechanisms.
 
 ## Agent System (MAKER Framework)
 
@@ -11,7 +13,7 @@ Spectra uses the **MAKER** framework: Maximal Agentic decomposition, K-threshold
 ### Agent Roles (12 Agents)
 
 | Agent | Role | Temperature | Description |
-| ------- | ------ | ------------ | ------------- |
+|-------|------|-------------|-------------|
 | ScopeAgent | Scope | 0.1 | Parses targets (IPs, domains, CIDRs) from user input |
 | ToolSelectorAgent | Tool Selection | 0.3 | Selects and configures the right security tool for each task |
 | MissionController | Planning | 0.4 | Creates PTES-aligned mission plans, handles steering |
@@ -29,7 +31,7 @@ Spectra uses the **MAKER** framework: Maximal Agentic decomposition, K-threshold
 Critical decisions pass through quality gates where multiple LLM instances vote:
 
 | Gate | When | Voters | Threshold | Min Confidence |
-| ------ | ------ | -------- | ----------- | ---------------- |
+|------|------|--------|-----------|----------------|
 | PLAN | Mission planning | 3 | 2/3 | 70% |
 | TOOL_SELECTION | Each tool pick | 2 | 2/2 | 50% |
 | PAYLOAD | Exploit crafting | 3 | 2/3 | 70% |
@@ -45,21 +47,16 @@ The `ContextManager` (`app/services/ai/context.py`) prevents prompt explosion by
 ### Priority Levels
 
 | Priority | Level | Examples |
-| ---------- | ------- | --------- |
+|----------|-------|---------|
 | CRITICAL (0) | Always included | System prompt, task instruction |
 | HIGH (1) | Truncated to fit | Current target/findings, tool output |
 | MEDIUM (2) | Included if budget allows | Memory lessons, playbook recommendations |
 | LOW (3) | Dropped first | RAG context, methodology reference |
 | OPTIONAL (4) | Best-effort | Historical stats |
 
-### Behavior
-
 - Default budget: **6000 tokens** per prompt
 - Sections sorted by priority; lower-priority sections are truncated or dropped when budget is exceeded
-- HIGH and CRITICAL sections are truncated (not dropped) to fit remaining space
 - Tool output auto-truncated: **3000 chars stdout**, **500 chars stderr** for LLM context
-
-Used in `MissionController` and `ToolSelectorAgent` to assemble prompts.
 
 ---
 
@@ -82,22 +79,21 @@ PostgreSQL-backed semantic search engine (`app/services/ai/rag.py`).
 
 ### Components
 
-| Component          | File            | Purpose                                    |
-| ------------------ | --------------- | ------------------------------------------ |
-| `RAGService`       | `rag.py`        | Document storage, cosine similarity search |
-| `EmbeddingService` | `embeddings.py` | Embeddings: local sentence-transformers, LiteLLM API, or SHA256 fallback |
+| Component | File | Purpose |
+|-----------|------|---------|
+| `RAGService` | `rag.py` | Document storage, cosine similarity search |
+| `EmbeddingService` | `embeddings.py` | Embeddings via AI API provider (LiteLLM, OpenAI-compatible API) |
 
 ### How It Works
 
-1. **Embedding** — Text is embedded via one of three backends: local sentence-transformers (requires `ENABLE_LOCAL_EMBEDDINGS=true` build arg), LiteLLM API (OpenAI, DashScope, any compatible provider), or deterministic SHA256 hashing (testing only)
-2. **Storage** — Embeddings stored as JSONB arrays in a `rag_documents` PostgreSQL table
-3. **Search** — Query embedded, cosine similarity computed in application code against stored vectors
-4. **Fallback** — Auto-detection order: local → API → SHA256 fallback. SHA256 produces non-semantic embeddings (testing only)
+1. **Embedding** — Text is embedded via the AI API provider (LiteLLM supports OpenAI, DashScope, any compatible provider). Configure `EMBEDDING_MODEL` to select the model.
+2. **Storage** — Embeddings stored as JSONB arrays in a `rag_documents` PostgreSQL table.
+3. **Search** — Query embedded, cosine similarity computed in application code against stored vectors.
 
 ### Document Types
 
 | Type | Source | Indexed When |
-| ------ | -------- | ------------- |
+|------|--------|--------------|
 | `finding` | Mission findings | Mission completes |
 | `cve` | CVE intelligence data | CVE DB scripts |
 | `tool_doc` | Tool documentation | Tool docs indexed |
@@ -107,7 +103,7 @@ PostgreSQL-backed semantic search engine (`app/services/ai/rag.py`).
 
 ```python
 RAGConfig(
-    embedding_model="text-embedding-3-small",  # LiteLLM model key
+    embedding_model="text-embedding-3-small",  # LiteLLM/OpenAI model key
     embedding_dim=1536,                         # Auto-adapts to actual dimension
     default_top_k=5,                            # Results per query
     min_score=0.5,                              # Cosine similarity threshold
@@ -139,7 +135,7 @@ User enters target + directive
         │                SAFE        BLOCKED
         │                  │
         │                  ▼
-        │         ARQ Worker executes in tools container
+        │         Sandbox worker executes tool via per-mission queue
         │                  │
         │                  ▼
         │         Output parsed → Findings → Attack Surface updated
@@ -217,14 +213,50 @@ Anti-hallucination mechanisms:
 
 ---
 
+## Service Architecture
+
+Spectra uses a **ServiceRegistry** pattern (`app/services/gateway/service_registry.py`) to transparently route between in-process and remote implementations. When a gateway URL is configured, the registry instantiates an HTTP client adapter; otherwise it creates the local implementation.
+
+### Extractable Services
+
+| Service | Config Setting | Local Implementation | Protocol |
+|---------|---------------|---------------------|----------|
+| Sandbox Orchestrator | `SANDBOX_ORCHESTRATOR_URL` | `SandboxPool` (`app/services/tools/sandbox/`) | HTTP `/containers/*` |
+
+### What Stays In-Process
+
+| Component | Reason |
+|-----------|--------|
+| PostgreSQL | Single `DATABASE_URL` is sufficient; use managed DB for HA |
+| Embeddings | Handled by the AI provider (LiteLLM API) — no separate service |
+| RAG / Vector Search | Runs on the same PostgreSQL DB (pgvector) |
+| Agent orchestration | Core logic, not a hot path for scaling |
+
+### ServiceRegistry Pattern
+
+```python
+from app.services.gateway import get_service_registry
+
+registry = get_service_registry()
+pool = await registry.get_sandbox_orchestrator()  # Remote or local Docker
+```
+
+The registry uses lazy initialization with async locks (double-checked locking). Services are created on first access and cached. Call `registry.invalidate("sandbox")` to force re-creation after config changes.
+
+### Server Pool Management
+
+For scaling across multiple servers, see the [Scaling Guide](scaling.md). Spectra includes a `ServerPoolManager` that tracks server nodes with weighted least-connections load balancing. Service types include `sandbox_worker`, `db`, and `storage`.
+
+---
+
 ## LLM Routing (`router.py`)
 
-LiteLLM-powered smart routing:
+LiteLLM-powered smart routing. See [Configuration](configuration.md) for all LLM settings.
 
 ### Task Tiers
 
 | Tier | Tasks | Recommended Model |
-| ------ | ------- | ------------------ |
+|------|-------|-------------------|
 | 1 (Simple) | Scope, tool selection, safety | qwen2.5:3b, gpt-4o-mini |
 | 2 (Moderate) | Planning, consensus, reporting | gpt-4o-mini, claude-3-haiku |
 | 3 (Complex) | Exploit crafting, POC generation | gpt-4o, claude-3.5-sonnet |
@@ -232,35 +264,7 @@ LiteLLM-powered smart routing:
 ### Fallback Chain
 
 ```text
-Ollama (local) → Cloud API (OpenAI/Anthropic/DashScope) → Mock (testing)
-```
-
----
-
-## Plugin System
-
-### Adding a New Tool
-
-1. Create `plugins/my-tool.json` following the schema in [Plugin Guide](plugins.md)
-2. Sign it: `python3 scripts/sign_plugin.py sign --plugin plugins/my-tool.json`
-3. Restart: `docker compose restart tools app`
-4. The tool appears in the registry and is auto-installed on first use
-
-### Plugin Structure
-
-```json
-{
-  "id": "my-tool",
-  "name": "My Tool",
-  "version": "1.0.0",
-  "category": "discovery",
-  "description": "What it does",
-  "metadata": { "ai_description": "...", "capabilities": [...] },
-  "installation": { "method": "apt", "commands": [...] },
-  "execution": { "command": "my-tool", "args_template": "{target} -o {output_file}" },
-  "parsing": { "format": "json" },
-  "signature": "..."
-}
+Primary provider → Fallback provider(s) → Mock (testing)
 ```
 
 ---
@@ -269,7 +273,9 @@ Ollama (local) → Cloud API (OpenAI/Anthropic/DashScope) → Mock (testing)
 
 1. **SafetySupervisor** — regex blocklist + LLM analysis of every command
 2. **Anti-brute-force** — blocks rockyou.txt, large wordlists, file-based credential lists
-3. **Plugin signing** — Ed25519 signatures required in production
+3. **Plugin signing** — Ed25519 signatures required in production (see [Plugins](plugins.md))
 4. **Consensus voting** — multi-model validation for high-risk actions
-5. **Container isolation** — all tools run in sandboxed Kali container
+5. **Container isolation** — all tools run in per-mission [sandboxes](sandboxes.md)
 6. **Scope enforcement** — agents only target authorized hosts
+
+For full security details, see the [Security Guide](security.md).

@@ -92,7 +92,7 @@ class TestMissionLoop:
                 mock_rec = MockRec.return_value
                 mock_rec.start = MagicMock()
                 mock_rec.stop = MagicMock()
-                mock_rec.save = MagicMock()
+                mock_rec.save = AsyncMock()
 
                 await execution_manager.run_mission_loop(mission)
 
@@ -116,7 +116,7 @@ class TestMissionLoop:
         execution_manager._execute_mission_tasks = AsyncMock()
         execution_manager._record_mission_lessons = MagicMock()
         execution_manager._run_debrief = AsyncMock()
-        execution_manager._generate_html_report = MagicMock()
+        execution_manager._generate_html_report = AsyncMock()
         execution_manager._broadcast_state = MagicMock()
 
         with patch("app.services.mission.manager.execution.shell_manager"):

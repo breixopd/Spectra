@@ -1,16 +1,14 @@
 #!/bin/bash
 set -e
 
-# Fix Docker socket permissions if mounted (needed for tool execution)
+# Fix Docker socket permissions if mounted (needed for sandbox container management)
 if [ -S /var/run/docker.sock ]; then
     DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
     if [ -n "$DOCKER_GID" ] && [ "$DOCKER_GID" != "0" ]; then
-        groupmod -g "$DOCKER_GID" docker 2>/dev/null || groupadd -g "$DOCKER_GID" docker 2>/dev/null || true
+        # Match the docker group GID to the host's socket GID
+        groupmod -g "$DOCKER_GID" docker 2>/dev/null || groupadd -g "$DOCKER_GID" dockerhost 2>/dev/null || true
         usermod -aG docker spectra 2>/dev/null || true
-    fi
-    # If running as root and spectra user exists, allow socket access
-    if [ "$(id -u)" = "0" ] && id spectra >/dev/null 2>&1; then
-        chmod 666 /var/run/docker.sock 2>/dev/null || true
+        usermod -aG dockerhost spectra 2>/dev/null || true
     fi
 fi
 
@@ -27,14 +25,14 @@ while ! nc -z db 5432 2>/dev/null; do
 done
 echo "Database is ready!"
 
-# Run migrations
+# Run migrations as spectra user
 echo "Running database migrations..."
-if ! alembic upgrade head 2>&1; then
+if ! gosu spectra alembic upgrade head 2>&1; then
     echo "ERROR: Database migration failed. Check the error above."
     exit 1
 fi
 echo "Migrations applied."
 
-# Start application
+# Drop privileges and start application as spectra user
 echo "Starting application..."
-exec "$@"
+exec gosu spectra "$@"

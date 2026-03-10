@@ -86,6 +86,32 @@ class MissionExecutionManager:
         except Exception as e:
             logger.warning("Failed to send mission start notification: %s", e)
 
+        # Create per-mission sandbox container
+        sandbox_info = None
+        try:
+            from app.services.tools.sandbox import get_sandbox_pool
+
+            pool = get_sandbox_pool()
+            if pool and pool.available:
+                vpn_path = None
+                if getattr(mission, "vpn_config", None):
+                    from app.core.config import get_settings
+                    import os
+                    vpn_dir = get_settings().VPN_CONFIG_DIR
+                    vpn_path = os.path.join(vpn_dir, mission.vpn_config)
+                    if not os.path.exists(vpn_path):
+                        vpn_path = None
+                        mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found, skipping VPN")
+
+                sandbox_info = await pool.create(mission.id, vpn_config_path=vpn_path)
+                mission.log(f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})")
+            else:
+                mission.log("[WARN] Sandbox pool unavailable — tools will use default queue")
+        except Exception as e:
+            logger.error("Failed to create sandbox for mission %s: %s", mission.id, e)
+            mission.log(f"[ERROR] Sandbox creation failed: {e}")
+            # Mission can still proceed — jobs go to default queue
+
         try:
             # 1. Define Scope
             await self._run_scope_phase(mission, context)
@@ -109,7 +135,7 @@ class MissionExecutionManager:
             await self._run_debrief(mission, context)
 
             # 6. Generate HTML report
-            self._generate_html_report(mission)
+            await self._generate_html_report(mission)
 
             # 7. Complete
             mission.set_status("completed")
@@ -118,8 +144,8 @@ class MissionExecutionManager:
 
             # Save demo recording
             if recorder:
-                path = recorder.stop()
-                recorder.save()
+                recorder.stop()
+                path = await recorder.save()
                 if path:
                     mission.log(f"[RECORD] Demo saved: {path}")
 
@@ -154,6 +180,17 @@ class MissionExecutionManager:
             self._broadcast_state("mission_controller", "failed")
             await self.lifecycle.update_db_status(mission)
         finally:
+            # Destroy per-mission sandbox container
+            try:
+                from app.services.tools.sandbox import get_sandbox_pool
+
+                pool = get_sandbox_pool()
+                if pool and pool.available:
+                    await pool.destroy(mission.id)
+                    mission.log("[SANDBOX] Sandbox destroyed")
+            except Exception as e:
+                logger.warning("Sandbox destroy failed for mission %s: %s", mission.id, e)
+
             # Disconnect per-mission VPN if one was connected
             if getattr(mission, "vpn_config", None):
                 try:
@@ -621,7 +658,7 @@ class MissionExecutionManager:
         except Exception as e:
             logger.debug("Debrief failed (non-critical): %s", e)
 
-    def _generate_html_report(self, mission: Mission) -> None:
+    async def _generate_html_report(self, mission: Mission) -> None:
         """Generate HTML report from mission data."""
         try:
             from app.services.mission.report_generator import (
@@ -647,7 +684,7 @@ class MissionExecutionManager:
                 "tools_used": mission.tools_run or [],
             }
             html = generate_html_report(report_data)
-            path = save_report(mission.id, html)
+            path = await save_report(mission.id, html)
             if path:
                 mission.report_path = path
                 mission.log(f"Report saved: {path}")

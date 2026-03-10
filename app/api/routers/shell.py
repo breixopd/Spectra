@@ -4,15 +4,18 @@ Shell Router.
 Handles WebSocket connections for interactive shells.
 """
 
+from __future__ import annotations
+
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
-from app.api.dependencies import get_current_active_user, validate_websocket_token
+from app.api.dependencies import check_feature_allowed, get_current_active_user, validate_websocket_token
 from app.core.database import async_session_maker
 from app.models.audit_log import AuditEventType
 from app.models.finding import Finding
+from app.models.mission import Mission
 from app.models.user import User
 from app.services.shell.session_manager import shell_manager
 from app.services.system.audit import log_event as audit_log_event
@@ -28,6 +31,14 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
         await websocket.close(code=4001, reason="Authentication required")
         return
     await websocket.accept()
+
+    # Check shell_access feature
+    try:
+        async with async_session_maker() as db:
+            await check_feature_allowed(user, db, "shell_access")
+    except HTTPException:
+        await websocket.close(code=4003, reason="Shell access not available on your plan")
+        return
 
     logger.info("Shell WebSocket connected: user=%s session=%s", user.username, session_id)
     async with async_session_maker() as db:
@@ -46,6 +57,17 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
         await websocket.close(code=1000, reason="Session not found")
         return
 
+    # Verify the user owns the mission associated with this shell session
+    if session.mission_id and not user.is_superuser:
+        async with async_session_maker() as db:
+            result = await db.execute(
+                select(Mission).where(Mission.id == session.mission_id)
+            )
+            mission = result.scalar_one_or_none()
+            if mission and mission.user_id and mission.user_id != str(user.id):
+                await websocket.close(code=4003, reason="Not authorized for this session")
+                return
+
     await session.connect_websocket(websocket)
 
     try:
@@ -62,8 +84,23 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
 
 @router.get("/sessions")
 async def list_sessions(_current_user: User = Depends(get_current_active_user)):
-    """List active shell sessions."""
-    return shell_manager.list_sessions()
+    """List active shell sessions (scoped to the user's missions)."""
+    all_sessions = shell_manager.list_sessions()
+    if _current_user.is_superuser:
+        return all_sessions
+
+    # Filter to sessions belonging to the user's missions
+    user_id = str(_current_user.id)
+    async with async_session_maker() as db:
+        result = await db.execute(
+            select(Mission.id).where(Mission.user_id == user_id)
+        )
+        user_mission_ids = {row[0] for row in result.all()}
+
+    return [
+        s for s in all_sessions
+        if not s.get("mission_id") or s["mission_id"] in user_mission_ids
+    ]
 
 
 @router.post("/reconnect/{finding_id}")
@@ -82,6 +119,14 @@ async def reconnect_exploit(finding_id: str, _current_user: User = Depends(get_c
 
     if not finding:
         raise HTTPException(status_code=404, detail="Finding not found")
+
+    # Check shell_access feature
+    async with async_session_maker() as db:
+        await check_feature_allowed(_current_user, db, "shell_access")
+
+    # User isolation: non-superusers can only reconnect to their own findings
+    if not _current_user.is_superuser and finding.user_id and finding.user_id != str(_current_user.id):
+        raise HTTPException(status_code=403, detail="Not authorized to access this finding")
 
     logger.info("Exploit reconnect requested: user=%s finding=%s", _current_user.username, finding_id)
     async with async_session_maker() as db:

@@ -1,0 +1,232 @@
+"""Container image vulnerability scanning using Trivy."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import shutil
+from datetime import UTC, datetime
+from typing import Any
+
+logger = logging.getLogger("spectra.sandbox.image_scanner")
+
+
+class ScanResult:
+    """Structured vulnerability scan results."""
+
+    def __init__(
+        self,
+        image: str,
+        status: str,  # "clean", "warnings", "critical", "error"
+        critical: int = 0,
+        high: int = 0,
+        medium: int = 0,
+        low: int = 0,
+        total: int = 0,
+        blocked: bool = False,
+        error: str | None = None,
+        scanned_at: str | None = None,
+        raw_results: list[dict[str, Any]] | None = None,
+    ):
+        self.image = image
+        self.status = status
+        self.critical = critical
+        self.high = high
+        self.medium = medium
+        self.low = low
+        self.total = total
+        self.blocked = blocked
+        self.error = error
+        self.scanned_at = scanned_at or datetime.now(UTC).isoformat()
+        self.raw_results = raw_results
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "image": self.image,
+            "status": self.status,
+            "vulnerabilities": {
+                "critical": self.critical,
+                "high": self.high,
+                "medium": self.medium,
+                "low": self.low,
+                "total": self.total,
+            },
+            "blocked": self.blocked,
+            "error": self.error,
+            "scanned_at": self.scanned_at,
+        }
+
+
+class ImageScanner:
+    """Scans Docker images for vulnerabilities using Trivy.
+
+    Trivy must be installed locally (binary in PATH). If not available,
+    scans are skipped gracefully. No external APIs are called — all
+    scanning is local using Trivy's offline DB (auto-downloaded on first use).
+    """
+
+    def __init__(self) -> None:
+        self._trivy_path = shutil.which("trivy")
+        if self._trivy_path:
+            logger.info("ImageScanner: Trivy found at %s", self._trivy_path)
+        else:
+            logger.info("ImageScanner: Trivy not found — image scanning unavailable")
+
+    @property
+    def available(self) -> bool:
+        return self._trivy_path is not None
+
+    async def scan(self, image_tag: str, *, block_critical: bool = False) -> ScanResult:
+        """Scan a Docker image for vulnerabilities.
+
+        Args:
+            image_tag: Docker image tag to scan (e.g., "spectra-tools:latest")
+            block_critical: If True, set blocked=True when critical CVEs are found
+
+        Returns:
+            ScanResult with vulnerability counts and status.
+        """
+        if not self.available:
+            return ScanResult(
+                image=image_tag,
+                status="unavailable",
+                error="Trivy not installed",
+            )
+
+        try:
+            result = await self._run_trivy(image_tag)
+
+            # Parse severity counts
+            critical = high = medium = low = 0
+            raw_results = []
+
+            if isinstance(result, dict) and "Results" in result:
+                for target in result["Results"]:
+                    vulns = target.get("Vulnerabilities", [])
+                    raw_results.append({
+                        "target": target.get("Target", ""),
+                        "type": target.get("Type", ""),
+                        "vulnerability_count": len(vulns),
+                    })
+                    for vuln in vulns:
+                        severity = vuln.get("Severity", "").upper()
+                        if severity == "CRITICAL":
+                            critical += 1
+                        elif severity == "HIGH":
+                            high += 1
+                        elif severity == "MEDIUM":
+                            medium += 1
+                        elif severity == "LOW":
+                            low += 1
+
+            total = critical + high + medium + low
+
+            # Determine status
+            if critical > 0:
+                status = "critical"
+            elif high > 0:
+                status = "warnings"
+            else:
+                status = "clean"
+
+            blocked = block_critical and critical > 0
+
+            scan_result = ScanResult(
+                image=image_tag,
+                status=status,
+                critical=critical,
+                high=high,
+                medium=medium,
+                low=low,
+                total=total,
+                blocked=blocked,
+                raw_results=raw_results,
+            )
+
+            if blocked:
+                logger.warning(
+                    "Image %s BLOCKED: %d critical CVEs found",
+                    image_tag, critical,
+                )
+            else:
+                logger.info(
+                    "Image %s scanned: %d vulns (C:%d H:%d M:%d L:%d)",
+                    image_tag, total, critical, high, medium, low,
+                )
+
+            # Store in system status
+            await self._store_result(scan_result)
+
+            return scan_result
+
+        except Exception as exc:
+            logger.error("Image scan failed for %s: %s", image_tag, exc)
+            return ScanResult(
+                image=image_tag,
+                status="error",
+                error=str(exc)[:500],
+            )
+
+    async def get_last_scan(self) -> dict[str, Any] | None:
+        """Get the last scan result from SystemStatus."""
+        try:
+            from app.core.database import async_session_maker
+            from app.models.infrastructure import SystemStatus
+            from sqlalchemy import select
+
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(SystemStatus).where(SystemStatus.key == "image_scan_result")
+                )
+                row = result.scalar_one_or_none()
+                if row and isinstance(row.value, dict):
+                    return row.value
+                return None
+        except Exception:
+            return None
+
+    async def _run_trivy(self, image_tag: str) -> dict[str, Any]:
+        """Run Trivy scan and return parsed JSON output."""
+        cmd = [
+            self._trivy_path,
+            "image",
+            "--format", "json",
+            "--severity", "CRITICAL,HIGH,MEDIUM,LOW",
+            "--quiet",
+            image_tag,
+        ]
+
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(
+            process.communicate(), timeout=600  # 10 min timeout for large images
+        )
+
+        if process.returncode not in (0, 1):  # Trivy returns 1 when vulns found
+            raise RuntimeError(f"Trivy exited with code {process.returncode}: {stderr.decode()[:500]}")
+
+        return json.loads(stdout.decode())
+
+    async def _store_result(self, scan_result: ScanResult) -> None:
+        """Store scan result in SystemStatus table."""
+        try:
+            from app.core.database import async_session_maker
+            from app.models.infrastructure import SystemStatus
+            from sqlalchemy import select
+
+            async with async_session_maker() as session:
+                existing = await session.execute(
+                    select(SystemStatus).where(SystemStatus.key == "image_scan_result")
+                )
+                row = existing.scalar_one_or_none()
+                if row:
+                    row.value = scan_result.to_dict()
+                else:
+                    session.add(SystemStatus(key="image_scan_result", value=scan_result.to_dict()))
+                await session.commit()
+        except Exception as exc:
+            logger.debug("Failed to store scan result: %s", exc)

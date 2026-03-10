@@ -1,7 +1,7 @@
 """Tests for the HTML report generator."""
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime
 
 from app.services.mission.report_generator import (
@@ -181,18 +181,18 @@ class TestGenerateHtmlReport:
 
 
 class TestSaveReport:
-    def test_save_creates_file(self, tmp_path):
-        # Use tmp_path directly to avoid filesystem side effects
-        with patch("app.services.mission.report_generator.os.makedirs"):
-            with patch("builtins.open", create=True) as mock_open:
-                mock_fh = MagicMock()
-                mock_open.return_value.__enter__ = MagicMock(return_value=mock_fh)
-                mock_open.return_value.__exit__ = MagicMock(return_value=False)
-                with patch("app.core.encryption.encrypt_file"):
-                    path = save_report("m1", "<html>test</html>")
-                    assert isinstance(path, str)
-                    assert "m1" in path
-                    mock_fh.write.assert_called_once_with("<html>test</html>")
+    @pytest.mark.asyncio
+    async def test_save_creates_file(self, tmp_path):
+        mock_storage = MagicMock()
+        mock_storage.upload = AsyncMock(return_value="s3://spectra-missions/m1/reports/report.html")
+        with patch("app.services.mission.report_generator.get_storage_service", return_value=mock_storage):
+            with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"):
+                path = await save_report("m1", "<html>test</html>")
+                assert isinstance(path, str)
+                assert "m1" in path
+                mock_storage.upload.assert_called_once()
+                call_args = mock_storage.upload.call_args
+                assert "m1/reports/report.html" == call_args[0][1]
 
 
 class TestSeverityConstants:

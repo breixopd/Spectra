@@ -4,6 +4,7 @@ Authentication Router.
 Handles user login, setup, and token generation.
 """
 
+import asyncio
 import json
 import logging
 import threading
@@ -14,9 +15,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies import get_current_active_user
 from app.api.schemas import SystemSetupRequest, Token, UserResponse
 from app.core.config import settings
 from app.core.database import get_async_session
@@ -27,6 +30,7 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    get_password_hash,
     invalidate_token,
     verify_password,
 )
@@ -67,7 +71,6 @@ def _ensure_lockout_loaded() -> None:
                 now = time.time()
                 for ip, entry in data.items():
                     locked_until = entry.get("locked_until", 0)
-                    # Only load entries that are still locked or have recent failures
                     if locked_until > now or entry.get("count", 0) > 0:
                         _login_failures[ip] = entry
         except Exception as exc:
@@ -82,6 +85,11 @@ def _persist_lockout() -> None:
         _LOCKOUT_FILE.write_text(json.dumps(_login_failures))
     except Exception as exc:
         logger.warning("Failed to persist lockout state: %s", exc)
+
+
+async def _persist_lockout_async() -> None:
+    """Save lockout state to file asynchronously."""
+    await asyncio.to_thread(_persist_lockout)
 
 
 def _check_lockout(ip: str) -> None:
@@ -347,3 +355,54 @@ async def logout(request: Request):
         )
     invalidate_token(token)
     return {"detail": "Successfully logged out"}
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+@router.get("/me", tags=["Auth"])
+async def get_current_profile(
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Get current user's profile including plan info."""
+    plan = None
+    if user.plan_id:
+        from app.models.plan import Plan
+
+        result = await session.execute(select(Plan).where(Plan.id == user.plan_id))
+        plan = result.scalar_one_or_none()
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "role": user.role,
+        "is_superuser": user.is_superuser,
+        "plan": {
+            "id": plan.id,
+            "name": plan.name,
+            "display_name": plan.display_name,
+            "features": plan.features,
+            "max_concurrent_missions": plan.max_concurrent_missions,
+            "max_targets": plan.max_targets,
+        } if plan else None,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+
+@router.post("/change-password", tags=["Auth"])
+async def change_password(
+    body: ChangePasswordRequest,
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Change current user's password."""
+    if not verify_password(body.current_password, user.hashed_password):
+        raise HTTPException(400, "Current password is incorrect")
+
+    user.hashed_password = get_password_hash(body.new_password)
+    await session.commit()
+    return {"detail": "Password changed successfully"}

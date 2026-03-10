@@ -320,6 +320,14 @@ async def get_system_status(
         message="PostgreSQL-backed cache" if cache else "Cache not initialized",
     )
 
+    # Storage health
+    try:
+        from app.services.storage import get_storage_service
+        storage = get_storage_service()
+        storage_health = await storage.health_check()
+    except Exception as e:
+        storage_health = {"status": "unavailable", "error": str(e)}
+
     overall_status = "ready"
     status_messages: list[str] = []
 
@@ -406,7 +414,7 @@ async def get_system_status(
     else:
         message = ", ".join(status_messages) if status_messages else "Unknown status"
 
-    return SystemStatusResponse(
+    resp = SystemStatusResponse(
         status=overall_status,
         message=message,
         timestamp=timestamp,
@@ -421,6 +429,10 @@ async def get_system_status(
         rag_status=rag_status,
         tool_cache_stats=_get_tool_cache_stats(),
     )
+    # Attach storage health to response (not in model, but for UI/ops)
+    resp_dict = resp.model_dump()
+    resp_dict["storage_health"] = storage_health
+    return resp_dict
 
 
 @router.post("/clear/tools", response_model=ClearResponse)
@@ -764,3 +776,25 @@ async def get_audit_log(
     repo = AuditLogRepository(db)
     entries = await repo.list_events(skip=skip, limit=limit, event_type=event_type)
     return [e.to_dict() for e in entries]
+
+
+@router.get("/services/health")
+async def service_health(
+    _current_user: User = Depends(get_current_superuser),
+) -> dict:
+    """Health check all registered services."""
+    from app.services.gateway.service_registry import get_service_registry
+
+    registry = get_service_registry()
+    return await registry.health_check_all()
+
+
+@router.get("/services/topology")
+async def service_topology(
+    _current_user: User = Depends(get_current_superuser),
+) -> dict:
+    """Return current service topology (local vs remote)."""
+    from app.services.gateway.service_registry import get_service_registry
+
+    registry = get_service_registry()
+    return registry.get_service_topology()

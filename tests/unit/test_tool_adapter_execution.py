@@ -36,17 +36,14 @@ def adapter(mock_tool_config):
 
 @pytest.mark.asyncio
 async def test_execute_local_without_container_config(adapter):
-    """Test execution falls back to local when TOOL_CONTAINER_NAME is not set."""
+    """Test execution runs locally (no docker exec wrapping)."""
     request = ToolExecutionRequest(
         tool_id="test-tool", target="127.0.0.1", args={"ports": "80"}
     )
 
     with (
-        patch("app.services.tools.adapter.runner.settings") as mock_settings,
         patch("asyncio.create_subprocess_shell") as mock_subprocess,
     ):
-        mock_settings.TOOL_CONTAINER_NAME = None
-
         process_mock = AsyncMock()
         process_mock.communicate.return_value = (b"local stdout", b"")
         process_mock.returncode = 0
@@ -66,22 +63,17 @@ async def test_execute_local_without_container_config(adapter):
 
 
 @pytest.mark.asyncio
-async def test_execute_docker_command(adapter):
-    """Test executing a command inside a Docker container."""
+async def test_execute_command_locally(adapter):
+    """Test executing a command locally (sandbox wrapping is handled externally)."""
     request = ToolExecutionRequest(
         tool_id="test-tool", target="127.0.0.1", args={"ports": "80"}
     )
 
-    # Mock settings to enable Docker execution
     with (
-        patch(
-            "app.services.tools.adapter.runner.settings.TOOL_CONTAINER_NAME",
-            "spectra-tools",
-        ),
         patch("asyncio.create_subprocess_shell") as mock_subprocess,
     ):
         process_mock = AsyncMock()
-        process_mock.communicate.return_value = (b"docker stdout", b"")
+        process_mock.communicate.return_value = (b"stdout output", b"")
         process_mock.returncode = 0
         mock_subprocess.return_value = process_mock
 
@@ -89,15 +81,12 @@ async def test_execute_docker_command(adapter):
 
         assert result.success is True
 
-        # Verify permissions call by mocking _ensure_permissions (since it's internal)
-        # But we mocked subprocess, and ensure_permissions calls subprocess too.
-        # Let's count calls.
+        assert mock_subprocess.call_count >= 1
 
-        assert mock_subprocess.call_count >= 1  # Execution + potential permission fix
-
-        # Verify main execution command
         cmd_arg = mock_subprocess.call_args_list[0][0][0]
-        assert "docker exec spectra-tools bash -c" in cmd_arg
+        assert "docker exec" not in cmd_arg
+        assert "timeout -k 5s" in cmd_arg
+        assert "nmap" in cmd_arg
         assert "timeout -k 5s" in cmd_arg
         assert "nmap" in cmd_arg
 

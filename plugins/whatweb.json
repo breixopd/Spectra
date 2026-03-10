@@ -75,9 +75,29 @@
     "color": "cyan"
   },
   "examples": [
-    {"description": "Fingerprint target web technologies", "args": {"target": "https://example.com"}},
-    {"description": "Aggressive scan with detailed output", "args": {"target": "https://example.com", "flags": "-a 3 -v"}},
-    {"description": "Stealthy passive scan", "args": {"target": "https://example.com", "flags": "-a 1"}}
+    {
+      "description": "Fingerprint target web technologies",
+      "args": {
+        "target": "https://example.com"
+      }
+    },
+    {
+      "description": "Aggressive scan with detailed output",
+      "args": {
+        "target": "https://example.com",
+        "flags": "-a 3 -v"
+      }
+    },
+    {
+      "description": "Stealthy passive scan",
+      "args": {
+        "target": "https://example.com",
+        "flags": "-a 1"
+      }
+    }
   ],
-  "signature": "1bf5c7e4b1b4b90699602304e1f64c7af892c26b7467447d34d984f329a84d3c947404ec91476a659a7814725ac4612f116c100c76d6d2caf9607c6ca3605304"
+  "signature": "1bf5c7e4b1b4b90699602304e1f64c7af892c26b7467447d34d984f329a84d3c947404ec91476a659a7814725ac4612f116c100c76d6d2caf9607c6ca3605304",
+  "resources": {
+    "tier": "light"
+  }
 }

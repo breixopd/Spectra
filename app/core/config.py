@@ -60,7 +60,6 @@ class Settings(BaseSettings):
 
     # Embedding model (must be supported by LLM_API_BASE_URL provider)
     EMBEDDING_MODEL: str = "text-embedding-3-small"
-    EMBEDDING_PROVIDER: str = ""  # "local", "api" compatibility mode, or "" (auto-detect)
 
     # --- Platform Settings ---
     PLATFORM_DOMAIN: str = ""  # Public domain (e.g., "spectra.example.com")
@@ -83,13 +82,44 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var or generated
     JWT_ALGORITHM: str = "HS256"
     # Security
-    SECRET_KEY: str = "change-me-in-production"  # Fallback
+    SECRET_KEY: SecretStr = SecretStr("change-me-in-production")  # Fallback
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
     FULLY_AUTOMATED: bool = True  # Skip ALL human approval, fully autonomous operation
-    TOOL_CONTAINER_NAME: str = "spectra-tools"
     CONNECT_BACK_HOST: str = "spectra-app"
+
+    # --- Sandbox Pool ---
+    SANDBOX_IMAGE: str = "spectra-tools"
+    SANDBOX_NETWORK: str = "spectra-network"
+    SANDBOX_MAX_CONTAINERS: int = 10
+    SANDBOX_MEMORY_LIMIT: str = "2g"
+    SANDBOX_CPU_SHARES: int = 512
+    SANDBOX_RESOURCE_TIERS: str = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
+    SANDBOX_MAX_LIFETIME: int = 7200  # seconds
+    SANDBOX_WORKER_POLL_DELAY: float = 0.5
+    SANDBOX_NETWORK_ISOLATION: bool = True
+    SANDBOX_IDLE_TIMEOUT: int = 600  # seconds — destroy sandbox if no heartbeat for this long
+    SANDBOX_HEARTBEAT_INTERVAL: int = 30  # seconds — how often worker sends heartbeat
+    SANDBOX_PER_USER_LIMIT: int = 3  # Max concurrent sandboxes per user
+    SANDBOX_DEFAULT_PRIORITY: int = 5  # Default job priority (1=highest, 10=lowest)
+    SANDBOX_OOM_ESCALATION_ENABLED: bool = True  # Auto-escalate resource tier on OOM (exit 137)
+    SANDBOX_WARM_POOL_ENABLED: bool = False  # Disabled by default — pre-warms idle containers for instant assignment
+    SANDBOX_WARM_POOL_SIZE: int = 2  # Number of pre-warmed idle containers to maintain
+    SANDBOX_AUTO_BUILD_IMAGE: bool = True  # Auto-rebuild golden image when plugins change
+    SANDBOX_IMAGE_SCAN_ENABLED: bool = True  # Scan golden image after each build for CVEs
+    SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL: bool = False  # Block deployment if critical CVEs found
+
+    # --- External Service Gateways ---
+    # When set, the service uses an HTTP client to the external URL.
+    # When empty/None, the service runs in-process (default monolith mode).
+
+    # LLM gateway settings removed; use LLM_API_BASE_URL for OpenAI-compatible endpoints
+
+    # Sandbox Orchestrator — external container management (for multi-node)
+    SANDBOX_ORCHESTRATOR_URL: str | None = None  # e.g. "http://orchestrator:8084"
+    SANDBOX_ORCHESTRATOR_TIMEOUT: int = 30
+    SANDBOX_ORCHESTRATOR_API_KEY: SecretStr = SecretStr("")
 
     # VPN
     VPN_CONFIG_DIR: str = "/app/vpn_configs"
@@ -101,6 +131,16 @@ class Settings(BaseSettings):
 
     # Multi-provider
     OLLAMA_ENABLED: bool = False  # Whether Ollama is available as secondary provider
+
+    # --- Object Storage (S3/MinIO) ---
+    S3_ENDPOINT_URL: str = ""  # MinIO/S3 endpoint (e.g., http://minio:9000)
+    S3_ACCESS_KEY: str = ""
+    S3_SECRET_KEY: SecretStr = SecretStr("")
+    S3_REGION: str = "us-east-1"
+    S3_BUCKET_MISSIONS: str = "spectra-missions"
+    S3_BUCKET_SESSIONS: str = "spectra-sessions"
+    S3_BUCKET_KNOWLEDGE: str = "spectra-knowledge"
+    S3_BUCKET_BACKUPS: str = "spectra-backups"
 
     # --- Validators ---
 
@@ -150,7 +190,6 @@ class Settings(BaseSettings):
             "LOG_LEVEL": self.LOG_LEVEL,
             "PLUGIN_SAFE_MODE": self.PLUGIN_SAFE_MODE,
             "CONNECT_BACK_HOST": self.CONNECT_BACK_HOST,
-            "TOOL_CONTAINER_NAME": self.TOOL_CONTAINER_NAME,
             "REQUIRE_APPROVAL": self.REQUIRE_APPROVAL,
             "FULLY_AUTOMATED": self.FULLY_AUTOMATED,
             "NOTIFICATION_WEBHOOK": self.NOTIFICATION_WEBHOOK,
@@ -209,7 +248,6 @@ class Settings(BaseSettings):
                 "LLM_TIER1_MODEL",
                 "LLM_TIER2_MODEL",
                 "LLM_TIER3_MODEL",
-                "EMBEDDING_PROVIDER",
                 "EMBEDDING_MODEL",
             }
             for key, value in data.items():
@@ -259,7 +297,7 @@ def get_settings() -> Settings:
 
         import secrets
 
-        settings_instance.SECRET_KEY = secrets.token_urlsafe(32)
+        settings_instance.SECRET_KEY = SecretStr(secrets.token_urlsafe(32))
 
     return settings_instance
 
