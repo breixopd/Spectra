@@ -1,0 +1,18 @@
+[run]
+source = app/
+branch = true
+omit =
+    tests/*
+    alembic/*
+    app/static/*
+    app/templates/*
+
+[report]
+show_missing = true
+precision = 2
+fail_under = 70
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING
+    @abstractmethod
+    raise NotImplementedError
