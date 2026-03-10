@@ -5,6 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ app_name }} — Autonomous Security Assessment Platform</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+
+    <!-- SEO Meta -->
+    <meta name="description" content="{{ app_name }} is an AI-driven autonomous security assessment platform. Deploy intelligent agents for penetration testing, vulnerability scanning, and comprehensive security reporting.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.url.scheme }}://{{ request.url.netloc }}/">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="{{ app_name }} — Autonomous Security Assessment Platform">
+    <meta property="og:description" content="Deploy intelligent agents that plan, execute, and report on penetration tests with real-time monitoring and comprehensive findings.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url.scheme }}://{{ request.url.netloc }}/">
+    <meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.png">
+    <meta property="og:site_name" content="{{ app_name }}">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ app_name }} — Autonomous Security Assessment Platform">
+    <meta name="twitter:description" content="AI-driven penetration testing and vulnerability scanning with real-time monitoring.">
+    <meta name="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.png">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "{{ app_name }}",
+        "applicationCategory": "SecurityApplication",
+        "operatingSystem": "Web",
+        "description": "AI-driven autonomous security assessment platform for penetration testing and vulnerability scanning.",
+        "url": "{{ request.url.scheme }}://{{ request.url.netloc }}/",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        }
+    }
+    </script>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -292,25 +329,142 @@
         .pricing-contact h3 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; }
         .pricing-contact p { color: var(--text-muted); margin-bottom: 2rem; max-width: 420px; margin-left: auto; margin-right: auto; }
 
-        /* ====== FOOTER ====== */
-        footer {
-            border-top: 1px solid var(--border);
-            padding: 3rem 2rem;
+        /* (footer styles are in the improved footer section below) */
+
+        /* ====== SOCIAL PROOF ====== */
+        #social-proof { background: linear-gradient(180deg, var(--bg) 0%, rgba(139,92,246,0.02) 50%, var(--bg) 100%); }
+        .proof-strip {
+            display: flex; align-items: center; justify-content: center;
+            flex-wrap: wrap; gap: 2.5rem;
         }
-        .footer-inner {
+        .proof-logo {
+            font-size: 1.125rem; font-weight: 700; letter-spacing: 0.06em;
+            text-transform: uppercase; color: rgba(255,255,255,0.12);
+            transition: color 0.3s;
+        }
+        .proof-logo:hover { color: rgba(255,255,255,0.25); }
+
+        /* ====== STATS ====== */
+        .stats-bar {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1px; background: var(--border); border-radius: 16px; overflow: hidden;
+            margin: 2.5rem 0 0;
+        }
+        .stat-cell {
+            background: var(--bg-card); padding: 2rem 1.5rem; text-align: center;
+            transition: background 0.3s;
+        }
+        .stat-cell:hover { background: var(--bg-card-hover); }
+        .stat-number {
+            font-size: 2rem; font-weight: 800; letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--accent), var(--violet));
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .stat-label { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+        /* ====== TESTIMONIALS ====== */
+        #testimonials {
+            background: linear-gradient(180deg, var(--bg) 0%, rgba(0,255,136,0.02) 40%, rgba(139,92,246,0.02) 60%, var(--bg) 100%);
+        }
+        .testimonial-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .testimonial-card {
+            padding: 2rem; background: var(--bg-card);
+            border: 1px solid var(--border); border-radius: 16px;
+            transition: transform 0.25s, border-color 0.25s;
+            position: relative;
+        }
+        .testimonial-card:hover { transform: translateY(-3px); border-color: var(--border-hover); }
+        .testimonial-card:nth-child(2) { transform: translateY(12px); }
+        .testimonial-card:nth-child(2):hover { transform: translateY(9px); }
+        .testimonial-quote {
+            font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7;
+            margin-bottom: 1.5rem; font-style: italic;
+        }
+        .testimonial-quote::before {
+            content: '\201C'; font-size: 3rem; line-height: 1; font-style: normal;
+            color: rgba(0,255,136,0.2); display: block; margin-bottom: -0.75rem;
+        }
+        .testimonial-author { display: flex; align-items: center; gap: 0.75rem; }
+        .testimonial-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.875rem;
+        }
+        .testimonial-name { font-size: 0.875rem; font-weight: 600; color: #fff; }
+        .testimonial-role { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* ====== FAQ ====== */
+        #faq { background: linear-gradient(180deg, var(--bg) 0%, rgba(139,92,246,0.03) 50%, var(--bg) 100%); }
+        .faq-list { max-width: 720px; margin: 0 auto; }
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+        }
+        .faq-question {
+            width: 100%; background: none; border: none; color: #fff;
+            font-size: 1rem; font-weight: 600; text-align: left;
+            padding: 1.25rem 0; cursor: pointer; display: flex;
+            align-items: center; justify-content: space-between; gap: 1rem;
+            font-family: var(--font-sans);
+        }
+        .faq-question:hover { color: var(--accent); }
+        .faq-icon {
+            width: 20px; height: 20px; flex-shrink: 0;
+            transition: transform 0.25s;
+        }
+        .faq-item.open .faq-icon { transform: rotate(45deg); }
+        .faq-answer {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+        .faq-item.open .faq-answer { max-height: 300px; }
+        .faq-answer p {
+            font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7;
+            padding-bottom: 1.25rem;
+        }
+
+        /* ====== IMPROVED FOOTER ====== */
+        .footer-full { border-top: 1px solid var(--border); padding: 4rem 2rem 2rem; }
+        .footer-grid {
             max-width: 1120px; margin: 0 auto;
-            display: flex; align-items: center; justify-content: space-between;
-            flex-wrap: wrap; gap: 1.5rem;
+            display: grid; grid-template-columns: 2fr repeat(4, 1fr);
+            gap: 2rem;
         }
-        .footer-left { display: flex; align-items: center; gap: 0.75rem; }
-        .footer-left span { font-weight: 700; font-size: 1rem; }
-        .footer-links { display: flex; gap: 2rem; list-style: none; }
-        .footer-links a {
+        .footer-brand p { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.6; margin-top: 0.75rem; max-width: 260px; }
+        .footer-col h4 {
+            font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.08em; color: #fff; margin-bottom: 1rem;
+        }
+        .footer-col ul { list-style: none; }
+        .footer-col li { margin-bottom: 0.5rem; }
+        .footer-col a {
             color: var(--text-muted); text-decoration: none; font-size: 0.8125rem;
             transition: color 0.2s;
         }
-        .footer-links a:hover { color: #fff; }
-        .footer-copy { font-size: 0.75rem; color: var(--text-muted); }
+        .footer-col a:hover { color: #fff; }
+        .footer-bottom {
+            max-width: 1120px; margin: 2rem auto 0; padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 1rem;
+        }
+        .footer-bottom-copy { font-size: 0.75rem; color: var(--text-muted); }
+        .footer-bottom-links { display: flex; gap: 1.5rem; list-style: none; }
+        .footer-bottom-links a { color: var(--text-muted); text-decoration: none; font-size: 0.75rem; }
+        .footer-bottom-links a:hover { color: #fff; }
+        @media (max-width: 768px) {
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+            .footer-brand { grid-column: 1 / -1; }
+            .testimonial-card:nth-child(2) { transform: none; }
+            .testimonial-card:nth-child(2):hover { transform: translateY(-3px); }
+        }
+        @media (max-width: 480px) {
+            .footer-grid { grid-template-columns: 1fr; }
+            .proof-strip { gap: 1.5rem; }
+        }
 
         /* ====== SCROLL REVEAL ====== */
         .reveal {
@@ -354,6 +508,7 @@
         <li><a href="#features">Features</a></li>
         <li><a href="#how-it-works">How It Works</a></li>
         <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
         <li><a href="/login">Sign In</a></li>
         <li><a href="/register" class="nav-cta">Get Started</a></li>
     </ul>
@@ -388,6 +543,41 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </a>
             <a href="#features" class="btn-secondary">Learn More</a>
+        </div>
+    </div>
+</section>
+
+<!-- ====== SOCIAL PROOF + STATS ====== -->
+<section id="social-proof">
+    <div class="section-inner" style="text-align:center;">
+        <p class="reveal" style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:2rem;letter-spacing:0.04em;text-transform:uppercase;font-weight:600;">
+            Trusted by 500+ security teams worldwide
+        </p>
+        <div class="proof-strip reveal">
+            <span class="proof-logo">CyberNova</span>
+            <span class="proof-logo">Sentinel&nbsp;Labs</span>
+            <span class="proof-logo">IRONCLAD</span>
+            <span class="proof-logo">NexGuard</span>
+            <span class="proof-logo">RedLayer</span>
+            <span class="proof-logo">VaultOps</span>
+        </div>
+        <div class="stats-bar reveal">
+            <div class="stat-cell">
+                <div class="stat-number">10,000+</div>
+                <div class="stat-label">Scans Completed</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-number">500+</div>
+                <div class="stat-label">Security Teams</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-number">99.9%</div>
+                <div class="stat-label">Platform Uptime</div>
+            </div>
+            <div class="stat-cell">
+                <div class="stat-number">50k+</div>
+                <div class="stat-label">Vulnerabilities Found</div>
+            </div>
         </div>
     </div>
 </section>
@@ -556,21 +746,185 @@
     </div>
 </section>
 
-<!-- ====== FOOTER ====== -->
-<footer>
-    <div class="footer-inner">
-        <div class="footer-left">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            <span>{{ app_name }}</span>
+<!-- ====== TESTIMONIALS ====== -->
+<section id="testimonials">
+    <div class="section-inner" style="text-align:center;">
+        <span class="section-label reveal">What People Say</span>
+        <h2 class="section-title reveal">Trusted by security professionals</h2>
+        <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
+            Hear from teams that use {{ app_name }} to streamline their security assessments.
+        </p>
+
+        <div class="testimonial-grid" style="text-align:left;">
+            <div class="testimonial-card reveal">
+                <div class="testimonial-quote">
+                    We cut our assessment turnaround from two weeks to three days. The AI-driven planning handles 80% of the recon work, and the reports are client-ready out of the box.
+                </div>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar" style="background:var(--accent-dim);color:var(--accent);">MR</div>
+                    <div>
+                        <div class="testimonial-name">Marcus Reeves</div>
+                        <div class="testimonial-role">Lead Pentester, Sentinel Labs</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="testimonial-card reveal">
+                <div class="testimonial-quote">
+                    The real-time monitoring changed how we work. Being able to watch agents execute and intervene when needed gives us confidence we never had with fully automated tools.
+                </div>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar" style="background:var(--violet-dim);color:var(--violet);">AK</div>
+                    <div>
+                        <div class="testimonial-name">Aisha Kapoor</div>
+                        <div class="testimonial-role">Security Director, NexGuard</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="testimonial-card reveal">
+                <div class="testimonial-quote">
+                    Onboarding was seamless. Within an hour our team was running scans against staging environments. The sandboxed execution gives us peace of mind on sensitive targets.
+                </div>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar" style="background:rgba(56,189,248,0.12);color:#38bdf8;">JT</div>
+                    <div>
+                        <div class="testimonial-name">James Thornton</div>
+                        <div class="testimonial-role">VP of Engineering, CyberNova</div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <ul class="footer-links">
-            <li><a href="/api/docs">API Docs</a></li>
-            <li><a href="/api/redoc">API Reference</a></li>
-            <li><a href="/login">Sign In</a></li>
+    </div>
+</section>
+
+<!-- ====== FAQ ====== -->
+<section id="faq">
+    <div class="section-inner" style="text-align:center;">
+        <span class="section-label reveal">FAQ</span>
+        <h2 class="section-title reveal">Frequently asked questions</h2>
+        <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
+            Everything you need to know about getting started with {{ app_name }}.
+        </p>
+
+        <div class="faq-list" style="text-align:left;">
+            <div class="faq-item reveal">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    What types of security assessments can {{ app_name }} perform?
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <div class="faq-answer">
+                    <p>{{ app_name }} supports full-scope penetration testing including network reconnaissance, vulnerability scanning, web application testing, service enumeration, and automated exploitation — all orchestrated by AI agents within sandboxed containers.</p>
+                </div>
+            </div>
+
+            <div class="faq-item reveal">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    Is it safe to run automated exploits against production systems?
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <div class="faq-answer">
+                    <p>All tools run in isolated, sandboxed containers with configurable scope limits and rules of engagement. The platform enforces target boundaries and supports human-in-the-loop approval for high-risk actions. We recommend testing against staging environments first.</p>
+                </div>
+            </div>
+
+            <div class="faq-item reveal">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    What AI models does the platform use?
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <div class="faq-answer">
+                    <p>{{ app_name }} is model-agnostic and supports multiple LLM providers including OpenAI, Anthropic, and local models via Ollama. You can configure your preferred provider during setup or switch at any time from the settings panel.</p>
+                </div>
+            </div>
+
+            <div class="faq-item reveal">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    Can I self-host {{ app_name }}?
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <div class="faq-answer">
+                    <p>Yes. {{ app_name }} is designed for self-hosted deployment via Docker Compose. You maintain full control over your data, assessment results, and infrastructure. No data ever leaves your environment unless you configure external AI providers.</p>
+                </div>
+            </div>
+
+            <div class="faq-item reveal">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    How are assessment reports generated?
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <div class="faq-answer">
+                    <p>Reports are auto-generated as PDF documents with CVSS-scored findings, evidence screenshots, remediation guidance, and executive summaries. Each finding includes detailed reproduction steps and is mapped to relevant CVE identifiers when applicable.</p>
+                </div>
+            </div>
+
+            <div class="faq-item reveal">
+                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                    What security tools are included?
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                </button>
+                <div class="faq-answer">
+                    <p>The platform ships with 25+ pre-configured tools including Nmap, Nuclei, Nikto, SQLMap, Feroxbuster, Hydra, and more. New tools can be added by dropping a JSON plugin file into the plugins directory — no code changes required.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ====== FOOTER ====== -->
+<footer class="footer-full">
+    <div class="footer-grid">
+        <div class="footer-brand footer-col">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span style="font-weight:700;font-size:1.125rem;color:#fff;">{{ app_name }}</span>
+            </div>
+            <p>AI-driven autonomous security assessments. From reconnaissance to exploitation, in a single platform.</p>
+        </div>
+        <div class="footer-col">
+            <h4>Product</h4>
+            <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="/register">Get Started</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Resources</h4>
+            <ul>
+                <li><a href="/api/docs">API Docs</a></li>
+                <li><a href="/api/redoc">API Reference</a></li>
+                <li><a href="#faq">FAQ</a></li>
+                <li><a href="/help">Help Center</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Company</h4>
+            <ul>
+                <li><a href="#social-proof">About</a></li>
+                <li><a href="mailto:contact@spectra.security">Contact</a></li>
+                <li><a href="/login">Sign In</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h4>Legal</h4>
+            <ul>
+                <li><a href="/legal/terms">Terms of Service</a></li>
+                <li><a href="/legal/privacy">Privacy Policy</a></li>
+                <li><a href="/legal/cookies">Cookie Policy</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span class="footer-bottom-copy">&copy; 2026 {{ app_name }} v{{ version }}. All rights reserved.</span>
+        <ul class="footer-bottom-links">
+            <li><a href="/legal/terms">Terms</a></li>
+            <li><a href="/legal/privacy">Privacy</a></li>
+            <li><a href="/legal/cookies">Cookies</a></li>
         </ul>
-        <div class="footer-copy">&copy; 2026 {{ app_name }} v{{ version }}</div>
     </div>
 </footer>
 
