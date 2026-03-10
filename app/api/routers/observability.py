@@ -167,3 +167,19 @@ async def get_event_stats(
 ) -> dict[str, Any]:
     """Get event statistics."""
     return events.get_stats()
+
+
+@router.get("/export/otlp")
+async def export_otlp(
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
+) -> dict[str, Any]:
+    """Export metrics and traces in OTLP JSON format for external collectors."""
+    return telemetry.export_otlp_format()
+
+
+@router.get("/saas-metrics")
+async def get_saas_metrics(
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
+) -> dict[str, Any]:
+    """Get aggregated SaaS KPI metrics."""
+    return telemetry.get_saas_metrics()

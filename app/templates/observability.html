@@ -359,6 +359,7 @@
         <button class="tab-btn" data-tab="circuit-breakers">Circuit Breakers</button>
         <button class="tab-btn" data-tab="events">Events</button>
         <button class="tab-btn" data-tab="cache">Cache</button>
+        <button class="tab-btn" data-tab="saas">SaaS Metrics</button>
     </div>
     
     <!-- Services Tab -->
@@ -447,6 +448,28 @@
         </div>
         <div class="stats-grid" id="cache-stats">
             <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <!-- SaaS Metrics Tab -->
+    <div class="tab-content" id="tab-saas">
+        <div class="section-header">
+            <h2 class="section-title">SaaS KPI Metrics</h2>
+            <button class="refresh-btn" onclick="refreshSaasMetrics()" aria-label="Refresh SaaS Metrics">
+                <i data-lucide="refresh-cw" class="icon-sm"></i>
+                Refresh
+            </button>
+        </div>
+        <div class="stats-grid" id="saas-stats">
+            <!-- Populated by JS -->
+        </div>
+        <div style="margin-top: 1.5rem;">
+            <h3 class="section-title" style="font-size: 1rem; margin-bottom: 0.75rem;">API Error Rates</h3>
+            <div id="saas-error-rates" style="color: #94a3b8; font-size: 0.875rem;">No data</div>
+        </div>
+        <div style="margin-top: 1.5rem;">
+            <h3 class="section-title" style="font-size: 1rem; margin-bottom: 0.75rem;">Latency by Endpoint</h3>
+            <div id="saas-latency" style="color: #94a3b8; font-size: 0.875rem;">No data</div>
         </div>
     </div>
 </div>
@@ -689,6 +712,55 @@
     // Initial load
     refreshData();
     
+    async function refreshSaasMetrics() {
+        try {
+            const response = await fetch('/api/observability/saas-metrics');
+            const data = await response.json();
+            updateSaasMetrics(data);
+        } catch (error) {
+            console.error('Failed to fetch SaaS metrics:', error);
+        }
+    }
+
+    function updateSaasMetrics(data) {
+        const container = document.getElementById('saas-stats');
+        container.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-value">${data.active_users || 0}</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${data.missions?.started || 0}</div>
+                <div class="stat-label">Missions Started</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success">${data.missions?.completed || 0}</div>
+                <div class="stat-label">Missions Completed</div>
+            </div>
+        `;
+
+        const errContainer = document.getElementById('saas-error-rates');
+        const errEntries = Object.entries(data.api_error_rates || {});
+        if (errEntries.length) {
+            errContainer.innerHTML = errEntries.map(([path, count]) =>
+                `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.05)"><span>${path}</span><span class="font-mono" style="color:#f43f5e">${count}</span></div>`
+            ).join('');
+        } else {
+            errContainer.textContent = 'No errors recorded';
+        }
+
+        const latContainer = document.getElementById('saas-latency');
+        const latEntries = Object.entries(data.latency_by_endpoint || {});
+        if (latEntries.length) {
+            latContainer.innerHTML = '<table class="traces-table"><thead><tr><th>Endpoint</th><th>P50</th><th>P90</th><th>P99</th><th>Count</th></tr></thead><tbody>' +
+                latEntries.map(([path, s]) =>
+                    `<tr><td>${path}</td><td>${s.p50}ms</td><td>${s.p90}ms</td><td>${s.p99}ms</td><td>${s.count}</td></tr>`
+                ).join('') + '</tbody></table>';
+        } else {
+            latContainer.textContent = 'No latency data';
+        }
+    }
+
     // Auto-refresh every 10 seconds
     setInterval(refreshData, 10000);
     
