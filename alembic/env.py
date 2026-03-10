@@ -34,6 +34,20 @@ from app.models import (  # noqa: E402, F401
     Exploit,
     Mission,
     SystemConfig,
+    PentestSession,
+    Plan,
+    Subscription,
+    ApiKey,
+    UsageRecord,
+    ServerNode,
+)
+# Infrastructure models share Base.metadata via InfrastructureBase
+from app.models.infrastructure import (  # noqa: E402, F401
+    SystemCache,
+    JobQueue,
+    Sandbox,
+    SystemStatus,
+    CacheEntry,
 )
 
 target_metadata = Base.metadata
