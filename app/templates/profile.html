@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .profile-sidebar a.active { background: rgba(139,92,246,0.15); color: white; border-left: 3px solid #8b5cf6; }
+    .profile-sidebar a:hover:not(.active) { background: rgba(255,255,255,0.04); }
+    .profile-section { display: none; animation: fadeIn 0.2s ease-out; }
+    .profile-section.active { display: block; }
+    .form-input { background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.5rem; padding: 0.5rem 0.75rem; color: white; font-size: 0.875rem; width: 100%; transition: border-color 0.2s; }
+    .form-input:focus { outline: none; border-color: rgba(139,92,246,0.5); }
+    .form-label { font-size: 0.8rem; font-weight: 500; color: #94a3b8; margin-bottom: 0.25rem; display: block; }
+    .key-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 0.5rem; }
+    .key-row:hover { background: rgba(255,255,255,0.02); }
+    .activity-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .activity-row:last-child { border-bottom: none; }
+    .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast { padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 500; animation: fadeInUp 0.3s ease-out; backdrop-filter: blur(8px); }
+    .toast-success { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #34d399; }
+    .toast-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3 animate-fade-in-up shrink-0">
+        <div>
+            <h1 class="text-2xl font-bold text-white tracking-tight">Account</h1>
+            <p class="text-slate-400 text-sm mt-0.5">Manage your profile, security, and API keys</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 flex-1 min-h-0 animate-fade-in-up stagger-1">
+        <!-- Sidebar -->
+        <div class="md:col-span-3 lg:col-span-2 profile-sidebar">
+            <nav class="space-y-1">
+                <a href="#" data-section="profile" class="active flex items-center px-3 py-2 rounded-lg text-sm font-medium">
+                    <i class="fa-solid fa-user mr-2 text-violet-400 w-4 text-center"></i> Profile
+                </a>
+                <a href="#" data-section="security" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                    <i class="fa-solid fa-lock mr-2 text-slate-500 w-4 text-center"></i> Security
+                </a>
+                <a href="#" data-section="api-keys" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                    <i class="fa-solid fa-key mr-2 text-slate-500 w-4 text-center"></i> API Keys
+                </a>
+                <a href="#" data-section="activity" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                    <i class="fa-solid fa-clock-rotate-left mr-2 text-slate-500 w-4 text-center"></i> Activity
+                </a>
+                <a href="#" data-section="plan" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                    <i class="fa-solid fa-credit-card mr-2 text-slate-500 w-4 text-center"></i> Plan
+                </a>
+            </nav>
+        </div>
+
+        <!-- Content -->
+        <div class="md:col-span-9 lg:col-span-10 overflow-y-auto pr-1 space-y-4">
+
+            <!-- Profile Section -->
+            <div class="profile-section active" id="section-profile">
+                <div class="glass-panel rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-white mb-1">Profile Information</h2>
+                    <p class="text-sm text-slate-400 mb-6">Update your account details.</p>
+                    <div class="space-y-4 max-w-lg">
+                        <div>
+                            <label class="form-label">Username</label>
+                            <input type="text" id="profile-username" class="form-input" readonly>
+                            <p class="text-xs text-slate-600 mt-1">Username cannot be changed.</p>
+                        </div>
+                        <div>
+                            <label class="form-label">Email</label>
+                            <input type="email" id="profile-email" class="form-input" placeholder="you@example.com">
+                        </div>
+                        <div>
+                            <label class="form-label">Role</label>
+                            <input type="text" id="profile-role" class="form-input" readonly>
+                        </div>
+                        <button onclick="saveProfile()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Section -->
+            <div class="profile-section" id="section-security">
+                <div class="glass-panel rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-white mb-1">Change Password</h2>
+                    <p class="text-sm text-slate-400 mb-6">Ensure your account stays secure.</p>
+                    <div class="space-y-4 max-w-lg">
+                        <div>
+                            <label class="form-label">Current Password</label>
+                            <input type="password" id="current-password" class="form-input" autocomplete="current-password">
+                        </div>
+                        <div>
+                            <label class="form-label">New Password</label>
+                            <input type="password" id="new-password" class="form-input" autocomplete="new-password" placeholder="Min 8 characters">
+                        </div>
+                        <div>
+                            <label class="form-label">Confirm New Password</label>
+                            <input type="password" id="confirm-password" class="form-input" autocomplete="new-password">
+                        </div>
+                        <button onclick="changePassword()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                            Update Password
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Keys Section -->
+            <div class="profile-section" id="section-api-keys">
+                <div class="glass-panel rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-white mb-1">API Keys</h2>
+                            <p class="text-sm text-slate-400">Manage keys for programmatic API access.</p>
+                        </div>
+                        <button onclick="generateApiKey()" class="px-3 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">
+                            <i class="fa-solid fa-plus mr-1"></i> Generate Key
+                        </button>
+                    </div>
+                    <div id="api-keys-list">
+                        <div class="text-sm text-slate-500 text-center py-6">Loading API keys...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Section -->
+            <div class="profile-section" id="section-activity">
+                <div class="glass-panel rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-white mb-1">Recent Activity</h2>
+                    <p class="text-sm text-slate-400 mb-4">Your recent security-relevant account events.</p>
+                    <div id="activity-log">
+                        <div class="text-sm text-slate-500 text-center py-6">Loading activity...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plan Section -->
+            <div class="profile-section" id="section-plan">
+                <div class="glass-panel rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-white mb-1">Subscription</h2>
+                    <p class="text-sm text-slate-400 mb-6">Your current plan and usage.</p>
+                    <div id="plan-info" class="space-y-4">
+                        <div class="text-sm text-slate-500 text-center py-6">Loading plan details...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script nonce="{{ request.state.csp_nonce }}">
+    const token = localStorage.getItem('token');
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+    function showToast(msg, type = 'success') {
+        const c = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.textContent = msg;
+        c.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+    }
+
+    // Section navigation
+    document.querySelectorAll('.profile-sidebar a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = link.dataset.section;
+            document.querySelectorAll('.profile-sidebar a').forEach(l => {
+                l.classList.remove('active');
+                l.classList.add('text-slate-400');
+            });
+            link.classList.add('active');
+            link.classList.remove('text-slate-400');
+            document.querySelectorAll('.profile-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`section-${section}`).classList.add('active');
+        });
+    });
+
+    // Load profile
+    async function loadProfile() {
+        try {
+            const res = await fetch('/api/v1/auth/me', { headers });
+            if (!res.ok) return;
+            const user = await res.json();
+            document.getElementById('profile-username').value = user.username || '';
+            document.getElementById('profile-email').value = user.email || '';
+            document.getElementById('profile-role').value = (user.role || 'operator').charAt(0).toUpperCase() + (user.role || 'operator').slice(1);
+        } catch (e) { console.error('Failed to load profile', e); }
+    }
+
+    async function saveProfile() {
+        const email = document.getElementById('profile-email').value;
+        try {
+            const res = await fetch('/api/v1/auth/me', {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({ email })
+            });
+            if (res.ok) showToast('Profile updated');
+            else showToast('Failed to update profile', 'error');
+        } catch (e) { showToast('Network error', 'error'); }
+    }
+
+    async function changePassword() {
+        const current = document.getElementById('current-password').value;
+        const newPw = document.getElementById('new-password').value;
+        const confirm = document.getElementById('confirm-password').value;
+        if (!current || !newPw) return showToast('Please fill all fields', 'error');
+        if (newPw !== confirm) return showToast('Passwords do not match', 'error');
+        if (newPw.length < 8) return showToast('Password must be at least 8 characters', 'error');
+        try {
+            const res = await fetch('/api/v1/auth/change-password', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ current_password: current, new_password: newPw })
+            });
+            if (res.ok) {
+                showToast('Password changed successfully');
+                document.getElementById('current-password').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('confirm-password').value = '';
+            } else {
+                const data = await res.json().catch(() => ({}));
+                showToast(data.detail || 'Failed to change password', 'error');
+            }
+        } catch (e) { showToast('Network error', 'error'); }
+    }
+
+    // API Keys
+    async function loadApiKeys() {
+        const container = document.getElementById('api-keys-list');
+        try {
+            const res = await fetch('/api/v1/auth/api-keys', { headers });
+            if (!res.ok) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">API keys not available</p>'; return; }
+            const keys = await res.json();
+            if (!keys.length) {
+                container.innerHTML = '<p class="text-sm text-slate-500 text-center py-6">No API keys yet. Generate one to get started.</p>';
+                return;
+            }
+            container.innerHTML = keys.map(k => `
+                <div class="key-row">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-sm font-mono text-white truncate">${k.prefix || k.key_prefix || '****'}...</div>
+                        <div class="text-xs text-slate-500 mt-0.5">Created ${new Date(k.created_at).toLocaleDateString()}</div>
+                    </div>
+                    <button onclick="revokeApiKey('${k.id}')" class="px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded transition-colors">Revoke</button>
+                </div>
+            `).join('');
+        } catch (e) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Could not load API keys</p>'; }
+    }
+
+    async function generateApiKey() {
+        try {
+            const res = await fetch('/api/v1/auth/api-keys', { method: 'POST', headers });
+            if (res.ok) {
+                const data = await res.json();
+                showToast('API key generated — copy it now, it won\'t be shown again');
+                if (data.key) {
+                    const container = document.getElementById('api-keys-list');
+                    container.insertAdjacentHTML('afterbegin', `
+                        <div class="key-row" style="border-color:rgba(16,185,129,0.3);background:rgba(16,185,129,0.05);">
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-mono text-emerald-400 break-all select-all">${data.key}</div>
+                                <div class="text-xs text-emerald-500/60 mt-0.5">New key — copy now</div>
+                            </div>
+                        </div>
+                    `);
+                }
+                setTimeout(loadApiKeys, 5000);
+            } else showToast('Failed to generate key', 'error');
+        } catch (e) { showToast('Network error', 'error'); }
+    }
+
+    async function revokeApiKey(keyId) {
+        if (!confirm('Revoke this API key? This cannot be undone.')) return;
+        try {
+            const res = await fetch(`/api/v1/auth/api-keys/${keyId}`, { method: 'DELETE', headers });
+            if (res.ok) { showToast('API key revoked'); loadApiKeys(); }
+            else showToast('Failed to revoke key', 'error');
+        } catch (e) { showToast('Network error', 'error'); }
+    }
+
+    // Activity log
+    async function loadActivity() {
+        const container = document.getElementById('activity-log');
+        try {
+            const res = await fetch('/api/v1/auth/activity?limit=20', { headers });
+            if (!res.ok) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Activity log not available</p>'; return; }
+            const events = await res.json();
+            if (!events.length) {
+                container.innerHTML = '<p class="text-sm text-slate-500 text-center py-6">No recent activity</p>';
+                return;
+            }
+            container.innerHTML = events.map(ev => `
+                <div class="activity-row">
+                    <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
+                        <i class="fa-solid fa-${ev.event_type === 'login' ? 'right-to-bracket' : ev.event_type === 'logout' ? 'right-from-bracket' : 'circle-info'} text-xs text-slate-400"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm text-white">${ev.event_type || ev.action || 'Event'}</div>
+                        <div class="text-xs text-slate-500 mt-0.5">${new Date(ev.created_at || ev.timestamp).toLocaleString()}</div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Could not load activity</p>'; }
+    }
+
+    // Plan info
+    async function loadPlan() {
+        const container = document.getElementById('plan-info');
+        try {
+            const res = await fetch('/api/v1/auth/me', { headers });
+            if (!res.ok) return;
+            const user = await res.json();
+            const planName = user.plan_name || user.plan?.display_name || 'Default';
+            container.innerHTML = `
+                <div class="glass-panel rounded-lg p-4 border border-white/5">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <div class="text-lg font-semibold text-white">${planName}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">Current plan</div>
+                        </div>
+                        <span class="px-2 py-1 text-xs font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mt-4">
+                        <div class="bg-slate-900/50 rounded p-3">
+                            <div class="text-xs text-slate-500">Missions / month</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${user.max_missions_per_month || 'Unlimited'}</div>
+                        </div>
+                        <div class="bg-slate-900/50 rounded p-3">
+                            <div class="text-xs text-slate-500">Max targets</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${user.max_targets || 'Unlimited'}</div>
+                        </div>
+                        <div class="bg-slate-900/50 rounded p-3">
+                            <div class="text-xs text-slate-500">API req / hour</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${user.max_api_requests_per_hour || '—'}</div>
+                        </div>
+                        <div class="bg-slate-900/50 rounded p-3">
+                            <div class="text-xs text-slate-500">Storage</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${user.max_storage_mb ? user.max_storage_mb + ' MB' : '—'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } catch (e) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Could not load plan info</p>'; }
+    }
+
+    // Initialize
+    loadProfile();
+    loadApiKeys();
+    loadActivity();
+    loadPlan();
+</script>
+{% endblock %}

@@ -50,6 +50,17 @@ def _get_ui_user(request: Request) -> dict | None:
     return None
 
 
+@router.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request):
+    """Serve the user profile and account management page."""
+    if not _get_ui_user(request):
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse(
+        "profile.html",
+        {"request": request, "title": f"{settings.APP_NAME} | Account"},
+    )
+
+
 @router.get("/setup", response_class=HTMLResponse)
 async def setup_page(request: Request):
     """Serve the setup page."""
