@@ -91,6 +91,27 @@ async def pricing_page(request: Request):
     return RedirectResponse(url="/#pricing", status_code=302)
 
 
+@router.get("/legal/terms", response_class=HTMLResponse, include_in_schema=False)
+async def legal_terms(request: Request):
+    return templates.TemplateResponse(
+        "legal/terms.html", {"request": request, "app_name": settings.APP_NAME}
+    )
+
+
+@router.get("/legal/privacy", response_class=HTMLResponse, include_in_schema=False)
+async def legal_privacy(request: Request):
+    return templates.TemplateResponse(
+        "legal/privacy.html", {"request": request, "app_name": settings.APP_NAME}
+    )
+
+
+@router.get("/legal/cookies", response_class=HTMLResponse, include_in_schema=False)
+async def legal_cookies(request: Request):
+    return templates.TemplateResponse(
+        "legal/cookie.html", {"request": request, "app_name": settings.APP_NAME}
+    )
+
+
 @router.get("/register", response_class=HTMLResponse, include_in_schema=False)
 async def register_page(request: Request):
     if _get_user_from_cookie(request):

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service — {{ app_name }}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="robots" content="noindex, follow">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f; --bg-card: rgba(255,255,255,0.03);
+            --accent: #00ff88; --accent-dim: rgba(0,255,136,0.15);
+            --violet: #8b5cf6; --violet-dim: rgba(139,92,246,0.15);
+            --text: #e2e8f0; --text-muted: #64748b;
+            --border: rgba(255,255,255,0.06);
+            --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-sans); background: var(--bg); color: var(--text);
+            line-height: 1.7; -webkit-font-smoothing: antialiased;
+        }
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            padding: 0 2rem; height: 64px;
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(10,10,15,0.95); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-logo {
+            font-size: 1.25rem; font-weight: 700; color: #fff;
+            text-decoration: none; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .nav-logo svg { width: 28px; height: 28px; }
+        .nav-back {
+            color: var(--text-muted); text-decoration: none; font-size: 0.875rem;
+            font-weight: 500; transition: color 0.2s;
+        }
+        .nav-back:hover { color: #fff; }
+        .legal-container {
+            max-width: 780px; margin: 0 auto; padding: 7rem 2rem 4rem;
+        }
+        .legal-container h1 {
+            font-size: 2.25rem; font-weight: 800; margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+        .legal-meta {
+            font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 3rem;
+            padding-bottom: 2rem; border-bottom: 1px solid var(--border);
+        }
+        .legal-container h2 {
+            font-size: 1.25rem; font-weight: 700; margin: 2.5rem 0 1rem;
+            color: #fff;
+        }
+        .legal-container h3 {
+            font-size: 1rem; font-weight: 600; margin: 1.5rem 0 0.75rem;
+            color: var(--text);
+        }
+        .legal-container p { margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9375rem; }
+        .legal-container ul, .legal-container ol {
+            margin: 0.75rem 0 1.25rem 1.5rem; color: var(--text-muted); font-size: 0.9375rem;
+        }
+        .legal-container li { margin-bottom: 0.5rem; }
+        .legal-container a { color: var(--accent); text-decoration: none; }
+        .legal-container a:hover { text-decoration: underline; }
+        .placeholder { color: var(--violet); font-weight: 600; }
+        footer {
+            border-top: 1px solid var(--border); padding: 2rem;
+            text-align: center; font-size: 0.75rem; color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="nav-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(0,255,136,0.1)" stroke="var(--accent)"/>
+        </svg>
+        {{ app_name }}
+    </a>
+    <a href="/" class="nav-back">&larr; Back to Home</a>
+</nav>
+
+<div class="legal-container">
+    <h1>Terms of Service</h1>
+    <p class="legal-meta">Last updated: March 10, 2026 &middot; Effective immediately upon acceptance</p>
+
+    <h2>1. Acceptance of Terms</h2>
+    <p>By accessing or using the <span class="placeholder">[Company Name]</span> platform ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree, you may not use the Service.</p>
+    <p>These Terms constitute a legally binding agreement between you ("User", "you") and <span class="placeholder">[Company Name]</span> ("Company", "we", "us").</p>
+
+    <h2>2. Description of Service</h2>
+    <p>{{ app_name }} is an AI-driven security assessment platform that provides automated penetration testing, vulnerability scanning, and security reporting. The Service is offered as a Software-as-a-Service (SaaS) product accessible via web browser.</p>
+
+    <h2>3. Account Registration</h2>
+    <p>To access certain features, you must create an account. You agree to:</p>
+    <ul>
+        <li>Provide accurate and complete registration information</li>
+        <li>Maintain the security of your account credentials</li>
+        <li>Notify us immediately of any unauthorized access</li>
+        <li>Accept responsibility for all activity under your account</li>
+    </ul>
+
+    <h2>4. Acceptable Use</h2>
+    <p>You may only use the Service to assess systems and networks you own or have explicit written authorization to test. You agree NOT to:</p>
+    <ul>
+        <li>Use the Service against any system without proper authorization</li>
+        <li>Conduct assessments that violate any applicable laws or regulations</li>
+        <li>Attempt to access other users' accounts or data</li>
+        <li>Reverse engineer, decompile, or disassemble any part of the Service</li>
+        <li>Use the Service for any illegal, fraudulent, or harmful purpose</li>
+        <li>Resell or redistribute the Service without written consent</li>
+    </ul>
+
+    <h2>5. Subscription Plans &amp; Billing</h2>
+    <p>The Service offers multiple subscription tiers. By subscribing, you agree to:</p>
+    <ul>
+        <li>Pay all applicable fees according to your chosen plan</li>
+        <li>Automatic renewal unless cancelled before the billing cycle ends</li>
+        <li>Fees are non-refundable except as required by law or stated in our refund policy</li>
+    </ul>
+    <p>We reserve the right to modify pricing with 30 days' notice.</p>
+
+    <h2>6. Data &amp; Privacy</h2>
+    <p>Your use of the Service is also governed by our <a href="/legal/privacy">Privacy Policy</a>. Assessment data, including scan results and findings, is stored securely and accessible only to authorized users on your account.</p>
+
+    <h2>7. Intellectual Property</h2>
+    <p>The Service, including its software, design, logos, and documentation, is owned by <span class="placeholder">[Company Name]</span> and protected by intellectual property laws. Your subscription grants a limited, non-exclusive, non-transferable license to use the Service.</p>
+    <p>You retain ownership of any data you input and any reports generated from your assessments.</p>
+
+    <h2>8. Service Availability &amp; SLA</h2>
+    <p>We strive for 99.9% uptime but do not guarantee uninterrupted service. Scheduled maintenance windows will be communicated in advance. We are not liable for downtime caused by:</p>
+    <ul>
+        <li>Force majeure events</li>
+        <li>Third-party service outages</li>
+        <li>Your network or equipment failures</li>
+    </ul>
+
+    <h2>9. Limitation of Liability</h2>
+    <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, <span class="placeholder">[COMPANY NAME]</span> SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE SERVICE.</p>
+    <p>Our total liability shall not exceed the amount you paid for the Service in the 12 months preceding the claim.</p>
+
+    <h2>10. Indemnification</h2>
+    <p>You agree to indemnify and hold harmless <span class="placeholder">[Company Name]</span> from any claims, damages, or expenses arising from your use of the Service, violation of these Terms, or infringement of any third party's rights.</p>
+
+    <h2>11. Termination</h2>
+    <p>Either party may terminate the agreement at any time. We may suspend or terminate your account immediately if you violate these Terms. Upon termination:</p>
+    <ul>
+        <li>Your access to the Service will cease</li>
+        <li>You may request export of your data within 30 days</li>
+        <li>We may delete your data after 90 days</li>
+    </ul>
+
+    <h2>12. Modifications</h2>
+    <p>We may update these Terms from time to time. Material changes will be communicated via email or in-app notification at least 30 days before taking effect. Continued use after changes constitutes acceptance.</p>
+
+    <h2>13. Governing Law</h2>
+    <p>These Terms are governed by the laws of <span class="placeholder">[Jurisdiction]</span>. Any disputes shall be resolved in the courts of <span class="placeholder">[Jurisdiction]</span>.</p>
+
+    <h2>14. Contact</h2>
+    <p>For questions about these Terms, contact us at <span class="placeholder">[Contact Email]</span>.</p>
+</div>
+
+<footer>&copy; 2026 {{ app_name }}. All rights reserved.</footer>
+</body>
+</html>
