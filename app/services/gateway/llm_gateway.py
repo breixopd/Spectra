@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
+from app.core.telemetry import record_llm_call
 from app.services.ai.llm import LLMClient, LLMResponse
 from app.services.gateway.http_client import GatewayClient
 
@@ -35,13 +37,35 @@ class LLMGatewayClient(LLMClient):
             "max_tokens": max_tokens,
             "task_type": task_type,
         }
-        data = await self._client.post("/v1/chat/completions", json=payload)
-        return LLMResponse(
-            content=data.get("content", ""),
-            model=data.get("model", "unknown"),
-            provider="gateway",
-            usage=data.get("usage", {}),
-        )
+        start_time = time.time()
+        try:
+            data = await self._client.post("/v1/chat/completions", json=payload)
+            duration_ms = (time.time() - start_time) * 1000
+            usage = data.get("usage", {})
+            tokens = usage.get("total_tokens", 0) if isinstance(usage, dict) else 0
+            await record_llm_call(
+                provider="gateway",
+                model=data.get("model", "unknown"),
+                duration_ms=duration_ms,
+                tokens=tokens,
+                success=True,
+            )
+            return LLMResponse(
+                content=data.get("content", ""),
+                model=data.get("model", "unknown"),
+                provider="gateway",
+                usage=usage,
+            )
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            await record_llm_call(
+                provider="gateway",
+                model="unknown",
+                duration_ms=duration_ms,
+                tokens=0,
+                success=False,
+            )
+            raise
 
     async def generate_structured(
         self,

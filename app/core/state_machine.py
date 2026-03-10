@@ -12,6 +12,7 @@ from typing import Any
 from app.core.enums import MissionStatus
 from app.core.events import EventType, events
 from app.core.exceptions import MissionStateError
+from app.core.telemetry import telemetry as _telemetry
 
 # Backward-compatible alias — new code should use MissionStatus directly.
 MissionState = MissionStatus
@@ -222,6 +223,13 @@ class MissionStateMachine:
             from_state=old_state.value,
             to_state=new_state.value,
             reason=reason,
+        )
+
+        # Record telemetry
+        _telemetry.increment_counter(
+            "mission_events_total",
+            1,
+            {"event": f"{old_state.value}_to_{new_state.value}", "phase": new_state.value},
         )
 
         return transition

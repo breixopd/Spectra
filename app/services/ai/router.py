@@ -20,6 +20,7 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 
 from app.core.config import settings
+from app.core.telemetry import record_llm_call
 from app.services.ai.llm import LLMClient, LLMResponse
 
 logger = logging.getLogger("spectra.ai.router")
@@ -220,11 +221,20 @@ class LiteLLMRouter(LLMClient):
             usage = response.usage
 
             duration_ms = (time.time() - start_time) * 1000
+            total_tokens = usage.total_tokens if usage else 0
             logger.debug(
                 "LiteLLM [%s] %.0fms tokens=%d",
                 model,
                 duration_ms,
-                usage.total_tokens if usage else 0,
+                total_tokens,
+            )
+
+            await record_llm_call(
+                provider=self.provider,
+                model=model,
+                duration_ms=duration_ms,
+                tokens=total_tokens,
+                success=True,
             )
 
             return LLMResponse(
@@ -240,6 +250,14 @@ class LiteLLMRouter(LLMClient):
             )
 
         except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            await record_llm_call(
+                provider=self.provider,
+                model=model,
+                duration_ms=duration_ms,
+                tokens=0,
+                success=False,
+            )
             logger.error("LiteLLM generation failed for model %s: %s", model, e)
             raise
 
