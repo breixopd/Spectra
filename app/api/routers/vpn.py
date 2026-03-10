@@ -10,9 +10,11 @@ import logging
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import check_feature_allowed, get_current_active_user
 from app.core.config import settings
+from app.core.database import get_async_session
 from app.models.user import User
 from app.services.tools.vpn import VPNManager
 
@@ -28,6 +30,17 @@ def _get_vpn_manager() -> VPNManager:
     if _vpn_manager is None:
         _vpn_manager = VPNManager()
     return _vpn_manager
+
+
+def _scoped_name(user: User, name: str) -> str:
+    """Prefix config name with user_id for isolation."""
+    return f"u_{user.id}_{name}"
+
+
+def _unscoped_name(user: User, scoped: str) -> str:
+    """Strip user_id prefix from config name."""
+    prefix = f"u_{user.id}_"
+    return scoped[len(prefix):] if scoped.startswith(prefix) else scoped
 
 
 # --- Schemas ---
@@ -67,10 +80,12 @@ async def upload_vpn_config(
     name: str = Form(..., min_length=1, max_length=64),
     vpn_type: str = Form(..., pattern=r"^(wireguard|openvpn)$"),
     _user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_session),
 ) -> VPNConfigResponse:
     """Upload a VPN configuration file."""
     if not settings.VPN_ENABLED:
         raise HTTPException(status_code=400, detail="VPN feature is disabled")
+    await check_feature_allowed(_user, db, "vpn_support")
     try:
         # Read with size limit
         MAX_VPN_CONFIG_SIZE = 1024 * 1024  # 1MB
@@ -78,7 +93,8 @@ async def upload_vpn_config(
         if len(content) > MAX_VPN_CONFIG_SIZE:
             raise HTTPException(status_code=400, detail="VPN config file too large (max 1MB)")
         mgr = _get_vpn_manager()
-        result = await mgr.upload_config(name, content, vpn_type)
+        result = await mgr.upload_config(_scoped_name(_user, name), content, vpn_type)
+        result["name"] = name  # Return user-facing name
         return VPNConfigResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -88,10 +104,14 @@ async def upload_vpn_config(
 async def list_vpn_configs(
     _user: User = Depends(get_current_active_user),
 ) -> list[VPNConfigListItem]:
-    """List all saved VPN configurations."""
+    """List VPN configurations owned by the current user."""
     mgr = _get_vpn_manager()
-    configs = await mgr.list_configs()
-    return [VPNConfigListItem(**c) for c in configs]
+    all_configs = await mgr.list_configs()
+    prefix = f"u_{_user.id}_"
+    user_configs = [c for c in all_configs if c.get("name", "").startswith(prefix)]
+    for c in user_configs:
+        c["name"] = _unscoped_name(_user, c["name"])
+    return [VPNConfigListItem(**c) for c in user_configs]
 
 
 @router.delete("/configs/{name}", status_code=status.HTTP_200_OK)
@@ -102,7 +122,7 @@ async def delete_vpn_config(
     """Delete a saved VPN configuration."""
     mgr = _get_vpn_manager()
     try:
-        deleted = await mgr.delete_config(name)
+        deleted = await mgr.delete_config(_scoped_name(_user, name))
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     if not deleted:
@@ -114,13 +134,15 @@ async def delete_vpn_config(
 async def connect_vpn(
     name: str,
     _user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_session),
 ) -> VPNActionResponse:
     """Connect to a VPN using the named configuration."""
     if not settings.VPN_ENABLED:
         raise HTTPException(status_code=400, detail="VPN feature is disabled")
+    await check_feature_allowed(_user, db, "vpn_support")
     mgr = _get_vpn_manager()
     try:
-        result = await mgr.connect(name)
+        result = await mgr.connect(_scoped_name(_user, name))
         return VPNActionResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -134,7 +156,7 @@ async def disconnect_vpn(
     """Disconnect from a VPN."""
     mgr = _get_vpn_manager()
     try:
-        result = await mgr.disconnect(name)
+        result = await mgr.disconnect(_scoped_name(_user, name))
         return VPNActionResponse(**result)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))

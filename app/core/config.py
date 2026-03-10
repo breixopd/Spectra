@@ -82,8 +82,8 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var or generated
     JWT_ALGORITHM: str = "HS256"
     # Security
-    SECRET_KEY: SecretStr = SecretStr("change-me-in-production")  # Fallback
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    SECRET_KEY: SecretStr = SecretStr("change-me-in-production")  # Overridden by get_settings()
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
     FULLY_AUTOMATED: bool = True  # Skip ALL human approval, fully autonomous operation

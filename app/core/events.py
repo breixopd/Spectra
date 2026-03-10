@@ -105,16 +105,9 @@ class EventBus:
     """
 
     def __init__(self):
-        self._signals: dict[str, Signal] = {}
         self._max_history = 1000
         self._event_history: deque[Event] = deque(maxlen=self._max_history)
         self._handlers: dict[str, list[tuple[Callable, bool]]] = {}
-
-    def _get_signal(self, event_type: str) -> Signal:
-        """Get or create a signal for an event type."""
-        if event_type not in self._signals:
-            self._signals[event_type] = Signal(event_type)
-        return self._signals[event_type]
 
     def subscribe(
         self,
@@ -175,10 +168,14 @@ class EventBus:
             event_type.value if isinstance(event_type, EventType) else event_type
         )
 
+        try:
+            resolved_type = EventType(event_name)
+        except ValueError:
+            logger.warning("Unknown event type '%s', skipping emit", event_name)
+            return
+
         event = Event(
-            type=EventType(event_name)
-            if event_name in [e.value for e in EventType]
-            else EventType.MISSION_CREATED,
+            type=resolved_type,
             source=source,
             data=data,
         )

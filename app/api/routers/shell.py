@@ -20,7 +20,7 @@ from app.models.user import User
 from app.services.shell.session_manager import shell_manager
 from app.services.system.audit import log_event as audit_log_event
 
-router = APIRouter(prefix="", tags=["Shell"])  # Prefix is handled in main.py
+router = APIRouter(prefix="/shell", tags=["Shell"])
 logger = logging.getLogger("spectra.api.shell")
 
 

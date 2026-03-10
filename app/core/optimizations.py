@@ -77,8 +77,9 @@ lazy = LazyLoader()
 class ToolResultCache:
     """Cache recent tool results to avoid duplicate scans."""
 
-    def __init__(self, ttl_seconds: int = 3600):
+    def __init__(self, ttl_seconds: int = 3600, max_size: int = 10_000):
         self.ttl = ttl_seconds
+        self._max_size = max_size
         self._cache: dict[str, tuple[float, Any]] = {}
         self._hits = 0
         self._misses = 0
@@ -105,6 +106,10 @@ class ToolResultCache:
     def set(self, tool_id: str, target: str, args: dict, result: Any) -> None:
         key = self._key(tool_id, target, args)
         self._cache[key] = (time.time(), result)
+        # Evict oldest entries if over limit
+        if len(self._cache) > self._max_size:
+            oldest_key = min(self._cache, key=lambda k: self._cache[k][0])
+            del self._cache[oldest_key]
 
     def clear(self):
         self._cache.clear()

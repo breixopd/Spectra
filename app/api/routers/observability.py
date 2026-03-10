@@ -7,12 +7,12 @@ Provides endpoints for telemetry, metrics, and system health monitoring.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 
-from app.api.dependencies import get_current_active_user
 from app.core.cache import get_cache
 from app.core.circuit_breaker import circuit_breakers
 from app.core.events import events
+from app.core.rbac import Permission, require_permission
 from app.core.telemetry import telemetry
 from app.models.user import User
 
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/observability", tags=["Observability"])
 
 @router.get("/stats")
 async def get_observability_stats(
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """
     Get comprehensive observability statistics.
@@ -57,7 +57,7 @@ async def get_traces(
     status: str | None = Query(
         default=None, pattern="^(ok|error)$", description="Filter by status"
     ),
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get recent traces with optional filtering."""
     return telemetry.get_traces(limit=min(limit, 500), status=status)
@@ -66,7 +66,7 @@ async def get_traces(
 @router.get("/traces/{trace_id}")
 async def get_trace_by_id(
     trace_id: str,
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get all spans for a specific trace."""
     return telemetry.get_trace_by_id(trace_id)
@@ -76,7 +76,7 @@ async def get_trace_by_id(
 async def get_slow_operations(
     threshold_ms: float = 1000,
     limit: int = 20,
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get slowest operations above threshold."""
     return telemetry.get_slow_operations(threshold_ms, limit)
@@ -85,7 +85,7 @@ async def get_slow_operations(
 @router.get("/errors")
 async def get_error_traces(
     limit: int = 50,
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get traces with errors."""
     return telemetry.get_error_traces(limit)
@@ -93,7 +93,7 @@ async def get_error_traces(
 
 @router.get("/metrics")
 async def get_metrics_summary(
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """Get aggregated metrics summary."""
     return telemetry.get_metrics_summary()
@@ -101,7 +101,7 @@ async def get_metrics_summary(
 
 @router.get("/services/health")
 async def get_service_health(
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, dict[str, Any]]:
     """Get all service health statuses."""
     return telemetry.get_service_health()
@@ -109,7 +109,7 @@ async def get_service_health(
 
 @router.get("/circuit-breakers")
 async def get_circuit_breakers(
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, dict[str, Any]]:
     """Get circuit breaker statuses."""
     return circuit_breakers.get_all_stats()
@@ -117,7 +117,7 @@ async def get_circuit_breakers(
 
 @router.post("/circuit-breakers/reset")
 async def reset_circuit_breakers(
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, str]:
     """Reset all circuit breakers.
 
@@ -132,7 +132,7 @@ async def reset_circuit_breakers(
 
 @router.get("/cache/stats")
 async def get_cache_stats(
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """Get cache statistics."""
     cache = get_cache()
@@ -152,7 +152,7 @@ async def get_events(
     event_type: str | None = Query(
         default=None, max_length=50, description="Filter by event type"
     ),
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get recent events."""
     return [
@@ -163,7 +163,7 @@ async def get_events(
 
 @router.get("/events/stats")
 async def get_event_stats(
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """Get event statistics."""
     return events.get_stats()
