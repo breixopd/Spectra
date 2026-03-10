@@ -35,6 +35,7 @@ from app.core.lifespan import lifespan
 from app.core.logging_config import CorrelationIdMiddleware, configure_logging
 from app.core.middleware import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
+from app.core.telemetry_middleware import TelemetryMiddleware
 from app.core.websocket import manager
 from app.version import __version__
 
@@ -92,6 +93,9 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # --- Correlation ID ---
 app.add_middleware(CorrelationIdMiddleware)
+
+# --- HTTP Telemetry ---
+app.add_middleware(TelemetryMiddleware)
 
 # --- Static Files ---
 app.mount(
