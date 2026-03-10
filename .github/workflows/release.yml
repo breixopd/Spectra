@@ -195,7 +195,7 @@ jobs:
             docker compose -f docker/docker-compose.prod.yml up -d --remove-orphans
 
             # Health check (wait up to 60s)
-            HEALTH_PORT="${HEALTH_PORT:-5050}"
+            HEALTH_PORT="${HEALTH_PORT:-80}"
             echo "Waiting for health check on port ${HEALTH_PORT}..."
             for i in $(seq 1 12); do
               if curl -sf "http://localhost:${HEALTH_PORT}/api/health" > /dev/null 2>&1; then

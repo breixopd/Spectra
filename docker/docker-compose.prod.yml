@@ -29,7 +29,7 @@ services:
     container_name: spectra-db
     environment:
       POSTGRES_USER: spectra
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spectra_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: spectra
     volumes:
       - postgres_data:/var/lib/postgresql/data

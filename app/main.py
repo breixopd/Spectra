@@ -7,8 +7,8 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.routers import (
     admin,
@@ -30,18 +30,12 @@ from app.api.routers import (
     vpn,
     wordlists,
 )
-from app.core.bridge import EventWebSocketBridge
 from app.core.config import settings
 from app.core.lifespan import lifespan
+from app.core.middleware import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.websocket import manager
 from app.version import __version__
-
-# Initialize event bridge
-event_bridge = EventWebSocketBridge()
-
-# Patch lifespan to include bridge
-# that lifespan imports are used.
 
 
 # --- Logging Setup ---
@@ -82,12 +76,7 @@ app = FastAPI(
 )
 
 
-# Event bridge start/stop is handled in lifespan context (app/core/lifespan.py)
-
-
 # --- Rate Limiting ---
-from slowapi.middleware import SlowAPIMiddleware
-
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore
 app.add_middleware(SlowAPIMiddleware)
@@ -101,10 +90,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# --- Middleware ---
-from app.core.middleware import SecurityHeadersMiddleware
-
+# --- Security Headers ---
 app.add_middleware(SecurityHeadersMiddleware)
 
 # --- Static Files ---
@@ -113,9 +99,6 @@ app.mount(
     StaticFiles(directory=str(STATIC_DIR), html=True),
     name="static",
 )
-
-# --- Templates ---
-templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # --- Include Routers ---
 app.include_router(health.router, prefix="/api", tags=["Health"])

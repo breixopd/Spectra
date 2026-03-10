@@ -112,7 +112,7 @@ function updateShellList() {
     const container = document.getElementById('shell-list');
     if (!container) return;
 
-    fetch('/api/sessions')
+    fetch('/api/shell/sessions')
         .then(res => res.json())
         .then(sessions => {
             container.innerHTML = '';
