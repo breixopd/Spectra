@@ -4,9 +4,11 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -103,6 +105,45 @@ app.mount(
     StaticFiles(directory=str(STATIC_DIR), html=True),
     name="static",
 )
+
+# --- Custom Error Handlers ---
+_error_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+
+def _wants_html(request: Request) -> bool:
+    accept = request.headers.get("accept", "")
+    return "text/html" in accept and not request.url.path.startswith("/api/")
+
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/404.html").render(),
+            status_code=404,
+        )
+    return JSONResponse({"detail": "Not found"}, status_code=404)
+
+
+@app.exception_handler(403)
+async def forbidden_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/403.html").render(),
+            status_code=403,
+        )
+    return JSONResponse({"detail": "Forbidden"}, status_code=403)
+
+
+@app.exception_handler(500)
+async def server_error_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    logger.exception("Internal server error: %s", exc)
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/500.html").render(),
+            status_code=500,
+        )
+    return JSONResponse({"detail": "Internal server error"}, status_code=500)
 
 # --- Include Routers ---
 
