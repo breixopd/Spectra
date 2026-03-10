@@ -32,6 +32,7 @@ from app.api.routers import (
 )
 from app.core.config import settings
 from app.core.lifespan import lifespan
+from app.core.logging_config import CorrelationIdMiddleware, configure_logging
 from app.core.middleware import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.websocket import manager
@@ -39,11 +40,7 @@ from app.version import __version__
 
 
 # --- Logging Setup ---
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+configure_logging()
 logger = logging.getLogger("spectra")
 
 # --- Path Configuration ---
@@ -92,6 +89,9 @@ app.add_middleware(
 
 # --- Security Headers ---
 app.add_middleware(SecurityHeadersMiddleware)
+
+# --- Correlation ID ---
+app.add_middleware(CorrelationIdMiddleware)
 
 # --- Static Files ---
 app.mount(
