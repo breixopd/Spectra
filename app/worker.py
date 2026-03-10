@@ -151,7 +151,7 @@ async def execute_tool_job(
     effective_timeout = max(effective_timeout, config.execution.min_timeout)
 
     # Execute command with timeout
-    wrapped_cmd = f"timeout -k 10s {effective_timeout}s {command}"
+    wrapped_cmd = ["timeout", "-k", "10s", f"{effective_timeout}s", "sh", "-c", command]
     logger.info("Running: %s (timeout: %ds)", command, effective_timeout)
 
     start_time = time.time()
@@ -459,7 +459,7 @@ async def run_command_job(
     """
     logger.info("Running command: %s", command[:100])
 
-    wrapped = f"timeout -k 10s {timeout}s {command}"
+    wrapped = ["timeout", "-k", "10s", f"{timeout}s", "sh", "-c", command]
     returncode, stdout, stderr = await _run_command(wrapped, timeout + 30, cwd)
 
     return {
@@ -613,6 +613,7 @@ async def _run_command(
     command: str | list[str],
     timeout: int,
     cwd: str | None = None,
+    allow_shell: bool = False,
 ) -> tuple[int, str, str]:
     """Run a shell command with timeout."""
     env = os.environ.copy()
@@ -631,6 +632,8 @@ async def _run_command(
                 start_new_session=True,
             )
         else:
+            if not allow_shell:
+                raise ValueError("String commands require allow_shell=True for execution")
             proc = await asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
