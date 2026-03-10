@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from app.core.database import async_session_maker
+from app.core.telemetry import telemetry
 from app.models.plan import Plan, Subscription, UsageRecord
 
 logger = logging.getLogger("spectra.billing.usage")
@@ -82,6 +83,11 @@ class UsageTracker:
             setattr(record, col_name, current + amount)
             await session.commit()
 
+        # Record to telemetry
+        telemetry.increment_counter(
+            f"billing.usage.{metric}", amount, {"user_id": user_id, "period": period_type}
+        )
+
     async def check_rate_limit(
         self, user_id: str, metric: str
     ) -> tuple[bool, int, int]:
@@ -125,5 +131,12 @@ class UsageTracker:
 
             if max_allowed is None:
                 return (True, current, 0)
+
+            # Record usage level to telemetry
+            telemetry.set_gauge(
+                f"billing.usage_level.{metric}",
+                current / max_allowed * 100 if max_allowed else 0,
+                {"user_id": user_id},
+            )
 
             return (current < max_allowed, current, max_allowed)
