@@ -6,9 +6,17 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import String as SAString
 
+from app.models.base import Base
+
 
 class InfrastructureBase(DeclarativeBase):
-    pass
+    """Base for infrastructure tables that don't share the standard UUID/timestamp columns.
+
+    Shares metadata with ``Base`` so Alembic autogenerate sees all tables
+    through a single ``target_metadata = Base.metadata``.
+    """
+
+    metadata = Base.metadata
 
 class JSONBType(TypeDecorator):
     """Fallback JSONB type for SQLite testing."""
