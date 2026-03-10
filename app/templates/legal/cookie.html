@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cookie Policy — {{ app_name }}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="robots" content="noindex, follow">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f; --bg-card: rgba(255,255,255,0.03);
+            --accent: #00ff88; --accent-dim: rgba(0,255,136,0.15);
+            --violet: #8b5cf6; --violet-dim: rgba(139,92,246,0.15);
+            --text: #e2e8f0; --text-muted: #64748b;
+            --border: rgba(255,255,255,0.06);
+            --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-sans); background: var(--bg); color: var(--text);
+            line-height: 1.7; -webkit-font-smoothing: antialiased;
+        }
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            padding: 0 2rem; height: 64px;
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(10,10,15,0.95); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-logo {
+            font-size: 1.25rem; font-weight: 700; color: #fff;
+            text-decoration: none; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .nav-logo svg { width: 28px; height: 28px; }
+        .nav-back {
+            color: var(--text-muted); text-decoration: none; font-size: 0.875rem;
+            font-weight: 500; transition: color 0.2s;
+        }
+        .nav-back:hover { color: #fff; }
+        .legal-container {
+            max-width: 780px; margin: 0 auto; padding: 7rem 2rem 4rem;
+        }
+        .legal-container h1 {
+            font-size: 2.25rem; font-weight: 800; margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+        .legal-meta {
+            font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 3rem;
+            padding-bottom: 2rem; border-bottom: 1px solid var(--border);
+        }
+        .legal-container h2 {
+            font-size: 1.25rem; font-weight: 700; margin: 2.5rem 0 1rem; color: #fff;
+        }
+        .legal-container p { margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9375rem; }
+        .legal-container ul {
+            margin: 0.75rem 0 1.25rem 1.5rem; color: var(--text-muted); font-size: 0.9375rem;
+        }
+        .legal-container li { margin-bottom: 0.5rem; }
+        .legal-container a { color: var(--accent); text-decoration: none; }
+        .legal-container a:hover { text-decoration: underline; }
+        .legal-container table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.875rem; }
+        .legal-container th { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); color: #fff; font-weight: 600; }
+        .legal-container td { padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-muted); }
+        .placeholder { color: var(--violet); font-weight: 600; }
+        footer {
+            border-top: 1px solid var(--border); padding: 2rem;
+            text-align: center; font-size: 0.75rem; color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/" class="nav-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(0,255,136,0.1)" stroke="var(--accent)"/>
+        </svg>
+        {{ app_name }}
+    </a>
+    <a href="/" class="nav-back">&larr; Back to Home</a>
+</nav>
+
+<div class="legal-container">
+    <h1>Cookie Policy</h1>
+    <p class="legal-meta">Last updated: March 10, 2026</p>
+
+    <h2>1. What Are Cookies?</h2>
+    <p>Cookies are small text files stored on your device when you visit a website. They help websites remember your preferences and improve your browsing experience.</p>
+
+    <h2>2. How We Use Cookies</h2>
+    <p>{{ app_name }} uses cookies and similar technologies for the following purposes:</p>
+
+    <table>
+        <tr><th>Cookie</th><th>Type</th><th>Purpose</th><th>Duration</th></tr>
+        <tr>
+            <td><code>access_token</code></td>
+            <td>Essential</td>
+            <td>Authentication — keeps you signed in</td>
+            <td>24 hours</td>
+        </tr>
+        <tr>
+            <td><code>csrf_token</code></td>
+            <td>Essential</td>
+            <td>Security — prevents cross-site request forgery</td>
+            <td>Session</td>
+        </tr>
+        <tr>
+            <td><code>cookie_consent</code></td>
+            <td>Essential</td>
+            <td>Records your cookie preferences</td>
+            <td>1 year</td>
+        </tr>
+    </table>
+
+    <h2>3. Types of Cookies</h2>
+
+    <p><strong>Essential Cookies:</strong> Required for basic platform functionality including authentication, security, and session management. These cannot be disabled.</p>
+
+    <p><strong>Functional Cookies:</strong> Remember your preferences such as theme settings and dashboard layout. These enhance your experience but are not strictly necessary.</p>
+
+    <p><strong>Analytics Cookies:</strong> Help us understand how users interact with the platform. We use this data to improve features and performance. All analytics data is anonymized.</p>
+
+    <h2>4. Local Storage</h2>
+    <p>In addition to cookies, we use browser Local Storage for:</p>
+    <ul>
+        <li><strong>Authentication tokens:</strong> JWT tokens for API authentication</li>
+        <li><strong>UI preferences:</strong> Sidebar state, theme settings</li>
+    </ul>
+    <p>Local Storage data remains until explicitly cleared by you or upon logout.</p>
+
+    <h2>5. Third-Party Cookies</h2>
+    <p>{{ app_name }} does not currently use third-party cookies. If we integrate third-party services in the future (analytics, support chat), this policy will be updated accordingly.</p>
+
+    <h2>6. Managing Cookies</h2>
+    <p>You can control cookies through your browser settings:</p>
+    <ul>
+        <li><strong>Chrome:</strong> Settings &gt; Privacy and security &gt; Cookies</li>
+        <li><strong>Firefox:</strong> Settings &gt; Privacy &amp; Security &gt; Cookies</li>
+        <li><strong>Safari:</strong> Preferences &gt; Privacy &gt; Manage Website Data</li>
+        <li><strong>Edge:</strong> Settings &gt; Cookies and site permissions</li>
+    </ul>
+    <p>Note: Disabling essential cookies will prevent you from using the platform.</p>
+
+    <h2>7. Changes to This Policy</h2>
+    <p>We may update this Cookie Policy as our practices or applicable laws change. Updates will be posted on this page with a revised "Last updated" date.</p>
+
+    <h2>8. Contact</h2>
+    <p>Questions about our use of cookies? Contact us at <span class="placeholder">[Contact Email]</span>.</p>
+    <p>For more information about how we handle your data, see our <a href="/legal/privacy">Privacy Policy</a>.</p>
+</div>
+
+<footer>&copy; 2026 {{ app_name }}. All rights reserved.</footer>
+</body>
+</html>
