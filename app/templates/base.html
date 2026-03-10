@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title | default(app_name + " | Dashboard") }}</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="robots" content="noindex, nofollow">
 
     <!-- Tailwind CSS (local) -->
     <script src="/static/vendor/js/tailwind.js"></script>
@@ -378,6 +379,10 @@
                     <a href="/help" data-tooltip="Guides & help center" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/help' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-circle-question text-lg mr-3 {% if request.path == '/help' %}text-sky-400{% else %}group-hover:text-sky-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Help</span>
+                    </a>
+                    <a href="/profile" data-tooltip="Account & profile" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/profile' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i class="fa-solid fa-id-card text-lg mr-3 {% if request.path == '/profile' %}text-pink-400{% else %}group-hover:text-pink-400{% endif %} transition-colors"></i>
+                        <span class="text-sm font-medium">Account</span>
                     </a>
                 </nav>
             </div>
