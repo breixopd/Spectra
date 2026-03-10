@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from app.core.constants import MAX_HOSTS_DEFAULT
+from app.core.telemetry import record_tool_execution
 from app.services.tools.adapter.base import ToolAdapter, ToolExecutionError
 from app.services.tools.adapter.builder import CommandBuilder
 from app.services.tools.adapter.parser import OutputParser
@@ -158,10 +159,17 @@ class CommandToolAdapter(ToolAdapter):
             except Exception as e:
                 logger.warning("Failed to parse tool output: %s", e)
 
+            success = proc.returncode == 0
+            await record_tool_execution(
+                tool_id=request.tool_id,
+                duration_ms=duration * 1000,
+                success=success,
+            )
+
             return ToolExecutionResult(
                 tool_id=request.tool_id,
                 target=request.target,
-                success=proc.returncode == 0,
+                success=success,
                 exit_code=proc.returncode or 0,
                 stdout=stdout,
                 stderr=stderr,
@@ -176,6 +184,12 @@ class CommandToolAdapter(ToolAdapter):
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
             except Exception as e:
                 logger.debug("Failed to kill process group: %s", e)
+            timeout_duration = time.time() - start_time
+            await record_tool_execution(
+                tool_id=request.tool_id,
+                duration_ms=timeout_duration * 1000,
+                success=False,
+            )
             return ToolExecutionResult(
                 tool_id=request.tool_id,
                 target=request.target,
@@ -183,7 +197,7 @@ class CommandToolAdapter(ToolAdapter):
                 exit_code=-1,
                 stdout="",
                 stderr=f"Command timed out after {timeout}s",
-                duration_seconds=time.time() - start_time,
+                duration_seconds=timeout_duration,
             )
 
 
