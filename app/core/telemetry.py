@@ -429,6 +429,149 @@ class TelemetryCollector:
         errors = [t for t in self._traces if t.status == "error"]
         return [e.to_dict() for e in errors[-limit:]]
 
+    def export_otlp_format(self) -> dict[str, Any]:
+        """Export metrics and traces in OTLP JSON-compatible format."""
+        from app.version import __version__
+
+        resource_attrs = [
+            {"key": "service.name", "value": {"stringValue": "spectra"}},
+            {"key": "service.version", "value": {"stringValue": __version__}},
+            {"key": "telemetry.sdk.language", "value": {"stringValue": "python"}},
+        ]
+        resource = {"attributes": resource_attrs}
+        now_ns = int(datetime.now().timestamp() * 1e9)
+
+        # --- metrics ---
+        otlp_metrics: list[dict[str, Any]] = []
+
+        for key, value in self._counters.items():
+            name = key.split(":")[0]
+            otlp_metrics.append({
+                "name": name,
+                "sum": {
+                    "dataPoints": [{
+                        "asDouble": value,
+                        "timeUnixNano": str(now_ns),
+                        "isMonotonic": True,
+                        "aggregationTemporality": 2,
+                    }],
+                },
+            })
+
+        for key, values in self._histograms.items():
+            name = key.split(":")[0]
+            if not values:
+                continue
+            sorted_v = sorted(values)
+            otlp_metrics.append({
+                "name": name,
+                "histogram": {
+                    "dataPoints": [{
+                        "count": str(len(sorted_v)),
+                        "sum": sum(sorted_v),
+                        "min": sorted_v[0],
+                        "max": sorted_v[-1],
+                        "timeUnixNano": str(now_ns),
+                        "aggregationTemporality": 2,
+                    }],
+                },
+            })
+
+        # --- traces ---
+        otlp_spans: list[dict[str, Any]] = []
+        for span in self._traces:
+            otlp_span: dict[str, Any] = {
+                "traceId": span.trace_id,
+                "spanId": span.span_id,
+                "name": span.name,
+                "kind": 1,  # SPAN_KIND_INTERNAL
+                "startTimeUnixNano": str(int(span.start_time.timestamp() * 1e9)),
+                "status": {"code": 2 if span.status == "error" else 1},
+                "attributes": [
+                    {"key": k, "value": {"stringValue": str(v)}}
+                    for k, v in span.attributes.items()
+                ],
+            }
+            if span.end_time:
+                otlp_span["endTimeUnixNano"] = str(int(span.end_time.timestamp() * 1e9))
+            if span.parent_id:
+                otlp_span["parentSpanId"] = span.parent_id
+            otlp_spans.append(otlp_span)
+
+        return {
+            "resourceMetrics": [{
+                "resource": resource,
+                "scopeMetrics": [{
+                    "scope": {"name": "spectra.telemetry"},
+                    "metrics": otlp_metrics,
+                }],
+            }],
+            "resourceSpans": [{
+                "resource": resource,
+                "scopeSpans": [{
+                    "scope": {"name": "spectra.telemetry"},
+                    "spans": otlp_spans,
+                }],
+            }],
+        }
+
+    def get_saas_metrics(self) -> dict[str, Any]:
+        """Aggregate key SaaS KPIs from existing collected data."""
+        # Active users from auth counters
+        active_users = sum(
+            v for k, v in self._counters.items()
+            if k.startswith("auth.")
+        )
+
+        # Mission throughput
+        missions_started = sum(
+            v for k, v in self._counters.items()
+            if "mission_events_total" in k and "event=started" in k
+        )
+        missions_completed = sum(
+            v for k, v in self._counters.items()
+            if "mission_events_total" in k and "event=completed" in k
+        )
+
+        # API error rates by endpoint path
+        error_rates: dict[str, float] = {}
+        for key, value in self._counters.items():
+            if "http.requests.errors" in key:
+                # Extract path label
+                for part in key.split(","):
+                    if part.startswith("path="):
+                        error_rates[part.split("=", 1)[1]] = value
+                        break
+
+        # Latency percentiles by endpoint
+        latency_by_endpoint: dict[str, dict[str, float]] = {}
+        for key, values in self._histograms.items():
+            if "http.request.duration_ms" in key:
+                path = ""
+                for part in key.split(","):
+                    if part.startswith("path="):
+                        path = part.split("=", 1)[1]
+                        break
+                if path and values:
+                    sorted_v = sorted(values)
+                    n = len(sorted_v)
+                    latency_by_endpoint[path] = {
+                        "p50": round(sorted_v[int(n * 0.5)], 2),
+                        "p90": round(sorted_v[int(n * 0.9)], 2),
+                        "p99": round(sorted_v[int(n * 0.99)] if n >= 100 else sorted_v[-1], 2),
+                        "count": n,
+                    }
+
+        return {
+            "active_users": int(active_users),
+            "missions": {
+                "started": int(missions_started),
+                "completed": int(missions_completed),
+            },
+            "api_error_rates": error_rates,
+            "latency_by_endpoint": latency_by_endpoint,
+        }
+
 
 # Global telemetry instance
 telemetry = TelemetryCollector()
