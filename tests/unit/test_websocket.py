@@ -121,3 +121,81 @@ class TestPerUserLimitReject:
             ok = await manager.connect(ws)
         assert ok is False
         ws.close.assert_awaited_once()
+
+
+# =============================================================================
+# Shell router keepalive tests
+# =============================================================================
+
+
+class TestShellKeepalive:
+    """Keepalive task lifecycle during shell WebSocket sessions."""
+
+    @pytest.mark.asyncio
+    async def test_keepalive_sends_ping(self):
+        """_keepalive sends a JSON ping after sleeping."""
+        from app.api.routers.shell import _keepalive
+
+        mock_ws = AsyncMock()
+        # Let the first sleep succeed, then raise to break the loop
+        mock_ws.send_json = AsyncMock(side_effect=[None, Exception("stop")])
+
+        with patch("app.api.routers.shell.asyncio.sleep", new_callable=AsyncMock):
+            await _keepalive(mock_ws)
+
+        mock_ws.send_json.assert_any_call({"type": "ping"})
+
+    @pytest.mark.asyncio
+    async def test_keepalive_task_created_and_cancelled(self):
+        """shell_websocket creates a keepalive task and cancels it on disconnect."""
+        import asyncio
+
+        from app.api.routers.shell import shell_websocket
+
+        mock_ws = AsyncMock()
+        mock_ws.accept = AsyncMock()
+        mock_ws.receive_text = AsyncMock(
+            side_effect=__import__("starlette.websockets", fromlist=["WebSocketDisconnect"]).WebSocketDisconnect()
+        )
+        mock_ws.send_json = AsyncMock()
+
+        mock_session = AsyncMock()
+        mock_session.mission_id = None
+        mock_session.connect_websocket = AsyncMock()
+        mock_session.disconnect_websocket = AsyncMock()
+
+        mock_user = MagicMock()
+        mock_user.id = "u-1"
+        mock_user.username = "tester"
+        mock_user.is_superuser = False
+
+        created_tasks = []
+        original_create_task = asyncio.create_task
+
+        def track_create_task(coro, **kwargs):
+            task = original_create_task(coro, **kwargs)
+            created_tasks.append(task)
+            return task
+
+        with (
+            patch("app.api.routers.shell.validate_websocket_token", return_value=mock_user),
+            patch("app.api.routers.shell.check_feature_allowed", new_callable=AsyncMock),
+            patch("app.api.routers.shell.shell_manager") as mock_mgr,
+            patch("app.api.routers.shell.audit_log_event", new_callable=AsyncMock),
+            patch("app.api.routers.shell.async_session_maker") as mock_session_maker,
+            patch("app.api.routers.shell.asyncio.create_task", side_effect=track_create_task) as mock_ct,
+        ):
+            mock_mgr.get_session = AsyncMock(return_value=mock_session)
+            # async context manager for audit_log_event db session
+            mock_db = AsyncMock()
+            mock_session_maker.return_value.__aenter__ = AsyncMock(return_value=mock_db)
+            mock_session_maker.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            await shell_websocket(mock_ws, "sess-1", token="valid")
+
+            # A keepalive task was created
+            assert mock_ct.called
+            # The task was cancelled in the finally block
+            assert len(created_tasks) > 0
+            for t in created_tasks:
+                assert t.cancelled()

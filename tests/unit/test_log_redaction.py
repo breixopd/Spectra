@@ -75,6 +75,58 @@ class TestSensitiveFieldFilter:
         rec = self._make_record("password=secret")
         assert self.f.filter(rec) is True
 
+    def test_redacts_json_formatted_message(self):
+        rec = self._make_record('{"user": "admin", "password": "s3cret", "action": "login"}')
+        self.f.filter(rec)
+        assert "s3cret" not in rec.msg
+        assert "***REDACTED***" in rec.msg
+
+    def test_non_string_messages_pass_through(self):
+        rec = self._make_record("ignored")
+        rec.msg = 12345  # type: ignore[assignment]
+        result = self.f.filter(rec)
+        assert result is True
+        assert rec.msg == 12345
+
+    def test_non_string_dict_message(self):
+        rec = self._make_record("ignored")
+        rec.msg = {"key": "value"}  # type: ignore[assignment]
+        result = self.f.filter(rec)
+        assert result is True
+        assert rec.msg == {"key": "value"}
+
+    def test_mixed_content_password_in_middle(self):
+        rec = self._make_record("User login attempt password=hunter2 from 10.0.0.1")
+        self.f.filter(rec)
+        assert "hunter2" not in rec.msg
+        assert "***REDACTED***" in rec.msg
+        assert "User login attempt" in rec.msg
+        assert "10.0.0.1" in rec.msg
+
+    def test_case_insensitive_PASSWORD(self):
+        rec = self._make_record("PASSWORD=SuperSecret")
+        self.f.filter(rec)
+        assert "SuperSecret" not in rec.msg
+        assert "***REDACTED***" in rec.msg
+
+    def test_case_insensitive_Password(self):
+        rec = self._make_record("Password=MixedCase123")
+        self.f.filter(rec)
+        assert "MixedCase123" not in rec.msg
+        assert "***REDACTED***" in rec.msg
+
+    def test_case_insensitive_TOKEN(self):
+        rec = self._make_record("TOKEN=abc-xyz-123")
+        self.f.filter(rec)
+        assert "abc-xyz-123" not in rec.msg
+        assert "***REDACTED***" in rec.msg
+
+    def test_multiple_sensitive_fields_in_one_message(self):
+        rec = self._make_record("password=secret1 token=secret2")
+        self.f.filter(rec)
+        assert "secret1" not in rec.msg
+        assert "secret2" not in rec.msg
+
 
 class TestFilterAppliedToHandlers:
     """SensitiveFieldFilter is wired into the logging configuration."""
