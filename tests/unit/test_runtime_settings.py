@@ -134,26 +134,34 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         def stop(self):
             return None
 
-    with (
-        patch("app.core.lifespan.CacheService", return_value=MagicMock()),
-        patch("app.core.lifespan.set_cache"),
-        patch("app.core.lifespan.set_system_status", new_callable=AsyncMock),
-        patch("app.core.lifespan.add_system_operation", new_callable=AsyncMock),
-        patch("app.core.lifespan.remove_system_operation", new_callable=AsyncMock),
-        patch("app.core.lifespan.telemetry.update_service_status"),
-        patch("app.services.tools.registry.initialize_registry", new_callable=AsyncMock) as mock_init_registry,
-        patch("app.core.lifespan.events.emit", new_callable=AsyncMock),
-        patch("app.core.lifespan.run_startup_tasks"),
-        patch("app.core.lifespan.close_global_llm_client", new_callable=AsyncMock),
-        patch("app.core.lifespan.engine", new=MagicMock(dispose=AsyncMock())),
-        patch("app.core.lifespan.asyncio.all_tasks", return_value=[task]),
-        patch("app.core.lifespan.asyncio.gather", new_callable=AsyncMock),
-        patch("app.core.lifespan.asyncio.wait_for", new_callable=AsyncMock),
-        patch("app.core.lifespan.asyncio.create_task", return_value=task),
-        patch("app.core.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock) as mock_hydrate,
-        patch("app.services.ai.embeddings.EmbeddingService", FakeEmbeddingService),
-        patch("app.core.bridge.EventWebSocketBridge", return_value=FakeBridge()),
-    ):
+    import contextlib
+
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(patch("app.core.lifespan.CacheService", return_value=MagicMock()))
+        stack.enter_context(patch("app.core.lifespan.set_cache"))
+        stack.enter_context(patch("app.core.lifespan.set_system_status", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan.add_system_operation", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan.remove_system_operation", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan.telemetry.update_service_status"))
+        mock_init_registry = stack.enter_context(patch("app.services.tools.registry.initialize_registry", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan.events.emit", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan.run_startup_tasks"))
+        stack.enter_context(patch("app.core.lifespan.close_global_llm_client", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan.engine", new=MagicMock(dispose=AsyncMock())))
+        stack.enter_context(patch("app.core.lifespan.asyncio.all_tasks", return_value=[task]))
+        stack.enter_context(patch("app.core.lifespan.asyncio.gather", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan.asyncio.wait_for", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan.asyncio.create_task", return_value=task))
+        mock_hydrate = stack.enter_context(patch("app.core.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock))
+        stack.enter_context(patch("app.services.ai.embeddings.EmbeddingService", FakeEmbeddingService))
+        stack.enter_context(patch("app.core.bridge.EventWebSocketBridge", return_value=FakeBridge()))
+        stack.enter_context(patch("app.core.lifespan.run_startup_checks", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan.seed_default_plans", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock())))
+        stack.enter_context(patch("app.services.storage.get_storage_service", return_value=MagicMock(is_s3=False)))
+        stack.enter_context(patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock()))
+        stack.enter_context(patch("app.services.scaling.get_pool_manager", return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock())))
+
         from app.core.lifespan import lifespan
 
         mock_init_registry.return_value = MagicMock(list_tools=MagicMock(return_value=[]))
