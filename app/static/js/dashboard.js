@@ -128,8 +128,8 @@ function updateShellList() {
                     <div class="flex items-center space-x-2 overflow-hidden">
                         <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                         <div class="flex flex-col">
-                            <span class="text-xs text-slate-300 font-mono truncate" title="${session.id}">${session.target}</span>
-                            <span class="text-[10px] text-slate-500">ID: ${session.id.substring(0, 8)}...</span>
+                            <span class="text-xs text-slate-300 font-mono truncate" title="${escapeHtml(session.id)}">${escapeHtml(session.target)}</span>
+                            <span class="text-[10px] text-slate-500">ID: ${escapeHtml(session.id.substring(0, 8))}...</span>
                         </div>
                     </div>
                     <button onclick="connectShell('${session.id}')" class="px-2 py-1 bg-emerald-500/10 text-emerald-400 text-[10px] rounded hover:bg-emerald-500/20 transition-colors border border-emerald-500/20">

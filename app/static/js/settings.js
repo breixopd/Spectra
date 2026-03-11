@@ -190,9 +190,9 @@ function renderResolvedSummary(resolvedAi) {
         const route = resolvedAi.tiers?.[tier] || {};
         return `
             <div class="rounded-lg bg-slate-950/40 border border-white/5 p-3">
-                <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">${tier}</div>
-                <div class="text-sm text-white mt-1">${route.profile || resolvedAi.default_profile}</div>
-                <div class="text-xs text-slate-400 mt-1">${route.provider || ''} ${route.model || ''}</div>
+                <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">${escapeHtml(tier)}</div>
+                <div class="text-sm text-white mt-1">${escapeHtml(route.profile || resolvedAi.default_profile)}</div>
+                <div class="text-xs text-slate-400 mt-1">${escapeHtml(route.provider || '')} ${escapeHtml(route.model || '')}</div>
                 <div class="text-[11px] text-slate-500 mt-1">${route.inherits_default ? 'inherits default' : 'custom override'}</div>
             </div>
         `;
@@ -201,13 +201,13 @@ function renderResolvedSummary(resolvedAi) {
         <p class="text-sm font-medium text-white">Resolved Runtime</p>
         <div class="rounded-lg bg-slate-950/40 border border-white/5 p-3">
             <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">default</div>
-            <div class="text-sm text-white mt-1">${resolvedAi.default_profile}</div>
-            <div class="text-xs text-slate-400 mt-1">${resolvedAi.default_route?.provider || ''} ${resolvedAi.default_route?.model || ''}</div>
+            <div class="text-sm text-white mt-1">${escapeHtml(resolvedAi.default_profile)}</div>
+            <div class="text-xs text-slate-400 mt-1">${escapeHtml(resolvedAi.default_route?.provider || '')} ${escapeHtml(resolvedAi.default_route?.model || '')}</div>
         </div>
         <div class="space-y-2">${tierItems}</div>
         <div class="rounded-lg bg-slate-950/40 border border-white/5 p-3">
             <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">fallback chain</div>
-            <div class="text-xs text-slate-300 mt-1">${fallbackChain}</div>
+            <div class="text-xs text-slate-300 mt-1">${escapeHtml(fallbackChain)}</div>
         </div>
     `;
 }

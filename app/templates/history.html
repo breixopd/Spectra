@@ -139,10 +139,10 @@
 
                 el.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
-                        <span class="font-medium text-slate-200 truncate">${m.target}</span>
-                        <span class="text-[10px] ${statusColor} border border-current px-1 rounded uppercase">${m.status}</span>
+                        <span class="font-medium text-slate-200 truncate">${escapeHtml(m.target)}</span>
+                        <span class="text-[10px] ${statusColor} border border-current px-1 rounded uppercase">${escapeHtml(m.status)}</span>
                     </div>
-                    <div class="text-[10px] text-slate-500 font-mono truncate">${m.id}</div>
+                    <div class="text-[10px] text-slate-500 font-mono truncate">${escapeHtml(m.id)}</div>
                 `;
                 list.appendChild(el);
             });

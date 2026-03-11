@@ -7,6 +7,8 @@ for backward compatibility.
 """
 
 from app.api.schemas.auth import (
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
     Token,
     TokenData,
     UserBase,
@@ -57,6 +59,8 @@ from app.api.schemas.tool import (
 
 __all__ = [
     # auth
+    "ForgotPasswordRequest",
+    "ResetPasswordRequest",
     "Token",
     "TokenData",
     "UserBase",

@@ -766,7 +766,7 @@
                 <div class="mt-4 pt-3 border-t border-white/5">
                     <div class="flex items-center gap-2">
                         <div class="w-2 h-2 rounded-full ${data.status === 'ready' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}"></div>
-                        <span class="text-sm ${data.status === 'ready' ? 'text-emerald-400' : 'text-amber-400'}">${data.message}</span>
+                        <span class="text-sm ${data.status === 'ready' ? 'text-emerald-400' : 'text-amber-400'}">${escapeHtml(data.message)}</span>
                     </div>
                 </div>
             `;
@@ -809,7 +809,7 @@
                 return `<div class="flex items-center justify-between py-2 border-b border-white/5">
                     <div class="flex items-center gap-2">
                         <div class="w-2 h-2 rounded-full ${dot}"></div>
-                        <span class="text-sm text-white">${s.name}</span>
+                        <span class="text-sm text-white">${escapeHtml(s.name)}</span>
                     </div>
                     <div class="text-xs">${statusHtml}</div>
                 </div>`;
@@ -858,14 +858,14 @@
             container.innerHTML = configs.map(c => `
                 <div class="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-white/5">
                     <div>
-                        <span class="text-sm font-medium text-white">${c.name}</span>
-                        <span class="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-slate-700 text-slate-300">${c.type}</span>
+                        <span class="text-sm font-medium text-white">${escapeHtml(c.name)}</span>
+                        <span class="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-slate-700 text-slate-300">${escapeHtml(c.type)}</span>
                         <span class="ml-2 text-xs text-slate-500">${(c.size / 1024).toFixed(1)} KB</span>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="vpnConnect('${c.name}')" class="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs transition-colors">Connect</button>
-                        <button onclick="vpnDisconnect('${c.name}')" class="px-2 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs transition-colors">Disconnect</button>
-                        <button onclick="vpnDelete('${c.name}')" class="px-2 py-1 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs transition-colors">Delete</button>
+                        <button data-vpn-name="${escapeHtml(c.name)}" onclick="vpnConnect(this.dataset.vpnName)" class="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs transition-colors">Connect</button>
+                        <button data-vpn-name="${escapeHtml(c.name)}" onclick="vpnDisconnect(this.dataset.vpnName)" class="px-2 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs transition-colors">Disconnect</button>
+                        <button data-vpn-name="${escapeHtml(c.name)}" onclick="vpnDelete(this.dataset.vpnName)" class="px-2 py-1 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs transition-colors">Delete</button>
                     </div>
                 </div>
             `).join('');
@@ -974,13 +974,13 @@
                     <div class="flex items-center justify-between mb-1.5">
                         <div class="flex items-center gap-2">
                             <span class="w-2 h-2 rounded-full ${dotClass}"></span>
-                            <span class="text-sm font-medium text-white">${displayName}</span>
+                            <span class="text-sm font-medium text-white">${escapeHtml(displayName)}</span>
                         </div>
                         <span class="text-[10px] uppercase tracking-wider font-semibold ${modeColors[mode] || 'text-slate-400'}">
-                            <i class="fa-solid ${modeIcon[mode] || 'fa-circle-question'} mr-0.5"></i> ${mode}
+                            <i class="fa-solid ${modeIcon[mode] || 'fa-circle-question'} mr-0.5"></i> ${escapeHtml(mode)}
                         </span>
                     </div>
-                    ${url ? `<p class="text-[11px] text-slate-500 font-mono truncate" title="${url}">${url}</p>` : '<p class="text-[11px] text-slate-600">In-process</p>'}
+                    ${url ? `<p class="text-[11px] text-slate-500 font-mono truncate" title="${escapeHtml(url)}">${escapeHtml(url)}</p>` : '<p class="text-[11px] text-slate-600">In-process</p>'}
                 </div>`;
             }).join('');
 
