@@ -38,7 +38,7 @@ jobs:
             --cov-config=.coveragerc \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
-            --cov-fail-under=40
+            --cov-fail-under=60
         env:
           AI_PROVIDER: mock
           DATABASE_URL: "sqlite+aiosqlite:///test.db"
@@ -71,7 +71,6 @@ jobs:
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
-    continue-on-error: true
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -97,8 +96,7 @@ jobs:
         run: |
           python3 -m pytest tests/integration/ -q \
             --timeout=120 \
-            -k "not live and not e2e" \
-            || true
+            -k "not live and not e2e"
         env:
           AI_PROVIDER: mock
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
@@ -129,7 +127,9 @@ jobs:
       - run: pip install pip-audit
       - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
       - run: pip install -r requirements-app.txt
-      - run: pip-audit --fix --dry-run || true  # Report only, don't fail CI
+      # pip-audit: keep || true because transitive dependency vulns in pinned
+      # packages shouldn't block CI; ignore known disputed advisories.
+      - run: pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 || true
 
   version-check:
     name: Version file check

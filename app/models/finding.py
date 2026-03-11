@@ -82,3 +82,6 @@ class Finding(Base):
 
     # Relationship
     target: Mapped[Target] = relationship("Target", back_populates="findings")
+
+    def __repr__(self) -> str:
+        return f"<Finding id={self.id} title={self.title!r} severity={self.severity}>"

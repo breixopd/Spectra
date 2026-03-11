@@ -1,5 +1,6 @@
 """Spectra Security Assessment Platform - Main FastAPI Application."""
 
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -46,7 +47,7 @@ from app.core.websocket import manager
 from app.version import __version__
 
 # --- Logging Setup ---
-configure_logging()
+configure_logging(log_format=settings.LOG_FORMAT, log_level=settings.LOG_LEVEL)
 logger = logging.getLogger("spectra")
 
 # --- Path Configuration ---
@@ -100,8 +101,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "Accept"],
 )
 
 # --- Security Headers ---
@@ -112,6 +113,28 @@ app.add_middleware(CorrelationIdMiddleware)
 
 # --- HTTP Telemetry ---
 app.add_middleware(TelemetryMiddleware)
+
+# --- Paths exempt from request timeout (long-running by design) ---
+_TIMEOUT_EXEMPT_PREFIXES = ("/api/v1/export", "/api/export", "/ws")
+
+
+# --- Request Timeout ---
+@app.middleware("http")
+async def request_timeout(request: Request, call_next):
+    """Cancel requests that exceed REQUEST_TIMEOUT_SECONDS (returns 504)."""
+    timeout = settings.REQUEST_TIMEOUT_SECONDS
+    if timeout <= 0:
+        return await call_next(request)
+    path = request.url.path
+    if any(path.startswith(p) for p in _TIMEOUT_EXEMPT_PREFIXES):
+        return await call_next(request)
+    try:
+        return await asyncio.wait_for(call_next(request), timeout=timeout)
+    except TimeoutError:
+        return JSONResponse(
+            {"detail": "Request timeout"},
+            status_code=504,
+        )
 
 
 # --- Request Body Size Limit ---

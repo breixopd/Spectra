@@ -60,3 +60,6 @@ class Target(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+
+    def __repr__(self) -> str:
+        return f"<Target id={self.id} address={self.address!r}>"

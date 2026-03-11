@@ -313,7 +313,7 @@ class GoldenImageBuilder:
             try:
                 await asyncio.to_thread(self._client.images.remove, temp_tag, force=True)
             except Exception:
-                pass
+                logger.debug("Failed to clean up temp image %s", temp_tag)
 
             return result
         finally:
