@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     PLATFORM_BASE_URL: str = ""  # Full base URL (e.g., "https://spectra.example.com")
     PLATFORM_EXPOSED: bool = False  # Whether platform is accessible from internet
 
+    # --- Request Limits ---
+    MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 10 MB
+
     # --- CORS ---
     CORS_ORIGINS: list[str] = ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:5050", "http://127.0.0.1:5050"]
 

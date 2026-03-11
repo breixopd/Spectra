@@ -6,11 +6,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from starlette.responses import Response as StarletteResponse
 
 from app.api.routers import (
     admin,
@@ -80,6 +82,9 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore
 app.add_middleware(SlowAPIMiddleware)
 
+# --- GZip Compression ---
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # --- CORS Middleware ---
 app.add_middleware(
     CORSMiddleware,
@@ -97,6 +102,17 @@ app.add_middleware(CorrelationIdMiddleware)
 
 # --- HTTP Telemetry ---
 app.add_middleware(TelemetryMiddleware)
+
+
+# --- Request Body Size Limit ---
+@app.middleware("http")
+async def limit_request_body_size(request: Request, call_next):
+    """Reject requests with bodies exceeding MAX_REQUEST_BODY_SIZE."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > settings.MAX_REQUEST_BODY_SIZE:
+        return StarletteResponse("Request body too large", status_code=413)
+    response = await call_next(request)
+    return response
 
 # --- Static Files ---
 app.mount(
