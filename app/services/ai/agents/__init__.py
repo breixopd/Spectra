@@ -21,6 +21,17 @@ from app.services.ai.agents.mission_controller import (
     MissionType,
     Task,
 )
+from app.services.ai.agents.parameter_tuner import (
+    ParameterTunerAgent,
+    TunerInput,
+    TunerOutput,
+)
+from app.services.ai.agents.parser import (
+    ParsedFinding,
+    ParserAgent,
+    ParserInput,
+    ParserOutput,
+)
 from app.services.ai.agents.recon_intel import (
     OsintSanitizer,
     ReconIntelAgent,
@@ -70,6 +81,15 @@ __all__ = [
     "ReconIntelInput",
     "ReconIntelOutput",
     "OsintSanitizer",
+    # Parser
+    "ParserAgent",
+    "ParserInput",
+    "ParserOutput",
+    "ParsedFinding",
+    # Parameter Tuner
+    "ParameterTunerAgent",
+    "TunerInput",
+    "TunerOutput",
     # Mission Controller
     "MissionController",
     "MissionInput",

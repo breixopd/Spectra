@@ -263,7 +263,10 @@ class TaskDispatcher:
                 tags_filter=task.parameters.get("tags", []),
             )
 
-            result = await agent.execute(context, selector_input)
+            if getattr(agent, 'enable_reflection', False):
+                result = await agent.execute_with_reflection(context, selector_input)
+            else:
+                result = await agent.execute(context, selector_input)
 
             if result.success and isinstance(result.action, ParallelToolAction):
                 # --- Parallel tool execution ---
@@ -409,7 +412,10 @@ class TaskDispatcher:
                     connection_details=None,
                 )
 
-                result = await agent.execute(context, verifier_input)
+                if getattr(agent, 'enable_reflection', False):
+                    result = await agent.execute_with_reflection(context, verifier_input)
+                else:
+                    result = await agent.execute(context, verifier_input)
 
                 if result.success and result.action:
                     action = cast(ExploitVerifierOutput, result.action)
@@ -449,7 +455,10 @@ class TaskDispatcher:
                 max_hosts=task.parameters.get("max_hosts", MAX_HOSTS_DEFAULT),
             )
 
-            result = await agent.execute(context, scope_input)
+            if getattr(agent, 'enable_reflection', False):
+                result = await agent.execute_with_reflection(context, scope_input)
+            else:
+                result = await agent.execute(context, scope_input)
             if result.success and result.action:
                 mission.log(
                     f"Scope refined: {len(result.action.targets)} targets"  # type: ignore
@@ -477,7 +486,10 @@ class TaskDispatcher:
                 target=mission.target,
             )
 
-            result = await agent.execute(context, reporter_input)
+            if getattr(agent, 'enable_reflection', False):
+                result = await agent.execute_with_reflection(context, reporter_input)
+            else:
+                result = await agent.execute(context, reporter_input)
             if result.success and result.action:
                 report = cast(ReportOutput, result.action)
                 # Save report path to mission
@@ -596,11 +608,15 @@ class TaskDispatcher:
         try:
             if "vector_generator" in self.agents:
                 agent = self.agents["vector_generator"]
-                result = await agent.execute(context, {
+                vector_input = {
                     "services": mission.get_known_services(),
                     "vulnerabilities": mission.get_known_vulns(),
                     "target": mission.target,
-                })
+                }
+                if getattr(agent, 'enable_reflection', False):
+                    result = await agent.execute_with_reflection(context, vector_input)
+                else:
+                    result = await agent.execute(context, vector_input)
                 if result.success and result.action:
                     vectors = getattr(result.action, "vectors", [])
                     for v in vectors:
