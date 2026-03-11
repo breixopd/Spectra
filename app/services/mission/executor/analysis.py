@@ -24,6 +24,27 @@ SUCCESS_INDICATORS_LOWER = [
     "[+]",
 ]
 
+# Performance Optimization: Extract static mappings to module level
+_ERROR_PATTERNS = {
+    "network": ["host unreachable", "network is unreachable", "no route to host"],
+    "timeout": ["timeout", "timed out", "connection timed out"],
+    "permission": ["permission denied", "access denied", "not permitted"],
+    "auth": ["authentication failed", "login failed", "invalid credentials"],
+    "service_down": ["connection refused", "service unavailable", "not responding"],
+    "rate_limited": ["rate limit", "too many requests", "429"],
+    "blocked": ["blocked", "banned", "firewall", "filtered"],
+}
+
+# Performance Optimization: Pre-compile regular expressions at the module level
+_INTERESTING_PATTERNS = [
+    ("version", re.compile(r"version[:\s]+([^\s\n]+)", re.IGNORECASE)),
+    ("banner", re.compile(r"banner[:\s]+(.+)", re.IGNORECASE)),
+    ("server", re.compile(r"server[:\s]+([^\s\n]+)", re.IGNORECASE)),
+    ("os", re.compile(r"os[:\s]+([^\s\n]+)", re.IGNORECASE)),
+    ("service", re.compile(r"service[:\s]+([^\s\n]+)", re.IGNORECASE)),
+]
+
+
 def check_exploit_success(output: str) -> bool:
     """Check if exploit output indicates success."""
     output_lower = output.lower()
@@ -125,34 +146,15 @@ def analyze_unexpected_output(
 
     combined = (stdout + stderr).lower()
 
-    # Check for common error patterns
-    error_patterns = {
-        "network": ["host unreachable", "network is unreachable", "no route to host"],
-        "timeout": ["timeout", "timed out", "connection timed out"],
-        "permission": ["permission denied", "access denied", "not permitted"],
-        "auth": ["authentication failed", "login failed", "invalid credentials"],
-        "service_down": ["connection refused", "service unavailable", "not responding"],
-        "rate_limited": ["rate limit", "too many requests", "429"],
-        "blocked": ["blocked", "banned", "firewall", "filtered"],
-    }
-
-    for error_type, patterns in error_patterns.items():
+    for error_type, patterns in _ERROR_PATTERNS.items():
         if any(p in combined for p in patterns):
             analysis["has_errors"] = True
             analysis["error_type"] = error_type
             break
 
     # Extract interesting findings even from failed attempts
-    interesting_patterns = [
-        ("version", r"version[:\s]+([^\s\n]+)"),
-        ("banner", r"banner[:\s]+(.+)"),
-        ("server", r"server[:\s]+([^\s\n]+)"),
-        ("os", r"os[:\s]+([^\s\n]+)"),
-        ("service", r"service[:\s]+([^\s\n]+)"),
-    ]
-
-    for name, pattern in interesting_patterns:
-        matches = re.findall(pattern, combined, re.IGNORECASE)
+    for name, pattern in _INTERESTING_PATTERNS:
+        matches = pattern.findall(combined)
         if matches:
             analysis["interesting_findings"].extend(
                 [f"{name}: {m}" for m in matches[:3]]
