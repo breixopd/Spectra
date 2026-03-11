@@ -28,18 +28,24 @@ def get_correlation_id() -> str | None:
 
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
-    """Extracts or generates a correlation ID for each request."""
+    """Extracts or generates a correlation ID for each request.
+
+    Sets both X-Correlation-ID and X-Request-ID on responses so that
+    callers can trace requests regardless of which header they inspect.
+    """
 
     HEADER = "X-Correlation-ID"
+    REQUEST_ID_HEADER = "X-Request-ID"
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        cid = request.headers.get(self.HEADER) or str(uuid4())
+        cid = request.headers.get(self.HEADER) or request.headers.get(self.REQUEST_ID_HEADER) or str(uuid4())
         token = correlation_id_var.set(cid)
         try:
             response = await call_next(request)
             response.headers[self.HEADER] = cid
+            response.headers[self.REQUEST_ID_HEADER] = cid
             return response
         finally:
             correlation_id_var.reset(token)
