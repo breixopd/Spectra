@@ -14,8 +14,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from docker.errors import DockerException
 from fastapi import FastAPI
 from pydantic import SecretStr
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.cache import CacheService, set_cache
 from app.core.config import settings
@@ -336,7 +338,7 @@ async def run_startup_checks() -> None:
         logger.info("[CHECK][OK] Database connectivity verified")
     except TimeoutError:
         logger.warning("[CHECK][WARN] Database connectivity check timed out (10s)")
-    except Exception as e:
+    except (SQLAlchemyError, OSError) as e:
         logger.warning("[CHECK][WARN] Database connectivity check failed: %s", e)
 
     # 2. Required tables existence
@@ -358,7 +360,7 @@ async def run_startup_checks() -> None:
             logger.warning("[CHECK][WARN] Missing database tables: %s", ", ".join(sorted(missing)))
         else:
             logger.info("[CHECK][OK] All expected tables present")
-    except Exception as e:
+    except (SQLAlchemyError, OSError) as e:
         logger.warning("[CHECK][WARN] Table existence check failed: %s", e)
 
     # 3. Disk space for data directory
@@ -516,7 +518,7 @@ async def _initialize_services() -> None:
         )
         tool_count = len(registry.list_tools())
         logger.info("[OK] Tool registry initialized: %d tools loaded", tool_count)
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.error("Failed to initialize tool registry: %s", e)
 
     await set_system_status("initializing", "Installing tools...")
@@ -570,7 +572,7 @@ async def _initialize_services() -> None:
                 logger.info("[OK] Golden image builder initialized (auto-build on plugin changes)")
         else:
             logger.warning("[WARN] Sandbox pool unavailable — Docker not accessible")
-    except Exception as e:
+    except (DockerException, OSError) as e:
         logger.warning("Sandbox pool init failed: %s", e)
 
     # Initialize server pool manager

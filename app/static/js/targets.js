@@ -102,30 +102,28 @@ function openShell(btn, sessionId) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}`;
 
-    socket = new WebSocket(wsUrl);
+    socket = new ReconnectingWebSocket(wsUrl, { maxRetries: 10 });
 
-    socket.onopen = () => {
+    socket.on('open', () => {
         term.writeln('\x1b[32mConnected!\x1b[0m');
         term.focus();
-    };
+    });
 
-    socket.onmessage = (event) => {
+    socket.on('message', (event) => {
         term.write(event.data);
-    };
+    });
 
-    socket.onclose = () => {
-        term.writeln('\r\n\x1b[31mConnection closed.\x1b[0m');
-    };
+    socket.on('close', () => {
+        term.writeln('\r\n\x1b[31mConnection closed. Reconnecting...\x1b[0m');
+    });
 
-    socket.onerror = (error) => {
+    socket.on('error', (error) => {
         term.writeln('\r\n\x1b[31mConnection error.\x1b[0m');
-    };
+    });
 
     // Send input to server
     term.onData(data => {
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(data);
-        }
+        socket.send(data);
     });
 
     // Handle resize

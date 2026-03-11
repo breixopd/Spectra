@@ -95,12 +95,12 @@ class MissionExecutionManager:
             if pool and pool.available:
                 vpn_path = None
                 if getattr(mission, "vpn_config", None):
-                    import os
+                    from pathlib import Path
 
                     from app.core.config import get_settings
-                    vpn_dir = get_settings().VPN_CONFIG_DIR
-                    vpn_path = os.path.join(vpn_dir, mission.vpn_config)
-                    if not os.path.exists(vpn_path):
+                    vpn_dir = Path(get_settings().VPN_CONFIG_DIR)
+                    vpn_path = str(vpn_dir / mission.vpn_config)
+                    if not (vpn_dir / mission.vpn_config).exists():
                         vpn_path = None
                         mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found, skipping VPN")
 
