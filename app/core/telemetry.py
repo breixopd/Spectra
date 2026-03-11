@@ -477,6 +477,18 @@ class TelemetryCollector:
                 },
             })
 
+        for key, value in self._gauges.items():
+            name = key.split(":")[0]
+            otlp_metrics.append({
+                "name": name,
+                "gauge": {
+                    "dataPoints": [{
+                        "asDouble": value,
+                        "timeUnixNano": str(now_ns),
+                    }],
+                },
+            })
+
         # --- traces ---
         otlp_spans: list[dict[str, Any]] = []
         for span in self._traces:
