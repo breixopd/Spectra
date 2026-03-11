@@ -9,11 +9,12 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user, validate_websocket_token
 from app.core.database import async_session_maker
+from app.core.rate_limit import limiter
 from app.models.audit_log import AuditEventType
 from app.models.finding import Finding
 from app.models.mission import Mission
@@ -98,7 +99,8 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
 
 
 @router.get("/sessions")
-async def list_sessions(_current_user: User = Depends(get_current_active_user)):
+@limiter.limit("30/minute")
+async def list_sessions(request: Request, _current_user: User = Depends(get_current_active_user)):
     """List active shell sessions (scoped to the user's missions)."""
     all_sessions = shell_manager.list_sessions()
     if _current_user.is_superuser:
