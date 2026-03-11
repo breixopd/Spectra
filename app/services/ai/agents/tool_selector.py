@@ -18,8 +18,10 @@ from app.services.ai.agents.base import (
     AgentContext,
     AgentResult,
     AgentRole,
+    ParallelToolAction,
     ToolAction,
 )
+from app.services.ai.agents.registry import register_agent
 from app.services.ai.prompts import TOOL_SELECTION_PROMPT
 from app.services.tools.models import RiskLevel, ToolCapability, ToolCategory
 from app.services.tools.registry import get_registry
@@ -71,6 +73,7 @@ class ToolSelectorOutput(ToolAction):
 # --- ToolSelector Implementation ---
 
 
+@register_agent
 class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
     """
     Agent that selects the most appropriate security tool based on context.
@@ -86,6 +89,19 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
     description: ClassVar[str] = (
         "Analyzes context and selects the optimal security tool to run"
     )
+
+    # Pre-defined groups of tools safe to run in parallel
+    PARALLEL_TOOL_GROUPS: ClassVar[dict[str, list[str]]] = {
+        # Recon phase: these tools gather complementary info
+        "initial_recon": ["nmap", "naabu"],
+        "web_fingerprint": ["whatweb", "nikto", "httpx"],
+        "web_directory": ["gobuster", "dirsearch", "ffuf"],
+        "subdomain_enum": ["subfinder", "amass"],
+        # Vuln scanning phase
+        "web_vuln_scan": ["nuclei", "nikto"],
+        # SMB enumeration
+        "smb_enum": ["enum4linux", "crackmapexec"],
+    }
 
     # Deterministic quick-select for known service/phase combinations
     QUICK_SELECT: ClassVar[dict[tuple[str, str], list[str]]] = {
@@ -154,6 +170,61 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         "reporting": [],  # No tool capabilities for reporting
     }
 
+    def _should_parallelize(self, context: AgentContext) -> bool:
+        """Check whether parallel execution is appropriate for current context."""
+        if context.stealth_mode:
+            return False
+        if context.max_concurrency < 2:
+            return False
+        return True
+
+    def select_parallel_tools(
+        self,
+        context: AgentContext,
+        input_data: ToolSelectorInput,
+        available_tool_ids: set[str],
+    ) -> ParallelToolAction | None:
+        """Return a ParallelToolAction if a suitable parallel group applies.
+
+        Returns None when parallelisation doesn't apply, letting the caller
+        fall through to single-tool selection.
+        """
+        if not self._should_parallelize(context):
+            return None
+
+        for group_name, group_tools in self.PARALLEL_TOOL_GROUPS.items():
+            # Filter to tools that are available and not yet run
+            candidates = [
+                t for t in group_tools
+                if t in available_tool_ids and t not in input_data.tools_already_run
+            ]
+            if len(candidates) < 2:
+                continue
+
+            # Build individual ToolActions
+            tool_actions = [
+                ToolAction(
+                    tool_name=tool_id,
+                    target=input_data.target,
+                    tool_args={},
+                    confidence=0.80,
+                    risk_level=ActionRisk.LOW,
+                    reasoning=f"Parallel group '{group_name}'",
+                    estimated_duration=120,
+                )
+                for tool_id in candidates
+            ]
+
+            return ParallelToolAction(
+                tools=tool_actions,
+                max_concurrency=min(len(tool_actions), context.max_concurrency),
+                confidence=0.80,
+                risk_level=ActionRisk.LOW,
+                reasoning=f"Parallel execution of group '{group_name}': {', '.join(candidates)}",
+            )
+
+        return None
+
     def _quick_select(self, service: str, phase: str, already_run: list[str]) -> list[str] | None:
         """Deterministic tool selection for known service/phase combos.
 
@@ -208,6 +279,17 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                         estimated_duration=0,
                     ),
                 )
+
+            # Parallel selection: check if a parallel tool group applies
+            if not input_data.user_preference:
+                available_ids = {t.config.id for t in candidates}
+                parallel = self.select_parallel_tools(context, input_data, available_ids)
+                if parallel is not None:
+                    logger.info(
+                        "Parallel selection: %s",
+                        [t.tool_name for t in parallel.tools],
+                    )
+                    return AgentResult(success=True, action=parallel)
 
             # Quick-select: deterministic tool selection if possible (skip LLM)
             if not input_data.user_preference and input_data.known_services:

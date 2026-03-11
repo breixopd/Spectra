@@ -15,6 +15,7 @@ Usage:
 
 import logging
 import time
+from collections.abc import AsyncIterator
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -260,6 +261,49 @@ class LiteLLMRouter(LLMClient):
             )
             logger.error("LiteLLM generation failed for model %s: %s", model, e)
             raise
+
+    async def stream(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+        timeout: float | None = None,
+        task_type: str | None = None,
+    ) -> AsyncIterator[str]:
+        """Stream tokens using litellm's streaming API."""
+        import litellm
+
+        model = self._get_model_for_task(task_type)
+        messages: list[dict[str, str]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        try:
+            response = await litellm.acompletion(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+                timeout=timeout or settings.LLM_TIMEOUT,
+            )
+            async for chunk in response:
+                delta = chunk.choices[0].delta
+                if delta and delta.content:
+                    yield delta.content
+        except Exception as e:
+            logger.warning("Streaming failed, falling back to non-streaming: %s", e)
+            result = await self.generate(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=timeout,
+                task_type=task_type,
+            )
+            yield result.content
 
     async def health_check(self) -> bool:
         """Check if the configured LLM is reachable."""

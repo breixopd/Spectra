@@ -14,6 +14,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, Field
 
 from app.services.ai.agents.base import Agent, AgentAction, AgentContext, AgentResult, AgentRole
+from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 
 logger = logging.getLogger("spectra.ai.agents.debrief")
@@ -40,6 +41,7 @@ class DebriefOutput(AgentAction):
     next_steps: list[str] = Field(default_factory=list)
 
 
+@register_agent
 class DebriefAgent(Agent[DebriefInput, DebriefOutput]):
     role: ClassVar[AgentRole] = AgentRole.DEBRIEF
     name: ClassVar[str] = "DebriefAgent"

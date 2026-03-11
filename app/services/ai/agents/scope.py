@@ -22,6 +22,7 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
+from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 
 logger = logging.getLogger("spectra.ai.agents.scope")
@@ -61,6 +62,7 @@ class ScopeAction(AgentAction):
 # --- ScopeAgent Implementation ---
 
 
+@register_agent
 class ScopeAgent(Agent[ScopeInput, ScopeAction]):
     """
     Agent that parses user input to define the mission scope.

@@ -21,6 +21,18 @@ from app.services.ai.agents.mission_controller import (
     MissionType,
     Task,
 )
+from app.services.ai.agents.recon_intel import (
+    OsintSanitizer,
+    ReconIntelAgent,
+    ReconIntelInput,
+    ReconIntelOutput,
+)
+from app.services.ai.agents.registry import (
+    AgentInfo,
+    AgentRegistry,
+    get_agent_registry,
+    register_agent,
+)
 from app.services.ai.agents.scope import ScopeAction, ScopeAgent, ScopeInput, TargetSpec
 from app.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
@@ -39,6 +51,11 @@ __all__ = [
     "ToolAction",
     "SteeringAction",
     "ApprovalRequest",
+    # Registry
+    "AgentRegistry",
+    "AgentInfo",
+    "get_agent_registry",
+    "register_agent",
     # Scope
     "ScopeAgent",
     "ScopeInput",
@@ -48,6 +65,11 @@ __all__ = [
     "ToolSelectorAgent",
     "ToolSelectorInput",
     "ToolSelectorOutput",
+    # Recon Intel
+    "ReconIntelAgent",
+    "ReconIntelInput",
+    "ReconIntelOutput",
+    "OsintSanitizer",
     # Mission Controller
     "MissionController",
     "MissionInput",

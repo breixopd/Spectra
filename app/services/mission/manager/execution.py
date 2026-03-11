@@ -23,6 +23,7 @@ from app.services.ai.agents.mission_controller import (
 )
 from app.services.ai.agents.scope import ScopeAgent, ScopeInput
 from app.services.ai.consensus import QualityGate, VotingSystem
+from app.services.ai.cost_tracker import CostTracker
 from app.services.ai.llm import get_global_llm_client
 from app.services.mission.executor import MissionExecutor
 from app.services.mission.manager.lifecycle import MissionLifecycleManager
@@ -73,6 +74,18 @@ class MissionExecutionManager:
         context = await self.lifecycle.initialize_mission(mission)
         if context is None:
             return
+
+        # Initialize cost tracker for the mission
+        cost_tracker = CostTracker(str(mission.id))
+        context.cost_tracker = cost_tracker
+
+        # Attach cost tracker to agents
+        for agent in (self.scope_agent, self.mission_controller):
+            if agent:
+                agent._cost_tracker = cost_tracker
+        if self.executor:
+            for agent in self.executor.agents.values():
+                agent._cost_tracker = cost_tracker
 
         # Track mission start time for timeout
         mission_start_time = time.time()
@@ -142,6 +155,16 @@ class MissionExecutionManager:
             mission.set_status("completed")
             mission.log("Mission completed successfully")
             self._broadcast_state("mission_controller", "idle", plan="Mission Complete")
+
+            # Log cost summary
+            summary = cost_tracker.get_summary()
+            mission.log(
+                f"[COST] Total: ${summary['total_cost_usd']:.4f} | "
+                f"Tokens: {summary['total_tokens']} | "
+                f"Calls: {summary['total_calls']} | "
+                f"Duration: {summary['duration_seconds']}s"
+            )
+            logger.info("Mission %s cost summary: %s", mission.id, summary)
 
             # Save demo recording
             if recorder:

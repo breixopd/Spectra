@@ -17,6 +17,7 @@ from app.services.ai.agents.base import (
     AgentRole,
     ToolAction,
 )
+from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 from app.services.ai.prompts import POC_DEVELOPER_PROMPT
 from app.services.poc.models import POCRequest
@@ -40,6 +41,7 @@ class POCDeveloperOutput(ToolAction):
     risk_assessment: str
 
 
+@register_agent
 class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
     """
     Agent that writes custom exploit code.
@@ -50,6 +52,8 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
     description: ClassVar[str] = (
         "Writes custom exploit scripts (Python/Go/Bash) for specific vulnerabilities."
     )
+    enable_reflection: ClassVar[bool] = True
+    reflection_threshold: ClassVar[float] = 0.75
 
     async def execute(
         self,
