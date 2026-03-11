@@ -19,6 +19,9 @@ class ServerNode(Base):
     service_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
+    # SECURITY: api_key is stored as plaintext for gateway auth.
+    # TODO: Hash or encrypt this value at rest — store only a bcrypt hash
+    # and compare on inbound requests, or use an encryption-at-rest wrapper.
     api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

@@ -10,6 +10,12 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from app.api.dependencies import get_current_active_user
+from app.api.schemas.cve import (
+    CVEEnrichedResponse,
+    CVEExploitsResponse,
+    CVELookupResponse,
+    SearchExploitResponse,
+)
 from app.core.constants import CVE_RESULTS_LIMIT
 from app.models.user import User
 
@@ -25,7 +31,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/cve", tags=["CVE Intelligence"])
 
 
-@router.get("/lookup")
+@router.get("/lookup", response_model=CVELookupResponse)
 async def cve_lookup(
     product: str | None = Query(default=None, max_length=200, description="Product name (e.g., Apache)"),
     version: str | None = Query(default=None, max_length=50, description="Version (e.g., 2.4.49)"),
@@ -54,7 +60,7 @@ async def cve_lookup(
     }
 
 
-@router.get("/cve/{cve_id}/exploits")
+@router.get("/cve/{cve_id}/exploits", response_model=CVEExploitsResponse)
 async def get_cve_exploits(
     cve_id: str = Path(..., pattern=r"^CVE-\d{4}-\d{4,}$"),
     _current_user: User = Depends(get_current_active_user),
@@ -69,7 +75,7 @@ async def get_cve_exploits(
     }
 
 
-@router.get("/cve/{cve_id}/enriched")
+@router.get("/cve/{cve_id}/enriched", response_model=CVEEnrichedResponse)
 async def get_cve_enriched(
     cve_id: str = Path(..., pattern=r"^CVE-\d{4}-\d{4,}$"),
     _current_user: User = Depends(get_current_active_user),
@@ -81,7 +87,7 @@ async def get_cve_enriched(
     return await db.enrich(cve_id)
 
 
-@router.get("/searchsploit/{query:path}")
+@router.get("/searchsploit/{query:path}", response_model=SearchExploitResponse)
 async def search_exploitdb_endpoint(
     query: str,
     _current_user: User = Depends(get_current_active_user),

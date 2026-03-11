@@ -14,6 +14,12 @@ from app.api.schemas.auth import (
     UserResponse,
 )
 from app.api.schemas.common import PaginatedResponse
+from app.api.schemas.cve import (
+    CVEEnrichedResponse,
+    CVEExploitsResponse,
+    CVELookupResponse,
+    SearchExploitResponse,
+)
 from app.api.schemas.finding import FindingResponse
 from app.api.schemas.mission import (
     MissionDetailResponse,
