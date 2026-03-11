@@ -6,6 +6,8 @@ Unauthenticated for load balancer/orchestrator use.
 """
 
 import logging
+import shutil
+import time
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import text
@@ -17,6 +19,8 @@ from app.version import __version__
 logger = logging.getLogger("spectra.health")
 
 router = APIRouter()
+
+DATA_DIR = "/app/data"
 
 
 @router.get(
@@ -35,9 +39,9 @@ async def health_check(
     Returns 200 if core services (database) are healthy.
     Returns 503 if any critical service is down.
 
-    Use ?verbose=true for detailed component status including RAG, LLM, cache.
+    Use ?verbose=true for detailed component status including RAG, LLM, cache, disk.
     """
-    health_status = {
+    health_status: dict = {
         "status": "healthy",
         "service": "spectra",
         "version": __version__,
@@ -47,12 +51,20 @@ async def health_check(
     }
     is_healthy = True
 
-    # Check Database (critical)
+    # Check Database (critical) — measure latency
     try:
+        t0 = time.monotonic()
         await db.execute(text("SELECT 1"))
-        health_status["components"]["database"] = "healthy"
+        latency_ms = round((time.monotonic() - t0) * 1000, 1)
+        health_status["components"]["database"] = {
+            "status": "healthy",
+            "latency_ms": latency_ms,
+        }
     except Exception as e:
-        health_status["components"]["database"] = f"unhealthy: {type(e).__name__}"
+        health_status["components"]["database"] = {
+            "status": "unhealthy",
+            "error": type(e).__name__,
+        }
         is_healthy = False
 
     if verbose:
@@ -81,13 +93,17 @@ async def health_check(
             from app.core.cache import get_cache
             cache = get_cache()
             if cache:
-                health_status["components"]["cache"] = "healthy"
+                stats = cache.get_stats()
+                health_status["components"]["cache"] = {
+                    "status": "healthy",
+                    "hit_rate_percent": stats.get("hit_rate_percent", 0),
+                }
             else:
-                health_status["components"]["cache"] = "unavailable"
+                health_status["components"]["cache"] = {"status": "unavailable"}
         except Exception as e:
-            health_status["components"]["cache"] = f"error: {type(e).__name__}"
+            health_status["components"]["cache"] = {"status": "error", "error": type(e).__name__}
 
-        # Check sandbox pool
+        # Check worker / sandbox pool
         try:
             from app.services.tools.sandbox import get_sandbox_pool
             pool = get_sandbox_pool()
@@ -99,6 +115,22 @@ async def health_check(
                 health_status["components"]["sandbox_pool"] = "not initialized"
         except Exception as e:
             health_status["components"]["sandbox_pool"] = f"error: {type(e).__name__}"
+
+        # Disk space for data directory
+        try:
+            usage = shutil.disk_usage(DATA_DIR)
+            free_gb = round(usage.free / (1024 ** 3), 2)
+            total_gb = round(usage.total / (1024 ** 3), 2)
+            used_pct = round(usage.used / usage.total * 100, 1)
+            disk_status = "healthy" if used_pct < 90 else "warning: low disk space"
+            health_status["components"]["disk"] = {
+                "status": disk_status,
+                "free_gb": free_gb,
+                "total_gb": total_gb,
+                "used_percent": used_pct,
+            }
+        except Exception as e:
+            health_status["components"]["disk"] = {"status": "error", "error": type(e).__name__}
 
     if not is_healthy:
         health_status["status"] = "degraded"
