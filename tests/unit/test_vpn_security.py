@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from app.api.routers.vpn import DANGEROUS_OPENVPN_DIRECTIVES
 
 
