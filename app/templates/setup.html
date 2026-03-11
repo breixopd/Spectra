@@ -27,13 +27,13 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Password</label>
-                    <input type="password" name="password" id="password" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    <label for="password" class="block text-sm font-medium text-gray-400 mb-1">Password</label>
+                    <input type="password" name="password" id="password" required minlength="8" maxlength="128" autocomplete="new-password" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
                     <p class="text-xs text-gray-500 mt-1">Min 8 characters, with uppercase, lowercase, and a digit</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-400 mb-1">Confirm Password</label>
-                    <input type="password" id="confirm-password" required class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" placeholder="Confirm password">
+                    <label for="confirm-password" class="block text-sm font-medium text-gray-400 mb-1">Confirm Password</label>
+                    <input type="password" id="confirm-password" required minlength="8" maxlength="128" autocomplete="new-password" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors" placeholder="Confirm password">
                 </div>
             </div>
 
