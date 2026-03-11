@@ -66,8 +66,8 @@ def _row_to_dict(row: Any, columns: list[str]) -> dict[str, Any]:
         val = getattr(row, col, None)
         if isinstance(val, dt):
             val = val.isoformat()
-        elif hasattr(val, "value"):
-            val = val.value
+        elif hasattr(val, "value"):  # enum
+            val = val.value  # type: ignore[union-attr]
         result[col] = val
     return result
 
