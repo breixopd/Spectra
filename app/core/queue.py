@@ -91,6 +91,43 @@ class PostgresJobQueue:
             logger.warning("Recovered %d stale job(s) older than %d minutes", count, max_age_minutes)
         return count
 
+    async def handle_job_failure(self, job_id: str, error: str) -> None:
+        """Handle a failed job — retry or move to dead letter."""
+        async with async_session_maker() as session:
+            job = await session.get(JobQueue, job_id)
+            if not job:
+                return
+            job.retry_count += 1
+            if job.retry_count >= job.max_retries:
+                job.status = "dead_letter"
+                job.completed_at = datetime.now(UTC)
+                logger.warning(
+                    "Job %s moved to dead letter after %d retries: %s",
+                    job_id, job.retry_count, error,
+                )
+            else:
+                job.status = "pending"
+                logger.info(
+                    "Job %s queued for retry %d/%d",
+                    job_id, job.retry_count, job.max_retries,
+                )
+            job.error = error
+            await session.commit()
+
+    async def list_dead_letter_jobs(self, limit: int = 50) -> list:
+        """List jobs in dead letter state for admin review."""
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(JobQueue)
+                .where(
+                    JobQueue.status == "dead_letter",
+                    JobQueue.queue_name == self.queue_name,
+                )
+                .order_by(JobQueue.completed_at.desc())
+                .limit(limit)
+            )
+            return list(result.scalars().all())
+
 
 class Job:
     """Job handle for checking status or waiting for completion."""
@@ -169,7 +206,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
             async with async_session_maker() as session:
                 query = (
                     select(JobQueue)
-                    .where(JobQueue.status == "queued", JobQueue.queue_name == queue_name)
+                    .where(JobQueue.status.in_(["queued", "pending"]), JobQueue.queue_name == queue_name)
                     .order_by(JobQueue.priority.asc(), JobQueue.enqueued_at.asc())
                     .with_for_update(skip_locked=True)
                     .limit(1)
@@ -214,16 +251,10 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                 logger.info("Job %s completed successfully", job.id)
 
             except Exception as e:
-                # 5. Failure -> Failed
+                # 5. Failure -> Retry or Dead Letter
                 logger.error("Job %s failed: %s", job.id, e)
-                async with async_session_maker() as session:
-                    stmt = update(JobQueue).where(JobQueue.id == job.id).values(
-                        status="failed",
-                        error=str(e),
-                        completed_at=datetime.now(UTC)
-                    )
-                    await session.execute(stmt)
-                    await session.commit()
+                queue = PostgresJobQueue(queue_name)
+                await queue.handle_job_failure(job.id, str(e))
             finally:
                 current_job_id = None
 

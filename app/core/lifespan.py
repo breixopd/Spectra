@@ -52,6 +52,25 @@ async def cache_cleanup_loop() -> None:
             logger.error("Cache cleanup error: %s", e)
 
 
+# Interval for system cleanup (seconds) — every hour
+_SYSTEM_CLEANUP_INTERVAL = 3600
+
+
+async def periodic_cleanup_loop() -> None:
+    """Periodically run system maintenance cleanup tasks."""
+    logger.info("System cleanup task started (interval=%ds)", _SYSTEM_CLEANUP_INTERVAL)
+    while True:
+        try:
+            await asyncio.sleep(_SYSTEM_CLEANUP_INTERVAL)
+            from app.worker.cleanup_jobs import run_all_cleanup
+            await run_all_cleanup()
+        except asyncio.CancelledError:
+            logger.info("System cleanup task stopped")
+            break
+        except Exception as e:
+            logger.error("System cleanup error: %s", e)
+
+
 async def sandbox_watchdog_loop() -> None:
     """Periodically check sandbox heartbeats and reap stale ones."""
     from datetime import UTC, datetime
@@ -568,6 +587,9 @@ async def _initialize_services() -> None:
 
     # Start periodic cache cleanup
     asyncio.create_task(cache_cleanup_loop())
+
+    # Start periodic system cleanup (sessions, old jobs, orphaned sandboxes)
+    asyncio.create_task(periodic_cleanup_loop())
 
     # Start metrics snapshot store
     from app.core.metrics_store import get_metrics_store

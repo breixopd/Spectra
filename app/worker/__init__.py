@@ -17,8 +17,15 @@ Split into submodules:
 
 from __future__ import annotations
 
+from app.worker.cleanup_jobs import run_all_cleanup
 from app.worker.command_jobs import execute_script_job, run_command_job
 from app.worker.lifecycle import heartbeat_loop, shutdown, startup
+from app.worker.notification_jobs import (
+    send_critical_finding_alert,
+    send_mission_completion_notification,
+    send_webhook_notification,
+)
+from app.worker.report_jobs import generate_executive_summary, generate_mission_report
 from app.worker.tool_jobs import (
     execute_tool_job,
     get_tool_status_job,
@@ -49,6 +56,15 @@ _WORKER_FUNCTIONS = [
     vpn_disconnect_job,
     vpn_status_job,
     vpn_test_job,
+    # Cleanup
+    run_all_cleanup,
+    # Notifications
+    send_webhook_notification,
+    send_mission_completion_notification,
+    send_critical_finding_alert,
+    # Reports
+    generate_mission_report,
+    generate_executive_summary,
 ]
 
 __all__ = [
@@ -68,6 +84,15 @@ __all__ = [
     "vpn_disconnect_job",
     "vpn_status_job",
     "vpn_test_job",
+    # Cleanup jobs
+    "run_all_cleanup",
+    # Notification jobs
+    "send_webhook_notification",
+    "send_mission_completion_notification",
+    "send_critical_finding_alert",
+    # Report jobs
+    "generate_mission_report",
+    "generate_executive_summary",
     # Lifecycle
     "startup",
     "shutdown",
