@@ -243,10 +243,10 @@
             container.innerHTML = keys.map(k => `
                 <div class="key-row">
                     <div class="flex-1 min-w-0">
-                        <div class="text-sm font-mono text-white truncate">${k.prefix || k.key_prefix || '****'}...</div>
+                        <div class="text-sm font-mono text-white truncate">${escapeHtml(k.prefix || k.key_prefix || '****')}...</div>
                         <div class="text-xs text-slate-500 mt-0.5">Created ${new Date(k.created_at).toLocaleDateString()}</div>
                     </div>
-                    <button onclick="revokeApiKey('${k.id}')" class="px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded transition-colors">Revoke</button>
+                    <button onclick="revokeApiKey('${escapeHtml(k.id)}')" class="px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded transition-colors">Revoke</button>
                 </div>
             `).join('');
         } catch (e) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Could not load API keys</p>'; }
@@ -300,7 +300,7 @@
                         <i class="fa-solid fa-${ev.event_type === 'login' ? 'right-to-bracket' : ev.event_type === 'logout' ? 'right-from-bracket' : 'circle-info'} text-xs text-slate-400"></i>
                     </div>
                     <div class="flex-1">
-                        <div class="text-sm text-white">${ev.event_type || ev.action || 'Event'}</div>
+                        <div class="text-sm text-white">${escapeHtml(ev.event_type || ev.action || 'Event')}</div>
                         <div class="text-xs text-slate-500 mt-0.5">${new Date(ev.created_at || ev.timestamp).toLocaleString()}</div>
                     </div>
                 </div>
@@ -320,7 +320,7 @@
                 <div class="glass-panel rounded-lg p-4 border border-white/5">
                     <div class="flex items-center justify-between mb-3">
                         <div>
-                            <div class="text-lg font-semibold text-white">${planName}</div>
+                            <div class="text-lg font-semibold text-white">${escapeHtml(planName)}</div>
                             <div class="text-xs text-slate-500 mt-0.5">Current plan</div>
                         </div>
                         <span class="px-2 py-1 text-xs font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>

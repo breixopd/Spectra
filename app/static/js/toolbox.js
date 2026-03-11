@@ -39,13 +39,13 @@ async function refreshTools() {
                         ${(tool.status || 'pending').toUpperCase()}
                     </span>
                 </div>
-                <h3 class="text-white font-semibold mb-1">${tool.name}</h3>
-                <p class="text-slate-400 text-xs line-clamp-2">${tool.description}</p>
-                <div class="mt-2 text-[10px] text-slate-500 font-mono">${tool.category} · v${tool.version}</div>
+                <h3 class="text-white font-semibold mb-1">${escapeHtml(tool.name)}</h3>
+                <p class="text-slate-400 text-xs line-clamp-2">${escapeHtml(tool.description)}</p>
+                <div class="mt-2 text-[10px] text-slate-500 font-mono">${escapeHtml(tool.category)} · v${escapeHtml(tool.version)}</div>
             </div>
         `).join('');
     } catch (e) {
-        grid.innerHTML = `<div class="text-red-400 p-4">Failed to load tools: ${e}</div>`;
+        grid.innerHTML = `<div class="text-red-400 p-4">Failed to load tools: ${escapeHtml(String(e))}</div>`;
     }
 }
 
@@ -84,8 +84,8 @@ async function selectTool(id) {
                     <i class="fa-solid fa-wrench"></i>
                 </div>
                 <div>
-                    <h2 class="text-xl font-bold text-white">${tool.name}</h2>
-                    <p class="text-slate-400 text-sm">v${tool.version} · ${tool.category}</p>
+                    <h2 class="text-xl font-bold text-white">${escapeHtml(tool.name)}</h2>
+                    <p class="text-slate-400 text-sm">v${escapeHtml(tool.version)} · ${escapeHtml(tool.category)}</p>
                 </div>
             </div>
             
@@ -115,11 +115,11 @@ async function selectTool(id) {
             <div class="space-y-4 animate-fade-in-up stagger-2">
                 <div>
                     <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Description</label>
-                    <p class="text-slate-300 text-sm mt-1">${tool.description}</p>
+                    <p class="text-slate-300 text-sm mt-1">${escapeHtml(tool.description)}</p>
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Command</label>
-                    <code class="block mt-1 p-3 rounded-lg bg-black/40 font-mono text-xs text-violet-300 overflow-x-auto">${tool.execution_command} ${tool.args_template}</code>
+                    <code class="block mt-1 p-3 rounded-lg bg-black/40 font-mono text-xs text-violet-300 overflow-x-auto">${escapeHtml(tool.execution_command)} ${escapeHtml(tool.args_template)}</code>
                 </div>
                 <div class="pt-4 border-t border-white/10 flex gap-3">
                     <button onclick="showTestModal('${tool.id}')" class="flex-1 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white text-sm font-medium transition-all">

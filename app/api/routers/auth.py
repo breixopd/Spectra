@@ -228,6 +228,17 @@ async def login_for_access_token(
 
     _reset_failures(client_ip)
 
+    # Set HttpOnly cookie for browser-based auth
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -337,8 +348,8 @@ async def check_setup_status(
 
 
 @router.post("/logout")
-async def logout(request: Request):
-    """Logout by blacklisting the current access token."""
+async def logout(request: Request, response: Response):
+    """Logout by blacklisting the current access token and clearing cookie."""
     auth_header = request.headers.get("authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(
@@ -354,6 +365,7 @@ async def logout(request: Request):
             detail="Invalid token",
         )
     invalidate_token(token)
+    response.delete_cookie(key="access_token", path="/", httponly=True, secure=True, samesite="strict")
     return {"detail": "Successfully logged out"}
 
 
