@@ -3,12 +3,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
-
 from app.api.dependencies import get_current_active_user
 from app.api.routers import ui
 from app.core.database import get_async_session
+from app.services.system import settings_service as _svc
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 
 
 def _make_settings_stub() -> SimpleNamespace:
@@ -100,9 +100,9 @@ async def test_update_settings_merges_partial_runtime_ai_payload(test_app):
     mock_hydrate = AsyncMock()
 
     with (
-        patch.object(ui, "settings", settings_stub),
-        patch.object(ui, "upsert_system_config_values", mock_upsert),
-        patch.object(ui, "hydrate_runtime_settings_from_db", mock_hydrate),
+        patch.object(_svc, "settings", settings_stub),
+        patch.object(_svc, "upsert_system_config_values", mock_upsert),
+        patch.object(_svc, "hydrate_runtime_settings_from_db", mock_hydrate),
     ):
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -143,7 +143,7 @@ async def test_update_settings_merges_partial_runtime_ai_payload(test_app):
 async def test_get_settings_returns_resolved_db_backed_configuration(test_app):
     settings_stub = _make_settings_stub()
 
-    with patch.object(ui, "settings", settings_stub):
+    with patch.object(_svc, "settings", settings_stub):
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             response = await client.get("/api/settings")
@@ -166,9 +166,9 @@ async def test_update_settings_can_clear_default_fallback_chain(test_app):
     mock_hydrate = AsyncMock()
 
     with (
-        patch.object(ui, "settings", settings_stub),
-        patch.object(ui, "upsert_system_config_values", mock_upsert),
-        patch.object(ui, "hydrate_runtime_settings_from_db", mock_hydrate),
+        patch.object(_svc, "settings", settings_stub),
+        patch.object(_svc, "upsert_system_config_values", mock_upsert),
+        patch.object(_svc, "hydrate_runtime_settings_from_db", mock_hydrate),
     ):
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -195,7 +195,7 @@ async def test_ai_status_exposes_resolved_runtime_routes(test_app):
     mock_client = SimpleNamespace(health_check=AsyncMock(return_value=True))
 
     with (
-        patch.object(ui, "settings", settings_stub),
+        patch.object(_svc, "settings", settings_stub),
         patch("app.services.ai.llm.get_global_llm_client", AsyncMock(return_value=mock_client)),
     ):
         transport = ASGITransport(app=test_app)
@@ -231,7 +231,7 @@ async def test_get_settings_includes_sandbox_fields(test_app):
     settings_stub = _make_settings_stub()
 
     with (
-        patch.object(ui, "settings", settings_stub),
+        patch.object(_svc, "settings", settings_stub),
         patch("app.services.ai.router.PROVIDER_PRESETS", {}),
     ):
         transport = ASGITransport(app=test_app)
@@ -254,9 +254,9 @@ async def test_update_settings_saves_sandbox_fields(test_app):
     mock_hydrate = AsyncMock()
 
     with (
-        patch.object(ui, "settings", settings_stub),
-        patch.object(ui, "upsert_system_config_values", mock_upsert),
-        patch.object(ui, "hydrate_runtime_settings_from_db", mock_hydrate),
+        patch.object(_svc, "settings", settings_stub),
+        patch.object(_svc, "upsert_system_config_values", mock_upsert),
+        patch.object(_svc, "hydrate_runtime_settings_from_db", mock_hydrate),
     ):
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
@@ -284,7 +284,7 @@ async def test_update_settings_saves_sandbox_fields(test_app):
 async def test_get_settings_returns_new_sandbox_fields(test_app):
     """GET /api/settings returns all 12 new sandbox fields."""
     settings_stub = _make_settings_stub()
-    with patch.object(ui, "settings", settings_stub):
+    with patch.object(_svc, "settings", settings_stub):
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
             resp = await client.get("/api/settings")
@@ -312,9 +312,9 @@ async def test_update_new_sandbox_settings_persists(test_app):
     mock_hydrate = AsyncMock()
 
     with (
-        patch.object(ui, "settings", settings_stub),
-        patch.object(ui, "upsert_system_config_values", mock_upsert),
-        patch.object(ui, "hydrate_runtime_settings_from_db", mock_hydrate),
+        patch.object(_svc, "settings", settings_stub),
+        patch.object(_svc, "upsert_system_config_values", mock_upsert),
+        patch.object(_svc, "hydrate_runtime_settings_from_db", mock_hydrate),
     ):
         transport = ASGITransport(app=test_app)
         async with AsyncClient(transport=transport, base_url="http://testserver") as client:
