@@ -119,7 +119,7 @@ async def readiness_check(
         await db.execute(text("SELECT 1"))
         checks["database"] = True
     except Exception:
-        pass
+        logger.debug("Health check: database unavailable", exc_info=True)
 
     # LLM
     try:
@@ -127,7 +127,7 @@ async def readiness_check(
         router_instance = get_smart_router()
         checks["llm"] = router_instance is not None
     except Exception:
-        pass
+        logger.debug("Health check: LLM unavailable", exc_info=True)
 
     # Embeddings
     try:
@@ -135,7 +135,7 @@ async def readiness_check(
         rag = RAGService()
         checks["embeddings"] = rag.is_functional
     except Exception:
-        pass
+        logger.debug("Health check: embeddings unavailable", exc_info=True)
 
     all_ready = all(checks.values())
     result = {

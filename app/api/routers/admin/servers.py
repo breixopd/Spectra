@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
@@ -19,23 +20,52 @@ logger = logging.getLogger("spectra.admin")
 router = APIRouter()
 
 
+# --- Pydantic request models ---
+
+class ServerConnectionRequest(BaseModel):
+    host: str
+    port: int = 22
+    username: str = "root"
+    password: str | None = None
+    private_key: str | None = None
+
+
+class ProvisionRequest(ServerConnectionRequest):
+    service_type: str
+    service_port: int = 8080
+    extra_env: dict[str, str] = Field(default_factory=dict)
+
+
+class DeprovisionRequest(ServerConnectionRequest):
+    pass
+
+
+class UpdateServerNodeRequest(BaseModel):
+    name: str | None = None
+    url: str | None = None
+    api_key: str | None = None
+    is_active: bool | None = None
+    is_primary: bool | None = None
+    weight: int | None = Field(None, ge=1, le=100)
+    max_capacity: int | None = Field(None, ge=1, le=1000)
+
+
 @router.post("/api/admin/servers/verify")
 async def verify_server_connection(
-    request: Request,
+    body: ServerConnectionRequest,
     current_user: User = Depends(get_current_active_user),
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Test SSH connectivity to a remote server without making changes."""
-    data = await request.json()
     from app.services.provisioning import ServerProvisioner
     from app.services.provisioning.provisioner import ServerConfig
 
     config = ServerConfig(
-        host=data["host"],
-        port=data.get("port", 22),
-        username=data.get("username", "root"),
-        password=data.get("password"),
-        private_key=data.get("private_key"),
+        host=body.host,
+        port=body.port,
+        username=body.username,
+        password=body.password,
+        private_key=body.private_key,
     )
 
     provisioner = ServerProvisioner()
@@ -45,29 +75,28 @@ async def verify_server_connection(
 
 @router.post("/api/admin/servers/provision", status_code=status.HTTP_202_ACCEPTED)
 async def provision_server(
+    body: ProvisionRequest,
     request: Request,
     current_user: User = Depends(get_current_active_user),
     _perm=require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ):
     """Auto-install and configure a Spectra service on a remote server."""
-    data = await request.json()
     from app.services.provisioning import ServerProvisioner
     from app.services.provisioning.provisioner import ServerConfig
 
-    service_type = data["service_type"]
-    if service_type != "sandbox_worker":
-        raise HTTPException(400, f"Invalid service_type: {service_type}")
+    if body.service_type != "sandbox_worker":
+        raise HTTPException(400, f"Invalid service_type: {body.service_type}")
 
     config = ServerConfig(
-        host=data["host"],
-        port=data.get("port", 22),
-        username=data.get("username", "root"),
-        password=data.get("password"),
-        private_key=data.get("private_key"),
-        service_type=service_type,
-        service_port=data.get("service_port", 8080),
-        extra_env=data.get("extra_env", {}),
+        host=body.host,
+        port=body.port,
+        username=body.username,
+        password=body.password,
+        private_key=body.private_key,
+        service_type=body.service_type,
+        service_port=body.service_port,
+        extra_env=body.extra_env,
     )
 
     provisioner = ServerProvisioner()
@@ -80,7 +109,7 @@ async def provision_server(
         details={
             "action": "server_provisioned" if result.success else "server_provision_failed",
             "host": config.host,
-            "service_type": service_type,
+            "service_type": body.service_type,
             "success": result.success,
             "error": result.error or None,
         },
@@ -98,22 +127,22 @@ async def provision_server(
 
 @router.post("/api/admin/servers/deprovision")
 async def deprovision_server(
+    body: DeprovisionRequest,
     request: Request,
     current_user: User = Depends(get_current_active_user),
     _perm=require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ):
     """Remove a Spectra service from a remote server."""
-    data = await request.json()
     from app.services.provisioning import ServerProvisioner
     from app.services.provisioning.provisioner import ServerConfig
 
     config = ServerConfig(
-        host=data["host"],
-        port=data.get("port", 22),
-        username=data.get("username", "root"),
-        password=data.get("password"),
-        private_key=data.get("private_key"),
+        host=body.host,
+        port=body.port,
+        username=body.username,
+        password=body.password,
+        private_key=body.private_key,
         service_type="sandbox_worker",
     )
 
@@ -195,14 +224,13 @@ async def remove_server_node(
 @router.patch("/api/admin/servers/{node_id}")
 async def update_server_node(
     node_id: int,
-    updates: dict = Body(...),
+    body: UpdateServerNodeRequest,
     session: AsyncSession = Depends(get_async_session),
     _admin: User = require_permission("admin"),  # type: ignore[assignment]
 ):
     """Update a server node's configuration."""
     from app.services.scaling import get_pool_manager
-    allowed_fields = {"name", "url", "api_key", "is_active", "is_primary", "weight", "max_capacity"}
-    filtered = {k: v for k, v in updates.items() if k in allowed_fields}
+    filtered = {k: v for k, v in body.model_dump(exclude_unset=True).items()}
     pool = get_pool_manager()
     node = await pool.update_node(session, node_id, **filtered)
     if not node:
