@@ -25,6 +25,7 @@ from app.services.ai.agents.base import (
     AgentRole,
     SteeringAction,
 )
+from app.services.ai.agents.registry import register_agent
 from app.services.ai.errors import AgentError, LLMParseError, LLMTimeoutError
 from app.services.ai.prompts import (
     MISSION_PLAN_PROMPT,
@@ -104,6 +105,7 @@ class PhaseTransition(AgentAction):
 # --- MissionController Implementation ---
 
 
+@register_agent
 class MissionController(
     Agent[MissionInput, MissionPlan | PhaseTransition | SteeringAction]
 ):

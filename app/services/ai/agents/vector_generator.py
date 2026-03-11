@@ -22,6 +22,7 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
+from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 
 logger = logging.getLogger("spectra.ai.agents.vector_generator")
@@ -42,6 +43,7 @@ class VectorGeneratorOutput(AgentAction):
     vectors: list[AttackVector] = Field(default_factory=list)
 
 
+@register_agent
 class VectorGeneratorAgent(Agent[VectorGeneratorInput, VectorGeneratorOutput]):
     """
     Agent that generates attack vectors dynamically.
@@ -54,6 +56,8 @@ class VectorGeneratorAgent(Agent[VectorGeneratorInput, VectorGeneratorOutput]):
     role: ClassVar[AgentRole] = AgentRole.VECTOR_GENERATOR
     name: ClassVar[str] = "VectorGenerator"
     description: ClassVar[str] = "Generates attack vectors for discovered assets"
+    enable_reflection: ClassVar[bool] = True
+    reflection_threshold: ClassVar[float] = 0.65
 
     # Deterministic vector templates keyed by service keyword
     DETERMINISTIC_VECTORS: ClassVar[dict[str, list[dict[str, Any]]]] = {

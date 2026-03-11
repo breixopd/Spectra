@@ -22,6 +22,7 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
+from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 
 logger = logging.getLogger("spectra.ai.agents.safety")
@@ -45,6 +46,7 @@ class SafetyAction(AgentAction):
     reason: str
 
 
+@register_agent
 class SafetySupervisorAgent(Agent[SafetyInput, SafetyAction]):
     """
     Agent that guards against dangerous operations.

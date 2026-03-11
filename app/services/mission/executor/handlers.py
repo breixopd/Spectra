@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import uuid
@@ -10,7 +11,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from app.core.constants import MAX_HOSTS_DEFAULT
 from app.core.events import events
-from app.services.ai.agents.base import AgentContext, ToolAction
+from app.services.ai.agents.base import AgentContext, ParallelToolAction, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
 from app.services.ai.output_intelligence import extract_intelligence
 from app.services.mission.executor.analysis import auto_expand_scope
@@ -264,7 +265,22 @@ class TaskDispatcher:
 
             result = await agent.execute(context, selector_input)
 
-            if result.success and isinstance(result.action, ToolAction):
+            if result.success and isinstance(result.action, ParallelToolAction):
+                # --- Parallel tool execution ---
+                parallel_action = result.action
+                mission.log(
+                    f"Parallel execution: {[t.tool_name for t in parallel_action.tools]}"
+                )
+                results = await self._execute_parallel_tools(
+                    mission, parallel_action, context
+                )
+                # Run chain rules for each completed tool
+                for r in results:
+                    tool_name = r.get("tool")
+                    if tool_name:
+                        await self._process_tool_chain(mission, tool_name, context)
+
+            elif result.success and isinstance(result.action, ToolAction):
                 action = result.action
 
                 # Skip if no tool selected (phase complete)
@@ -598,6 +614,41 @@ class TaskDispatcher:
                 mission.log("[VECTORS] Generated basic vectors from known services")
         finally:
             self._broadcast_agent_state("vector_generator", "idle")
+
+    async def _execute_parallel_tools(
+        self,
+        mission: Mission,
+        parallel_action: ParallelToolAction,
+        context: AgentContext,
+    ) -> list[dict[str, Any]]:
+        """Execute multiple tools in parallel with concurrency control."""
+        sem = asyncio.Semaphore(parallel_action.max_concurrency)
+        completed: list[dict[str, Any]] = []
+
+        async def _run_one(tool_action: ToolAction) -> dict[str, Any]:
+            async with sem:
+                mission.log(f"Parallel start: {tool_action.tool_name}")
+                success = await self.tool_service.execute_tool_action(
+                    mission, tool_action, context
+                )
+                if success and mission.findings:
+                    mission.blackboard.write(
+                        "tool_selector",
+                        f"tools_run_{tool_action.tool_name}",
+                        {"tool": tool_action.tool_name, "findings_count": len(mission.findings)},
+                    )
+                return {"tool": tool_action.tool_name, "success": success}
+
+        results = await asyncio.gather(
+            *[_run_one(t) for t in parallel_action.tools],
+            return_exceptions=True,
+        )
+        for r in results:
+            if isinstance(r, Exception):
+                logger.error("Parallel tool failed: %s", r)
+            else:
+                completed.append(r)
+        return completed
 
     async def _process_tool_chain(
         self,

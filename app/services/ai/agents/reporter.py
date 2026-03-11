@@ -21,6 +21,7 @@ from app.services.ai.agents.base import (
     AgentResult,
     AgentRole,
 )
+from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 from app.services.ai.prompts import REPORTING_PROMPT
 
@@ -71,6 +72,7 @@ class ReportOutput(AgentAction):
 # --- Reporter Agent ---
 
 
+@register_agent
 class ReporterAgent(Agent[ReporterInput, ReportOutput]):
     """
     Reporter Agent generates comprehensive assessment reports.
