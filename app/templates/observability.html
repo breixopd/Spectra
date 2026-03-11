@@ -534,7 +534,7 @@
         btns.forEach(btn => btn.classList.add('loading'));
         
         try {
-            const response = await fetch('/api/observability/stats');
+            const response = await fetch('/api/v1/observability/stats');
             currentData = await response.json();
             updateUI(currentData);
         } catch (error) {
@@ -714,7 +714,7 @@
     
     async function refreshSaasMetrics() {
         try {
-            const response = await fetch('/api/observability/saas-metrics');
+            const response = await fetch('/api/v1/observability/saas-metrics');
             const data = await response.json();
             updateSaasMetrics(data);
         } catch (error) {

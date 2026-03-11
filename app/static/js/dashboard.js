@@ -112,7 +112,7 @@ function updateShellList() {
     const container = document.getElementById('shell-list');
     if (!container) return;
 
-    fetch('/api/shell/sessions')
+    fetch('/api/v1/shell/sessions')
         .then(res => res.json())
         .then(sessions => {
             container.innerHTML = '';
@@ -188,7 +188,7 @@ function toggleRequirements() {
     const select = document.getElementById('adversary-playbook');
     if (!select) return;
     try {
-        const res = await fetch('/api/missions/adversary-playbooks');
+        const res = await fetch('/api/v1/missions/adversary-playbooks');
         if (!res.ok) return;
         const playbooks = await res.json();
         for (const pb of playbooks) {
@@ -207,7 +207,7 @@ function toggleRequirements() {
     const select = document.getElementById('vpn-config');
     if (!select) return;
     try {
-        const res = await fetch('/api/vpn/configs');
+        const res = await fetch('/api/v1/vpn/configs');
         if (!res.ok) return;
         const configs = await res.json();
         for (const cfg of configs) {
@@ -238,7 +238,7 @@ function startMission(target, directive, playbookId) {
     const emptyEl = document.getElementById('activity-empty');
     if (emptyEl) emptyEl.remove();
 
-    fetch('/api/missions', {
+    fetch('/api/v1/missions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -269,7 +269,7 @@ async function launchPreset(presetId) {
     }
 
     try {
-        const res = await fetch('/api/missions/presets');
+        const res = await fetch('/api/v1/missions/presets');
         const presets = await res.json();
         const preset = presets[presetId];
         
@@ -292,7 +292,7 @@ function pauseMission() {
     }
 
     // Toggle state
-    fetch(`/api/missions/${currentMissionId}/pause`, { method: 'POST' })
+    fetch(`/api/v1/missions/${currentMissionId}/pause`, { method: 'POST' })
         .then(() => addTerminalLine('[SYSTEM] Mission paused', 'warning'))
         .catch(err => addTerminalLine(`[ERROR] ${err}`, 'error'));
 }
@@ -303,7 +303,7 @@ function resumeMission() {
         return;
     }
 
-    fetch(`/api/missions/${currentMissionId}/resume`, { method: 'POST' })
+    fetch(`/api/v1/missions/${currentMissionId}/resume`, { method: 'POST' })
         .then(() => addTerminalLine('[SYSTEM] Mission resumed', 'success'))
         .catch(err => addTerminalLine(`[ERROR] ${err}`, 'error'));
 }
@@ -314,7 +314,7 @@ function stopMission() {
         return;
     }
     
-    fetch(`/api/missions/${currentMissionId}/stop`, { method: 'POST' })
+    fetch(`/api/v1/missions/${currentMissionId}/stop`, { method: 'POST' })
         .then(() => addTerminalLine('[SYSTEM] Aborting mission...', 'warning'))
         .catch(err => addTerminalLine(`[ERROR] ${err}`, 'error'));
 }
@@ -537,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addTerminalLine('Dashboard ready.', 'success');
 
     // Check for active mission and initialize graph with its data
-    fetch('/api/missions?status=running&limit=1')
+    fetch('/api/v1/missions?status=running&limit=1')
         .then(res => res.ok ? res.json() : [])
         .then(missions => {
             const mission = Array.isArray(missions) && missions.length > 0 ? missions[0] : null;
@@ -548,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 addTerminalLine(`[SYSTEM] Resumed active mission: ${mission.id}`, 'info');
 
                 // Load existing findings for this mission
-                fetch(`/api/missions/${mission.id}/findings`)
+                fetch(`/api/v1/missions/${mission.id}/findings`)
                     .then(res => res.ok ? res.json() : [])
                     .then(findings => {
                         if (Array.isArray(findings)) {

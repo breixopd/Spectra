@@ -115,7 +115,7 @@
     let currentMissionId = null;
 
     // Load missions on start
-    fetch('/api/missions')
+    fetch('/api/v1/missions')
         .then(res => res.json())
         .then(missions => {
             const list = document.getElementById('mission-list');
@@ -156,7 +156,7 @@
         // Show loading state
         document.getElementById('detail-target').innerText = 'Loading...';
 
-        fetch(`/api/missions/${id}`)
+        fetch(`/api/v1/missions/${id}`)
             .then(res => res.json())
             .then(mission => {
                 // Header
@@ -224,7 +224,7 @@
     function showDeleteModal() {
         if (!currentMissionId) return;
         document.getElementById('download-before-delete-btn').onclick = () => {
-            window.open(`/api/missions/${currentMissionId}/report/pdf`, '_blank');
+            window.open(`/api/v1/missions/${currentMissionId}/report/pdf`, '_blank');
         };
         document.getElementById('delete-mission-modal').classList.remove('hidden');
     }
@@ -236,7 +236,7 @@
     async function confirmDeleteMission() {
         hideDeleteModal();
         try {
-            const res = await fetch(`/api/missions/${currentMissionId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/v1/missions/${currentMissionId}`, { method: 'DELETE' });
             if (res.ok) {
                 window.location.reload();
             } else {

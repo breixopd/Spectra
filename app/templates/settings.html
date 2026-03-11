@@ -670,7 +670,7 @@
     async function clearToolStats() {
         if (!confirm('Clear all tool statistics?')) return;
         try {
-            const res = await fetch('/api/system/clear/tools', { method: 'POST' });
+            const res = await fetch('/api/v1/system/clear/tools', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 alert(`Cleared ${data.cleared_count || 0} tool stat entries`);
@@ -693,7 +693,7 @@
     async function confirmClearMissions() {
         hideClearMissionsConfirm();
         try {
-            const res = await fetch('/api/system/clear/missions?confirm=true', { method: 'POST' });
+            const res = await fetch('/api/v1/system/clear/missions?confirm=true', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 alert(`Deleted ${data.deleted_count || 0} missions`);
@@ -708,7 +708,7 @@
     async function clearCache() {
         if (!confirm('Clear application cache? This may affect performance temporarily.')) return;
         try {
-            const res = await fetch('/api/system/clear/cache', { method: 'POST' });
+            const res = await fetch('/api/v1/system/clear/cache', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 alert(`Cleared ${data.cleared_count || 0} cache entries`);
@@ -723,7 +723,7 @@
     async function reinstallTools() {
         if (!confirm('Reinstall all tools? This may take several minutes.')) return;
         try {
-            const res = await fetch('/api/tools/install-all', { method: 'POST' });
+            const res = await fetch('/api/v1/tools/install-all', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 alert('Tool installation queued. Check system status for progress.');
@@ -739,7 +739,7 @@
     async function loadSystemStatus() {
         const container = document.getElementById('system-status-content');
         try {
-            const res = await fetch('/api/system/status');
+            const res = await fetch('/api/v1/system/status');
             const data = await res.json();
             
             const dbStatus = data.database?.status === 'connected' ? 
@@ -782,7 +782,7 @@
     async function loadDataSourceStatus() {
         const container = document.getElementById('data-sources-status');
         try {
-            const res = await fetch('/api/system/data-sources');
+            const res = await fetch('/api/v1/system/data-sources');
             const data = await res.json();
             const sources = data.sources || [];
 
@@ -826,7 +826,7 @@
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Downloading...';
         status.textContent = 'This may take a minute...';
         try {
-            const res = await fetch('/api/system/data-sources/download', { method: 'POST' });
+            const res = await fetch('/api/v1/system/data-sources/download', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 status.textContent = `Updated: ${data.stats?.cve_kb_entries || 0} CVEs, ${data.stats?.metasploit || 0} MSF modules`;
@@ -851,7 +851,7 @@
     async function loadVpnConfigs() {
         const container = document.getElementById('vpn-configs-list');
         try {
-            const res = await fetch('/api/vpn/configs');
+            const res = await fetch('/api/v1/vpn/configs');
             if (!res.ok) { container.innerHTML = '<span class="text-slate-500 text-sm">No configs found</span>'; return; }
             const configs = await res.json();
             if (!configs.length) { container.innerHTML = '<span class="text-slate-500 text-sm">No configs uploaded yet</span>'; return; }
@@ -874,7 +874,7 @@
 
     async function vpnConnect(name) {
         try {
-            const res = await fetch(`/api/vpn/connect/${encodeURIComponent(name)}`, { method: 'POST' });
+            const res = await fetch(`/api/v1/vpn/connect/${encodeURIComponent(name)}`, { method: 'POST' });
             const data = await res.json();
             if (res.ok) alert('VPN connect job queued: ' + data.job_id);
             else alert('Error: ' + (data.detail || 'Failed'));
@@ -883,7 +883,7 @@
 
     async function vpnDisconnect(name) {
         try {
-            const res = await fetch(`/api/vpn/disconnect/${encodeURIComponent(name)}`, { method: 'POST' });
+            const res = await fetch(`/api/v1/vpn/disconnect/${encodeURIComponent(name)}`, { method: 'POST' });
             const data = await res.json();
             if (res.ok) alert('VPN disconnect job queued: ' + data.job_id);
             else alert('Error: ' + (data.detail || 'Failed'));
@@ -893,14 +893,14 @@
     async function vpnDelete(name) {
         if (!confirm(`Delete VPN config "${name}"?`)) return;
         try {
-            const res = await fetch(`/api/vpn/configs/${encodeURIComponent(name)}`, { method: 'DELETE' });
+            const res = await fetch(`/api/v1/vpn/configs/${encodeURIComponent(name)}`, { method: 'DELETE' });
             if (res.ok) { loadVpnConfigs(); } else { const d = await res.json(); alert('Error: ' + (d.detail || 'Failed')); }
         } catch (e) { alert('Error: ' + e.message); }
     }
 
     async function testVpnConnection() {
         try {
-            const res = await fetch('/api/vpn/test', { method: 'POST' });
+            const res = await fetch('/api/v1/vpn/test', { method: 'POST' });
             const data = await res.json();
             if (res.ok) alert('VPN test job queued: ' + data.job_id);
             else alert('Error: ' + (data.detail || 'Failed'));
@@ -915,7 +915,7 @@
         fd.append('vpn_type', form.vpn_type.value);
         fd.append('file', form.vpn_file.files[0]);
         try {
-            const res = await fetch('/api/vpn/configs', { method: 'POST', body: fd });
+            const res = await fetch('/api/v1/vpn/configs', { method: 'POST', body: fd });
             const data = await res.json();
             if (res.ok) { alert('Config uploaded: ' + data.name); form.reset(); loadVpnConfigs(); }
             else alert('Error: ' + (data.detail || 'Upload failed'));
@@ -926,7 +926,7 @@
         const dot = document.getElementById('vpn-status-dot');
         const text = document.getElementById('vpn-status-text');
         try {
-            const res = await fetch('/api/vpn/status');
+            const res = await fetch('/api/v1/vpn/status');
             if (res.ok) {
                 text.textContent = 'Status check queued (runs in tools container)';
                 dot.className = 'w-3 h-3 rounded-full bg-slate-500';

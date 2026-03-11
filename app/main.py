@@ -115,7 +115,7 @@ app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(TelemetryMiddleware)
 
 # --- Paths exempt from request timeout (long-running by design) ---
-_TIMEOUT_EXEMPT_PREFIXES = ("/api/v1/export", "/api/export", "/ws")
+_TIMEOUT_EXEMPT_PREFIXES = ("/api/v1/export", "/ws")
 
 
 # --- Request Timeout ---
@@ -234,24 +234,6 @@ api_v1.include_router(manual_helpers.router, tags=["Manual Helpers"])
 api_v1.include_router(shell.router, tags=["Shell"])
 api_v1.include_router(vpn.router, tags=["VPN"])
 app.include_router(api_v1)
-
-# --- /api (deprecated alias — kept for backward compatibility) ---
-app.include_router(health.router, prefix="/api", tags=["Health"], deprecated=True)
-app.include_router(auth.router, prefix="/api/auth", tags=["Auth"], deprecated=True)
-app.include_router(tools.router, prefix="/api", tags=["Tools"], deprecated=True)
-app.include_router(missions.router, prefix="/api", tags=["Missions"], deprecated=True)
-app.include_router(targets.router, prefix="/api", tags=["Targets"], deprecated=True)
-app.include_router(findings.router, prefix="/api", tags=["Findings"], deprecated=True)
-app.include_router(exploits.router, prefix="/api", tags=["Exploits"], deprecated=True)
-app.include_router(observability.router, prefix="/api", tags=["Observability"], deprecated=True)
-app.include_router(export.router, prefix="/api", tags=["Export"], deprecated=True)
-app.include_router(system.router, prefix="/api", tags=["System"], deprecated=True)
-app.include_router(cve.router, prefix="/api", tags=["CVE Intelligence"], deprecated=True)
-app.include_router(wordlists.router, prefix="/api", tags=["Wordlists"], deprecated=True)
-app.include_router(pentest_sessions.router, prefix="/api", tags=["Pentest Sessions"], deprecated=True)
-app.include_router(manual_helpers.router, prefix="/api", tags=["Manual Helpers"], deprecated=True)
-app.include_router(shell.router, prefix="/api", tags=["Shell"], deprecated=True)
-app.include_router(vpn.router, prefix="/api", tags=["VPN"], deprecated=True)
 
 # --- Non-versioned routes (UI pages, public, admin) ---
 app.include_router(public.router, tags=["Public"])

@@ -45,7 +45,7 @@
         // WebSocket Connection
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const sessionId = {{ session_id|tojson }};
-        const wsUrl = `${protocol}//${window.location.host}/api/shell/${sessionId}`;
+        const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}`;
         const ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {

@@ -14,7 +14,7 @@ async function handleAddTarget(event) {
     const data = Object.fromEntries(formData.entries());
     
     try {
-        const response = await fetch('/api/targets', {
+        const response = await fetch('/api/v1/targets', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ function openShell(btn, sessionId) {
 
     // Connect WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/shell/${sessionId}`;
+    const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}`;
 
     socket = new WebSocket(wsUrl);
 

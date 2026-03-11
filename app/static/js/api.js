@@ -5,8 +5,8 @@
  * JSON parsing for all API calls. Available globally as `spectraApi`.
  *
  * Usage:
- *   const { data, error } = await spectraApi.get('/api/missions');
- *   const { data, error } = await spectraApi.post('/api/targets', { ip: '10.0.0.1' });
+ *   const { data, error } = await spectraApi.get('/api/v1/missions');
+ *   const { data, error } = await spectraApi.post('/api/v1/targets', { ip: '10.0.0.1' });
  */
 const spectraApi = (() => {
     'use strict';

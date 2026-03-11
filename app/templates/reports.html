@@ -145,14 +145,14 @@ document.addEventListener('DOMContentLoaded', () => { loadReports(); });
 
 async function loadReports() {
     try {
-        const res = await fetch('/api/missions');
+        const res = await fetch('/api/v1/missions');
         if (!res.ok) throw new Error('Failed');
         const missions = await res.json();
 
         allReports = await Promise.all(missions.map(async (m) => {
             const counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
             try {
-                const fRes = await fetch(`/api/missions/${m.id}/findings`);
+                const fRes = await fetch(`/api/v1/missions/${m.id}/findings`);
                 if (fRes.ok) {
                     const findings = await fRes.json();
                     findings.forEach(f => {
@@ -239,7 +239,7 @@ async function viewReport(missionId) {
     if (!r) return;
     document.getElementById('view-report-title').textContent = `Report: ${r.target || 'Unknown'}`;
     let findings = [];
-    try { const res = await fetch(`/api/missions/${missionId}/findings`); if (res.ok) findings = await res.json(); } catch {}
+    try { const res = await fetch(`/api/v1/missions/${missionId}/findings`); if (res.ok) findings = await res.json(); } catch {}
     const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
     findings.sort((a, b) => (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5));
     const sevBadge = s => { const c = { critical:'bg-rose-500/20 text-rose-400', high:'bg-amber-500/20 text-amber-400', medium:'bg-blue-500/20 text-blue-400', low:'bg-slate-500/20 text-slate-400', info:'bg-slate-700/30 text-slate-500' }; return `<span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase ${c[s]||c.info}">${s}</span>`; };
@@ -263,7 +263,7 @@ function downloadReportPDF(id) { viewReport(id).then(() => printReport()); }
 async function openNewReportModal() {
     const sel = document.getElementById('report-mission-select');
     sel.innerHTML = '<option value="">Select a mission...</option>';
-    try { const res = await fetch('/api/missions'); if (res.ok) { (await res.json()).forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = `${m.target||'Unknown'} (${m.status})`; sel.appendChild(o); }); } } catch {}
+    try { const res = await fetch('/api/v1/missions'); if (res.ok) { (await res.json()).forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = `${m.target||'Unknown'} (${m.status})`; sel.appendChild(o); }); } } catch {}
     document.getElementById('new-report-modal').classList.remove('hidden');
 }
 function closeNewReportModal() { document.getElementById('new-report-modal').classList.add('hidden'); }
@@ -272,7 +272,7 @@ async function generateReport() {
     const mid = document.getElementById('report-mission-select').value;
     if (!mid) { alert('Select a mission'); return; }
     const tpl = document.getElementById('report-template-select').value;
-    try { await fetch('/api/reports/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mission_id:mid,template:tpl}) }); } catch {}
+    try { await fetch('/api/v1/reports/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mission_id:mid,template:tpl}) }); } catch {}
     closeNewReportModal();
     viewReport(mid);
 }
@@ -284,7 +284,7 @@ function showDeleteMissionModal(id, target) {
     deleteMissionId = id;
     document.getElementById('delete-mission-target').textContent = target;
     document.getElementById('download-before-delete-btn').onclick = () => {
-        window.open(`/api/missions/${id}/report/pdf`, '_blank');
+        window.open(`/api/v1/missions/${id}/report/pdf`, '_blank');
     };
     document.getElementById('delete-mission-modal').classList.remove('hidden');
 }
@@ -294,7 +294,7 @@ function hideDeleteMissionModal() {
 async function confirmDeleteMission() {
     hideDeleteMissionModal();
     try {
-        const res = await fetch(`/api/missions/${deleteMissionId}`, { method: 'DELETE' });
+        const res = await fetch(`/api/v1/missions/${deleteMissionId}`, { method: 'DELETE' });
         if (res.ok) {
             allReports = allReports.filter(r => r.id !== deleteMissionId);
             renderReports();

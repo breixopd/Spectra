@@ -69,7 +69,7 @@ async function validatePlugin() {
     
     try {
         const config = buildConfig();
-        const res = await fetch('/api/tools/validate', {
+        const res = await fetch('/api/v1/tools/validate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config)
@@ -124,7 +124,7 @@ async function signAndSave() {
             signBody.private_key_pem = privateKeyPem;
         }
 
-        const signRes = await fetch('/api/tools/sign', {
+        const signRes = await fetch('/api/v1/tools/sign', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(signBody)
@@ -142,7 +142,7 @@ async function signAndSave() {
         const formData = new FormData();
         formData.append('file', blob, `${config.id}.json`);
         
-        const uploadRes = await fetch('/api/tools/upload', {
+        const uploadRes = await fetch('/api/v1/tools/upload', {
             method: 'POST',
             body: formData
         });
@@ -168,7 +168,7 @@ async function saveWithoutSigning() {
     try {
         const config = buildConfig();
 
-        const res = await fetch('/api/tools/save-unsigned', {
+        const res = await fetch('/api/v1/tools/save-unsigned', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(config)

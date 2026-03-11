@@ -13,7 +13,7 @@ function _hashTools(tools) {
 async function refreshTools() {
     const grid = document.getElementById('tools-grid');
     try {
-        const res = await fetch('/api/tools');
+        const res = await fetch('/api/v1/tools');
         const data = await res.json();
         const tools = data.tools || data;
 
@@ -67,8 +67,8 @@ async function selectTool(id) {
     
     try {
         const [toolRes, statsRes] = await Promise.all([
-            fetch(`/api/tools/${id}`),
-            fetch(`/api/tools/${id}/stats`)
+            fetch(`/api/v1/tools/${id}`),
+            fetch(`/api/v1/tools/${id}/stats`)
         ]);
         const tool = await toolRes.json();
         const stats = await statsRes.json();
@@ -146,7 +146,7 @@ async function installTool(id) {
     logs.innerHTML += `\n> Requesting installation for ${id}...`;
     
     try {
-        const res = await fetch(`/api/tools/${id}/install`, { method: 'POST' });
+        const res = await fetch(`/api/v1/tools/${id}/install`, { method: 'POST' });
         if (!res.ok) throw new Error(await res.text());
         
         logs.innerHTML += `\n> Installation started.`;
@@ -160,7 +160,7 @@ async function deleteTool(id) {
     if (!confirm('Are you sure you want to delete this tool?')) return;
     
     try {
-        await fetch(`/api/tools/${id}`, { method: 'DELETE' });
+        await fetch(`/api/v1/tools/${id}`, { method: 'DELETE' });
         refreshTools();
         document.getElementById('tool-details').innerHTML = '<p class="text-gray-500 italic text-center mt-10">Select a tool to view details</p>';
     } catch (e) {
@@ -214,7 +214,7 @@ async function handleFiles(files) {
         const formData = new FormData();
         formData.append('file', file);
 
-        const res = await fetch('/api/tools/upload', {
+        const res = await fetch('/api/v1/tools/upload', {
             method: 'POST',
             body: formData  // Fetch automatically sets Content-Type to multipart/form-data
         });
@@ -302,7 +302,7 @@ async function runToolTest(toolId) {
     resultDiv.innerHTML = '<div class="text-gray-400">Executing tool... This may take a while.</div>';
 
     try {
-        const res = await fetch(`/api/tools/${toolId}/test`, {
+        const res = await fetch(`/api/v1/tools/${toolId}/test`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ target, args })
