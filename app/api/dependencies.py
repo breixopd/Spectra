@@ -202,6 +202,33 @@ async def check_feature_allowed(user: User, session: AsyncSession, feature: str)
         )
 
 
+async def enforce_api_rate_limit(
+    user: User = Depends(get_current_active_user),
+) -> User:
+    """Check and record API usage against the user's plan quota.
+
+    Raises 429 if the hourly API request limit is exceeded.
+    Returns the authenticated user on success.
+    """
+    if _is_admin_user(user):
+        return user
+
+    from app.services.billing.usage_tracker import UsageTracker
+
+    tracker = UsageTracker()
+    within_limit, current, maximum = await tracker.check_rate_limit(
+        str(user.id), "api_requests"
+    )
+    if not within_limit and maximum > 0:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Plan API rate limit exceeded: {current}/{maximum} requests this hour",
+        )
+
+    await tracker.record_api_request(str(user.id))
+    return user
+
+
 async def validate_websocket_token(token: str | None) -> User | None:
     """
     Validate a JWT token for WebSocket authentication.
