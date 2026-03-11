@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_target_limit, get_current_active_user
-from app.api.schemas import FindingResponse, TargetCreate, TargetResponse, TargetUpdate
+from app.api.schemas import FindingResponse, PaginatedResponse, TargetCreate, TargetResponse, TargetUpdate
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
@@ -82,13 +82,13 @@ async def create_target(
 
 @router.get(
     "",
-    response_model=list[TargetResponse],
+    response_model=PaginatedResponse,
     summary="List targets",
     description="Retrieve all targets for the authenticated user. Superusers see all targets.",
 )
 async def list_targets(
-    skip: int = Query(default=0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
+    page: int = Query(default=1, ge=1, description="Page number"),
+    per_page: int = Query(
         default=DEFAULT_PAGE_SIZE,
         ge=1,
         le=MAX_PAGE_SIZE,
@@ -104,14 +104,19 @@ async def list_targets(
     repo = TargetRepository(db)
 
     # User isolation
-    if _current_user.is_superuser:
-        targets = await repo.get_all(skip=skip, limit=min(limit, MAX_PAGE_SIZE))
-    else:
-        targets = await repo.find_many_by(
-            user_id=str(_current_user.id), skip=skip, limit=min(limit, MAX_PAGE_SIZE)
-        )
+    filters: dict = {}
+    if not _current_user.is_superuser:
+        filters["user_id"] = str(_current_user.id)
 
-    return [
+    total = await repo.count(**filters)
+    skip = (page - 1) * per_page
+
+    if filters:
+        targets = await repo.find_many_by(skip=skip, limit=min(per_page, MAX_PAGE_SIZE), **filters)
+    else:
+        targets = await repo.get_all(skip=skip, limit=min(per_page, MAX_PAGE_SIZE))
+
+    items = [
         TargetResponse(
             id=t.id,
             address=t.address,
@@ -122,6 +127,7 @@ async def list_targets(
         )
         for t in targets
     ]
+    return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
 @router.get(

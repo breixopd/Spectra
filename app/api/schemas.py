@@ -647,6 +647,12 @@ class PaginatedResponse(BaseModel):
     total: int
     page: int
     per_page: int
+    pages: int = 0
+
+    def __init__(self, **data: Any) -> None:
+        if "pages" not in data and data.get("per_page"):
+            data["pages"] = max(1, -(-data["total"] // data["per_page"]))  # ceil division
+        super().__init__(**data)
 
 
 # --- Server Provisioning Schemas ---

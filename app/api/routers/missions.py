@@ -19,7 +19,7 @@ from app.api.dependencies import (
     check_mission_limit,
     get_current_active_user,
 )
-from app.api.schemas import MissionResponse, StartMissionRequest
+from app.api.schemas import MissionResponse, PaginatedResponse, StartMissionRequest
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
@@ -219,13 +219,13 @@ async def start_mission(
 
 @router.get(
     "",
-    response_model=list[MissionResponse],
+    response_model=PaginatedResponse,
     summary="List missions",
     description="Retrieve all missions for the authenticated user with optional status and target filters.",
 )
 async def list_missions(
-    skip: int = Query(default=0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
+    page: int = Query(default=1, ge=1, description="Page number"),
+    per_page: int = Query(
         default=DEFAULT_PAGE_SIZE,
         ge=1,
         le=MAX_PAGE_SIZE,
@@ -247,53 +247,59 @@ async def list_missions(
     """
     from datetime import datetime as dt
 
-    from sqlalchemy import select
+    from sqlalchemy import func, select
 
     from app.models.mission import Mission
 
-    stmt = select(Mission)
+    base = select(Mission)
 
     # User isolation: non-superusers see only their own missions
     if not _current_user.is_superuser:
-        stmt = stmt.where(Mission.user_id == str(_current_user.id))
+        base = base.where(Mission.user_id == str(_current_user.id))
 
     if status_filter:
         statuses = [s.strip() for s in status_filter.split(",") if s.strip()]
         if statuses:
-            stmt = stmt.where(Mission.status.in_(statuses))
+            base = base.where(Mission.status.in_(statuses))
 
     if target:
-        stmt = stmt.where(Mission.target.contains(target))
+        base = base.where(Mission.target.contains(target))
 
     if date_from:
         try:
             from_dt = dt.fromisoformat(date_from)
         except ValueError:
             raise HTTPException(status_code=422, detail=f"Invalid date_from format: {date_from}. Use ISO 8601.")
-        stmt = stmt.where(Mission.created_at >= from_dt)
+        base = base.where(Mission.created_at >= from_dt)
 
     if date_to:
         try:
             to_dt = dt.fromisoformat(date_to)
         except ValueError:
             raise HTTPException(status_code=422, detail=f"Invalid date_to format: {date_to}. Use ISO 8601.")
-        stmt = stmt.where(Mission.created_at <= to_dt)
+        base = base.where(Mission.created_at <= to_dt)
 
     if search:
-        stmt = stmt.where(Mission.directive.contains(search))
+        base = base.where(Mission.directive.contains(search))
 
+    # Count total matching
+    count_stmt = select(func.count()).select_from(base.subquery())
+    total = (await db.execute(count_stmt)).scalar() or 0
+
+    # Apply ordering
     if sort_by == "status":
-        stmt = stmt.order_by(Mission.status)
+        base = base.order_by(Mission.status)
     elif sort_by == "target":
-        stmt = stmt.order_by(Mission.target)
+        base = base.order_by(Mission.target)
     else:
-        stmt = stmt.order_by(Mission.created_at.desc())
+        base = base.order_by(Mission.created_at.desc())
 
-    stmt = stmt.offset(skip).limit(min(limit, MAX_PAGE_SIZE))
+    skip = (page - 1) * per_page
+    stmt = base.offset(skip).limit(min(per_page, MAX_PAGE_SIZE))
     result = await db.execute(stmt)
     missions = result.scalars().all()
 
-    return [
+    items = [
         MissionResponse(
             id=m.id,
             target=m.target,
@@ -305,6 +311,7 @@ async def list_missions(
         )
         for m in missions
     ]
+    return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
 @router.get("/{mission_id}/report/pdf")
