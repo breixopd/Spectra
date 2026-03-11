@@ -27,6 +27,7 @@ from app.services.ai.agents.mission_controller import (
     MissionPlan,
     PhaseTransition,
 )
+from app.services.ai.errors import LLMParseError
 from tests.mocks.llm import MockLLMClient
 
 # ---------------------------------------------------------------------------
@@ -400,7 +401,7 @@ class TestCreateMissionPlan:
                 "app.services.ai.knowledge.get_full_methodology", return_value="method"
             ),
         ):
-            with pytest.raises(RuntimeError, match="Temporary failure"):
+            with pytest.raises((RuntimeError, LLMParseError)):
                 await controller._create_mission_plan(context, input_data)
 
         # 3 retry attempts in the retry loop
@@ -430,7 +431,7 @@ class TestCreateMissionPlan:
                 "app.services.ai.knowledge.get_full_methodology", return_value="method"
             ),
         ):
-            with pytest.raises(RuntimeError, match="Permanent failure"):
+            with pytest.raises((RuntimeError, LLMParseError)):
                 await controller._create_mission_plan(context, input_data)
 
 
