@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.provisioning.provisioner import ServerConfig, ServerProvisioner
+asyncssh = pytest.importorskip("asyncssh", reason="asyncssh not installed")
+from app.services.provisioning.provisioner import ServerConfig, ServerProvisioner  # noqa: E402
 
 
 @pytest.fixture
