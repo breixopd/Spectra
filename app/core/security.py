@@ -22,6 +22,8 @@ from app.core.config import settings
 __all__ = [
     "create_access_token",
     "create_refresh_token",
+    "create_password_reset_token",
+    "verify_password_reset_token",
     "decode_token",
     "verify_password",
     "get_password_hash",
@@ -307,6 +309,32 @@ def create_refresh_token(
         settings.JWT_SECRET_KEY.get_secret_value(),
         algorithm=settings.JWT_ALGORITHM,
     )
+
+
+def create_password_reset_token(user_id: str, expires_minutes: int = 30) -> str:
+    """Create a time-limited password reset JWT."""
+    now = datetime.now(UTC)
+    expire = now + timedelta(minutes=expires_minutes)
+    return jwt.encode(
+        {"sub": user_id, "type": "password_reset", "exp": expire, "iat": now},
+        settings.JWT_SECRET_KEY.get_secret_value(),
+        algorithm=settings.JWT_ALGORITHM,
+    )
+
+
+def verify_password_reset_token(token: str) -> str | None:
+    """Verify a password reset token, return user_id or None."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY.get_secret_value(),
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        if payload.get("type") != "password_reset":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
 
 
 def decode_token(token: str) -> dict[str, Any]:

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.api.schemas import SystemSetupRequest, Token, UserResponse
+from app.api.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
 from app.core.config import settings
 from app.core.database import get_async_session
 from app.core.events import EventType, events
@@ -28,11 +29,13 @@ from app.core.rate_limit import RateLimits, limiter
 from app.core.security import (
     JWTError,
     create_access_token,
+    create_password_reset_token,
     create_refresh_token,
     decode_token,
     get_password_hash,
     invalidate_token,
     verify_password,
+    verify_password_reset_token,
 )
 from app.core.telemetry import telemetry
 from app.models.audit_log import AuditEventType
@@ -446,3 +449,47 @@ async def change_password(
     user.hashed_password = get_password_hash(body.new_password)
     await session.commit()
     return {"detail": "Password changed successfully"}
+
+
+@router.post("/forgot-password", status_code=204)
+@limiter.limit("3/minute")
+async def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Request a password reset email. Always returns 204 to avoid user enumeration."""
+    from app.repositories.user import UserRepository
+
+    user_repo = UserRepository(session)
+    user = await user_repo.get_by_email(body.email)
+    if user:
+        reset_token = create_password_reset_token(str(user.id))
+        # In production, send reset_token via email. For now, log it.
+        logger.info("Password reset requested for user %s (token generated)", user.id)
+        _ = reset_token  # Will be used when email service is integrated
+    return Response(status_code=204)
+
+
+@router.post("/reset-password")
+@limiter.limit("5/minute")
+async def reset_password(
+    request: Request,
+    body: ResetPasswordRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Reset password using a valid reset token."""
+    user_id = verify_password_reset_token(body.token)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    from app.repositories.user import UserRepository
+
+    user_repo = UserRepository(session)
+    user = await user_repo.get(user_id)
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    user.hashed_password = get_password_hash(body.new_password)
+    await session.commit()
+    return {"message": "Password reset successfully"}

@@ -137,7 +137,7 @@ async function selectTool(id) {
             </div>
         `;
     } catch (e) {
-        container.innerHTML = `<div class="text-red-400 p-4">Error: ${e}</div>`;
+        container.innerHTML = `<div class="text-red-400 p-4">Error: ${escapeHtml(String(e))}</div>`;
     }
 }
 
@@ -229,7 +229,7 @@ async function handleFiles(files) {
         }, 1000);
         
     } catch (e) {
-        status.innerHTML = `<span class="text-red-400">Error: ${e.message}</span>`;
+        status.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(e.message)}</span>`;
     }
 }
 
@@ -311,7 +311,7 @@ async function runToolTest(toolId) {
                 <div class="text-gray-300 mb-2">Parsed Findings: ${result.parsed_findings_count}</div>
                 ${result.parsed_findings?.length > 0 ? `
                     <div class="text-violet-400 mb-2">Sample Findings:</div>
-                    <pre class="text-xs text-gray-400 overflow-x-auto">${JSON.stringify(result.parsed_findings.slice(0, 5), null, 2)}</pre>
+                    <pre class="text-xs text-gray-400 overflow-x-auto">${escapeHtml(JSON.stringify(result.parsed_findings.slice(0, 5), null, 2))}</pre>
                 ` : ''}
                 <div class="text-gray-500 mt-4 border-t border-gray-700 pt-2">STDOUT (truncated):</div>
                 <pre class="text-xs text-gray-400 overflow-x-auto whitespace-pre-wrap max-h-48">${escapeHtml(result.stdout?.slice(0, 2000) || '(empty)')}</pre>
@@ -330,7 +330,7 @@ async function runToolTest(toolId) {
             `;
         }
     } catch (e) {
-        resultDiv.innerHTML = `<div class="text-red-400">Error: ${e.message}</div>`;
+        resultDiv.innerHTML = `<div class="text-red-400">Error: ${escapeHtml(e.message)}</div>`;
     } finally {
         runBtn.disabled = false;
         runBtn.innerHTML = '<i class="fa-solid fa-play"></i> Run Test';
