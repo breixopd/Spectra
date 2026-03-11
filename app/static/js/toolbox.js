@@ -13,8 +13,8 @@ function _hashTools(tools) {
 async function refreshTools() {
     const grid = document.getElementById('tools-grid');
     try {
-        const res = await fetch('/api/v1/tools');
-        const data = await res.json();
+        const { data, error } = await spectraApi.get('/api/v1/tools');
+        if (error) throw new Error(error);
         const tools = data.tools || data;
 
         if (!tools || tools.length === 0) {
@@ -66,12 +66,12 @@ async function selectTool(id) {
     container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading...</div>';
     
     try {
-        const [toolRes, statsRes] = await Promise.all([
-            fetch(`/api/v1/tools/${id}`),
-            fetch(`/api/v1/tools/${id}/stats`)
+        const [toolResult, statsResult] = await Promise.all([
+            spectraApi.get(`/api/v1/tools/${id}`),
+            spectraApi.get(`/api/v1/tools/${id}/stats`)
         ]);
-        const tool = await toolRes.json();
-        const stats = await statsRes.json();
+        const tool = toolResult.data;
+        const stats = statsResult.data;
         currentTool = tool;
         
         const successRate = stats.total_count > 0
@@ -146,8 +146,8 @@ async function installTool(id) {
     logs.innerHTML += `\n> Requesting installation for ${id}...`;
     
     try {
-        const res = await fetch(`/api/v1/tools/${id}/install`, { method: 'POST' });
-        if (!res.ok) throw new Error(await res.text());
+        const { error } = await spectraApi.post(`/api/v1/tools/${id}/install`);
+        if (error) throw new Error(error);
         
         logs.innerHTML += `\n> Installation started.`;
         refreshTools();
@@ -160,7 +160,7 @@ async function deleteTool(id) {
     if (!confirm('Are you sure you want to delete this tool?')) return;
     
     try {
-        await fetch(`/api/v1/tools/${id}`, { method: 'DELETE' });
+        await spectraApi.delete(`/api/v1/tools/${id}`);
         refreshTools();
         document.getElementById('tool-details').innerHTML = '<p class="text-gray-500 italic text-center mt-10">Select a tool to view details</p>';
     } catch (e) {
@@ -214,12 +214,12 @@ async function handleFiles(files) {
         const formData = new FormData();
         formData.append('file', file);
 
-        const res = await fetch('/api/v1/tools/upload', {
+        const { error } = await spectraApi.request('/api/v1/tools/upload', {
             method: 'POST',
-            body: formData  // Fetch automatically sets Content-Type to multipart/form-data
+            body: formData
         });
         
-        if (!res.ok) throw new Error((await res.json()).detail || 'Upload failed');
+        if (error) throw new Error(error);
         
         status.innerHTML = '<span class="text-green-400">Upload successful!</span>';
         setTimeout(() => {
@@ -302,13 +302,8 @@ async function runToolTest(toolId) {
     resultDiv.innerHTML = '<div class="text-gray-400">Executing tool... This may take a while.</div>';
 
     try {
-        const res = await fetch(`/api/v1/tools/${toolId}/test`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ target, args })
-        });
-
-        const result = await res.json();
+        const { data: result, error: testError } = await spectraApi.post(`/api/v1/tools/${toolId}/test`, { target, args });
+        if (testError) throw new Error(testError);
 
         if (result.success) {
             resultDiv.innerHTML = `
@@ -342,8 +337,4 @@ async function runToolTest(toolId) {
     }
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml is provided globally by api.js (window.escapeHtml)

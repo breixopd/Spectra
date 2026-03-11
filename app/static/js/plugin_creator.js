@@ -69,14 +69,8 @@ async function validatePlugin() {
     
     try {
         const config = buildConfig();
-        const res = await fetch('/api/v1/tools/validate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        });
-        
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Validation failed');
+        const { error } = await spectraApi.post('/api/v1/tools/validate', config);
+        if (error) throw new Error(error);
         
         status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check"></i> Validation passed!</span>';
     } catch (e) {
@@ -124,30 +118,21 @@ async function signAndSave() {
             signBody.private_key_pem = privateKeyPem;
         }
 
-        const signRes = await fetch('/api/v1/tools/sign', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(signBody)
-        });
-        
-        if (!signRes.ok) {
-            const err = await signRes.json();
-            throw new Error(err.detail || 'Signing failed');
+        const { data: signedConfig, error: signError } = await spectraApi.post('/api/v1/tools/sign', signBody);
+        if (signError) {
+            throw new Error(signError);
         }
-
-        const signedConfig = await signRes.json();
         
         // 2. Save (Upload)
         const blob = new Blob([JSON.stringify(signedConfig)], { type: 'application/json' });
         const formData = new FormData();
         formData.append('file', blob, `${config.id}.json`);
         
-        const uploadRes = await fetch('/api/v1/tools/upload', {
+        const { error: uploadError } = await spectraApi.request('/api/v1/tools/upload', {
             method: 'POST',
             body: formData
         });
-        
-        if (!uploadRes.ok) throw new Error((await uploadRes.json()).detail || 'Save failed');
+        if (uploadError) throw new Error(uploadError);
         
         status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check"></i> Plugin signed & saved! Redirecting...</span>';
 
@@ -168,16 +153,8 @@ async function saveWithoutSigning() {
     try {
         const config = buildConfig();
 
-        const res = await fetch('/api/v1/tools/save-unsigned', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        });
-
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || 'Save failed');
-        }
+        const { error } = await spectraApi.post('/api/v1/tools/save-unsigned', config);
+        if (error) throw new Error(error);
 
         status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check"></i> Plugin saved (unsigned)! Redirecting...</span>';
         

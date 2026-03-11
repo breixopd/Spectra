@@ -4,15 +4,15 @@ function addReportToTable(report) {
     const tbody = document.getElementById('reports-list');
     const template = document.getElementById('report-row-template');
     const clone = template.content.cloneNode(true);
-    
+
     clone.querySelector('.report-name').textContent = report.name;
     clone.querySelector('.report-target').textContent = report.target;
     clone.querySelector('.report-date').textContent = report.date;
-    
+
     clone.querySelector('.report-critical').textContent = report.findings.critical;
     clone.querySelector('.report-high').textContent = report.findings.high;
     clone.querySelector('.report-medium').textContent = report.findings.medium;
-    
+
     tbody.appendChild(clone);
 }
 
@@ -23,10 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadReports() {
     try {
-        const response = await fetch('/api/v1/missions');
-        if (!response.ok) throw new Error('Failed to fetch reports');
-
-        const missions = await response.json();
+        const { data: missions, error } = await spectraApi.get('/api/v1/missions');
+        if (error) throw new Error(error);
         const tbody = document.getElementById('reports-list');
         tbody.innerHTML = ''; // Clear existing
 
@@ -54,23 +52,4 @@ async function loadReports() {
     } catch (error) {
         console.error('Error loading reports:', error);
     }
-}
-
-function addReportToTable(report) {
-    const tbody = document.getElementById('reports-list');
-    const template = document.getElementById('report-row-template');
-    const clone = template.content.cloneNode(true);
-
-    clone.querySelector('.report-name').textContent = report.name;
-    clone.querySelector('.report-target').textContent = report.target;
-    clone.querySelector('.report-date').textContent = report.date;
-
-    clone.querySelector('.report-critical').textContent = report.findings.critical;
-    clone.querySelector('.report-high').textContent = report.findings.high;
-    clone.querySelector('.report-medium').textContent = report.findings.medium;
-
-    // Optional: Add link to detail view
-    // clone.querySelector('tr').onclick = () => window.location.href = `/reports/${report.id}`;
-
-    tbody.appendChild(clone);
 }
