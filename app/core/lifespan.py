@@ -16,7 +16,6 @@ from typing import Any
 
 from fastapi import FastAPI
 from pydantic import SecretStr
-from sqlalchemy.exc import SQLAlchemyError
 
 try:
     from docker.errors import DockerException
