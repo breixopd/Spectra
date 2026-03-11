@@ -9,6 +9,8 @@ Thank you for your interest in contributing to Spectra! This guide covers everyt
 - [Code Style](#code-style)
 - [Testing](#testing)
 - [Pull Request Process](#pull-request-process)
+- [PR Review Checklist](#pr-review-checklist)
+- [Security](#security)
 - [Project Conventions](#project-conventions)
 
 ## Development Setup
@@ -16,7 +18,7 @@ Thank you for your interest in contributing to Spectra! This guide covers everyt
 ### Prerequisites
 
 - Python 3.11+
-- Docker and Docker Compose
+- Docker and Docker Compose v2+
 - Git
 
 ### Quick Start
@@ -36,6 +38,22 @@ pip install -r requirements-app.txt
 # Copy environment file
 cp .env.example .env
 # Edit .env with your local settings (DATABASE_URL, AI_PROVIDER, etc.)
+```
+
+### Using the Makefile
+
+The project includes a Makefile with common developer targets. Run `make help` to see all options:
+
+```bash
+make help            # Show all available targets
+make test            # Run unit tests (default target)
+make lint            # Run ruff linter on app/
+make format          # Format code with ruff
+make check           # Run lint + unit tests in sequence
+make clean           # Remove caches and build artifacts
+make docker-build    # Build Docker images
+make docker-up       # Start all services via Docker Compose
+make docker-down     # Stop all services
 ```
 
 ### Running with Docker (recommended)
@@ -97,11 +115,28 @@ app/
 ### Python
 
 - **Target**: Python 3.11+
-- **Linter**: [Ruff](https://docs.astral.sh/ruff/) — run `ruff check app/` before submitting
+- **Linter**: [Ruff](https://docs.astral.sh/ruff/) — the single source of truth for linting and formatting
 - **Line length**: 120 characters
-- **Formatter**: Ruff formatter or Black (120 line length)
+- **Formatter**: `ruff format` (120 line length)
 - **Type hints**: Use them for function signatures. `from __future__ import annotations` at the top of new files.
 - **Imports**: Use absolute imports (`from app.services.ai import ...`), not relative, except within a package's own submodules.
+
+#### Running the linter
+
+```bash
+# Check for lint errors
+ruff check app/
+
+# Auto-fix what ruff can fix
+ruff check app/ --fix
+
+# Format code
+ruff format app/ tests/
+
+# Or use the Makefile shortcuts
+make lint     # ruff check app/
+make format   # ruff format app/ tests/
+```
 
 ### Naming conventions
 
@@ -137,17 +172,28 @@ tests/
 ### Running tests
 
 ```bash
-# Recommended: containerized unit tests
-docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
+# --- Unit tests (fast, no services needed) ---
 
-# Local unit tests
+# Via Makefile (recommended)
+make test                            # Runs unit tests in Docker
+
+# Locally (requires .venv activated and .env.test present)
 pytest tests/unit/ -q
 
-# Integration tests (requires running services)
+# Run a specific test file
+pytest tests/unit/test_middleware_stack.py -q
+
+# --- Integration tests (requires running PostgreSQL, etc.) ---
 ./tests/run_live_tests.sh
 
-# UI tests (requires Playwright)
+# --- Containerized test runner via docker-compose ---
+docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
+
+# --- UI tests (requires Playwright) ---
 ./tests/run_ui_tests.sh
+
+# --- Coverage report ---
+make test-coverage
 ```
 
 ### Test guidelines
@@ -183,15 +229,45 @@ Key variables in `.env.test`:
    - Screenshots for UI changes
 7. **Review**: Address review feedback promptly
 
-### PR checklist
+### PR Review Checklist
 
-- [ ] Code follows the project's style guidelines
-- [ ] Tests pass locally
-- [ ] New functionality includes tests
-- [ ] `ruff check app/` reports no errors
-- [ ] Documentation updated if needed (wiki, docstrings, README)
-- [ ] No hardcoded values — constants go in `app/core/constants.py`
-- [ ] No secrets or credentials in code
+Use this checklist when reviewing pull requests:
+
+- [ ] **Code quality**: Follows project style, clear naming, no dead code
+- [ ] **Tests**: New functionality has tests; all existing tests pass
+- [ ] **Lint clean**: `ruff check app/` reports no errors
+- [ ] **Security**: No hardcoded secrets, no SQL injection, no XSS vectors
+- [ ] **Constants**: No magic numbers — constants go in `app/core/constants.py`
+- [ ] **Type hints**: Function signatures include type hints
+- [ ] **Documentation**: Docstrings for public APIs; wiki updated if needed
+- [ ] **Migrations**: Schema changes have an Alembic migration
+- [ ] **Backwards compatibility**: API changes are backwards-compatible or versioned
+- [ ] **Error handling**: Appropriate error responses for user-facing endpoints
+
+## Security
+
+### Reporting Vulnerabilities
+
+**Do NOT open a public GitHub issue for security vulnerabilities.**
+
+Instead, report security issues by emailing the maintainers directly. Include:
+
+1. Description of the vulnerability
+2. Steps to reproduce
+3. Potential impact assessment
+4. Suggested fix (if any)
+
+We will acknowledge receipt within 48 hours and provide a timeline for resolution.
+
+### Security Guidelines for Contributors
+
+- Never commit secrets, API keys, or credentials to the repository
+- Use `SecretStr` from Pydantic for sensitive config values
+- All user input must be validated at API boundaries (Pydantic schemas)
+- Use parameterized queries — never concatenate user input into SQL
+- Follow the OWASP Top 10 guidelines
+- Run `ruff check app/` to catch common security anti-patterns
+- Test authentication/authorization paths in your changes
 
 ## Project Conventions
 
