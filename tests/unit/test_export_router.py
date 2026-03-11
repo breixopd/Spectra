@@ -100,7 +100,7 @@ class TestRowToDict:
 def _make_app() -> FastAPI:
     """Build a minimal FastAPI app with the export router mounted."""
     app = FastAPI()
-    app.include_router(router, prefix="/api")
+    app.include_router(router, prefix="/api/v1")
     return app
 
 
@@ -160,7 +160,7 @@ class TestExportEndpoint:
 
     async def test_json_export_empty(self, client):
         ac, _session, _user = client
-        resp = await ac.get("/api/export/missions?format=json")
+        resp = await ac.get("/api/v1/export/missions?format=json")
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("application/json")
         data = json.loads(resp.content)
@@ -168,7 +168,7 @@ class TestExportEndpoint:
 
     async def test_csv_export_empty(self, client):
         ac, _session, _user = client
-        resp = await ac.get("/api/export/findings?format=csv")
+        resp = await ac.get("/api/v1/export/findings?format=csv")
         assert resp.status_code == 200
         assert "text/csv" in resp.headers["content-type"]
         reader = csv.reader(StringIO(resp.text))
@@ -182,7 +182,7 @@ class TestExportEndpoint:
         mock_result.scalars.return_value.all.return_value = [row]
         session.execute = AsyncMock(return_value=mock_result)
 
-        resp = await ac.get("/api/export/missions?format=json")
+        resp = await ac.get("/api/v1/export/missions?format=json")
         assert resp.status_code == 200
         data = json.loads(resp.content)
         assert len(data) == 1
@@ -195,7 +195,7 @@ class TestExportEndpoint:
         mock_result.scalars.return_value.all.return_value = [row]
         session.execute = AsyncMock(return_value=mock_result)
 
-        resp = await ac.get("/api/export/findings?format=csv")
+        resp = await ac.get("/api/v1/export/findings?format=csv")
         assert resp.status_code == 200
         reader = csv.reader(StringIO(resp.text))
         header = next(reader)
@@ -205,35 +205,35 @@ class TestExportEndpoint:
 
     async def test_invalid_entity_type(self, client):
         ac, _session, _user = client
-        resp = await ac.get("/api/export/invalid_type?format=json")
+        resp = await ac.get("/api/v1/export/invalid_type?format=json")
         assert resp.status_code == 400
 
     async def test_invalid_format(self, client):
         ac, _session, _user = client
-        resp = await ac.get("/api/export/missions?format=xml")
+        resp = await ac.get("/api/v1/export/missions?format=xml")
         assert resp.status_code == 400
 
     async def test_date_from_filter(self, client):
         ac, session, _user = client
-        resp = await ac.get("/api/export/missions?date_from=2026-01-01")
+        resp = await ac.get("/api/v1/export/missions?date_from=2026-01-01")
         assert resp.status_code == 200
         # Verify execute was called (filter applied)
         session.execute.assert_awaited_once()
 
     async def test_date_to_filter(self, client):
         ac, session, _user = client
-        resp = await ac.get("/api/export/missions?date_to=2026-12-31")
+        resp = await ac.get("/api/v1/export/missions?date_to=2026-12-31")
         assert resp.status_code == 200
         session.execute.assert_awaited_once()
 
     async def test_invalid_date_from(self, client):
         ac, _session, _user = client
-        resp = await ac.get("/api/export/missions?date_from=not-a-date")
+        resp = await ac.get("/api/v1/export/missions?date_from=not-a-date")
         assert resp.status_code == 422
 
     async def test_invalid_date_to(self, client):
         ac, _session, _user = client
-        resp = await ac.get("/api/export/missions?date_to=not-a-date")
+        resp = await ac.get("/api/v1/export/missions?date_to=not-a-date")
         assert resp.status_code == 422
 
     async def test_csv_injection_in_export(self, client):
@@ -244,7 +244,7 @@ class TestExportEndpoint:
         mock_result.scalars.return_value.all.return_value = [row]
         session.execute = AsyncMock(return_value=mock_result)
 
-        resp = await ac.get("/api/export/findings?format=csv")
+        resp = await ac.get("/api/v1/export/findings?format=csv")
         assert resp.status_code == 200
         # The title column should be sanitized - starts with quote prefix
         reader = csv.reader(StringIO(resp.text))
@@ -255,20 +255,20 @@ class TestExportEndpoint:
 
     async def test_content_disposition_json(self, client):
         ac, _session, _user = client
-        resp = await ac.get("/api/export/targets?format=json")
+        resp = await ac.get("/api/v1/export/targets?format=json")
         assert "attachment" in resp.headers.get("content-disposition", "")
         assert "spectra_targets.json" in resp.headers.get("content-disposition", "")
 
     async def test_content_disposition_csv(self, client):
         ac, _session, _user = client
-        resp = await ac.get("/api/export/exploits?format=csv")
+        resp = await ac.get("/api/v1/export/exploits?format=csv")
         assert "attachment" in resp.headers.get("content-disposition", "")
         assert "spectra_exploits.csv" in resp.headers.get("content-disposition", "")
 
     async def test_all_entity_types_accepted(self, client):
         ac, _session, _user = client
         for entity in _VALID_ENTITIES:
-            resp = await ac.get(f"/api/export/{entity}")
+            resp = await ac.get(f"/api/v1/export/{entity}")
             assert resp.status_code == 200, f"Entity {entity} should be accepted"
 
 
@@ -282,6 +282,6 @@ class TestExportAuth:
         # No dependency overrides → auth will fail
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            resp = await ac.get("/api/export/missions")
+            resp = await ac.get("/api/v1/export/missions")
             # Should be 401 or 403 (no valid token)
             assert resp.status_code in (401, 403, 422)

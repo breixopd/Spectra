@@ -159,7 +159,7 @@ class TestConfigureLogging:
         assert isinstance(handler.formatter, JSONFormatter)
 
     def test_sets_info_level(self):
-        configure_logging()
+        configure_logging(log_level="INFO")
         root = logging.getLogger()
         assert root.level == logging.INFO
 

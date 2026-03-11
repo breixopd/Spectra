@@ -20,7 +20,7 @@ from app.api.routers.export import (
 
 def _make_app() -> FastAPI:
     app = FastAPI()
-    app.include_router(router, prefix="/api")
+    app.include_router(router, prefix="/api/v1")
     return app
 
 
@@ -82,33 +82,33 @@ class TestExportNoData:
 
     async def test_json_export_returns_empty_list(self, client):
         ac, _, _ = client
-        resp = await ac.get("/api/export/missions?format=json")
+        resp = await ac.get("/api/v1/export/missions?format=json")
         assert resp.status_code == 200
         data = json.loads(resp.content)
         assert data == []
 
     async def test_csv_export_returns_header_only(self, client):
         ac, _, _ = client
-        resp = await ac.get("/api/export/findings?format=csv")
+        resp = await ac.get("/api/v1/export/findings?format=csv")
         assert resp.status_code == 200
         lines = resp.text.strip().split("\n")
         assert len(lines) == 1  # header row only
 
     async def test_empty_json_has_correct_content_type(self, client):
         ac, _, _ = client
-        resp = await ac.get("/api/export/targets?format=json")
+        resp = await ac.get("/api/v1/export/targets?format=json")
         assert "application/json" in resp.headers["content-type"]
 
     async def test_empty_csv_has_correct_content_type(self, client):
         ac, _, _ = client
-        resp = await ac.get("/api/export/exploits?format=csv")
+        resp = await ac.get("/api/v1/export/exploits?format=csv")
         assert "text/csv" in resp.headers["content-type"]
 
     async def test_empty_export_all_entity_types(self, client):
         ac, _, _ = client
         for entity in _VALID_ENTITIES:
             for fmt in ("json", "csv"):
-                resp = await ac.get(f"/api/export/{entity}?format={fmt}")
+                resp = await ac.get(f"/api/v1/export/{entity}?format={fmt}")
                 assert resp.status_code == 200, f"{entity}/{fmt} failed"
 
 
@@ -128,7 +128,7 @@ class TestExportLargeDataset:
         mock_result.scalars.return_value.all.return_value = rows
         session.execute = AsyncMock(return_value=mock_result)
 
-        resp = await ac.get("/api/export/missions?format=json")
+        resp = await ac.get("/api/v1/export/missions?format=json")
         assert resp.status_code == 200
         data = json.loads(resp.content)
         assert len(data) == 1000
@@ -140,7 +140,7 @@ class TestExportLargeDataset:
         mock_result.scalars.return_value.all.return_value = rows
         session.execute = AsyncMock(return_value=mock_result)
 
-        resp = await ac.get("/api/export/findings?format=csv")
+        resp = await ac.get("/api/v1/export/findings?format=csv")
         assert resp.status_code == 200
         reader = csv.reader(StringIO(resp.text))
         all_rows = list(reader)
@@ -154,7 +154,7 @@ class TestExportLargeDataset:
         mock_result.scalars.return_value.all.return_value = rows
         session.execute = AsyncMock(return_value=mock_result)
 
-        resp = await ac.get("/api/export/targets?format=csv")
+        resp = await ac.get("/api/v1/export/targets?format=csv")
         reader = csv.reader(StringIO(resp.text))
         header = next(reader)
         assert header == _COLUMNS["targets"]
@@ -171,28 +171,30 @@ class TestExportMaliciousFilename:
 
     async def test_path_traversal_entity_type_rejected(self, client):
         ac, _, _ = client
-        resp = await ac.get("/api/export/../../etc/passwd?format=csv")
+        resp = await ac.get("/api/v1/export/../../etc/passwd?format=csv")
         assert resp.status_code in (400, 404, 422)
 
     async def test_entity_with_semicolon_rejected(self, client):
         ac, _, _ = client
-        resp = await ac.get("/api/export/missions;malicious?format=csv")
+        resp = await ac.get("/api/v1/export/missions;malicious?format=csv")
         assert resp.status_code in (400, 404, 422)
 
     async def test_entity_with_newline_rejected(self, client):
         ac, _, _ = client
-        resp = await ac.get("/api/export/missions%0d%0aInjected: header?format=csv")
+        resp = await ac.get("/api/v1/export/missions%0d%0aInjected: header?format=csv")
         assert resp.status_code in (400, 404, 422)
 
     async def test_only_valid_entities_pass(self, client):
         ac, _, _ = client
-        for entity in ("__import__", "os.system", "<script>", "missions/../targets"):
-            resp = await ac.get(f"/api/export/{entity}?format=csv")
+        # Note: "missions/../targets" resolves via URL normalization to a valid
+        # entity path (/api/v1/targets), so it's not included here.
+        for entity in ("__import__", "os.system", "<script>"):
+            resp = await ac.get(f"/api/v1/export/{entity}?format=csv")
             assert resp.status_code in (400, 404, 422), f"{entity!r} should be rejected"
 
     async def test_valid_entity_filename_is_safe(self, client):
         ac, _, _ = client
-        resp = await ac.get("/api/export/missions?format=csv")
+        resp = await ac.get("/api/v1/export/missions?format=csv")
         assert resp.status_code == 200
         disposition = resp.headers.get("content-disposition", "")
         assert "spectra_missions.csv" in disposition

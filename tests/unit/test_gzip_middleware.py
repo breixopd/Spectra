@@ -21,9 +21,9 @@ async def client():
 @pytest.mark.asyncio
 async def test_large_response_is_compressed(client):
     """Responses above 1000 bytes should be gzip-compressed when client accepts it."""
-    # /api/health?verbose=true typically returns a larger payload
+    # /api/v1/health?verbose=true typically returns a larger payload
     resp = await client.get(
-        "/api/health",
+        "/api/v1/health",
         params={"verbose": "true"},
         headers={"Accept-Encoding": "gzip"},
     )
@@ -39,7 +39,7 @@ async def test_large_response_is_compressed(client):
 async def test_small_response_still_valid(client):
     """Small responses should still return valid JSON regardless of compression."""
     resp = await client.get(
-        "/api/health",
+        "/api/v1/health",
         headers={"Accept-Encoding": "gzip"},
     )
     assert resp.status_code in (200, 503)
@@ -51,7 +51,7 @@ async def test_small_response_still_valid(client):
 @pytest.mark.asyncio
 async def test_response_valid_without_accept_encoding(client):
     """Responses without Accept-Encoding should still be valid."""
-    resp = await client.get("/api/health")
+    resp = await client.get("/api/v1/health")
     assert resp.status_code in (200, 503)
     data = resp.json()
     assert "status" in data

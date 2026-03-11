@@ -25,7 +25,7 @@ async def test_oversized_request_rejected_with_413(client):
 
     oversized = settings.MAX_REQUEST_BODY_SIZE + 1
     resp = await client.post(
-        "/api/health",
+        "/api/v1/health",
         content=b"x",
         headers={"Content-Length": str(oversized)},
     )
@@ -35,7 +35,7 @@ async def test_oversized_request_rejected_with_413(client):
 @pytest.mark.asyncio
 async def test_normal_request_passes_through(client):
     """A small GET request is not blocked by the size limiter."""
-    resp = await client.get("/api/health")
+    resp = await client.get("/api/v1/health")
     assert resp.status_code in (200, 503)  # 503 if db is down, but not 413
 
 
@@ -45,7 +45,7 @@ async def test_request_at_exact_limit_passes(client):
     from app.core.config import settings
 
     resp = await client.post(
-        "/api/health",
+        "/api/v1/health",
         content=b"x",
         headers={"Content-Length": str(settings.MAX_REQUEST_BODY_SIZE)},
     )
