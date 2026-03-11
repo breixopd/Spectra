@@ -119,7 +119,7 @@ class PluginValidator:
             raise PluginSignatureError(f"Signature verification failed: {e}") from e
 
     def _validate_commands(self, config: ToolConfig) -> None:
-        """Check installation commands against the blocklist."""
+        """Check installation and execution commands against the blocklist."""
         # Check both installation and verification commands
         commands: list[str] = list(config.installation.commands)
         if config.installation.verification_command:
@@ -128,6 +128,10 @@ class PluginValidator:
         # Check uninstall commands too!
         if config.installation.uninstall_commands:
             commands.extend(config.installation.uninstall_commands)
+
+        # Check execution command
+        if config.execution.command:
+            commands.append(config.execution.command)
 
         for cmd in commands:
             # Skip empty commands

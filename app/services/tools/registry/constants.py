@@ -29,6 +29,9 @@ _DANGEROUS_PATTERN_STRINGS: tuple[str, ...] = (
     r"python\d?\s+-c",  # python -c execution
     r"perl\s+-e",  # perl -e execution
     r"base64\s+(?:-d|--decode)\s*\|",  # base64 decode pipe
+    r";\s*\w",  # semicolon command chaining
+    r"&&",  # && command chaining
+    r"\|\|\s*\w",  # || or-chain execution
 )
 
 # Pre-compiled patterns for O(1) matching per pattern

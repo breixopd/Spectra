@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select, update
@@ -59,6 +59,37 @@ class PostgresJobQueue:
 
         logger.info("Enqueued job %s (%s)", job_id, function_name)
         return job_id
+
+    async def recover_stale_jobs(self, max_age_minutes: int = 30) -> int:
+        """Recover jobs stuck in 'in_progress' state.
+
+        Marks jobs that have been in_progress longer than *max_age_minutes* as
+        failed so they don't block the queue forever.
+
+        Returns the number of recovered jobs.
+        """
+        cutoff = datetime.now(UTC) - timedelta(minutes=max_age_minutes)
+        async with async_session_maker() as session:
+            stmt = (
+                update(JobQueue)
+                .where(
+                    JobQueue.status == "in_progress",
+                    JobQueue.started_at < cutoff,
+                    JobQueue.queue_name == self.queue_name,
+                )
+                .values(
+                    status="failed",
+                    error=f"Stale job recovered after {max_age_minutes} minutes",
+                    completed_at=datetime.now(UTC),
+                )
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            count = result.rowcount  # type: ignore[union-attr]
+
+        if count:
+            logger.warning("Recovered %d stale job(s) older than %d minutes", count, max_age_minutes)
+        return count
 
 
 class Job:

