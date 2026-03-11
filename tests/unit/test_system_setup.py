@@ -195,7 +195,7 @@ async def test_generate_signing_keys_exists(service):
     with patch("app.services.system.setup.Path.exists") as mock_exists:
         mock_exists.return_value = True
         with patch("app.services.system.setup.logger") as mock_logger:
-            service._generate_signing_keys()
+            await service._generate_signing_keys()
             mock_logger.info.assert_any_call("Signing keys already exist")
 
 
@@ -208,13 +208,13 @@ async def test_generate_signing_keys_new(service):
         patch(
             "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate"
         ) as mock_gen,
+        patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
     ):
         mock_exists.return_value = False
         mock_key = MagicMock()
         mock_gen.return_value = mock_key
 
-        service._generate_signing_keys()
+        await service._generate_signing_keys()
 
         mock_gen.assert_called_once()
-        mock_key.private_bytes.assert_called_once()
-        mock_key.public_key.return_value.public_bytes.assert_called_once()
+        assert mock_to_thread.call_count == 2  # Two write_bytes calls
