@@ -129,6 +129,14 @@ class Settings(BaseSettings):
     # Notifications
     NOTIFICATION_WEBHOOK: str | None = None  # e.g., https://ntfy.sh/your-topic
 
+    # --- Email / SMTP ---
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: SecretStr = SecretStr("")
+    SMTP_FROM: str = ""
+    SMTP_USE_TLS: bool = True
+
     # Multi-provider
     OLLAMA_ENABLED: bool = False  # Whether Ollama is available as secondary provider
 
