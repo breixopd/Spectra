@@ -22,7 +22,7 @@ jobs:
       - run: ruff check app/
 
   test:
-    name: Tests
+    name: Unit Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,10 +31,77 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements.txt numpy
-      - run: python3 -m pytest tests/unit/ -q --override-ini="addopts="
+      - name: Run unit tests with coverage
+        run: |
+          python3 -m pytest tests/unit/ -q \
+            --cov=app \
+            --cov-config=.coveragerc \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=40
         env:
           AI_PROVIDER: mock
           DATABASE_URL: "sqlite+aiosqlite:///test.db"
+          JWT_SECRET_KEY: test-key
+          PLUGIN_SAFE_MODE: "false"
+          FULLY_AUTOMATED: "true"
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f coverage.xml ]; then
+            echo '## Coverage Report' >> "$GITHUB_STEP_SUMMARY"
+            python3 -c "
+            import xml.etree.ElementTree as ET
+            tree = ET.parse('coverage.xml')
+            root = tree.getroot()
+            rate = float(root.attrib.get('line-rate', 0)) * 100
+            print(f'| Metric | Value |')
+            print(f'|--------|-------|')
+            print(f'| Line coverage | {rate:.1f}% |')
+            " >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 30
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: spectra
+          POSTGRES_PASSWORD: spectra_test
+          POSTGRES_DB: spectra_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U spectra -d spectra_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt numpy
+      - name: Run integration tests
+        run: |
+          python3 -m pytest tests/integration/ -q \
+            --timeout=120 \
+            -k "not live and not e2e" \
+            || true
+        env:
+          AI_PROVIDER: mock
+          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
           FULLY_AUTOMATED: "true"
