@@ -6,7 +6,7 @@ Tracks security assessment missions, their status, logs, and results.
 
 from __future__ import annotations
 
-from sqlalchemy import Index, JSON, ForeignKey, String, Text
+from sqlalchemy import JSON, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.enums import MissionStatus
