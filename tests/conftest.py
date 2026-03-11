@@ -106,6 +106,19 @@ def mock_websocket_for_unit_tests(request):
 
 
 @pytest.fixture(autouse=True)
+def disable_rate_limiting_for_unit_tests(request):
+    """Disable slowapi rate limiting in unit tests to prevent 429 errors."""
+    if _is_live_test(request.node):
+        yield
+        return
+    from app.core.rate_limit import limiter
+    original = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = original
+
+
+@pytest.fixture(autouse=True)
 def mock_database_for_unit_tests(request):
     """
     Mock database session for unit tests only.

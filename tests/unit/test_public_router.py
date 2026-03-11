@@ -12,7 +12,10 @@ from app.api.routers.public import router
 
 
 def _make_app() -> FastAPI:
+    from app.core.rate_limit import limiter
     app = FastAPI()
+    app.state.limiter = limiter
+    limiter.enabled = False
     app.include_router(router)
     return app
 
