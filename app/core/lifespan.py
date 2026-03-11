@@ -571,6 +571,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Start periodic cache cleanup
         asyncio.create_task(cache_cleanup_loop())
 
+        # Start metrics snapshot store
+        from app.core.metrics_store import get_metrics_store
+        metrics_store = get_metrics_store()
+        await metrics_store.start()
+        logger.info("[OK] Metrics store started")
+
         # Emit startup event
         await events.emit(
             EventType.SERVICE_HEALTH_CHANGED,

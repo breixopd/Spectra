@@ -177,6 +177,18 @@ async def export_otlp(
     return telemetry.export_otlp_format()
 
 
+@router.get("/metrics/history")
+async def get_metrics_history(
+    minutes: int = Query(default=60, ge=1, le=1440, description="Minutes of history"),
+    _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
+) -> list[dict[str, Any]]:
+    """Get historical metric snapshots for dashboards."""
+    from app.core.metrics_store import get_metrics_store
+
+    store = get_metrics_store()
+    return store.get_history(minutes=minutes)
+
+
 @router.get("/saas-metrics")
 async def get_saas_metrics(
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
