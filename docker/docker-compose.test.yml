@@ -158,6 +158,33 @@ services:
       - ../alembic.ini:/app/alembic.ini:ro
       - ../plugins:/app/plugins:ro
 
+  # Lightweight unit-test runner — no live services required
+  unit-test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    user: root
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        python -m pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite pytest-cov &&
+        python -m pytest tests/unit/ -q --override-ini=addopts=
+    env_file:
+      - ../.env.test
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///tmp/unit-tests.db
+      - AI_PROVIDER=mock
+      - FULLY_AUTOMATED=true
+      - PLUGIN_SAFE_MODE=false
+    volumes:
+      - ../.env.test:/app/.env.test:ro
+      - ../app:/app/app:ro
+      - ../tests:/app/tests:ro
+      - ../pytest.ini:/app/pytest.ini:ro
+      - ../alembic:/app/alembic:ro
+      - ../alembic.ini:/app/alembic.ini:ro
+      - ../plugins:/app/plugins:ro
+
   # Playwright browser test runner
   ui-test-runner:
     build:
