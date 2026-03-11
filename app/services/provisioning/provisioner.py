@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import shlex
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -209,6 +210,10 @@ class ServerProvisioner:
             "host": config.host,
             "port": config.port,
             "username": config.username,
+            # TODO: known_hosts=None disables host-key verification, allowing MITM.
+            # Acceptable for automated provisioning of ephemeral servers, but should
+            # be replaced with a pinned key or trust-on-first-use policy for
+            # long-lived infrastructure.
             "known_hosts": None,
         }
         if config.private_key:
@@ -231,5 +236,11 @@ class ServerProvisioner:
 
     @staticmethod
     def _format_env_vars(env: dict[str, str]) -> str:
-        """Format env vars for docker run -e flags."""
-        return " ".join(f'-e {k}="{v}"' for k, v in env.items() if v)
+        """Format environment variables for docker command, safely quoted."""
+        parts = []
+        for key, value in env.items():
+            if not key.replace('_', '').isalnum():
+                logger.warning("Skipping invalid env var key: %s", key)
+                continue
+            parts.append(f"-e {shlex.quote(f'{key}={value}')}")
+        return " ".join(parts)

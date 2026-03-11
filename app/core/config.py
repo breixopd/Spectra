@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     # --- Request Timeout ---
     REQUEST_TIMEOUT_SECONDS: int = 60  # Cancel requests exceeding this (0 = disabled)
 
+    @field_validator("REQUEST_TIMEOUT_SECONDS")
+    @classmethod
+    def validate_request_timeout(cls, v: int) -> int:
+        if not 1 <= v <= 300:
+            raise ValueError("REQUEST_TIMEOUT_SECONDS must be 1-300")
+        return v
+
     # --- Database (PostgreSQL) ---
     DATABASE_URL: SecretStr = SecretStr(
         "postgresql+asyncpg://spectra:spectra@db:5432/spectra"
@@ -67,6 +74,13 @@ class Settings(BaseSettings):
     LLM_API_BASE_URL: str | None = None
     LLM_MODEL: str = "gpt-4o-mini"
     LLM_TIMEOUT: float = 600.0
+
+    @field_validator("LLM_TIMEOUT")
+    @classmethod
+    def validate_llm_timeout(cls, v: float) -> float:
+        if not 5 <= v <= 600:
+            raise ValueError("LLM_TIMEOUT must be 5-600 seconds")
+        return v
 
     # Per-tier model routing (empty = use default model for all tiers)
     LLM_TIER1_MODEL: str = ""  # Cheap/fast: scope, tool selection, parsing
@@ -114,15 +128,36 @@ class Settings(BaseSettings):
     SANDBOX_IMAGE: str = "spectra-tools"
     SANDBOX_NETWORK: str = "spectra-network"
     SANDBOX_MAX_CONTAINERS: int = 10
+
+    @field_validator("SANDBOX_MAX_CONTAINERS")
+    @classmethod
+    def validate_sandbox_max_containers(cls, v: int) -> int:
+        if not 1 <= v <= 100:
+            raise ValueError("SANDBOX_MAX_CONTAINERS must be 1-100")
+        return v
     SANDBOX_MEMORY_LIMIT: str = "2g"
     SANDBOX_CPU_SHARES: int = 512
     SANDBOX_RESOURCE_TIERS: str = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
     SANDBOX_MAX_LIFETIME: int = 7200  # seconds
+
+    @field_validator("SANDBOX_MAX_LIFETIME")
+    @classmethod
+    def validate_sandbox_lifetime(cls, v: int) -> int:
+        if not 60 <= v <= 86400:
+            raise ValueError("SANDBOX_MAX_LIFETIME must be 60-86400 seconds")
+        return v
     SANDBOX_WORKER_POLL_DELAY: float = 0.5
     SANDBOX_NETWORK_ISOLATION: bool = True
     SANDBOX_IDLE_TIMEOUT: int = 600  # seconds — destroy sandbox if no heartbeat for this long
     SANDBOX_HEARTBEAT_INTERVAL: int = 30  # seconds — how often worker sends heartbeat
     SANDBOX_PER_USER_LIMIT: int = 3  # Max concurrent sandboxes per user
+
+    @field_validator("SANDBOX_PER_USER_LIMIT")
+    @classmethod
+    def validate_sandbox_per_user(cls, v: int) -> int:
+        if not 1 <= v <= 50:
+            raise ValueError("SANDBOX_PER_USER_LIMIT must be 1-50")
+        return v
     SANDBOX_DEFAULT_PRIORITY: int = 5  # Default job priority (1=highest, 10=lowest)
     SANDBOX_OOM_ESCALATION_ENABLED: bool = True  # Auto-escalate resource tier on OOM (exit 137)
     SANDBOX_WARM_POOL_ENABLED: bool = False  # Disabled by default — pre-warms idle containers for instant assignment
@@ -170,7 +205,7 @@ class Settings(BaseSettings):
 
     # --- Object Storage (S3/MinIO) ---
     S3_ENDPOINT_URL: str = ""  # MinIO/S3 endpoint (e.g., http://minio:9000)
-    S3_ACCESS_KEY: str = ""
+    S3_ACCESS_KEY: SecretStr = SecretStr("")
     S3_SECRET_KEY: SecretStr = SecretStr("")
     S3_REGION: str = "us-east-1"
     S3_BUCKET_MISSIONS: str = "spectra-missions"
