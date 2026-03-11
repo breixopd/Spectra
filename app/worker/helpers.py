@@ -54,8 +54,12 @@ async def _run_command(
     command: str | list[str],
     timeout: int,
     cwd: str | None = None,
+    allow_shell: bool = False,
 ) -> tuple[int, str, str]:
     """Run a shell command with timeout."""
+    if isinstance(command, str) and not allow_shell:
+        raise ValueError("Executing string commands requires explicit allow_shell=True")
+
     env = os.environ.copy()
     env["DEBIAN_FRONTEND"] = "noninteractive"
     # Ensure /opt/spectra_tools is in PATH

@@ -37,7 +37,7 @@ async def run_command_job(
             "stderr": f"Blocked by safety check: {reason}",
         }
 
-    wrapped = f"timeout -k 10s {timeout}s {command}"
+    wrapped = ["timeout", "-k", "10s", f"{timeout}s", "sh", "-c", command]
     returncode, stdout, stderr = await _run_command(wrapped, timeout + 30, cwd)
 
     return {

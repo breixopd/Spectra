@@ -110,7 +110,7 @@ async def execute_tool_job(
     # Execute command with timeout
     import time
 
-    wrapped_cmd = f"timeout -k 10s {effective_timeout}s {command}"
+    wrapped_cmd = ["timeout", "-k", "10s", f"{effective_timeout}s", "sh", "-c", command]
     logger.info("Running: %s (timeout: %ds)", command, effective_timeout)
 
     start_time = time.time()

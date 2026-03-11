@@ -24,7 +24,7 @@ async def vpn_connect_job(config_path: str, vpn_type: str) -> dict[str, Any]:
         else:
             return {"success": False, "error": f"Unknown VPN type: {vpn_type}"}
 
-        returncode, stdout, stderr = await _run_command(cmd, 30)
+        returncode, stdout, stderr = await _run_command(cmd, 30, allow_shell=True)
         success = returncode == 0
         return {
             "success": success,
@@ -52,7 +52,7 @@ async def vpn_disconnect_job(config_name: str, vpn_type: str) -> dict[str, Any]:
         else:
             return {"success": False, "error": f"Unknown VPN type: {vpn_type}"}
 
-        returncode, stdout, stderr = await _run_command(cmd, 15)
+        returncode, stdout, stderr = await _run_command(cmd, 15, allow_shell=True)
         return {
             "success": returncode == 0,
             "type": vpn_type,
@@ -69,14 +69,14 @@ async def vpn_status_job() -> dict[str, Any]:
     """Check VPN interface status inside the tools container."""
     result: dict[str, Any] = {"connected": False, "interfaces": []}
     try:
-        rc_wg, out_wg, _ = await _run_command("ip link show type wireguard 2>/dev/null", 5)
+        rc_wg, out_wg, _ = await _run_command("ip link show type wireguard 2>/dev/null", 5, allow_shell=True)
         if rc_wg == 0 and out_wg.strip():
             result["connected"] = True
             result["type"] = "wireguard"
             result["interface"] = "wg0"
             result["interfaces"].append("wg0")
 
-        rc_tun, out_tun, _ = await _run_command("ip link show tun0 2>/dev/null", 5)
+        rc_tun, out_tun, _ = await _run_command("ip link show tun0 2>/dev/null", 5, allow_shell=True)
         if rc_tun == 0 and out_tun.strip():
             result["connected"] = True
             result.setdefault("type", "openvpn")
@@ -85,7 +85,7 @@ async def vpn_status_job() -> dict[str, Any]:
 
         if result["connected"]:
             rc_ip, out_ip, _ = await _run_command(
-                "curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo unknown", 10
+                "curl -s --max-time 5 https://ifconfig.me 2>/dev/null || echo unknown", 10, allow_shell=True
             )
             result["public_ip"] = out_ip.strip() if rc_ip == 0 else "unknown"
 
@@ -100,7 +100,7 @@ async def vpn_test_job() -> dict[str, Any]:
     logger.info("VPN connectivity test")
     try:
         rc, stdout, stderr = await _run_command(
-            "curl -s --max-time 10 https://ifconfig.me 2>/dev/null", 15
+            "curl -s --max-time 10 https://ifconfig.me 2>/dev/null", 15, allow_shell=True
         )
         if rc == 0 and stdout.strip():
             return {
