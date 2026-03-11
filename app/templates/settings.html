@@ -823,17 +823,17 @@
         const btn = document.getElementById('download-sources-btn');
         const status = document.getElementById('download-sources-status');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Downloading...';
-        status.textContent = 'This may take a minute...';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Refreshing...';
+        status.textContent = 'Starting background refresh...';
         try {
-            const res = await fetch('/api/v1/system/data-sources/download', { method: 'POST' });
+            const res = await fetch('/api/v1/system/data-sources/refresh', { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
-                status.textContent = `Updated: ${data.stats?.cve_kb_entries || 0} CVEs, ${data.stats?.metasploit || 0} MSF modules`;
+                status.textContent = 'Refresh started — sources will update in the background';
                 status.className = 'text-xs text-emerald-400';
-                loadDataSourceStatus();
+                setTimeout(loadDataSourceStatus, 5000);
             } else {
-                status.textContent = 'Error: ' + (data.detail || 'Download failed');
+                status.textContent = 'Error: ' + (data.detail || 'Refresh failed');
                 status.className = 'text-xs text-rose-400';
             }
         } catch (e) {
@@ -841,7 +841,7 @@
             status.className = 'text-xs text-rose-400';
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-download mr-1"></i> Download / Update All Sources';
+            btn.innerHTML = '<i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh All Sources';
         }
     }
 
