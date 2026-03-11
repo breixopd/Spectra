@@ -44,12 +44,12 @@ class ServerPoolManager:
             service_type=service_type,
             name=name,
             url=url.rstrip("/"),
-            api_key=api_key,
             is_primary=is_primary,
             weight=weight,
             max_capacity=max_capacity,
             metadata_=metadata,
         )
+        node.set_api_key(api_key)
         session.add(node)
         await session.flush()
         logger.info("Added %s node: %s (%s)", service_type, name, url)

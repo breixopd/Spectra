@@ -19,6 +19,9 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 | [Pentest Workflow](pentest-workflow.md) | PTES methodology, quality gates, exploitation strategy |
 | [Sandboxes](sandboxes.md) | Per-mission ephemeral containers, isolation, resource tiers |
 | [Security](security.md) | Authentication, RBAC, encryption, network isolation, audit logging |
+| [Authentication](authentication.md) | JWT tokens, password reset, rate limiting, RBAC roles, API keys |
+| [Worker System](worker-system.md) | Background jobs, dead-letter queue, cleanup, notifications, reports |
+| [Deployment Guide](deployment-guide.md) | Production setup, SSL/TLS, backups, scaling considerations |
 | [Development](development.md) | Local setup, testing, code structure, contributing |
 | [Roadmap](roadmap.md) | Future improvements and completed milestones |
 

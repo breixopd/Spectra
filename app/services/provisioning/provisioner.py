@@ -210,7 +210,7 @@ class ServerProvisioner:
             "host": config.host,
             "port": config.port,
             "username": config.username,
-            # TODO: known_hosts=None disables host-key verification, allowing MITM.
+            # SECURITY: known_hosts=None disables host-key verification, allowing MITM.
             # Acceptable for automated provisioning of ephemeral servers, but should
             # be replaced with a pinned key or trust-on-first-use policy for
             # long-lived infrastructure.

@@ -62,8 +62,16 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 ### Security and Access Control
 - JWT authentication with role-based access control (RBAC)
 - Three roles: admin, operator, viewer
+- Password reset flow (forgot-password → token → reset) with anti-enumeration
 - Per-plan resource limits and rate limiting
 - Audit trail for all administrative actions
+
+### Reliability & Infrastructure
+- **Dead-letter queue** — failed jobs retry 3x with backoff, then move to dead letter for admin review
+- **Cleanup workers** — hourly automated cleanup of expired cache, orphaned sandboxes, and old jobs
+- **WebSocket reconnection** — client-side exponential backoff (1s → 30s max, 10 retries)
+- **DI container** — lightweight service container (`app/core/container.py`) for testable dependency injection
+- **Notification jobs** — webhook delivery for mission completion, critical findings, and exploit success
 
 ## Architecture
 
@@ -275,6 +283,9 @@ Full documentation is in the [Wiki](docs/wiki/home.md):
 | Pentest Workflow | [docs/wiki/pentest-workflow.md](docs/wiki/pentest-workflow.md) |
 | Sandboxes | [docs/wiki/sandboxes.md](docs/wiki/sandboxes.md) |
 | Security | [docs/wiki/security.md](docs/wiki/security.md) |
+| Authentication | [docs/wiki/authentication.md](docs/wiki/authentication.md) |
+| Worker System | [docs/wiki/worker-system.md](docs/wiki/worker-system.md) |
+| Deployment Guide | [docs/wiki/deployment-guide.md](docs/wiki/deployment-guide.md) |
 | Development | [docs/wiki/development.md](docs/wiki/development.md) |
 | Roadmap | [docs/wiki/roadmap.md](docs/wiki/roadmap.md) |
 
