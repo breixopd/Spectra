@@ -95,8 +95,9 @@ class MissionExecutionManager:
             if pool and pool.available:
                 vpn_path = None
                 if getattr(mission, "vpn_config", None):
-                    from app.core.config import get_settings
                     import os
+
+                    from app.core.config import get_settings
                     vpn_dir = get_settings().VPN_CONFIG_DIR
                     vpn_path = os.path.join(vpn_dir, mission.vpn_config)
                     if not os.path.exists(vpn_path):
@@ -413,7 +414,7 @@ class MissionExecutionManager:
                     return_exceptions=True,
                 )
 
-                for (idx, task), result in zip(independent, results):
+                for (idx, task), result in zip(independent, results, strict=False):
                     if isinstance(result, Exception):
                         await self._handle_task_failure(
                             mission, task, str(result), context

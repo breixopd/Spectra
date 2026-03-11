@@ -10,7 +10,7 @@ Responsible for:
 """
 
 import logging
-from enum import Enum
+from enum import StrEnum
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
@@ -35,7 +35,7 @@ logger = logging.getLogger("spectra.ai.agents.mission")
 # --- Enums ---
 
 
-class MissionType(str, Enum):
+class MissionType(StrEnum):
     """Types of missions the controller can handle."""
 
     FULL_ASSESSMENT = "full_assessment"

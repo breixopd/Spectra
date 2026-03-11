@@ -2,7 +2,7 @@
 Audit Log model for security event tracking.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
 
-class AuditEventType(str, Enum):
+class AuditEventType(StrEnum):
     LOGIN = "LOGIN"
     LOGIN_FAILED = "LOGIN_FAILED"
     LOGOUT = "LOGOUT"

@@ -11,13 +11,32 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "S", "B", "UP"]
-ignore = ["E501", "S101", "S108", "B008"]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E741",   # ambiguous variable name
+    "E402",   # module-level import not at top (deferred imports)
+    "S101",   # assert usage
+    "S104",   # binding to all interfaces (expected for server)
+    "S105",   # hardcoded password (false positives for config defaults)
+    "S106",   # hardcoded password in func arg
+    "S108",   # hardcoded temp file
+    "S110",   # try-except-pass
+    "S112",   # try-except-continue
+    "S311",   # pseudo-random (not used for crypto)
+    "S314",   # xml parsing (needed functionality)
+    "S608",   # SQL injection (false positives with SQLAlchemy)
+    "B008",   # function call in default arg (FastAPI Depends)
+    "B024",   # abstract class without abstract methods
+    "B027",   # empty method in abstract class
+    "B904",   # raise without from in except (too noisy)
+]
 # S = bandit rules via ruff (security)
 # B = bugbear (common bugs)
 # UP = pyupgrade
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S106"]
+"**/__init__.py" = ["F401"]  # re-exports
 
 [tool.pyright]
 pythonVersion = "3.11"

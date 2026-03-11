@@ -6,7 +6,6 @@ Endpoints for managing security missions.
 
 import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response

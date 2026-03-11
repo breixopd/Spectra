@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -126,7 +126,7 @@ class PaymentService:
             )
             sub = result.scalar_one_or_none()
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             if sub is None:
                 sub = Subscription(

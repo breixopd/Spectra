@@ -5,10 +5,10 @@ Centralizes enum definitions to avoid duplication and ensure consistency.
 Follows the DRY (Don't Repeat Yourself) principle.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class AssessmentPhase(str, Enum):
+class AssessmentPhase(StrEnum):
     """
     Phases of a security assessment.
 
@@ -28,7 +28,7 @@ class AssessmentPhase(str, Enum):
     COMPLETE = "complete"
 
 
-class EntityStatus(str, Enum):
+class EntityStatus(StrEnum):
     """
     Generic status values for entities in the pipeline.
 
@@ -43,7 +43,7 @@ class EntityStatus(str, Enum):
     FAILED = "failed"
 
 
-class MissionStatus(str, Enum):
+class MissionStatus(StrEnum):
     """Status of a mission in the execution pipeline."""
 
     CREATED = "created"
@@ -63,7 +63,7 @@ class MissionStatus(str, Enum):
     PAUSED = "paused"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """
     CVSS-based severity levels for vulnerabilities.
 
@@ -77,7 +77,7 @@ class Severity(str, Enum):
     INFO = "info"
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     """
     Risk level for actions and operations.
 

@@ -17,7 +17,7 @@ Quality Gates (validation points):
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -31,7 +31,7 @@ logger = logging.getLogger("spectra.ai.consensus")
 # --- Enums ---
 
 
-class VoteDecision(str, Enum):
+class VoteDecision(StrEnum):
     """Possible vote decisions."""
 
     APPROVE = "approve"
@@ -40,7 +40,7 @@ class VoteDecision(str, Enum):
     NEEDS_INFO = "needs_info"
 
 
-class ConsensusStatus(str, Enum):
+class ConsensusStatus(StrEnum):
     """Status of consensus attempt."""
 
     APPROVED = "approved"  # K-threshold met
@@ -49,7 +49,7 @@ class ConsensusStatus(str, Enum):
     PENDING_HUMAN = "pending_human"  # Escalated to human
 
 
-class QualityGate(str, Enum):
+class QualityGate(StrEnum):
     """
     Quality gates where validation occurs.
 

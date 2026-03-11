@@ -5,7 +5,7 @@ Defines the schema for tool plugins including installation,
 execution, parsing, and UI configuration.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.core.enums import RiskLevel
 
 
-class ToolCategory(str, Enum):
+class ToolCategory(StrEnum):
     """Primary categories for security tools."""
 
     DISCOVERY = "discovery"
@@ -27,7 +27,7 @@ class ToolCategory(str, Enum):
     CUSTOM = "custom"
 
 
-class ToolCapability(str, Enum):
+class ToolCapability(StrEnum):
     """
     Fine-grained capabilities that tools can provide.
 
@@ -79,7 +79,7 @@ class ToolCapability(str, Enum):
     CREDENTIAL_HARVEST = "credential_harvest"
 
 
-class TargetType(str, Enum):
+class TargetType(StrEnum):
     """Types of targets a tool can operate on."""
 
     IP = "ip"
@@ -92,7 +92,7 @@ class TargetType(str, Enum):
     ANY = "any"
 
 
-class ToolStatus(str, Enum):
+class ToolStatus(StrEnum):
     """Installation/availability status of a tool."""
 
     PENDING = "pending"
@@ -102,7 +102,7 @@ class ToolStatus(str, Enum):
     DISABLED = "disabled"
 
 
-class InstallationMethod(str, Enum):
+class InstallationMethod(StrEnum):
     """How the tool should be installed."""
 
     SCRIPT = "script"  # Run shell commands
@@ -113,7 +113,7 @@ class InstallationMethod(str, Enum):
     NONE = "none"  # Already installed (built-in)
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Output format of the tool."""
 
     JSON = "json"

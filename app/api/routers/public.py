@@ -7,7 +7,6 @@ These routes do NOT require authentication.
 from __future__ import annotations
 
 import logging
-import secrets
 from datetime import timedelta
 from pathlib import Path
 
@@ -16,17 +15,15 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import async_session_maker
-from app.core.rate_limit import RateLimits, limiter
+from app.core.rate_limit import limiter
 from app.core.security import (
     JWTError,
     create_access_token,
     decode_token,
     get_password_hash,
-    verify_password,
 )
 from app.models.plan import Plan, Subscription
 from app.models.user import User
@@ -239,7 +236,7 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest):
 
     # Always return success to prevent user enumeration
     if user:
-        token = create_access_token(
+        create_access_token(
             data={"sub": user.username, "type": "password_reset"},
             expires_delta=timedelta(minutes=30),
         )

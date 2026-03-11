@@ -21,7 +21,6 @@ from app.services.system.settings_service import (
     apply_settings_update,
     get_ai_status_snapshot,
     get_current_settings,
-    load_settings_from_db,
     test_llm_connection,
 )
 

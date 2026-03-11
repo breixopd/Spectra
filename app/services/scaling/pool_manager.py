@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import select, update, and_
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_maker
@@ -75,7 +75,7 @@ class ServerPoolManager:
         if service_type:
             query = query.where(ServerNode.service_type == service_type)
         if active_only:
-            query = query.where(ServerNode.is_active == True)
+            query = query.where(ServerNode.is_active)
         query = query.order_by(ServerNode.is_primary.desc(), ServerNode.weight.desc())
         result = await session.execute(query)
         return [n.to_dict() for n in result.scalars().all()]
@@ -105,7 +105,7 @@ class ServerPoolManager:
 
     async def select_node(self, service_type: str) -> dict | None:
         """Select the best available node for a service type using weighted least-connections.
-        
+
         Algorithm: Among healthy, active nodes with available capacity,
         pick the one with the lowest (current_load / weight) ratio.
         Ties broken randomly for distribution.
@@ -116,7 +116,7 @@ class ServerPoolManager:
                 select(ServerNode).where(
                     and_(
                         ServerNode.service_type == service_type,
-                        ServerNode.is_active == True,
+                        ServerNode.is_active,
                         ServerNode.health_status == "healthy",
                     )
                 )
@@ -179,7 +179,7 @@ class ServerPoolManager:
         results: dict[str, list[dict]] = {}
         async with async_session_maker() as session:
             all_nodes = await session.execute(
-                select(ServerNode).where(ServerNode.is_active == True)
+                select(ServerNode).where(ServerNode.is_active)
             )
             nodes = all_nodes.scalars().all()
 
@@ -187,7 +187,7 @@ class ServerPoolManager:
                 check = await self.health_check_node(node.to_dict())
                 node.health_status = check["health_status"]
                 node.last_error = check.get("last_error")
-                node.last_health_check = datetime.now(timezone.utc)
+                node.last_health_check = datetime.now(UTC)
 
                 stype = node.service_type
                 if stype not in results:

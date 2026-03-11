@@ -5,7 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any, ClassVar, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -19,7 +19,7 @@ logger = logging.getLogger("spectra.ai.agents")
 # --- Enums ---
 
 
-class AgentRole(str, Enum):
+class AgentRole(StrEnum):
     """Defines the role/responsibility of an agent."""
 
     SCOPE = "scope"  # Parses input to define boundaries
@@ -37,7 +37,7 @@ class AgentRole(str, Enum):
     REPORTER = "reporter"  # Generates assessment reports
 
 
-class ActionRisk(str, Enum):
+class ActionRisk(StrEnum):
     """Risk level of an agent action."""
 
     LOW = "low"  # Safe to execute automatically

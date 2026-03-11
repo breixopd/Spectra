@@ -12,7 +12,7 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from enum import Enum
+from enum import StrEnum
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
@@ -25,7 +25,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-class CircuitState(str, Enum):
+class CircuitState(StrEnum):
     """Circuit breaker states."""
 
     CLOSED = "closed"  # Normal operation, requests pass through

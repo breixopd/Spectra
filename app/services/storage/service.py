@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 from app.core.config import settings
 
 if TYPE_CHECKING:
-    import aioboto3
+    pass
 
 logger = logging.getLogger("spectra.storage")
 

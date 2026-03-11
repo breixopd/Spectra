@@ -6,7 +6,7 @@ Represents security findings discovered during assessments.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, ForeignKey, String, Text
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from app.models.target import Target
 
 
-class FindingStatus(str, Enum):
+class FindingStatus(StrEnum):
     """Verification status of a finding."""
 
     POTENTIAL = "potential"  # AI detected, not verified

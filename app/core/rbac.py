@@ -4,14 +4,14 @@ Defines permissions per role and provides a FastAPI dependency
 to enforce access control on endpoints.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 from fastapi import Depends, HTTPException
 
 from app.models.user import User
 
 
-class Permission(str, Enum):
+class Permission(StrEnum):
     """Granular permissions used across the platform."""
 
     VIEW_MISSIONS = "view_missions"
