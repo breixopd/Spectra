@@ -361,6 +361,50 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 ):
                     action.estimated_duration = selected_tool.config.execution.timeout
 
+            # Spawn ParameterTuner sub-agent for complex tools with sufficient context
+            if (
+                action.tool_name
+                and input_data.target
+            ):
+                try:
+                    from app.services.ai.agents.parameter_tuner import (
+                        ParameterTunerAgent,
+                        TunerInput,
+                    )
+
+                    if ParameterTunerAgent.is_complex_tool(action.tool_name):
+                        # Gather previous results from blackboard-style context
+                        previous_results = [
+                            {"tool": t, "findings_count": 0}
+                            for t in input_data.tools_already_run
+                        ]
+                        tuner_input = TunerInput(
+                            tool_name=action.tool_name,
+                            target=input_data.target,
+                            target_type=input_data.target_type,
+                            phase=input_data.current_phase,
+                            stealth_mode=context.stealth_mode,
+                            previous_results=previous_results,
+                        )
+                        tuner_result = await self.spawn_sub_agent(
+                            AgentRole.PARAMETER_TUNER, context, tuner_input, depth=0,
+                        )
+                        if tuner_result.success and tuner_result.action:
+                            tuned = tuner_result.action
+                            # Merge tuned args (tuner args take precedence for unset keys)
+                            for k, v in tuned.tool_args.items():
+                                if k not in action.tool_args:
+                                    action.tool_args[k] = v
+                            if tuned.estimated_duration > action.estimated_duration:
+                                action.estimated_duration = tuned.estimated_duration
+                            logger.info(
+                                "ParameterTuner enriched args for %s: %s",
+                                action.tool_name,
+                                tuned.notes,
+                            )
+                except Exception as e:
+                    logger.debug("ParameterTuner sub-agent skipped: %s", e)
+
             return AgentResult(
                 success=bool(action.tool_name),
                 action=action,
