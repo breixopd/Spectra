@@ -390,6 +390,7 @@ class SandboxPool:
             c = self._client.containers.get(container_id)
             return c.status == "running"
         except Exception:
+            # Expected when container was already removed (race with cleanup)
             return False
 
     async def _stop_container(self, container_id: str, name: str) -> None:
@@ -402,12 +403,12 @@ class SandboxPool:
                 c = self._client.containers.get(container_id)
                 c.stop(timeout=10)
             except Exception:
-                logger.debug("Failed to stop container %s", name)
+                logger.debug("Failed to stop container %s (may already be stopped)", name, exc_info=True)
             try:
                 c = self._client.containers.get(container_id)
                 c.remove(force=True)
             except Exception:
-                logger.debug("Failed to remove container %s", name)
+                logger.debug("Failed to remove container %s (may already be removed)", name, exc_info=True)
 
         await asyncio.to_thread(_do_stop)
 
@@ -425,7 +426,7 @@ class SandboxPool:
                     try:
                         net.disconnect(cid, force=True)
                     except Exception:
-                        logger.debug("Failed to disconnect container %s from network %s", cid[:12], network_id[:12])
+                        logger.debug("Failed to disconnect container %s from network %s", cid[:12], network_id[:12], exc_info=True)
                 net.remove()
                 logger.info("Removed isolated network %s (sandbox=%s)", network_id[:12], sandbox_name)
             except Exception as exc:

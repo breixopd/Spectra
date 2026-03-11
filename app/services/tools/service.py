@@ -31,7 +31,21 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("spectra.tools.service")
 
+try:
+    import jsonschema
+    HAS_JSONSCHEMA = True
+except ImportError:
+    HAS_JSONSCHEMA = False
+    logger.warning("jsonschema not installed — tool argument validation disabled")
+
+import html
+
 from app.services.ai.context import truncate_for_llm
+
+
+def sanitize_tool_output(output: str) -> str:
+    """Sanitize tool output for safe display in the UI."""
+    return html.escape(output)
 
 
 class StandaloneMissionAdapter:
@@ -234,18 +248,17 @@ class ToolExecutionService:
 
             # Validate args against schema if available
             if tool.config.execution.args_schema:
-                try:
-                    import jsonschema
-
-                    jsonschema.validate(
-                        instance=args or {}, schema=tool.config.execution.args_schema
-                    )
-                except ImportError:
-                    logger.warning("jsonschema not installed, skipping validation")
-                except Exception as e:
-                    return self._create_error_result(
-                        tool_name, target, f"Invalid arguments: {e}"
-                    )
+                if HAS_JSONSCHEMA:
+                    try:
+                        jsonschema.validate(
+                            instance=args or {}, schema=tool.config.execution.args_schema
+                        )
+                    except jsonschema.ValidationError as e:
+                        return self._create_error_result(
+                            tool_name, target, f"Invalid arguments: {e}"
+                        )
+                else:
+                    logger.warning("Skipping argument validation for %s — jsonschema not installed", tool_name)
 
             # 2. Preparation
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -438,6 +451,9 @@ class ToolExecutionService:
 
             # Convert dict back to ToolExecutionResult and cache
             result = ToolExecutionResult(**result_data)
+            # Sanitize output for safe UI display
+            result.stdout = sanitize_tool_output(result.stdout)
+            result.stderr = sanitize_tool_output(result.stderr)
             if result.success:
                 tool_cache.set(tool_id, target, args or {}, result)
             return result

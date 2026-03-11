@@ -456,7 +456,7 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
     def _analyze_votes_with_params(
         self,
         votes: list[Vote],
-        _action: AgentAction,
+        action: AgentAction,
         k_threshold: int,
         min_confidence: float,
     ) -> ConsensusResult:
@@ -503,6 +503,30 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
         else:
             status = ConsensusStatus.NO_CONSENSUS
             escalation_reason = f"No clear majority (approve: {approve_count}, reject: {reject_count}, abstain: {abstain_count})"
+
+        # NO_CONSENSUS escalation: handle based on action risk level
+        if status == ConsensusStatus.NO_CONSENSUS:
+            risk = action.risk_level
+            risk_str = risk.value if hasattr(risk, "value") else str(risk)
+            logger.warning(
+                "NO_CONSENSUS for %s (risk=%s): approve=%d reject=%d abstain=%d conf=%.2f — %s",
+                action.action_type, risk_str,
+                approve_count, reject_count, abstain_count, avg_confidence,
+                escalation_reason,
+            )
+            if risk_str == ActionRisk.CRITICAL.value:
+                # Critical actions with no consensus must be reviewed by a human
+                status = ConsensusStatus.PENDING_HUMAN
+                escalation_reason = f"CRITICAL action with no consensus — flagged for human review ({escalation_reason})"
+            elif approve_count > reject_count:
+                # Lower-risk: fall back to majority vote even if below k-threshold
+                status = ConsensusStatus.APPROVED
+                final_decision = True
+                escalation_reason = (
+                    f"No consensus but majority approved ({approve_count}/{len(votes)}) "
+                    f"at {risk_str} risk — proceeding with majority"
+                )
+                logger.warning("Falling back to majority approval: %s", escalation_reason)
 
         return ConsensusResult(
             status=status,

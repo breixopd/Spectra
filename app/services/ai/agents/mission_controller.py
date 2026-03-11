@@ -25,6 +25,7 @@ from app.services.ai.agents.base import (
     AgentRole,
     SteeringAction,
 )
+from app.services.ai.errors import AgentError, LLMParseError, LLMTimeoutError
 from app.services.ai.prompts import (
     MISSION_PLAN_PROMPT,
 )
@@ -141,6 +142,10 @@ class MissionController(
                 action=plan,
             )
 
+        except AgentError:
+            raise
+        except TimeoutError as e:
+            raise LLMTimeoutError(agent=self.name, timeout_seconds=0) from e
         except Exception as e:
             logger.error("MissionController failed: %s", e)
             return AgentResult(
@@ -234,12 +239,14 @@ Your plan must be:
                         "Plan generation attempt %d failed: %s", attempt + 1, e
                     )
                     if attempt == max_retries - 1:
-                        raise e
+                        raise LLMParseError(agent=self.name, raw_response=str(e)) from e
                     # Slightly adjust prompt or temperature on retry if needed
                     # For now, just retry
+        except AgentError:
+            raise
         except Exception as e:
             logger.error("Plan generation failed after %d attempts: %s", max_retries, e)
-            raise e
+            raise
 
     async def _handle_steering(
         self,
