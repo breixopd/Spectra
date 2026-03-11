@@ -556,6 +556,11 @@
 {% block extra_js %}
 <script nonce="{{ request.state.csp_nonce }}">
     let currentData = {};
+
+    function escapeHtml(str) {
+        if (str == null) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
     
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -630,17 +635,17 @@
         grid.innerHTML = Object.entries(services).map(([name, info]) => `
             <div class="service-card">
                 <div class="service-header">
-                    <span class="service-name">${name}</span>
+                    <span class="service-name">${escapeHtml(name)}</span>
                     <div class="service-status">
                         <span class="status-dot ${info.healthy ? 'healthy' : 'unhealthy'}"></span>
                         ${info.healthy ? 'Healthy' : 'Unhealthy'}
                     </div>
                 </div>
                 <div class="service-metrics">
-                    ${info.latency_ms ? `<span>Latency: ${info.latency_ms}ms</span>` : ''}
-                    ${info.last_check ? `<span>Last check: ${new Date(info.last_check).toLocaleTimeString()}</span>` : ''}
+                    ${info.latency_ms ? `<span>Latency: ${escapeHtml(info.latency_ms)}ms</span>` : ''}
+                    ${info.last_check ? `<span>Last check: ${escapeHtml(new Date(info.last_check).toLocaleTimeString())}</span>` : ''}
                 </div>
-                ${info.error ? `<div style="color: #f43f5e; font-size: 0.875rem; margin-top: 0.25rem;">${info.error}</div>` : ''}
+                ${info.error ? `<div style="color: #f43f5e; font-size: 0.875rem; margin-top: 0.25rem;">${escapeHtml(info.error)}</div>` : ''}
             </div>
         `).join('');
     }
@@ -657,12 +662,12 @@
             const durationClass = trace.duration_ms > 5000 ? 'very-slow' : trace.duration_ms > 1000 ? 'slow' : '';
             return `
                 <tr>
-                    <td>${new Date(trace.start_time).toLocaleTimeString()}</td>
-                    <td class="trace-name">${trace.name}</td>
-                    <td class="trace-duration ${durationClass}">${trace.duration_ms.toFixed(2)}ms</td>
-                    <td><span class="trace-status ${trace.status}">${trace.status}</span></td>
+                    <td>${escapeHtml(new Date(trace.start_time).toLocaleTimeString())}</td>
+                    <td class="trace-name">${escapeHtml(trace.name)}</td>
+                    <td class="trace-duration ${durationClass}">${escapeHtml(trace.duration_ms.toFixed(2))}ms</td>
+                    <td><span class="trace-status ${trace.status === 'ok' ? 'ok' : 'error'}">${escapeHtml(trace.status)}</span></td>
                     <td>
-                        ${trace.attributes?.error?.message ? `<span style="color: #f43f5e">${trace.attributes.error.message}</span>` : '-'}
+                        ${trace.attributes?.error?.message ? `<span style="color: #f43f5e">${escapeHtml(trace.attributes.error.message)}</span>` : '-'}
                     </td>
                 </tr>
             `;
@@ -680,14 +685,14 @@
         container.innerHTML = Object.entries(breakers).map(([name, info]) => `
             <div class="circuit-breaker-card">
                 <div class="cb-header">
-                    <span class="cb-name">${name}</span>
-                    <span class="cb-state ${info.state}">${info.state}</span>
+                    <span class="cb-name">${escapeHtml(name)}</span>
+                    <span class="cb-state ${info.state === 'closed' ? 'closed' : info.state === 'open' ? 'open' : 'half-open'}">${escapeHtml(info.state)}</span>
                 </div>
                 <div class="cb-stats">
-                    <span>Calls: ${info.total_calls}</span>
-                    <span>Failures: ${info.total_failures}</span>
-                    <span>Failure Rate: ${info.failure_rate.toFixed(1)}%</span>
-                    <span>Times Opened: ${info.times_opened}</span>
+                    <span>Calls: ${escapeHtml(info.total_calls)}</span>
+                    <span>Failures: ${escapeHtml(info.total_failures)}</span>
+                    <span>Failure Rate: ${escapeHtml(info.failure_rate.toFixed(1))}%</span>
+                    <span>Times Opened: ${escapeHtml(info.times_opened)}</span>
                 </div>
             </div>
         `).join('');
@@ -703,9 +708,9 @@
         
         container.innerHTML = events.slice(-100).reverse().map(event => `
             <div class="event-item">
-                <span class="event-time">${new Date(event.timestamp).toLocaleTimeString()}</span>
-                <span class="event-type">${event.type}</span>
-                <span>${event.source}</span>
+                <span class="event-time">${escapeHtml(new Date(event.timestamp).toLocaleTimeString())}</span>
+                <span class="event-type">${escapeHtml(event.type)}</span>
+                <span>${escapeHtml(event.source)}</span>
             </div>
         `).join('');
     }
@@ -953,7 +958,7 @@
         const errEntries = Object.entries(data.api_error_rates || {});
         if (errEntries.length) {
             errContainer.innerHTML = errEntries.map(([path, count]) =>
-                `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.05)"><span>${path}</span><span class="font-mono" style="color:#f43f5e">${count}</span></div>`
+                `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.05)"><span>${escapeHtml(path)}</span><span class="font-mono" style="color:#f43f5e">${escapeHtml(count)}</span></div>`
             ).join('');
         } else {
             errContainer.textContent = 'No errors recorded';
@@ -964,7 +969,7 @@
         if (latEntries.length) {
             latContainer.innerHTML = '<table class="traces-table"><thead><tr><th>Endpoint</th><th>P50</th><th>P90</th><th>P99</th><th>Count</th></tr></thead><tbody>' +
                 latEntries.map(([path, s]) =>
-                    `<tr><td>${path}</td><td>${s.p50}ms</td><td>${s.p90}ms</td><td>${s.p99}ms</td><td>${s.count}</td></tr>`
+                    `<tr><td>${escapeHtml(path)}</td><td>${escapeHtml(s.p50)}ms</td><td>${escapeHtml(s.p90)}ms</td><td>${escapeHtml(s.p99)}ms</td><td>${escapeHtml(s.count)}</td></tr>`
                 ).join('') + '</tbody></table>';
         } else {
             latContainer.textContent = 'No latency data';

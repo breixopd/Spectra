@@ -195,7 +195,8 @@ class TestStorageServiceS3Mode:
 
         with patch("app.services.storage.service.settings") as mock_settings:
             mock_settings.S3_ENDPOINT_URL = "http://minio:9000"
-            mock_settings.S3_ACCESS_KEY = "minioadmin"
+            mock_settings.S3_ACCESS_KEY = MagicMock()
+            mock_settings.S3_ACCESS_KEY.get_secret_value.return_value = "minioadmin"
             mock_settings.S3_SECRET_KEY = MagicMock()
             mock_settings.S3_SECRET_KEY.get_secret_value.return_value = "minioadmin"
             mock_settings.S3_REGION = "us-east-1"

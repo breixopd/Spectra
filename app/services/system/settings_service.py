@@ -80,7 +80,7 @@ def _collect_general_db_settings(
         ("sandbox_orchestrator_url", "SANDBOX_ORCHESTRATOR_URL", "nullable", False),
         ("sandbox_orchestrator_timeout", "SANDBOX_ORCHESTRATOR_TIMEOUT", "int", False),
         ("s3_endpoint_url", "S3_ENDPOINT_URL", "str", False),
-        ("s3_access_key", "S3_ACCESS_KEY", "str", False),
+        ("s3_access_key", "S3_ACCESS_KEY", "str", True),
         ("s3_secret_key", "S3_SECRET_KEY", "str", True),
         ("s3_region", "S3_REGION", "str", False),
     ]

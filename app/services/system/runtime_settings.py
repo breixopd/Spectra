@@ -37,8 +37,8 @@ LEGACY_AI_CONFIG_KEYS = (
 GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
         # S3/MinIO Object Storage
         "S3_ENDPOINT_URL": ("S3_ENDPOINT_URL", "str"),
-        "S3_ACCESS_KEY": ("S3_ACCESS_KEY", "str"),
-        "S3_SECRET_KEY": ("S3_SECRET_KEY", "str"),
+        "S3_ACCESS_KEY": ("S3_ACCESS_KEY", "secret"),
+        "S3_SECRET_KEY": ("S3_SECRET_KEY", "secret"),
         "S3_REGION": ("S3_REGION", "str"),
     "LOG_LEVEL": ("LOG_LEVEL", "str"),
     "PLUGIN_SAFE_MODE": ("PLUGIN_SAFE_MODE", "bool"),
@@ -588,6 +588,8 @@ def _apply_general_runtime_settings(rows: dict[str, str]) -> None:
                 pass  # Keep default if DB value is invalid
         elif kind == "nullable_str":
             setattr(settings, attr_name, value or None)
+        elif kind == "secret":
+            setattr(settings, attr_name, SecretStr(value or ""))
         else:
             setattr(settings, attr_name, value)
 
