@@ -1,19 +1,29 @@
 """Tests for repository CRUD operations.
 
 Tests PlanRepository, SubscriptionRepository, ApiKeyRepository,
-ServerNodeRepository, and SystemConfigRepository using mocked
-AsyncSession to verify query construction and delegation.
+ServerNodeRepository, SystemConfigRepository, BaseRepository, and
+all concrete repository classes.
 """
 
+import inspect as _inspect
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.repositories.api_key import ApiKeyRepository
-from app.repositories.plan import PlanRepository
-from app.repositories.server_node import ServerNodeRepository
-from app.repositories.subscription import SubscriptionRepository
-from app.repositories.system_config import SystemConfigRepository
+from app.repositories import (
+    ApiKeyRepository,
+    BaseRepository,
+    ExploitRepository,
+    FindingRepository,
+    MissionRepository,
+    PentestSessionRepository,
+    PlanRepository,
+    ServerNodeRepository,
+    SubscriptionRepository,
+    SystemConfigRepository,
+    TargetRepository,
+    UserRepository,
+)
 
 
 def _mock_session():
@@ -234,3 +244,226 @@ class TestSystemConfigRepository:
             result = await repo.upsert("EXISTING", "new-val", is_secret=True)
             mock_update.assert_awaited_once_with("cfg-id-1", value="new-val", is_secret=True)
         assert result == "updated-cfg"
+
+
+# ---------------------------------------------------------------------------
+# Helpers for BaseRepository tests
+# ---------------------------------------------------------------------------
+
+
+def _mock_model_class(columns=("id", "created_at", "updated_at")):
+    """Return a fake model class whose mapper exposes the given column names."""
+    col_attrs = []
+    for name in columns:
+        attr = MagicMock()
+        attr.key = name
+        col_attrs.append(attr)
+    # inspect(model) returns an inspector; code accesses .mapper.column_attrs
+    inspector = MagicMock()
+    inspector.mapper.column_attrs = col_attrs
+    model = MagicMock()
+    model.__name__ = "FakeModel"
+    return model, inspector
+
+
+# ---------------------------------------------------------------------------
+# Import smoke tests
+# ---------------------------------------------------------------------------
+
+
+class TestRepositoryImports:
+    """All repository classes can be imported from the package."""
+
+    def test_base_repository_importable(self):
+        assert BaseRepository is not None
+
+    def test_all_repositories_importable(self):
+        repos = [
+            ApiKeyRepository,
+            ExploitRepository,
+            FindingRepository,
+            MissionRepository,
+            PentestSessionRepository,
+            PlanRepository,
+            ServerNodeRepository,
+            SubscriptionRepository,
+            SystemConfigRepository,
+            TargetRepository,
+            UserRepository,
+        ]
+        for repo_cls in repos:
+            assert repo_cls is not None
+            assert issubclass(repo_cls, BaseRepository)
+
+
+# ---------------------------------------------------------------------------
+# BaseRepository._validate_filters
+# ---------------------------------------------------------------------------
+
+
+def _make_base_repo(columns=("id", "name", "status")):
+    """Build a BaseRepository with a mocked model and patched inspect."""
+    model, mapper = _mock_model_class(columns)
+    session = _mock_session()
+    with patch("app.repositories.base.inspect", return_value=mapper):
+        repo = BaseRepository(model, session)
+    return repo, model, session
+
+
+class TestBaseRepositoryValidateFilters:
+    """Test _validate_filters without touching the database."""
+
+    def test_valid_filter_accepted(self):
+        repo, _, _ = _make_base_repo()
+        repo._validate_filters({"name": "x", "status": "active"})
+
+    def test_invalid_filter_raises(self):
+        repo, _, _ = _make_base_repo()
+        with pytest.raises(ValueError, match="Invalid filter field"):
+            repo._validate_filters({"nonexistent": "value"})
+
+    def test_empty_filters_accepted(self):
+        repo, _, _ = _make_base_repo()
+        repo._validate_filters({})
+
+    def test_allowed_filters_derived_from_model(self):
+        repo, _, _ = _make_base_repo(("id", "foo", "bar"))
+        assert repo._allowed_filters == {"id", "foo", "bar"}
+
+
+# ---------------------------------------------------------------------------
+# BaseRepository attributes
+# ---------------------------------------------------------------------------
+
+
+class TestBaseRepositoryAttributes:
+
+    def test_model_and_session_stored(self):
+        repo, model, session = _make_base_repo()
+        assert repo.model is model
+        assert repo.session is session
+
+
+# ---------------------------------------------------------------------------
+# BaseRepository async CRUD (mocked session)
+# ---------------------------------------------------------------------------
+
+
+class TestBaseRepositoryCRUD:
+    """Test CRUD methods — patch SA statement constructors to avoid model validation."""
+
+    @pytest.mark.asyncio
+    async def test_create_adds_and_flushes(self):
+        repo, model, session = _make_base_repo(("id", "name"))
+        instance = MagicMock()
+        model.return_value = instance
+        await repo.create(name="test")
+        session.add.assert_called_once_with(instance)
+        session.flush.assert_awaited_once()
+        session.refresh.assert_awaited_once_with(instance)
+
+    @pytest.mark.asyncio
+    async def test_get_by_id_executes_select(self):
+        repo, _, session = _make_base_repo(("id", "name"))
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = None
+        session.execute.return_value = result_mock
+        with patch("app.repositories.base.select", return_value=MagicMock()):
+            result = await repo.get_by_id("some-uuid")
+        session.execute.assert_awaited_once()
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_get_all_executes_select(self):
+        repo, _, session = _make_base_repo(("id", "name"))
+        scalars_mock = MagicMock()
+        scalars_mock.all.return_value = []
+        result_mock = MagicMock()
+        result_mock.scalars.return_value = scalars_mock
+        session.execute.return_value = result_mock
+        with patch("app.repositories.base.select", return_value=MagicMock()):
+            result = await repo.get_all(skip=0, limit=10)
+        session.execute.assert_awaited_once()
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_delete_returns_true(self):
+        repo, _, session = _make_base_repo(("id", "name"))
+        result_mock = MagicMock()
+        result_mock.rowcount = 1
+        session.execute.return_value = result_mock
+        with patch("app.repositories.base.delete", return_value=MagicMock()):
+            assert await repo.delete("some-uuid") is True
+
+    @pytest.mark.asyncio
+    async def test_delete_returns_false_when_not_found(self):
+        repo, _, session = _make_base_repo(("id", "name"))
+        result_mock = MagicMock()
+        result_mock.rowcount = 0
+        session.execute.return_value = result_mock
+        with patch("app.repositories.base.delete", return_value=MagicMock()):
+            assert await repo.delete("missing-uuid") is False
+
+    @pytest.mark.asyncio
+    async def test_find_one_by_validates_filters(self):
+        repo, _, _ = _make_base_repo(("id", "name"))
+        with pytest.raises(ValueError, match="Invalid filter field"):
+            await repo.find_one_by(bad_column="x")
+
+    @pytest.mark.asyncio
+    async def test_find_many_by_validates_filters(self):
+        repo, _, _ = _make_base_repo(("id", "name"))
+        with pytest.raises(ValueError, match="Invalid filter field"):
+            await repo.find_many_by(bad_column="x")
+
+    @pytest.mark.asyncio
+    async def test_count_validates_filters(self):
+        repo, _, _ = _make_base_repo(("id", "name"))
+        with pytest.raises(ValueError, match="Invalid filter field"):
+            await repo.count(bad_column="x")
+
+    @pytest.mark.asyncio
+    async def test_update_executes_and_flushes(self):
+        repo, _, session = _make_base_repo(("id", "name"))
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = MagicMock()
+        session.execute.return_value = result_mock
+        with patch("app.repositories.base.update", return_value=MagicMock()):
+            result = await repo.update("some-uuid", name="new_name")
+        session.execute.assert_awaited_once()
+        session.flush.assert_awaited_once()
+        assert result is not None
+
+
+# ---------------------------------------------------------------------------
+# Concrete repository subclass checks
+# ---------------------------------------------------------------------------
+
+
+_ALL_CONCRETE_REPOS = [
+    ApiKeyRepository,
+    ExploitRepository,
+    FindingRepository,
+    MissionRepository,
+    PentestSessionRepository,
+    PlanRepository,
+    ServerNodeRepository,
+    SubscriptionRepository,
+    SystemConfigRepository,
+    TargetRepository,
+    UserRepository,
+]
+
+
+class TestConcreteRepositories:
+
+    @pytest.mark.parametrize("repo_cls", _ALL_CONCRETE_REPOS)
+    def test_is_subclass_of_base(self, repo_cls):
+        assert issubclass(repo_cls, BaseRepository)
+
+    @pytest.mark.parametrize("repo_cls", _ALL_CONCRETE_REPOS)
+    def test_init_accepts_session(self, repo_cls):
+        sig = _inspect.signature(repo_cls.__init__)
+        params = list(sig.parameters.keys())
+        assert "self" in params
+        assert "session" in params

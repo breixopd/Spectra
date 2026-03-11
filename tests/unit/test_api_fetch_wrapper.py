@@ -10,10 +10,8 @@ Covers:
 
 from fastapi import Request
 from fastapi.testclient import TestClient
-from starlette.testclient import TestClient as StarletteTestClient
 
 from app.core.exceptions import (
-    EXCEPTION_STATUS_MAP,
     AuthenticationError,
     AuthorizationError,
     ConfigurationError,
@@ -29,7 +27,6 @@ from app.core.exceptions import (
     ValidationError,
     get_status_code_for_exception,
 )
-
 
 # ---------------------------------------------------------------------------
 # SpectraError.to_dict()

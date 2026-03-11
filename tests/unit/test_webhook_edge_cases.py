@@ -1,6 +1,5 @@
 """Edge-case tests for the webhook service: failed delivery, signature verification, deduplication."""
 
-import asyncio
 import hashlib
 import hmac
 import json
