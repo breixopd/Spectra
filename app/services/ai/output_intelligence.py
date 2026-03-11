@@ -5,9 +5,11 @@ Faster and cheaper than LLM analysis for common output formats.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 
+logger = logging.getLogger(__name__)
 
 @dataclass
 class ExtractedIntel:

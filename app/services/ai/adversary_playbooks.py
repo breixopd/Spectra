@@ -6,10 +6,12 @@ Each playbook defines an ordered sequence of techniques following
 known APT tradecraft.
 """
 
+import logging
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+logger = logging.getLogger(__name__)
 
 class PlaybookStep(BaseModel):
     name: str

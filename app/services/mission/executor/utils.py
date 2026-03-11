@@ -1,7 +1,9 @@
 """Utility functions for Mission Executor."""
 
+import logging
 import re
 
+logger = logging.getLogger(__name__)
 
 def detect_target_type(target: str) -> str:
     """Detect target type from format."""

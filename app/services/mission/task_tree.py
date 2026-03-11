@@ -1,10 +1,12 @@
 """Pentesting Task Tree — formal tree tracking attack progress."""
 
+import logging
 import time
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any
 
+logger = logging.getLogger(__name__)
 
 class TaskStatus(StrEnum):
     PENDING = "pending"
