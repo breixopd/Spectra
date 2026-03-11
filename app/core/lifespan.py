@@ -315,14 +315,14 @@ async def run_startup_checks() -> None:
             )
             result.scalar()
         logger.info("[CHECK][OK] Database connectivity verified")
-    except asyncio.TimeoutError:
+    except TimeoutError:
         logger.warning("[CHECK][WARN] Database connectivity check timed out (10s)")
     except Exception as e:
         logger.warning("[CHECK][WARN] Database connectivity check failed: %s", e)
 
     # 2. Required tables existence
     try:
-        from sqlalchemy import inspect as sa_inspect, text as sa_text
+        from sqlalchemy import text as sa_text
 
         expected_tables = {"users", "missions", "targets", "findings", "exploits"}
         async with async_session_maker() as session:
