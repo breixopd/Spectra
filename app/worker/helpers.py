@@ -11,8 +11,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from app.services.tools.models import ToolStatus
-
 logger = logging.getLogger("spectra.worker")
 
 

@@ -260,7 +260,7 @@ class TestWorkerQueueEnv:
         """Verify the worker __main__ reads QUEUE_NAME from environment."""
         from pathlib import Path
 
-        worker_path = Path("app/worker.py")
+        worker_path = Path("app/worker/__main__.py")
         source = worker_path.read_text()
 
         assert (

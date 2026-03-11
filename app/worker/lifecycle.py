@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
 from app.core.config import settings
 from app.services.tools.models import ToolStatus
@@ -39,8 +38,6 @@ async def startup() -> None:
 async def _auto_install_pending() -> None:
     """Auto-install pending tools on startup."""
     from app.services.tools.registry import get_registry
-
-    from .tool_jobs import install_tool_job
 
     registry = get_registry()
     tools = registry.list_tools()
