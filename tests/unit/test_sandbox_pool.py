@@ -201,13 +201,14 @@ class TestSandboxPoolVolumes:
     """Tests for sandbox container volume and environment configuration."""
 
     def test_sandbox_environment_includes_required_keys(self):
-        """Verify sandbox container gets DATABASE_URL, QUEUE_NAME, JWT_SECRET_KEY, etc."""
+        """Verify sandbox container gets safe env vars but NOT sensitive credentials."""
         source = Path("app/services/tools/sandbox/pool.py").read_text()
-        assert '"DATABASE_URL"' in source
         assert '"QUEUE_NAME"' in source
         assert '"IS_TOOLS_CONTAINER"' in source
-        assert '"JWT_SECRET_KEY"' in source
         assert '"PLUGIN_SAFE_MODE"' in source
+        # Security: sensitive credentials must NOT be passed to sandbox containers
+        assert "SANDBOX_BLOCKED_ENV" in source or '"DATABASE_URL"' not in source
+        assert "SANDBOX_BLOCKED_ENV" in source or '"JWT_SECRET_KEY"' not in source
 
     def test_sandbox_mounts_data_and_tools_volumes(self):
         """Verify sandbox uses named Docker volumes for data and tools."""

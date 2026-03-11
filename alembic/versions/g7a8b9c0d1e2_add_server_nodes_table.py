@@ -1,7 +1,7 @@
 """Add server_nodes table.
 
 Revision ID: g7a8b9c0d1e2
-Revises: l2m3n4o5p6q7
+Revises: m3n4o5p6q7r8
 Create Date: 2026-03-10
 
 """
