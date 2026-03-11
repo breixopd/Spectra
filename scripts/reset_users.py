@@ -24,7 +24,7 @@ async def reset_users() -> None:
                 "All users deleted. You can now visit /setup to create a new admin account."
             )
         except Exception as e:
-            print("Error resetting users: %s" % e)
+            print(f"Error resetting users: {e}")
             await session.rollback()
         finally:
             await session.close()
