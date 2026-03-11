@@ -67,8 +67,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt numpy
 
-      - name: Run unit tests
-        run: python3 -m pytest tests/unit/ -q --override-ini="addopts="
+      - name: Run unit tests with coverage
+        run: |
+          python3 -m pytest tests/unit/ -q \
+            --cov=app \
+            --cov-config=.coveragerc \
+            --cov-report=term-missing \
+            --cov-fail-under=40
         env:
           AI_PROVIDER: mock
           DATABASE_URL: "sqlite+aiosqlite:///test.db"
