@@ -14,6 +14,8 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from pydantic import SecretStr
+
 from app.core.cache import CacheService, set_cache
 from app.core.config import settings
 from app.core.database import async_session_maker, engine
@@ -323,6 +325,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         - Close LLM client
     """
     logger.info("[STARTUP] Starting Spectra...")
+
+    # --- Security: validate secret keys in production ---
+    if not settings.DEBUG:
+        _insecure_defaults = {"", "change-me-in-production"}
+        jwt_val = settings.JWT_SECRET_KEY.get_secret_value()
+        secret_val = settings.SECRET_KEY.get_secret_value() if isinstance(settings.SECRET_KEY, SecretStr) else str(settings.SECRET_KEY)
+        if jwt_val in _insecure_defaults:
+            raise RuntimeError(
+                "JWT_SECRET_KEY is empty or using a default value. "
+                "Set a strong secret via the JWT_SECRET_KEY environment variable before running in production."
+            )
+        if secret_val in _insecure_defaults:
+            raise RuntimeError(
+                "SECRET_KEY is empty or using the default 'change-me-in-production'. "
+                "Set a strong secret via the SECRET_KEY environment variable before running in production."
+            )
 
     # --- Startup ---
     try:
