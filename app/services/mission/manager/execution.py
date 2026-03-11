@@ -156,8 +156,9 @@ class MissionExecutionManager:
             mission.log("Mission completed successfully")
             self._broadcast_state("mission_controller", "idle", plan="Mission Complete")
 
-            # Log cost summary
+            # Persist cost summary into mission object for DB storage
             summary = cost_tracker.get_summary()
+            mission.cost_data = summary
             mission.log(
                 f"[COST] Total: ${summary['total_cost_usd']:.4f} | "
                 f"Tokens: {summary['total_tokens']} | "

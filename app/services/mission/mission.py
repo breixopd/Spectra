@@ -75,6 +75,9 @@ class Mission:
         # Replan tracking
         self.replan_count: int = 0
 
+        # Cost tracking data (populated at mission completion)
+        self.cost_data: dict[str, Any] | None = None
+
         # Mission-scoped logger and output directory
         self._logger = logging.getLogger(f"spectra.mission.{self.id[:8]}")
         self.output_dir = Path(f"data/missions/{self.id}")
@@ -462,6 +465,7 @@ class Mission:
             "report_path": self.report_path,
             "task_tree": self.task_tree.to_dict(),
             "blackboard": self.blackboard.read_all(),
+            "cost_data": self.cost_data,
         }
 
     def save_checkpoint(self) -> dict[str, Any]:
@@ -494,6 +498,7 @@ class Mission:
             "attack_surface": self.attack_surface.model_dump(),
             "replan_count": getattr(self, "replan_count", 0),
             "task_tree": self.task_tree.to_dict(),
+            "cost_data": self.cost_data,
         }
 
     @classmethod
