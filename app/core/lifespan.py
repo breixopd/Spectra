@@ -76,6 +76,23 @@ async def periodic_cleanup_loop() -> None:
             logger.error("System cleanup error: %s", e)
 
 
+_RESOURCE_COLLECT_INTERVAL = 15  # seconds
+
+
+async def resource_collection_loop() -> None:
+    """Periodically collect system resource metrics (CPU, memory, GC)."""
+    logger.info("Resource collection started (interval=%ds)", _RESOURCE_COLLECT_INTERVAL)
+    while True:
+        try:
+            await asyncio.sleep(_RESOURCE_COLLECT_INTERVAL)
+            telemetry.collect_system_resources()
+        except asyncio.CancelledError:
+            logger.info("Resource collection stopped")
+            break
+        except Exception as e:
+            logger.error("Resource collection error: %s", e)
+
+
 async def sandbox_watchdog_loop() -> None:
     """Periodically check sandbox heartbeats and reap stale ones."""
     from datetime import UTC, datetime
@@ -601,6 +618,11 @@ async def _initialize_services() -> None:
     metrics_store = get_metrics_store()
     await metrics_store.start()
     logger.info("[OK] Metrics store started")
+
+    # Start system resource collection (CPU, memory, GC every 15s)
+    if settings.METRICS_ENABLED:
+        asyncio.create_task(resource_collection_loop())
+        logger.info("[OK] Resource metrics collection started")
 
     # Emit startup event
     await events.emit(
