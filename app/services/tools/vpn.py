@@ -103,11 +103,13 @@ class VPNManager:
         else:
             _validate_openvpn_config(text)
 
+        import asyncio
+
         self._ensure_config_dir()
         path = self._config_path(name, vpn_type)
-        path.write_text(text, encoding="utf-8")
+        await asyncio.to_thread(path.write_text, text, encoding="utf-8")
         # Restrict permissions
-        path.chmod(0o600)
+        await asyncio.to_thread(path.chmod, 0o600)
 
         logger.info("Saved VPN config '%s' (%s) at %s", name, vpn_type, path)
         return {

@@ -412,18 +412,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # --- Security: validate secret keys in production ---
     if not settings.DEBUG:
-        _insecure_defaults = {"", "change-me-in-production"}
+        _insecure_defaults = {
+            "", "change-me-in-production", "test-key", "secret",
+            "changeme", "password", "default",
+        }
         jwt_val = settings.JWT_SECRET_KEY.get_secret_value()
         secret_val = settings.SECRET_KEY.get_secret_value() if isinstance(settings.SECRET_KEY, SecretStr) else str(settings.SECRET_KEY)
-        if jwt_val in _insecure_defaults:
+        if jwt_val.lower() in _insecure_defaults:
             raise RuntimeError(
                 "JWT_SECRET_KEY is empty or using a default value. "
                 "Set a strong secret via the JWT_SECRET_KEY environment variable before running in production."
             )
-        if secret_val in _insecure_defaults:
+        if len(jwt_val) < 32:
+            logger.warning(
+                "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. "
+                "Use a longer secret for production security."
+            )
+        if secret_val.lower() in _insecure_defaults:
             raise RuntimeError(
                 "SECRET_KEY is empty or using the default 'change-me-in-production'. "
                 "Set a strong secret via the SECRET_KEY environment variable before running in production."
+            )
+        # Warn if DATABASE_URL points to SQLite in production
+        db_url = str(settings.DATABASE_URL)
+        if "sqlite" in db_url.lower():
+            logger.warning(
+                "[SECURITY] DATABASE_URL uses SQLite, which is not suitable for production. "
+                "Configure a PostgreSQL connection string."
             )
 
     # --- Startup ---

@@ -54,14 +54,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # CSP - all assets served locally for air-gapped support
         if not request.url.path.startswith("/api/"):
+            # Restrict WebSocket connect-src to the app's own host
+            host = request.headers.get("host", "localhost")
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
                 f"script-src 'self' 'nonce-{nonce}'; "
                 "style-src 'self' 'unsafe-inline'; "
                 "font-src 'self'; "
                 "img-src 'self' data:; "
-                "connect-src 'self' ws: wss:; "
-                "frame-ancestors 'none';"
+                f"connect-src 'self' ws://{host} wss://{host}; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self';"
             )
 
         return response

@@ -60,7 +60,7 @@ class SystemSetupService:
             )
 
             # 4. Generate Security Keys (for Plugin Signing)
-            self._generate_signing_keys()
+            await self._generate_signing_keys()
 
             return user
 
@@ -72,7 +72,7 @@ class SystemSetupService:
                 detail="Setup failed due to an internal error.",
             ) from e
 
-    def _generate_signing_keys(self) -> None:
+    async def _generate_signing_keys(self) -> None:
         """Generate Ed25519 keys for plugin signing if they don't exist."""
         try:
             from cryptography.hazmat.primitives import serialization
@@ -92,24 +92,22 @@ class SystemSetupService:
             private_key = ed25519.Ed25519PrivateKey.generate()
             public_key = private_key.public_key()
 
+            import asyncio
+
             # Save Private Key
-            with open(private_key_path, "wb") as f:
-                f.write(
-                    private_key.private_bytes(
-                        encoding=serialization.Encoding.PEM,
-                        format=serialization.PrivateFormat.PKCS8,
-                        encryption_algorithm=serialization.NoEncryption(),
-                    )
-                )
+            private_bytes = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+            await asyncio.to_thread(private_key_path.write_bytes, private_bytes)
 
             # Save Public Key
-            with open(public_key_path, "wb") as f:
-                f.write(
-                    public_key.public_bytes(
-                        encoding=serialization.Encoding.OpenSSH,
-                        format=serialization.PublicFormat.OpenSSH,
-                    )
-                )
+            public_bytes = public_key.public_bytes(
+                encoding=serialization.Encoding.OpenSSH,
+                format=serialization.PublicFormat.OpenSSH,
+            )
+            await asyncio.to_thread(public_key_path.write_bytes, public_bytes)
 
             logger.info("Signing keys generated successfully")
 
