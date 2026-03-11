@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Script to sign plugin JSON files using Ed25519.
 """
@@ -49,7 +50,7 @@ def sign_plugin(plugin_path: Path, private_key_path: Path):
     if not isinstance(private_key, Ed25519PrivateKey):
         raise TypeError(f"Expected Ed25519 private key, got {type(private_key)}")
 
-    with open(plugin_path, "r", encoding="utf-8") as f:
+    with open(plugin_path, encoding="utf-8") as f:
         data = json.load(f)
 
     # Remove existing signature if any

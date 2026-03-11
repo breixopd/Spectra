@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 CVE Ingestion Script.
 
@@ -32,7 +33,7 @@ async def load_cve_data(file_path: Path) -> list[dict[str, Any]]:
     """Load and parse a single NVD JSON file."""
     logger.info("Loading %s...", file_path)
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
 
         cve_items = data.get("CVE_Items", [])

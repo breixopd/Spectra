@@ -23,11 +23,13 @@ from .helpers import (
     _run_command,
     _sync_tool_status,
     _track_tool_stats,
+    with_retry,
 )
 
 logger = logging.getLogger("spectra.worker")
 
 
+@with_retry()
 async def execute_tool_job(
     tool_id: str,
     target: str,
@@ -160,6 +162,7 @@ async def execute_tool_job(
     return result
 
 
+@with_retry()
 async def install_tool_job(
     tool_id: str,
 ) -> dict[str, Any]:
@@ -174,6 +177,7 @@ async def install_tool_job(
     return result
 
 
+@with_retry()
 async def uninstall_tool_job(
     tool_id: str,
 ) -> dict[str, Any]:

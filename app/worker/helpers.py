@@ -8,10 +8,35 @@ import os
 import shutil
 import signal
 from datetime import datetime
+from functools import wraps
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("spectra.worker")
+
+
+def with_retry(max_retries: int = 3, backoff_base: float = 2.0, max_backoff: float = 60.0):
+    """Decorator adding exponential backoff retry to async worker jobs."""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, max_retries + 1):
+                try:
+                    return await func(*args, **kwargs)
+                except (asyncio.CancelledError, KeyboardInterrupt):
+                    raise
+                except Exception as exc:
+                    last_exc = exc
+                    if attempt < max_retries:
+                        wait = min(backoff_base ** attempt, max_backoff)
+                        logger.warning("Job %s attempt %d/%d failed, retrying in %.1fs: %s", func.__name__, attempt, max_retries, wait, exc)
+                        await asyncio.sleep(wait)
+                    else:
+                        logger.error("Job %s failed after %d attempts: %s", func.__name__, max_retries, exc)
+            raise last_exc
+        return wrapper
+    return decorator
 
 
 def _error_result(tool_id: str, target: str, error: str) -> dict[str, Any]:
