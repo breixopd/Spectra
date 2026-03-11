@@ -203,6 +203,26 @@ async def rate_limit_handler(request: Request, exc: Exception) -> HTMLResponse |
     return JSONResponse({"detail": "Too many requests"}, status_code=429)
 
 
+@app.exception_handler(400)
+async def bad_request_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/400.html").render(),
+            status_code=400,
+        )
+    return JSONResponse({"detail": "Bad request"}, status_code=400)
+
+
+@app.exception_handler(405)
+async def method_not_allowed_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/405.html").render(),
+            status_code=405,
+        )
+    return JSONResponse({"detail": "Method not allowed"}, status_code=405)
+
+
 @app.exception_handler(500)
 async def server_error_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
     logger.exception("Internal server error: %s", exc)
@@ -212,6 +232,26 @@ async def server_error_handler(request: Request, exc: Exception) -> HTMLResponse
             status_code=500,
         )
     return JSONResponse({"detail": "Internal server error"}, status_code=500)
+
+
+@app.exception_handler(502)
+async def bad_gateway_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/502.html").render(),
+            status_code=502,
+        )
+    return JSONResponse({"detail": "Bad gateway"}, status_code=502)
+
+
+@app.exception_handler(503)
+async def service_unavailable_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/503.html").render(),
+            status_code=503,
+        )
+    return JSONResponse({"detail": "Service unavailable"}, status_code=503)
 
 # --- Include Routers ---
 
