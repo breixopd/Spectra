@@ -14,10 +14,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from docker.errors import DockerException
 from fastapi import FastAPI
 from pydantic import SecretStr
 from sqlalchemy.exc import SQLAlchemyError
+
+try:
+    from docker.errors import DockerException
+except ImportError:
+    DockerException = OSError  # Fallback when docker SDK not installed
 
 from app.core.cache import CacheService, set_cache
 from app.core.config import settings
