@@ -227,7 +227,12 @@ async def save_plugin_unsigned(
         raise HTTPException(status_code=400, detail="Failed to save unsigned plugin due to validation or server error.") from e
 
 
-@router.get("", response_model=ToolListResponse)
+@router.get(
+    "",
+    response_model=ToolListResponse,
+    summary="List tools",
+    description="Retrieve all registered security tools. Optionally filter by category or status.",
+)
 async def list_tools(
     category: ToolCategory | None = None,
     status: ToolStatus | None = None,

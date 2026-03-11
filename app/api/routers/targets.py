@@ -36,7 +36,13 @@ def _check_target_owner(target_obj: Target, user: User) -> None:
 # --- Endpoints ---
 
 
-@router.post("", response_model=TargetResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=TargetResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create target",
+    description="Register a new assessment target (IP, CIDR, domain, or URL).",
+)
 async def create_target(
     target_in: TargetCreate,
     db: AsyncSession = Depends(get_async_session),
@@ -74,7 +80,12 @@ async def create_target(
     )
 
 
-@router.get("", response_model=list[TargetResponse])
+@router.get(
+    "",
+    response_model=list[TargetResponse],
+    summary="List targets",
+    description="Retrieve all targets for the authenticated user. Superusers see all targets.",
+)
 async def list_targets(
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
     limit: int = Query(
@@ -113,7 +124,12 @@ async def list_targets(
     ]
 
 
-@router.get("/{target_id}", response_model=TargetResponse)
+@router.get(
+    "/{target_id}",
+    response_model=TargetResponse,
+    summary="Get target",
+    description="Retrieve a single target by its ID.",
+)
 async def get_target(
     target_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -140,7 +156,12 @@ async def get_target(
     )
 
 
-@router.delete("/{target_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{target_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete target",
+    description="Permanently delete a target and disassociate its findings.",
+)
 async def delete_target(
     target_id: str,
     db: AsyncSession = Depends(get_async_session),

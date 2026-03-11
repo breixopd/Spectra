@@ -132,7 +132,12 @@ def _reset_failures(ip: str) -> None:
         _persist_lockout()
 
 
-@router.post("/token", response_model=Token)
+@router.post(
+    "/token",
+    response_model=Token,
+    summary="Login",
+    description="OAuth2-compatible token endpoint. Returns JWT access and refresh tokens.",
+)
 @limiter.limit(RateLimits.LOGIN)
 async def login_for_access_token(
     request: Request,
@@ -336,7 +341,11 @@ async def setup_admin_user(
     return user
 
 
-@router.get("/setup/status")
+@router.get(
+    "/setup/status",
+    summary="Check setup status",
+    description="Returns whether the initial admin setup has been completed.",
+)
 async def check_setup_status(
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -347,7 +356,11 @@ async def check_setup_status(
     return {"is_setup": is_setup}
 
 
-@router.post("/logout")
+@router.post(
+    "/logout",
+    summary="Logout",
+    description="Invalidate the current access token and clear the auth cookie.",
+)
 async def logout(request: Request, response: Response):
     """Logout by blacklisting the current access token and clearing cookie."""
     auth_header = request.headers.get("authorization", "")
