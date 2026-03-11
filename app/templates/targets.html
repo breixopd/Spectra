@@ -376,9 +376,9 @@ function showASNodeDetails(data) {
         const t = data.raw || {};
         title.textContent = t.address || data.label;
         content.innerHTML = `
-            <div><span class="text-slate-500">OS:</span> <span class="text-white">${t.os || 'Unknown'}</span></div>
-            <div><span class="text-slate-500">Status:</span> <span class="text-white">${t.status || 'N/A'}</span></div>
-            <div><span class="text-slate-500">Description:</span> <span class="text-white">${t.description || 'None'}</span></div>
+            <div><span class="text-slate-500">OS:</span> <span class="text-white">${escapeHtml(t.os || 'Unknown')}</span></div>
+            <div><span class="text-slate-500">Status:</span> <span class="text-white">${escapeHtml(t.status || 'N/A')}</span></div>
+            <div><span class="text-slate-500">Description:</span> <span class="text-white">${escapeHtml(t.description || 'None')}</span></div>
             <div class="pt-2 flex gap-2">
                 <button onclick="window.location.href='/targets'" class="px-2 py-1 bg-violet-600 hover:bg-violet-500 rounded text-[10px] text-white transition-colors">View Findings</button>
             </div>`;
@@ -387,9 +387,9 @@ function showASNodeDetails(data) {
         title.textContent = f.title || 'Finding';
         const sevColors = { critical: 'text-rose-400', high: 'text-amber-400', medium: 'text-blue-400', low: 'text-slate-400' };
         content.innerHTML = `
-            <div><span class="text-slate-500">Severity:</span> <span class="${sevColors[f.severity] || 'text-slate-400'} font-medium uppercase">${f.severity || 'info'}</span></div>
-            <div><span class="text-slate-500">Tool:</span> <span class="text-white">${f.tool_source || 'N/A'}</span></div>
-            <div class="mt-2"><span class="text-slate-500">Description:</span><p class="text-white mt-1">${f.description || 'No description'}</p></div>`;
+            <div><span class="text-slate-500">Severity:</span> <span class="${sevColors[f.severity] || 'text-slate-400'} font-medium uppercase">${escapeHtml(f.severity || 'info')}</span></div>
+            <div><span class="text-slate-500">Tool:</span> <span class="text-white">${escapeHtml(f.tool_source || 'N/A')}</span></div>
+            <div class="mt-2"><span class="text-slate-500">Description:</span><p class="text-white mt-1">${escapeHtml(f.description || 'No description')}</p></div>`;
     }
 }
 
