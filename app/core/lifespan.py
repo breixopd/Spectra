@@ -13,7 +13,6 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import FastAPI
-
 from pydantic import SecretStr
 
 from app.core.cache import CacheService, set_cache
