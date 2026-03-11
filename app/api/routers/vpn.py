@@ -22,6 +22,12 @@ logger = logging.getLogger("spectra.api.vpn")
 
 router = APIRouter(prefix="/vpn", tags=["VPN"])
 
+DANGEROUS_OPENVPN_DIRECTIVES = [
+    'up ', 'down ', 'client-connect', 'client-disconnect',
+    'learn-address', 'auth-user-pass-verify', 'tls-verify',
+    'ipchange', 'route-up', 'route-pre-down', 'script-security',
+]
+
 _vpn_manager: VPNManager | None = None
 
 
@@ -92,6 +98,17 @@ async def upload_vpn_config(
         content = await file.read(MAX_VPN_CONFIG_SIZE + 1)
         if len(content) > MAX_VPN_CONFIG_SIZE:
             raise HTTPException(status_code=400, detail="VPN config file too large (max 1MB)")
+
+        # Reject OpenVPN configs with dangerous directives that allow arbitrary command execution
+        if vpn_type == 'openvpn':
+            content_lower = content.decode(errors='replace').lower()
+            for directive in DANGEROUS_OPENVPN_DIRECTIVES:
+                if directive in content_lower:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"OpenVPN config contains forbidden directive: {directive.strip()}",
+                    )
+
         mgr = _get_vpn_manager()
         result = await mgr.upload_config(_scoped_name(_user, name), content, vpn_type)
         result["name"] = name  # Return user-facing name
