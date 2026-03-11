@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
 import aiohttp
 
 logger = logging.getLogger("spectra.gateway")
+
+MAX_RETRIES = 3
+RETRY_BACKOFF_BASE = 0.5  # seconds
 
 
 class GatewayClient:
@@ -18,23 +22,46 @@ class GatewayClient:
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.api_key = api_key
         self._session: aiohttp.ClientSession | None = None
+        self._connector: aiohttp.TCPConnector | None = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
             headers: dict[str, str] = {"Content-Type": "application/json"}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
+            self._connector = aiohttp.TCPConnector(
+                limit=50,
+                limit_per_host=10,
+                ttl_dns_cache=300,
+                enable_cleanup_closed=True,
+            )
             self._session = aiohttp.ClientSession(
-                timeout=self.timeout, headers=headers
+                timeout=self.timeout, headers=headers, connector=self._connector,
             )
         return self._session
 
-    async def _request(self, method: str, path: str, **kwargs: Any) -> dict:
+    async def _do_request(self, method: str, url: str, **kwargs: Any) -> dict:
         session = await self._get_session()
-        url = f"{self.base_url}{path}"
         async with session.request(method, url, **kwargs) as resp:
             resp.raise_for_status()
             return await resp.json()
+
+    async def _request(self, method: str, path: str, **kwargs: Any) -> dict:
+        url = f"{self.base_url}{path}"
+        last_error: BaseException | None = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                return await self._do_request(method, url, **kwargs)
+            except (aiohttp.ClientConnectionError, TimeoutError) as e:
+                last_error = e
+                if attempt < MAX_RETRIES - 1:
+                    wait = RETRY_BACKOFF_BASE * (2 ** attempt)
+                    logger.warning(
+                        "Gateway request failed (attempt %d/%d), retrying in %.1fs: %s",
+                        attempt + 1, MAX_RETRIES, wait, e,
+                    )
+                    await asyncio.sleep(wait)
+        raise last_error  # type: ignore[misc]
 
     async def get(self, path: str, **kwargs: Any) -> dict:
         return await self._request("GET", path, **kwargs)
@@ -55,3 +82,4 @@ class GatewayClient:
         if self._session and not self._session.closed:
             await self._session.close()
             self._session = None
+            self._connector = None

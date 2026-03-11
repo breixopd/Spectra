@@ -143,10 +143,19 @@ class RAGService:
             logger.error("Failed to initialize Postgres RAG table: %s", e)
             return False
 
+    MAX_DOCUMENT_SIZE = 500_000  # 500 KB per document
+
     async def index_document(self, doc: Document) -> bool:
         """Index a document with its embedding."""
         if not self._table_ready:
             await self.initialize()
+
+        if len(doc.content) > self.MAX_DOCUMENT_SIZE:
+            logger.warning(
+                "Document %s too large (%d chars), truncating to %d",
+                doc.id, len(doc.content), self.MAX_DOCUMENT_SIZE,
+            )
+            doc = doc.model_copy(update={"content": doc.content[:self.MAX_DOCUMENT_SIZE]})
 
         if not self.is_functional:
             logger.warning(
