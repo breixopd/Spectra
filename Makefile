@@ -1,7 +1,8 @@
 # Spectra Makefile — developer convenience targets
 # All test targets run inside Docker containers.
 
-.PHONY: test test-unit test-integration test-all test-coverage test-compose help
+.PHONY: test test-unit test-integration test-all test-coverage test-compose \
+       lint format check clean docker-build docker-up docker-down help
 
 SHELL := /bin/bash
 
@@ -31,3 +32,22 @@ lint: ## Run ruff linter on app/
 
 format: ## Format code with ruff
 	@ruff format app/ tests/
+
+check: lint test-unit ## Run lint + unit tests in sequence
+
+clean: ## Clean caches and build artifacts
+	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
+	@find . -type d -name .ruff_cache -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name '*.pyc' -delete 2>/dev/null || true
+	@rm -rf reports/coverage htmlcov .coverage 2>/dev/null || true
+	@echo "Cleaned."
+
+docker-build: ## Build Docker images
+	@docker compose -f docker/docker-compose.yml build
+
+docker-up: ## Start Docker Compose services
+	@docker compose -f docker/docker-compose.yml up -d
+
+docker-down: ## Stop Docker Compose services
+	@docker compose -f docker/docker-compose.yml down

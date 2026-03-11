@@ -250,3 +250,120 @@ def test_rate_limit_presets_defined():
     assert hasattr(RateLimits, "API_DEFAULT")
     assert hasattr(RateLimits, "API_HEAVY")
     assert "minute" in RateLimits.LOGIN
+
+
+# ---------------------------------------------------------------------------
+# rate_limit_exceeded_handler
+# ---------------------------------------------------------------------------
+
+
+def _make_rate_limit_exc(limit_string: str):
+    """Create a RateLimitExceeded with a proper Limit wrapper."""
+    import limits as limits_lib
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.wrappers import Limit
+
+    item = limits_lib.parse(limit_string)
+    limit = Limit(item, lambda r: "x", None, False, None, None, None, 1, False)
+    return RateLimitExceeded(limit)
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_exceeded_handler_returns_429():
+    """Handler produces a 429 JSON response with Retry-After header."""
+    from app.core.rate_limit import rate_limit_exceeded_handler
+
+    request = MagicMock()
+    request.url.path = "/api/test"
+    request.client.host = "127.0.0.1"
+    request.headers.get.return_value = None
+
+    exc = _make_rate_limit_exc("100/minute")
+
+    with patch("app.core.rate_limit.events"):
+        response = await rate_limit_exceeded_handler(request, exc)
+
+    assert response.status_code == 429
+    assert response.headers.get("Retry-After") == "60"
+    assert "X-RateLimit-Limit" in response.headers
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_exceeded_handler_body_structure():
+    """Handler JSON body has expected keys."""
+    import json
+
+    from app.core.rate_limit import rate_limit_exceeded_handler
+
+    request = MagicMock()
+    request.url.path = "/api/missions"
+    request.client.host = "10.0.0.1"
+    request.headers.get.return_value = None
+
+    exc = _make_rate_limit_exc("5/minute")
+
+    with patch("app.core.rate_limit.events"):
+        response = await rate_limit_exceeded_handler(request, exc)
+
+    body = json.loads(response.body.decode())
+    assert body["error"] == "RATE_LIMIT_EXCEEDED"
+    assert "retry_after_seconds" in body
+    assert body["retry_after_seconds"] == 60
+
+
+# ---------------------------------------------------------------------------
+# slowapi limiter config
+# ---------------------------------------------------------------------------
+
+
+def test_limiter_headers_enabled():
+    """Limiter instance has rate limit response headers enabled."""
+    from app.core.rate_limit import limiter
+
+    assert limiter._headers_enabled is True
+
+
+def test_limiter_default_limits():
+    """Limiter has a default limit configured."""
+    from app.core.rate_limit import limiter
+
+    assert len(limiter._default_limits) > 0
+
+
+# ---------------------------------------------------------------------------
+# get_client_identifier / get_user_identifier
+# ---------------------------------------------------------------------------
+
+
+def test_get_client_identifier_with_client():
+    from app.core.rate_limit import get_client_identifier
+
+    request = MagicMock()
+    request.client.host = "192.168.1.1"
+    assert get_client_identifier(request) == "192.168.1.1"
+
+
+def test_get_client_identifier_without_client():
+    from app.core.rate_limit import get_client_identifier
+
+    request = MagicMock()
+    request.client = None
+    assert get_client_identifier(request) == "unknown"
+
+
+def test_get_user_identifier_from_state():
+    from app.core.rate_limit import get_user_identifier
+
+    request = MagicMock()
+    request.state.user.username = "testuser"
+    assert get_user_identifier(request) == "user:testuser"
+
+
+def test_get_user_identifier_falls_back_to_ip():
+    from app.core.rate_limit import get_user_identifier
+
+    request = MagicMock()
+    request.state = MagicMock(spec=[])  # no 'user' attribute
+    request.headers.get.return_value = None
+    request.client.host = "10.0.0.5"
+    assert get_user_identifier(request) == "10.0.0.5"
