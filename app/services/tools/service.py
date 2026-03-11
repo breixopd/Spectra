@@ -215,7 +215,11 @@ class ToolExecutionService:
             # Normalize tool name to lowercase (LLMs sometimes use title-case)
             tool_name = self._normalize_tool_name(tool_name)
 
-            # 1. Validation
+            # 1. Validation — reject invalid names before any lookups/installs
+            if not self._validate_tool_name(tool_name):
+                mission.log(f"Invalid tool name format: {tool_name}")
+                return self._create_error_result(tool_name, target, "Invalid tool name")
+
             registry = get_registry()
 
             # Sync tool status from cache (set by worker in tools container)
@@ -241,10 +245,6 @@ class ToolExecutionService:
                 mission.log(f"Tool {tool_name} installed successfully")
                 # Refresh tool reference
                 tool = registry.get_tool(tool_name)
-
-            if not self._validate_tool_name(tool_name):
-                mission.log(f"Invalid tool name format: {tool_name}")
-                return self._create_error_result(tool_name, target, "Invalid tool name")
 
             # Validate args against schema if available
             if tool.config.execution.args_schema:
