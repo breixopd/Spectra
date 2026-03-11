@@ -198,6 +198,116 @@ class TestDefaults:
 
         s = Settings(_env_file=None)
         assert s.SANDBOX_IMAGE == "spectra-tools"
+
+
+# ---------------------------------------------------------------------------
+# SMTP_PORT validation
+# ---------------------------------------------------------------------------
+
+class TestSmtpPortValidation:
+    def test_smtp_port_rejects_negative(self):
+        from app.core.config import Settings
+
+        with pytest.raises(ValidationError, match="SMTP_PORT"):
+            Settings(SMTP_PORT=-1, _env_file=None)
+
+    def test_smtp_port_rejects_zero(self):
+        from app.core.config import Settings
+
+        with pytest.raises(ValidationError, match="SMTP_PORT"):
+            Settings(SMTP_PORT=0, _env_file=None)
+
+    def test_smtp_port_rejects_over_65535(self):
+        from app.core.config import Settings
+
+        with pytest.raises(ValidationError, match="SMTP_PORT"):
+            Settings(SMTP_PORT=70000, _env_file=None)
+
+    def test_smtp_port_accepts_valid(self):
+        from app.core.config import Settings
+
+        s = Settings(SMTP_PORT=587, _env_file=None)
+        assert s.SMTP_PORT == 587
+
+    def test_smtp_port_accepts_boundary_low(self):
+        from app.core.config import Settings
+
+        s = Settings(SMTP_PORT=1, _env_file=None)
+        assert s.SMTP_PORT == 1
+
+    def test_smtp_port_accepts_boundary_high(self):
+        from app.core.config import Settings
+
+        s = Settings(SMTP_PORT=65535, _env_file=None)
+        assert s.SMTP_PORT == 65535
+
+
+# ---------------------------------------------------------------------------
+# DATABASE_POOL_SIZE / DATABASE_MAX_OVERFLOW validation
+# ---------------------------------------------------------------------------
+
+class TestDatabasePoolValidation:
+    def test_pool_size_rejects_zero(self):
+        from app.core.config import Settings
+
+        with pytest.raises(ValidationError, match="DATABASE_POOL_SIZE"):
+            Settings(DATABASE_POOL_SIZE=0, _env_file=None)
+
+    def test_pool_size_rejects_over_100(self):
+        from app.core.config import Settings
+
+        with pytest.raises(ValidationError, match="DATABASE_POOL_SIZE"):
+            Settings(DATABASE_POOL_SIZE=101, _env_file=None)
+
+    def test_pool_size_accepts_valid(self):
+        from app.core.config import Settings
+
+        s = Settings(DATABASE_POOL_SIZE=20, _env_file=None)
+        assert s.DATABASE_POOL_SIZE == 20
+
+    def test_pool_size_accepts_boundary_low(self):
+        from app.core.config import Settings
+
+        s = Settings(DATABASE_POOL_SIZE=1, _env_file=None)
+        assert s.DATABASE_POOL_SIZE == 1
+
+    def test_pool_size_accepts_boundary_high(self):
+        from app.core.config import Settings
+
+        s = Settings(DATABASE_POOL_SIZE=100, _env_file=None)
+        assert s.DATABASE_POOL_SIZE == 100
+
+    def test_max_overflow_rejects_over_100(self):
+        from app.core.config import Settings
+
+        with pytest.raises(ValidationError, match="DATABASE_MAX_OVERFLOW"):
+            Settings(DATABASE_MAX_OVERFLOW=101, _env_file=None)
+
+    def test_max_overflow_rejects_negative(self):
+        from app.core.config import Settings
+
+        with pytest.raises(ValidationError, match="DATABASE_MAX_OVERFLOW"):
+            Settings(DATABASE_MAX_OVERFLOW=-1, _env_file=None)
+
+    def test_max_overflow_accepts_zero(self):
+        from app.core.config import Settings
+
+        s = Settings(DATABASE_MAX_OVERFLOW=0, _env_file=None)
+        assert s.DATABASE_MAX_OVERFLOW == 0
+
+    def test_max_overflow_accepts_valid(self):
+        from app.core.config import Settings
+
+        s = Settings(DATABASE_MAX_OVERFLOW=10, _env_file=None)
+        assert s.DATABASE_MAX_OVERFLOW == 10
+
+    def test_defaults_pass_all_validators(self):
+        from app.core.config import Settings
+
+        s = Settings(_env_file=None)
+        assert s.DATABASE_POOL_SIZE == 20
+        assert s.DATABASE_MAX_OVERFLOW == 10
+        assert s.SMTP_PORT == 587
         assert s.SANDBOX_MAX_CONTAINERS == 10
         assert s.SANDBOX_MAX_LIFETIME == 7200
 
