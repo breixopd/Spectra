@@ -83,8 +83,15 @@ async def _auto_install_pending() -> None:
 
 
 async def shutdown() -> None:
-    """Worker shutdown hook."""
+    """Worker shutdown hook — release resources."""
     logger.info("Spectra PostgreSQL Worker shutting down...")
+    try:
+        from app.core.database import engine
+
+        await engine.dispose()
+        logger.info("Database connections closed")
+    except Exception as e:
+        logger.warning("Error closing database connections: %s", e)
 
 
 async def heartbeat_loop(queue_name: str, interval: int = 30) -> None:
