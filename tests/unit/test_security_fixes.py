@@ -1,14 +1,10 @@
 """Tests for critical security fixes: path traversal, persistent blacklist, lockout, audit."""
 
-import json
 import time
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from pathlib import Path
-from datetime import timedelta
-
 from fastapi import HTTPException
-
 
 # ============================================================================
 # 1. Path Traversal Prevention in Pentest Sessions
@@ -133,7 +129,6 @@ class TestPersistentTokenBlacklist:
 
     @staticmethod
     async def _run_persist(sec, mock_db):
-        from unittest.mock import AsyncMock
         mock_db.return_value = None
         sec._persist_blacklist()
 
@@ -238,8 +233,9 @@ class TestSafetyStatsAuth:
 
     def test_safety_stats_endpoint_has_user_dependency(self):
         """Verify the endpoint function signature includes current_user."""
-        from app.api.routers.system import get_safety_stats
         import inspect
+
+        from app.api.routers.system import get_safety_stats
         sig = inspect.signature(get_safety_stats)
         param_names = list(sig.parameters.keys())
         assert "_current_user" in param_names

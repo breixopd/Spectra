@@ -1,16 +1,16 @@
 import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-from app.services.mission.manager import MissionManager
-from app.services.mission.mission import Mission
-from app.services.ai.agents.base import AgentContext, AgentResult, SteeringAction
+
+from app.services.ai.agents.base import AgentContext, SteeringAction
 from app.services.ai.agents.mission_controller import (
-    MissionInput,
+    AssessmentPhase,
     MissionPlan,
     Task,
-    AssessmentPhase,
 )
+from app.services.mission.manager import MissionManager
+from app.services.mission.mission import Mission
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def mock_manager_context():
         patch(
             "app.services.mission.manager.execution.get_global_llm_client",
             new_callable=AsyncMock,
-        ) as mock_get_llm,
+        ),
         patch("app.core.database.async_session_maker") as mock_session_maker,
         patch(
             "app.services.mission.manager.lifecycle.resolve_ip", new_callable=AsyncMock

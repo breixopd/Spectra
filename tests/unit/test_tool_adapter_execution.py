@@ -1,13 +1,11 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
-from app.services.tools.adapter import CommandToolAdapter, ToolExecutionError
+
+from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.models import (
-    ToolConfig,
     ToolExecutionRequest,
-    ToolExecutionResult,
 )
-from app.core.config import settings
 
 
 @pytest.fixture
@@ -101,7 +99,7 @@ async def test_execute_timeout(adapter):
         patch("asyncio.create_subprocess_shell") as mock_subprocess,
         patch("asyncio.wait_for", side_effect=TimeoutError),
         patch("os.killpg") as mock_kill,
-        patch("os.getpgid") as mock_pgid,
+        patch("os.getpgid"),
     ):
         process_mock = AsyncMock()
         process_mock.pid = 12345

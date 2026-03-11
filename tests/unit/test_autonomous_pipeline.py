@@ -1,17 +1,16 @@
 """Tests for autonomous pipeline improvements across multiple modules."""
 
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-from typing import Any
+from unittest.mock import MagicMock
 
+import pytest
+
+from app.services.ai.agents.exploit_crafter import ExploitCrafter
+from app.services.ai.agents.tool_selector import ToolSelectorAgent
+from app.services.ai.agents.vector_generator import VectorGeneratorAgent
+from app.services.mission.executor.analysis import auto_expand_scope
+from app.services.mission.executor.handlers import PHASE_TRANSITION_RULES, TaskDispatcher
 from app.services.mission.mission import Mission
 from app.services.mission.task_tree import TaskStatus
-from app.services.mission.executor.analysis import auto_expand_scope
-from app.services.ai.agents.exploit_crafter import ExploitCrafter
-from app.services.ai.agents.vector_generator import VectorGeneratorAgent
-from app.services.ai.agents.tool_selector import ToolSelectorAgent
-from app.services.mission.executor.handlers import PHASE_TRANSITION_RULES, TaskDispatcher
-
 
 # ===== Mission Progress =====
 

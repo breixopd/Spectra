@@ -1,32 +1,32 @@
 """Tests for security features: lockout, token blacklist, websocket auth, settings RBAC."""
 
 import time
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
-from app.core.security import (
-    create_access_token,
-    decode_token,
-    invalidate_token,
-    invalidate_all_user_tokens,
-    is_token_blacklisted,
-    _blacklisted_tokens,
-    _user_token_blacklist,
-    _blacklist_lock,
-)
-from app.core.websocket import ConnectionManager
+import pytest
+from fastapi import HTTPException
+from jose import JWTError
+
 from app.api.routers.auth import (
-    _login_failures,
-    _lockout_lock,
-    _check_lockout,
-    _record_failure,
-    _reset_failures,
     LOCKOUT_THRESHOLD_1,
     LOCKOUT_THRESHOLD_2,
+    _check_lockout,
+    _lockout_lock,
+    _login_failures,
+    _record_failure,
+    _reset_failures,
 )
-from jose import JWTError
-from fastapi import HTTPException
-
+from app.core.security import (
+    _blacklist_lock,
+    _blacklisted_tokens,
+    _user_token_blacklist,
+    create_access_token,
+    decode_token,
+    invalidate_all_user_tokens,
+    invalidate_token,
+    is_token_blacklisted,
+)
+from app.core.websocket import ConnectionManager
 
 # --- Fixtures ---
 
@@ -210,8 +210,9 @@ class TestWebSocketAuth:
 class TestSettingsRBAC:
     def test_settings_endpoint_has_superuser_dependency(self):
         """Verify the settings POST endpoint requires superuser auth."""
-        from app.api.routers.ui import update_settings
         import inspect
+
+        from app.api.routers.ui import update_settings
 
         sig = inspect.signature(update_settings)
         param_names = list(sig.parameters.keys())

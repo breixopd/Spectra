@@ -7,10 +7,11 @@ NOTE: Live tests (marked with @pytest.mark.live) should NOT use mocks.
 The mocking fixtures here only apply to unit tests.
 """
 
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 import pytest_asyncio
-from unittest.mock import patch, MagicMock, AsyncMock
-import asyncio
 
 
 def _is_live_test(item: pytest.Item) -> bool:
@@ -27,9 +28,9 @@ def _is_live_test(item: pytest.Item) -> bool:
 @pytest_asyncio.fixture
 async def real_mission_manager():
     """Provide a real MissionManager instance for live tests."""
-    from app.services.mission.manager import MissionManager
-    from app.services.ai.llm import get_default_llm_client
     import app.services.ai.llm as llm_module
+    from app.services.ai.llm import get_default_llm_client
+    from app.services.mission.manager import MissionManager
 
     # Use real LLM client (configured via env vars/settings)
     real_llm = get_default_llm_client()
@@ -167,8 +168,8 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
     mock_llm = MockLLMClient()
     from app.services.ai.agents.mission_controller import MissionController
     from app.services.ai.agents.scope import ScopeAgent
-    from app.services.mission.executor import MissionExecutor
     from app.services.ai.consensus import VotingSystem
+    from app.services.mission.executor import MissionExecutor
 
     manager.execution.mission_controller = MissionController(mock_llm)
     manager.execution.scope_agent = ScopeAgent(mock_llm)

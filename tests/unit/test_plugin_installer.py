@@ -1,15 +1,16 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-import re
-from unittest.mock import MagicMock, AsyncMock, patch, ANY
-from app.services.tools.registry.installer import PluginInstaller
+
 from app.services.tools.models import (
-    ToolStatus,
+    InstallationConfig,
     InstallationMethod,
     RegisteredTool,
     ToolConfig,
-    InstallationConfig,
+    ToolStatus,
 )
 from app.services.tools.registry.exceptions import PluginInstallationError
+from app.services.tools.registry.installer import PluginInstaller
 
 
 @pytest.fixture

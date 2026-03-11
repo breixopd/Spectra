@@ -1,5 +1,4 @@
 import asyncio
-from typing import List
 
 from app.services.mission.manager import MissionManager
 
@@ -7,7 +6,7 @@ from app.services.mission.manager import MissionManager
 async def wait_for_mission_status(
     mission_manager: MissionManager,
     mission_id: str,
-    target_statuses: List[str],
+    target_statuses: list[str],
     timeout: float = 10.0,
     interval: float = 0.5,
 ) -> str:
@@ -28,7 +27,7 @@ async def wait_for_mission_status(
 
 async def get_mission_logs(
     mission_manager: MissionManager, mission_id: str
-) -> List[str]:
+) -> list[str]:
     """Get logs for a mission."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:

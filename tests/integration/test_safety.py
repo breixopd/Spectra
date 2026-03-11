@@ -9,21 +9,21 @@ Tests safety and compliance features:
 Corresponds to testplan.md Scenarios E2E-05, E2E-06, E2E-07.
 """
 
+from unittest.mock import patch
+
 import pytest
 import pytest_asyncio
-from unittest.mock import AsyncMock, patch
 
+from app.services.ai.agents.base import ActionRisk, AgentContext, ToolAction
+from app.services.ai.agents.safety import (
+    SafetyAction,
+    SafetyInput,
+    SafetySupervisorAgent,
+)
+from app.services.ai.consensus import ConsensusStatus, QualityGate, VotingSystem
 from app.services.mission.manager import MissionManager
 from app.services.mission.mission import Mission
-from app.services.ai.agents.base import AgentContext, ToolAction, ActionRisk
-from app.services.ai.agents.safety import (
-    SafetySupervisorAgent,
-    SafetyInput,
-    SafetyAction,
-)
-from app.services.ai.consensus import VotingSystem, QualityGate, ConsensusStatus
 from tests.mocks.llm import MockLLMClient
-
 
 pytestmark = [
     pytest.mark.e2e,
@@ -309,7 +309,6 @@ class TestTaskFailureHandling:
         # Track if MissionController is called with is_steering=True
         from app.services.ai.agents.mission_controller import MissionInput
 
-        original_execute = mission_manager.execution.mission_controller.execute
 
         async def mock_execute(context, input_data):
             nonlocal replan_triggered
@@ -317,9 +316,9 @@ class TestTaskFailureHandling:
                 replan_triggered = True
                 # Return a successful steering action
                 from app.services.ai.agents.base import (
+                    ActionRisk,
                     AgentResult,
                     SteeringAction,
-                    ActionRisk,
                 )
 
                 return AgentResult(
@@ -382,8 +381,8 @@ class TestTaskFailureHandling:
                         mission_manager.active_missions[mission.id] = mission
 
                         from app.services.ai.agents.mission_controller import (
-                            Task,
                             AssessmentPhase,
+                            Task,
                         )
 
                         # Create a failed task
@@ -430,8 +429,8 @@ class TestTaskFailureHandling:
                 mission = await mission_manager.get_mission(mission_id)
                 if mission:
                     from app.services.ai.agents.mission_controller import (
-                        Task,
                         AssessmentPhase,
+                        Task,
                     )
 
                     task = Task(
@@ -479,8 +478,8 @@ class TestTaskFailureHandling:
                 mission = await mission_manager.get_mission(mission_id)
                 if mission:
                     from app.services.ai.agents.mission_controller import (
-                        Task,
                         AssessmentPhase,
+                        Task,
                     )
 
                     context = AgentContext(
@@ -512,7 +511,7 @@ class TestTaskFailureHandling:
 
                     # All failures should be logged
                     logs = mission.logs
-                    adapt_logs = [log for log in logs if "[ADAPT]" in log]
+                    [log for log in logs if "[ADAPT]" in log]
                     # We expect > 3 because there are multiple logs per adapt cycle ("Replanning...", "Unexpected action" or "Continuing")
                     # At minimum 3 "Replanning..." logs
                     replan_start_logs = [log for log in logs if "Replanning..." in log]
@@ -541,8 +540,9 @@ class TestIntegratedSafety:
 
     async def test_run_tool_checks_safety_before_execution(self):
         """Test that tool execution includes safety check logic."""
-        from app.services.tools.service import ToolExecutionService
         import inspect
+
+        from app.services.tools.service import ToolExecutionService
 
         # Verify the execute_request method contains safety check logic
         source = inspect.getsource(ToolExecutionService.execute_request)

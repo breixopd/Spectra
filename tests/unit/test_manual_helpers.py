@@ -1,16 +1,8 @@
 """Tests for manual mode backend services and API endpoints."""
 
 import json
-import math
-import time
-import uuid
-from pathlib import Path
-from unittest.mock import AsyncMock, patch
 
 import pytest
-import pytest_asyncio
-from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
 
 from app.services.system.checklists import (
     BUILTIN_CHECKLISTS,
@@ -32,7 +24,6 @@ from app.services.system.report_templates import (
     get_report_template,
     list_report_templates,
 )
-
 
 # ===== Checklists =====
 

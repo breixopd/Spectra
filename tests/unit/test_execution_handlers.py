@@ -1,12 +1,13 @@
 """Tests for mission executor handlers (TaskDispatcher)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from app.services.mission.executor.handlers import (
-    TaskDispatcher,
-    PHASE_TRANSITION_RULES,
     MAX_CHAIN_DEPTH,
+    PHASE_TRANSITION_RULES,
+    TaskDispatcher,
     _get_known_tools,
 )
 

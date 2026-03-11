@@ -1,13 +1,10 @@
 """Tests for per-mission ephemeral sandbox system."""
 
-import asyncio
 import uuid
-from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # --- SandboxInfo tests ---
 
@@ -34,8 +31,8 @@ class TestSandboxInfo:
 
     def test_make_queue_name_valid_for_queue(self):
         """Generated queue name passes PostgresJobQueue regex."""
-        from app.services.tools.sandbox.models import SandboxInfo
         from app.core.queue import PostgresJobQueue
+        from app.services.tools.sandbox.models import SandboxInfo
 
         mission_id = str(uuid.uuid4())
         queue_name = SandboxInfo.make_queue_name(mission_id)

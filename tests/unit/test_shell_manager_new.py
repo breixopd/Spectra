@@ -1,9 +1,10 @@
 """Additional tests for ShellSessionManager covering uncovered lines."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-import socket
-from unittest.mock import MagicMock, AsyncMock, patch
-from app.services.shell.session_manager import ShellSessionManager, ShellSession
+
+from app.services.shell.session_manager import ShellSession, ShellSessionManager
 
 
 @pytest.fixture(autouse=True)
@@ -94,7 +95,6 @@ class TestShellSession:
         assert session.buffer == b""
 
     def test_broadcast_with_websocket(self):
-        import asyncio
 
         session = ShellSession("s1", "10.0.0.1")
         session.websocket = AsyncMock()

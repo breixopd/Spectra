@@ -39,14 +39,15 @@ class TestEnqueueWithPriority:
     @pytest.mark.asyncio
     async def test_enqueue_accepts_priority_param(self):
         """enqueue_job should accept _priority keyword argument."""
-        from app.core.queue import PostgresJobQueue
         import inspect
+
+        from app.core.queue import PostgresJobQueue
         sig = inspect.signature(PostgresJobQueue.enqueue_job)
         assert "_priority" in sig.parameters
 
     @pytest.mark.asyncio
     async def test_enqueue_with_explicit_priority(self):
-        from app.core.queue import PostgresJobQueue, Job
+        from app.core.queue import PostgresJobQueue
         from app.models.infrastructure import JobQueue
 
         mock_session = AsyncMock()
@@ -63,7 +64,6 @@ class TestEnqueueWithPriority:
         mock_session.connection = AsyncMock(return_value=mock_conn)
 
         captured_job = None
-        original_add = mock_session.add
 
         def capture_add(obj):
             nonlocal captured_job

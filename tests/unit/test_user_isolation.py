@@ -1,9 +1,9 @@
 """Tests for user data isolation across all models and endpoints."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException
 
+import pytest
+from fastapi import HTTPException
 
 # ---------------------------------------------------------------------------
 # Model-level: verify user_id columns exist
@@ -171,12 +171,10 @@ class TestMissionCreationSetsUserId:
 
     async def test_start_mission_passes_user_id(self):
         """The missions router passes user_id=str(user.id) to mission_manager."""
-        from app.services.mission import mission_manager as mm_module
 
         user = _make_user("user-99")
-        mock_db = AsyncMock()
+        AsyncMock()
 
-        original_start = mm_module.start_mission
         captured_kwargs: dict = {}
 
         async def fake_start(*args, **kwargs):
@@ -204,7 +202,6 @@ class TestMissionCreationSetsUserId:
 
             # Verify the code path by calling the underlying logic, not the
             # decorated endpoint (which needs a real Starlette Request for limiter).
-            from app.api.routers.missions import start_mission as _fn  # noqa: F811
 
             # The rate-limiter wrapper requires a real request object; instead
             # we directly invoke the manager to show the router code wires user_id.

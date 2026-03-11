@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+
 from app.services.tools.installer import ToolInstaller
 
 
@@ -60,7 +62,7 @@ async def test_install_already_installed(mock_registry):
         mock_is_installed.return_value = True
 
         # If already installed, it logs and does 'pass', allowing execution to proceed to install_tool
-        result = await installer.install("test-tool")
+        await installer.install("test-tool")
 
         # So install_tool IS called
         assert mock_registry.install_tool.called

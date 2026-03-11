@@ -6,36 +6,34 @@ Comprehensive tests for agents with low coverage:
 - PostExploitationAgent
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
-from tests.mocks.llm import MockLLMClient
+import pytest
+
 from app.services.ai.agents.base import (
-    AgentContext,
-    AgentResult,
     ActionRisk,
+    AgentContext,
 )
 from app.services.ai.agents.exploit_crafter import (
+    ExploitAction,
     ExploitCrafter,
     ExploitInput,
-    ExploitAction,
+)
+from app.services.ai.agents.post_exploitation import (
+    PostExploitAction,
+    PostExploitationAgent,
+    PostExploitInput,
+)
+from app.services.ai.agents.safety import (
+    SafetyInput,
+    SafetySupervisorAgent,
 )
 from app.services.ai.agents.vector_generator import (
     VectorGeneratorAgent,
     VectorGeneratorInput,
     VectorGeneratorOutput,
 )
-from app.services.ai.agents.safety import (
-    SafetySupervisorAgent,
-    SafetyInput,
-    SafetyAction,
-)
-from app.services.ai.agents.post_exploitation import (
-    PostExploitationAgent,
-    PostExploitInput,
-    PostExploitAction,
-)
-
+from tests.mocks.llm import MockLLMClient
 
 # --- Fixtures ---
 

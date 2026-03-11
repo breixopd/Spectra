@@ -9,13 +9,13 @@ Corresponds to testplan.md Scenarios E2E-02 and E2E-03.
 """
 
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, patch
 
-from app.services.mission.manager import MissionManager
-from app.services.ai.agents.base import SteeringAction, ActionRisk
-from app.services.ai.consensus import QualityGate
+import pytest
 
+from app.services.ai.agents.base import ActionRisk, SteeringAction
+from app.services.ai.consensus import QualityGate
+from app.services.mission.manager import MissionManager
 
 pytestmark = [
     pytest.mark.e2e,
@@ -180,8 +180,8 @@ class TestUserSteering:
                     # Simulate task failure to trigger replanning
                     if mission:
                         from app.services.ai.agents.mission_controller import (
-                            Task,
                             AssessmentPhase,
+                            Task,
                         )
 
                         task = Task(
@@ -286,7 +286,7 @@ class TestEmergencyStop:
     ):
         """Test that a stopped mission doesn't execute more tasks."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-            with patch("app.core.events.events.emit_sync") as mock_emit:
+            with patch("app.core.events.events.emit_sync"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,
                     directive="Multi-task mission",

@@ -4,10 +4,10 @@ Uses httpx.AsyncClient with the FastAPI test app to verify health
 and readiness probes return the expected format.
 """
 
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from unittest.mock import AsyncMock, patch
 
 
 @pytest_asyncio.fixture

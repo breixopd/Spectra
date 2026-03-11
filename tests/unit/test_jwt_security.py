@@ -1,17 +1,16 @@
 """Tests for JWT security: token type enforcement, refresh token rejection, cookie flags."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import timedelta
+from unittest.mock import AsyncMock, MagicMock
 
-from jose import JWTError
+import pytest
 
 from app.core.security import (
+    _blacklist_lock,
+    _blacklisted_tokens,
     create_access_token,
     create_refresh_token,
     decode_token,
-    _blacklisted_tokens,
-    _blacklist_lock,
 )
 
 
@@ -90,9 +89,11 @@ async def test_get_current_user_accepts_access_token():
 def test_token_without_type_claim_still_decodes():
     """A legacy token without 'type' can still be decoded by decode_token,
     but get_current_user will reject it since type != 'access'."""
+    from datetime import UTC, datetime
+
     from jose import jwt
+
     from app.core.config import settings
-    from datetime import datetime, UTC
 
     payload = {
         "sub": "legacyuser",
@@ -111,11 +112,13 @@ def test_token_without_type_claim_still_decodes():
 @pytest.mark.asyncio
 async def test_get_current_user_rejects_token_without_type():
     """get_current_user rejects tokens missing the 'type' claim."""
-    from app.api.dependencies import get_current_user
-    from jose import jwt
-    from app.core.config import settings
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
+
     from fastapi import HTTPException
+    from jose import jwt
+
+    from app.api.dependencies import get_current_user
+    from app.core.config import settings
 
     payload = {
         "sub": "legacyuser",
@@ -142,19 +145,16 @@ async def test_get_current_user_rejects_token_without_type():
 
 def test_login_response_sets_httponly_secure_cookie():
     """The login endpoint sets cookie with httponly, secure, samesite=strict."""
-    from starlette.testclient import TestClient
-    from unittest.mock import patch as _patch
 
     # We verify the flags by inspecting the auth router's set_cookie call
     # Rather than spinning up a full app, we verify the code path directly.
-    from app.api.routers.auth import router
-
     # Extract the login function source to verify set_cookie params are correct
     # This is a structural test — we check the constants used in set_cookie
     import inspect
 
-    login_source = None
-    for name, func in inspect.getmembers(router, predicate=inspect.isfunction):
+    from app.api.routers.auth import router
+
+    for _name, _func in inspect.getmembers(router, predicate=inspect.isfunction):
         pass
 
     # Verify by reading the route definitions for set_cookie calls

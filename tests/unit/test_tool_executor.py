@@ -1,10 +1,10 @@
 """Tests for the tool registry executor (command execution)."""
 
-import asyncio
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
-from app.services.tools.registry.executor import run_command_safe, _read_stream_limit
+import pytest
+
+from app.services.tools.registry.executor import _read_stream_limit, run_command_safe
 
 
 class TestRunCommandSafe:

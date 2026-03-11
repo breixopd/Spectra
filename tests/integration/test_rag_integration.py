@@ -1,6 +1,7 @@
 import pytest
 import pytest_asyncio
-from app.services.ai.rag import RAGService, Document
+
+from app.services.ai.rag import Document, RAGService
 
 
 @pytest_asyncio.fixture

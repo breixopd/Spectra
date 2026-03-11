@@ -1,14 +1,14 @@
-import pytest
-import pytest_asyncio
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+from app.core.config import settings
+from app.services.ai.agents.base import AgentContext, ToolAction
+from app.services.ai.agents.scope import ScopeAgent, ScopeInput
 from app.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
     ToolSelectorInput,
-    ToolSelectorOutput,
 )
-from app.services.ai.agents.scope import ScopeAgent, ScopeInput, ScopeAction
-from app.services.ai.agents.base import ToolAction, AgentContext
-from app.core.config import settings
 
 # Force Mock Provider
 settings.AI_PROVIDER = "mock"
@@ -116,9 +116,9 @@ async def test_scope_agent_flow(mock_llm):
 async def test_exploit_crafter_flow(mock_llm):
     """Test ExploitCrafter using Mock LLM."""
     from app.services.ai.agents.exploit_crafter import (
+        ExploitAction,
         ExploitCrafter,
         ExploitInput,
-        ExploitAction,
     )
 
     mock_llm.structured_responses = {
@@ -165,7 +165,6 @@ async def test_mission_controller_planning(mock_llm):
         MissionPlan,
         MissionType,
     )
-    from app.core.enums import AssessmentPhase
 
     mock_llm.structured_responses = {
         "MissionPlan": {

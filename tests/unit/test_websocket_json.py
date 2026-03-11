@@ -1,12 +1,13 @@
-import pytest
-import json
 import uuid
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
+
+import pytest
+
 from app.core.websocket import ConnectionManager
 
 
-class TestEnum(str, Enum):
+class TestEnum(StrEnum):
     TEST = "test"
 
 

@@ -1,11 +1,12 @@
 """Tests for the Playbook System."""
 
 import pytest
+
 from app.services.ai.playbook import (
+    ExploitPattern,
     PlaybookEngine,
     PlaybookStep,
     ServicePlaybook,
-    ExploitPattern,
     get_playbook_engine,
 )
 

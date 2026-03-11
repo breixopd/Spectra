@@ -1,6 +1,7 @@
 """Tests for CommandBuilder (app/services/tools/adapter/builder.py)."""
 
 import shlex
+
 import pytest
 
 from app.services.tools.adapter.builder import CommandBuilder
@@ -10,7 +11,6 @@ from app.services.tools.models import (
     ToolConfig,
     ToolExecutionRequest,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

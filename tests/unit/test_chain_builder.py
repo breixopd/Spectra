@@ -1,19 +1,18 @@
 """Tests for ChainBuilder and exploit chain functionality."""
 
 import json
-import pytest
-from unittest.mock import patch, MagicMock
 from pathlib import Path
+from unittest.mock import patch
 
 from app.services.mission.chain_builder import (
+    BUILTIN_CHAINS,
     ChainBuilder,
+    ChainExecutionResult,
     ChainStage,
     ExploitChain,
-    ChainExecutionResult,
     get_builtin_chains,
     load_custom_chains,
     save_custom_chain,
-    BUILTIN_CHAINS,
 )
 
 

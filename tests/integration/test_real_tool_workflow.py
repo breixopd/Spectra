@@ -17,31 +17,30 @@ from pathlib import Path
 import pytest
 import pytest_asyncio
 
-from app.services.tools.registry import ToolRegistry, initialize_registry
-from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import (
-    ToolConfig,
-    ToolCategory,
-    ToolCapability,
-    RiskLevel,
-    OutputFormat,
-    ToolExecutionRequest,
-    ExecutionConfig,
-    ParsingConfig,
-    ToolMetadata,
-)
 from app.models.attack_surface import (
     AttackSurface,
+    AttackVector,
     DiscoveredService,
     DiscoveredWebApp,
-    Vulnerability,
-    AttackVector,
+    ExploitAttempt,
     VectorPriority,
     VectorStatus,
-    ExploitAttempt,
+    Vulnerability,
 )
 from app.services.mission.mission import Mission
-
+from app.services.tools.adapter import CommandToolAdapter
+from app.services.tools.models import (
+    ExecutionConfig,
+    OutputFormat,
+    ParsingConfig,
+    RiskLevel,
+    ToolCapability,
+    ToolCategory,
+    ToolConfig,
+    ToolExecutionRequest,
+    ToolMetadata,
+)
+from app.services.tools.registry import ToolRegistry, initialize_registry
 
 pytestmark = [pytest.mark.asyncio]
 

@@ -4,16 +4,16 @@ Tests for the Consensus system and Quality Gates.
 
 import pytest
 
+from app.services.ai.agents.base import ActionRisk, AgentAction, ToolAction
 from app.services.ai.consensus import (
-    VotingSystem,
-    VotingConfig,
+    ConsensusResult,
+    ConsensusStatus,
     QualityGate,
     Vote,
     VoteDecision,
-    ConsensusStatus,
-    ConsensusResult,
+    VotingConfig,
+    VotingSystem,
 )
-from app.services.ai.agents.base import AgentAction, ActionRisk, ToolAction
 from tests.mocks.llm import MockLLMClient
 
 
@@ -61,7 +61,7 @@ class TestVotingConfig:
         """Each gate config should be (num_voters, k_threshold, min_confidence)."""
         config = VotingConfig()
 
-        for gate, gate_config in config.gate_configs.items():
+        for _gate, gate_config in config.gate_configs.items():
             assert len(gate_config) == 3
             num_voters, k_threshold, min_confidence = gate_config
             assert isinstance(num_voters, int)

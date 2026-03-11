@@ -2,25 +2,23 @@
 
 import json
 import time
-from pathlib import Path
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from app.services.ai.cve_intel import (
-    lookup_cves,
-    get_cve_context_for_services,
-    fetch_cves_from_nvd,
-    _infer_vuln_type,
+    CVE_CACHE_TTL,
     _cache_path,
+    _infer_vuln_type,
     _load_cache,
     _save_cache,
-    reload_cve_knowledge_base,
     enrich_cve_with_exploits,
+    fetch_cves_from_nvd,
+    get_cve_context_for_services,
+    lookup_cves,
     lookup_cves_live,
-    get_metasploit_modules,
-    CVE_CACHE_TTL,
+    reload_cve_knowledge_base,
 )
-
 
 # Sample knowledge base data for tests — loaded via _load_cve_knowledge_base
 _TEST_CVE_KB = [

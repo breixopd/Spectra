@@ -1,8 +1,9 @@
 """Extended tests for app.services.shell.session_manager module."""
 
-import pytest
 import socket
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.services.shell.session_manager import ShellSession, ShellSessionManager
 

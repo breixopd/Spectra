@@ -1,7 +1,8 @@
 """Tests for TelemetryMiddleware (app/core/telemetry_middleware.py)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.core.telemetry_middleware import TelemetryMiddleware, _normalize_path
 
@@ -73,7 +74,7 @@ class TestTelemetryMiddleware:
             if c.args[0] == "http.requests.total"
         ]
         assert len(total_calls) == 1
-        labels = total_calls[0].args[2] if len(total_calls[0].args) > 2 else total_calls[0].kwargs.get("labels", {})
+        total_calls[0].args[2] if len(total_calls[0].args) > 2 else total_calls[0].kwargs.get("labels", {})
         # Check via the positional args pattern: increment_counter(name, value, labels)
         call_a = total_calls[0]
         assert call_a[0][0] == "http.requests.total"

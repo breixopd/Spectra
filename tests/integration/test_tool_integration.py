@@ -1,23 +1,23 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch
-from app.services.mission.executor import MissionExecutor
-from app.services.mission.mission import Mission
-from app.services.ai.agents.mission_controller import Task, AssessmentPhase
+
 from app.services.ai.agents.base import (
+    ActionRisk,
     AgentContext,
     AgentResult,
     ToolAction,
-    ActionRisk,
 )
+from app.services.ai.agents.mission_controller import AssessmentPhase, Task
+from app.services.mission.executor import MissionExecutor
+from app.services.mission.mission import Mission
 from app.services.tools.models import (
-    ToolConfig,
-    InstallationConfig,
     ExecutionConfig,
     ToolCategory,
+    ToolConfig,
     ToolStatus,
 )
-from app.services.tools.registry import ToolRegistry, RegisteredTool
+from app.services.tools.registry import RegisteredTool, ToolRegistry
 
 # --- Dummy Tool Config ---
 DUMMY_TOOL_CONFIG = ToolConfig(

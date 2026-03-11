@@ -116,8 +116,9 @@ class TestOomConfig:
     """OOM escalation config setting."""
 
     def test_oom_escalation_enabled_default(self):
-        from app.core.config import Settings
         from pydantic import SecretStr
+
+        from app.core.config import Settings
         s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
         assert s.SANDBOX_OOM_ESCALATION_ENABLED is True
 

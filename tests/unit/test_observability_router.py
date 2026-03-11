@@ -1,10 +1,10 @@
 """Tests for the observability API router endpoints."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from app.core.telemetry import TelemetryCollector
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -237,6 +237,7 @@ class TestCircuitBreakerReset:
     @pytest.mark.asyncio
     async def test_reset_circuit_breakers_denied_for_non_superuser(self):
         from fastapi import HTTPException
+
         from app.api.routers.observability import reset_circuit_breakers
 
         with pytest.raises(HTTPException) as exc_info:

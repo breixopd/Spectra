@@ -1,16 +1,16 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-from app.services.mission.executor.handlers import TaskDispatcher
-from app.services.mission.mission import Mission
+
+from app.core.enums import AssessmentPhase
 from app.services.ai.agents.base import (
     AgentContext,
     AgentResult,
     ToolAction,
-    ActionRisk,
 )
 from app.services.ai.agents.mission_controller import Task
-from app.core.enums import AssessmentPhase
-from app.services.tools.models import ToolStatus
+from app.services.mission.executor.handlers import TaskDispatcher
+from app.services.mission.mission import Mission
 
 
 @pytest.fixture

@@ -1,6 +1,7 @@
 import pytest
+
 from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import ToolConfig, ToolExecutionRequest, ToolCategory
+from app.services.tools.models import ToolCategory, ToolConfig, ToolExecutionRequest
 
 
 @pytest.fixture

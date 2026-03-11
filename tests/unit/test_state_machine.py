@@ -7,16 +7,16 @@ Supplements the basic tests in test_core_infrastructure.py with:
 - Edge cases for get_time_in_state and to_dict
 """
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from datetime import datetime
 
 from app.core.enums import MissionStatus
 from app.core.exceptions import MissionStateError
 from app.core.state_machine import (
+    VALID_TRANSITIONS,
     MissionStateMachine,
     StateTransition,
-    VALID_TRANSITIONS,
 )
 
 

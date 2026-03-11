@@ -1,8 +1,10 @@
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from app.services.tools.models import ToolConfig
 from app.services.tools.registry import ToolRegistry, ToolStatus
-from app.services.tools.models import RegisteredTool, ToolConfig
 
 
 @pytest.fixture

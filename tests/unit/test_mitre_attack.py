@@ -2,10 +2,10 @@
 
 from app.services.ai.mitre_attack import (
     TECHNIQUE_MAP,
-    tag_finding_with_attack,
+    _resolve_techniques,
     generate_navigator_json,
     get_attack_summary,
-    _resolve_techniques,
+    tag_finding_with_attack,
 )
 
 

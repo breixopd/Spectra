@@ -1,10 +1,7 @@
 """Tests for file encryption, password-based encryption, and export endpoints."""
 
-import csv
-import json
-from io import StringIO
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -110,6 +107,7 @@ class TestReportEncryptionAtRest:
 
         with patch("app.core.encryption._get_default_secret", return_value="test-key"):
             from cryptography.fernet import Fernet
+
             from app.core.encryption import _derive_fernet_key
             f = Fernet(_derive_fernet_key("test-key"))
             content = f.decrypt(saved.read_bytes())
@@ -132,6 +130,7 @@ class TestReportEncryptionAtRest:
 
         with patch("app.core.encryption._get_default_secret", return_value="test-key"):
             from cryptography.fernet import Fernet
+
             from app.core.encryption import _derive_fernet_key
             f = Fernet(_derive_fernet_key("test-key"))
             assert f.decrypt(saved.read_bytes()) == pdf_data

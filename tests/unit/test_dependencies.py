@@ -1,10 +1,9 @@
 """Tests for app.api.dependencies — auth deps, plan rate limiter, plan enforcement."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi import HTTPException
-
 
 # ---------------------------------------------------------------------------
 # Helpers

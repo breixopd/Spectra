@@ -1,8 +1,6 @@
 """Tests for per-sandbox Docker network isolation."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 
 class TestNetworkIsolation:
@@ -30,8 +28,9 @@ class TestNetworkIsolation:
         assert hasattr(Sandbox, "network_id")
 
     def test_config_has_network_isolation_setting(self):
-        from app.core.config import Settings
         from pydantic import SecretStr
+
+        from app.core.config import Settings
         s = Settings(
             DATABASE_URL=SecretStr("sqlite:///test.db"),
             SANDBOX_NETWORK_ISOLATION=False,
@@ -39,7 +38,8 @@ class TestNetworkIsolation:
         assert s.SANDBOX_NETWORK_ISOLATION is False
 
     def test_config_network_isolation_default_true(self):
-        from app.core.config import Settings
         from pydantic import SecretStr
+
+        from app.core.config import Settings
         s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
         assert s.SANDBOX_NETWORK_ISOLATION is True

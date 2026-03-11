@@ -1,21 +1,11 @@
 """Tests for critical mission pipeline bug fixes."""
 
-import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from app.core.constants import MISSION_TIMEOUT_SECONDS
-from app.models.attack_surface import (
-    AttackSurface,
-    AttackVector,
-    DiscoveredService,
-    ExploitAttempt,
-    VectorPriority,
-    VectorStatus,
-)
 from app.services.ai.context import truncate_for_llm
-
 
 # ---------------------------------------------------------------------------
 # Fix #4: Port extraction (rsplit for IPv6 safety)

@@ -1,7 +1,7 @@
 """Tests for ServerPoolManager — server pool scaling and load balancing."""
 
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -23,8 +23,8 @@ def _make_mock_node(**overrides):
         "last_health_check": None,
         "last_error": None,
         "metadata_": None,
-        "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
-        "updated_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+        "created_at": datetime(2026, 1, 1, tzinfo=UTC),
+        "updated_at": datetime(2026, 1, 1, tzinfo=UTC),
     }
     defaults.update(overrides)
     node = MagicMock()

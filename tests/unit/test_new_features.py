@@ -2,14 +2,13 @@
 
 import asyncio
 import time
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.mission.mission import Mission
-from app.core.optimizations import ToolResultCache
 from app.core.constants import MAX_CONCURRENT_MISSIONS, MAX_REPLANS_PER_MISSION
-
+from app.core.optimizations import ToolResultCache
+from app.services.mission.mission import Mission
 
 # --- MISSION-002: Checkpoint/Resume ---
 
@@ -378,7 +377,7 @@ class TestStealthBuilder:
 
     def test_apply_stealth_args_adds_flags(self):
         from app.services.tools.adapter.builder import CommandBuilder
-        from app.services.tools.models import ToolConfig, StealthConfig
+        from app.services.tools.models import StealthConfig
 
         config = MagicMock()
         config.execution.arg_modifiers = None

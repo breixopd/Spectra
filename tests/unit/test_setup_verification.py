@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+
 from app.services.system.setup import SystemSetupService
 
 

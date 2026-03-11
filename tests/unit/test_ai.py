@@ -2,38 +2,38 @@
 Unit tests for AI services: LLM clients, Agents, and Consensus.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from pydantic import BaseModel
 
-from app.services.ai.llm import (
-    LLMResponse,
-    get_llm_client,
-)
-from tests.mocks.llm import MockLLMClient
-from app.services.ai.consensus import (
-    VotingSystem,
-    VotingConfig,
-    ConsensusStatus,
-)
 from app.services.ai.agents.base import (
-    AgentContext,
-    AgentAction,
     ActionRisk,
+    AgentAction,
+    AgentContext,
 )
-from app.services.ai.agents.scope import ScopeAgent, ScopeInput, ScopeAction
+from app.services.ai.agents.scope import ScopeAction, ScopeAgent, ScopeInput
 from app.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
     ToolSelectorInput,
     ToolSelectorOutput,
 )
+from app.services.ai.consensus import (
+    ConsensusStatus,
+    VotingConfig,
+    VotingSystem,
+)
+from app.services.ai.llm import (
+    LLMResponse,
+    get_llm_client,
+)
 from app.services.tools.models import (
-    ToolConfig,
-    ToolCategory,
     RegisteredTool,
+    ToolCategory,
+    ToolConfig,
     ToolStatus,
 )
-from unittest.mock import AsyncMock, MagicMock, patch
-
+from tests.mocks.llm import MockLLMClient
 
 # --- Fixtures ---
 

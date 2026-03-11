@@ -5,13 +5,14 @@ ServerNodeRepository, and SystemConfigRepository using mocked
 AsyncSession to verify query construction and delegation.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.repositories.plan import PlanRepository
-from app.repositories.subscription import SubscriptionRepository
+import pytest
+
 from app.repositories.api_key import ApiKeyRepository
+from app.repositories.plan import PlanRepository
 from app.repositories.server_node import ServerNodeRepository
+from app.repositories.subscription import SubscriptionRepository
 from app.repositories.system_config import SystemConfigRepository
 
 

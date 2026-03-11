@@ -1,14 +1,13 @@
 """Tests for the email service: providers, templates, and EmailService."""
 
 import logging
-
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.email.providers.console import ConsoleProvider
-from app.services.email.templates import TEMPLATES
-from app.services.email.service import EmailService
+import pytest
 
+from app.services.email.providers.console import ConsoleProvider
+from app.services.email.service import EmailService
+from app.services.email.templates import TEMPLATES
 
 # ---------------------------------------------------------------------------
 # ConsoleProvider
@@ -148,8 +147,8 @@ async def test_email_service_send_template_unknown_returns_false():
 def test_get_provider_returns_smtp_when_host_configured(mock_settings):
     """When SMTP_HOST is set, _get_provider returns SMTPProvider."""
     mock_settings.SMTP_HOST = "smtp.example.com"
-    from app.services.email.service import _get_provider
     from app.services.email.providers.smtp import SMTPProvider
+    from app.services.email.service import _get_provider
 
     provider = _get_provider()
     assert isinstance(provider, SMTPProvider)

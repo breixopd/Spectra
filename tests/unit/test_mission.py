@@ -2,14 +2,12 @@
 Tests for the Mission class and attack surface tracking.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
 
-from app.services.mission.mission import Mission
 from app.models.attack_surface import (
     AttackVector,
     VectorPriority,
 )
+from app.services.mission.mission import Mission
 
 
 class TestMissionCreation:

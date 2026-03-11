@@ -32,7 +32,6 @@ from app.services.tools.registry import (
 )
 from app.services.tools.registry.constants import DANGEROUS_PATTERNS
 
-
 # --- Test Data ---
 
 
@@ -79,14 +78,14 @@ class TestToolConfigModel:
         """Test that invalid IDs are rejected."""
         data = {**VALID_PLUGIN_DATA, "id": "Invalid ID!"}
 
-        with pytest.raises(Exception):  # Pydantic ValidationError
+        with pytest.raises(ValueError):
             ToolConfig.model_validate(data)
 
     def test_invalid_version_format(self):
         """Test that invalid versions are rejected."""
         data = {**VALID_PLUGIN_DATA, "version": "v1.0"}
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             ToolConfig.model_validate(data)
 
     def test_default_values(self):
@@ -392,7 +391,6 @@ class TestCommandToolAdapter:
     @pytest.mark.asyncio
     async def test_execute_handles_timeout(self, adapter):
         """Test that timeout is handled gracefully."""
-        import asyncio
 
         request = ToolExecutionRequest(
             tool_id="test-tool",

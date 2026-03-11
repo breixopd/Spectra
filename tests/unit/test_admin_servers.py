@@ -7,9 +7,9 @@ direct function import in test, so we test the underlying logic.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException
 
 import pytest
+from fastapi import HTTPException
 
 
 def _mock_node_dict(**overrides):

@@ -1,7 +1,7 @@
 """Tests for tiered resource profiles."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -59,7 +59,6 @@ class TestPluginResourceTiers:
     """Tests that plugin JSONs have valid resource tiers."""
 
     def test_all_plugins_have_resources_field(self):
-        import json
         from pathlib import Path
         plugins_dir = Path("plugins")
         if not plugins_dir.exists():
@@ -70,7 +69,6 @@ class TestPluginResourceTiers:
             assert "tier" in data["resources"], f"Plugin {f.name} missing resources.tier"
 
     def test_all_plugin_tiers_are_valid(self):
-        import json
         from pathlib import Path
         valid_tiers = {"light", "medium", "heavy", "extreme"}
         plugins_dir = Path("plugins")
@@ -86,8 +84,8 @@ class TestSandboxInfoResourceTier:
     """SandboxInfo dataclass includes resource_tier field."""
 
     def test_sandbox_info_has_resource_tier(self):
+
         from app.services.tools.sandbox.models import SandboxInfo
-        from datetime import UTC, datetime
         info = SandboxInfo(
             container_id="abc", container_name="test", mission_id="m1",
             queue_name="q1", status="running", image="spectra-tools",

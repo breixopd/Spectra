@@ -2,18 +2,18 @@
 
 import sys
 import types
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+
+from app.services.ai.agents.base import ROLE_TASK_MAP, AgentRole
 from app.services.ai.router import (
-    LiteLLMRouter,
     TASK_TIERS,
+    LiteLLMRouter,
     build_model_config_from_settings,
     create_smart_router,
     get_smart_router,
 )
-from app.services.ai.llm import LLMResponse
-from app.services.ai.agents.base import ROLE_TASK_MAP, AgentRole
 
 
 class TestTaskTiers:

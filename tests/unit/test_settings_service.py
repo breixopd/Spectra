@@ -5,8 +5,9 @@ Uses sys.modules pre-population to break the circular import chain
 """
 
 import sys
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 @pytest.fixture(autouse=True)

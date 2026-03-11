@@ -1,9 +1,7 @@
 """Tests for StorageService — S3-compatible storage with local fallback."""
 
-import asyncio
-import sys
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -14,7 +12,6 @@ class TestStorageServiceInit:
     def test_local_mode_when_s3_not_configured(self):
         with patch("app.services.storage.service.settings") as mock_settings:
             mock_settings.S3_ENDPOINT_URL = ""
-            from importlib import reload
             import app.services.storage.service as svc_mod
 
             svc_mod._storage_service = None
@@ -67,7 +64,6 @@ class TestStorageServiceLocalMode:
 
             svc = svc_mod.StorageService()
             # Override _local_path to use tmp_path
-            original_local_path = svc._local_path
 
             def patched_local_path(bucket, key):
                 return tmp_path / bucket / key
