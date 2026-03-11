@@ -1,5 +1,6 @@
 """Mission-scoped shared blackboard for inter-agent communication."""
 
+import json
 import logging
 import sys
 import time
@@ -20,9 +21,16 @@ class MissionBlackboard:
         self._data: dict[str, dict[str, Any]] = {}
         self._history: list[dict[str, Any]] = []
 
+    def _estimate_size(self, value: Any) -> int:
+        """Estimate the size of a value in bytes."""
+        try:
+            return len(json.dumps(value, default=str))
+        except (TypeError, ValueError):
+            return sys.getsizeof(value)
+
     def write(self, agent_role: str, key: str, value: Any) -> None:
         """Write a fact/insight to the blackboard."""
-        if sys.getsizeof(value) > MAX_VALUE_SIZE:
+        if self._estimate_size(value) > MAX_VALUE_SIZE:
             logger.warning("Blackboard value for '%s' exceeds %d bytes, rejected", key, MAX_VALUE_SIZE)
             return
 
