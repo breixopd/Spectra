@@ -42,6 +42,7 @@ from app.core.middleware import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.telemetry_middleware import TelemetryMiddleware
 from app.core.websocket import manager
+from app.core.exceptions import SpectraError, get_status_code_for_exception
 from app.version import __version__
 
 # --- Logging Setup ---
@@ -82,6 +83,14 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore
 app.add_middleware(SlowAPIMiddleware)
+
+
+# --- Spectra Exception Handler ---
+@app.exception_handler(SpectraError)
+async def spectra_error_handler(request: Request, exc: SpectraError) -> JSONResponse:
+    """Map SpectraError subclasses to appropriate HTTP responses."""
+    status_code = get_status_code_for_exception(exc)
+    return JSONResponse(exc.to_dict(), status_code=status_code)
 
 # --- GZip Compression ---
 app.add_middleware(GZipMiddleware, minimum_size=1000)
