@@ -68,6 +68,15 @@ class ToolExecutionService:
     5. Execute tools via PostgreSQL job queue worker in the tools container
     """
 
+    # --- Tuneable constants ---------------------------------------------------
+    DEFAULT_TIMEOUT = 300  # seconds
+    JOB_BUFFER_TIMEOUT = 60  # extra seconds on top of tool timeout
+    MAX_STDOUT_CHARS = 3000
+    MAX_STDERR_CHARS = 500
+    INSTALL_TIMEOUT = 600  # seconds
+    MAX_CONCURRENCY = 5
+    MAX_RETRIES = 2
+
     @staticmethod
     def _get_queue_name(mission_id: str) -> str:
         """Get the queue name for a mission's sandbox worker."""
@@ -81,7 +90,7 @@ class ToolExecutionService:
         self.consensus = VotingSystem(llm_client)
 
         # Concurrency limit
-        self._semaphore = asyncio.Semaphore(5)
+        self._semaphore = asyncio.Semaphore(self.MAX_CONCURRENCY)
 
     async def execute_tool_action(
         self, mission: Mission, action: ToolAction, context: AgentContext
@@ -114,7 +123,7 @@ class ToolExecutionService:
         language: str,
         target: str,
         args: list[str] | None = None,
-        timeout: int = 300,
+        timeout: int = DEFAULT_TIMEOUT,
     ) -> ToolExecutionResult:
         """
         Execute a custom generated script via the worker.
@@ -147,7 +156,7 @@ class ToolExecutionService:
             )
 
             job = Job(job_id)
-            result_data = await job.result(timeout=timeout + 60)
+            result_data = await job.result(timeout=timeout + self.JOB_BUFFER_TIMEOUT)
 
             if not result_data:
                 return self._create_error_result(
@@ -331,8 +340,8 @@ class ToolExecutionService:
 
             if result.success:
                 # Truncate raw output before it enters LLM-facing pipelines
-                result.stdout = truncate_for_llm(result.stdout, max_chars=3000, label="stdout")
-                result.stderr = truncate_for_llm(result.stderr, max_chars=500, label="stderr")
+                result.stdout = truncate_for_llm(result.stdout, max_chars=self.MAX_STDOUT_CHARS, label="stdout")
+                result.stderr = truncate_for_llm(result.stderr, max_chars=self.MAX_STDERR_CHARS, label="stderr")
                 self._log_success(mission, tool_name, result)
                 for finding in result.parsed_findings:
                     mission.add_finding(finding)
@@ -345,7 +354,7 @@ class ToolExecutionService:
                 )
             else:
                 last_error = (
-                    result.stderr[:500] if result.stderr else "No error message"
+                    result.stderr[:self.MAX_STDERR_CHARS] if result.stderr else "No error message"
                 )
                 mission.log(f"[ERROR] {tool_name} failed: {last_error[:200]}")
                 mission.record_tool_run(
@@ -401,7 +410,7 @@ class ToolExecutionService:
             )
 
             # Wait for result with timeout
-            job_timeout = (timeout or 300) + 60  # Add buffer for job overhead
+            job_timeout = (timeout or self.DEFAULT_TIMEOUT) + self.JOB_BUFFER_TIMEOUT
             job = Job(job_id)
             result_data = await job.result(timeout=job_timeout)
 
@@ -453,7 +462,7 @@ class ToolExecutionService:
             job = Job(job_id)
 
             # Wait for installation (can take a while for large tools)
-            result = await job.result(timeout=600)  # 10 min timeout
+            result = await job.result(timeout=self.INSTALL_TIMEOUT)
 
             if result and result.get("success"):
                 # Update local registry status
@@ -534,7 +543,7 @@ class ToolExecutionService:
         args: dict[str, Any] | None,
         builder: CommandToolAdapter,
         output_dir: Path,
-        max_retries: int = 2,
+        max_retries: int = MAX_RETRIES,
     ) -> tuple[bool, str, dict[str, Any] | None]:
         """
         Run safety check with automatic command fixing on failure.
