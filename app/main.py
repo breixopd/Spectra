@@ -25,6 +25,7 @@ from app.api.routers import (
     findings,
     health,
     manual_helpers,
+    metrics,
     missions,
     observability,
     pentest_sessions,
@@ -275,6 +276,9 @@ api_v1.include_router(manual_helpers.router, tags=["Manual Helpers"])
 api_v1.include_router(shell.router, tags=["Shell"])
 api_v1.include_router(vpn.router, tags=["VPN"])
 app.include_router(api_v1)
+
+# --- Prometheus metrics endpoint (top-level for scraper compatibility) ---
+app.include_router(metrics.router, tags=["Metrics"])
 
 # --- Non-versioned routes (UI pages, public, admin) ---
 app.include_router(public.router, tags=["Public"])

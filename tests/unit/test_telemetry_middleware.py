@@ -68,16 +68,15 @@ class TestTelemetryMiddleware:
             result = await middleware.dispatch(request, call_next)
 
         assert result is response
-        # Should have: active+1, active-1, total
+        # Should have: adjust_gauge +1, adjust_gauge -1, requests counter, duration histogram
         total_calls = [
             c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.requests.total"
+            if c.args[0] == "http.server.requests"
         ]
         assert len(total_calls) == 1
-        total_calls[0].args[2] if len(total_calls[0].args) > 2 else total_calls[0].kwargs.get("labels", {})
         # Check via the positional args pattern: increment_counter(name, value, labels)
         call_a = total_calls[0]
-        assert call_a[0][0] == "http.requests.total"
+        assert call_a[0][0] == "http.server.requests"
 
     @pytest.mark.asyncio
     async def test_latency_recorded(self, middleware):
@@ -91,7 +90,7 @@ class TestTelemetryMiddleware:
 
         histogram_calls = [
             c for c in mock_tel.observe_histogram.call_args_list
-            if c.args[0] == "http.request.duration_ms"
+            if c.args[0] == "http.server.request.duration"
         ]
         assert len(histogram_calls) == 1
         # Duration should be a positive float
@@ -109,7 +108,7 @@ class TestTelemetryMiddleware:
 
         error_calls = [
             c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.requests.errors"
+            if c.args[0] == "http.server.request.errors"
         ]
         assert len(error_calls) == 1
 
@@ -125,7 +124,7 @@ class TestTelemetryMiddleware:
 
         error_calls = [
             c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.requests.errors"
+            if c.args[0] == "http.server.request.errors"
         ]
         assert len(error_calls) == 0
 
@@ -142,7 +141,7 @@ class TestTelemetryMiddleware:
 
         error_calls = [
             c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.requests.errors"
+            if c.args[0] == "http.server.request.errors"
         ]
         assert len(error_calls) == 1
 
@@ -157,11 +156,13 @@ class TestTelemetryMiddleware:
             await middleware.dispatch(request, call_next)
 
         active_calls = [
-            c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.requests.active"
+            c for c in mock_tel.adjust_gauge.call_args_list
+            if c.args[0] == "http.server.active_requests"
         ]
         # Should have +1 then -1
         assert len(active_calls) == 2
+        assert active_calls[0].args[1] == 1
+        assert active_calls[1].args[1] == -1
 
     @pytest.mark.asyncio
     async def test_path_normalization_in_labels(self, middleware):
@@ -177,11 +178,11 @@ class TestTelemetryMiddleware:
 
         total_calls = [
             c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.requests.total"
+            if c.args[0] == "http.server.requests"
         ]
         assert len(total_calls) == 1
         labels = total_calls[0][0][2]  # third positional arg
-        assert labels["path_template"] == "/api/missions/{id}"
+        assert labels["route"] == "/api/missions/{id}"
 
     @pytest.mark.asyncio
     async def test_correlation_id_in_labels(self, middleware):
@@ -195,7 +196,7 @@ class TestTelemetryMiddleware:
 
         total_calls = [
             c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.requests.total"
+            if c.args[0] == "http.server.requests"
         ]
         labels = total_calls[0][0][2]
         assert labels["correlation_id"] == "req-abc-123"

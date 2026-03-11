@@ -211,6 +211,13 @@ class Settings(BaseSettings):
             raise ValueError("SMTP_PORT must be between 1 and 65535")
         return v
 
+    # --- Metrics / Telemetry ---
+    METRICS_ENABLED: bool = True
+    METRICS_EXPORT_INTERVAL: int = 60  # seconds
+    METRICS_RETENTION_HOURS: int = 168  # 7 days
+    OTEL_EXPORTER_ENDPOINT: str | None = None  # Future: OTel collector URL
+    OTEL_SERVICE_NAME: str = "spectra"
+
     # Multi-provider
     OLLAMA_ENABLED: bool = False  # Whether Ollama is available as secondary provider
 

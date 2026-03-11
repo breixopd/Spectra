@@ -1,16 +1,23 @@
 """
-OpenTelemetry Tracing and Metrics for Spectra.
+OpenTelemetry-compatible tracing and metrics for Spectra.
+
+Follows OTel semantic conventions for metric and attribute naming
+without requiring the opentelemetry-sdk.  All data is stored in-memory
+and can be exported via ``/metrics`` (Prometheus text format) or the
+existing ``/api/v1/observability/export/otlp`` (OTLP JSON).
 
 Provides distributed tracing and metrics collection for:
 - HTTP requests
 - LLM calls
 - Tool executions
 - Mission workflows
-
-Integrates with Jaeger, Prometheus, or other OTLP-compatible backends.
+- System resources (CPU, memory, GC, file descriptors)
 """
 
+import gc
 import logging
+import os
+import resource as _resource
 from collections import deque
 from collections.abc import Callable
 from contextlib import asynccontextmanager
@@ -23,6 +30,47 @@ logger = logging.getLogger("spectra.telemetry")
 
 P = ParamSpec("P")
 T = TypeVar("T")
+
+# ---------------------------------------------------------------------------
+# OTel metric description registry
+# ---------------------------------------------------------------------------
+_METRIC_DESCRIPTIONS: dict[str, str] = {
+    "http.server.requests": "Total HTTP requests received",
+    "http.server.request.duration": "HTTP request duration in milliseconds",
+    "http.server.request.errors": "HTTP requests that resulted in 5xx errors",
+    "http.server.active_requests": "Number of in-flight HTTP requests",
+    "db.client.connections.usage": "Database connection pool usage",
+    "process.runtime.cpython.memory": "Process memory usage in bytes",
+    "process.runtime.cpython.cpu_time": "Cumulative CPU time in seconds",
+    "process.runtime.cpython.gc_count": "Python GC collection count by generation",
+    "process.open_file_descriptors": "Open file descriptor count",
+    "llm_calls_total": "Total LLM API calls",
+    "llm_duration_ms": "LLM call duration in milliseconds",
+    "llm_tokens_total": "Total LLM tokens consumed",
+    "llm_errors_total": "Failed LLM API calls",
+    "tool_executions_total": "Total tool executions",
+    "tool_duration_ms": "Tool execution duration in milliseconds",
+    "tool_errors_total": "Failed tool executions",
+    "mission_events_total": "Mission lifecycle events",
+}
+
+
+@dataclass
+class Sample:
+    """A single metric sample with labels and value."""
+
+    labels: dict[str, str]
+    value: float
+
+
+@dataclass
+class MetricFamily:
+    """A named collection of samples (Prometheus-style metric family)."""
+
+    name: str
+    description: str
+    type: str  # "counter", "gauge", "summary"
+    samples: list[Sample] = field(default_factory=list)
 
 
 @dataclass
@@ -243,6 +291,15 @@ class TelemetryCollector:
         """Set a gauge metric."""
         self.record_metric(name, value, labels, "gauge")
 
+    def adjust_gauge(
+        self, name: str, delta: float, labels: dict[str, str] | None = None
+    ) -> None:
+        """Increment or decrement a gauge by *delta*."""
+        key = (
+            f"{name}:{','.join(f'{k}={v}' for k, v in sorted((labels or {}).items()))}"
+        )
+        self._gauges[key] = self._gauges.get(key, 0) + delta
+
     def observe_histogram(
         self, name: str, value: float, labels: dict[str, str] | None = None
     ) -> None:
@@ -429,14 +486,165 @@ class TelemetryCollector:
         errors = [t for t in self._traces if t.status == "error"]
         return [e.to_dict() for e in errors[-limit:]]
 
-    def export_otlp_format(self) -> dict[str, Any]:
-        """Export metrics and traces in OTLP JSON-compatible format."""
+    # --- Resource attributes (OTel) ---
+
+    def get_resource_attributes(self) -> dict[str, str]:
+        """Return OTel resource attributes for this service."""
+        from app.core.config import settings
         from app.version import __version__
 
+        return {
+            "service.name": settings.OTEL_SERVICE_NAME,
+            "service.version": __version__,
+            "deployment.environment": "development" if settings.DEBUG else "production",
+            "telemetry.sdk.language": "python",
+        }
+
+    # --- System resource collection ---
+
+    def collect_system_resources(self) -> None:
+        """Collect system resource metrics using only the stdlib."""
+        usage = _resource.getrusage(_resource.RUSAGE_SELF)
+
+        # CPU time (seconds)
+        self.set_gauge(
+            "process.runtime.cpython.cpu_time", usage.ru_utime, {"type": "user"}
+        )
+        self.set_gauge(
+            "process.runtime.cpython.cpu_time", usage.ru_stime, {"type": "system"}
+        )
+
+        # Memory from /proc/self/status (Linux) — VmRSS / VmSize
+        try:
+            with open("/proc/self/status") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        rss_kb = int(line.split()[1])
+                        self.set_gauge(
+                            "process.runtime.cpython.memory",
+                            float(rss_kb * 1024),
+                            {"type": "rss"},
+                        )
+                    elif line.startswith("VmSize:"):
+                        vms_kb = int(line.split()[1])
+                        self.set_gauge(
+                            "process.runtime.cpython.memory",
+                            float(vms_kb * 1024),
+                            {"type": "vms"},
+                        )
+        except OSError:
+            # Fallback: max RSS from resource module (KB on Linux)
+            self.set_gauge(
+                "process.runtime.cpython.memory",
+                float(usage.ru_maxrss * 1024),
+                {"type": "rss"},
+            )
+
+        # Open file descriptors
+        try:
+            fd_count = len(os.listdir(f"/proc/{os.getpid()}/fd"))
+            self.set_gauge("process.open_file_descriptors", float(fd_count))
+        except OSError:
+            pass
+
+        # Python GC stats
+        for gen_idx, gen_stats in enumerate(gc.get_stats()):
+            self.set_gauge(
+                "process.runtime.cpython.gc_count",
+                float(gen_stats["collections"]),
+                {"generation": str(gen_idx)},
+            )
+
+    # --- Prometheus / OTel export helpers ---
+
+    def get_all_metrics(self) -> list[MetricFamily]:
+        """Return all metrics structured as MetricFamily objects.
+
+        Suitable for rendering into Prometheus text exposition format.
+        """
+        families: dict[str, MetricFamily] = {}
+
+        def _parse_labels(label_str: str) -> dict[str, str]:
+            if not label_str:
+                return {}
+            labels: dict[str, str] = {}
+            for part in label_str.split(","):
+                if "=" in part:
+                    k, v = part.split("=", 1)
+                    labels[k] = v
+            return labels
+
+        # Counters
+        for key, value in self._counters.items():
+            name, label_str = key.split(":", 1)
+            labels = _parse_labels(label_str)
+            if name not in families:
+                desc = _METRIC_DESCRIPTIONS.get(name, "")
+                families[name] = MetricFamily(
+                    name=name, description=desc, type="counter"
+                )
+            families[name].samples.append(Sample(labels=labels, value=value))
+
+        # Gauges
+        for key, value in self._gauges.items():
+            name, label_str = key.split(":", 1)
+            labels = _parse_labels(label_str)
+            if name not in families:
+                desc = _METRIC_DESCRIPTIONS.get(name, "")
+                families[name] = MetricFamily(
+                    name=name, description=desc, type="gauge"
+                )
+            families[name].samples.append(Sample(labels=labels, value=value))
+
+        # Histograms → emitted as "summary" (quantiles + _count + _sum)
+        for key, values in self._histograms.items():
+            name, label_str = key.split(":", 1)
+            labels = _parse_labels(label_str)
+            if not values:
+                continue
+            sorted_v = sorted(values)
+            n = len(sorted_v)
+
+            if name not in families:
+                desc = _METRIC_DESCRIPTIONS.get(name, "")
+                families[name] = MetricFamily(
+                    name=name, description=desc, type="summary"
+                )
+
+            for q, q_label in ((0.5, "0.5"), (0.9, "0.9"), (0.99, "0.99")):
+                idx = min(int(n * q), n - 1)
+                families[name].samples.append(
+                    Sample(
+                        labels={**labels, "quantile": q_label},
+                        value=round(sorted_v[idx], 4),
+                    )
+                )
+
+            # _count / _sum as separate families
+            count_name = f"{name}_count"
+            sum_name = f"{name}_sum"
+            if count_name not in families:
+                families[count_name] = MetricFamily(
+                    name=count_name, description="", type="counter"
+                )
+            families[count_name].samples.append(
+                Sample(labels=labels, value=float(n))
+            )
+            if sum_name not in families:
+                families[sum_name] = MetricFamily(
+                    name=sum_name, description="", type="counter"
+                )
+            families[sum_name].samples.append(
+                Sample(labels=labels, value=round(sum(sorted_v), 4))
+            )
+
+        return list(families.values())
+
+    def export_otlp_format(self) -> dict[str, Any]:
+        """Export metrics and traces in OTLP JSON-compatible format."""
+        res_attrs = self.get_resource_attributes()
         resource_attrs = [
-            {"key": "service.name", "value": {"stringValue": "spectra"}},
-            {"key": "service.version", "value": {"stringValue": __version__}},
-            {"key": "telemetry.sdk.language", "value": {"stringValue": "python"}},
+            {"key": k, "value": {"stringValue": v}} for k, v in res_attrs.items()
         ]
         resource = {"attributes": resource_attrs}
         now_ns = int(datetime.now().timestamp() * 1e9)
@@ -548,20 +756,20 @@ class TelemetryCollector:
         # API error rates by endpoint path
         error_rates: dict[str, float] = {}
         for key, value in self._counters.items():
-            if "http.requests.errors" in key:
-                # Extract path label
+            if "http.server.request.errors" in key:
+                # Extract route label
                 for part in key.split(","):
-                    if part.startswith("path="):
+                    if part.startswith("route="):
                         error_rates[part.split("=", 1)[1]] = value
                         break
 
         # Latency percentiles by endpoint
         latency_by_endpoint: dict[str, dict[str, float]] = {}
         for key, values in self._histograms.items():
-            if "http.request.duration_ms" in key:
+            if "http.server.request.duration" in key:
                 path = ""
                 for part in key.split(","):
-                    if part.startswith("path="):
+                    if part.startswith("route="):
                         path = part.split("=", 1)[1]
                         break
                 if path and values:
@@ -646,6 +854,8 @@ async def record_mission_event(
 __all__ = [
     "SpanData",
     "MetricData",
+    "MetricFamily",
+    "Sample",
     "TelemetryCollector",
     "telemetry",
     "trace",
