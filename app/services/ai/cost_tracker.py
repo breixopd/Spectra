@@ -94,7 +94,10 @@ class CostTracker:
     ) -> float:
         """Estimate cost based on model pricing."""
         model_lower = model.lower()
-        for prefix, (input_price, output_price) in MODEL_PRICING.items():
+        # Sort by prefix length descending so "gpt-4o-mini" matches before "gpt-4o"
+        for prefix, (input_price, output_price) in sorted(
+            MODEL_PRICING.items(), key=lambda kv: len(kv[0]), reverse=True
+        ):
             if prefix in model_lower:
                 return (
                     (input_tokens / 1_000_000) * input_price

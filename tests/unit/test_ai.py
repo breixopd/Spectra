@@ -11,6 +11,7 @@ from app.services.ai.agents.base import (
     ActionRisk,
     AgentAction,
     AgentContext,
+    ParallelToolAction,
 )
 from app.services.ai.agents.scope import ScopeAction, ScopeAgent, ScopeInput
 from app.services.ai.agents.tool_selector import (
@@ -342,8 +343,13 @@ class TestToolSelectorAgent:
 
         assert result.success is True
         assert result.action is not None
-        assert isinstance(result.action, ToolSelectorOutput)
-        assert result.action.tool_name in ["nmap", "naabu"]
+        # May return ParallelToolAction (nmap+naabu group) or ToolSelectorOutput
+        assert isinstance(result.action, (ToolSelectorOutput, ParallelToolAction))
+        if isinstance(result.action, ToolSelectorOutput):
+            assert result.action.tool_name in ["nmap", "naabu"]
+        else:
+            tool_names = {t.tool_name for t in result.action.tools}
+            assert tool_names & {"nmap", "naabu"}
 
     @pytest.mark.asyncio
     async def test_respects_user_preference(

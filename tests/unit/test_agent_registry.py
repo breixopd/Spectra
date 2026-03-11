@@ -37,19 +37,22 @@ class _DummyOutput(AgentAction):
     reasoning: str = "test"
 
 
-def _make_agent_class(role: AgentRole, name: str = "Dummy") -> type[Agent[Any, Any]]:
+def _make_agent_class(agent_role: AgentRole, agent_name: str = "Dummy") -> type[Agent[Any, Any]]:
     """Dynamically build a minimal concrete Agent subclass."""
 
+    _role = agent_role
+    _name = agent_name
+
     class _Cls(Agent[_DummyInput, _DummyOutput]):
-        role: ClassVar[AgentRole] = role  # type: ignore[assignment]
-        name: ClassVar[str] = name
-        description: ClassVar[str] = f"{name} agent"
+        role: ClassVar[AgentRole] = _role  # type: ignore[assignment]
+        name: ClassVar[str] = _name
+        description: ClassVar[str] = f"{_name} agent"
 
         async def execute(self, context: AgentContext, input_data: _DummyInput) -> AgentResult:
             return AgentResult(success=True, action=_DummyOutput())
 
-    _Cls.__name__ = name
-    _Cls.__qualname__ = name
+    _Cls.__name__ = agent_name
+    _Cls.__qualname__ = agent_name
     return _Cls
 
 
