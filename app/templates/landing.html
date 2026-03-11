@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ app_name }} — Autonomous Security Assessment Platform</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#8b5cf6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <!-- SEO Meta -->
     <meta name="description" content="{{ app_name }} is an AI-driven autonomous security assessment platform. Deploy intelligent agents for penetration testing, vulnerability scanning, and comprehensive security reporting.">
@@ -226,12 +230,18 @@
         .feature-card:hover {
             background: var(--bg-card-hover);
             border-color: var(--border-hover);
-            transform: translateY(-3px);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3), 0 0 0 1px var(--border-hover);
         }
+        .feature-card:hover .feature-icon.green { box-shadow: 0 0 20px var(--accent-dim); }
+        .feature-card:hover .feature-icon.violet { box-shadow: 0 0 20px var(--violet-dim); }
+        .feature-card:hover .feature-icon.blue { box-shadow: 0 0 20px rgba(56,189,248,0.15); }
+        .feature-card:hover .feature-icon.amber { box-shadow: 0 0 20px rgba(251,191,36,0.15); }
         .feature-icon {
             width: 48px; height: 48px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
             margin-bottom: 1.25rem;
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
         }
         .feature-icon svg { width: 24px; height: 24px; }
         .feature-icon.green  { background: var(--accent-dim); color: var(--accent); }
@@ -283,7 +293,7 @@
             border-radius: 20px;
             transition: transform 0.25s, border-color 0.25s;
         }
-        .plan-card:hover { transform: translateY(-4px); border-color: var(--border-hover); }
+        .plan-card:hover { transform: translateY(-4px); border-color: var(--border-hover); box-shadow: 0 16px 48px rgba(0,0,0,0.25); }
         .plan-card.popular {
             border-color: var(--accent);
             box-shadow: 0 0 40px rgba(0,255,136,0.08);
@@ -340,9 +350,10 @@
         .proof-logo {
             font-size: 1.125rem; font-weight: 700; letter-spacing: 0.06em;
             text-transform: uppercase; color: rgba(255,255,255,0.12);
-            transition: color 0.3s;
+            transition: color 0.3s, transform 0.3s;
+            user-select: none;
         }
-        .proof-logo:hover { color: rgba(255,255,255,0.25); }
+        .proof-logo:hover { color: rgba(255,255,255,0.3); transform: scale(1.05); }
 
         /* ====== STATS ====== */
         .stats-bar {
@@ -377,7 +388,7 @@
             transition: transform 0.25s, border-color 0.25s;
             position: relative;
         }
-        .testimonial-card:hover { transform: translateY(-3px); border-color: var(--border-hover); }
+        .testimonial-card:hover { transform: translateY(-3px); border-color: var(--border-hover); box-shadow: 0 12px 36px rgba(0,0,0,0.2); }
         .testimonial-card:nth-child(2) { transform: translateY(12px); }
         .testimonial-card:nth-child(2):hover { transform: translateY(9px); }
         .testimonial-quote {
@@ -409,8 +420,10 @@
             padding: 1.25rem 0; cursor: pointer; display: flex;
             align-items: center; justify-content: space-between; gap: 1rem;
             font-family: var(--font-sans);
+            transition: color 0.2s;
         }
         .faq-question:hover { color: var(--accent); }
+        .faq-question:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
         .faq-icon {
             width: 20px; height: 20px; flex-shrink: 0;
             transition: transform 0.25s;
@@ -807,63 +820,63 @@
             Everything you need to know about getting started with {{ app_name }}.
         </p>
 
-        <div class="faq-list" style="text-align:left;">
-            <div class="faq-item reveal">
-                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+        <div class="faq-list" style="text-align:left;" role="list">
+            <div class="faq-item reveal" role="listitem">
+                <button class="faq-question" aria-expanded="false" aria-controls="faq-a1" onclick="toggleFaq(this)">
                     What types of security assessments can {{ app_name }} perform?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </button>
-                <div class="faq-answer">
+                <div class="faq-answer" id="faq-a1" role="region">
                     <p>{{ app_name }} supports full-scope penetration testing including network reconnaissance, vulnerability scanning, web application testing, service enumeration, and automated exploitation — all orchestrated by AI agents within sandboxed containers.</p>
                 </div>
             </div>
 
-            <div class="faq-item reveal">
-                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <div class="faq-item reveal" role="listitem">
+                <button class="faq-question" aria-expanded="false" aria-controls="faq-a2" onclick="toggleFaq(this)">
                     Is it safe to run automated exploits against production systems?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </button>
-                <div class="faq-answer">
+                <div class="faq-answer" id="faq-a2" role="region">
                     <p>All tools run in isolated, sandboxed containers with configurable scope limits and rules of engagement. The platform enforces target boundaries and supports human-in-the-loop approval for high-risk actions. We recommend testing against staging environments first.</p>
                 </div>
             </div>
 
-            <div class="faq-item reveal">
-                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <div class="faq-item reveal" role="listitem">
+                <button class="faq-question" aria-expanded="false" aria-controls="faq-a3" onclick="toggleFaq(this)">
                     What AI models does the platform use?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </button>
-                <div class="faq-answer">
+                <div class="faq-answer" id="faq-a3" role="region">
                     <p>{{ app_name }} is model-agnostic and supports multiple LLM providers including OpenAI, Anthropic, and local models via Ollama. You can configure your preferred provider during setup or switch at any time from the settings panel.</p>
                 </div>
             </div>
 
-            <div class="faq-item reveal">
-                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <div class="faq-item reveal" role="listitem">
+                <button class="faq-question" aria-expanded="false" aria-controls="faq-a4" onclick="toggleFaq(this)">
                     Can I self-host {{ app_name }}?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </button>
-                <div class="faq-answer">
+                <div class="faq-answer" id="faq-a4" role="region">
                     <p>Yes. {{ app_name }} is designed for self-hosted deployment via Docker Compose. You maintain full control over your data, assessment results, and infrastructure. No data ever leaves your environment unless you configure external AI providers.</p>
                 </div>
             </div>
 
-            <div class="faq-item reveal">
-                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <div class="faq-item reveal" role="listitem">
+                <button class="faq-question" aria-expanded="false" aria-controls="faq-a5" onclick="toggleFaq(this)">
                     How are assessment reports generated?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </button>
-                <div class="faq-answer">
+                <div class="faq-answer" id="faq-a5" role="region">
                     <p>Reports are auto-generated as PDF documents with CVSS-scored findings, evidence screenshots, remediation guidance, and executive summaries. Each finding includes detailed reproduction steps and is mapped to relevant CVE identifiers when applicable.</p>
                 </div>
             </div>
 
-            <div class="faq-item reveal">
-                <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+            <div class="faq-item reveal" role="listitem">
+                <button class="faq-question" aria-expanded="false" aria-controls="faq-a6" onclick="toggleFaq(this)">
                     What security tools are included?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </button>
-                <div class="faq-answer">
+                <div class="faq-answer" id="faq-a6" role="region">
                     <p>The platform ships with 25+ pre-configured tools including Nmap, Nuclei, Nikto, SQLMap, Feroxbuster, Hydra, and more. New tools can be added by dropping a JSON plugin file into the plugins directory — no code changes required.</p>
                 </div>
             </div>
@@ -961,6 +974,14 @@
     }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
 
     reveals.forEach(el => observer.observe(el));
+
+    // Accessible FAQ toggle
+    function toggleFaq(btn) {
+        const item = btn.parentElement;
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        item.classList.toggle('open');
+    }
 </script>
 </body>
 </html>
