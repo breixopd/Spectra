@@ -8,7 +8,6 @@ Contains:
 - Persistent memory (cross-mission learning)
 - Playbook engine (deterministic attack patterns)
 - CVE intelligence (version-to-exploit correlation)
-- Grounding framework (anti-hallucination)
 - RAG engine (knowledge retrieval via PostgreSQL)
 """
 

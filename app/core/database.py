@@ -44,16 +44,6 @@ def _configure_database_url(url: str) -> tuple[str, dict]:
             converted = parsed._replace(query=new_query)
             url = urlunparse(converted)
 
-    # DEBUG: Log the connection details
-    # masked_url = url
-    # if "@" in url:
-    #     part1, part2 = url.rsplit("@", 1)
-    #     if ":" in part1:
-    #         schema_user, _ = part1.rsplit(":", 1)
-    #         masked_url = f"{schema_user}:***@{part2}"
-    # logger.info(f"Connecting to DB: {masked_url}")
-    # logger.info(f"DB Connect Args: {connect_args}")
-
     return url, connect_args
 
 
