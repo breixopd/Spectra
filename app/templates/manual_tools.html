@@ -948,7 +948,7 @@ async function executeManualTool() {
     status.textContent = 'Executing...';
 
     const outputArea = document.getElementById('output-area');
-    outputArea.innerHTML = `<span class="text-violet-400">$ ${selectedToolConfig.command} ... ${target}</span>\n<span class="text-slate-500">Waiting for results...</span>\n`;
+    outputArea.innerHTML = `<span class="text-violet-400">$ ${escapeHtml(selectedToolConfig.command)} ... ${escapeHtml(target)}</span>\n<span class="text-slate-500">Waiting for results...</span>\n`;
     document.getElementById('output-tool-label').textContent = selectedToolConfig.name;
     document.getElementById('output-duration').textContent = '';
     document.getElementById('findings-panel').classList.add('hidden');
@@ -1011,7 +1011,7 @@ async function executeManualTool() {
         showNextToolSuggestions(selectedToolConfig.id);
     } catch (e) {
         clearInterval(timer);
-        outputArea.innerHTML += `\n<span class="text-red-400">Error: ${e.message}</span>`;
+        outputArea.innerHTML += `\n<span class="text-red-400">Error: ${escapeHtml(e.message)}</span>`;
         status.textContent = 'Error';
         status.className = 'text-xs ml-auto font-mono text-rose-400';
     } finally {
@@ -1276,12 +1276,12 @@ async function runPipeline() {
         }
 
         if (!target) {
-            output.innerHTML += `<span class="text-amber-400">Step ${i+1} (${step.toolId}): No target, skipping\n</span>`;
+            output.innerHTML += `<span class="text-amber-400">Step ${i+1} (${escapeHtml(step.toolId)}): No target, skipping\n</span>`;
             node?.classList.remove('active');
             continue;
         }
 
-        output.innerHTML += `<span class="text-violet-400">━━━ Step ${i+1}: ${step.toolId} → ${escapeHtml(target)} ━━━</span>\n`;
+        output.innerHTML += `<span class="text-violet-400">━━━ Step ${i+1}: ${escapeHtml(step.toolId)} → ${escapeHtml(target)} ━━━</span>\n`;
         output.innerHTML += `<span class="text-slate-500">Executing...</span>\n`;
         output.scrollTop = output.scrollHeight;
 
@@ -1305,7 +1305,7 @@ async function runPipeline() {
                 output.innerHTML += `<span class="text-amber-500/60">${escapeHtml(result.stderr.slice(0, 500))}</span>\n`;
             }
         } catch (e) {
-            output.innerHTML += `<span class="text-rose-400">Error: ${e.message}</span>\n`;
+            output.innerHTML += `<span class="text-rose-400">Error: ${escapeHtml(e.message)}</span>\n`;
         }
 
         node?.classList.remove('active');
@@ -1466,7 +1466,7 @@ async function searchCVEs() {
             </div>`;
         }).join('');
     } catch (e) {
-        results.innerHTML = `<div class="text-red-400 text-sm text-center py-4">Error: ${e.message}</div>`;
+        results.innerHTML = `<div class="text-red-400 text-sm text-center py-4">Error: ${escapeHtml(e.message)}</div>`;
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-magnifying-glass mr-1"></i> Search';
@@ -2122,7 +2122,7 @@ function renderHistory() {
     const toolSelect = document.getElementById('history-tool-filter');
     const tools = [...new Set(commandHistory.map(h => h.tool))];
     const currentVal = toolSelect.value;
-    toolSelect.innerHTML = '<option value="">All tools</option>' + tools.map(t => `<option value="${t}">${t}</option>`).join('');
+    toolSelect.innerHTML = '<option value="">All tools</option>' + tools.map(t => `<option value="${escapeAttr(t)}">${escapeHtml(t)}</option>`).join('');
     toolSelect.value = currentVal;
 
     let filtered = commandHistory.filter(h => {
@@ -2254,7 +2254,7 @@ function showModal(title, content, widthClass) {
     modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     modal.innerHTML = `<div class="modal-content ${widthClass || 'max-w-3xl'} w-full">
         <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <h3 class="text-sm font-bold text-white">${title}</h3>
+            <h3 class="text-sm font-bold text-white">${escapeHtml(title)}</h3>
             <button onclick="document.getElementById('spectra-modal').remove()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div>${content}</div>

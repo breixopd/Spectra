@@ -43,6 +43,20 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
 
+    @field_validator("DATABASE_POOL_SIZE")
+    @classmethod
+    def validate_pool_size(cls, v: int) -> int:
+        if v < 1 or v > 100:
+            raise ValueError("DATABASE_POOL_SIZE must be between 1 and 100")
+        return v
+
+    @field_validator("DATABASE_MAX_OVERFLOW")
+    @classmethod
+    def validate_max_overflow(cls, v: int) -> int:
+        if v < 0 or v > 100:
+            raise ValueError("DATABASE_MAX_OVERFLOW must be between 0 and 100")
+        return v
+
     # --- AI / LLM ---
     AI_PROVIDER: str = "litellm"  # litellm (all models), mock (testing only)
     OLLAMA_HOST: str = "http://ai:11434"
@@ -143,6 +157,13 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: SecretStr = SecretStr("")
     SMTP_FROM: str = ""
     SMTP_USE_TLS: bool = True
+
+    @field_validator("SMTP_PORT")
+    @classmethod
+    def validate_smtp_port(cls, v: int) -> int:
+        if v < 1 or v > 65535:
+            raise ValueError("SMTP_PORT must be between 1 and 65535")
+        return v
 
     # Multi-provider
     OLLAMA_ENABLED: bool = False  # Whether Ollama is available as secondary provider
