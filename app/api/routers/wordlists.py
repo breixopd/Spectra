@@ -138,9 +138,10 @@ async def upload_wordlist(
     user_dir = _user_wordlists_dir(_current_user)
     dest = user_dir / safe_name
 
-    content = await file.read()
-    if len(content) > 50 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large (max 50MB)")
+    MAX_WORDLIST_SIZE = 50 * 1024 * 1024  # 50MB
+    content = await file.read(MAX_WORDLIST_SIZE + 1)
+    if len(content) > MAX_WORDLIST_SIZE:
+        raise HTTPException(status_code=413, detail="Wordlist file too large (max 50MB)")
 
     dest.write_bytes(content)
     logger.info("Wordlist uploaded: %s (%d bytes)", safe_name, len(content))

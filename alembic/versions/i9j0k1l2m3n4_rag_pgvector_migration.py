@@ -14,6 +14,7 @@ migrates any existing JSONB embedding column to vector(1536).
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision = 'i9j0k1l2m3n4'
 down_revision = 'h8i9j0k1l2m3'
@@ -78,4 +79,33 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # pgvector extension is shared infrastructure — don't drop it
-    pass
+    conn = op.get_bind()
+
+    # Only downgrade if the table exists
+    result = conn.execute(sa.text(
+        "SELECT 1 FROM information_schema.tables WHERE table_name = 'rag_documents'"
+    ))
+    if not result.first():
+        return
+
+    # Drop HNSW index
+    op.drop_index('idx_rag_embedding_hnsw', table_name='rag_documents', if_exists=True)
+
+    # Convert vector(1536) back to JSONB
+    result = conn.execute(sa.text(
+        "SELECT data_type FROM information_schema.columns "
+        "WHERE table_name = 'rag_documents' AND column_name = 'embedding'"
+    ))
+    row = result.first()
+    if row and row[0] == 'USER-DEFINED':  # vector type
+        op.alter_column('rag_documents', 'embedding',
+            type_=postgresql.JSONB,
+            postgresql_using='embedding::text::jsonb')
+
+    # Drop created_at column
+    result = conn.execute(sa.text(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = 'rag_documents' AND column_name = 'created_at'"
+    ))
+    if result.first():
+        op.drop_column('rag_documents', 'created_at')
