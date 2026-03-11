@@ -5,6 +5,7 @@ Defines the schema for tool plugins including installation,
 execution, parsing, and UI configuration.
 """
 
+import logging
 from enum import StrEnum
 from typing import Any
 
@@ -12,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.enums import RiskLevel
 
+logger = logging.getLogger(__name__)
 
 class ToolCategory(StrEnum):
     """Primary categories for security tools."""

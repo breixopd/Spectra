@@ -1,7 +1,10 @@
 """CVSS 3.1 score calculator."""
 
+import logging
 import math
 import re
+
+logger = logging.getLogger(__name__)
 
 # Metric value weights per CVSS 3.1 specification
 _WEIGHTS: dict[str, dict[str, float]] = {

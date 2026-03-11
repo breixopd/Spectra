@@ -1,5 +1,9 @@
 """Security testing payload reference collections."""
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 LFI_PAYLOADS = [
     {"name": "Linux passwd", "payload": "../../../../etc/passwd", "os": "linux"},
     {"name": "Linux shadow", "payload": "../../../../etc/shadow", "os": "linux"},

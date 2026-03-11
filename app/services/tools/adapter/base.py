@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from abc import ABC
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from app.services.tools.models import (
     ToolExecutionRequest,
 )
 
+logger = logging.getLogger(__name__)
 
 class ToolExecutionError(Exception):
     """Raised when tool execution fails."""

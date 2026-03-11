@@ -504,9 +504,31 @@
             .hero { padding: 7rem 1.25rem 4rem; min-height: auto; }
             .hero h1 { font-size: 2rem; }
         }
+        .skip-link {
+            position: absolute;
+            left: -9999px;
+            top: auto;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+        .skip-link:focus {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: auto;
+            height: auto;
+            padding: 1rem;
+            background: #1a1a2e;
+            color: #fff;
+            z-index: 10000;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- ====== NAVIGATION ====== -->
 <nav id="nav">
@@ -536,7 +558,7 @@
 </nav>
 
 <!-- ====== HERO ====== -->
-<section class="hero" id="hero">
+<section class="hero" id="main-content">
     <div class="hero-bg"></div>
     <div class="hero-grid"></div>
     <div class="hero-content">

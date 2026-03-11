@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import shlex
 from pathlib import Path
@@ -7,6 +8,7 @@ from typing import Any
 
 from app.services.tools.models import ToolConfig, ToolExecutionRequest
 
+logger = logging.getLogger(__name__)
 
 class CommandBuilder:
     """Handles command construction and argument templating."""

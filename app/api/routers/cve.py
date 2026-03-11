@@ -3,6 +3,7 @@
 Exposes CVE lookup capabilities to the UI for manual pentest workflows.
 """
 
+import logging
 import re
 from typing import Any
 
@@ -18,6 +19,8 @@ from app.services.ai.cve_intel import (
     lookup_cves_live,
     search_exploitdb,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/cve", tags=["CVE Intelligence"])
 

@@ -1,8 +1,10 @@
 """Context window management for LLM prompts."""
 
+import logging
 from dataclasses import dataclass
 from enum import IntEnum
 
+logger = logging.getLogger(__name__)
 
 class Priority(IntEnum):
     """Context section priority — lower number = higher priority (kept first)."""

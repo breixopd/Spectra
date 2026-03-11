@@ -7,6 +7,8 @@ Provides CRUD operations and finding associations.
 
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +23,8 @@ from app.models.target import Target
 from app.models.user import User
 from app.repositories.finding import FindingRepository
 from app.repositories.target import TargetRepository
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/targets", tags=["Targets"])
 

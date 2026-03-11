@@ -1,8 +1,10 @@
 """Mission-scoped shared blackboard for inter-agent communication."""
 
+import logging
 import time
 from typing import Any
 
+logger = logging.getLogger(__name__)
 
 class MissionBlackboard:
     """Shared memory for inter-agent communication within a mission."""

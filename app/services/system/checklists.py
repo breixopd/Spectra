@@ -1,6 +1,9 @@
 """Built-in methodology checklists for manual pentesting."""
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 BUILTIN_CHECKLISTS: dict[str, dict[str, Any]] = {
     "owasp_top10_2021": {

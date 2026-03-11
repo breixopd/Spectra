@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
+import logging
 from io import StringIO
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
@@ -25,6 +26,8 @@ from app.core.rbac import Permission, require_permission
 from app.models.finding import Finding, FindingStatus, Severity
 from app.models.user import User
 from app.repositories.finding import FindingRepository
+
+logger = logging.getLogger(__name__)
 
 MAX_BULK_SIZE = 100
 

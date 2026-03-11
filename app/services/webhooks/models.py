@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
 from app.models.infrastructure import JSONBType
 
+logger = logging.getLogger(__name__)
 
 class Webhook(Base):
     """A registered webhook endpoint for event delivery."""

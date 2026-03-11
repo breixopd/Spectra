@@ -1,8 +1,11 @@
 """Report template definitions for manual pentest sessions."""
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 REPORT_TEMPLATES: dict[str, dict[str, Any]] = {
     "executive": {

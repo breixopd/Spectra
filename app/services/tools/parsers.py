@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 import xml.etree.ElementTree as ET
 from typing import Any
 
+logger = logging.getLogger(__name__)
 
 def xml_to_dict(element: ET.Element) -> dict[str, Any]:
     """Convert an XML element's children into a dictionary.

@@ -1,5 +1,9 @@
 """Smart wordlist generation based on target context."""
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def generate_tech_wordlist(technologies: list[str]) -> list[str]:
     """Generate technology-specific paths based on discovered tech stack."""
