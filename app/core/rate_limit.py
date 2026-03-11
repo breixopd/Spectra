@@ -137,6 +137,8 @@ async def rate_limit_exceeded_handler(
         headers={
             "Retry-After": str(retry_after),
             "X-RateLimit-Limit": str(exc.detail),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": str(retry_after),
         },
     )
 

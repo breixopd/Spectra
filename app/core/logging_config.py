@@ -8,6 +8,7 @@ propagation via ContextVar for request tracing.
 import json
 import logging
 import os
+import re
 import sys
 from contextvars import ContextVar
 from datetime import UTC, datetime
@@ -56,6 +57,22 @@ class _CorrelationFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         record.correlation_id = correlation_id_var.get() or ""  # type: ignore[attr-defined]
+        return True
+
+
+class SensitiveFieldFilter(logging.Filter):
+    """Redacts sensitive values from log records before output."""
+
+    PATTERNS = [
+        (re.compile(r'(password|passwd|pwd)\s*[=:]\s*\S+', re.IGNORECASE), r'\1=***REDACTED***'),
+        (re.compile(r'(token|api_key|apikey|secret|authorization)\s*[=:]\s*\S+', re.IGNORECASE), r'\1=***REDACTED***'),
+        (re.compile(r'(Bearer\s+)\S+', re.IGNORECASE), r'\1***REDACTED***'),
+    ]
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            for pattern, replacement in self.PATTERNS:
+                record.msg = pattern.sub(replacement, record.msg)
         return True
 
 
@@ -116,6 +133,7 @@ def configure_logging(log_format: str = "", log_level: str = "") -> None:
 
     handler = logging.StreamHandler(sys.stdout)
     handler.addFilter(_CorrelationFilter())
+    handler.addFilter(SensitiveFieldFilter())
 
     if fmt == "json":
         handler.setFormatter(JSONFormatter())

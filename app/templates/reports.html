@@ -33,7 +33,7 @@
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fa-solid fa-search text-slate-500"></i>
                 </div>
-                <input type="text" id="filter-search" oninput="applyFilters()" placeholder="Search missions..."
+                <input type="text" id="filter-search" oninput="debouncedApplyFilters()" placeholder="Search missions..."
                     class="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-all">
             </div>
         </div>
@@ -306,5 +306,6 @@ async function confirmDeleteMission() {
         alert('Error deleting mission');
     }
 }
+const debouncedApplyFilters = debounce(applyFilters);
 </script>
 {% endblock %}

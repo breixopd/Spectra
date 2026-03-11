@@ -10,6 +10,19 @@
  */
 
 /**
+ * Debounce function - delays invoking func until after wait ms have elapsed
+ * since the last time the debounced function was invoked.
+ */
+function debounce(func, wait = 300) {
+    let timeoutId;
+    return function(...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), wait);
+    };
+}
+window.debounce = debounce;
+
+/**
  * Escape HTML special characters to prevent XSS.
  * @param {string} str - The string to escape.
  * @returns {string} The escaped string.

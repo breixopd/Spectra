@@ -6,7 +6,6 @@ Create Date: 2026-03-10
 
 """
 
-from typing import Union
 
 import sqlalchemy as sa
 
@@ -14,7 +13,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "g7a8b9c0d1e2"
-down_revision: Union[str, None] = "m3n4o5p6q7r8"
+down_revision: str | None = "m3n4o5p6q7r8"
 branch_labels = None
 depends_on = None
 
