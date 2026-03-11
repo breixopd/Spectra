@@ -275,7 +275,6 @@ class TestShellKeepalive:
     @pytest.mark.asyncio
     async def test_keepalive_task_created_and_cancelled(self):
         """shell_websocket creates a keepalive task and cancels it on disconnect."""
-        import asyncio
 
         from app.api.routers.shell import shell_websocket
 
@@ -296,13 +295,9 @@ class TestShellKeepalive:
         mock_user.username = "tester"
         mock_user.is_superuser = False
 
-        created_tasks = []
-        original_create_task = asyncio.create_task
-
-        def track_create_task(coro, **kwargs):
-            task = original_create_task(coro, **kwargs)
-            created_tasks.append(task)
-            return task
+        # Track create_task calls and capture the cancel calls
+        mock_task = MagicMock()
+        mock_task.cancel = MagicMock()
 
         with (
             patch("app.api.routers.shell.validate_websocket_token", return_value=mock_user),
@@ -310,10 +305,9 @@ class TestShellKeepalive:
             patch("app.api.routers.shell.shell_manager") as mock_mgr,
             patch("app.api.routers.shell.audit_log_event", new_callable=AsyncMock),
             patch("app.api.routers.shell.async_session_maker") as mock_session_maker,
-            patch("app.api.routers.shell.asyncio.create_task", side_effect=track_create_task) as mock_ct,
+            patch("app.api.routers.shell.asyncio.create_task", return_value=mock_task) as mock_ct,
         ):
             mock_mgr.get_session = AsyncMock(return_value=mock_session)
-            # async context manager for audit_log_event db session
             mock_db = AsyncMock()
             mock_session_maker.return_value.__aenter__ = AsyncMock(return_value=mock_db)
             mock_session_maker.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -323,7 +317,4 @@ class TestShellKeepalive:
             # A keepalive task was created
             assert mock_ct.called
             # The task was cancelled in the finally block
-            assert len(created_tasks) > 0
-            for t in created_tasks:
-                # Task should be done (cancelled or finished with exception)
-                assert t.done()
+            mock_task.cancel.assert_called()
