@@ -19,7 +19,12 @@
 
             <div>
                 <label for="password" class="block text-sm font-medium text-slate-400 mb-1">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="current-password" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                <div class="relative">
+                    <input type="password" id="password" name="password" required autocomplete="current-password" class="w-full bg-black/30 border border-white/10 rounded-lg pl-4 pr-10 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                    <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-300 transition-colors" aria-label="Show password">
+                        <i class="fa-solid fa-eye" id="toggle-password-icon"></i>
+                    </button>
+                </div>
             </div>
 
             <button type="submit" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white font-bold transition-all mt-6 shadow-lg shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none">
@@ -44,6 +49,25 @@
         successMsg.textContent = 'Setup complete! Please log in with your admin credentials.';
         successMsg.classList.remove('hidden');
     }
+
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('toggle-password');
+    const togglePasswordIcon = document.getElementById('toggle-password-icon');
+
+    togglePasswordBtn.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+
+        if (type === 'text') {
+            togglePasswordIcon.classList.remove('fa-eye');
+            togglePasswordIcon.classList.add('fa-eye-slash');
+            togglePasswordBtn.setAttribute('aria-label', 'Hide password');
+        } else {
+            togglePasswordIcon.classList.remove('fa-eye-slash');
+            togglePasswordIcon.classList.add('fa-eye');
+            togglePasswordBtn.setAttribute('aria-label', 'Show password');
+        }
+    });
 
     document.getElementById('login-form').onsubmit = async (e) => {
         e.preventDefault();
