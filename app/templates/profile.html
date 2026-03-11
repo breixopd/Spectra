@@ -328,19 +328,19 @@
                     <div class="grid grid-cols-2 gap-3 mt-4">
                         <div class="bg-slate-900/50 rounded p-3">
                             <div class="text-xs text-slate-500">Missions / month</div>
-                            <div class="text-sm font-medium text-white mt-0.5">${user.max_missions_per_month || 'Unlimited'}</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(user.max_missions_per_month || 'Unlimited'))}</div>
                         </div>
                         <div class="bg-slate-900/50 rounded p-3">
                             <div class="text-xs text-slate-500">Max targets</div>
-                            <div class="text-sm font-medium text-white mt-0.5">${user.max_targets || 'Unlimited'}</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(user.max_targets || 'Unlimited'))}</div>
                         </div>
                         <div class="bg-slate-900/50 rounded p-3">
                             <div class="text-xs text-slate-500">API req / hour</div>
-                            <div class="text-sm font-medium text-white mt-0.5">${user.max_api_requests_per_hour || '—'}</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(user.max_api_requests_per_hour || '—'))}</div>
                         </div>
                         <div class="bg-slate-900/50 rounded p-3">
                             <div class="text-xs text-slate-500">Storage</div>
-                            <div class="text-sm font-medium text-white mt-0.5">${user.max_storage_mb ? user.max_storage_mb + ' MB' : '—'}</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${user.max_storage_mb ? escapeHtml(String(user.max_storage_mb)) + ' MB' : '—'}</div>
                         </div>
                     </div>
                 </div>

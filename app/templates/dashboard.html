@@ -30,7 +30,7 @@
     .dash-error button:hover { background: rgba(255,255,255,0.08); color: #fff; }
 </style>
 <!-- Header / Mission Control -->
-<header class="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 animate-fade-in">
+<header class="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 animate-fade-in" role="navigation" aria-label="Mission control">
     <div class="flex items-center gap-3">
         <h1 class="text-lg font-semibold text-white tracking-tight">Assessment</h1>
     </div>
@@ -198,7 +198,7 @@
                     <div class="skeleton skeleton-text" style="width:60%;height:0.5rem;"></div>
                 </div>
             </div>
-            <div id="findings-data" class="hidden grid grid-cols-4 gap-2">
+            <div id="findings-data" class="hidden grid grid-cols-4 gap-2" role="status" aria-label="Findings summary">
                 <div class="bg-rose-500/10 border border-rose-500/20 rounded-lg flex flex-col items-center justify-center py-3" data-tooltip="CVSS 9.0-10.0" data-tooltip-pos="bottom">
                     <span class="text-xl font-bold text-rose-500 font-mono" id="count-critical">0</span>
                     <span class="text-[9px] text-rose-400/70 uppercase mt-0.5">Critical</span>
@@ -271,7 +271,7 @@
                     <div class="w-2 h-2 rounded-full bg-slate-700"></div>
                 </div>
             </div>
-            <div id="terminal-output" class="flex-1 overflow-y-auto p-3 font-mono text-xs text-slate-400 space-y-0.5">
+            <div id="terminal-output" class="flex-1 overflow-y-auto p-3 font-mono text-xs text-slate-400 space-y-0.5" aria-live="polite">
                 <div class="dash-empty" id="activity-empty">
                     <i class="fa-solid fa-terminal block"></i>
                     <h3>No activity yet</h3>
@@ -291,7 +291,7 @@
         </div>
         <span class="text-[10px] font-mono text-slate-500" id="task-tree-status"></span>
     </div>
-    <div class="p-4 max-h-64 overflow-y-auto font-mono text-xs" id="task-tree-content">
+    <div class="p-4 max-h-64 overflow-y-auto font-mono text-xs" id="task-tree-content" aria-live="polite">
         <div class="text-slate-600 text-center py-4">No active tasks</div>
     </div>
 </div>
@@ -639,7 +639,7 @@ function renderTaskTree(tasks) {
         const color = colors[task.status] || 'text-slate-500';
         let html = `<div class="flex items-center gap-2 py-0.5 hover:bg-white/5 rounded px-2 cursor-pointer" style="padding-left:${indent + 8}px" onclick='openFindingDetail(${JSON.stringify(task).replace(/'/g, "&#39;")})'>
             <span class="${color}">${icon}</span>
-            <span class="text-slate-300">${task.name || task.tool || 'Task'}</span>
+            <span class="text-slate-300">${escapeHtml(task.name || task.tool || 'Task')}</span>
             ${task.status === 'running' ? '<span class="text-[10px] text-amber-400 ml-auto">running...</span>' : ''}
         </div>`;
         if (task.children) task.children.forEach(c => { html += renderNode(c, depth + 1); });
