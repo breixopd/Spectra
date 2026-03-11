@@ -78,7 +78,7 @@ class ShellSessionManager:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(ShellSessionManager, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance.sessions = {}  # type: ignore
             cls._instance.listeners = {}  # type: ignore
             cls._instance.loop = None  # Set lazily via asyncio.get_running_loop()

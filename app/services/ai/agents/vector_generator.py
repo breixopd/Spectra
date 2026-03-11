@@ -239,7 +239,7 @@ Think like an experienced penetration tester following PTES methodology:
             return VectorGeneratorOutput(
                 confidence=0.0,
                 risk_level=ActionRisk.LOW,
-                reasoning="Failed to generate vectors: %s" % e,
+                reasoning=f"Failed to generate vectors: {e}",
                 vectors=[],
             )
 

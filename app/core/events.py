@@ -23,7 +23,7 @@ from collections import deque
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from blinker import Signal
@@ -31,7 +31,7 @@ from blinker import Signal
 logger = logging.getLogger("spectra.events")
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     """All event types in the system."""
 
     # Mission events

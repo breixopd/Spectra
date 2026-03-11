@@ -259,9 +259,10 @@ class GoldenImageBuilder:
 
             # Store build status in system status
             try:
+                from sqlalchemy import select as _select
+
                 from app.core.database import async_session_maker as _asm
                 from app.models.infrastructure import SystemStatus
-                from sqlalchemy import select as _select
 
                 async with _asm() as session:
                     existing = await session.execute(
@@ -321,9 +322,10 @@ class GoldenImageBuilder:
     async def get_build_status(self) -> dict[str, Any] | None:
         """Get the last build status from SystemStatus."""
         try:
+            from sqlalchemy import select as _select
+
             from app.core.database import async_session_maker as _asm
             from app.models.infrastructure import SystemStatus
-            from sqlalchemy import select as _select
 
             async with _asm() as session:
                 result = await session.execute(

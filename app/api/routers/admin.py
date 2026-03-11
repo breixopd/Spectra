@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from pathlib import Path
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -534,11 +534,11 @@ async def list_audit_logs(
         stmt = stmt.where(AuditLog.event_type == event_type)
         count_stmt = count_stmt.where(AuditLog.event_type == event_type)
     if date_from:
-        dt = datetime.fromisoformat(date_from).replace(tzinfo=timezone.utc)
+        dt = datetime.fromisoformat(date_from).replace(tzinfo=UTC)
         stmt = stmt.where(AuditLog.created_at >= dt)
         count_stmt = count_stmt.where(AuditLog.created_at >= dt)
     if date_to:
-        dt = datetime.fromisoformat(date_to).replace(tzinfo=timezone.utc)
+        dt = datetime.fromisoformat(date_to).replace(tzinfo=UTC)
         stmt = stmt.where(AuditLog.created_at <= dt)
         count_stmt = count_stmt.where(AuditLog.created_at <= dt)
 

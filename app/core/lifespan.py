@@ -327,7 +327,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # --- Startup ---
     try:
         # Initialize storage service (S3 or local)
-        from app.services.storage import get_storage_service, close_storage_service
+        from app.services.storage import close_storage_service, get_storage_service
         storage = get_storage_service()
         logger.info("[OK] Storage service initialized (mode: %s)", "s3" if storage.is_s3 else "local")
         # Initialize cache service (PostgreSQL-backed)
@@ -353,7 +353,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Initialize service registry
         from app.services.gateway.service_registry import get_service_registry
-        registry_svc = get_service_registry()
+        get_service_registry()
         logger.info("[OK] Service registry initialized")
 
         await set_system_status("initializing", "Loading AI models...")

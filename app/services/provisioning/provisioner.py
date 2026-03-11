@@ -106,7 +106,7 @@ class ServerProvisioner:
                         else:
                             result.logs.append("  OK")
 
-                    except asyncio.TimeoutError:  # noqa: PERF203
+                    except TimeoutError:  # noqa: PERF203
                         if step.required:
                             result.error = f"Step '{step.name}' timed out after {step.timeout}s"
                             result.logs.append(f"TIMEOUT: {result.error}")
@@ -127,7 +127,7 @@ class ServerProvisioner:
                         result.logs.append("  Health check PASSED")
                     else:
                         result.logs.append("  Health check FAILED (service may still be starting)")
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     result.logs.append("  Health check timed out")
 
                 result.success = True

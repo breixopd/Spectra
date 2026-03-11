@@ -9,7 +9,6 @@ dependencies so they work offline / air-gapped.
 
 import logging
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from cryptography.fernet import Fernet

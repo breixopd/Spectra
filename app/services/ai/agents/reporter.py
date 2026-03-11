@@ -476,12 +476,12 @@ Immediate attention is required for critical and high severity findings.
         <h1>Security Assessment Report</h1>
         <p><strong>Target:</strong> {report.target}</p>
         <p><strong>Date:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
-        
+
         <div class="summary">
             <h2>Executive Summary</h2>
             <p>{report.executive_summary.replace(chr(10), "<br>")}</p>
         </div>
-        
+
         <h2>Findings Overview</h2>
         <div class="stats">
             <div class="stat"><div class="stat-value stat-critical">{report.critical_count}</div><div>Critical</div></div>
@@ -490,7 +490,7 @@ Immediate attention is required for critical and high severity findings.
             <div class="stat"><div class="stat-value stat-low">{report.low_count}</div><div>Low</div></div>
             <div class="stat"><div class="stat-value stat-info">{report.info_count}</div><div>Info</div></div>
         </div>
-        
+
         {sections_html}
     </div>
 </body>

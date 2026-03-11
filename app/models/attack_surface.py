@@ -6,7 +6,7 @@ for iterative exploitation attempts.
 """
 
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -17,7 +17,7 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
-class VectorStatus(str, Enum):
+class VectorStatus(StrEnum):
     """Status of an attack vector."""
 
     PENDING = "pending"
@@ -27,7 +27,7 @@ class VectorStatus(str, Enum):
     SKIPPED = "skipped"
 
 
-class VectorPriority(str, Enum):
+class VectorPriority(StrEnum):
     """Priority levels for attack vectors."""
 
     CRITICAL = "critical"  # Known RCE, default creds on admin

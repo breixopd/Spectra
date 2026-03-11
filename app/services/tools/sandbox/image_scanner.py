@@ -171,9 +171,10 @@ class ImageScanner:
     async def get_last_scan(self) -> dict[str, Any] | None:
         """Get the last scan result from SystemStatus."""
         try:
+            from sqlalchemy import select
+
             from app.core.database import async_session_maker
             from app.models.infrastructure import SystemStatus
-            from sqlalchemy import select
 
             async with async_session_maker() as session:
                 result = await session.execute(
@@ -214,9 +215,10 @@ class ImageScanner:
     async def _store_result(self, scan_result: ScanResult) -> None:
         """Store scan result in SystemStatus table."""
         try:
+            from sqlalchemy import select
+
             from app.core.database import async_session_maker
             from app.models.infrastructure import SystemStatus
-            from sqlalchemy import select
 
             async with async_session_maker() as session:
                 existing = await session.execute(

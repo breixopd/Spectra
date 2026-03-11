@@ -237,7 +237,7 @@ class TaskDispatcher:
             if mission.blackboard:
                 bb_creds = mission.blackboard.read("credentials")
                 bb_ports = mission.blackboard.read("open_ports")
-                bb_vulns = mission.blackboard.read("vulnerabilities")
+                mission.blackboard.read("vulnerabilities")
                 # Factor blackboard creds into context for tool selection
                 if bb_creds and isinstance(bb_creds, list):
                     context.extra_context = (

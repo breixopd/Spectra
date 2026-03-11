@@ -41,7 +41,6 @@ from app.core.telemetry_middleware import TelemetryMiddleware
 from app.core.websocket import manager
 from app.version import __version__
 
-
 # --- Logging Setup ---
 configure_logging()
 logger = logging.getLogger("spectra")

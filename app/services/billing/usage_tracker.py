@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 
@@ -24,7 +24,7 @@ _METRIC_MAP: dict[str, tuple[str, str, str]] = {
 
 def _period_start(period_type: str) -> datetime:
     """Return the start of the current period for the given type."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if period_type == "hourly":
         return now.replace(minute=0, second=0, microsecond=0)
     if period_type == "daily":

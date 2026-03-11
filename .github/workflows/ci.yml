@@ -50,15 +50,15 @@ jobs:
         run: |
           if [ -f coverage.xml ]; then
             echo '## Coverage Report' >> "$GITHUB_STEP_SUMMARY"
-            python3 -c "
-            import xml.etree.ElementTree as ET
-            tree = ET.parse('coverage.xml')
-            root = tree.getroot()
-            rate = float(root.attrib.get('line-rate', 0)) * 100
-            print(f'| Metric | Value |')
-            print(f'|--------|-------|')
-            print(f'| Line coverage | {rate:.1f}% |')
-            " >> "$GITHUB_STEP_SUMMARY"
+            python3 << 'PYEOF' >> "$GITHUB_STEP_SUMMARY"
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('coverage.xml')
+          root = tree.getroot()
+          rate = float(root.attrib.get('line-rate', 0)) * 100
+          print(f'| Metric | Value |')
+          print(f'|--------|-------|')
+          print(f'| Line coverage | {rate:.1f}% |')
+          PYEOF
           fi
       - name: Upload coverage artifact
         if: always()
@@ -116,7 +116,7 @@ jobs:
           python-version: "3.11"
       - run: pip install bandit[toml]
       - run: bandit -r app/ -c pyproject.toml -f json -o bandit-report.json || true
-      - run: bandit -r app/ -c pyproject.toml --severity-filter HIGH --confidence-filter HIGH
+      - run: bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
 
   deps:
     name: Dependency Audit
@@ -127,6 +127,7 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install pip-audit
+      - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
       - run: pip install -r requirements-app.txt
       - run: pip-audit --fix --dry-run || true  # Report only, don't fail CI
 
@@ -140,4 +141,4 @@ jobs:
           python-version: "3.11"
       - name: Verify app/version.py exists and has __version__
         run: |
-          python -c "from app.version import __version__; print('Version:', __version__)"
+          python3 -c "exec(open('app/version.py').read()); print('Version:', __version__)"
