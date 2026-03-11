@@ -53,7 +53,7 @@ class OsintSanitizer:
 
     _IP_PATTERN = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
     _DOMAIN_PATTERN = re.compile(
-        r"\b[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.[a-zA-Z]{2,}\b"
+        r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}\b"
     )
     _INTERNAL_PATTERN = re.compile(
         r"\b(?:10\.\d+|192\.168\.\d+|172\.(?:1[6-9]|2\d|3[01])\.)\.\d+\b"
@@ -62,8 +62,10 @@ class OsintSanitizer:
     # Well-known domains that are *not* target identifiers
     _SAFE_DOMAINS = frozenset({
         "nvd.nist.gov",
+        "nist.gov",
         "cisa.gov",
         "api.first.org",
+        "first.org",
         "services.nvd.nist.gov",
         "www.cisa.gov",
         "exploit-db.com",

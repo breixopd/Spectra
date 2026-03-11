@@ -2,7 +2,7 @@
 
 import json
 from typing import Any, ClassVar
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from pydantic import BaseModel
@@ -43,23 +43,27 @@ def _ctx(**overrides: Any) -> AgentContext:
 
 def _make_agent(
     *,
-    enable_reflection: bool = False,
+    reflection_enabled: bool = False,
     threshold: float = 0.7,
     execute_results: list[AgentResult] | None = None,
 ) -> Agent[Any, Any]:
     """Build a concrete agent with a controllable execute()."""
 
+    _refl = reflection_enabled
+    _thresh = threshold
+
     class _Ag(Agent[_Input, _Output]):
         role: ClassVar[AgentRole] = AgentRole.SCOPE  # type: ignore[assignment]
         name: ClassVar[str] = "ReflTest"
         description: ClassVar[str] = "reflection test agent"
-        enable_reflection: ClassVar[bool] = enable_reflection  # type: ignore[assignment]
-        reflection_threshold: ClassVar[float] = threshold  # type: ignore[assignment]
+        enable_reflection: ClassVar[bool] = _refl  # type: ignore[assignment]
+        reflection_threshold: ClassVar[float] = _thresh  # type: ignore[assignment]
 
         async def execute(self, context: AgentContext, input_data: _Input) -> AgentResult:
             ...  # replaced by mock
 
     ag = _Ag(MagicMock())
+    ag.broadcast_thought = MagicMock()  # type: ignore[method-assign]
 
     results = execute_results or [AgentResult(success=True, action=_Output())]
     ag.execute = AsyncMock(side_effect=results)  # type: ignore[method-assign]
@@ -72,10 +76,9 @@ def _make_agent(
 
 
 @pytest.mark.asyncio
-@patch("app.services.ai.agents.base.events")
-async def test_reflection_disabled_skips(mock_events: MagicMock):
+async def test_reflection_disabled_skips():
     """When enable_reflection=False, execute_with_reflection just calls execute."""
-    agent = _make_agent(enable_reflection=False)
+    agent = _make_agent(reflection_enabled=False)
     result = await agent.execute_with_reflection(_ctx(), _Input())
 
     assert result.success
@@ -83,10 +86,9 @@ async def test_reflection_disabled_skips(mock_events: MagicMock):
 
 
 @pytest.mark.asyncio
-@patch("app.services.ai.agents.base.events")
-async def test_reflection_high_quality_accepts(mock_events: MagicMock):
+async def test_reflection_high_quality_accepts():
     """Quality > threshold returns immediately without retry."""
-    agent = _make_agent(enable_reflection=True, threshold=0.7)
+    agent = _make_agent(reflection_enabled=True, threshold=0.7)
 
     reflect_response = MagicMock()
     reflect_response.content = json.dumps({"quality": 0.95, "feedback": "great"})
@@ -102,12 +104,11 @@ async def test_reflection_high_quality_accepts(mock_events: MagicMock):
 
 
 @pytest.mark.asyncio
-@patch("app.services.ai.agents.base.events")
-async def test_reflection_low_quality_retries(mock_events: MagicMock):
+async def test_reflection_low_quality_retries():
     """Quality < threshold causes retry with feedback."""
     r1 = AgentResult(success=True, action=_Output(reasoning="first"))
     r2 = AgentResult(success=True, action=_Output(reasoning="second"))
-    agent = _make_agent(enable_reflection=True, threshold=0.9, execute_results=[r1, r2])
+    agent = _make_agent(reflection_enabled=True, threshold=0.9, execute_results=[r1, r2])
 
     low_resp = MagicMock()
     low_resp.content = json.dumps({"quality": 0.5, "feedback": "needs improvement"})
@@ -127,10 +128,9 @@ async def test_reflection_low_quality_retries(mock_events: MagicMock):
 
 
 @pytest.mark.asyncio
-@patch("app.services.ai.agents.base.events")
-async def test_reflection_failure_returns_default_score(mock_events: MagicMock):
+async def test_reflection_failure_returns_default_score():
     """If reflection LLM fails, returns 0.8 default quality."""
-    agent = _make_agent(enable_reflection=True, threshold=0.7)
+    agent = _make_agent(reflection_enabled=True, threshold=0.7)
 
     # Simulate _reflect raising an exception internally → returns (0.8, "")
     agent._llm_generate = AsyncMock(side_effect=Exception("LLM down"))
@@ -142,14 +142,13 @@ async def test_reflection_failure_returns_default_score(mock_events: MagicMock):
 
 
 @pytest.mark.asyncio
-@patch("app.services.ai.agents.base.events")
-async def test_reflection_max_iterations(mock_events: MagicMock):
+async def test_reflection_max_iterations():
     """Stops after max_iterations."""
     results = [
         AgentResult(success=True, action=_Output(reasoning=f"attempt-{i}"))
         for i in range(5)
     ]
-    agent = _make_agent(enable_reflection=True, threshold=0.99, execute_results=results)
+    agent = _make_agent(reflection_enabled=True, threshold=0.99, execute_results=results)
 
     low_resp = MagicMock()
     low_resp.content = json.dumps({"quality": 0.3, "feedback": "still bad"})
@@ -166,6 +165,6 @@ async def test_reflection_max_iterations(mock_events: MagicMock):
 
 def test_reflection_enabled_on_exploit_crafter():
     """Verify ExploitCrafter.enable_reflection is True."""
-    from app.services.ai.agents.exploit_crafter import ExploitCrafterAgent
+    from app.services.ai.agents.exploit_crafter import ExploitCrafter
 
-    assert ExploitCrafterAgent.enable_reflection is True
+    assert ExploitCrafter.enable_reflection is True
