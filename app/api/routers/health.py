@@ -19,7 +19,11 @@ logger = logging.getLogger("spectra.health")
 router = APIRouter()
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    summary="Health check",
+    description="Liveness and readiness probe. Returns 200 if healthy, 503 if degraded. Use ?verbose=true for component details.",
+)
 async def health_check(
     response: Response,
     db: AsyncSession = Depends(get_async_session),

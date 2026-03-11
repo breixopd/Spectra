@@ -149,7 +149,12 @@ async def get_attack_coverage(
         return {"tactics": {}, "total_techniques": 0}
 
 
-@router.post("", response_model=MissionResponse)
+@router.post(
+    "",
+    response_model=MissionResponse,
+    summary="Start mission",
+    description="Create and start a new security assessment mission against specified targets.",
+)
 @limiter.limit("5/minute")
 async def start_mission(
     request: Request,
@@ -212,7 +217,12 @@ async def start_mission(
     )
 
 
-@router.get("", response_model=list[MissionResponse])
+@router.get(
+    "",
+    response_model=list[MissionResponse],
+    summary="List missions",
+    description="Retrieve all missions for the authenticated user with optional status and target filters.",
+)
 async def list_missions(
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
     limit: int = Query(

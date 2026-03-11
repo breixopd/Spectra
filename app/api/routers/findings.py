@@ -80,7 +80,11 @@ class FindingDetailResponse(FindingResponse):
 
 
 @router.post(
-    "", response_model=FindingDetailResponse, status_code=status.HTTP_201_CREATED
+    "",
+    response_model=FindingDetailResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create finding",
+    description="Create a new security finding associated with a target.",
 )
 async def create_finding(
     finding_in: FindingCreate,
@@ -119,7 +123,12 @@ async def create_finding(
     )
 
 
-@router.get("", response_model=list[FindingDetailResponse])
+@router.get(
+    "",
+    response_model=list[FindingDetailResponse],
+    summary="List findings",
+    description="Retrieve all findings with optional severity and status filters.",
+)
 async def list_findings(
     skip: int = Query(default=0, ge=0, description="Number of records to skip"),
     limit: int = Query(
@@ -285,7 +294,12 @@ async def export_findings_json(
     )
 
 
-@router.get("/{finding_id}", response_model=FindingDetailResponse)
+@router.get(
+    "/{finding_id}",
+    response_model=FindingDetailResponse,
+    summary="Get finding",
+    description="Retrieve a single finding by its ID.",
+)
 async def get_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -362,7 +376,12 @@ async def update_finding(
     )
 
 
-@router.delete("/{finding_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{finding_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete finding",
+    description="Permanently delete a security finding.",
+)
 async def delete_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
