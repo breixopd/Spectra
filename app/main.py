@@ -36,13 +36,13 @@ from app.api.routers import (
     wordlists,
 )
 from app.core.config import settings
+from app.core.exceptions import SpectraError, get_status_code_for_exception
 from app.core.lifespan import lifespan
 from app.core.logging_config import CorrelationIdMiddleware, configure_logging
 from app.core.middleware import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.telemetry_middleware import TelemetryMiddleware
 from app.core.websocket import manager
-from app.core.exceptions import SpectraError, get_status_code_for_exception
 from app.version import __version__
 
 # --- Logging Setup ---
