@@ -28,6 +28,29 @@ from app.services.tools.models import ToolStatus
 
 logger = logging.getLogger("spectra.lifespan")
 
+# Interval for cache cleanup (seconds) — every 10 minutes
+_CACHE_CLEANUP_INTERVAL = 600
+
+
+async def cache_cleanup_loop() -> None:
+    """Periodically purge expired cache entries."""
+    from app.core.cache import get_cache
+
+    logger.info("Cache cleanup task started (interval=%ds)", _CACHE_CLEANUP_INTERVAL)
+    while True:
+        try:
+            await asyncio.sleep(_CACHE_CLEANUP_INTERVAL)
+            cache = get_cache()
+            if cache:
+                removed = await cache.purge_expired()
+                if removed:
+                    logger.info("Cache cleanup: purged %d expired entries", removed)
+        except asyncio.CancelledError:
+            logger.info("Cache cleanup task stopped")
+            break
+        except Exception as e:
+            logger.error("Cache cleanup error: %s", e)
+
 
 async def sandbox_watchdog_loop() -> None:
     """Periodically check sandbox heartbeats and reap stale ones."""
@@ -544,6 +567,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Trigger background setup tasks (including tool installation)
         asyncio.create_task(run_startup_tasks())
+
+        # Start periodic cache cleanup
+        asyncio.create_task(cache_cleanup_loop())
 
         # Emit startup event
         await events.emit(
