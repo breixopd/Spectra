@@ -347,7 +347,7 @@ class TestVoteAnalysis:
         assert result.final_decision is False
 
     def test_analyze_votes_no_consensus_when_split(self):
-        """Should return no_consensus when votes are split."""
+        """Should fall back to majority approval when approve > reject at MEDIUM risk."""
         config = VotingConfig(k_threshold=2, min_confidence=0.6)
         voting = VotingSystem(MockLLMClient(), config)
 
@@ -381,11 +381,12 @@ class TestVoteAnalysis:
 
         result = voting._analyze_votes(votes, action)
 
-        assert result.status == ConsensusStatus.NO_CONSENSUS
-        assert result.final_decision is False
+        # approve(1) > reject(0) at MEDIUM risk → majority fallback → APPROVED
+        assert result.status == ConsensusStatus.APPROVED
+        assert result.final_decision is True
 
     def test_analyze_votes_low_confidence_triggers_no_consensus(self):
-        """Should return no_consensus when confidence is too low."""
+        """Low confidence with approvals at MEDIUM risk → majority fallback."""
         config = VotingConfig(k_threshold=2, min_confidence=0.8)
         voting = VotingSystem(MockLLMClient(), config)
 
@@ -413,10 +414,10 @@ class TestVoteAnalysis:
 
         result = voting._analyze_votes(votes, action)
 
-        # Has enough approvals but confidence too low
-        assert result.status == ConsensusStatus.NO_CONSENSUS
-        assert result.escalation_reason is not None
-        assert "confidence too low" in result.escalation_reason.lower()
+        # approve(2) > reject(0) at MEDIUM risk → majority fallback → APPROVED
+        assert result.status == ConsensusStatus.APPROVED
+        assert result.final_decision is True
+        assert "majority" in (result.escalation_reason or "").lower()
 
 
 class TestHumanApprovalRequest:
@@ -469,3 +470,130 @@ class TestHumanApprovalRequest:
         assert "concerns" in request
         assert "May cause downtime" in request["concerns"]
         assert "Not authorized" in request["concerns"]
+
+
+class TestConsensusEdgeCases:
+    """Edge-case tests for consensus voting logic."""
+
+    @staticmethod
+    def _system(config=None):
+        return VotingSystem(MockLLMClient(), config or VotingConfig())
+
+    @staticmethod
+    def _action(risk=ActionRisk.HIGH):
+        return AgentAction(
+            action_type="run_tool", confidence=0.8, risk_level=risk, reasoning="test",
+        )
+
+    @staticmethod
+    def _vote(vid, decision, confidence=0.8):
+        return Vote(
+            voter_id=vid, decision=decision, confidence=confidence, reasoning=f"{decision}",
+        )
+
+    def test_unanimous_approval_high_confidence(self):
+        vs = self._system()
+        votes = [self._vote(f"v{i}", VoteDecision.APPROVE, 0.9) for i in range(3)]
+        r = vs._analyze_votes_with_params(votes, self._action(), 2, 0.6)
+        assert r.status == ConsensusStatus.APPROVED
+        assert r.approve_count == 3
+        assert r.final_decision is True
+
+    def test_unanimous_rejection(self):
+        vs = self._system()
+        votes = [self._vote(f"v{i}", VoteDecision.REJECT, 0.9) for i in range(3)]
+        r = vs._analyze_votes_with_params(votes, self._action(), 2, 0.6)
+        assert r.status == ConsensusStatus.REJECTED
+        assert r.reject_count == 3
+        assert r.final_decision is False
+
+    def test_split_vote_no_consensus(self):
+        vs = self._system()
+        votes = [
+            self._vote("v0", VoteDecision.APPROVE, 0.7),
+            self._vote("v1", VoteDecision.REJECT, 0.7),
+            self._vote("v2", VoteDecision.ABSTAIN, 0.5),
+        ]
+        # CRITICAL risk → NO_CONSENSUS escalates to PENDING_HUMAN
+        r = vs._analyze_votes_with_params(votes, self._action(ActionRisk.CRITICAL), 2, 0.6)
+        assert r.status == ConsensusStatus.PENDING_HUMAN
+
+    def test_no_consensus_critical_becomes_pending_human(self):
+        vs = self._system()
+        votes = [
+            self._vote("v0", VoteDecision.APPROVE, 0.9),
+            self._vote("v1", VoteDecision.ABSTAIN, 0.3),
+            self._vote("v2", VoteDecision.ABSTAIN, 0.3),
+        ]
+        r = vs._analyze_votes_with_params(votes, self._action(ActionRisk.CRITICAL), 2, 0.6)
+        assert r.status == ConsensusStatus.PENDING_HUMAN
+        assert "CRITICAL" in (r.escalation_reason or "")
+
+    def test_no_consensus_low_risk_majority_approval(self):
+        """Approve > reject at LOW risk → falls back to majority APPROVED."""
+        vs = self._system()
+        votes = [
+            self._vote("v0", VoteDecision.APPROVE, 0.5),
+            self._vote("v1", VoteDecision.APPROVE, 0.4),
+            self._vote("v2", VoteDecision.ABSTAIN, 0.3),
+        ]
+        # k=3 so 2 approvals won't meet threshold; confidence low → NO_CONSENSUS
+        # but approve(2) > reject(0) at LOW risk → majority fallback
+        r = vs._analyze_votes_with_params(votes, self._action(ActionRisk.LOW), 3, 0.8)
+        assert r.status == ConsensusStatus.APPROVED
+        assert r.final_decision is True
+        assert "majority" in (r.escalation_reason or "").lower()
+
+    def test_no_votes_collected(self):
+        vs = self._system()
+        r = vs._analyze_votes_with_params([], self._action(), 2, 0.6)
+        assert r.status == ConsensusStatus.NO_CONSENSUS
+        assert r.escalation_reason == "No votes collected"
+
+    def test_single_voter_k1_approve(self):
+        vs = self._system(VotingConfig(num_voters=1, k_threshold=1))
+        votes = [self._vote("v0", VoteDecision.APPROVE, 0.9)]
+        r = vs._analyze_votes_with_params(votes, self._action(), 1, 0.6)
+        assert r.status == ConsensusStatus.APPROVED
+        assert r.final_decision is True
+
+    def test_single_voter_k1_reject(self):
+        vs = self._system(VotingConfig(num_voters=1, k_threshold=1))
+        votes = [self._vote("v0", VoteDecision.REJECT, 0.9)]
+        r = vs._analyze_votes_with_params(votes, self._action(), 1, 0.6)
+        assert r.status == ConsensusStatus.REJECTED
+
+    def test_confidence_aggregation(self):
+        vs = self._system()
+        votes = [
+            self._vote("v0", VoteDecision.APPROVE, 0.6),
+            self._vote("v1", VoteDecision.APPROVE, 0.8),
+            self._vote("v2", VoteDecision.APPROVE, 1.0),
+        ]
+        r = vs._analyze_votes_with_params(votes, self._action(), 2, 0.6)
+        assert r.average_confidence == pytest.approx(0.8, abs=0.01)
+
+    def test_confidence_too_low_despite_approvals_at_critical(self):
+        vs = self._system()
+        votes = [
+            self._vote("v0", VoteDecision.APPROVE, 0.3),
+            self._vote("v1", VoteDecision.APPROVE, 0.2),
+        ]
+        r = vs._analyze_votes_with_params(votes, self._action(ActionRisk.CRITICAL), 2, 0.6)
+        assert r.status == ConsensusStatus.PENDING_HUMAN
+
+    @pytest.mark.asyncio
+    async def test_all_voters_timeout(self):
+        """When LLM raises for every voter, _get_vote returns ABSTAIN votes."""
+        from unittest.mock import AsyncMock
+        llm = AsyncMock()
+        llm.generate_structured.side_effect = TimeoutError("timeout")
+        vs = VotingSystem(llm=llm, config=VotingConfig(num_voters=3, k_threshold=2))
+        result = await vs.vote_on_action(self._action(ActionRisk.HIGH))
+        # All voters produce ABSTAIN → no approvals, no rejects → NO_CONSENSUS
+        assert result.status in (ConsensusStatus.NO_CONSENSUS, ConsensusStatus.PENDING_HUMAN)
+
+    def test_voting_config_consensus_threshold_low_risk_skips(self):
+        cfg = VotingConfig()
+        n, k, c = cfg.consensus_threshold[ActionRisk.LOW.value]
+        assert n == 0  # Skip consensus for LOW risk

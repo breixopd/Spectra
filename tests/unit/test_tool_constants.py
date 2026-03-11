@@ -1,10 +1,11 @@
-"""Tests for shell injection blocklist in tool registry constants."""
+"""Tests for shell injection blocklist and tool output sanitization."""
 
 
 from app.services.tools.registry.constants import (
     _DANGEROUS_PATTERN_STRINGS,
     DANGEROUS_PATTERNS,
 )
+from app.services.tools.service import sanitize_tool_output
 
 
 def _matches_any(text: str) -> bool:
@@ -146,3 +147,33 @@ class TestDangerousPatterns:
 
     def test_allows_normal_args_with_dashes(self):
         assert not _matches_any("nmap --top-ports 1000 target.com")
+
+
+class TestSanitizeToolOutput:
+    """Tests for sanitize_tool_output."""
+
+    def test_html_tags_escaped(self):
+        assert "&lt;div&gt;" in sanitize_tool_output("<div>hello</div>")
+
+    def test_script_tags_escaped(self):
+        result = sanitize_tool_output('<script>alert("xss")</script>')
+        assert "<script>" not in result
+        assert "&lt;script&gt;" in result
+
+    def test_normal_text_unchanged(self):
+        assert sanitize_tool_output("hello world 123") == "hello world 123"
+
+    def test_empty_string(self):
+        assert sanitize_tool_output("") == ""
+
+    def test_ampersand_escaped(self):
+        assert sanitize_tool_output("a & b") == "a &amp; b"
+
+    def test_quotes_escaped(self):
+        result = sanitize_tool_output('key="value"')
+        assert "&quot;" in result
+
+    def test_large_output_does_not_crash(self):
+        big = "A" * 10_000_000
+        result = sanitize_tool_output(big)
+        assert len(result) == len(big)

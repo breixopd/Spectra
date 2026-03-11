@@ -1,9 +1,12 @@
 """Tests for MissionBlackboard."""
 
+import asyncio
+
 import pytest
 
 from app.services.ai.blackboard import (
     MAX_ENTRIES,
+    MAX_HISTORY,
     MissionBlackboard,
     _blackboards,
     get_blackboard,
@@ -105,3 +108,96 @@ class TestBlackboardRegistry:
 
     def test_remove_nonexistent_is_noop(self):
         remove_blackboard("does-not-exist")  # should not raise
+
+
+class TestBlackboardRealScenarios:
+    """Tests for real-world usage patterns."""
+
+    def test_store_complex_tool_results(self):
+        bb = MissionBlackboard("m1")
+        tool_result = {
+            "tool": "nmap",
+            "ports": [22, 80, 443],
+            "services": {"22": "ssh", "80": "http", "443": "https"},
+            "os_guess": "Linux 5.x",
+        }
+        bb.write("parser", "nmap_results", tool_result)
+        assert bb.read("nmap_results") == tool_result
+        assert bb.read("nmap_results")["ports"] == [22, 80, 443]
+
+    def test_store_scope_definitions(self):
+        bb = MissionBlackboard("m1")
+        scope = {
+            "targets": ["192.168.1.0/24"],
+            "excluded": ["192.168.1.1"],
+            "ports": "1-65535",
+            "stealth": True,
+        }
+        bb.write("scope", "mission_scope", scope)
+        assert bb.read("mission_scope")["targets"] == ["192.168.1.0/24"]
+        assert bb.read("mission_scope")["stealth"] is True
+
+    def test_history_properly_maintained(self):
+        bb = MissionBlackboard("m1")
+        bb.write("recon", "ports", [80])
+        bb.write("exploit", "creds", "admin")
+        bb.write("recon", "ports", [80, 443])  # overwrite
+        history = bb.get_history()
+        assert len(history) == 3
+        assert history[0]["action"] == "write"
+        assert history[2]["key"] == "ports"
+        assert history[2]["agent"] == "recon"
+
+    def test_eviction_oldest_first(self):
+        bb = MissionBlackboard("m1")
+        for i in range(MAX_ENTRIES):
+            bb.write("agent", f"k{i}", i)
+        # Oldest key is k0
+        assert bb.read("k0") == 0
+        # Add one more → k0 evicted
+        bb.write("agent", "new_key", "new")
+        assert bb.read("k0") is None
+        assert bb.read("k1") == 1  # second oldest survives
+        assert bb.read("new_key") == "new"
+
+    def test_history_truncation(self):
+        bb = MissionBlackboard("m1")
+        for i in range(MAX_HISTORY + 100):
+            bb.write("agent", f"k{i % 50}", i)
+        assert len(bb.get_history()) == MAX_HISTORY
+
+    @pytest.mark.asyncio
+    async def test_concurrent_writes(self):
+        bb = MissionBlackboard("m1")
+
+        async def writer(agent: str, n: int):
+            for i in range(n):
+                bb.write(agent, f"{agent}_{i}", i)
+                await asyncio.sleep(0)
+
+        await asyncio.gather(
+            writer("recon", 50),
+            writer("exploit", 50),
+            writer("parser", 50),
+        )
+        # All 150 unique keys should be present (well under MAX_ENTRIES)
+        assert len(bb.read_all()) == 150
+
+    @pytest.mark.asyncio
+    async def test_concurrent_read_write(self):
+        bb = MissionBlackboard("m1")
+        bb.write("init", "shared", 0)
+
+        async def reader():
+            for _ in range(100):
+                bb.read("shared")
+                await asyncio.sleep(0)
+
+        async def writer():
+            for i in range(100):
+                bb.write("w", "shared", i)
+                await asyncio.sleep(0)
+
+        await asyncio.gather(reader(), writer())
+        # Should end with last written value
+        assert bb.read("shared") == 99
