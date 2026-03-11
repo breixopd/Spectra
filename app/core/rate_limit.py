@@ -124,8 +124,13 @@ async def rate_limit_exceeded_handler(
         limit=str(exc.detail),
     )
 
-    # Parse retry-after from headers if available
-    retry_after = 60  # Default
+    # Compute retry-after from the limit window
+    retry_after = 60  # Default fallback
+    if exc.limit:
+        try:
+            retry_after = int(exc.limit.get_expiry())
+        except Exception:
+            pass
 
     return JSONResponse(
         status_code=429,

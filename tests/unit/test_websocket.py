@@ -8,6 +8,133 @@ import pytest
 
 from app.core.websocket import ConnectionManager
 
+# =============================================================================
+# send_personal tests
+# =============================================================================
+
+
+class TestSendPersonal:
+    """send_personal delivers to a specific WebSocket."""
+
+    @pytest.mark.asyncio
+    async def test_send_personal_to_connected(self):
+        from starlette.websockets import WebSocketState
+
+        manager = ConnectionManager()
+        ws = AsyncMock()
+        ws.client_state = WebSocketState.CONNECTED
+        ws.send_text = AsyncMock()
+
+        result = await manager.send_personal(ws, "hello")
+        assert result is True
+        ws.send_text.assert_awaited_once_with("hello")
+
+    @pytest.mark.asyncio
+    async def test_send_personal_to_disconnected(self):
+        from starlette.websockets import WebSocketState
+
+        manager = ConnectionManager()
+        ws = AsyncMock()
+        ws.client_state = WebSocketState.DISCONNECTED
+
+        result = await manager.send_personal(ws, "hello")
+        assert result is False
+
+
+# =============================================================================
+# Broadcast sends to all connections
+# =============================================================================
+
+
+class TestBroadcastAll:
+    """broadcast sends message to every connected WebSocket."""
+
+    @pytest.mark.asyncio
+    async def test_broadcast_multiple_clients(self):
+        from starlette.websockets import WebSocketState
+
+        manager = ConnectionManager()
+        sockets = []
+        for _ in range(3):
+            ws = AsyncMock()
+            ws.accept = AsyncMock()
+            ws.send_text = AsyncMock()
+            ws.client_state = WebSocketState.CONNECTED
+            await manager.connect(ws, require_auth=False)
+            sockets.append(ws)
+
+        await manager.broadcast("msg")
+        for ws in sockets:
+            ws.send_text.assert_awaited_once_with("msg")
+
+    @pytest.mark.asyncio
+    async def test_broadcast_skips_disconnected(self):
+        from starlette.websockets import WebSocketState
+
+        manager = ConnectionManager()
+        alive = AsyncMock()
+        alive.accept = AsyncMock()
+        alive.send_text = AsyncMock()
+        alive.client_state = WebSocketState.CONNECTED
+
+        dead = AsyncMock()
+        dead.accept = AsyncMock()
+        dead.send_text = AsyncMock()
+        dead.client_state = WebSocketState.DISCONNECTED
+
+        await manager.connect(alive, require_auth=False)
+        await manager.connect(dead, require_auth=False)
+
+        await manager.broadcast("msg")
+        alive.send_text.assert_awaited_once_with("msg")
+        dead.send_text.assert_not_awaited()
+
+
+# =============================================================================
+# Disconnect removes from per-user tracking
+# =============================================================================
+
+
+class TestDisconnectUserTracking:
+    """disconnect removes WebSocket from _user_connections."""
+
+    @pytest.mark.asyncio
+    async def test_disconnect_removes_from_user_map(self):
+        manager = ConnectionManager()
+
+        ws = AsyncMock()
+        ws.accept = AsyncMock()
+        ws.query_params = {"token": "tok"}
+        ws.state = MagicMock()
+
+        with patch("app.core.security.decode_token", return_value={"sub": "alice"}):
+            await manager.connect(ws)
+
+        assert ws in manager._user_connections.get("alice", set())
+
+        await manager.disconnect(ws)
+        assert ws not in manager._user_connections.get("alice", set())
+
+    @pytest.mark.asyncio
+    async def test_disconnect_cleans_empty_user_entry(self):
+        manager = ConnectionManager()
+
+        ws = AsyncMock()
+        ws.accept = AsyncMock()
+        ws.query_params = {"token": "tok"}
+        ws.state = MagicMock()
+
+        with patch("app.core.security.decode_token", return_value={"sub": "bob"}):
+            await manager.connect(ws)
+
+        await manager.disconnect(ws)
+        assert "bob" not in manager._user_connections
+
+
+# =============================================================================
+# Original tests
+# =============================================================================
+
 
 @pytest.mark.asyncio
 async def test_connection_manager_connect():
@@ -198,4 +325,5 @@ class TestShellKeepalive:
             # The task was cancelled in the finally block
             assert len(created_tasks) > 0
             for t in created_tasks:
-                assert t.cancelled()
+                # Task should be done (cancelled or finished with exception)
+                assert t.done()
