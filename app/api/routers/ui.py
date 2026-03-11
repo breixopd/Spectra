@@ -2,6 +2,7 @@
 UI router for serving the frontend dashboard.
 """
 
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -25,6 +26,7 @@ from app.services.system.settings_service import (
 )
 
 router = APIRouter()
+logger = logging.getLogger("spectra.ui")
 
 # Templates directory
 APP_DIR = Path(__file__).resolve().parent.parent.parent
@@ -45,7 +47,7 @@ def _get_ui_user(request: Request) -> dict | None:
         if payload and payload.get("sub"):
             return payload
     except Exception:
-        pass
+        logger.debug("UI token decode failed", exc_info=True)
     return None
 
 

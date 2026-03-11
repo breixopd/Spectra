@@ -94,7 +94,7 @@ async def admin_stats(
             await session.execute(select(func.count()).select_from(Mission))
         ).scalar() or 0
     except Exception:
-        pass
+        logger.debug("Failed to count missions for audit stats", exc_info=True)
 
     total_audit_events = (
         await session.execute(select(func.count()).select_from(AuditLog))
