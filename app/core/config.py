@@ -122,6 +122,17 @@ class Settings(BaseSettings):
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
     FULLY_AUTOMATED: bool = True  # Skip ALL human approval, fully autonomous operation
+
+    @field_validator("FULLY_AUTOMATED")
+    @classmethod
+    def warn_fully_automated(cls, v: bool) -> bool:
+        import os
+        if v and os.environ.get("ENVIRONMENT", "development") == "production":
+            logging.getLogger("spectra.config").warning(
+                "FULLY_AUTOMATED=true in production — human approval bypassed for all operations"
+            )
+        return v
+
     CONNECT_BACK_HOST: str = "spectra-app"
 
     # --- Sandbox Pool ---

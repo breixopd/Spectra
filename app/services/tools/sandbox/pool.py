@@ -9,6 +9,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from docker.errors import APIError, ContainerError, DockerException, ImageNotFound, NotFound
 from sqlalchemy import select, update
 
 from app.core.config import get_settings
@@ -35,7 +36,7 @@ class SandboxPool:
             self._client.ping()
             self.available = True
             logger.info("SandboxPool initialized — Docker available")
-        except Exception as exc:
+        except (DockerException, OSError) as exc:
             logger.warning("SandboxPool: Docker not available (%s). Sandbox features disabled.", exc)
 
     @staticmethod
@@ -156,7 +157,7 @@ class SandboxPool:
                 sandbox_network_id = net.id
                 container_network = net_name
                 logger.info("Created isolated network %s for mission %s", net_name, mission_id[:8])
-            except Exception as exc:
+            except (APIError, DockerException) as exc:
                 logger.error("Failed to create isolated network for mission %s: %s", mission_id[:8], exc)
                 raise RuntimeError(f"Sandbox network creation failed: {exc}") from exc
 
@@ -191,7 +192,7 @@ class SandboxPool:
                     shared_net = self._client.networks.get(settings.SANDBOX_NETWORK)
                     await asyncio.to_thread(shared_net.connect, container)
                     logger.debug("Connected sandbox %s to shared network %s", container_name, settings.SANDBOX_NETWORK)
-                except Exception as exc:
+                except (APIError, NotFound) as exc:
                     logger.warning("Failed to connect sandbox to shared network: %s", exc)
 
             # Update DB with actual container ID and network ID
@@ -219,14 +220,14 @@ class SandboxPool:
             )
             return info
 
-        except Exception as exc:
+        except (APIError, ContainerError, ImageNotFound) as exc:
             # Cleanup isolated network on failure
             if sandbox_network_id:
                 try:
                     net = self._client.networks.get(sandbox_network_id)
                     await asyncio.to_thread(net.remove)
                     logger.debug("Cleaned up network %s after creation failure", sandbox_network_id)
-                except Exception:
+                except (APIError, NotFound):
                     logger.debug("Failed to clean up network %s after creation failure", sandbox_network_id)
             # Mark DB row as error
             async with async_session_maker() as session:
@@ -324,7 +325,7 @@ class SandboxPool:
                         logger.debug("Failed to remove orphaned network %s", getattr(net, 'name', 'unknown'))
                 if networks:
                     logger.info("Cleaned up %d orphaned sandbox networks", len(networks))
-            except Exception as exc:
+            except (APIError, DockerException) as exc:
                 logger.warning("Docker cleanup error: %s", exc)
 
         # Mark all non-destroyed rows as destroyed in DB

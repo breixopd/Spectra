@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/vendor/css/xterm.css" />
     <script src="/static/vendor/js/xterm.js"></script>
     <script src="/static/vendor/js/xterm-addon-fit.js"></script>
+    <script src="/static/js/reconnecting-ws.js"></script>
     <style>
         body { background-color: #0f172a; margin: 0; height: 100vh; display: flex; flex-direction: column; }
         #terminal { flex: 1; padding: 10px; }
@@ -42,32 +43,30 @@
 
         window.onresize = () => fitAddon.fit();
 
-        // WebSocket Connection
+        // WebSocket Connection with auto-reconnect
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const sessionId = {{ session_id|tojson }};
         const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}`;
-        const ws = new WebSocket(wsUrl);
+        const ws = new ReconnectingWebSocket(wsUrl, { maxRetries: 10 });
 
-        ws.onopen = () => {
+        ws.on('open', () => {
             term.write('\r\n\x1b[32mConnected.\x1b[0m\r\n');
-        };
+        });
 
-        ws.onmessage = (event) => {
+        ws.on('message', (event) => {
             term.write(event.data);
-        };
+        });
 
-        ws.onclose = () => {
-            term.write('\r\n\x1b[31m[SYSTEM] Connection closed.\x1b[0m\r\n');
-        };
+        ws.on('close', () => {
+            term.write('\r\n\x1b[31m[SYSTEM] Connection closed. Reconnecting...\x1b[0m\r\n');
+        });
 
-        ws.onerror = (error) => {
-            term.write(`\r\n\x1b[31m[SYSTEM] Error: ${error}\x1b[0m\r\n`);
-        };
+        ws.on('error', (error) => {
+            term.write('\r\n\x1b[31m[SYSTEM] Connection error.\x1b[0m\r\n');
+        });
 
         term.onData(data => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(data);
-            }
+            ws.send(data);
         });
     </script>
 </body>
