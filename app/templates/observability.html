@@ -354,7 +354,8 @@
 <!-- Tabs -->
 <div class="tab-container">
     <div class="tab-buttons">
-        <button class="tab-btn active" data-tab="services">Services</button>
+        <button class="tab-btn active" data-tab="trends">Trends</button>
+        <button class="tab-btn" data-tab="services">Services</button>
         <button class="tab-btn" data-tab="traces">Traces</button>
         <button class="tab-btn" data-tab="circuit-breakers">Circuit Breakers</button>
         <button class="tab-btn" data-tab="events">Events</button>
@@ -362,8 +363,46 @@
         <button class="tab-btn" data-tab="saas">SaaS Metrics</button>
     </div>
     
+    <!-- Trends Tab -->
+    <div class="tab-content active" id="tab-trends">
+        <div class="section-header">
+            <h2 class="section-title">Metric Trends</h2>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <select id="trend-range" onchange="refreshTrends()" style="background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.25rem; padding: 0.25rem 0.5rem; color: #e2e8f0; font-size: 0.875rem;">
+                    <option value="15">Last 15 min</option>
+                    <option value="60" selected>Last 1 hour</option>
+                    <option value="360">Last 6 hours</option>
+                    <option value="1440">Last 24 hours</option>
+                </select>
+                <button class="refresh-btn" onclick="refreshTrends()" aria-label="Refresh Trends">
+                    <i data-lucide="refresh-cw" class="icon-sm"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="card" style="padding: 1rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #e2e8f0;">Requests (total)</div>
+                <canvas id="chart-requests" height="180"></canvas>
+            </div>
+            <div class="card" style="padding: 1rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #e2e8f0;">Error Rate (%)</div>
+                <canvas id="chart-errors" height="180"></canvas>
+            </div>
+            <div class="card" style="padding: 1rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #e2e8f0;">Avg Latency (ms)</div>
+                <canvas id="chart-latency" height="180"></canvas>
+            </div>
+            <div class="card" style="padding: 1rem;">
+                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #e2e8f0;">Latency Percentiles (ms)</div>
+                <canvas id="chart-percentiles" height="180"></canvas>
+            </div>
+        </div>
+        <p style="color: #64748b; font-size: 0.75rem; margin-top: 0.75rem;">Snapshots every 60s. Data kept in-memory for up to 24 hours.</p>
+    </div>
+
     <!-- Services Tab -->
-    <div class="tab-content active" id="tab-services">
+    <div class="tab-content" id="tab-services">
         <div class="section-header">
             <h2 class="section-title">Service Health</h2>
             <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Services">
@@ -711,6 +750,177 @@
     
     // Initial load
     refreshData();
+    refreshTrends();
+
+    // --- Trend Charts (Canvas API) ---
+    function drawLineChart(canvasId, points, color, fillColor) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !points.length) return;
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        const W = rect.width, H = rect.height;
+        const pad = {top: 10, right: 10, bottom: 24, left: 48};
+        const cw = W - pad.left - pad.right, ch = H - pad.top - pad.bottom;
+
+        ctx.clearRect(0, 0, W, H);
+
+        const vals = points.map(p => p.v);
+        let minV = Math.min(...vals), maxV = Math.max(...vals);
+        if (minV === maxV) { minV -= 1; maxV += 1; }
+        const range = maxV - minV;
+
+        // Grid lines
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.top + ch - (ch * i / 4);
+            ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
+            ctx.fillStyle = '#64748b'; ctx.font = '10px JetBrains Mono, monospace'; ctx.textAlign = 'right';
+            const label = (minV + range * i / 4);
+            ctx.fillText(label >= 1000 ? (label/1000).toFixed(1)+'k' : label.toFixed(1), pad.left - 4, y + 3);
+        }
+
+        // Time labels
+        ctx.fillStyle = '#64748b'; ctx.font = '10px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+        const labelCount = Math.min(points.length, 6);
+        for (let i = 0; i < labelCount; i++) {
+            const idx = Math.floor(i * (points.length - 1) / Math.max(labelCount - 1, 1));
+            const x = pad.left + (idx / Math.max(points.length - 1, 1)) * cw;
+            const d = new Date(points[idx].t * 1000);
+            ctx.fillText(d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0'), x, H - 4);
+        }
+
+        if (points.length < 2) return;
+
+        // Fill
+        ctx.beginPath();
+        ctx.moveTo(pad.left, pad.top + ch);
+        for (let i = 0; i < points.length; i++) {
+            const x = pad.left + (i / (points.length - 1)) * cw;
+            const y = pad.top + ch - ((points[i].v - minV) / range) * ch;
+            ctx.lineTo(x, y);
+        }
+        ctx.lineTo(pad.left + cw, pad.top + ch);
+        ctx.closePath();
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+
+        // Line
+        ctx.beginPath();
+        for (let i = 0; i < points.length; i++) {
+            const x = pad.left + (i / (points.length - 1)) * cw;
+            const y = pad.top + ch - ((points[i].v - minV) / range) * ch;
+            i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    function drawMultiLineChart(canvasId, series) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !series.length || !series[0].points.length) return;
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        const W = rect.width, H = rect.height;
+        const pad = {top: 10, right: 10, bottom: 24, left: 48};
+        const cw = W - pad.left - pad.right, ch = H - pad.top - pad.bottom;
+        ctx.clearRect(0, 0, W, H);
+
+        const allVals = series.flatMap(s => s.points.map(p => p.v));
+        let minV = Math.min(...allVals), maxV = Math.max(...allVals);
+        if (minV === maxV) { minV -= 1; maxV += 1; }
+        const range = maxV - minV;
+        const n = series[0].points.length;
+
+        // Grid
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+        for (let i = 0; i <= 4; i++) {
+            const y = pad.top + ch - (ch * i / 4);
+            ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
+            ctx.fillStyle = '#64748b'; ctx.font = '10px JetBrains Mono, monospace'; ctx.textAlign = 'right';
+            ctx.fillText((minV + range * i / 4).toFixed(1), pad.left - 4, y + 3);
+        }
+
+        // Time labels
+        ctx.fillStyle = '#64748b'; ctx.font = '10px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+        const pts = series[0].points;
+        const lc = Math.min(n, 6);
+        for (let i = 0; i < lc; i++) {
+            const idx = Math.floor(i * (n - 1) / Math.max(lc - 1, 1));
+            const x = pad.left + (idx / Math.max(n - 1, 1)) * cw;
+            const d = new Date(pts[idx].t * 1000);
+            ctx.fillText(d.getHours().toString().padStart(2,'0') + ':' + d.getMinutes().toString().padStart(2,'0'), x, H - 4);
+        }
+
+        // Lines + legend
+        let legendX = pad.left + 4;
+        for (const s of series) {
+            if (s.points.length < 2) continue;
+            ctx.beginPath();
+            for (let i = 0; i < s.points.length; i++) {
+                const x = pad.left + (i / (s.points.length - 1)) * cw;
+                const y = pad.top + ch - ((s.points[i].v - minV) / range) * ch;
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.stroke();
+            // Legend
+            ctx.fillStyle = s.color; ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
+            ctx.fillRect(legendX, pad.top, 10, 3);
+            ctx.fillText(s.label, legendX + 14, pad.top + 4);
+            legendX += ctx.measureText(s.label).width + 28;
+        }
+    }
+
+    async function refreshTrends() {
+        const minutes = parseInt(document.getElementById('trend-range').value, 10);
+        try {
+            const resp = await fetch(`/api/v1/observability/metrics/history?minutes=${minutes}`);
+            const data = await resp.json();
+            renderTrends(data);
+        } catch (e) {
+            console.error('Failed to fetch trends:', e);
+        }
+    }
+
+    function renderTrends(snapshots) {
+        if (!snapshots || !snapshots.length) {
+            ['chart-requests','chart-errors','chart-latency','chart-percentiles'].forEach(id => {
+                const c = document.getElementById(id);
+                if (c) { const ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height);
+                    ctx.fillStyle='#64748b'; ctx.font='13px sans-serif'; ctx.textAlign='center';
+                    ctx.fillText('No data yet — snapshots arrive every 60s', c.getBoundingClientRect().width/2, c.getBoundingClientRect().height/2);
+                }
+            });
+            return;
+        }
+
+        drawLineChart('chart-requests',
+            snapshots.map(s => ({t: s._timestamp, v: s.request_count})),
+            '#8b5cf6', 'rgba(139,92,246,0.10)');
+
+        drawLineChart('chart-errors',
+            snapshots.map(s => ({t: s._timestamp, v: s.error_rate})),
+            '#f43f5e', 'rgba(244,63,94,0.10)');
+
+        drawLineChart('chart-latency',
+            snapshots.map(s => ({t: s._timestamp, v: s.avg_latency_ms})),
+            '#3b82f6', 'rgba(59,130,246,0.10)');
+
+        drawMultiLineChart('chart-percentiles', [
+            {label: 'P50', color: '#10b981', points: snapshots.map(s => ({t: s._timestamp, v: s.p50_ms}))},
+            {label: 'P90', color: '#f59e0b', points: snapshots.map(s => ({t: s._timestamp, v: s.p90_ms}))},
+            {label: 'P99', color: '#f43f5e', points: snapshots.map(s => ({t: s._timestamp, v: s.p99_ms}))},
+        ]);
+    }
     
     async function refreshSaasMetrics() {
         try {
@@ -762,7 +972,7 @@
     }
 
     // Auto-refresh every 10 seconds
-    setInterval(refreshData, 10000);
+    setInterval(() => { refreshData(); refreshTrends(); }, 10000);
     
     // Re-init icons
     if (typeof lucide !== 'undefined') {
