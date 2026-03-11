@@ -51,6 +51,7 @@ class ServerProvisioner:
         3. Health check
         4. Return result with service URL
         """
+        logger.info("Starting provisioning: host=%s service=%s", config.host, config.service_type)
         result = ProvisioningResult(
             success=False,
             server_host=config.host,
@@ -133,13 +134,16 @@ class ServerProvisioner:
                 result.success = True
                 result.service_url = service_url
                 result.logs.append(f"\nProvisioning complete: {service_url}")
+                logger.info("Provisioning succeeded: host=%s url=%s", config.host, service_url)
 
         except asyncssh.DisconnectError as e:
             result.error = f"SSH connection failed: {e}"
             result.logs.append(f"ERROR: {result.error}")
+            logger.error("SSH disconnect during provisioning: host=%s error=%s", config.host, e)
         except OSError as e:
             result.error = f"Cannot reach server: {e}"
             result.logs.append(f"ERROR: {result.error}")
+            logger.error("Cannot reach server: host=%s error=%s", config.host, e)
         except Exception as e:
             result.error = f"Unexpected error: {e}"
             result.logs.append(f"ERROR: {result.error}")
@@ -170,6 +174,7 @@ class ServerProvisioner:
 
     async def deprovision(self, config: ServerConfig) -> ProvisioningResult:
         """Remove Spectra service from a remote server."""
+        logger.info("Starting deprovision: host=%s service=%s", config.host, config.service_type)
         result = ProvisioningResult(
             success=False, server_host=config.host, service_type=config.service_type,
         )

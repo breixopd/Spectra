@@ -160,6 +160,26 @@ async def forbidden_handler(request: Request, exc: Exception) -> HTMLResponse | 
     return JSONResponse({"detail": "Forbidden"}, status_code=403)
 
 
+@app.exception_handler(401)
+async def unauthorized_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/401.html").render(),
+            status_code=401,
+        )
+    return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+
+
+@app.exception_handler(429)
+async def rate_limit_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/429.html").render(),
+            status_code=429,
+        )
+    return JSONResponse({"detail": "Too many requests"}, status_code=429)
+
+
 @app.exception_handler(500)
 async def server_error_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
     logger.exception("Internal server error: %s", exc)

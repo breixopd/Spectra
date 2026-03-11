@@ -102,10 +102,12 @@ class SafetySupervisorAgent(Agent[SafetyInput, SafetyAction]):
         input_data: SafetyInput,
     ) -> AgentResult:
         """Evaluate the safety of a command."""
+        logger.info("Safety check: tool=%s target=%s", input_data.tool_id, input_data.target)
 
         # 1. Fast Path: Regex Blocklist
         for pattern in self.BLOCKLIST:
             if re.search(pattern, input_data.command, re.IGNORECASE):
+                logger.warning("Blocked command by regex pattern: %s (tool=%s)", pattern, input_data.tool_id)
                 return AgentResult(
                     success=True,
                     action=SafetyAction(

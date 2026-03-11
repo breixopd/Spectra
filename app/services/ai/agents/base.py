@@ -344,4 +344,10 @@ class Agent(ABC, Generic[InputT, OutputT]):
         input_data: InputT,
     ) -> AgentResult:
         """Allow agents to be called directly."""
-        return await self.execute(context, input_data)
+        logger.info("%s executing for mission=%s target=%s phase=%s", self.name, context.mission_id, context.target, context.phase)
+        result = await self.execute(context, input_data)
+        if result.error:
+            logger.error("%s failed: %s", self.name, result.error)
+        else:
+            logger.info("%s completed successfully (action=%s)", self.name, result.action.action_type if result.action else "none")
+        return result
