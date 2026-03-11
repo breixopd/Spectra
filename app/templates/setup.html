@@ -543,7 +543,7 @@
                 sandbox_orchestrator_api_key: document.getElementById('use-external-sandbox').checked ? document.getElementById('sandbox_orchestrator_api_key').value.trim() || null : null,
             };
 
-            const setupResponse = await fetch('/api/auth/setup', {
+            const setupResponse = await fetch('/api/v1/auth/setup', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -560,7 +560,7 @@
                 throw new Error(error.detail || 'Setup failed. Please review the form and try again.');
             }
 
-            const loginResponse = await fetch('/api/auth/token', {
+            const loginResponse = await fetch('/api/v1/auth/token', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',

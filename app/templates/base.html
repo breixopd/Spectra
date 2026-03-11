@@ -210,7 +210,7 @@
         
         if (!token && !publicPaths.includes(window.location.pathname)) {
             // Check if setup is needed
-            fetch('/api/auth/setup/status')
+            fetch('/api/v1/auth/setup/status')
                 .then(res => res.json())
                 .then(data => {
                     if (!data.is_setup) {
@@ -492,7 +492,7 @@
             if (!statusBar) return;
 
             try {
-                const response = await fetch('/api/system/status');
+                const response = await fetch('/api/v1/system/status');
                 if (!response.ok) {
                     // Server might be starting up
                     statusBar.classList.remove('hidden');

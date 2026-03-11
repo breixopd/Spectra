@@ -314,7 +314,7 @@
     async function loadSafetyStats() {
         try {
             // Try dedicated safety endpoint first
-            let res = await fetch('/api/system/safety-stats');
+            let res = await fetch('/api/v1/system/safety-stats');
             if (res.ok) {
                 const data = await res.json();
                 safetyAllowed = data.allowed || 0;
@@ -326,7 +326,7 @@
         } catch {}
         // Fall back to system status
         try {
-            const res = await fetch('/api/system/status');
+            const res = await fetch('/api/v1/system/status');
             if (res.ok) {
                 const data = await res.json();
                 if (data.safety) {
@@ -514,7 +514,7 @@
     // Fetch initial system status on page load
     (async function fetchInitialState() {
         try {
-            const res = await fetch('/api/system/status');
+            const res = await fetch('/api/v1/system/status');
             if (!res.ok) return;
             const data = await res.json();
 

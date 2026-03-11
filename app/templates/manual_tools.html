@@ -780,7 +780,7 @@ function switchManualTab(tab) {
 // Load tools
 async function loadTools() {
     try {
-        const res = await fetch('/api/tools');
+        const res = await fetch('/api/v1/tools');
         const data = await res.json();
         allTools = data.tools || data;
         renderToolPicker(allTools);
@@ -832,7 +832,7 @@ async function selectManualTool(toolId) {
     document.getElementById('form-tool-name').textContent = 'Loading...';
 
     try {
-        const res = await fetch(`/api/tools/${toolId}/config`);
+        const res = await fetch(`/api/v1/tools/${toolId}/config`);
         const cfg = await res.json();
         selectedToolConfig = cfg;
         buildForm(cfg);
@@ -961,7 +961,7 @@ async function executeManualTool() {
     }, 1000);
 
     try {
-        const res = await fetch(`/api/tools/${selectedToolConfig.id}/test`, {
+        const res = await fetch(`/api/v1/tools/${selectedToolConfig.id}/test`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({target, args, timeout})
@@ -1286,7 +1286,7 @@ async function runPipeline() {
         output.scrollTop = output.scrollHeight;
 
         try {
-            const res = await fetch(`/api/tools/${step.toolId}/test`, {
+            const res = await fetch(`/api/v1/tools/${step.toolId}/test`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({target, args: {}, timeout: 300})
@@ -1409,7 +1409,7 @@ async function searchCVEs() {
         if (version) params.set('version', version);
         if (service) params.set('service', service);
 
-        const res = await fetch('/api/cve/lookup?' + params.toString());
+        const res = await fetch('/api/v1/cve/lookup?' + params.toString());
         const data = await res.json();
         const cves = data.cves || [];
         countEl.textContent = `${data.total || cves.length} found`;
@@ -1521,7 +1521,7 @@ async function startSession() {
     if (!name) return;
 
     try {
-        const res = await fetch('/api/pentest-sessions', {
+        const res = await fetch('/api/v1/pentest-sessions', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({name, target, description: ''})
@@ -1539,7 +1539,7 @@ async function startSession() {
 
 function logToSession(action, tool, findings) {
     if (!currentSessionId) return;
-    fetch(`/api/pentest-sessions/${currentSessionId}/log`, {
+    fetch(`/api/v1/pentest-sessions/${currentSessionId}/log`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({action, tool, note: '', findings: findings || []})
@@ -1549,7 +1549,7 @@ function logToSession(action, tool, findings) {
 async function exportSession() {
     if (!currentSessionId) return;
     try {
-        const res = await fetch(`/api/pentest-sessions/${currentSessionId}/export`);
+        const res = await fetch(`/api/v1/pentest-sessions/${currentSessionId}/export`);
         const data = await res.json();
         const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
         const a = document.createElement('a');
@@ -2018,7 +2018,7 @@ function jumpToTool(toolName) {
 // === Wordlist Management ===
 async function loadWordlists() {
     try {
-        const res = await fetch('/api/wordlists');
+        const res = await fetch('/api/v1/wordlists');
         const data = await res.json();
         const wordlists = data.wordlists || data.local || [];
         const presets = data.presets || [];
@@ -2054,7 +2054,7 @@ async function loadWordlists() {
 
 async function downloadPreset(presetId) {
     try {
-        await fetch(`/api/wordlists/download-preset/${encodeURIComponent(presetId)}`, { method: 'POST' });
+        await fetch(`/api/v1/wordlists/download-preset/${encodeURIComponent(presetId)}`, { method: 'POST' });
         loadWordlists();
     } catch(e) { console.error(e); }
 }
@@ -2065,7 +2065,7 @@ async function uploadWordlist(input) {
     const form = new FormData();
     form.append('file', file);
     try {
-        await fetch('/api/wordlists/upload', { method: 'POST', body: form });
+        await fetch('/api/v1/wordlists/upload', { method: 'POST', body: form });
         loadWordlists();
     } catch(e) { console.error(e); }
     input.value = '';
@@ -2073,7 +2073,7 @@ async function uploadWordlist(input) {
 
 async function refreshWordlistOptions() {
     try {
-        const res = await fetch('/api/wordlists');
+        const res = await fetch('/api/v1/wordlists');
         const data = await res.json();
         const wordlists = data.wordlists || data.local || [];
         const dl = document.getElementById('wordlist-options');

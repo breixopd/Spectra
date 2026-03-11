@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadReports() {
     try {
-        const response = await fetch('/api/missions');
+        const response = await fetch('/api/v1/missions');
         if (!response.ok) throw new Error('Failed to fetch reports');
 
         const missions = await response.json();

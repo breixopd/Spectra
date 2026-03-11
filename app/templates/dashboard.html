@@ -422,7 +422,7 @@ async function loadMetrics() {
     const findingsData = document.getElementById('findings-data');
 
     try {
-        const res = await fetch('/api/missions');
+        const res = await fetch('/api/v1/missions');
         if (res.ok) missions = await res.json();
         if (errEl) errEl.classList.add('hidden');
     } catch {
@@ -445,7 +445,7 @@ async function loadMetrics() {
     // Gather all findings
     for (const m of missions) {
         try {
-            const r = await fetch(`/api/missions/${m.id}/findings`);
+            const r = await fetch(`/api/v1/missions/${m.id}/findings`);
             if (r.ok) { const f = await r.json(); f.forEach(x => { x._mission = m; }); allFindings.push(...f); }
         } catch {}
     }
@@ -562,7 +562,7 @@ function launchPlaybook() {
         const val = sel.value;
         if (!val) return;
         try {
-            const res = await fetch('/api/missions/adversary-playbooks');
+            const res = await fetch('/api/v1/missions/adversary-playbooks');
             if (!res.ok) return;
             const playbooks = await res.json();
             const pb = playbooks.find(p => p.id === val);
@@ -609,7 +609,7 @@ function switchFDTab(tab) {
 
 function markFalsePositive() {
     if (!currentFinding) return;
-    fetch(`/api/findings/${currentFinding.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'false_positive' }) }).catch(() => {});
+    fetch(`/api/v1/findings/${currentFinding.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'false_positive' }) }).catch(() => {});
     closeFindingDetail();
 }
 function retestFinding() { closeFindingDetail(); }
