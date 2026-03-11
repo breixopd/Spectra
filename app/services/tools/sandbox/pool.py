@@ -9,7 +9,10 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from docker.errors import APIError, ContainerError, DockerException, ImageNotFound, NotFound
+try:
+    from docker.errors import APIError, ContainerError, DockerException, ImageNotFound, NotFound
+except ImportError:
+    DockerException = APIError = ContainerError = ImageNotFound = NotFound = OSError  # type: ignore[assignment,misc]
 from sqlalchemy import select, update
 
 from app.core.config import get_settings

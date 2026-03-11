@@ -20,8 +20,9 @@ class CVELookupResponse(BaseModel):
     """Response for CVE lookup."""
 
     cves: list[CVEItem]
-    total: int
+    total: int | None = None
     query: dict
+    message: str | None = None
 
 
 class MetasploitModule(BaseModel):
@@ -48,8 +49,8 @@ class CVEEnrichedResponse(BaseModel):
     cve_id: str | None = None
     exploitdb: list[dict] = []
     metasploit: list[dict] = []
-    epss: dict | None = None
-    kev: dict | None = None
+    epss: float | dict | None = None
+    kev: bool | dict | None = None
 
 
 class SearchExploitResponse(BaseModel):
