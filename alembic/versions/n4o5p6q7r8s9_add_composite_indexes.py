@@ -1,7 +1,7 @@
 """Add composite indexes for missions and findings.
 
 Revision ID: n4o5p6q7r8s9
-Revises: m3n4o5p6q7r8
+Revises: g7a8b9c0d1e2
 Create Date: 2026-03-11
 
 """

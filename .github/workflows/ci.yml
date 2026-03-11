@@ -93,11 +93,11 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt numpy pytest-timeout
       - name: Run integration tests
+        continue-on-error: true  # Integration tests may fail due to missing tools/services
         run: |
-          python3 -m pytest tests/integration/ -q \
+          python3 -m pytest tests/integration/ -v --tb=short \
             --timeout=120 \
-            -k "not live and not e2e" \
-            || true  # Integration tests may fail due to missing tools/services
+            -k "not live and not e2e"
         env:
           AI_PROVIDER: mock
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
@@ -113,6 +113,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
       - run: pip install bandit[toml]
       - run: bandit -r app/ -c pyproject.toml -f json -o bandit-report.json || true
       - run: bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
@@ -125,6 +126,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
       - run: pip install pip-audit
       - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
       - run: pip install -r requirements-app.txt

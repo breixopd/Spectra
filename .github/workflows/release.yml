@@ -73,7 +73,7 @@ jobs:
             --cov=app \
             --cov-config=.coveragerc \
             --cov-report=term-missing \
-            --cov-fail-under=40
+            --cov-fail-under=60
         env:
           AI_PROVIDER: mock
           DATABASE_URL: "sqlite+aiosqlite:///test.db"
