@@ -7,9 +7,11 @@ Initializes database connections, cache, and other services.
 
 import asyncio
 import logging
+import shutil
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
@@ -275,6 +277,66 @@ async def seed_default_plans() -> None:
         logger.warning("Failed to seed default plans: %s", e)
 
 
+async def run_startup_checks() -> None:
+    """Run pre-flight checks and log results. Warns but does not block startup."""
+    logger.info("[CHECK] Running startup checks...")
+
+    # 1. Database connectivity
+    try:
+        from sqlalchemy import text
+
+        async with async_session_maker() as session:
+            result = await asyncio.wait_for(
+                session.execute(text("SELECT 1")),
+                timeout=10.0,
+            )
+            result.scalar()
+        logger.info("[CHECK][OK] Database connectivity verified")
+    except asyncio.TimeoutError:
+        logger.warning("[CHECK][WARN] Database connectivity check timed out (10s)")
+    except Exception as e:
+        logger.warning("[CHECK][WARN] Database connectivity check failed: %s", e)
+
+    # 2. Required tables existence
+    try:
+        from sqlalchemy import inspect as sa_inspect, text as sa_text
+
+        expected_tables = {"users", "missions", "targets", "findings", "exploits"}
+        async with async_session_maker() as session:
+            result = await session.execute(
+                sa_text(
+                    "SELECT tablename FROM pg_catalog.pg_tables "
+                    "WHERE schemaname = 'public'"
+                )
+            )
+            existing = {row[0] for row in result.fetchall()}
+
+        missing = expected_tables - existing
+        if missing:
+            logger.warning("[CHECK][WARN] Missing database tables: %s", ", ".join(sorted(missing)))
+        else:
+            logger.info("[CHECK][OK] All expected tables present")
+    except Exception as e:
+        logger.warning("[CHECK][WARN] Table existence check failed: %s", e)
+
+    # 3. Disk space for data directory
+    try:
+        data_dir = Path("data")
+        data_dir.mkdir(parents=True, exist_ok=True)
+        usage = shutil.disk_usage(str(data_dir))
+        free_mb = usage.free / (1024 * 1024)
+        if free_mb < 100:
+            logger.warning(
+                "[CHECK][WARN] Low disk space for data directory: %.0f MB free", free_mb
+            )
+        else:
+            logger.info("[CHECK][OK] Disk space: %.0f MB free", free_mb)
+    except Exception as e:
+        logger.warning("[CHECK][WARN] Disk space check failed: %s", e)
+
+    logger.info("[CHECK] Startup checks complete")
+
+
 async def run_startup_tasks() -> None:
     """Run background tasks on startup."""
     try:
@@ -358,6 +420,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Database migrations are handled by start.sh before uvicorn starts
         telemetry.update_service_status("database", healthy=True)
         logger.info("[OK] Database ready (migrations handled by start script)")
+
+        # Run startup checks (informational, non-blocking)
+        await run_startup_checks()
 
         # Store session maker in app state for dependency injection
         app.state.db_session_maker = async_session_maker
