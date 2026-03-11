@@ -330,3 +330,74 @@ class ConfigurationError(SpectraError):
     """Configuration error."""
 
     code = "CONFIGURATION_ERROR"
+
+
+# --- Generic Resource Errors ---
+
+
+class NotFoundError(SpectraError):
+    """Generic resource not found."""
+
+    code = "NOT_FOUND"
+
+    def __init__(self, resource: str, identifier: str | None = None):
+        msg = f"{resource} not found"
+        if identifier:
+            msg = f"{resource} not found: {identifier}"
+        super().__init__(msg, details={"resource": resource, "identifier": identifier})
+
+
+class ExternalServiceError(ServiceError):
+    """An external service (LLM, tool runner, etc.) failed."""
+
+    code = "EXTERNAL_SERVICE_ERROR"
+
+    def __init__(self, service_name: str, reason: str | None = None):
+        super().__init__(
+            f"External service error: {service_name}",
+            details={"service": service_name, "reason": reason},
+        )
+
+
+class RateLimitExceededError(SpectraError):
+    """Rate limit exceeded (generic, non-auth)."""
+
+    code = "RATE_LIMIT_EXCEEDED"
+
+    def __init__(self, limit: str, retry_after: int | None = None):
+        super().__init__(
+            f"Rate limit exceeded: {limit}",
+            details={"limit": limit, "retry_after_seconds": retry_after},
+        )
+
+
+# --- HTTP Status Code Mapping ---
+
+EXCEPTION_STATUS_MAP: dict[type[SpectraError], int] = {
+    NotFoundError: 404,
+    MissionNotFoundError: 404,
+    ToolNotFoundError: 404,
+    AuthenticationError: 401,
+    AuthorizationError: 403,
+    RateLimitError: 429,
+    RateLimitExceededError: 429,
+    ValidationError: 422,
+    ConfigurationError: 500,
+    ExternalServiceError: 502,
+    ServiceUnavailableError: 503,
+    CircuitBreakerOpenError: 503,
+    LLMTimeoutError: 504,
+    LLMConnectionError: 502,
+    ToolTimeoutError: 504,
+    ToolExecutionError: 500,
+    MissionStateError: 409,
+    SpectraError: 500,
+}
+
+
+def get_status_code_for_exception(exc: SpectraError) -> int:
+    """Return the HTTP status code for a SpectraError subclass."""
+    for cls in type(exc).__mro__:
+        if cls in EXCEPTION_STATUS_MAP:
+            return EXCEPTION_STATUS_MAP[cls]
+    return 500
