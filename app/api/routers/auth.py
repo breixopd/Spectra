@@ -486,7 +486,7 @@ async def reset_password(
     from app.repositories.user import UserRepository
 
     user_repo = UserRepository(session)
-    user = await user_repo.get(user_id)
+    user = await user_repo.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
