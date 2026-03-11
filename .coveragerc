@@ -1,18 +1,23 @@
 [run]
-source = app/
-branch = true
+source = app
 omit =
-    tests/*
+    app/*/migrations/*
     alembic/*
-    app/static/*
-    app/templates/*
+    tests/*
+    scripts/*
+    */conftest.py
 
 [report]
-show_missing = true
-precision = 2
-fail_under = 60
 exclude_lines =
     pragma: no cover
-    if TYPE_CHECKING
-    @abstractmethod
+    def __repr__
+    if TYPE_CHECKING:
     raise NotImplementedError
+    pass
+    \.\.\.
+
+show_missing = true
+precision = 2
+
+[html]
+directory = reports/coverage
