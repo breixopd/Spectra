@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="w-full">
+<div class="w-full" role="main">
     <div class="glass-panel p-8 rounded-2xl w-full animate-fade-in-up shadow-2xl shadow-violet-500/5">
         <div class="text-center mb-8">
             <div class="w-16 h-16 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center mx-auto mb-4">
@@ -11,15 +11,15 @@
             <p class="text-slate-400 mt-2 text-sm">Enter your credentials to continue.</p>
         </div>
 
-        <form id="login-form" class="space-y-4">
+        <form id="login-form" class="space-y-4" aria-label="Sign in">
             <div>
                 <label for="username" class="block text-sm font-medium text-slate-400 mb-1">Username</label>
-                <input type="text" id="username" name="username" required autocomplete="username" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                <input type="text" id="username" name="username" required autocomplete="username" maxlength="255" aria-required="true" aria-describedby="error-msg" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
             </div>
 
             <div>
                 <label for="password" class="block text-sm font-medium text-slate-400 mb-1">Password</label>
-                <input type="password" id="password" name="password" required autocomplete="current-password" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                <input type="password" id="password" name="password" required autocomplete="current-password" minlength="8" aria-required="true" aria-describedby="error-msg" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
             </div>
 
             <button type="submit" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white font-bold transition-all mt-6 shadow-lg shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none">
@@ -27,7 +27,7 @@
             </button>
         </form>
         
-        <div id="error-msg" class="mt-4 text-center text-red-400 text-sm hidden"></div>
+        <div id="error-msg" class="mt-4 text-center text-red-400 text-sm hidden" aria-live="polite" role="alert"></div>
         <div id="success-msg" class="mt-4 text-center text-green-400 text-sm hidden bg-green-500/10 border border-green-500/20 p-3 rounded-lg"></div>
 
         <div class="mt-6 text-center text-sm space-y-2">

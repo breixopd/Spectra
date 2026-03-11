@@ -6,6 +6,7 @@ Handles WebSocket connections for interactive shells.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -22,6 +23,18 @@ from app.services.system.audit import log_event as audit_log_event
 
 router = APIRouter(prefix="/shell", tags=["Shell"])
 logger = logging.getLogger("spectra.api.shell")
+
+KEEPALIVE_INTERVAL = 30  # seconds
+
+
+async def _keepalive(websocket: WebSocket) -> None:
+    """Send periodic pings to keep the WebSocket connection alive."""
+    try:
+        while True:
+            await asyncio.sleep(KEEPALIVE_INTERVAL)
+            await websocket.send_json({"type": "ping"})
+    except Exception:
+        pass
 
 
 @router.websocket("/{session_id}")
@@ -70,16 +83,18 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
 
     await session.connect_websocket(websocket)
 
+    ping_task = asyncio.create_task(_keepalive(websocket))
     try:
         while True:
             data = await websocket.receive_text()
-            # Send to shell socket
             await session.write(data)
     except WebSocketDisconnect:
         await session.disconnect_websocket()
     except Exception as e:
         logger.error("WebSocket error: %s", e)
         await session.disconnect_websocket()
+    finally:
+        ping_task.cancel()
 
 
 @router.get("/sessions")

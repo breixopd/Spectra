@@ -73,23 +73,23 @@
     <h1>Create Account</h1>
     <p class="subtitle">Get started with Spectra security assessments.</p>
 
-    <form id="registerForm">
+    <form id="registerForm" aria-label="Create account">
         <div class="field">
             <label for="username">Username</label>
-            <input type="text" id="username" name="username" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" autocomplete="username" placeholder="e.g. john_doe">
+            <input type="text" id="username" name="username" required minlength="3" maxlength="50" pattern="[a-zA-Z0-9_-]+" autocomplete="username" aria-required="true" placeholder="e.g. john_doe">
         </div>
         <div class="field">
             <label for="email">Email</label>
-            <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+            <input type="email" id="email" name="email" required maxlength="255" autocomplete="email" aria-required="true" placeholder="you@example.com">
         </div>
         <div class="field">
             <label for="password">Password</label>
-            <input type="password" id="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password" placeholder="Minimum 8 characters">
+            <input type="password" id="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password" aria-required="true" placeholder="Minimum 8 characters">
         </div>
         <button type="submit" class="btn" id="submitBtn">Create Account</button>
     </form>
 
-    <div id="msg" class="msg"></div>
+    <div id="msg" class="msg" aria-live="polite"></div>
     <div class="links">Already have an account? <a href="/login">Sign in</a></div>
 </div>
 
