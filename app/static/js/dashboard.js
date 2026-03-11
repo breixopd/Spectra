@@ -222,6 +222,9 @@ function toggleRequirements() {
 function startMission(target, directive, playbookId) {
     addTerminalLine(`Starting assessment against ${target}...`, 'info');
     
+    const launchBtn = document.getElementById('launch-btn');
+    if (launchBtn) { launchBtn.disabled = true; launchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Launching…'; }
+
     const reqEl = document.getElementById('mission-requirements');
     const requirements = reqEl && reqEl.value.trim() ? reqEl.value.trim() : null;
     if (requirements) addTerminalLine(`[SCOPE] Requirements attached (${requirements.length} chars)`, 'info');
@@ -230,6 +233,10 @@ function startMission(target, directive, playbookId) {
     if (playbookId) payload.playbook_id = playbookId;
     const vpnConfig = document.getElementById('vpn-config')?.value || null;
     if (vpnConfig) payload.vpn_config = vpnConfig;
+
+    // Remove empty state from activity log
+    const emptyEl = document.getElementById('activity-empty');
+    if (emptyEl) emptyEl.remove();
 
     fetch('/api/missions', {
         method: 'POST',
@@ -246,7 +253,10 @@ function startMission(target, directive, playbookId) {
             addTerminalLine(`[ERROR] Failed to start: ${JSON.stringify(data)}`, 'error');
         }
     })
-    .catch(err => addTerminalLine(`[ERROR] Connection failed: ${err}`, 'error'));
+    .catch(err => addTerminalLine(`[ERROR] Connection failed: ${err}`, 'error'))
+    .finally(() => {
+        if (launchBtn) { launchBtn.disabled = false; launchBtn.innerHTML = '<i class="fa-solid fa-rocket"></i> Launch'; }
+    });
 }
 
 // --- Scan Presets ---
