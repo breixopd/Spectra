@@ -293,3 +293,121 @@ class TestNonSuperuserAccessDenied:
             resp = await ac.get("/api/admin/plans")
 
         assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Plan update & validation
+# ---------------------------------------------------------------------------
+
+def _make_plan(**overrides):
+    """Return a MagicMock that looks like a Plan ORM object."""
+    defaults = dict(
+        id="plan-1", name="pro", display_name="Pro", description="Pro plan",
+        is_active=True, is_default=False, sort_order=1,
+        max_concurrent_missions=5, max_missions_per_month=100, max_targets=50,
+        max_api_requests_per_hour=1000, max_api_requests_per_day=10000,
+        sandbox_max_containers=3, max_storage_mb=5000,
+        sandbox_resource_tier="medium", features={},
+    )
+    defaults.update(overrides)
+    p = MagicMock()
+    for k, v in defaults.items():
+        setattr(p, k, v)
+    return p
+
+
+class TestUpdatePlan:
+    @pytest.mark.asyncio
+    async def test_update_plan_success(self):
+        admin = _make_user("admin")
+        app = _build_app(admin)
+
+        plan = _make_plan()
+
+        mock_sess = _mock_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = plan
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+        mock_sess.commit = AsyncMock()
+        mock_sess.refresh = AsyncMock()
+
+        from app.core.database import get_async_session
+        app.dependency_overrides[get_async_session] = lambda: mock_sess
+
+        with patch("app.api.routers.admin.plans.audit_log_event", new_callable=AsyncMock):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                resp = await ac.put("/api/admin/plans/plan-1", json={
+                    "display_name": "Pro Plus",
+                    "max_targets": 100,
+                })
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["name"] == "pro"
+
+    @pytest.mark.asyncio
+    async def test_update_plan_not_found(self):
+        admin = _make_user("admin")
+        app = _build_app(admin)
+
+        mock_sess = _mock_session()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_sess.execute = AsyncMock(return_value=mock_result)
+
+        from app.core.database import get_async_session
+        app.dependency_overrides[get_async_session] = lambda: mock_sess
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            resp = await ac.put("/api/admin/plans/nonexistent", json={
+                "display_name": "X",
+            })
+
+        assert resp.status_code == 404
+
+
+class TestCreatePlanDuplicate:
+    @pytest.mark.asyncio
+    async def test_create_plan_duplicate_name(self):
+        admin = _make_user("admin")
+        app = _build_app(admin)
+
+        mock_sess = _mock_session()
+        mock_dup = MagicMock()
+        mock_dup.scalar_one_or_none.return_value = "existing-id"
+        mock_sess.execute = AsyncMock(return_value=mock_dup)
+
+        from app.core.database import get_async_session
+        app.dependency_overrides[get_async_session] = lambda: mock_sess
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            resp = await ac.post("/api/admin/plans", json={
+                "name": "pro",
+                "display_name": "Pro",
+                "description": "Dup",
+                "is_default": False,
+                "sort_order": 1,
+                "max_concurrent_missions": 5,
+                "max_missions_per_month": 100,
+                "max_targets": 50,
+                "max_api_requests_per_hour": 1000,
+                "max_api_requests_per_day": 10000,
+                "sandbox_max_containers": 3,
+                "max_storage_mb": 5000,
+                "sandbox_resource_tier": "medium",
+                "features": {},
+            })
+
+        assert resp.status_code == 409
+
+
+class TestCreatePlanFieldValidation:
+    @pytest.mark.asyncio
+    async def test_missing_required_fields(self):
+        admin = _make_user("admin")
+        app = _build_app(admin)
+
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            resp = await ac.post("/api/admin/plans", json={"name": "x"})
+
+        assert resp.status_code == 422

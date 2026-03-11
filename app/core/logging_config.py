@@ -64,8 +64,8 @@ class SensitiveFieldFilter(logging.Filter):
     """Redacts sensitive values from log records before output."""
 
     PATTERNS = [
-        (re.compile(r'(password|passwd|pwd)\s*[=:]\s*\S+', re.IGNORECASE), r'\1=***REDACTED***'),
-        (re.compile(r'(token|api_key|apikey|secret|authorization)\s*[=:]\s*\S+', re.IGNORECASE), r'\1=***REDACTED***'),
+        (re.compile(r'(password|passwd|pwd)"?\s*[=:]\s*"?\S+', re.IGNORECASE), r'\1=***REDACTED***'),
+        (re.compile(r'(token|api_key|apikey|secret|authorization)"?\s*[=:]\s*"?\S+', re.IGNORECASE), r'\1=***REDACTED***'),
         (re.compile(r'(Bearer\s+)\S+', re.IGNORECASE), r'\1***REDACTED***'),
     ]
 

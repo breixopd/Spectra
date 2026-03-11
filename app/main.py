@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import time
 from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, Request, WebSocket, WebSocketDisconnect
@@ -304,9 +305,25 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
     await manager.connect(websocket, require_auth=False)
     logger.debug("WebSocket connected for user: %s", user.username)
 
+    # Rate limiting state
+    MAX_MESSAGES_PER_SECOND = 10
+    message_count = 0
+    last_reset = time.time()
+
     try:
         while True:
             data = await websocket.receive_text()
+
+            # Per-second message rate limiting
+            now = time.time()
+            if now - last_reset >= 1.0:
+                message_count = 0
+                last_reset = now
+            message_count += 1
+            if message_count > MAX_MESSAGES_PER_SECOND:
+                await websocket.send_json({"type": "error", "message": "Rate limit exceeded"})
+                continue
+
             # Validate message size (DoS protection)
             if len(data) > 65536:  # 64KB max message size
                 logger.warning(
