@@ -19,6 +19,7 @@ from app.api.routers import (
     auth,
     cve,
     exploits,
+    export,
     findings,
     health,
     manual_helpers,
@@ -172,6 +173,7 @@ api_v1.include_router(targets.router, tags=["Targets"])
 api_v1.include_router(findings.router, tags=["Findings"])
 api_v1.include_router(exploits.router, tags=["Exploits"])
 api_v1.include_router(observability.router, tags=["Observability"])
+api_v1.include_router(export.router, tags=["Export"])
 api_v1.include_router(system.router, tags=["System"])
 api_v1.include_router(cve.router, tags=["CVE Intelligence"])
 api_v1.include_router(wordlists.router, tags=["Wordlists"])
@@ -190,6 +192,7 @@ app.include_router(targets.router, prefix="/api", tags=["Targets"], deprecated=T
 app.include_router(findings.router, prefix="/api", tags=["Findings"], deprecated=True)
 app.include_router(exploits.router, prefix="/api", tags=["Exploits"], deprecated=True)
 app.include_router(observability.router, prefix="/api", tags=["Observability"], deprecated=True)
+app.include_router(export.router, prefix="/api", tags=["Export"], deprecated=True)
 app.include_router(system.router, prefix="/api", tags=["System"], deprecated=True)
 app.include_router(cve.router, prefix="/api", tags=["CVE Intelligence"], deprecated=True)
 app.include_router(wordlists.router, prefix="/api", tags=["Wordlists"], deprecated=True)
