@@ -4,6 +4,7 @@ Mission Repository for managing mission history.
 Provides data access operations for mission CRUD and status queries.
 """
 
+import logging
 from collections.abc import Sequence
 
 from sqlalchemy import select
@@ -11,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.mission import Mission, MissionStatus
 from app.repositories.base import BaseRepository
+
+logger = logging.getLogger("spectra.repositories.mission")
 
 
 class MissionRepository(BaseRepository[Mission]):
@@ -56,6 +59,7 @@ class MissionRepository(BaseRepository[Mission]):
         Returns:
             List of missions with active status (running, scanning, analyzing, etc.).
         """
+        logger.debug("Fetching active missions user_id=%s", user_id)
         active_statuses = [
             MissionStatus.RUNNING.value,
             MissionStatus.CREATED.value,
@@ -133,4 +137,5 @@ class MissionRepository(BaseRepository[Mission]):
             The updated mission or None if not found.
         """
         status_value = status.value if isinstance(status, MissionStatus) else status
+        logger.debug("Updating mission status id=%s status=%s", mission_id, status_value)
         return await self.update(mission_id, status=status_value)

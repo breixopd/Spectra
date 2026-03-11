@@ -5,6 +5,7 @@ Implements the Repository Pattern for clean data access abstraction.
 All entity-specific repositories should inherit from this.
 """
 
+import logging
 from collections.abc import Sequence
 from typing import Generic, TypeVar
 from uuid import UUID
@@ -13,6 +14,8 @@ from sqlalchemy import delete, inspect, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import Base
+
+logger = logging.getLogger("spectra.repositories.base")
 
 # Generic type for SQLAlchemy models
 ModelType = TypeVar("ModelType", bound=Base)
@@ -64,6 +67,7 @@ class BaseRepository(Generic[ModelType]):
         self.session.add(instance)
         await self.session.flush()
         await self.session.refresh(instance)
+        logger.debug("Created %s id=%s", self.model.__name__, instance.id)
         return instance
 
     async def get_by_id(self, entity_id: str | UUID) -> ModelType | None:
@@ -78,7 +82,9 @@ class BaseRepository(Generic[ModelType]):
         """
         stmt = select(self.model).where(self.model.id == str(entity_id))
         result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        entity = result.scalar_one_or_none()
+        logger.debug("Get %s id=%s found=%s", self.model.__name__, entity_id, entity is not None)
+        return entity
 
     async def get_all(
         self,
@@ -159,7 +165,9 @@ class BaseRepository(Generic[ModelType]):
         )
         result = await self.session.execute(stmt)
         await self.session.flush()
-        return result.scalar_one_or_none()
+        updated = result.scalar_one_or_none()
+        logger.debug("Updated %s id=%s success=%s", self.model.__name__, entity_id, updated is not None)
+        return updated
 
     async def delete(self, entity_id: str | UUID) -> bool:
         """
@@ -173,7 +181,9 @@ class BaseRepository(Generic[ModelType]):
         """
         stmt = delete(self.model).where(self.model.id == str(entity_id))
         result = await self.session.execute(stmt)
-        return result.rowcount > 0 if result.rowcount else False  # type: ignore[union-attr]
+        deleted = result.rowcount > 0 if result.rowcount else False  # type: ignore[union-attr]
+        logger.debug("Deleted %s id=%s success=%s", self.model.__name__, entity_id, deleted)
+        return deleted
 
     async def count(self, **kwargs) -> int:
         """

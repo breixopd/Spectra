@@ -5,6 +5,8 @@ Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
+import logging
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
@@ -14,9 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_async_session
 from app.core.security import decode_token
 from app.models.user import User
-from app.repositories.exploit import ExploitRepository
-from app.repositories.finding import FindingRepository
-from app.repositories.target import TargetRepository
+
+logger = logging.getLogger("spectra.api.dependencies")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
@@ -41,6 +42,7 @@ async def get_current_user(
         if username is None:
             raise credentials_exception
     except JWTError as exc:
+        logger.warning("JWT validation failed")
         raise credentials_exception from exc
 
     stmt = select(User).where(User.username == username)
@@ -48,7 +50,9 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
+        logger.warning("User not found for token subject=%s", username)
         raise credentials_exception
+    logger.debug("Authenticated user=%s", user.username)
     return user
 
 
@@ -59,6 +63,7 @@ async def get_current_active_user(
     Get current user and verify they are active.
     """
     if not current_user.is_active:
+        logger.warning("Inactive user attempted access user=%s", current_user.username)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
         )
@@ -79,48 +84,6 @@ async def get_current_superuser(
     return current_user
 
 
-
-
-async def get_target_repository(
-    session: AsyncSession = Depends(get_async_session),
-) -> TargetRepository:
-    """Get TargetRepository instance.
-
-    Args:
-        session: Async database session.
-
-    Returns:
-        Configured TargetRepository.
-    """
-    return TargetRepository(session)
-
-
-async def get_finding_repository(
-    session: AsyncSession = Depends(get_async_session),
-) -> FindingRepository:
-    """Get FindingRepository instance.
-
-    Args:
-        session: Async database session.
-
-    Returns:
-        Configured FindingRepository.
-    """
-    return FindingRepository(session)
-
-
-async def get_exploit_repository(
-    session: AsyncSession = Depends(get_async_session),
-) -> ExploitRepository:
-    """Get ExploitRepository instance.
-
-    Args:
-        session: Async database session.
-
-    Returns:
-        Configured ExploitRepository.
-    """
-    return ExploitRepository(session)
 
 
 # ---------------------------------------------------------------------------

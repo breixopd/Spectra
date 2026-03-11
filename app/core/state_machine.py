@@ -5,6 +5,7 @@ Formalizes mission state transitions with explicit validation.
 Ensures only valid state changes occur and provides audit trail.
 """
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -13,6 +14,8 @@ from app.core.enums import MissionStatus
 from app.core.events import EventType, events
 from app.core.exceptions import MissionStateError
 from app.core.telemetry import telemetry as _telemetry
+
+logger = logging.getLogger("spectra.core.state_machine")
 
 # Backward-compatible alias — new code should use MissionStatus directly.
 MissionState = MissionStatus
@@ -198,6 +201,7 @@ class MissionStateMachine:
             MissionStateError: If transition is invalid
         """
         if not self.can_transition_to(new_state):
+            logger.warning("Invalid transition mission=%s from=%s to=%s", self.mission_id, self._state.value, new_state.value)
             raise MissionStateError(
                 self.mission_id,
                 self._state.value,
@@ -214,6 +218,8 @@ class MissionStateMachine:
         old_state = self._state
         self._state = new_state
         self._history.append(transition)
+
+        logger.info("State transition mission=%s %s -> %s reason=%s", self.mission_id, old_state.value, new_state.value, reason)
 
         # Emit event
         events.emit_sync(
@@ -253,6 +259,8 @@ class MissionStateMachine:
 
         self._state = new_state
         self._history.append(transition)
+
+        logger.warning("Forced transition mission=%s to=%s reason=%s", self.mission_id, new_state.value, reason)
 
         return transition
 

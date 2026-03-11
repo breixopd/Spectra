@@ -12,7 +12,6 @@ import os
 import signal
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from app.core.constants import MAX_HOSTS_DEFAULT
 from app.core.telemetry import record_tool_execution
@@ -24,9 +23,6 @@ from app.services.tools.models import (
     ToolExecutionRequest,
     ToolExecutionResult,
 )
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger("spectra.tools.adapter")
 

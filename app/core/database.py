@@ -4,6 +4,7 @@ Async SQLAlchemy Database Setup.
 Provides async engine, session maker, and a dependency for FastAPI.
 """
 
+import logging
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -14,6 +15,8 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 from app.core.config import settings
+
+logger = logging.getLogger("spectra.core.database")
 
 
 # --- Async Engine ---
@@ -48,6 +51,8 @@ def _configure_database_url(url: str) -> tuple[str, dict]:
 
 
 db_url, connect_args = _configure_database_url(settings.DATABASE_URL.get_secret_value())
+
+logger.info("Configuring async engine pool_size=%d max_overflow=%d", settings.DATABASE_POOL_SIZE, settings.DATABASE_MAX_OVERFLOW)
 
 
 engine = create_async_engine(
@@ -85,6 +90,7 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
         try:
             yield session
         except Exception:
+            logger.error("Database session error, rolling back")
             await session.rollback()
             raise
         finally:

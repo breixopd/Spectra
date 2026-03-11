@@ -30,12 +30,6 @@ CVE_CACHE_TTL = 86400  # 24 hours
 
 
 # =============================================================================
-# Metasploit module database — now provided by ExploitDatabase service
-# (see app/services/ai/exploit_db.py).
-# =============================================================================
-
-
-# =============================================================================
 # CVE Knowledge Base — loaded from downloaded JSON, not hardcoded
 # =============================================================================
 

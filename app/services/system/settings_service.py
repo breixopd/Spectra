@@ -326,12 +326,3 @@ async def test_llm_connection(
         return {"success": False, "error": "No response from LLM"}
     except Exception:
         return {"success": False, "error": "Failed to communicate with LLM provider"}
-
-
-async def load_settings_from_db() -> None:
-    """Load settings from DB SystemConfig table, overriding in-memory values.
-
-    Should be called AFTER load_runtime_settings() during app startup
-    so that DB values take precedence over JSON file values.
-    """
-    await hydrate_runtime_settings_from_db(persist_normalized=True, reset_caches=False)

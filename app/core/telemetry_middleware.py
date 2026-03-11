@@ -4,6 +4,7 @@ Records request count, duration, active-request gauge, and error
 counters via the global TelemetryCollector instance.
 """
 
+import logging
 import re
 import time
 
@@ -13,6 +14,8 @@ from starlette.responses import Response
 
 from app.core.logging_config import get_correlation_id
 from app.core.telemetry import telemetry
+
+logger = logging.getLogger("spectra.core.telemetry_middleware")
 
 # Pre-compiled pattern: one or more path segments that look like IDs
 # (UUIDs, integers, hex strings ≥6 chars)
@@ -33,6 +36,10 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
 
     Uses OpenTelemetry semantic conventions for metric and attribute naming.
     """
+
+    def __init__(self, app, **kwargs):
+        super().__init__(app, **kwargs)
+        logger.debug("TelemetryMiddleware initialized")
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
