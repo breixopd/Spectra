@@ -25,12 +25,17 @@ class ConnectionManager:
     - JWT authentication on connect
     - Reliable broadcasting with error recovery
     - Dead connection cleanup
+    - Per-user and global connection limits
     """
+
+    MAX_CONNECTIONS_PER_USER = 100
+    MAX_CONNECTIONS_GLOBAL = 1000
 
     def __init__(self) -> None:
         """Initialize the connection manager."""
         self._connections: set[WebSocket] = set()
         self._rooms: dict[str, set[WebSocket]] = {}
+        self._user_connections: dict[str, set[WebSocket]] = {}
         self._lock = asyncio.Lock()
 
     @property
@@ -49,6 +54,8 @@ class ConnectionManager:
         Returns:
             True if connection was accepted, False if rejected.
         """
+        user_id: str | None = None
+
         if require_auth:
             token = websocket.query_params.get("token")
             if not token:
@@ -56,14 +63,33 @@ class ConnectionManager:
                 return False
             try:
                 from app.core.security import decode_token
-                decode_token(token)
+                payload = decode_token(token)
+                user_id = payload.get("sub")
             except (JWTError, Exception):
                 await websocket.close(code=4001, reason="Invalid or expired token")
                 return False
 
+        # Check global connection limit
+        async with self._lock:
+            if len(self._connections) >= self.MAX_CONNECTIONS_GLOBAL:
+                await websocket.close(code=4008, reason="Global connection limit reached")
+                return False
+
+            # Check per-user connection limit
+            if user_id:
+                user_conns = self._user_connections.get(user_id, set())
+                if len(user_conns) >= self.MAX_CONNECTIONS_PER_USER:
+                    await websocket.close(code=4008, reason="Per-user connection limit reached")
+                    return False
+
         await websocket.accept()
         async with self._lock:
             self._connections.add(websocket)
+            if user_id:
+                if user_id not in self._user_connections:
+                    self._user_connections[user_id] = set()
+                self._user_connections[user_id].add(websocket)
+            websocket.state.user_id = user_id  # type: ignore[attr-defined]
         logger.debug("WebSocket connected. Total: %d", len(self._connections))
         return True
 
@@ -76,6 +102,11 @@ class ConnectionManager:
         """
         async with self._lock:
             self._connections.discard(websocket)
+            user_id = getattr(getattr(websocket, "state", None), "user_id", None)
+            if user_id and user_id in self._user_connections:
+                self._user_connections[user_id].discard(websocket)
+                if not self._user_connections[user_id]:
+                    del self._user_connections[user_id]
         await self.leave_all_rooms(websocket)
         logger.debug("WebSocket disconnected. Total: %d", len(self._connections))
 

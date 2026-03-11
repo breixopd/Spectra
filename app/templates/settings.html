@@ -11,24 +11,24 @@
 <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 animate-fade-in-up stagger-1">
     <!-- Sidebar Navigation -->
     <div class="md:col-span-3">
-        <nav class="space-y-1">
-            <a href="#general" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
+        <nav class="space-y-1" role="tablist" aria-label="Settings sections">
+            <a href="#general" role="tab" aria-selected="true" aria-controls="general" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
                 <i class="fa-solid fa-sliders mr-3 text-violet-400"></i>
                 General
             </a>
-            <a href="#data-sources" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            <a href="#data-sources" role="tab" aria-selected="false" aria-controls="data-sources" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i class="fa-solid fa-download mr-3 text-slate-500"></i>
                 Data Sources
             </a>
-            <a href="#system" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            <a href="#system" role="tab" aria-selected="false" aria-controls="system" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i class="fa-solid fa-server mr-3 text-slate-500"></i>
                 System Status
             </a>
-            <a href="#vpn" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            <a href="#vpn" role="tab" aria-selected="false" aria-controls="vpn" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i class="fa-solid fa-shield-halved mr-3 text-slate-500"></i>
                 VPN
             </a>
-            <a href="#platform" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            <a href="#platform" role="tab" aria-selected="false" aria-controls="platform" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i class="fa-solid fa-globe mr-3 text-slate-500"></i>
                 Platform
             </a>
@@ -39,7 +39,7 @@
     <div class="md:col-span-9 space-y-6">
         
         <!-- General Settings -->
-        <div class="glass-panel rounded-xl p-6" id="general">
+        <div class="glass-panel rounded-xl p-6" id="general" role="tabpanel" aria-labelledby="general">
             <h2 class="text-lg font-semibold text-white mb-4">General Configuration</h2>
             <form id="settings-form" class="space-y-5">
                 <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] gap-4">
@@ -544,7 +544,7 @@
         </div>
 
         <!-- Data Sources Section -->
-        <div id="data-sources" class="glass-panel rounded-xl p-6">
+        <div id="data-sources" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="data-sources">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i class="fa-solid fa-download text-amber-400"></i>
                 Data Sources
@@ -568,7 +568,7 @@
         </div>
 
         <!-- VPN Management -->
-        <div id="vpn" class="glass-panel rounded-xl p-6">
+        <div id="vpn" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="vpn">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i class="fa-solid fa-shield-halved text-emerald-400"></i>
                 VPN Management
