@@ -112,9 +112,9 @@ function updateShellList() {
     const container = document.getElementById('shell-list');
     if (!container) return;
 
-    fetch('/api/v1/shell/sessions')
-        .then(res => res.json())
-        .then(sessions => {
+    spectraApi.get('/api/v1/shell/sessions')
+        .then(({ data: sessions, error }) => {
+            if (error || !sessions) return;
             container.innerHTML = '';
             if (sessions.length === 0) {
                 container.innerHTML = '<div class="text-center text-slate-600 text-xs py-4">No active sessions</div>';
@@ -139,7 +139,7 @@ function updateShellList() {
                 container.appendChild(el);
             });
         })
-        .catch(err => console.error('Failed to fetch sessions:', err));
+
 }
 
 function connectShell(sessionId) {
@@ -188,9 +188,8 @@ function toggleRequirements() {
     const select = document.getElementById('adversary-playbook');
     if (!select) return;
     try {
-        const res = await fetch('/api/v1/missions/adversary-playbooks');
-        if (!res.ok) return;
-        const playbooks = await res.json();
+        const { data: playbooks, error } = await spectraApi.get('/api/v1/missions/adversary-playbooks');
+        if (error || !playbooks) return;
         for (const pb of playbooks) {
             const opt = document.createElement('option');
             opt.value = pb.id;
@@ -207,9 +206,8 @@ function toggleRequirements() {
     const select = document.getElementById('vpn-config');
     if (!select) return;
     try {
-        const res = await fetch('/api/v1/vpn/configs');
-        if (!res.ok) return;
-        const configs = await res.json();
+        const { data: configs, error } = await spectraApi.get('/api/v1/vpn/configs');
+        if (error || !configs) return;
         for (const cfg of configs) {
             const opt = document.createElement('option');
             opt.value = cfg.name;
@@ -238,22 +236,18 @@ function startMission(target, directive, playbookId) {
     const emptyEl = document.getElementById('activity-empty');
     if (emptyEl) emptyEl.remove();
 
-    fetch('/api/v1/missions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.id) {
+    spectraApi.post('/api/v1/missions', payload)
+    .then(({ data, error }) => {
+        if (error) {
+            addTerminalLine(`[ERROR] Failed to start: ${error}`, 'error');
+            return;
+        }
+        if (data && data.id) {
             currentMissionId = data.id;
             addTerminalLine(`[SUCCESS] Mission started: ${data.id}`, 'success');
             initGraphWithTarget(target);
-        } else {
-            addTerminalLine(`[ERROR] Failed to start: ${JSON.stringify(data)}`, 'error');
         }
     })
-    .catch(err => addTerminalLine(`[ERROR] Connection failed: ${err}`, 'error'))
     .finally(() => {
         if (launchBtn) { launchBtn.disabled = false; launchBtn.innerHTML = '<i class="fa-solid fa-rocket"></i> Launch'; }
     });
@@ -269,8 +263,8 @@ async function launchPreset(presetId) {
     }
 
     try {
-        const res = await fetch('/api/v1/missions/presets');
-        const presets = await res.json();
+        const { data: presets, error: presetsError } = await spectraApi.get('/api/v1/missions/presets');
+        if (presetsError || !presets) throw new Error(presetsError || 'Failed to load presets');
         const preset = presets[presetId];
         
         if (!preset) {
@@ -292,9 +286,8 @@ function pauseMission() {
     }
 
     // Toggle state
-    fetch(`/api/v1/missions/${currentMissionId}/pause`, { method: 'POST' })
-        .then(() => addTerminalLine('[SYSTEM] Mission paused', 'warning'))
-        .catch(err => addTerminalLine(`[ERROR] ${err}`, 'error'));
+    spectraApi.post(`/api/v1/missions/${currentMissionId}/pause`)
+        .then(({ error }) => addTerminalLine(error ? `[ERROR] ${error}` : '[SYSTEM] Mission paused', error ? 'error' : 'warning'));
 }
 
 function resumeMission() {
@@ -303,9 +296,8 @@ function resumeMission() {
         return;
     }
 
-    fetch(`/api/v1/missions/${currentMissionId}/resume`, { method: 'POST' })
-        .then(() => addTerminalLine('[SYSTEM] Mission resumed', 'success'))
-        .catch(err => addTerminalLine(`[ERROR] ${err}`, 'error'));
+    spectraApi.post(`/api/v1/missions/${currentMissionId}/resume`)
+        .then(({ error }) => addTerminalLine(error ? `[ERROR] ${error}` : '[SYSTEM] Mission resumed', error ? 'error' : 'success'));
 }
 
 function stopMission() {
@@ -314,9 +306,8 @@ function stopMission() {
         return;
     }
     
-    fetch(`/api/v1/missions/${currentMissionId}/stop`, { method: 'POST' })
-        .then(() => addTerminalLine('[SYSTEM] Aborting mission...', 'warning'))
-        .catch(err => addTerminalLine(`[ERROR] ${err}`, 'error'));
+    spectraApi.post(`/api/v1/missions/${currentMissionId}/stop`)
+        .then(({ error }) => addTerminalLine(error ? `[ERROR] ${error}` : '[SYSTEM] Aborting mission...', error ? 'error' : 'warning'));
 }
 
 async function switchModel(modelId) {
@@ -330,21 +321,15 @@ async function switchModel(modelId) {
             provider = 'openai';
         }
         
-        const response = await fetch('/api/settings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+        const { error } = await spectraApi.post('/api/settings', {
                 ai_provider: provider,
                 llm_model: provider === 'api' ? modelId : undefined,
                 ollama_model: provider === 'ollama' ? modelId : undefined,
-                log_level: 'INFO', // Default
-                plugin_safe_mode: true // Default
-            }),
+                log_level: 'INFO',
+                plugin_safe_mode: true
         });
         
-        if (response.ok) {
+        if (!error) {
             addTerminalLine(`[SUCCESS] Model switched to ${modelId}`, 'success');
         } else {
             addTerminalLine(`[ERROR] Failed to switch model`, 'error');
@@ -537,9 +522,9 @@ document.addEventListener('DOMContentLoaded', () => {
     addTerminalLine('Dashboard ready.', 'success');
 
     // Check for active mission and initialize graph with its data
-    fetch('/api/v1/missions?status=running&limit=1')
-        .then(res => res.ok ? res.json() : [])
-        .then(missions => {
+    spectraApi.get('/api/v1/missions?status=running&limit=1')
+        .then(({ data: missions }) => {
+            missions = missions || [];
             const mission = Array.isArray(missions) && missions.length > 0 ? missions[0] : null;
             if (mission && mission.id) {
                 currentMissionId = mission.id;
@@ -548,9 +533,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 addTerminalLine(`[SYSTEM] Resumed active mission: ${mission.id}`, 'info');
 
                 // Load existing findings for this mission
-                fetch(`/api/v1/missions/${mission.id}/findings`)
-                    .then(res => res.ok ? res.json() : [])
-                    .then(findings => {
+                spectraApi.get(`/api/v1/missions/${mission.id}/findings`)
+                    .then(({ data: findings }) => {
+                        findings = findings || [];
                         if (Array.isArray(findings)) {
                             findings.forEach(f => {
                                 // Update counts

@@ -403,9 +403,14 @@ async def upload_plugin(
             status_code=400, detail="Invalid Content-Type. Must be application/json"
         )
 
-    # Read and parse
+    # Read and parse (with size limit)
+    MAX_PLUGIN_SIZE = 5 * 1024 * 1024  # 5MB
     try:
-        content = await file.read()
+        content = await file.read(MAX_PLUGIN_SIZE + 1)
+        if len(content) > MAX_PLUGIN_SIZE:
+            raise HTTPException(
+                status_code=413, detail="Plugin file too large (max 5MB)"
+            )
         data = json.loads(content.decode("utf-8"))
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON: {e}") from e

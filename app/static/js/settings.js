@@ -295,11 +295,10 @@ function buildSettingsPayload() {
 }
 
 async function loadSettings() {
-    const response = await fetch('/api/settings', { headers: authHeaders() });
-    if (!response.ok) {
-        throw new Error('Failed to load settings');
+    const { data, error: loadError } = await spectraApi.get('/api/settings');
+    if (loadError) {
+        throw new Error(loadError);
     }
-    const data = await response.json();
     const profiles = data.provider_profiles || {};
     const routing = data.provider_routing || {};
     const fallbacks = data.provider_fallbacks || {};
@@ -369,7 +368,6 @@ async function loadSettings() {
     (fallbacks.default || []).forEach((profileId) => {
         addFallbackRow({ id: profileId, ...(profiles[profileId] || {}) });
     });
-    toggleEmbeddingFields();
     renderResolvedSummary(data.resolved_ai);
 }
 
@@ -380,14 +378,9 @@ async function saveSettings(event) {
     submitButton.disabled = true;
     submitButton.textContent = 'Saving...';
     try {
-        const response = await fetch('/api/settings', {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify(buildSettingsPayload()),
-        });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Failed to save settings');
+        const { error: saveError } = await spectraApi.post('/api/settings', buildSettingsPayload());
+        if (saveError) {
+            throw new Error(saveError);
         }
         await loadSettings();
         alert('Settings saved successfully.');
@@ -407,20 +400,15 @@ async function testDefaultProfile() {
     button.textContent = 'Testing...';
     try {
         const profile = collectProfile('default');
-        const response = await fetch('/test-llm', {
-            method: 'POST',
-            headers: authHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({
-                provider: profile.provider,
-                model: profile.model,
-                api_key: profile.api_key || null,
-                base_url: profile.base_url || null,
-                ollama_host: profile.base_url || null,
-            }),
+        const { data: result, error: testError } = await spectraApi.post('/test-llm', {
+            provider: profile.provider,
+            model: profile.model,
+            api_key: profile.api_key || null,
+            base_url: profile.base_url || null,
+            ollama_host: profile.base_url || null,
         });
-        const result = await response.json();
-        if (!result.success) {
-            throw new Error(result.error || 'Connection test failed');
+        if (testError || !result?.success) {
+            throw new Error(testError || result?.error || 'Connection test failed');
         }
         alert('Default profile is reachable.');
     } catch (error) {

@@ -14,22 +14,14 @@ async function handleAddTarget(event) {
     const data = Object.fromEntries(formData.entries());
     
     try {
-        const response = await fetch('/api/v1/targets', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                address: data.address,
-                description: data.description,
-                status: 'pending',
-                os: 'Unknown'
-            }),
+        const { data: target, error } = await spectraApi.post('/api/v1/targets', {
+            address: data.address,
+            description: data.description,
+            status: 'pending',
+            os: 'Unknown'
         });
         
-        if (response.ok) {
-            const target = await response.json();
-            console.log('Target added:', target);
+        if (!error) {
             
             // Add to grid
             addTargetToGrid({
@@ -43,8 +35,7 @@ async function handleAddTarget(event) {
             closeAddTargetModal();
             event.target.reset();
         } else {
-            const error = await response.json();
-            alert(`Failed to add target: ${error.detail}`);
+            alert(`Failed to add target: ${error}`);
         }
     } catch (error) {
         console.error('Error adding target:', error);
