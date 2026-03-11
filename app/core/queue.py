@@ -120,10 +120,10 @@ class Job:
 
 class WorkerState:
     """Mock the worker state injected into functions."""
-    def __init__(self, functions: list):
+    def __init__(self, functions: list) -> None:
         self.functions = {f.__name__: f for f in functions}
 
-async def worker_loop(functions: list, queue_name: str = "default", poll_delay: float = 1.0):
+async def worker_loop(functions: list, queue_name: str = "default", poll_delay: float = 1.0) -> None:
     """
     Main background loop that repeatedly polls for queued jobs and executes them.
     Should be run in a separate container/process.
