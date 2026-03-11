@@ -450,7 +450,12 @@ async def get_mission_findings(
     ]
 
 
-@router.get("/{mission_id}", response_model=MissionResponse)
+@router.get(
+    "/{mission_id}",
+    response_model=MissionResponse,
+    summary="Get mission",
+    description="Retrieve a single mission by its ID, including current phase, findings, and tool executions.",
+)
 async def get_mission(
     mission_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -507,7 +512,11 @@ async def get_mission(
     )
 
 
-@router.delete("/{mission_id}")
+@router.delete(
+    "/{mission_id}",
+    summary="Delete mission",
+    description="Permanently delete a completed or failed mission and its associated storage data.",
+)
 async def delete_mission(
     mission_id: str,
     request: Request,
@@ -554,7 +563,11 @@ async def delete_mission(
     return {"status": "deleted", "mission_id": mission_id}
 
 
-@router.post("/{mission_id}/stop")
+@router.post(
+    "/{mission_id}/stop",
+    summary="Stop mission",
+    description="Stop a running mission. The mission must be in an active state.",
+)
 @limiter.limit("10/minute")
 async def stop_mission(
     request: Request,
@@ -572,7 +585,11 @@ async def stop_mission(
     return {"message": "Mission stopping"}
 
 
-@router.post("/{mission_id}/pause")
+@router.post(
+    "/{mission_id}/pause",
+    summary="Pause mission",
+    description="Pause a running mission. It can be resumed later.",
+)
 @limiter.limit("10/minute")
 async def pause_mission(
     request: Request,
@@ -590,7 +607,11 @@ async def pause_mission(
     return {"message": "Mission paused"}
 
 
-@router.post("/{mission_id}/resume")
+@router.post(
+    "/{mission_id}/resume",
+    summary="Resume mission",
+    description="Resume a previously paused mission from where it left off.",
+)
 @limiter.limit("10/minute")
 async def resume_mission(
     request: Request,

@@ -190,7 +190,12 @@ async def delete_target(
     await db.commit()
 
 
-@router.patch("/{target_id}", response_model=TargetResponse)
+@router.patch(
+    "/{target_id}",
+    response_model=TargetResponse,
+    summary="Update target",
+    description="Partially update a target's fields such as description, status, or OS.",
+)
 async def update_target(
     target_id: str,
     target_in: TargetUpdate,
@@ -231,7 +236,12 @@ async def update_target(
     )
 
 
-@router.get("/{target_id}/findings", response_model=list[FindingResponse])
+@router.get(
+    "/{target_id}/findings",
+    response_model=list[FindingResponse],
+    summary="List target findings",
+    description="Retrieve all security findings associated with a specific target.",
+)
 async def get_target_findings(
     target_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -286,7 +296,12 @@ class BulkImportResponse(BaseModel):
     errors: list[str]
 
 
-@router.post("/bulk-import", response_model=BulkImportResponse)
+@router.post(
+    "/bulk-import",
+    response_model=BulkImportResponse,
+    summary="Bulk import targets",
+    description="Import up to 500 targets at once. Duplicates are skipped.",
+)
 async def bulk_import_targets(
     request: BulkImportRequest,
     db: AsyncSession = Depends(get_async_session),

@@ -210,7 +210,11 @@ async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> lis
     return list(await repo.get_all(skip=0, limit=10_000))
 
 
-@router.get("/export/csv")
+@router.get(
+    "/export/csv",
+    summary="Export findings as CSV",
+    description="Export all findings as a CSV file. Optionally encrypt with a password.",
+)
 async def export_findings_csv(
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
@@ -256,7 +260,11 @@ async def export_findings_csv(
     )
 
 
-@router.get("/export/json")
+@router.get(
+    "/export/json",
+    summary="Export findings as JSON",
+    description="Export all findings as a JSON file. Optionally encrypt with a password.",
+)
 async def export_findings_json(
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
@@ -338,7 +346,12 @@ async def get_finding(
     )
 
 
-@router.patch("/{finding_id}", response_model=FindingDetailResponse)
+@router.patch(
+    "/{finding_id}",
+    response_model=FindingDetailResponse,
+    summary="Update finding",
+    description="Partially update a finding's fields such as title, severity, or status.",
+)
 async def update_finding(
     finding_id: str,
     finding_in: FindingUpdate,
@@ -409,7 +422,12 @@ async def delete_finding(
     await db.commit()
 
 
-@router.post("/{finding_id}/verify", response_model=FindingDetailResponse)
+@router.post(
+    "/{finding_id}/verify",
+    response_model=FindingDetailResponse,
+    summary="Verify finding",
+    description="Mark a finding as verified after manual confirmation.",
+)
 async def verify_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -444,7 +462,12 @@ async def verify_finding(
     )
 
 
-@router.post("/{finding_id}/false-positive", response_model=FindingDetailResponse)
+@router.post(
+    "/{finding_id}/false-positive",
+    response_model=FindingDetailResponse,
+    summary="Mark false positive",
+    description="Mark a finding as a false positive to exclude it from active results.",
+)
 async def mark_false_positive(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -500,7 +523,12 @@ def _finding_to_response(f) -> FindingDetailResponse:
     )
 
 
-@router.post("/{finding_id}/confirm", response_model=FindingDetailResponse)
+@router.post(
+    "/{finding_id}/confirm",
+    response_model=FindingDetailResponse,
+    summary="Confirm finding",
+    description="Mark a finding as confirmed/verified.",
+)
 async def confirm_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -517,7 +545,12 @@ async def confirm_finding(
     return _finding_to_response(updated)
 
 
-@router.post("/{finding_id}/dismiss", response_model=FindingDetailResponse)
+@router.post(
+    "/{finding_id}/dismiss",
+    response_model=FindingDetailResponse,
+    summary="Dismiss finding",
+    description="Dismiss a finding, removing it from active consideration.",
+)
 async def dismiss_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -534,7 +567,12 @@ async def dismiss_finding(
     return _finding_to_response(updated)
 
 
-@router.post("/{finding_id}/retest", response_model=FindingDetailResponse)
+@router.post(
+    "/{finding_id}/retest",
+    response_model=FindingDetailResponse,
+    summary="Request retest",
+    description="Request a retest for a finding to re-validate its status.",
+)
 async def retest_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -565,7 +603,12 @@ class BulkUpdateResponse(BaseModel):
     updated: int
 
 
-@router.post("/bulk-update", response_model=BulkUpdateResponse)
+@router.post(
+    "/bulk-update",
+    response_model=BulkUpdateResponse,
+    summary="Bulk update findings",
+    description="Update multiple findings at once. Maximum 100 per request.",
+)
 async def bulk_update_findings(
     request: BulkUpdateRequest,
     db: AsyncSession = Depends(get_async_session),

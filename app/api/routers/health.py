@@ -139,7 +139,11 @@ async def health_check(
     return health_status
 
 
-@router.get("/health/ready")
+@router.get(
+    "/health/ready",
+    summary="Readiness probe",
+    description="Check if all components (database, LLM, embeddings) are ready to serve traffic. Returns 503 if any is not ready.",
+)
 async def readiness_check(
     response: Response,
     db: AsyncSession = Depends(get_async_session),

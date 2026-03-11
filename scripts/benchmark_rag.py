@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
 import asyncio
 import time
 import uuid
-from app.services.ai.rag import RAGService, Document, RAGConfig
+
+from app.services.ai.rag import Document, RAGConfig, RAGService
 
 
 class MockEmbeddingService:
@@ -49,7 +51,11 @@ async def main():
     # 3. Index batch (chunked)
     rag.embeddings = PrecomputedEmbeddings(embeddings)
     t4 = time.time()
-    success_count = await rag.index_batch(docs)
+    try:
+        success_count = await rag.index_batch(docs)
+    except Exception as e:
+        print(f"  ERROR: Index batch failed: {e}")
+        return
     t5 = time.time()
     print(f"  Index batch ({config.batch_size} docs/chunk): {t5 - t4:.4f}s")
 
