@@ -69,8 +69,8 @@ app = FastAPI(
     version=__version__,
     lifespan=lifespan,
     swagger_ui_parameters=swagger_ui_params,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url="/api/docs" if settings.DEBUG else None,
+    redoc_url="/api/redoc" if settings.DEBUG else None,
     openapi_url="/api/openapi.json",
 )
 
