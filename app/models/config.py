@@ -25,3 +25,6 @@ class SystemConfig(Base):
     value: Mapped[str] = mapped_column(Text, nullable=True)
     description: Mapped[str] = mapped_column(String(255), nullable=True)
     is_secret: Mapped[bool] = mapped_column(default=False)
+
+    def __repr__(self) -> str:
+        return f"<SystemConfig key={self.key!r}>"

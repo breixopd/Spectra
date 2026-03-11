@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     APP_NAME: str = "Spectra"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "text"  # "json" for structured logs in production, "text" for dev
+
+    # --- Request Timeout ---
+    REQUEST_TIMEOUT_SECONDS: int = 60  # Cancel requests exceeding this (0 = disabled)
 
     # --- Database (PostgreSQL) ---
     DATABASE_URL: SecretStr = SecretStr(

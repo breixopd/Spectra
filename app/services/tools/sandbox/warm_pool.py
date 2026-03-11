@@ -196,7 +196,7 @@ class WarmPoolManager:
                     network_id = net.id
                     container_network = net_name
                 except Exception:
-                    pass  # Fall back to shared network
+                    logger.debug("Failed to create isolated network, falling back to shared")
 
             container = self._pool._client.containers.run(
                 image=settings.SANDBOX_IMAGE,
@@ -225,7 +225,7 @@ class WarmPoolManager:
                     shared_net = self._pool._client.networks.get(settings.SANDBOX_NETWORK)
                     await asyncio.to_thread(shared_net.connect, container)
                 except Exception:
-                    pass
+                    logger.debug("Failed to connect warm container to shared network")
 
             # Update DB
             async with async_session_maker() as session:

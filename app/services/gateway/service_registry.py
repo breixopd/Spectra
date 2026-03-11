@@ -152,7 +152,7 @@ class ServiceRegistry:
             try:
                 await svc.close()
             except Exception:
-                pass
+                logger.debug("Error closing invalidated %s service", service_name)
 
 
 # Module-level singleton

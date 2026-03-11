@@ -99,19 +99,25 @@ class HumanFormatter(logging.Formatter):
         return super().format(record)
 
 
-def configure_logging() -> None:
+def configure_logging(log_format: str = "", log_level: str = "") -> None:
     """Set up root logger with the appropriate formatter.
 
-    Controlled by env var ``LOG_FORMAT``:
-      - ``json``  → structured JSON lines on stdout
-      - ``text``  → human-readable (default)
+    Parameters
+    ----------
+    log_format:
+        ``json`` for structured JSON lines, ``text`` for human-readable.
+        Falls back to ``LOG_FORMAT`` env var, then ``text``.
+    log_level:
+        Python log-level name (e.g. ``INFO``).  Falls back to
+        ``LOG_LEVEL`` env var, then ``INFO``.
     """
-    log_format = os.environ.get("LOG_FORMAT", "text").lower()
+    fmt = (log_format or os.environ.get("LOG_FORMAT", "text")).lower()
+    level_name = (log_level or os.environ.get("LOG_LEVEL", "INFO")).upper()
 
     handler = logging.StreamHandler(sys.stdout)
     handler.addFilter(_CorrelationFilter())
 
-    if log_format == "json":
+    if fmt == "json":
         handler.setFormatter(JSONFormatter())
     else:
         handler.setFormatter(HumanFormatter())
@@ -119,4 +125,4 @@ def configure_logging() -> None:
     root = logging.getLogger()
     root.handlers.clear()
     root.addHandler(handler)
-    root.setLevel(logging.INFO)
+    root.setLevel(getattr(logging, level_name, logging.INFO))
