@@ -84,6 +84,9 @@ class JobQueue(InfrastructureBase):
     timeout: Mapped[int | None] = mapped_column(Integer, nullable=True) # in seconds
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=5, index=True)
 
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    max_retries: Mapped[int] = mapped_column(Integer, default=3)
+
 
 class Sandbox(InfrastructureBase):
     """Tracks per-mission ephemeral sandbox containers."""
