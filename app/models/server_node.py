@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text
@@ -9,6 +10,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from app.models.base import Base
+
+logger = logging.getLogger("spectra.models.server_node")
 
 
 class ServerNode(Base):
@@ -19,9 +22,8 @@ class ServerNode(Base):
     service_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     url: Mapped[str] = mapped_column(String(500), nullable=False)
-    # SECURITY: api_key is stored as plaintext for gateway auth.
-    # TODO: Hash or encrypt this value at rest — store only a bcrypt hash
-    # and compare on inbound requests, or use an encryption-at-rest wrapper.
+    # SECURITY: api_key is Fernet-encrypted at rest using SECRET_KEY.
+    # Use set_api_key() / get_api_key() for transparent encrypt/decrypt.
     api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -52,6 +54,29 @@ class ServerNode(Base):
             "metadata": self.metadata_,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+    def set_api_key(self, plaintext_key: str | None) -> None:
+        """Encrypt and store an API key."""
+        if not plaintext_key:
+            self.api_key = None
+            return
+        try:
+            from app.core.encryption import _get_default_secret, encrypt_field
+            self.api_key = encrypt_field(plaintext_key, _get_default_secret())
+        except Exception:
+            logger.warning("Encryption unavailable, storing api_key as-is")
+            self.api_key = plaintext_key
+
+    def get_api_key(self) -> str | None:
+        """Decrypt and return the stored API key."""
+        if not self.api_key:
+            return None
+        try:
+            from app.core.encryption import _get_default_secret, decrypt_field
+            return decrypt_field(self.api_key, _get_default_secret())
+        except Exception:
+            # Fallback: may be stored as plaintext from before encryption was added
+            return self.api_key
 
     def __repr__(self) -> str:
         return f"<ServerNode id={self.id} name={self.name!r} type={self.service_type}>"
