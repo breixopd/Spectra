@@ -105,12 +105,11 @@ class SandboxPool:
             session.add(row)
             await session.commit()
 
-        # Build container config
+        # Build container config — never pass primary DB credentials or signing keys
         environment = {
-            "DATABASE_URL": settings.DATABASE_URL.get_secret_value(),
             "QUEUE_NAME": queue_name,
             "IS_TOOLS_CONTAINER": "true",
-            "JWT_SECRET_KEY": settings.JWT_SECRET_KEY.get_secret_value(),
+            "CONNECT_BACK_HOST": "spectra-app",
             "PLUGIN_SAFE_MODE": str(settings.PLUGIN_SAFE_MODE).lower(),
         }
 

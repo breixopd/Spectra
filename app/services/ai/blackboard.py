@@ -1,10 +1,16 @@
 """Mission-scoped shared blackboard for inter-agent communication."""
 
 import logging
+import sys
 import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+MAX_ENTRIES = 1000
+MAX_VALUE_SIZE = 100_000  # 100 KB per entry
+MAX_HISTORY = 5000
+
 
 class MissionBlackboard:
     """Shared memory for inter-agent communication within a mission."""
@@ -16,12 +22,23 @@ class MissionBlackboard:
 
     def write(self, agent_role: str, key: str, value: Any) -> None:
         """Write a fact/insight to the blackboard."""
+        if sys.getsizeof(value) > MAX_VALUE_SIZE:
+            logger.warning("Blackboard value for '%s' exceeds %d bytes, rejected", key, MAX_VALUE_SIZE)
+            return
+
+        if key not in self._data and len(self._data) >= MAX_ENTRIES:
+            oldest_key = next(iter(self._data))
+            del self._data[oldest_key]
+            logger.warning("Blackboard evicted oldest entry '%s' (max %d)", oldest_key, MAX_ENTRIES)
+
         self._data[key] = {
             "value": value,
             "author": agent_role,
             "timestamp": time.time(),
         }
         self._history.append({"action": "write", "key": key, "agent": agent_role})
+        if len(self._history) > MAX_HISTORY:
+            self._history = self._history[-MAX_HISTORY:]
 
     def read(self, key: str) -> Any | None:
         """Read a value from the blackboard."""
