@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
-from app.api.schemas import FindingResponse
+from app.api.schemas import FindingResponse, PaginatedResponse
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
@@ -125,13 +125,13 @@ async def create_finding(
 
 @router.get(
     "",
-    response_model=list[FindingDetailResponse],
+    response_model=PaginatedResponse,
     summary="List findings",
     description="Retrieve all findings with optional severity and status filters.",
 )
 async def list_findings(
-    skip: int = Query(default=0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
+    page: int = Query(default=1, ge=1, description="Page number"),
+    per_page: int = Query(
         default=DEFAULT_PAGE_SIZE,
         ge=1,
         le=MAX_PAGE_SIZE,
@@ -149,7 +149,7 @@ async def list_findings(
     repo = FindingRepository(db)
 
     # Build filter kwargs
-    filters = {}
+    filters: dict = {}
     # User isolation
     if not __current_user.is_superuser:
         filters["user_id"] = str(__current_user.id)
@@ -158,12 +158,15 @@ async def list_findings(
     if status_filter:
         filters["status"] = status_filter
 
-    if filters:
-        findings = await repo.find_many_by(skip=skip, limit=limit, **filters)
-    else:
-        findings = await repo.get_all(skip=skip, limit=limit)
+    total = await repo.count(**filters)
+    skip = (page - 1) * per_page
 
-    return [
+    if filters:
+        findings = await repo.find_many_by(skip=skip, limit=per_page, **filters)
+    else:
+        findings = await repo.get_all(skip=skip, limit=per_page)
+
+    items = [
         FindingDetailResponse(
             id=f.id,
             target_id=f.target_id,
@@ -179,6 +182,7 @@ async def list_findings(
         )
         for f in findings
     ]
+    return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
 # --- Export Endpoints (must be before /{finding_id} to avoid path conflicts) ---
