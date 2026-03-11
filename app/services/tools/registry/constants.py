@@ -22,6 +22,13 @@ _DANGEROUS_PATTERN_STRINGS: tuple[str, ...] = (
     r">\s*/etc/passwd",  # overwrite passwd
     r">\s*/etc/shadow",  # overwrite shadow
     r"/dev/null\s*>\s*/",  # null redirect to root
+    r"\$\(",  # $() command substitution
+    r"`[^`]+`",  # backtick command substitution
+    r"\|\s*(?:bash|sh|curl|wget|nc|python|perl|ruby)",  # pipe to interpreter/downloader
+    r"/dev/tcp/",  # bash /dev/tcp redirection
+    r"python\d?\s+-c",  # python -c execution
+    r"perl\s+-e",  # perl -e execution
+    r"base64\s+(?:-d|--decode)\s*\|",  # base64 decode pipe
 )
 
 # Pre-compiled patterns for O(1) matching per pattern

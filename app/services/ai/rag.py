@@ -416,4 +416,7 @@ class RAGService:
 
         if not context_parts:
             return ""
-        return "Relevant Context:\n\n" + "\n\n---\n\n".join(context_parts)
+        context = "Relevant Context:\n\n" + "\n\n---\n\n".join(context_parts)
+        from app.services.ai.sanitizer import sanitize_for_prompt
+        context = sanitize_for_prompt(context, max_length=50000, field_name="rag_context")
+        return context

@@ -183,9 +183,12 @@ class MissionController(
             logger.debug("Memory context fetch failed: %s", e)
 
         from app.services.ai.context import ContextManager, ContextSection, Priority
+        from app.services.ai.sanitizer import sanitize_for_prompt
+
+        sanitized_directive = sanitize_for_prompt(input_data.directive, field_name="directive")
 
         plan_prompt_text = MISSION_PLAN_PROMPT.format(
-            directive=input_data.directive,
+            directive=sanitized_directive,
             target=context.target or "Not specified",
             methodology="",
             tools_context="",

@@ -274,10 +274,13 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
             "- notes: Any relevant context"
         )
 
+        from app.services.ai.sanitizer import sanitize_for_prompt
+        sanitized_input = sanitize_for_prompt(input_data.raw_input, field_name="scope_raw_input")
+
         ctx = ContextManager(max_context_tokens=4000)
         prompt = ctx.build([
             ContextSection("task", base_prompt, Priority.CRITICAL),
-            ContextSection("raw_input", f'User Input: "{input_data.raw_input}"', Priority.HIGH, max_tokens=2000),
+            ContextSection("raw_input", f'User Input: "{sanitized_input}"', Priority.HIGH, max_tokens=2000),
         ])
 
         system_prompt = self._build_system_prompt(context)
