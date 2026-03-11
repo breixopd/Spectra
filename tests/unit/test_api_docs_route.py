@@ -17,7 +17,7 @@ class TestApiDocsRoute:
         mock_app = MagicMock()
         mock_route = MagicMock()
         mock_route.methods = {"GET"}
-        mock_route.path = "/api/health"
+        mock_route.path = "/api/v1/health"
         mock_route.name = "health_check"
         mock_route.endpoint = MagicMock(__doc__="Health check")
         mock_route.tags = []
@@ -60,7 +60,7 @@ class TestApiDocsRoute:
 
         mock_route1 = MagicMock()
         mock_route1.methods = {"GET"}
-        mock_route1.path = "/api/health"
+        mock_route1.path = "/api/v1/health"
         mock_route1.name = "health_check"
         mock_route1.endpoint = MagicMock(__doc__="Health check endpoint")
         mock_route1.tags = []
@@ -87,7 +87,7 @@ class TestApiDocsRoute:
                 call_args = mock_templates.TemplateResponse.call_args
                 context = call_args[0][1]
                 groups = context["route_groups"]
-                assert "health" in groups
+                assert "v1" in groups
                 assert "admin" in groups
 
 

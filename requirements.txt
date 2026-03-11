@@ -79,6 +79,7 @@ pytest-playwright>=0.4.0
 aiohttp>=3.9.0
 hypothesis>=6.92.0  # Property-based testing
 aiofiles>=23.2.0
+pytest-timeout>=2.2.0
 
 # -----------------------------------------------------------------------------
 # JSON Parsing & Repair
