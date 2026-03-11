@@ -15,7 +15,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -386,6 +386,19 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)
 
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        return v
+
 
 @router.get("/me", tags=["Auth"])
 async def get_current_profile(
@@ -419,7 +432,9 @@ async def get_current_profile(
 
 
 @router.post("/change-password", tags=["Auth"])
+@limiter.limit("5/minute")
 async def change_password(
+    request: Request,
     body: ChangePasswordRequest,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),

@@ -42,10 +42,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         headers = {
             "X-Frame-Options": "DENY",
             "X-Content-Type-Options": "nosniff",
-            "X-XSS-Protection": "1; mode=block",
+            "X-XSS-Protection": "0",
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
         }
+        # HSTS only in production (non-DEBUG) to avoid issues with local HTTP
+        if not settings.DEBUG:
+            headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         for key, value in headers.items():
             response.headers[key] = value
 
