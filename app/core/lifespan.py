@@ -342,7 +342,7 @@ async def run_startup_checks() -> None:
         logger.info("[CHECK][OK] Database connectivity verified")
     except TimeoutError:
         logger.warning("[CHECK][WARN] Database connectivity check timed out (10s)")
-    except (SQLAlchemyError, OSError) as e:
+    except Exception as e:
         logger.warning("[CHECK][WARN] Database connectivity check failed: %s", e)
 
     # 2. Required tables existence
@@ -364,7 +364,7 @@ async def run_startup_checks() -> None:
             logger.warning("[CHECK][WARN] Missing database tables: %s", ", ".join(sorted(missing)))
         else:
             logger.info("[CHECK][OK] All expected tables present")
-    except (SQLAlchemyError, OSError) as e:
+    except Exception as e:
         logger.warning("[CHECK][WARN] Table existence check failed: %s", e)
 
     # 3. Disk space for data directory

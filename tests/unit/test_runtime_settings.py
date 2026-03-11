@@ -161,6 +161,8 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("app.services.storage.get_storage_service", return_value=MagicMock(is_s3=False)))
         stack.enter_context(patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock()))
         stack.enter_context(patch("app.services.scaling.get_pool_manager", return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock())))
+        stack.enter_context(patch("app.services.tools.sandbox.pool.SandboxPool", return_value=MagicMock(available=False)))
+        stack.enter_context(patch("app.services.tools.sandbox.SandboxPool", return_value=MagicMock(available=False)))
 
         from app.core.lifespan import lifespan
 
