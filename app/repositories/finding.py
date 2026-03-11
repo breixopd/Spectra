@@ -22,26 +22,36 @@ class FindingRepository(BaseRepository[Finding]):
         target_id: str,
         skip: int = 0,
         limit: int = 100,
+        user_id: str | None = None,
     ) -> Sequence[Finding]:
         """Get all findings for a specific target."""
-        return await self.find_many_by(target_id=target_id, skip=skip, limit=limit)
+        kwargs: dict = {"target_id": target_id}
+        if user_id:
+            kwargs["user_id"] = user_id
+        return await self.find_many_by(skip=skip, limit=limit, **kwargs)
 
     async def find_by_severity(
         self,
         severity: Severity,
         skip: int = 0,
         limit: int = 100,
+        user_id: str | None = None,
     ) -> Sequence[Finding]:
         """Get all findings with a specific severity."""
-        return await self.find_many_by(severity=severity, skip=skip, limit=limit)
+        kwargs: dict = {"severity": severity}
+        if user_id:
+            kwargs["user_id"] = user_id
+        return await self.find_many_by(skip=skip, limit=limit, **kwargs)
 
-    async def find_by_cve(self, cve_id: str) -> Sequence[Finding]:
+    async def find_by_cve(self, cve_id: str, user_id: str | None = None) -> Sequence[Finding]:
         """Get all findings matching a CVE ID."""
         stmt = select(self.model).where(self.model.cve_id == cve_id)
+        if user_id:
+            stmt = stmt.where(self.model.user_id == user_id)
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def get_severity_counts(self, target_id: str | None = None) -> dict:
+    async def get_severity_counts(self, target_id: str | None = None, user_id: str | None = None) -> dict:
         """
         Get count of findings by severity.
 
@@ -55,6 +65,8 @@ class FindingRepository(BaseRepository[Finding]):
 
         if target_id:
             stmt = stmt.where(self.model.target_id == target_id)
+        if user_id:
+            stmt = stmt.where(self.model.user_id == user_id)
 
         result = await self.session.execute(stmt)
         return {row.severity.value: row.count for row in result.all()}

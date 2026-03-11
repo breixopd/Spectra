@@ -101,6 +101,10 @@ class RAGService:
                 await self.embeddings._load_model()
                 dim = self.embeddings.embedding_dim or 384
                 self.config.embedding_dim = dim
+            # Validate dim is a safe integer to prevent SQL injection
+            dim = int(dim)
+            if not (1 <= dim <= 8192):
+                raise ValueError(f"Invalid embedding dimension: {dim}")
             async with async_session_maker() as session:
                 await session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
                 await session.execute(text(f"""

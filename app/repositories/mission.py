@@ -30,21 +30,28 @@ class MissionRepository(BaseRepository[Mission]):
         """
         super().__init__(Mission, session)
 
-    async def get_by_target(self, target: str) -> Sequence[Mission]:
+    async def get_by_target(self, target: str, user_id: str | None = None) -> Sequence[Mission]:
         """
         Find missions by target address.
 
         Args:
             target: Target IP, domain, or URL to search for.
+            user_id: Optional user ID to filter by (None = no filter, for admin access).
 
         Returns:
             List of missions matching the target.
         """
-        return await self.find_many_by(target=target)
+        kwargs: dict = {"target": target}
+        if user_id:
+            kwargs["user_id"] = user_id
+        return await self.find_many_by(**kwargs)
 
-    async def get_active_missions(self) -> Sequence[Mission]:
+    async def get_active_missions(self, user_id: str | None = None) -> Sequence[Mission]:
         """
         Find missions that are currently running.
+
+        Args:
+            user_id: Optional user ID to filter by (None = no filter, for admin access).
 
         Returns:
             List of missions with active status (running, scanning, analyzing, etc.).
@@ -62,6 +69,8 @@ class MissionRepository(BaseRepository[Mission]):
             .where(self.model.status.in_(active_statuses))
             .order_by(self.model.created_at.desc())
         )
+        if user_id:
+            stmt = stmt.where(self.model.user_id == user_id)
 
         result = await self.session.execute(stmt)
         return result.scalars().all()
@@ -71,6 +80,7 @@ class MissionRepository(BaseRepository[Mission]):
         status: str | MissionStatus,
         skip: int = 0,
         limit: int = 100,
+        user_id: str | None = None,
     ) -> Sequence[Mission]:
         """
         Find missions by status.
@@ -79,24 +89,31 @@ class MissionRepository(BaseRepository[Mission]):
             status: Mission status to filter by.
             skip: Number of records to skip.
             limit: Maximum number of records to return.
+            user_id: Optional user ID to filter by (None = no filter, for admin access).
 
         Returns:
             List of missions matching the status.
         """
         status_value = status.value if isinstance(status, MissionStatus) else status
-        return await self.find_many_by(status=status_value, skip=skip, limit=limit)
+        kwargs: dict = {"status": status_value}
+        if user_id:
+            kwargs["user_id"] = user_id
+        return await self.find_many_by(skip=skip, limit=limit, **kwargs)
 
-    async def get_recent(self, limit: int = 10) -> Sequence[Mission]:
+    async def get_recent(self, limit: int = 10, user_id: str | None = None) -> Sequence[Mission]:
         """
         Get most recent missions.
 
         Args:
             limit: Maximum number of missions to return.
+            user_id: Optional user ID to filter by (None = no filter, for admin access).
 
         Returns:
             List of recent missions ordered by creation time desc.
         """
         stmt = select(self.model).order_by(self.model.created_at.desc()).limit(limit)
+        if user_id:
+            stmt = stmt.where(self.model.user_id == user_id)
         result = await self.session.execute(stmt)
         return result.scalars().all()
 

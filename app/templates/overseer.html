@@ -460,12 +460,12 @@
         
         vectorEl.innerHTML = `
             <div class="flex items-center space-x-3">
-                <span class="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase ${priorityColors[data.priority] || 'bg-slate-500/20'}">${data.priority}</span>
-                <span class="text-sm text-white">${data.name}</span>
+                <span class="px-1.5 py-0.5 rounded text-[9px] font-mono uppercase ${priorityColors[data.priority] || 'bg-slate-500/20'}">${escapeHtml(data.priority)}</span>
+                <span class="text-sm text-white">${escapeHtml(data.name)}</span>
             </div>
             <div class="flex items-center space-x-2">
-                <span class="text-xs font-mono ${statusColors[data.status] || 'text-slate-400'}">${data.status}</span>
-                ${data.attempts ? `<span class="text-xs text-slate-500">(${data.attempts}/${data.max_attempts})</span>` : ''}
+                <span class="text-xs font-mono ${statusColors[data.status] || 'text-slate-400'}">${escapeHtml(data.status)}</span>
+                ${data.attempts ? `<span class="text-xs text-slate-500">(${parseInt(data.attempts, 10)}/${parseInt(data.max_attempts, 10)})</span>` : ''}
             </div>
         `;
     }
