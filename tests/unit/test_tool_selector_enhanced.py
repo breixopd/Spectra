@@ -1,17 +1,17 @@
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+
+from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
-    ToolSelectorInput,
-    ToolSelectorOutput,
 )
-from app.services.ai.agents.base import AgentContext, ActionRisk
 from app.services.tools.models import (
     RegisteredTool,
+    ToolCapability,
+    ToolCategory,
     ToolConfig,
     ToolStatus,
-    ToolCategory,
-    ToolCapability,
 )
 
 
@@ -42,7 +42,7 @@ def mock_nmap_tool():
 @pytest.mark.asyncio
 async def test_stealth_mode_enforcement(tool_selector, mock_nmap_tool):
     """Test that stealth mode strictly overrides arguments."""
-    context = AgentContext(
+    AgentContext(
         mission_id="test-mission-1",
         session_id="test-session",
         stealth_mode=True,  # ENABLED

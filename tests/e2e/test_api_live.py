@@ -4,8 +4,9 @@ Run with: pytest tests/e2e/test_api_live.py -v
 Requires APP_BASE_URL environment variable.
 """
 import os
-import pytest
+
 import httpx
+import pytest
 
 BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 

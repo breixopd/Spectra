@@ -1,14 +1,14 @@
 """Tests for VectorGeneratorAgent deterministic and LLM vector generation."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.vector_generator import (
     VectorGeneratorAgent,
     VectorGeneratorInput,
 )
-from app.services.ai.agents.base import AgentContext
-from app.models.attack_surface import VectorPriority
 
 
 class TestDeterministicVectors:

@@ -11,8 +11,9 @@ Run with:
 """
 import os
 import time
-import pytest
+
 import httpx
+import pytest
 
 SPECTRA_URL = os.getenv("SPECTRA_URL", "http://localhost:5050")
 TARGET_EASY = os.getenv("TARGET_EASY", "spectra-target-easy")  # hostname on docker network

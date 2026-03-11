@@ -3,6 +3,7 @@
 Requires PostgreSQL.
 """
 import os
+
 import pytest
 
 pytestmark = [
@@ -16,8 +17,8 @@ pytestmark = [
 
 async def test_full_node_lifecycle():
     """Add, list, update, health check, remove a node."""
-    from app.services.scaling import get_pool_manager
     from app.core.database import async_session_maker
+    from app.services.scaling import get_pool_manager
 
     pool = get_pool_manager()
     async with async_session_maker() as session:

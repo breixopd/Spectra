@@ -1,12 +1,12 @@
 """Tests for UniversalParser (app/services/tools/adapter/parser.py)."""
 
 import json
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
 
 from app.services.tools.adapter.parser import UniversalParser
 from app.services.tools.models import OutputFormat
-
 
 # ---------------------------------------------------------------------------
 # Helpers

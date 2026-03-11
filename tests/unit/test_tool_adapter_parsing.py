@@ -1,8 +1,9 @@
-import pytest
-import xml.etree.ElementTree as ET
 from unittest.mock import MagicMock
+
+import pytest
+
 from app.services.tools.adapter import CommandToolAdapter
-from app.services.tools.models import ToolConfig, OutputFormat
+from app.services.tools.models import ToolConfig
 
 
 class TestToolAdapterParsing:

@@ -2,20 +2,16 @@
 
 from __future__ import annotations
 
-import os
-import tempfile
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.services.tools.vpn import (
     VPNManager,
     _validate_config_name,
-    _validate_wireguard_config,
     _validate_openvpn_config,
+    _validate_wireguard_config,
 )
-
 
 # =============================================================================
 # Config name validation

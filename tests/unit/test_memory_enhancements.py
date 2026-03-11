@@ -1,8 +1,10 @@
 """Tests for MEM-002 (indexing), MEM-003 (backup rotation), MEM-006 (aggregation)."""
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
+
 from app.services.ai.memory import MissionMemory
 
 

@@ -1,10 +1,11 @@
-import json
 from datetime import datetime
+
 import pytest
-from sqlalchemy import create_engine, Column, Integer
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.models.infrastructure import InfrastructureBase, JSONBType, SystemCache, JobQueue, SystemStatus
+from app.models.infrastructure import InfrastructureBase, JobQueue, SystemCache, SystemStatus
+
 
 @pytest.fixture
 def sqlite_engine():

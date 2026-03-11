@@ -4,12 +4,12 @@ Tests the full registration → login → protected resource → refresh → log
 cycle using the httpx async test client against the FastAPI app.
 """
 
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from unittest.mock import patch, AsyncMock, MagicMock
 
-from app.core.security import create_access_token, create_refresh_token
+from app.core.security import create_access_token
 
 
 @pytest_asyncio.fixture

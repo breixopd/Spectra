@@ -1,8 +1,8 @@
 """Tests for plugin access control."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException
+
+import pytest
 
 
 def _make_user(user_id="user-1", is_superuser=False, role="operator"):
@@ -58,7 +58,7 @@ class TestToolboxPageAccess:
         with (
             patch("app.api.routers.ui._get_ui_user", return_value={"sub": "admin"}),
             patch("app.api.routers.ui.async_session_maker") as mock_sm,
-            patch("app.api.routers.ui._is_admin_user", return_value=True) as mock_check,
+            patch("app.api.routers.ui._is_admin_user", return_value=True),
             patch("app.api.routers.ui.templates") as mock_templates,
         ):
             # Mock session context manager
@@ -123,8 +123,9 @@ class TestPluginCreatorAccess:
     """plugin_creator_page redirects non-admin users."""
 
     async def test_non_admin_redirected_to_toolbox(self):
-        from app.api.routers.ui import plugin_creator_page
         from fastapi.responses import RedirectResponse
+
+        from app.api.routers.ui import plugin_creator_page
 
         request = MagicMock()
 
@@ -174,15 +175,16 @@ class TestPluginCreatorAccess:
 
             mock_templates.TemplateResponse.return_value = MagicMock()
 
-            resp = await plugin_creator_page(request)
+            await plugin_creator_page(request)
 
             mock_templates.TemplateResponse.assert_called_once()
             tpl_name = mock_templates.TemplateResponse.call_args[0][0]
             assert tpl_name == "plugin_creator.html"
 
     async def test_unauthenticated_redirected_to_login(self):
-        from app.api.routers.ui import plugin_creator_page
         from fastapi.responses import RedirectResponse
+
+        from app.api.routers.ui import plugin_creator_page
 
         request = MagicMock()
 

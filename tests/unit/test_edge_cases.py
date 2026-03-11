@@ -1,37 +1,35 @@
 """Additional edge case tests for RBAC, encryption, token blacklist, and lockout."""
 
 import time
-import pytest
-from unittest.mock import MagicMock
 
-from app.core.rbac import Permission, ROLE_PERMISSIONS, has_permission
-from app.core.encryption import (
-    encrypt_field,
-    decrypt_field,
-    is_sensitive_key,
-    encrypt_sensitive_fields,
-    decrypt_sensitive_fields,
-)
-from app.core.security import (
-    create_access_token,
-    decode_token,
-    invalidate_token,
-    is_token_blacklisted,
-    _blacklisted_tokens,
-    _user_token_blacklist,
-    _blacklist_lock,
-)
-from app.api.routers.auth import (
-    _login_failures,
-    _lockout_lock,
-    _check_lockout,
-    _record_failure,
-    _reset_failures,
-    LOCKOUT_THRESHOLD_1,
-    LOCKOUT_THRESHOLD_2,
-)
+import pytest
 from fastapi import HTTPException
 
+from app.api.routers.auth import (
+    LOCKOUT_THRESHOLD_1,
+    LOCKOUT_THRESHOLD_2,
+    _check_lockout,
+    _lockout_lock,
+    _login_failures,
+    _record_failure,
+    _reset_failures,
+)
+from app.core.encryption import (
+    decrypt_field,
+    decrypt_sensitive_fields,
+    encrypt_field,
+    encrypt_sensitive_fields,
+    is_sensitive_key,
+)
+from app.core.rbac import ROLE_PERMISSIONS, Permission, has_permission
+from app.core.security import (
+    _blacklist_lock,
+    _blacklisted_tokens,
+    _user_token_blacklist,
+    create_access_token,
+    invalidate_token,
+    is_token_blacklisted,
+)
 
 # --- RBAC Permission Tests ---
 
@@ -111,7 +109,7 @@ class TestEncryption:
 
     def test_different_secrets_incompatible(self):
         encrypted = encrypt_field("data", "key1")
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, TypeError)):
             decrypt_field(encrypted, "key2")
 
     def test_is_sensitive_key_true(self):

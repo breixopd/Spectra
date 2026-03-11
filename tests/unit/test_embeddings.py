@@ -1,7 +1,8 @@
 """Unit tests for app.services.ai.embeddings module."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.services.ai.embeddings import EmbeddingService
 

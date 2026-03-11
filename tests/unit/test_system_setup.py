@@ -1,10 +1,12 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, mock_open, patch
-from app.services.system.setup import SystemSetupService
-from app.api.schemas import SystemSetupRequest, UserCreate
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.schemas import SystemSetupRequest, UserCreate
 from app.models.config import SystemConfig
 from app.models.user import User
+from app.services.system.setup import SystemSetupService
 
 
 @pytest.fixture
@@ -180,7 +182,7 @@ async def test_check_database_success(service, mock_session):
 @pytest.mark.asyncio
 async def test_check_directories(service):
     with (
-        patch("app.services.system.setup.Path.mkdir") as mock_mkdir,
+        patch("app.services.system.setup.Path.mkdir"),
         patch("app.services.system.setup.Path.exists") as mock_exists,
     ):
         mock_exists.return_value = True
@@ -201,7 +203,7 @@ async def test_generate_signing_keys_exists(service):
 async def test_generate_signing_keys_new(service):
     with (
         patch("app.services.system.setup.Path.exists") as mock_exists,
-        patch("app.services.system.setup.Path.mkdir") as mock_mkdir,
+        patch("app.services.system.setup.Path.mkdir"),
         patch("builtins.open", new_callable=mock_open),
         patch(
             "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate"

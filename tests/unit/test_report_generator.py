@@ -1,15 +1,15 @@
 """Tests for the HTML report generator."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from datetime import datetime
 
 from app.services.mission.report_generator import (
-    generate_html_report,
+    SEVERITY_COLORS,
+    SEVERITY_ORDER,
     _count_severities,
     _sort_findings,
-    SEVERITY_ORDER,
-    SEVERITY_COLORS,
+    generate_html_report,
     save_report,
 )
 

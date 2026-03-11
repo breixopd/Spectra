@@ -1,8 +1,7 @@
 """Tests for golden image builder."""
 
 import json
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydantic import SecretStr
@@ -70,7 +69,7 @@ class TestGoldenImageBuilder:
         assert len(plugins) == 0
 
     def test_generate_dockerfile_contains_base_image(self, tmp_path):
-        from app.services.tools.sandbox.golden_image import GoldenImageBuilder, BASE_IMAGE
+        from app.services.tools.sandbox.golden_image import BASE_IMAGE, GoldenImageBuilder
         plugins = [
             {"id": "nmap", "name": "Nmap", "install_method": "apt",
              "install_commands": ["apt-get install -y nmap"], "verification_command": "nmap --version"},

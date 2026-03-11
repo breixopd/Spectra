@@ -3,14 +3,14 @@
 import json
 import logging
 import os
+from unittest.mock import MagicMock, patch
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.core.logging_config import (
-    JSONFormatter,
-    HumanFormatter,
     CorrelationIdMiddleware,
+    HumanFormatter,
+    JSONFormatter,
     _CorrelationFilter,
     configure_logging,
     correlation_id_var,

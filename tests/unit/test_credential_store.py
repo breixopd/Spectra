@@ -1,6 +1,5 @@
 """Unit tests for CredentialStore and credential extraction."""
 
-import pytest
 
 from app.services.mission.credentials import (
     MAX_CREDENTIALS_PER_MISSION,

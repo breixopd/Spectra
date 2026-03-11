@@ -1,12 +1,11 @@
 """Tests for the Grounding and Anti-Hallucination Framework."""
 
-import pytest
 from app.services.ai.grounding import (
-    validate_tool_output,
-    extract_evidence_snippets,
     ConfidenceTracker,
     GroundedContext,
     ReasoningStep,
+    extract_evidence_snippets,
+    validate_tool_output,
 )
 
 

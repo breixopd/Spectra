@@ -2,18 +2,19 @@
 Tests for the security module (JWT and password hashing).
 """
 
-import pytest
 from datetime import timedelta
+
+import pytest
 from jose import jwt
 
+from app.core.config import settings
 from app.core.security import (
+    JWTError,
     create_access_token,
     decode_token,
-    verify_password,
     get_password_hash,
-    JWTError,
+    verify_password,
 )
-from app.core.config import settings
 
 
 class TestPasswordHashing:

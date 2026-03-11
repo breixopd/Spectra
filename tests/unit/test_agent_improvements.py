@@ -1,36 +1,29 @@
 """Tests for agent system improvements (AGENT-001 through MISSION-005)."""
 
-import asyncio
-import time
-import warnings
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
+from app.core.enums import MissionStatus
+from app.core.state_machine import MissionState
 from app.services.ai.agents.base import (
+    ActionRisk,
     Agent,
     AgentAction,
     AgentContext,
     AgentResult,
     AgentRole,
-    ActionRisk,
 )
 from app.services.ai.agents.exploit_verifier import (
+    FAILURE_PATTERNS,
+    SUCCESS_PATTERNS,
     ExploitVerifierAgent,
     ExploitVerifierInput,
-    ExploitVerifierOutput,
-    SUCCESS_PATTERNS,
-    FAILURE_PATTERNS,
 )
-from app.services.ai.agents.exploit_crafter import ExploitCrafter, ExploitInput
 from app.services.ai.agents.reporter import ReporterAgent
-from app.services.ai.blackboard import MissionBlackboard, get_blackboard, remove_blackboard, _blackboards
-from app.services.ai.consensus import VotingConfig, VotingSystem, ConsensusStatus
+from app.services.ai.blackboard import MissionBlackboard, _blackboards, get_blackboard, remove_blackboard
+from app.services.ai.consensus import VotingConfig, VotingSystem
+from app.services.mission.task_tree import PentestTaskTree, TaskStatus
 from tests.mocks.llm import MockLLMClient
-from app.services.mission.task_tree import PentestTaskTree, TaskNode, TaskStatus
-from app.core.enums import MissionStatus
-from app.core.state_machine import MissionState
-
 
 # ---- Fixtures ----
 
@@ -297,7 +290,6 @@ class TestPOCPromptMoved:
 
     def test_poc_developer_uses_prompt_from_prompts_module(self):
         """Verify the poc_developer module no longer defines its own prompt."""
-        import importlib
         import app.services.ai.prompts as prompts_mod
         assert hasattr(prompts_mod, "POC_DEVELOPER_PROMPT")
 

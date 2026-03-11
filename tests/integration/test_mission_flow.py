@@ -12,14 +12,13 @@ Corresponds to testplan.md Scenario E2E-01.
 """
 
 import asyncio
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
-from app.services.mission.manager import MissionManager
 from app.services.ai.consensus import QualityGate
-
-from tests.e2e.conftest import wait_for_mission_status, get_mission_logs
-
+from app.services.mission.manager import MissionManager
+from tests.e2e.conftest import get_mission_logs, wait_for_mission_status
 
 pytestmark = [
     pytest.mark.e2e,
@@ -35,7 +34,7 @@ class TestFullMissionWorkflow:
     ):
         """Test that a mission starts and defines scope correctly."""
         # Mock event emission
-        with patch("app.core.events.events.emit_sync") as mock_emit:
+        with patch("app.core.events.events.emit_sync"):
             with patch("app.services.mission.manager.lifecycle.async_session_maker"):
                 mission_id = await mission_manager.start_mission(
                     target=test_target_ip,

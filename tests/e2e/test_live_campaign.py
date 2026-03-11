@@ -1,13 +1,15 @@
-import pytest
-import pytest_asyncio
 import asyncio
 import logging
 import os
+
+import pytest
+import pytest_asyncio
+
+import app.models  # noqa
 from app.core.config import settings
-from app.services.tools.registry import get_registry
 from app.core.database import engine
 from app.models.base import Base
-import app.models  # noqa
+from app.services.tools.registry import get_registry
 
 # Configure logging to show thinking process
 logging.basicConfig(level=logging.INFO)
@@ -77,10 +79,9 @@ class TestLiveCampaign:
         # If we are in restricted env (no root), we CANNOT install tools unless we delegate to a container.
         # Let's assume the user has a container named 'spectra-tools' running.
 
-        import pytest
-
         # Check if 'spectra-tools' container is running
         import subprocess
+
 
         try:
             res = subprocess.run(

@@ -1,27 +1,27 @@
 """Tests for security hardening and session migration features."""
 
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from app.core.rbac import Permission, ROLE_PERMISSIONS, has_permission, require_permission
+import pytest
+
 from app.core.encryption import (
-    encrypt_field,
-    decrypt_field,
-    is_sensitive_key,
-    encrypt_sensitive_fields,
-    decrypt_sensitive_fields,
     _derive_fernet_key,
+    decrypt_field,
+    decrypt_sensitive_fields,
+    encrypt_field,
+    encrypt_sensitive_fields,
+    is_sensitive_key,
 )
+from app.core.rbac import ROLE_PERMISSIONS, Permission, has_permission, require_permission
 from app.models.user import User
 from app.services.ai.agents.post_exploitation import (
+    POST_EXPLOIT_TOOLS,
+    PostExploitAction,
     PostExploitationAgent,
     PostExploitInput,
-    PostExploitAction,
-    POST_EXPLOIT_TOOLS,
     _detect_os,
 )
 from app.services.mission.mission import Mission
-
 
 # ============================================================================
 # SEC-001: RBAC Tests

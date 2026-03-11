@@ -1,11 +1,12 @@
 """Tests for ToolExecutionService."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.tools.service import ToolExecutionService, StandaloneMissionAdapter
-from app.services.tools.models import ToolExecutionResult
+import pytest
+
 from app.services.ai.agents.base import ToolAction
+from app.services.tools.models import ToolExecutionResult
+from app.services.tools.service import StandaloneMissionAdapter, ToolExecutionService
 
 
 @pytest.fixture

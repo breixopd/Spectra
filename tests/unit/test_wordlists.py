@@ -1,7 +1,6 @@
 """Tests for the wordlists service."""
 
-import pytest
-from app.services.ai.wordlists import generate_tech_wordlist, generate_credential_list
+from app.services.ai.wordlists import generate_credential_list, generate_tech_wordlist
 
 
 class TestGenerateTechWordlist:

@@ -1,6 +1,5 @@
 """Tests for warm pool of pre-warmed sandbox containers."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

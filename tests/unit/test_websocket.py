@@ -2,8 +2,9 @@
 Test WebSocket functionality.
 """
 
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import patch, AsyncMock
 
 from app.core.websocket import ConnectionManager
 

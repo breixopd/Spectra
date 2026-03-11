@@ -8,22 +8,22 @@ Covers:
 - Knowledge base indexing
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 import app.services.ai.knowledge as knowledge_module
 from app.services.ai.knowledge import (
     PTES_METHODOLOGY,
     close_rag_service,
-    get_methodology_guidance,
-    get_full_methodology,
-    get_exploit_context,
-    get_tool_usage_context,
-    get_mission_context,
     get_available_tools_context,
+    get_exploit_context,
+    get_full_methodology,
+    get_methodology_guidance,
+    get_mission_context,
+    get_tool_usage_context,
     index_exploit_attempt,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. get_methodology_guidance

@@ -1,21 +1,22 @@
 """Unit tests for the new core infrastructure modules."""
 
-import pytest
-from unittest.mock import MagicMock
 from collections import deque
+from unittest.mock import MagicMock
 
+import pytest
+
+from app.core.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
+from app.core.events import Event, EventBus, EventType
 from app.core.exceptions import (
-    SpectraError,
+    CircuitBreakerOpenError,
+    LLMConnectionError,
     LLMError,
     LLMTimeoutError,
-    LLMConnectionError,
-    ToolExecutionError,
     MissionStateError,
-    CircuitBreakerOpenError,
+    SpectraError,
+    ToolExecutionError,
 )
-from app.core.events import EventBus, EventType, Event
-from app.core.state_machine import MissionState, MissionStateMachine, VALID_TRANSITIONS
-from app.core.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
+from app.core.state_machine import VALID_TRANSITIONS, MissionState, MissionStateMachine
 from app.core.telemetry import TelemetryCollector
 
 

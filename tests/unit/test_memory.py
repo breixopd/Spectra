@@ -1,13 +1,9 @@
 """Tests for the persistent Mission Memory system."""
 
-import json
 import pytest
-from pathlib import Path
+
 from app.services.ai.memory import (
     MissionMemory,
-    ToolLesson,
-    ExploitLesson,
-    TargetProfile,
     detect_os_from_output,
     detect_os_from_services,
     get_memory,

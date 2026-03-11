@@ -1,10 +1,9 @@
 """Tests for tool chain rules — deterministic follow-up tool queueing."""
 
-import pytest
 
 from app.services.mission.tool_chain_rules import (
-    ChainRule,
     CHAIN_RULES,
+    ChainRule,
     get_triggered_rules,
 )
 
@@ -90,7 +89,7 @@ class TestGetTriggeredRules:
     def test_host_placeholder_resolved(self):
         output = "80/tcp   open  http"
         triggered = get_triggered_rules("nmap", output, "192.168.1.100")
-        for rule, args in triggered:
+        for _rule, args in triggered:
             for v in args.values():
                 assert "{host}" not in v
                 if "192.168.1.100" in v:

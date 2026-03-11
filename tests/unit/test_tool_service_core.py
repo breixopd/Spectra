@@ -1,18 +1,13 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-from app.services.tools.service import (
-    ToolExecutionService,
-    ToolExecutionRequest,
-    ToolExecutionResult,
-)
-from app.services.tools.models import (
-    RegisteredTool,
-    ToolStatus,
-    ToolConfig,
-    OutputFormat,
-)
-from app.services.ai.agents.safety import SafetyAction
+
 from app.services.ai.agents.base import ActionRisk
+from app.services.ai.agents.safety import SafetyAction
+from app.services.tools.service import (
+    ToolExecutionResult,
+    ToolExecutionService,
+)
 
 
 @pytest.fixture

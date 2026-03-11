@@ -1,7 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock, patch
-from app.core.events import Event, EventType, events
+
+import pytest
+
 from app.core.bridge import EventWebSocketBridge
+from app.core.events import EventType, events
 
 
 @pytest.mark.asyncio

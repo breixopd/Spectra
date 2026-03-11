@@ -1,12 +1,11 @@
-import asyncio
 import pytest
-from app.core.queue import PostgresJobQueue, Job, worker_loop
-from app.models.infrastructure import JobQueue
-from sqlalchemy import select, update
-import app.core.queue
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
-from app.models.infrastructure import InfrastructureBase
+from sqlalchemy.orm import sessionmaker
+
+import app.core.queue
+from app.core.queue import Job, PostgresJobQueue
+from app.models.infrastructure import InfrastructureBase, JobQueue
+
 
 @pytest.fixture
 def sqlite_engine():

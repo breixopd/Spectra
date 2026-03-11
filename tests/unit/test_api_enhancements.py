@@ -1,9 +1,6 @@
 """Tests for API enhancements: finding status, bulk ops, missions filter, exploit chains, observability."""
 
-import json
-import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, patch
 
 from app.models.finding import FindingStatus
 
@@ -31,7 +28,7 @@ class TestExploitChainStorage:
     """API-005: Custom exploit chain persistence."""
 
     def test_load_custom_chains_empty(self, tmp_path):
-        from app.services.mission.chain_builder import load_custom_chains, CUSTOM_CHAINS_PATH
+        from app.services.mission.chain_builder import load_custom_chains
         # With no file, should return empty
         with patch("app.services.mission.chain_builder.CUSTOM_CHAINS_PATH", tmp_path / "chains.json"):
             from app.services.mission import chain_builder
@@ -44,10 +41,12 @@ class TestExploitChainStorage:
                 chain_builder.CUSTOM_CHAINS_PATH = original
 
     def test_save_and_load_custom_chain(self, tmp_path):
-        from app.services.mission.chain_builder import (
-            save_custom_chain, load_custom_chains, ChainBuilder,
-        )
         import app.services.mission.chain_builder as cb_module
+        from app.services.mission.chain_builder import (
+            ChainBuilder,
+            load_custom_chains,
+            save_custom_chain,
+        )
 
         original = cb_module.CUSTOM_CHAINS_PATH
         cb_module.CUSTOM_CHAINS_PATH = tmp_path / "chains.json"

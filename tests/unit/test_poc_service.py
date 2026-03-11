@@ -1,11 +1,12 @@
 """Tests for the POC service."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.poc.service import POCService
-from app.services.poc.models import POCRequest, POCResult, POCMetadata
+import pytest
+
 from app.services.ai.agents.base import AgentContext, AgentResult
+from app.services.poc.models import POCMetadata, POCRequest, POCResult
+from app.services.poc.service import POCService
 
 
 @pytest.fixture

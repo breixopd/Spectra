@@ -2,10 +2,11 @@
 
 import asyncio
 import os
+from datetime import datetime
+
+import httpx
 import pytest
 import pytest_asyncio
-import httpx
-from datetime import datetime
 
 pytestmark = [
     pytest.mark.live,
@@ -441,7 +442,7 @@ class TestWebSocketConnection:
                     response_str = str(response)
                     print(f"\nWebSocket response: {response_str}")
                     assert "test" in response_str
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     print("WebSocket response timeout (may be normal)")
 
         except Exception as e:

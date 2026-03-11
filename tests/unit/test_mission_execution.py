@@ -1,7 +1,8 @@
 """Tests for MissionExecutionManager."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.services.mission.manager.execution import MissionExecutionManager
 

@@ -10,8 +10,9 @@ Tests the mission orchestration workflow including:
 - _parse_skip_command phase extraction
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.core.enums import AssessmentPhase
 from app.services.ai.agents.base import (
@@ -24,12 +25,9 @@ from app.services.ai.agents.mission_controller import (
     MissionController,
     MissionInput,
     MissionPlan,
-    MissionType,
     PhaseTransition,
-    Task,
 )
 from tests.mocks.llm import MockLLMClient
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -122,7 +120,7 @@ class TestExecuteRouting:
             controller, "_handle_steering", new_callable=AsyncMock
         ) as mock_steer:
             mock_steer.return_value = AgentResult(success=True, action=MagicMock())
-            result = await controller.execute(context, input_data)
+            await controller.execute(context, input_data)
 
         mock_steer.assert_awaited_once_with(context, input_data)
 
@@ -138,7 +136,7 @@ class TestExecuteRouting:
             controller, "_handle_phase_transition", new_callable=AsyncMock
         ) as mock_trans:
             mock_trans.return_value = AgentResult(success=True, action=MagicMock())
-            result = await controller.execute(context, input_data)
+            await controller.execute(context, input_data)
 
         mock_trans.assert_awaited_once_with(context, input_data)
 
@@ -157,7 +155,7 @@ class TestExecuteRouting:
             controller, "_handle_steering", new_callable=AsyncMock
         ) as mock_steer:
             mock_steer.return_value = AgentResult(success=True, action=MagicMock())
-            result = await controller.execute(context, input_data)
+            await controller.execute(context, input_data)
 
         mock_steer.assert_awaited_once()
 

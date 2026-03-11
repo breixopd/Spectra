@@ -1,9 +1,9 @@
 """Tests for the DemoRecorder service."""
 
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from pathlib import Path
 
 from app.services.mission.demo_recorder import DemoRecorder
 

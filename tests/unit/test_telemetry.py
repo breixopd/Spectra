@@ -1,7 +1,8 @@
 """Tests for app.core.telemetry module."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from app.core.telemetry import TelemetryCollector, record_llm_call
 

@@ -2,17 +2,18 @@
 Tests for Tool Selector Agent with edge cases and error handling.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from app.services.ai.agents.base import ActionRisk, AgentContext
 from app.services.ai.agents.tool_selector import (
     ToolSelectorAgent,
     ToolSelectorInput,
     ToolSelectorOutput,
 )
-from app.services.ai.agents.base import AgentContext, ActionRisk
-from tests.mocks.llm import MockLLMClient
 from app.services.tools.models import RiskLevel
+from tests.mocks.llm import MockLLMClient
 
 
 class TestToolSelectorInput:

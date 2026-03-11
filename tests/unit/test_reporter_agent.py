@@ -1,7 +1,9 @@
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+
+from app.services.ai.agents.base import ActionRisk, AgentContext
 from app.services.ai.agents.reporter import ReporterAgent, ReporterInput, ReportOutput
-from app.services.ai.agents.base import AgentContext, ActionRisk
 
 
 @pytest.fixture

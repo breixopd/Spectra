@@ -1,8 +1,8 @@
 """Tests for plan-based rate limiting and the enforce_api_rate_limit dependency."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi import HTTPException
 
 

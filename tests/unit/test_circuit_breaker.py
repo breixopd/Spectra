@@ -1,15 +1,15 @@
 """Unit tests for app.core.circuit_breaker module."""
 
 import time
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from app.core.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
-    CircuitState,
     CircuitBreakerRegistry,
+    CircuitState,
 )
 from app.core.exceptions import CircuitBreakerOpenError
 

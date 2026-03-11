@@ -2,19 +2,20 @@
 Tests for the Attack Surface model and tracking.
 """
 
-import pytest
 from datetime import datetime
+
+import pytest
 
 from app.models.attack_surface import (
     AttackSurface,
     AttackVector,
-    VectorPriority,
-    VectorStatus,
     DiscoveredService,
     DiscoveredWebApp,
-    Vulnerability,
     ExploitAttempt,
     RetryStrategy,
+    VectorPriority,
+    VectorStatus,
+    Vulnerability,
 )
 
 

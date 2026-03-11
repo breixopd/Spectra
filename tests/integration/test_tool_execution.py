@@ -11,23 +11,23 @@ These tests can optionally use real tools if available.
 """
 
 import os
-import pytest
 from pathlib import Path
 
-from app.services.tools.registry import get_registry, initialize_registry
+import pytest
+
 from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.models import (
-    ToolConfig,
     ExecutionConfig,
-    ParsingConfig,
-    ToolMetadata,
-    ToolCategory,
-    ToolCapability,
-    RiskLevel,
     OutputFormat,
+    ParsingConfig,
+    RiskLevel,
+    ToolCapability,
+    ToolCategory,
+    ToolConfig,
     ToolExecutionRequest,
+    ToolMetadata,
 )
-
+from app.services.tools.registry import get_registry, initialize_registry
 
 pytestmark = [
     pytest.mark.e2e,
@@ -102,7 +102,7 @@ class TestToolRegistry:
         available = registry.get_available_tools()
 
         # All listed tools should have is_available set
-        for tool in available:
+        for _tool in available:
             # Note: is_available depends on system tool installation
             pass  # Just ensure no errors
 
@@ -373,11 +373,11 @@ class TestToolIntegrationWithMission:
 
     async def test_tool_selector_uses_registry(self):
         """Test that tool selector uses the registry."""
+        from app.services.ai.agents.base import AgentContext
         from app.services.ai.agents.tool_selector import (
             ToolSelectorAgent,
             ToolSelectorInput,
         )
-        from app.services.ai.agents.base import AgentContext
         from tests.mocks.llm import MockLLMClient
 
         mock_llm = MockLLMClient(
@@ -548,9 +548,9 @@ class TestPluginLoading:
             print(f"Verifying {tool.config.id}...")
 
             # Run verification command
-            import subprocess
-            import shlex
             import re
+            import shlex
+            import subprocess
 
             try:
                 # Use shlex.split for safe command parsing, shell=False for security

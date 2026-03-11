@@ -3,14 +3,13 @@
 import hashlib
 import hmac
 import json
-
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from app.services.webhooks.service import (
-    WebhookService,
-    SUPPORTED_EVENTS,
     MAX_RETRIES,
+    WebhookService,
     _deliver,
 )
 
@@ -42,7 +41,7 @@ async def test_register_webhook_success():
     with patch("app.services.webhooks.service.Webhook") as MockWH:
         instance = MagicMock()
         MockWH.return_value = instance
-        result = await svc.register(
+        await svc.register(
             user_id="u1",
             url="https://example.com/hook",
             events=["mission.completed"],
@@ -200,7 +199,7 @@ async def test_fire_only_delivers_to_matching_hooks():
 
     svc = WebhookService(session)
 
-    with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock) as mock_deliver:
+    with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
         with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
             # Make create_task call the coroutine arg tracking
             mock_task.side_effect = lambda coro: coro  # capture

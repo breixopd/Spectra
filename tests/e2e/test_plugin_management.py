@@ -1,11 +1,13 @@
 """Test Plugin Management - Upload, Install, Uninstall, Verification."""
 
+import asyncio
+
 import pytest
 import pytest_asyncio
-import asyncio
-from app.services.tools.registry import get_registry
-from app.services.tools.models import ToolStatus
+
 from app.core.queue import Job
+from app.services.tools.models import ToolStatus
+from app.services.tools.registry import get_registry
 
 pytestmark = [
     pytest.mark.asyncio,

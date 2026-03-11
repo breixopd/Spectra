@@ -1,10 +1,10 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from app.services.mission.executor import MissionExecutor
-from app.services.ai.agents.base import ToolAction, AgentContext
-from app.services.mission.mission import Mission
-from app.models.attack_surface import ExploitAttempt, VectorPriority, AttackVector
+
 from app.services.ai.llm import LLMClient
+from app.services.mission.executor import MissionExecutor
+from app.services.mission.mission import Mission
 
 
 @pytest.fixture

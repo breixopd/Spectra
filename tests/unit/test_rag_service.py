@@ -1,9 +1,10 @@
 """Tests for the RAG service."""
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-from app.services.ai.rag import RAGService, RAGConfig, Document, SearchResult
+import pytest
+
+from app.services.ai.rag import Document, RAGConfig, RAGService, SearchResult
 
 
 @pytest.fixture
@@ -89,7 +90,7 @@ class TestRAGIndexDocument:
         rag_service._table_ready = True
 
         with patch("app.services.ai.rag.async_session_maker", return_value=mock_session_maker):
-            result = await rag_service.index_document(sample_doc)
+            await rag_service.index_document(sample_doc)
             rag_service.embeddings.embed.assert_awaited_once()
 
     @pytest.mark.asyncio

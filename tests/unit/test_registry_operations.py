@@ -6,21 +6,18 @@ add_plugin, remove_plugin, _save_plugin, validate_plugin,
 list_tools_for_ai, get_tool_for_ai.
 """
 
-import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.tools.registry import ToolRegistry
+import pytest
+
 from app.services.tools.models import (
+    ExecutionConfig,
     RegisteredTool,
     ToolConfig,
-    ToolCategory,
     ToolStatus,
-    ExecutionConfig,
-    ToolMetadata,
 )
+from app.services.tools.registry import ToolRegistry
 from app.services.tools.registry.exceptions import PluginValidationError
-
 
 # --- Helpers ---
 

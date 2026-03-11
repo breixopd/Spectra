@@ -1,17 +1,17 @@
 """Unit tests for app.core.cache module (PostgreSQL-backed)."""
 
-import pytest
-import pytest_asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+import pytest_asyncio
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
 
-from app.core.cache import CacheService, CacheConfig, get_cache, set_cache, _json_dumps
+from app.core.cache import CacheService, _json_dumps, get_cache, set_cache
 from app.models.infrastructure import CacheEntry, InfrastructureBase
 
 
@@ -72,8 +72,8 @@ class TestCacheServiceGet:
             entry = CacheEntry(
                 key="expired_key",
                 value=_json_dumps("old_value"),
-                expires_at=datetime.now(timezone.utc) - timedelta(seconds=10),
-                created_at=datetime.now(timezone.utc),
+                expires_at=datetime.now(UTC) - timedelta(seconds=10),
+                created_at=datetime.now(UTC),
             )
             session.add(entry)
             await session.commit()
@@ -200,8 +200,8 @@ class TestCacheServiceExists:
             entry = CacheEntry(
                 key="expired",
                 value=_json_dumps("val"),
-                expires_at=datetime.now(timezone.utc) - timedelta(seconds=10),
-                created_at=datetime.now(timezone.utc),
+                expires_at=datetime.now(UTC) - timedelta(seconds=10),
+                created_at=datetime.now(UTC),
             )
             session.add(entry)
             await session.commit()

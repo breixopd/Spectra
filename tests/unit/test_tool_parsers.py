@@ -1,6 +1,6 @@
-import pytest
 import xml.etree.ElementTree as ET
-from app.services.tools.parsers import xml_to_dict, parse_nmap_xml
+
+from app.services.tools.parsers import parse_nmap_xml, xml_to_dict
 
 
 def test_xml_to_dict_simple():

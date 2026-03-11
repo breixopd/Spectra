@@ -1,7 +1,8 @@
-import pytest
-import socket
 from unittest.mock import MagicMock, patch
-from app.services.shell.session_manager import ShellSessionManager, ShellSession
+
+import pytest
+
+from app.services.shell.session_manager import ShellSession, ShellSessionManager
 
 
 @pytest.fixture
