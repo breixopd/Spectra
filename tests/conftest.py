@@ -194,6 +194,14 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
 
 
 @pytest.fixture
+def mock_llm():
+    """Provide a MockLLMClient for unit tests."""
+    from tests.mocks.llm import MockLLMClient
+
+    return MockLLMClient()
+
+
+@pytest.fixture
 def test_target_ip():
     """Return a test target IP."""
     return "192.168.1.100"
