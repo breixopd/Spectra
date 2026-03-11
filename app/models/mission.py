@@ -6,7 +6,7 @@ Tracks security assessment missions, their status, logs, and results.
 
 from __future__ import annotations
 
-from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy import Index, JSON, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.enums import MissionStatus
@@ -26,6 +26,9 @@ class Mission(Base):
     """
 
     __tablename__ = "missions"
+    __table_args__ = (
+        Index("ix_missions_user_id_status", "user_id", "status"),
+    )
 
     user_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
