@@ -38,8 +38,8 @@ class Settings(BaseSettings):
     @field_validator("REQUEST_TIMEOUT_SECONDS")
     @classmethod
     def validate_request_timeout(cls, v: int) -> int:
-        if not 1 <= v <= 300:
-            raise ValueError("REQUEST_TIMEOUT_SECONDS must be 1-300")
+        if v != 0 and not 1 <= v <= 300:
+            raise ValueError("REQUEST_TIMEOUT_SECONDS must be 0 (disabled) or 1-300")
         return v
 
     # --- Database (PostgreSQL) ---
@@ -78,8 +78,8 @@ class Settings(BaseSettings):
     @field_validator("LLM_TIMEOUT")
     @classmethod
     def validate_llm_timeout(cls, v: float) -> float:
-        if not 5 <= v <= 600:
-            raise ValueError("LLM_TIMEOUT must be 5-600 seconds")
+        if not 5 <= v <= 1200:
+            raise ValueError("LLM_TIMEOUT must be 5-1200 seconds")
         return v
 
     # Per-tier model routing (empty = use default model for all tiers)

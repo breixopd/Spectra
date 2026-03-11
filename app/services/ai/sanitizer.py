@@ -2,6 +2,7 @@
 
 import logging
 import re
+import unicodedata
 
 logger = logging.getLogger("spectra.ai.sanitizer")
 
@@ -24,6 +25,11 @@ def sanitize_for_prompt(text: str, max_length: int = 10000, field_name: str = "i
     """
     if not isinstance(text, str):
         return str(text)[:max_length]
+
+    # Normalize Unicode to prevent homoglyph bypasses (Cyrillic а vs Latin a, etc.)
+    text = unicodedata.normalize('NFKD', text)
+    # Strip zero-width characters
+    text = re.sub(r'[\u200b\u200c\u200d\u2060\ufeff]', '', text)
 
     # Truncate
     if len(text) > max_length:
