@@ -84,7 +84,7 @@ services:
     env_file:
       - ../.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/spectra
       - CONNECT_BACK_HOST=spectra-app
       - DEBUG=false
       - S3_ENDPOINT_URL=http://minio:9000
@@ -92,7 +92,7 @@ services:
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
     volumes:
       - spectra_data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 15s
@@ -126,8 +126,8 @@ services:
     env_file:
       - ../.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/spectra
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
       - IS_TOOLS_CONTAINER=true
       - QUEUE_NAME=default
       - PLUGIN_SAFE_MODE=true
