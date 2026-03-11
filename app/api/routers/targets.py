@@ -331,7 +331,8 @@ async def bulk_import_targets(
             )
             imported += 1
         except Exception as e:
-            errors.append(f"{addr}: {str(e)}")
+            logger.error("Bulk import failed for target %s: %s", addr, e)
+            errors.append(f"{addr}: invalid data format")
 
     await db.commit()
     return BulkImportResponse(imported=imported, skipped=skipped, errors=errors)
