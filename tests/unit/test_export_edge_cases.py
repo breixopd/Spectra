@@ -14,7 +14,6 @@ from httpx import ASGITransport, AsyncClient
 from app.api.routers.export import (
     _COLUMNS,
     _VALID_ENTITIES,
-    _sanitize_csv_value,
     router,
 )
 

@@ -5,9 +5,7 @@ Verifies DB connectivity, table existence, and disk space checks
 using mocked database sessions and filesystem calls.
 """
 
-import shutil
 from collections import namedtuple
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -28,7 +26,7 @@ async def test_db_connectivity_success(caplog):
     mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session_ctx.__aexit__ = AsyncMock(return_value=False)
 
-    mock_maker = MagicMock(return_value=mock_session_ctx)
+    MagicMock(return_value=mock_session_ctx)  # session maker factory
 
     # Also mock the table check session
     mock_table_result = MagicMock()
