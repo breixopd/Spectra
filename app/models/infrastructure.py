@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, TypeDecorator
+from sqlalchemy import DateTime, Index, Integer, String, Text, TypeDecorator
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import String as SAString
@@ -63,6 +63,9 @@ class JobQueue(InfrastructureBase):
     """
 
     __tablename__ = "job_queue"
+    __table_args__ = (
+        Index("ix_job_queue_status_queue", "status", "queue_name"),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     queue_name: Mapped[str] = mapped_column(String, nullable=False, default="default", index=True)

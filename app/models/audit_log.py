@@ -4,7 +4,7 @@ Audit Log model for security event tracking.
 
 from enum import StrEnum
 
-from sqlalchemy import String, Text
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -28,7 +28,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     user_id: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), nullable=True, index=True
+        UUID(as_uuid=False), ForeignKey("users.id"), nullable=True, index=True
     )
     event_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     details: Mapped[str | None] = mapped_column(Text, nullable=True)

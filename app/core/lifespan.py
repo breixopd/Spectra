@@ -392,233 +392,213 @@ async def run_startup_tasks() -> None:
         await set_system_status("ready", "System ready (some tasks skipped)")
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """
-    Application lifespan manager.
+def _validate_production_secrets() -> None:
+    """Validate secret keys are not using insecure defaults in production."""
+    if settings.DEBUG:
+        return
 
-    Startup:
-        - Initialize cache service
-        - Initialize database tables
-        - Load plugins and install tools
-        - Load AI models (if local)
-        - Run background setup tasks
-
-    Shutdown:
-        - Dispose database engine
-        - Close LLM client
-    """
-    logger.info("[STARTUP] Starting Spectra...")
-
-    # --- Security: validate secret keys in production ---
-    if not settings.DEBUG:
-        _insecure_defaults = {
-            "", "change-me-in-production", "test-key", "secret",
-            "changeme", "password", "default",
-        }
-        jwt_val = settings.JWT_SECRET_KEY.get_secret_value()
-        secret_val = settings.SECRET_KEY.get_secret_value() if isinstance(settings.SECRET_KEY, SecretStr) else str(settings.SECRET_KEY)
-        if jwt_val.lower() in _insecure_defaults:
-            raise RuntimeError(
-                "JWT_SECRET_KEY is empty or using a default value. "
-                "Set a strong secret via the JWT_SECRET_KEY environment variable before running in production."
-            )
-        if len(jwt_val) < 32:
-            logger.warning(
-                "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. "
-                "Use a longer secret for production security."
-            )
-        if secret_val.lower() in _insecure_defaults:
-            raise RuntimeError(
-                "SECRET_KEY is empty or using the default 'change-me-in-production'. "
-                "Set a strong secret via the SECRET_KEY environment variable before running in production."
-            )
-        # Warn if DATABASE_URL points to SQLite in production
-        db_url = str(settings.DATABASE_URL)
-        if "sqlite" in db_url.lower():
-            logger.warning(
-                "[SECURITY] DATABASE_URL uses SQLite, which is not suitable for production. "
-                "Configure a PostgreSQL connection string."
-            )
-
-    # --- Startup ---
-    try:
-        # Initialize storage service (S3 or local)
-        from app.services.storage import close_storage_service, get_storage_service
-        storage = get_storage_service()
-        logger.info("[OK] Storage service initialized (mode: %s)", "s3" if storage.is_s3 else "local")
-        # Initialize cache service (PostgreSQL-backed)
-        cache = CacheService()
-        set_cache(cache)
-        logger.info("[OK] Cache service initialized")
-
-        # Set initial system status
-        await set_system_status("initializing", "Connecting services...")
-
-        # Database migrations are handled by start.sh before uvicorn starts
-        telemetry.update_service_status("database", healthy=True)
-        logger.info("[OK] Database ready (migrations handled by start script)")
-
-        # Run startup checks (informational, non-blocking)
-        await run_startup_checks()
-
-        # Store session maker in app state for dependency injection
-        app.state.db_session_maker = async_session_maker
-
-        await hydrate_runtime_settings_from_db(persist_normalized=True, commit=True)
-        logger.info("[OK] Runtime settings hydrated from DB")
-
-        # Seed default plans if none exist
-        await seed_default_plans()
-
-        # Initialize service registry
-        from app.services.gateway.service_registry import get_service_registry
-        get_service_registry()
-        logger.info("[OK] Service registry initialized")
-
-        await set_system_status("initializing", "Loading AI models...")
-
-        # Preload embedding model in background (for RAG)
-        try:
-            from app.services.ai.embeddings import EmbeddingService
-
-            await add_system_operation(
-                "embeddings", "load", "Loading embedding model"
-            )
-            embed_service = EmbeddingService()
-
-            async def load_embeddings_with_status():
-                try:
-                    await embed_service._load_model()
-                    logger.info("[OK] Embedding model loaded")
-                except Exception as e:
-                    logger.warning("Embedding model loading failed: %s", e)
-                finally:
-                    await remove_system_operation("embeddings")
-
-            asyncio.create_task(load_embeddings_with_status())
-            logger.info("Triggered embedding model preloading")
-        except Exception as e:
-            logger.warning("Failed to trigger embedding preloading: %s", e)
-
-        await set_system_status("initializing", "Loading tool plugins...")
-
-        # Initialize tool registry and load plugins
-        try:
-            from app.services.tools.registry import initialize_registry
-
-            registry = await initialize_registry(
-                plugins_dir="plugins",
-                public_key_path="keys/plugin_signing.pub",
-                safe_mode=settings.PLUGIN_SAFE_MODE,
-            )
-            tool_count = len(registry.list_tools())
-            logger.info("[OK] Tool registry initialized: %d tools loaded", tool_count)
-        except Exception as e:
-            logger.error("Failed to initialize tool registry: %s", e)
-
-        await set_system_status("initializing", "Installing tools...")
-
-        # Initialize sandbox pool
-        try:
-            from app.services.tools.sandbox import SandboxPool, set_sandbox_pool
-
-            sandbox_pool = SandboxPool()
-            set_sandbox_pool(sandbox_pool)
-            if sandbox_pool.available:
-                orphans = await sandbox_pool.cleanup_all()
-                if orphans:
-                    logger.info("[OK] Cleaned %d orphaned sandbox containers", orphans)
-                logger.info("[OK] Sandbox pool initialized")
-                asyncio.create_task(sandbox_watchdog_loop())
-                logger.info("[OK] Sandbox watchdog started")
-
-                # Initialize warm pool manager
-                if settings.SANDBOX_WARM_POOL_ENABLED:
-                    from app.services.tools.sandbox import WarmPoolManager, set_warm_pool_manager
-                    warm_manager = WarmPoolManager(sandbox_pool)
-                    set_warm_pool_manager(warm_manager)
-
-                    async def warm_pool_maintain_loop():
-                        while True:
-                            try:
-                                await asyncio.sleep(30)
-                                await warm_manager.maintain()
-                            except asyncio.CancelledError:
-                                break
-                            except Exception as e:
-                                logger.error("Warm pool maintain error: %s", e)
-
-                    asyncio.create_task(warm_pool_maintain_loop())
-                    asyncio.create_task(warm_manager.maintain())
-                    logger.info("[OK] Warm pool manager initialized (size=%d)", settings.SANDBOX_WARM_POOL_SIZE)
-
-                # Initialize golden image builder
-                if settings.SANDBOX_AUTO_BUILD_IMAGE:
-                    from app.services.tools.sandbox import GoldenImageBuilder, set_image_builder
-
-                    builder = GoldenImageBuilder()
-                    set_image_builder(builder)
-
-                    async def on_plugin_change(**kwargs: Any) -> None:
-                        """Trigger golden image rebuild when plugins change."""
-                        asyncio.create_task(builder.build())
-
-                    events.subscribe(EventType.PLUGIN_UPDATED, on_plugin_change)
-                    logger.info("[OK] Golden image builder initialized (auto-build on plugin changes)")
-            else:
-                logger.warning("[WARN] Sandbox pool unavailable — Docker not accessible")
-        except Exception as e:
-            logger.warning("Sandbox pool init failed: %s", e)
-
-        # Initialize server pool manager
-        try:
-            from app.services.scaling import get_pool_manager
-            pool_mgr = get_pool_manager()
-            await pool_mgr.start_health_loop()
-            logger.info("[OK] Server pool manager initialized")
-        except Exception as e:
-            logger.warning("Server pool manager init failed: %s", e)
-
-        # Trigger background setup tasks (including tool installation)
-        asyncio.create_task(run_startup_tasks())
-
-        # Start periodic cache cleanup
-        asyncio.create_task(cache_cleanup_loop())
-
-        # Start metrics snapshot store
-        from app.core.metrics_store import get_metrics_store
-        metrics_store = get_metrics_store()
-        await metrics_store.start()
-        logger.info("[OK] Metrics store started")
-
-        # Emit startup event
-        await events.emit(
-            EventType.SERVICE_HEALTH_CHANGED,
-            source="lifespan",
-            service="spectra",
-            status="started",
+    _insecure_defaults = {
+        "", "change-me-in-production", "test-key", "secret",
+        "changeme", "password", "default",
+    }
+    jwt_val = settings.JWT_SECRET_KEY.get_secret_value()
+    secret_val = settings.SECRET_KEY.get_secret_value() if isinstance(settings.SECRET_KEY, SecretStr) else str(settings.SECRET_KEY)
+    if jwt_val.lower() in _insecure_defaults:
+        raise RuntimeError(
+            "JWT_SECRET_KEY is empty or using a default value. "
+            "Set a strong secret via the JWT_SECRET_KEY environment variable before running in production."
+        )
+    if len(jwt_val) < 32:
+        logger.warning(
+            "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. "
+            "Use a longer secret for production security."
+        )
+    if secret_val.lower() in _insecure_defaults:
+        raise RuntimeError(
+            "SECRET_KEY is empty or using the default 'change-me-in-production'. "
+            "Set a strong secret via the SECRET_KEY environment variable before running in production."
+        )
+    db_url = str(settings.DATABASE_URL)
+    if "sqlite" in db_url.lower():
+        logger.warning(
+            "[SECURITY] DATABASE_URL uses SQLite, which is not suitable for production. "
+            "Configure a PostgreSQL connection string."
         )
 
-        logger.info("[READY] Spectra is ready!")
 
-        # Start event-to-websocket bridge
-        try:
-            from app.core.bridge import EventWebSocketBridge
-            _event_bridge = EventWebSocketBridge()
-            _event_bridge.start()
-            logger.info("[OK] Event bridge started")
-        except Exception as e:
-            logger.warning("Failed to start event bridge: %s", e)
-            _event_bridge = None
+async def _initialize_database(app: FastAPI) -> None:
+    """Verify database connectivity, hydrate settings, and store session maker."""
+    from app.services.storage import get_storage_service
 
+    storage = get_storage_service()
+    logger.info("[OK] Storage service initialized (mode: %s)", "s3" if storage.is_s3 else "local")
+
+    cache = CacheService()
+    set_cache(cache)
+    logger.info("[OK] Cache service initialized")
+
+    await set_system_status("initializing", "Connecting services...")
+
+    telemetry.update_service_status("database", healthy=True)
+    logger.info("[OK] Database ready (migrations handled by start script)")
+
+    await run_startup_checks()
+
+    app.state.db_session_maker = async_session_maker
+
+    await hydrate_runtime_settings_from_db(persist_normalized=True, commit=True)
+    logger.info("[OK] Runtime settings hydrated from DB")
+
+
+async def _seed_default_data() -> None:
+    """Seed plans and other default data if not present."""
+    await seed_default_plans()
+
+    from app.services.gateway.service_registry import get_service_registry
+    get_service_registry()
+    logger.info("[OK] Service registry initialized")
+
+
+async def _initialize_services() -> None:
+    """Start background services: AI models, tool registry, sandboxes, etc."""
+    await set_system_status("initializing", "Loading AI models...")
+
+    # Preload embedding model in background (for RAG)
+    try:
+        from app.services.ai.embeddings import EmbeddingService
+
+        await add_system_operation("embeddings", "load", "Loading embedding model")
+        embed_service = EmbeddingService()
+
+        async def load_embeddings_with_status():
+            try:
+                await embed_service._load_model()
+                logger.info("[OK] Embedding model loaded")
+            except Exception as e:
+                logger.warning("Embedding model loading failed: %s", e)
+            finally:
+                await remove_system_operation("embeddings")
+
+        asyncio.create_task(load_embeddings_with_status())
+        logger.info("Triggered embedding model preloading")
     except Exception as e:
-        logger.error("[ERROR] Startup failed: %s", e)
-        raise
+        logger.warning("Failed to trigger embedding preloading: %s", e)
 
-    yield  # Application is running
+    await set_system_status("initializing", "Loading tool plugins...")
 
-    # --- Shutdown ---
+    # Initialize tool registry and load plugins
+    try:
+        from app.services.tools.registry import initialize_registry
+
+        registry = await initialize_registry(
+            plugins_dir="plugins",
+            public_key_path="keys/plugin_signing.pub",
+            safe_mode=settings.PLUGIN_SAFE_MODE,
+        )
+        tool_count = len(registry.list_tools())
+        logger.info("[OK] Tool registry initialized: %d tools loaded", tool_count)
+    except Exception as e:
+        logger.error("Failed to initialize tool registry: %s", e)
+
+    await set_system_status("initializing", "Installing tools...")
+
+    # Initialize sandbox pool
+    try:
+        from app.services.tools.sandbox import SandboxPool, set_sandbox_pool
+
+        sandbox_pool = SandboxPool()
+        set_sandbox_pool(sandbox_pool)
+        if sandbox_pool.available:
+            orphans = await sandbox_pool.cleanup_all()
+            if orphans:
+                logger.info("[OK] Cleaned %d orphaned sandbox containers", orphans)
+            logger.info("[OK] Sandbox pool initialized")
+            asyncio.create_task(sandbox_watchdog_loop())
+            logger.info("[OK] Sandbox watchdog started")
+
+            # Initialize warm pool manager
+            if settings.SANDBOX_WARM_POOL_ENABLED:
+                from app.services.tools.sandbox import WarmPoolManager, set_warm_pool_manager
+                warm_manager = WarmPoolManager(sandbox_pool)
+                set_warm_pool_manager(warm_manager)
+
+                async def warm_pool_maintain_loop():
+                    while True:
+                        try:
+                            await asyncio.sleep(30)
+                            await warm_manager.maintain()
+                        except asyncio.CancelledError:
+                            break
+                        except Exception as e:
+                            logger.error("Warm pool maintain error: %s", e)
+
+                asyncio.create_task(warm_pool_maintain_loop())
+                asyncio.create_task(warm_manager.maintain())
+                logger.info("[OK] Warm pool manager initialized (size=%d)", settings.SANDBOX_WARM_POOL_SIZE)
+
+            # Initialize golden image builder
+            if settings.SANDBOX_AUTO_BUILD_IMAGE:
+                from app.services.tools.sandbox import GoldenImageBuilder, set_image_builder
+
+                builder = GoldenImageBuilder()
+                set_image_builder(builder)
+
+                async def on_plugin_change(**kwargs: Any) -> None:
+                    """Trigger golden image rebuild when plugins change."""
+                    asyncio.create_task(builder.build())
+
+                events.subscribe(EventType.PLUGIN_UPDATED, on_plugin_change)
+                logger.info("[OK] Golden image builder initialized (auto-build on plugin changes)")
+        else:
+            logger.warning("[WARN] Sandbox pool unavailable — Docker not accessible")
+    except Exception as e:
+        logger.warning("Sandbox pool init failed: %s", e)
+
+    # Initialize server pool manager
+    try:
+        from app.services.scaling import get_pool_manager
+        pool_mgr = get_pool_manager()
+        await pool_mgr.start_health_loop()
+        logger.info("[OK] Server pool manager initialized")
+    except Exception as e:
+        logger.warning("Server pool manager init failed: %s", e)
+
+    # Trigger background setup tasks (including tool installation)
+    asyncio.create_task(run_startup_tasks())
+
+    # Start periodic cache cleanup
+    asyncio.create_task(cache_cleanup_loop())
+
+    # Start metrics snapshot store
+    from app.core.metrics_store import get_metrics_store
+    metrics_store = get_metrics_store()
+    await metrics_store.start()
+    logger.info("[OK] Metrics store started")
+
+    # Emit startup event
+    await events.emit(
+        EventType.SERVICE_HEALTH_CHANGED,
+        source="lifespan",
+        service="spectra",
+        status="started",
+    )
+
+
+async def _start_event_bridge() -> Any | None:
+    """Start the event-to-websocket bridge. Returns the bridge instance or None."""
+    try:
+        from app.core.bridge import EventWebSocketBridge
+        bridge = EventWebSocketBridge()
+        bridge.start()
+        logger.info("[OK] Event bridge started")
+        return bridge
+    except Exception as e:
+        logger.warning("Failed to start event bridge: %s", e)
+        return None
+
+
+async def _shutdown_services() -> None:
+    """Gracefully shut down all services."""
     # Close storage service
     try:
         from app.services.storage import close_storage_service
@@ -626,6 +606,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("[OK] Storage service closed")
     except Exception as e:
         logger.warning("Storage service close error: %s", e)
+
     logger.info("[SHUTDOWN] Shutting down Spectra...")
 
     # Stop server pool health loop
@@ -664,7 +645,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             for task in tasks:
                 task.cancel()
 
-            # Wait for tasks to cancel with timeout
             try:
                 await asyncio.wait_for(
                     asyncio.gather(*tasks, return_exceptions=True), timeout=5.0
@@ -681,14 +661,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await close_global_llm_client()
         logger.info("[OK] LLM client closed")
 
-        # Stop event bridge
-        try:
-            if '_event_bridge' in dir() and _event_bridge:
-                _event_bridge.stop()
-                logger.info("[OK] Event bridge stopped")
-        except Exception as e:
-            logger.debug("Event bridge stop failed: %s", e)
-
         # Dispose database engine
         await engine.dispose()
         logger.info("[OK] Database connections closed")
@@ -697,3 +669,32 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.error("[ERROR] Shutdown error: %s", e)
 
     logger.info("[STOPPED] Spectra stopped.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Application lifespan manager — delegates to focused sub-functions."""
+    logger.info("[STARTUP] Starting Spectra...")
+
+    _validate_production_secrets()
+
+    try:
+        await _initialize_database(app)
+        await _seed_default_data()
+        await _initialize_services()
+        logger.info("[READY] Spectra is ready!")
+        _event_bridge = await _start_event_bridge()
+    except Exception as e:
+        logger.error("[ERROR] Startup failed: %s", e)
+        raise
+
+    yield
+
+    if _event_bridge:
+        try:
+            _event_bridge.stop()
+            logger.info("[OK] Event bridge stopped")
+        except Exception as e:
+            logger.debug("Event bridge stop failed: %s", e)
+
+    await _shutdown_services()
