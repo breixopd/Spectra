@@ -14,13 +14,14 @@ from datetime import datetime as dt
 from io import StringIO
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.core.database import get_async_session
+from app.core.rate_limit import limiter
 from app.models.exploit import Exploit
 from app.models.finding import Finding
 from app.models.mission import Mission
@@ -77,7 +78,9 @@ def _row_to_dict(row: Any, columns: list[str]) -> dict[str, Any]:
     summary="Export data",
     description="Export entity data as JSON or CSV. Supports date range and status filters.",
 )
+@limiter.limit("10/minute")
 async def export_data(
+    request: Request,
     entity_type: str,
     format: str = Query(default="json", description="Output format: json or csv"),
     status: str | None = Query(default=None, description="Filter by status"),

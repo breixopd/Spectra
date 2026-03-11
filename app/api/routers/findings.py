@@ -12,7 +12,7 @@ import json
 import logging
 from io import StringIO
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,7 @@ from app.api.schemas import FindingResponse, PaginatedResponse
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
+from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
 from app.models.finding import Finding, FindingStatus, Severity
 from app.models.user import User
@@ -132,7 +133,9 @@ async def create_finding(
     summary="List findings",
     description="Retrieve all findings with optional severity and status filters.",
 )
+@limiter.limit("60/minute")
 async def list_findings(
+    request: Request,
     page: int = Query(default=1, ge=1, description="Page number"),
     per_page: int = Query(
         default=DEFAULT_PAGE_SIZE,
@@ -215,7 +218,9 @@ async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> lis
     summary="Export findings as CSV",
     description="Export all findings as a CSV file. Optionally encrypt with a password.",
 )
+@limiter.limit("60/minute")
 async def export_findings_csv(
+    request: Request,
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
@@ -265,7 +270,9 @@ async def export_findings_csv(
     summary="Export findings as JSON",
     description="Export all findings as a JSON file. Optionally encrypt with a password.",
 )
+@limiter.limit("60/minute")
 async def export_findings_json(
+    request: Request,
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
