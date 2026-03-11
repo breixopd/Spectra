@@ -92,13 +92,3 @@ async def notify_exploit_success(target: str, vector: str) -> None:
         priority="urgent",
         tags=["skull"],
     )
-
-
-async def notify_mission_failed(target: str, error: str) -> None:
-    """Notify when a mission fails."""
-    await send_notification(
-        title="Mission Failed",
-        message=f"Target: {target}\nError: {error[:200]}",
-        priority="high",
-        tags=["x"],
-    )

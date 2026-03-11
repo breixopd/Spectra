@@ -4,11 +4,14 @@ Defines permissions per role and provides a FastAPI dependency
 to enforce access control on endpoints.
 """
 
+import logging
 from enum import StrEnum
 
 from fastapi import Depends, HTTPException
 
 from app.models.user import User
+
+logger = logging.getLogger("spectra.core.rbac")
 
 
 class Permission(StrEnum):
@@ -54,7 +57,9 @@ ROLE_PERMISSIONS: dict[str, set[Permission]] = {
 
 def has_permission(user_role: str, permission: Permission) -> bool:
     """Check if a role has a specific permission."""
-    return permission in ROLE_PERMISSIONS.get(user_role, set())
+    result = permission in ROLE_PERMISSIONS.get(user_role, set())
+    logger.debug("Permission check role=%s perm=%s result=%s", user_role, permission, result)
+    return result
 
 
 def require_permission(permission: Permission):
@@ -76,6 +81,7 @@ def require_permission(permission: Permission):
         current_user: User = Depends(get_current_active_user),
     ) -> User:
         if not has_permission(current_user.role, permission):
+            logger.warning("Permission denied user=%s role=%s perm=%s", current_user.username, current_user.role, permission)
             raise HTTPException(
                 status_code=403, detail="Insufficient permissions"
             )
