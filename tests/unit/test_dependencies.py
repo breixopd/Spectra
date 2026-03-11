@@ -1,0 +1,283 @@
+"""Tests for app.api.dependencies — auth deps, plan rate limiter, plan enforcement."""
+
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from fastapi import HTTPException
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _make_user(
+    *,
+    username="testuser",
+    is_active=True,
+    is_superuser=False,
+    role="user",
+    plan_id=None,
+):
+    user = MagicMock()
+    user.username = username
+    user.is_active = is_active
+    user.is_superuser = is_superuser
+    user.role = role
+    user.plan_id = plan_id
+    user.id = "user-123"
+    return user
+
+
+def _make_plan(*, max_concurrent_missions=None, max_targets=None, features=None):
+    plan = MagicMock()
+    plan.max_concurrent_missions = max_concurrent_missions
+    plan.max_targets = max_targets
+    plan.features = features
+    return plan
+
+
+# ---------------------------------------------------------------------------
+# get_current_active_user
+# ---------------------------------------------------------------------------
+
+class TestGetCurrentActiveUser:
+    @pytest.mark.asyncio
+    async def test_active_user_passes(self):
+        from app.api.dependencies import get_current_active_user
+
+        user = _make_user(is_active=True)
+        result = await get_current_active_user(current_user=user)
+        assert result is user
+
+    @pytest.mark.asyncio
+    async def test_inactive_user_raises_403(self):
+        from app.api.dependencies import get_current_active_user
+
+        user = _make_user(is_active=False)
+        with pytest.raises(HTTPException) as exc_info:
+            await get_current_active_user(current_user=user)
+        assert exc_info.value.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# get_current_superuser
+# ---------------------------------------------------------------------------
+
+class TestGetCurrentSuperuser:
+    @pytest.mark.asyncio
+    async def test_superuser_passes(self):
+        from app.api.dependencies import get_current_superuser
+
+        user = _make_user(is_superuser=True, is_active=True)
+        result = await get_current_superuser(current_user=user)
+        assert result is user
+
+    @pytest.mark.asyncio
+    async def test_non_superuser_raises_403(self):
+        from app.api.dependencies import get_current_superuser
+
+        user = _make_user(is_superuser=False, is_active=True)
+        with pytest.raises(HTTPException) as exc_info:
+            await get_current_superuser(current_user=user)
+        assert exc_info.value.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# check_mission_limit
+# ---------------------------------------------------------------------------
+
+class TestCheckMissionLimit:
+    @pytest.mark.asyncio
+    async def test_admin_user_bypasses_limit(self):
+        from app.api.dependencies import check_mission_limit
+
+        user = _make_user(is_superuser=True, plan_id="plan-1")
+        session = AsyncMock()
+        # Should not raise even without mocking the plan
+        await check_mission_limit(user, session)
+
+    @pytest.mark.asyncio
+    async def test_no_plan_id_no_limit(self):
+        from app.api.dependencies import check_mission_limit
+
+        user = _make_user(plan_id=None)
+        session = AsyncMock()
+        await check_mission_limit(user, session)
+
+    @pytest.mark.asyncio
+    async def test_within_limit_passes(self):
+        from app.api.dependencies import check_mission_limit
+
+        user = _make_user(plan_id="plan-1")
+        plan = _make_plan(max_concurrent_missions=5)
+
+        session = AsyncMock()
+        # First call: _get_user_plan
+        mock_plan_result = MagicMock()
+        mock_plan_result.scalar_one_or_none.return_value = plan
+        # Second call: count active missions
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 2
+
+        session.execute.side_effect = [mock_plan_result, mock_count_result]
+        await check_mission_limit(user, session)
+
+    @pytest.mark.asyncio
+    async def test_at_limit_raises_429(self):
+        from app.api.dependencies import check_mission_limit
+
+        user = _make_user(plan_id="plan-1")
+        plan = _make_plan(max_concurrent_missions=3)
+
+        session = AsyncMock()
+        mock_plan_result = MagicMock()
+        mock_plan_result.scalar_one_or_none.return_value = plan
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 3
+
+        session.execute.side_effect = [mock_plan_result, mock_count_result]
+
+        with pytest.raises(HTTPException) as exc_info:
+            await check_mission_limit(user, session)
+        assert exc_info.value.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# check_target_limit
+# ---------------------------------------------------------------------------
+
+class TestCheckTargetLimit:
+    @pytest.mark.asyncio
+    async def test_admin_bypasses(self):
+        from app.api.dependencies import check_target_limit
+
+        user = _make_user(is_superuser=True, plan_id="plan-1")
+        session = AsyncMock()
+        await check_target_limit(user, session)
+
+    @pytest.mark.asyncio
+    async def test_within_limit(self):
+        from app.api.dependencies import check_target_limit
+
+        user = _make_user(plan_id="plan-1")
+        plan = _make_plan(max_targets=100)
+
+        session = AsyncMock()
+        mock_plan_result = MagicMock()
+        mock_plan_result.scalar_one_or_none.return_value = plan
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 10
+
+        session.execute.side_effect = [mock_plan_result, mock_count_result]
+        await check_target_limit(user, session)
+
+    @pytest.mark.asyncio
+    async def test_at_limit_raises_429(self):
+        from app.api.dependencies import check_target_limit
+
+        user = _make_user(plan_id="plan-1")
+        plan = _make_plan(max_targets=50)
+
+        session = AsyncMock()
+        mock_plan_result = MagicMock()
+        mock_plan_result.scalar_one_or_none.return_value = plan
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 50
+
+        session.execute.side_effect = [mock_plan_result, mock_count_result]
+
+        with pytest.raises(HTTPException) as exc_info:
+            await check_target_limit(user, session)
+        assert exc_info.value.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# check_feature_allowed
+# ---------------------------------------------------------------------------
+
+class TestCheckFeatureAllowed:
+    @pytest.mark.asyncio
+    async def test_admin_bypasses(self):
+        from app.api.dependencies import check_feature_allowed
+
+        user = _make_user(is_superuser=True, plan_id="plan-1")
+        session = AsyncMock()
+        await check_feature_allowed(user, session, "exploit_crafting")
+
+    @pytest.mark.asyncio
+    async def test_feature_enabled_passes(self):
+        from app.api.dependencies import check_feature_allowed
+
+        user = _make_user(plan_id="plan-1")
+        plan = _make_plan(features={"exploit_crafting": True})
+
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = plan
+        session.execute.return_value = mock_result
+
+        await check_feature_allowed(user, session, "exploit_crafting")
+
+    @pytest.mark.asyncio
+    async def test_feature_disabled_raises_403(self):
+        from app.api.dependencies import check_feature_allowed
+
+        user = _make_user(plan_id="plan-1")
+        plan = _make_plan(features={"exploit_crafting": False})
+
+        session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = plan
+        session.execute.return_value = mock_result
+
+        with pytest.raises(HTTPException) as exc_info:
+            await check_feature_allowed(user, session, "exploit_crafting")
+        assert exc_info.value.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# enforce_api_rate_limit
+# ---------------------------------------------------------------------------
+
+class TestEnforceApiRateLimit:
+    @pytest.mark.asyncio
+    async def test_admin_bypasses_rate_limit(self):
+        from app.api.dependencies import enforce_api_rate_limit
+
+        user = _make_user(is_superuser=True)
+        result = await enforce_api_rate_limit(user=user)
+        assert result is user
+
+    @pytest.mark.asyncio
+    async def test_within_rate_limit(self):
+        from app.api.dependencies import enforce_api_rate_limit
+
+        user = _make_user()
+        mock_tracker = MagicMock()
+        mock_tracker.check_rate_limit = AsyncMock(return_value=(True, 5, 100))
+        mock_tracker.record_api_request = AsyncMock()
+
+        with patch(
+            "app.services.billing.usage_tracker.UsageTracker",
+            return_value=mock_tracker,
+        ):
+            result = await enforce_api_rate_limit(user=user)
+
+        assert result is user
+        mock_tracker.record_api_request.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_exceeded_raises_429(self):
+        from app.api.dependencies import enforce_api_rate_limit
+
+        user = _make_user()
+        mock_tracker = MagicMock()
+        mock_tracker.check_rate_limit = AsyncMock(return_value=(False, 100, 100))
+
+        with patch(
+            "app.services.billing.usage_tracker.UsageTracker",
+            return_value=mock_tracker,
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await enforce_api_rate_limit(user=user)
+            assert exc_info.value.status_code == 429
