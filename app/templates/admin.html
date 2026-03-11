@@ -53,6 +53,13 @@
     .badge-disabled { background: rgba(107,114,128,0.15); color: #9ca3af; }
     .svc-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #8b5cf6; border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Metrics & Costs */
+    .metric-bar { height: 20px; border-radius: 4px; transition: width 0.5s ease; min-width: 2px; }
+    .metric-bar-container { height: 20px; background: rgba(15,23,42,0.6); border-radius: 4px; overflow: hidden; }
+    .skeleton-pulse { background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 0.5rem; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .daily-bar { transition: height 0.3s ease; min-height: 2px; }
 </style>
 {% endblock %}
 
@@ -79,6 +86,12 @@
             </a>
             <a href="#" data-section="services" role="tab" aria-selected="false" aria-controls="section-services" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i class="fa-solid fa-network-wired mr-3 text-slate-500 w-5 text-center"></i> Services
+            </a>
+            <a href="#" data-section="metrics" role="tab" aria-selected="false" aria-controls="section-metrics" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                <i class="fa-solid fa-chart-line mr-3 text-slate-500 w-5 text-center"></i> Metrics
+            </a>
+            <a href="#" data-section="costs" role="tab" aria-selected="false" aria-controls="section-costs" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                <i class="fa-solid fa-dollar-sign mr-3 text-slate-500 w-5 text-center"></i> Costs
             </a>
             <a href="/settings" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium hover:bg-white/5">
                 <i class="fa-solid fa-gear mr-3 text-slate-500 w-5 text-center"></i> System Settings
@@ -266,6 +279,196 @@
                         <button id="audit-prev" class="px-2.5 py-1 rounded text-xs text-slate-400 hover:bg-white/5 disabled:opacity-30" disabled>Prev</button>
                         <span id="audit-page-num" class="text-xs text-slate-300 px-2">1</span>
                         <button id="audit-next" class="px-2.5 py-1 rounded text-xs text-slate-400 hover:bg-white/5 disabled:opacity-30" disabled>Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics -->
+        <div id="section-metrics" class="section-panel space-y-5" role="tabpanel" aria-labelledby="tab-metrics">
+            <div id="metrics-loading" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="skeleton-pulse glass-panel rounded-xl h-24"></div>
+                <div class="skeleton-pulse glass-panel rounded-xl h-24"></div>
+                <div class="skeleton-pulse glass-panel rounded-xl h-24"></div>
+                <div class="skeleton-pulse glass-panel rounded-xl h-24"></div>
+            </div>
+            <div id="metrics-empty" class="text-center py-16" style="display:none;">
+                <i class="fa-solid fa-chart-line text-3xl text-slate-600 mb-3"></i>
+                <p class="text-slate-500">No metrics data available</p>
+            </div>
+            <div id="metrics-content" style="display:none;">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                    <div class="stat-card glass-panel rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">LLM Calls</span>
+                            <i class="fa-solid fa-robot text-violet-400"></i>
+                        </div>
+                        <p id="metric-llm-calls" class="text-2xl font-bold text-white">&mdash;</p>
+                        <p id="metric-llm-errors" class="text-xs text-slate-500 mt-1">Error rate: &mdash;</p>
+                    </div>
+                    <div class="stat-card glass-panel rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Tool Executions</span>
+                            <i class="fa-solid fa-screwdriver-wrench text-emerald-400"></i>
+                        </div>
+                        <p id="metric-tool-execs" class="text-2xl font-bold text-white">&mdash;</p>
+                        <p id="metric-tool-errors" class="text-xs text-slate-500 mt-1">Errors: &mdash;</p>
+                    </div>
+                    <div class="stat-card glass-panel rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">HTTP Requests</span>
+                            <i class="fa-solid fa-globe text-cyan-400"></i>
+                        </div>
+                        <p id="metric-http-reqs" class="text-2xl font-bold text-white">&mdash;</p>
+                        <p id="metric-http-latency" class="text-xs text-slate-500 mt-1">Avg: &mdash;</p>
+                    </div>
+                    <div class="stat-card glass-panel rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Token Usage</span>
+                            <i class="fa-solid fa-coins text-amber-400"></i>
+                        </div>
+                        <p id="metric-token-total" class="text-2xl font-bold text-white">&mdash;</p>
+                        <p id="metric-token-cost" class="text-xs text-slate-500 mt-1">Est. &mdash;</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+                    <div class="glass-panel rounded-xl p-5">
+                        <h3 class="text-sm font-semibold text-white mb-3">LLM Performance</h3>
+                        <div id="metrics-llm-perf"></div>
+                    </div>
+                    <div class="glass-panel rounded-xl p-5">
+                        <h3 class="text-sm font-semibold text-white mb-3">Tool Performance</h3>
+                        <div id="metrics-tool-perf"></div>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="px-5 pt-5 pb-3">
+                        <h3 class="text-sm font-semibold text-white">Recent History (24h)</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="admin-table w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-white/5">
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Time</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Requests</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Errors</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Avg Latency</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Error Rate</th>
+                                </tr>
+                            </thead>
+                            <tbody id="metrics-history-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Costs -->
+        <div id="section-costs" class="section-panel space-y-5" role="tabpanel" aria-labelledby="tab-costs">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <select id="costs-period" class="form-input form-select w-36" aria-label="Period">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                </div>
+                <button class="px-4 py-2 rounded-lg text-sm text-slate-400 border border-white/10 hover:bg-white/5 transition-colors cursor-default opacity-60" title="Export coming soon">
+                    <i class="fa-solid fa-file-export mr-1"></i> Export
+                </button>
+            </div>
+            <div id="costs-loading" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="skeleton-pulse glass-panel rounded-xl h-24"></div>
+                <div class="skeleton-pulse glass-panel rounded-xl h-24"></div>
+                <div class="skeleton-pulse glass-panel rounded-xl h-24"></div>
+                <div class="skeleton-pulse glass-panel rounded-xl h-24"></div>
+            </div>
+            <div id="costs-empty" class="text-center py-16" style="display:none;">
+                <i class="fa-solid fa-dollar-sign text-3xl text-slate-600 mb-3"></i>
+                <p class="text-slate-500">No cost data available</p>
+            </div>
+            <div id="costs-content" style="display:none;">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                    <div class="stat-card glass-panel rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Cost</span>
+                            <i class="fa-solid fa-dollar-sign text-emerald-400"></i>
+                        </div>
+                        <p id="cost-total" class="text-2xl font-bold text-white">&mdash;</p>
+                    </div>
+                    <div class="stat-card glass-panel rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Tokens</span>
+                            <i class="fa-solid fa-coins text-amber-400"></i>
+                        </div>
+                        <p id="cost-tokens" class="text-2xl font-bold text-white">&mdash;</p>
+                        <p id="cost-tokens-detail" class="text-xs text-slate-500 mt-1">In: &mdash; / Out: &mdash;</p>
+                    </div>
+                    <div class="stat-card glass-panel rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Active Users</span>
+                            <i class="fa-solid fa-user-check text-cyan-400"></i>
+                        </div>
+                        <p id="cost-active-users" class="text-2xl font-bold text-white">&mdash;</p>
+                    </div>
+                    <div class="stat-card glass-panel rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Avg Cost/Mission</span>
+                            <i class="fa-solid fa-bullseye text-violet-400"></i>
+                        </div>
+                        <p id="cost-avg-mission" class="text-2xl font-bold text-white">&mdash;</p>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl overflow-hidden mb-5">
+                    <div class="px-5 pt-5 pb-3">
+                        <h3 class="text-sm font-semibold text-white">Cost by Agent</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="admin-table w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-white/5">
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Agent</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Role</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Calls</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Tokens</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Cost (USD)</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Avg Latency</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costs-agent-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl p-5 mb-5">
+                    <h3 class="text-sm font-semibold text-white mb-3">Daily Cost Trend</h3>
+                    <div id="costs-daily-bars"></div>
+                </div>
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="px-5 pt-5 pb-3">
+                        <h3 class="text-sm font-semibold text-white">Usage by User</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="admin-table w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-white/5">
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">User</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Plan</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">API Calls</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Scans</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Credits Used</th>
+                                    <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">% Used</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costs-usage-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="flex items-center justify-between px-4 py-3 border-t border-white/5">
+                        <span id="costs-usage-info" class="text-xs text-slate-500"></span>
+                        <div class="flex items-center gap-1">
+                            <button id="costs-usage-prev" class="px-2.5 py-1 rounded text-xs text-slate-400 hover:bg-white/5 disabled:opacity-30" disabled>Prev</button>
+                            <span id="costs-usage-page" class="text-xs text-slate-300 px-2">1</span>
+                            <button id="costs-usage-next" class="px-2.5 py-1 rounded text-xs text-slate-400 hover:bg-white/5 disabled:opacity-30" disabled>Next</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -569,6 +772,11 @@
         return d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
     }
 
+    function fmtNum(n) { return n != null ? Number(n).toLocaleString() : '—'; }
+    function fmtMs(n) { return n != null ? Number(n).toFixed(0) + 'ms' : '—'; }
+    function fmtPct(n) { return n != null ? Number(n).toFixed(1) + '%' : '—'; }
+    function fmtUsd(n) { return n != null ? '$' + Number(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : '—'; }
+
     // ---- Modals ----
     window.closeModal = function(id) { document.getElementById(id).classList.remove('open'); };
 
@@ -609,6 +817,8 @@
         if (name === 'plans') loadPlans();
         if (name === 'audit') loadAuditLogs();
         if (name === 'services') loadServices();
+        if (name === 'metrics') loadMetrics();
+        if (name === 'costs') loadCosts();
     };
 
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(a => {
@@ -1308,6 +1518,253 @@
             } catch(e) { toast('Deprovision request failed', 'error'); }
         });
     };
+
+    // ---- Metrics ----
+    let metricsRefreshTimer = null;
+
+    async function loadMetrics() {
+        const loading = document.getElementById('metrics-loading');
+        const content = document.getElementById('metrics-content');
+        const empty = document.getElementById('metrics-empty');
+        loading.style.display = '';
+        content.style.display = 'none';
+        empty.style.display = 'none';
+
+        try {
+            const [metricsRes, historyRes] = await Promise.all([
+                fetch('/api/admin/metrics'),
+                fetch('/api/admin/metrics/history')
+            ]);
+            if (!metricsRes.ok) throw new Error('Failed to load metrics');
+            const m = await metricsRes.json();
+            const history = historyRes.ok ? await historyRes.json() : [];
+            renderMetrics(m, history);
+            loading.style.display = 'none';
+            content.style.display = '';
+
+            clearInterval(metricsRefreshTimer);
+            metricsRefreshTimer = setInterval(async () => {
+                const sect = document.getElementById('section-metrics');
+                if (!sect || !sect.classList.contains('active')) { clearInterval(metricsRefreshTimer); return; }
+                try {
+                    const [mr, hr] = await Promise.all([fetch('/api/admin/metrics'), fetch('/api/admin/metrics/history')]);
+                    if (mr.ok) { renderMetrics(await mr.json(), hr.ok ? await hr.json() : []); }
+                } catch(e) { /* silent */ }
+            }, 30000);
+        } catch(e) {
+            console.error(e);
+            loading.style.display = 'none';
+            empty.style.display = '';
+        }
+    }
+
+    function renderMetrics(m, history) {
+        const llm = m.llm || {};
+        const tools = m.tools || {};
+        const http = m.http || {};
+        const tokens = m.tokens || {};
+
+        document.getElementById('metric-llm-calls').textContent = fmtNum(llm.total_calls);
+        document.getElementById('metric-llm-errors').textContent = 'Error rate: ' + fmtPct(llm.error_rate);
+        document.getElementById('metric-tool-execs').textContent = fmtNum(tools.total_executions);
+        document.getElementById('metric-tool-errors').textContent = 'Errors: ' + fmtNum(tools.error_count);
+        document.getElementById('metric-http-reqs').textContent = fmtNum(http.total_requests);
+        document.getElementById('metric-http-latency').textContent = 'Avg: ' + fmtMs(http.avg_latency_ms);
+        document.getElementById('metric-token-total').textContent = fmtNum(tokens.total_tokens);
+        document.getElementById('metric-token-cost').textContent = 'Est. ' + fmtUsd(tokens.estimated_cost);
+
+        // LLM Performance
+        const llmPerf = document.getElementById('metrics-llm-perf');
+        const llmDur = llm.duration || {};
+        const errBarWidth = Math.min(100, (llm.error_rate || 0) * 10);
+        const errBarColor = (llm.error_rate || 0) > 5 ? 'bg-red-500' : 'bg-emerald-500';
+        llmPerf.innerHTML =
+            '<div class="grid grid-cols-3 gap-3 mb-4">' +
+                '<div class="text-center p-3 rounded-lg bg-slate-800/50"><p class="text-xs text-slate-500 mb-1">P50</p><p class="text-lg font-semibold text-white">' + fmtMs(llmDur.p50) + '</p></div>' +
+                '<div class="text-center p-3 rounded-lg bg-slate-800/50"><p class="text-xs text-slate-500 mb-1">P90</p><p class="text-lg font-semibold text-amber-400">' + fmtMs(llmDur.p90) + '</p></div>' +
+                '<div class="text-center p-3 rounded-lg bg-slate-800/50"><p class="text-xs text-slate-500 mb-1">P99</p><p class="text-lg font-semibold text-red-400">' + fmtMs(llmDur.p99) + '</p></div>' +
+            '</div>' +
+            '<div class="flex items-center justify-between text-sm mb-2"><span class="text-slate-400">Error Rate</span><span class="text-white font-medium">' + fmtPct(llm.error_rate) + '</span></div>' +
+            '<div class="metric-bar-container"><div class="metric-bar ' + errBarColor + '" style="width:' + errBarWidth + '%"></div></div>' +
+            renderCallsPerHour(llm.calls_per_hour || []);
+
+        // Tool Performance
+        const toolPerf = document.getElementById('metrics-tool-perf');
+        const toolDur = tools.duration || {};
+        const topTools = tools.top_tools || [];
+        let toolHtml =
+            '<div class="grid grid-cols-3 gap-3 mb-4">' +
+                '<div class="text-center p-3 rounded-lg bg-slate-800/50"><p class="text-xs text-slate-500 mb-1">P50</p><p class="text-lg font-semibold text-white">' + fmtMs(toolDur.p50) + '</p></div>' +
+                '<div class="text-center p-3 rounded-lg bg-slate-800/50"><p class="text-xs text-slate-500 mb-1">P90</p><p class="text-lg font-semibold text-amber-400">' + fmtMs(toolDur.p90) + '</p></div>' +
+                '<div class="text-center p-3 rounded-lg bg-slate-800/50"><p class="text-xs text-slate-500 mb-1">P99</p><p class="text-lg font-semibold text-red-400">' + fmtMs(toolDur.p99) + '</p></div>' +
+            '</div>' +
+            '<div class="flex items-center justify-between text-sm mb-2"><span class="text-slate-400">Error Rate</span><span class="text-white font-medium">' + fmtPct(tools.error_rate) + '</span></div>';
+        if (topTools.length) {
+            const maxCount = topTools[0].count || 1;
+            toolHtml += '<h4 class="text-xs text-slate-500 uppercase tracking-wider font-semibold mt-4 mb-2">Top Tools</h4><div class="space-y-2">';
+            topTools.forEach(function(t) {
+                const pct = Math.round(((t.count || 0) / maxCount) * 100);
+                toolHtml += '<div><div class="flex justify-between text-xs mb-1"><span class="text-slate-300">' + escapeHtml(t.name) + '</span><span class="text-slate-500">' + fmtNum(t.count) + '</span></div><div class="metric-bar-container"><div class="metric-bar bg-violet-500" style="width:' + pct + '%"></div></div></div>';
+            });
+            toolHtml += '</div>';
+        }
+        toolPerf.innerHTML = toolHtml;
+
+        // History
+        renderMetricsHistory(Array.isArray(history) ? history : []);
+    }
+
+    function renderCallsPerHour(data) {
+        if (!data.length) return '';
+        const max = Math.max.apply(null, data.map(function(d) { return d.count || 0; }).concat([1]));
+        let bars = '';
+        data.slice(-24).forEach(function(d) {
+            const h = Math.max(2, Math.round(((d.count || 0) / max) * 56));
+            bars += '<div class="flex-1 bg-violet-500/60 rounded-t daily-bar" style="height:' + h + 'px" title="' + escapeHtml(d.hour || '') + ': ' + (d.count || 0) + '"></div>';
+        });
+        return '<h4 class="text-xs text-slate-500 uppercase tracking-wider font-semibold mt-4 mb-2">Calls/Hour</h4><div class="flex items-end gap-1" style="height:60px;">' + bars + '</div>';
+    }
+
+    function renderMetricsHistory(history) {
+        const tbody = document.getElementById('metrics-history-tbody');
+        if (!history.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-500">No history data available</td></tr>';
+            return;
+        }
+        tbody.innerHTML = history.slice(0, 24).map(function(h) {
+            return '<tr class="border-b border-white/5">' +
+                '<td class="px-4 py-2 text-xs text-slate-400 whitespace-nowrap">' + formatDateTime(h.timestamp || h.time) + '</td>' +
+                '<td class="px-4 py-2 text-sm text-white">' + fmtNum(h.requests) + '</td>' +
+                '<td class="px-4 py-2 text-sm ' + ((h.errors || 0) > 0 ? 'text-red-400' : 'text-slate-400') + '">' + fmtNum(h.errors) + '</td>' +
+                '<td class="px-4 py-2 text-sm text-slate-300">' + fmtMs(h.avg_latency_ms) + '</td>' +
+                '<td class="px-4 py-2 text-sm ' + ((h.error_rate || 0) > 5 ? 'text-red-400' : 'text-emerald-400') + '">' + fmtPct(h.error_rate) + '</td>' +
+            '</tr>';
+        }).join('');
+    }
+
+    // ---- Costs ----
+    let costsPeriod = 30;
+    let costsUsagePage = 1;
+    const costsUsagePerPage = 10;
+    let costsUsageList = [];
+
+    async function loadCosts() {
+        const loading = document.getElementById('costs-loading');
+        const content = document.getElementById('costs-content');
+        const empty = document.getElementById('costs-empty');
+        loading.style.display = '';
+        content.style.display = 'none';
+        empty.style.display = 'none';
+
+        try {
+            const [costRes, usageRes] = await Promise.all([
+                fetch('/api/admin/cost-summary?days=' + costsPeriod),
+                fetch('/api/admin/usage-stats?days=' + costsPeriod)
+            ]);
+            if (!costRes.ok) throw new Error('Failed to load cost data');
+            const costs = await costRes.json();
+            const usage = usageRes.ok ? await usageRes.json() : {};
+            renderCosts(costs, usage);
+            loading.style.display = 'none';
+            content.style.display = '';
+        } catch(e) {
+            console.error(e);
+            loading.style.display = 'none';
+            empty.style.display = '';
+        }
+    }
+
+    function renderCosts(costs, usage) {
+        document.getElementById('cost-total').textContent = fmtUsd(costs.total_cost);
+        document.getElementById('cost-tokens').textContent = fmtNum(costs.total_tokens);
+        document.getElementById('cost-tokens-detail').textContent = 'In: ' + fmtNum(costs.input_tokens) + ' / Out: ' + fmtNum(costs.output_tokens);
+        document.getElementById('cost-active-users').textContent = fmtNum(costs.active_users);
+        document.getElementById('cost-avg-mission').textContent = fmtUsd(costs.avg_cost_per_mission);
+
+        renderCostAgentTable(costs.by_agent || []);
+        renderDailyCostTrend(costs.daily || []);
+
+        costsUsageList = usage.users || [];
+        costsUsagePage = 1;
+        renderUsagePage();
+    }
+
+    function renderCostAgentTable(agents) {
+        const tbody = document.getElementById('costs-agent-tbody');
+        if (!agents.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">No agent cost data</td></tr>';
+            return;
+        }
+        agents.sort(function(a, b) { return (b.cost || 0) - (a.cost || 0); });
+        tbody.innerHTML = agents.map(function(a) {
+            return '<tr class="border-b border-white/5">' +
+                '<td class="px-4 py-2 text-sm text-white font-medium">' + escapeHtml(a.agent_name || a.name) + '</td>' +
+                '<td class="px-4 py-2 text-xs"><span class="badge bg-slate-700/50 text-slate-300">' + escapeHtml(a.role || '\u2014') + '</span></td>' +
+                '<td class="px-4 py-2 text-sm text-slate-300">' + fmtNum(a.calls) + '</td>' +
+                '<td class="px-4 py-2 text-sm text-slate-300">' + fmtNum(a.tokens) + '</td>' +
+                '<td class="px-4 py-2 text-sm text-emerald-400 font-medium">' + fmtUsd(a.cost) + '</td>' +
+                '<td class="px-4 py-2 text-sm text-slate-400">' + fmtMs(a.avg_latency_ms) + '</td>' +
+            '</tr>';
+        }).join('');
+    }
+
+    function renderDailyCostTrend(daily) {
+        const container = document.getElementById('costs-daily-bars');
+        if (!daily.length) {
+            container.innerHTML = '<p class="text-center py-8 text-slate-500">No daily cost data</p>';
+            return;
+        }
+        const maxCost = Math.max.apply(null, daily.map(function(d) { return d.cost || 0; }).concat([0.01]));
+        let bars = '', labels = '';
+        daily.forEach(function(d, i) {
+            const h = Math.max(2, Math.round(((d.cost || 0) / maxCost) * 110));
+            const dateStr = d.date ? new Date(d.date).toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '';
+            bars += '<div class="flex-1 flex flex-col items-center"><div class="w-full bg-emerald-500/60 rounded-t daily-bar" style="height:' + h + 'px" title="' + escapeHtml(dateStr) + ': ' + fmtUsd(d.cost) + ' (' + fmtNum(d.tokens) + ' tokens)"></div></div>';
+            if (daily.length <= 15 || i % Math.ceil(daily.length / 7) === 0) {
+                labels += '<div class="flex-1 text-center text-[10px] text-slate-500 truncate">' + escapeHtml(dateStr) + '</div>';
+            } else {
+                labels += '<div class="flex-1"></div>';
+            }
+        });
+        container.innerHTML = '<div class="flex items-end gap-1" style="height:120px;">' + bars + '</div><div class="flex gap-1 mt-1">' + labels + '</div>';
+    }
+
+    function renderUsagePage() {
+        const users = costsUsageList;
+        const tbody = document.getElementById('costs-usage-tbody');
+        const totalPages = Math.ceil(users.length / costsUsagePerPage) || 1;
+        costsUsagePage = Math.max(1, Math.min(costsUsagePage, totalPages));
+        const start = (costsUsagePage - 1) * costsUsagePerPage;
+        const pageUsers = users.slice(start, start + costsUsagePerPage);
+
+        if (!users.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">No usage data</td></tr>';
+        } else {
+            tbody.innerHTML = pageUsers.map(function(u) {
+                return '<tr class="border-b border-white/5">' +
+                    '<td class="px-4 py-2 text-sm text-white font-medium">' + escapeHtml(u.username) + '</td>' +
+                    '<td class="px-4 py-2 text-xs"><span class="badge bg-slate-700/50 text-slate-300">' + escapeHtml(u.plan || '\u2014') + '</span></td>' +
+                    '<td class="px-4 py-2 text-sm text-slate-300">' + fmtNum(u.api_calls) + '</td>' +
+                    '<td class="px-4 py-2 text-sm text-slate-300">' + fmtNum(u.scans) + '</td>' +
+                    '<td class="px-4 py-2 text-sm text-slate-300">' + fmtNum(u.credits_used) + '</td>' +
+                    '<td class="px-4 py-2 text-sm ' + ((u.percent_used || 0) > 80 ? 'text-amber-400' : 'text-slate-400') + '">' + fmtPct(u.percent_used) + '</td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        document.getElementById('costs-usage-info').textContent = users.length + ' user' + (users.length !== 1 ? 's' : '');
+        document.getElementById('costs-usage-page').textContent = costsUsagePage + ' / ' + totalPages;
+        document.getElementById('costs-usage-prev').disabled = costsUsagePage <= 1;
+        document.getElementById('costs-usage-next').disabled = costsUsagePage >= totalPages;
+    }
+
+    document.getElementById('costs-period').addEventListener('change', function() {
+        costsPeriod = parseInt(this.value);
+        costsUsagePage = 1;
+        loadCosts();
+    });
+    document.getElementById('costs-usage-prev').addEventListener('click', function() { costsUsagePage--; renderUsagePage(); });
+    document.getElementById('costs-usage-next').addEventListener('click', function() { costsUsagePage++; renderUsagePage(); });
 
     // ---- Init ----
     loadStats();
