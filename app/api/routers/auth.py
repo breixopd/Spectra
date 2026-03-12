@@ -504,3 +504,109 @@ async def reset_password(
     user.hashed_password = get_password_hash(body.new_password)
     await session.commit()
     return {"message": "Password reset successfully"}
+
+
+# ---------------------------------------------------------------------------
+# API Key Management
+# ---------------------------------------------------------------------------
+
+
+class CreateApiKeyRequest(BaseModel):
+    name: str = Field(default="default", max_length=100, min_length=1)
+    expires_in_days: int | None = Field(default=None, ge=1, le=365)
+
+
+@router.post("/api-keys", tags=["API Keys"])
+async def create_api_key(
+    body: CreateApiKeyRequest = Body(CreateApiKeyRequest()),
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Create a new API key for the current user. Returns the raw key once."""
+    import hashlib
+    import secrets
+    from datetime import UTC, datetime, timedelta
+
+    from app.repositories.api_key import ApiKeyRepository
+
+    repo = ApiKeyRepository(session)
+
+    # Enforce max 10 active keys per user
+    existing = await repo.get_active_by_user(str(current_user.id))
+    if len(existing) >= 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Maximum of 10 active API keys allowed",
+        )
+
+    raw_key = f"sk-{secrets.token_urlsafe(40)}"
+    prefix = raw_key[:8]
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+
+    expires_at = None
+    if body.expires_in_days:
+        expires_at = datetime.now(UTC) + timedelta(days=body.expires_in_days)
+
+    api_key = await repo.create(
+        user_id=str(current_user.id),
+        name=body.name,
+        key_hash=key_hash,
+        key_prefix=prefix,
+        scopes=[],
+        is_active=True,
+        expires_at=expires_at,
+    )
+    await session.commit()
+
+    return {
+        "id": api_key.id,
+        "name": api_key.name,
+        "key": raw_key,
+        "prefix": prefix,
+        "created_at": api_key.created_at.isoformat(),
+        "expires_at": api_key.expires_at.isoformat() if api_key.expires_at else None,
+    }
+
+
+@router.get("/api-keys", tags=["API Keys"])
+async def list_api_keys(
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """List the current user's API keys (masked)."""
+    from app.repositories.api_key import ApiKeyRepository
+
+    repo = ApiKeyRepository(session)
+    keys = await repo.get_by_user_id(str(current_user.id))
+    return [
+        {
+            "id": k.id,
+            "name": k.name,
+            "key_prefix": k.key_prefix,
+            "is_active": k.is_active,
+            "created_at": k.created_at.isoformat(),
+            "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+            "expires_at": k.expires_at.isoformat() if k.expires_at else None,
+        }
+        for k in keys
+    ]
+
+
+@router.delete("/api-keys/{key_id}", tags=["API Keys"])
+async def revoke_api_key(
+    key_id: str,
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Revoke an API key owned by the current user."""
+    from app.repositories.api_key import ApiKeyRepository
+
+    repo = ApiKeyRepository(session)
+    api_key = await repo.get_by_id(key_id)
+
+    if api_key is None or api_key.user_id != str(current_user.id):
+        raise HTTPException(status_code=404, detail="API key not found")
+
+    await repo.deactivate(key_id)
+    await session.commit()
+    return {"message": "API key revoked"}
