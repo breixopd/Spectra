@@ -24,3 +24,5 @@ data/auth/
 !data/*/.gitkeep
 
 docs/plan/
+reports/coverage/
+!reports/coverage/.gitkeep
