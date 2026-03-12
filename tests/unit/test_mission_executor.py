@@ -37,6 +37,12 @@ def mock_executor_context():
         executor.dispatcher.exploitation_manager = mock_exploit_manager
         executor.dispatcher.consensus = mock_voting
 
+        # Inject mocks into sub-handlers (split from handlers.py)
+        executor.dispatcher._recon.tool_service = mock_tool_service
+        executor.dispatcher._recon.agents["tool_selector"] = mock_tool_selector
+        executor.dispatcher._exploit.tool_service = mock_tool_service
+        executor.dispatcher._exploit.exploitation_manager = mock_exploit_manager
+
         # Inject agents into dispatcher
         executor.dispatcher.agents["tool_selector"] = mock_tool_selector
         executor.consensus = mock_voting

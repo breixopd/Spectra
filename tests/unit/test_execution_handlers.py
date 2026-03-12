@@ -10,6 +10,9 @@ from app.services.mission.executor.handlers import (
     TaskDispatcher,
     _get_known_tools,
 )
+from app.services.mission.executor.recon_handlers import (
+    extract_tool_hint_from_description,
+)
 
 
 class TestPhaseTransitionRules:
@@ -108,34 +111,34 @@ class TestTaskDispatcher:
             handler = dispatcher._get_task_handler(t)
             assert handler is not None
 
-    def test_extract_tool_hint_nmap(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
+    def test_extract_tool_hint_nmap(self):
+        with patch("app.services.mission.executor.recon_handlers._get_known_tools",
                     return_value={"nmap", "nuclei", "sqlmap"}):
-            hint = dispatcher._extract_tool_hint_from_description("Run nmap scan on target")
+            hint = extract_tool_hint_from_description("Run nmap scan on target")
             assert hint == "nmap"
 
-    def test_extract_tool_hint_using_pattern(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
+    def test_extract_tool_hint_using_pattern(self):
+        with patch("app.services.mission.executor.recon_handlers._get_known_tools",
                     return_value={"nmap", "nuclei", "sqlmap"}):
-            hint = dispatcher._extract_tool_hint_from_description("Scan ports using nmap")
+            hint = extract_tool_hint_from_description("Scan ports using nmap")
             assert hint == "nmap"
 
-    def test_extract_tool_hint_with_pattern(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
+    def test_extract_tool_hint_with_pattern(self):
+        with patch("app.services.mission.executor.recon_handlers._get_known_tools",
                     return_value={"nmap", "nuclei", "sqlmap"}):
-            hint = dispatcher._extract_tool_hint_from_description("Check vulnerabilities with nuclei")
+            hint = extract_tool_hint_from_description("Check vulnerabilities with nuclei")
             assert hint == "nuclei"
 
-    def test_extract_tool_hint_no_match(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
+    def test_extract_tool_hint_no_match(self):
+        with patch("app.services.mission.executor.recon_handlers._get_known_tools",
                     return_value={"nmap", "nuclei"}):
-            hint = dispatcher._extract_tool_hint_from_description("Analyze the target system")
+            hint = extract_tool_hint_from_description("Analyze the target system")
             assert hint is None
 
-    def test_extract_tool_hint_direct_mention(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
+    def test_extract_tool_hint_direct_mention(self):
+        with patch("app.services.mission.executor.recon_handlers._get_known_tools",
                     return_value={"nmap", "nuclei", "sqlmap"}):
-            hint = dispatcher._extract_tool_hint_from_description("sqlmap injection test")
+            hint = extract_tool_hint_from_description("sqlmap injection test")
             assert hint == "sqlmap"
 
 
@@ -172,7 +175,7 @@ class TestTaskDispatcherDispatch:
         context = MagicMock()
 
         # Patch the actual handler to just succeed
-        dispatcher._handle_tool_selector = AsyncMock()
+        dispatcher._recon.handle_tool_selector = AsyncMock()
 
         await dispatcher.dispatch(mission, task, context)
         mission.task_tree.update_status.assert_called()
