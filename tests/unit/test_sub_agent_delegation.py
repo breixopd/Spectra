@@ -71,8 +71,8 @@ class TestExploitCrafterSubAgent:
 
             assert result.success
             assert result.metadata.get("poc_generated") is True
-            agent.spawn_sub_agent.assert_awaited_once()
-            call_args = agent.spawn_sub_agent.call_args
+            agent.spawn_sub_agent.assert_awaited_once()  # type: ignore[attr-defined]
+            call_args = agent.spawn_sub_agent.call_args  # type: ignore[attr-defined]
             assert call_args[0][0] == AgentRole.POC_DEVELOPER
 
     @pytest.mark.asyncio
@@ -203,8 +203,8 @@ class TestPostExploitSubAgent:
             assert result.success
             assert result.metadata.get("cve_intel_enriched") is True
             assert result.metadata.get("cve_details_count") == 1
-            agent.spawn_sub_agent.assert_awaited_once()
-            call_args = agent.spawn_sub_agent.call_args
+            agent.spawn_sub_agent.assert_awaited_once()  # type: ignore[attr-defined]
+            call_args = agent.spawn_sub_agent.call_args  # type: ignore[attr-defined]
             assert call_args[0][0] == AgentRole.RECON_INTEL
 
     @pytest.mark.asyncio
@@ -284,14 +284,14 @@ class TestPostExploitSubAgent:
 class TestExtractCveIds:
     def test_extracts_cves_from_title(self):
         findings = [{"title": "Log4Shell CVE-2021-44228 RCE", "severity": "critical"}]
-        assert PostExploitationAgent._extract_cve_ids(findings) == ["CVE-2021-44228"]
+        assert PostExploitationAgent._extract_cve_ids(findings) == ["CVE-2021-44228"]  # type: ignore[attr-defined]
 
     def test_extracts_multiple_cves(self):
         findings = [
             {"title": "CVE-2021-44228", "severity": "critical"},
             {"description": "Also see CVE-2023-1234 and CVE-2023-5678"},
         ]
-        ids = PostExploitationAgent._extract_cve_ids(findings)
+        ids = PostExploitationAgent._extract_cve_ids(findings)  # type: ignore[attr-defined]
         assert "CVE-2021-44228" in ids
         assert "CVE-2023-1234" in ids
         assert "CVE-2023-5678" in ids
@@ -300,10 +300,10 @@ class TestExtractCveIds:
         findings = [
             {"title": "CVE-2021-44228", "description": "CVE-2021-44228 again"},
         ]
-        assert PostExploitationAgent._extract_cve_ids(findings) == ["CVE-2021-44228"]
+        assert PostExploitationAgent._extract_cve_ids(findings) == ["CVE-2021-44228"]  # type: ignore[attr-defined]
 
     def test_empty_findings(self):
-        assert PostExploitationAgent._extract_cve_ids([]) == []
+        assert PostExploitationAgent._extract_cve_ids([]) == []  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------

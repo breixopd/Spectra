@@ -27,7 +27,7 @@ async def run_command_job(
     # Safety check: validate command against blocklists before execution
     from app.services.ai.agents.safety import SafetySupervisorAgent
 
-    allowed, reason = SafetySupervisorAgent.check_blocklist(command)
+    allowed, reason = SafetySupervisorAgent.check_blocklist(command)  # type: ignore[attr-defined]
     if not allowed:
         logger.warning("Command blocked by safety check: %s", reason)
         return {

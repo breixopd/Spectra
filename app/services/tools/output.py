@@ -195,7 +195,7 @@ def update_attack_surface_from_finding(
     if finding.get("port") or finding.get("portid"):
         port = finding.get("port") or finding.get("portid")
         try:
-            port = int(port)
+            port = int(port or 0)
             mission.add_service(
                 host=finding.get("ip") or finding.get("host") or mission.target,
                 port=port,
@@ -207,7 +207,8 @@ def update_attack_surface_from_finding(
             pass
 
     # Handle vulnerability findings (from nuclei, etc.)
-    info = finding.get("info") if isinstance(finding.get("info"), dict) else {}
+    _raw_info = finding.get("info")
+    info: dict[str, Any] = _raw_info if isinstance(_raw_info, dict) else {}
     severity = finding.get("severity") or info.get("severity")
     name = (
         finding.get("name")
@@ -220,7 +221,8 @@ def update_attack_surface_from_finding(
         and name
         and severity.lower() in ("info", "low", "medium", "high", "critical")
     ):
-        classification = info.get("classification") if isinstance(info.get("classification"), dict) else {}
+        _raw_cls = info.get("classification")
+        classification: dict[str, Any] = _raw_cls if isinstance(_raw_cls, dict) else {}
         cve_id = finding.get("cve_id") or classification.get("cve-id")
         if isinstance(cve_id, list):
             cve_id = cve_id[0] if cve_id else None
@@ -279,8 +281,8 @@ def record_to_memory(
             detected_os = detect_os_from_output(result.stdout)
             if detected_os and detected_os != "unknown":
                 mission.log(f"[LEARN] Detected OS: {detected_os}")
-                if not hasattr(mission, "_detected_os") or not mission._detected_os:
-                    mission._detected_os = detected_os
+                if not getattr(mission, "_detected_os", None):
+                    mission._detected_os = detected_os  # type: ignore[attr-defined]
                     memory.update_target_profile(
                         detected_os,
                         services=[service] if service != "unknown" else [],

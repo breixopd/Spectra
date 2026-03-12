@@ -305,7 +305,7 @@ def _make_base_repo(columns=("id", "name", "status")):
     model, mapper = _mock_model_class(columns)
     session = _mock_session()
     with patch("app.repositories.base.inspect", return_value=mapper):
-        repo = BaseRepository(model, session)
+        repo = BaseRepository(model, session)  # type: ignore[arg-type]
     return repo, model, session
 
 

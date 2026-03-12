@@ -66,7 +66,9 @@ class TestGetLatest:
         store = MetricsStore()
         store._history.append({"_timestamp": 1, "value": "first"})
         store._history.append({"_timestamp": 2, "value": "second"})
-        assert store.get_latest()["value"] == "second"
+        latest = store.get_latest()
+        assert latest is not None
+        assert latest["value"] == "second"
 
 
 class TestTakeSnapshot:

@@ -31,7 +31,7 @@ def _build_app(current_user: User | None = None):
         app.dependency_overrides[get_current_active_user] = lambda: current_user
         # Override every require_permission call to just return the user
         for perm in ("manage_settings",):
-            dep = require_permission(perm)
+            dep = require_permission(perm)  # type: ignore[arg-type]
             if current_user.is_superuser:
                 app.dependency_overrides[dep] = lambda: current_user
 

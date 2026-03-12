@@ -123,7 +123,9 @@ class TestBlackboardRealScenarios:
         }
         bb.write("parser", "nmap_results", tool_result)
         assert bb.read("nmap_results") == tool_result
-        assert bb.read("nmap_results")["ports"] == [22, 80, 443]
+        nmap_result = bb.read("nmap_results")
+        assert nmap_result is not None
+        assert nmap_result["ports"] == [22, 80, 443]
 
     def test_store_scope_definitions(self):
         bb = MissionBlackboard("m1")
@@ -134,8 +136,10 @@ class TestBlackboardRealScenarios:
             "stealth": True,
         }
         bb.write("scope", "mission_scope", scope)
-        assert bb.read("mission_scope")["targets"] == ["192.168.1.0/24"]
-        assert bb.read("mission_scope")["stealth"] is True
+        scope_result = bb.read("mission_scope")
+        assert scope_result is not None
+        assert scope_result["targets"] == ["192.168.1.0/24"]
+        assert scope_result["stealth"] is True
 
     def test_history_properly_maintained(self):
         bb = MissionBlackboard("m1")

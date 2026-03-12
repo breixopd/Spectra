@@ -166,9 +166,12 @@ class TestResolveBatch:
     async def test_batch_with_private_ips(self):
         results = await resolve_batch(["127.0.0.1", "10.0.0.1"], delay=0)
         assert len(results) == 2
-        assert results["127.0.0.1"] is not None
-        assert results["127.0.0.1"]["city"] == "Localhost"
-        assert results["10.0.0.1"]["city"] == "Localhost"
+        r1 = results["127.0.0.1"]
+        assert r1 is not None
+        assert r1["city"] == "Localhost"
+        r2 = results["10.0.0.1"]
+        assert r2 is not None
+        assert r2["city"] == "Localhost"
 
     async def test_batch_empty(self):
         results = await resolve_batch([], delay=0)

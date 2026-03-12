@@ -7,7 +7,7 @@ from app.services.ai.agents.base import (
 )
 from app.services.ai.agents.tool_selector import ToolSelectorAgent
 
-PARALLEL_TOOL_GROUPS = ToolSelectorAgent.PARALLEL_TOOL_GROUPS
+PARALLEL_TOOL_GROUPS = ToolSelectorAgent.PARALLEL_TOOL_GROUPS  # type: ignore[attr-defined]
 
 
 def test_parallel_tool_action_model():
@@ -67,10 +67,10 @@ def test_should_parallelize_stealth_mode():
     agent.llm = MagicMock()
 
     ctx_stealth = AgentContext(mission_id="m1", stealth_mode=True)
-    assert agent._should_parallelize(ctx_stealth) is False
+    assert agent._should_parallelize(ctx_stealth) is False  # type: ignore[attr-defined]
 
     ctx_normal = AgentContext(mission_id="m1", stealth_mode=False)
-    assert agent._should_parallelize(ctx_normal) is True
+    assert agent._should_parallelize(ctx_normal) is True  # type: ignore[attr-defined]
 
 
 def test_parallel_action_max_concurrency():

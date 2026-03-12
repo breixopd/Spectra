@@ -38,7 +38,7 @@ async def get_safety_stats(
 ) -> dict:
     """Get safety supervisor statistics from EventBus history."""
     try:
-        from app.core.events import event_bus
+        from app.core.events import events as event_bus
 
         allowed = 0
         blocked = 0

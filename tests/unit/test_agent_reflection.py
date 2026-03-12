@@ -81,7 +81,7 @@ async def test_reflection_disabled_skips():
     result = await agent.execute_with_reflection(_ctx(), _Input())
 
     assert result.success
-    agent.execute.assert_awaited_once()
+    agent.execute.assert_awaited_once()  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -99,7 +99,7 @@ async def test_reflection_high_quality_accepts():
     result = await agent.execute_with_reflection(_ctx(), _Input())
     assert result.success
     # Only one execute call — no retry when quality is high
-    assert agent.execute.await_count == 1
+    assert agent.execute.await_count == 1  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -123,7 +123,7 @@ async def test_reflection_low_quality_retries():
 
     result = await agent.execute_with_reflection(_ctx(), _Input(), max_iterations=2)
     assert result.success
-    assert agent.execute.await_count == 2
+    assert agent.execute.await_count == 2  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -137,7 +137,7 @@ async def test_reflection_failure_returns_default_score():
     result = await agent.execute_with_reflection(_ctx(), _Input())
     # 0.8 >= 0.7 threshold, so should accept on first iteration
     assert result.success
-    assert agent.execute.await_count == 1
+    assert agent.execute.await_count == 1  # type: ignore[attr-defined]
 
 
 @pytest.mark.asyncio
@@ -156,7 +156,7 @@ async def test_reflection_max_iterations():
     result = await agent.execute_with_reflection(_ctx(), _Input(), max_iterations=3)
     assert result.success
     # Capped at max_iterations
-    assert agent.execute.await_count == 3
+    assert agent.execute.await_count == 3  # type: ignore[attr-defined]
 
 
 def test_reflection_enabled_on_exploit_crafter():

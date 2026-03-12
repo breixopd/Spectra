@@ -47,10 +47,12 @@ def test_record_multiple_agents():
     ct.record("Agent-A", "scope", "gpt-4o-mini", _usage(10, 5))
     ct.record("Agent-B", "parser", "gpt-4o-mini", _usage(20, 10))
 
-    assert ct.get_agent_usage("Agent-A") is not None
-    assert ct.get_agent_usage("Agent-B") is not None
-    assert ct.get_agent_usage("Agent-A").calls == 1
-    assert ct.get_agent_usage("Agent-B").calls == 1
+    usage_a = ct.get_agent_usage("Agent-A")
+    usage_b = ct.get_agent_usage("Agent-B")
+    assert usage_a is not None
+    assert usage_b is not None
+    assert usage_a.calls == 1
+    assert usage_b.calls == 1
 
 
 def test_cost_estimation_known_model():
