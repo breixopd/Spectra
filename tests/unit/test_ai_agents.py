@@ -283,6 +283,7 @@ class TestActionValidation:
         action = AgentAction(action_type="test", confidence=0.2, reasoning="low")
         valid, err = await agent.validate_action(action)
         assert valid is False
+        assert err is not None
         assert "Confidence too low" in err
 
 
@@ -416,7 +417,7 @@ class TestScopeAgentExtraction:
         from app.services.ai.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
-        targets, warnings = agent._extract_targets("scan 10.0.0.1")
+        targets, warnings = agent._extract_targets("scan 10.0.0.1")  # type: ignore[attr-defined]
         values = [t.value for t in targets]
         assert "10.0.0.1" in values
 
@@ -424,7 +425,7 @@ class TestScopeAgentExtraction:
         from app.services.ai.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
-        targets, _ = agent._extract_targets("scan 10.0.0.0/24")
+        targets, _ = agent._extract_targets("scan 10.0.0.0/24")  # type: ignore[attr-defined]
         values = [t.value for t in targets]
         assert "10.0.0.0/24" in values
 
@@ -432,7 +433,7 @@ class TestScopeAgentExtraction:
         from app.services.ai.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
-        targets, _ = agent._extract_targets("scan example.com")
+        targets, _ = agent._extract_targets("scan example.com")  # type: ignore[attr-defined]
         values = [t.value for t in targets]
         assert "example.com" in values
 
@@ -440,7 +441,7 @@ class TestScopeAgentExtraction:
         from app.services.ai.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
-        targets, _ = agent._extract_targets("nothing useful")
+        targets, _ = agent._extract_targets("nothing useful")  # type: ignore[attr-defined]
         assert targets == []
 
 

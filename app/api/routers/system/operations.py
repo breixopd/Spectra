@@ -64,17 +64,11 @@ async def clear_tool_statistics(
             cleared_count=cleared_count,
         )
 
-    except (ConnectionRefusedError, OSError) as e:
+    except (ConnectionRefusedError, TimeoutError, OSError) as e:
         logger.error("Service unavailable while clearing tool statistics: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Cache service is unavailable",
-        )
-    except TimeoutError as e:
-        logger.error("Timeout while clearing tool statistics: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Operation timed out",
         )
     except Exception as e:
         logger.error("Failed to clear tool statistics: %s", e)
@@ -128,19 +122,12 @@ async def clear_missions(
             cleared_count=deleted_count,
         )
 
-    except (ConnectionRefusedError, OSError) as e:
+    except (ConnectionRefusedError, TimeoutError, OSError) as e:
         await db.rollback()
         logger.error("Service unavailable while clearing missions: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database service is unavailable",
-        )
-    except TimeoutError as e:
-        await db.rollback()
-        logger.error("Timeout while clearing missions: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Operation timed out",
         )
     except Exception as e:
         await db.rollback()
@@ -187,17 +174,11 @@ async def clear_cache(
             cleared_count=cleared_count,
         )
 
-    except (ConnectionRefusedError, OSError) as e:
+    except (ConnectionRefusedError, TimeoutError, OSError) as e:
         logger.error("Service unavailable while clearing cache: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Cache service is unavailable",
-        )
-    except TimeoutError as e:
-        logger.error("Timeout while clearing cache: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Operation timed out",
         )
     except Exception as e:
         logger.error("Failed to clear cache: %s", e)
@@ -258,17 +239,11 @@ async def remove_operation(
             "message": "Operation removed" if removed else "Operation not found",
         }
 
-    except (ConnectionRefusedError, OSError) as e:
+    except (ConnectionRefusedError, TimeoutError, OSError) as e:
         logger.error("Service unavailable while removing operation: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Cache service is unavailable",
-        )
-    except TimeoutError as e:
-        logger.error("Timeout while removing operation: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Operation timed out",
         )
     except Exception as e:
         logger.error("Failed to remove operation: %s", e)
@@ -309,17 +284,11 @@ async def update_operation_progress(
 
         return {"success": True, "message": "Progress updated"}
 
-    except (ConnectionRefusedError, OSError) as e:
+    except (ConnectionRefusedError, TimeoutError, OSError) as e:
         logger.error("Service unavailable while updating progress: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Cache service is unavailable",
-        )
-    except TimeoutError as e:
-        logger.error("Timeout while updating progress: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Operation timed out",
         )
     except ValueError as e:
         raise HTTPException(

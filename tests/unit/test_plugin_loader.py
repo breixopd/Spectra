@@ -119,7 +119,7 @@ async def test_nonexistent_directory(tmp_path):
     missing = tmp_path / "does_not_exist"
     validator = PluginValidator(public_key=None, safe_mode=False)
     loader = PluginLoader(missing, validator)
-    existing = {"kept": "sentinel"}
+    existing = {"kept": "sentinel"}  # type: ignore[dict-item]
 
     result = await loader.load_plugins(existing)
 

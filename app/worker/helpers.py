@@ -42,7 +42,7 @@ def with_retry(max_retries: int = 3, backoff_base: float = 2.0, max_backoff: flo
                         await asyncio.sleep(wait)
                     else:
                         logger.error("Job %s failed after %d attempts: %s", func.__name__, max_retries, exc)
-            raise last_exc
+            raise last_exc  # type: ignore[misc]  # last_exc is always set after loop
 
         return wrapper
 

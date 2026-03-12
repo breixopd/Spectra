@@ -103,13 +103,13 @@ class TestGetAsyncSession:
         mock_session.close = AsyncMock()
 
         class FakeSessionMaker:
-            def __call__(self_inner):
-                return self_inner
+            def __call__(self):
+                return self
 
-            async def __aenter__(self_inner):
+            async def __aenter__(self):
                 return mock_session
 
-            async def __aexit__(self_inner, *args):
+            async def __aexit__(self, *args):
                 pass
 
         with patch("app.core.database.async_session_maker", FakeSessionMaker()):
@@ -129,13 +129,13 @@ class TestGetAsyncSession:
         mock_session.close = AsyncMock()
 
         class FakeSessionMaker:
-            def __call__(self_inner):
-                return self_inner
+            def __call__(self):
+                return self
 
-            async def __aenter__(self_inner):
+            async def __aenter__(self):
                 return mock_session
 
-            async def __aexit__(self_inner, exc_type, exc_val, tb):
+            async def __aexit__(self, exc_type, exc_val, tb):
                 return False  # propagate exception
 
         with patch("app.core.database.async_session_maker", FakeSessionMaker()):
