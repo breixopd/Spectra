@@ -17,6 +17,8 @@ Split into submodules:
 
 from __future__ import annotations
 
+import logging
+
 from app.worker.cleanup_jobs import run_all_cleanup
 from app.worker.command_jobs import execute_script_job, run_command_job
 from app.worker.lifecycle import heartbeat_loop, shutdown, startup
@@ -40,6 +42,21 @@ from app.worker.vpn_jobs import (
     vpn_disconnect_job,
     vpn_status_job,
     vpn_test_job,
+)
+
+logger = logging.getLogger("spectra.worker")
+
+logger.info(
+    "Worker module loaded: %d job functions registered",
+    len([
+        execute_tool_job, install_tool_job, uninstall_tool_job,
+        install_all_tools_job, reload_plugins_job, get_tool_status_job,
+        sync_all_status_job, run_command_job, execute_script_job,
+        vpn_connect_job, vpn_disconnect_job, vpn_status_job, vpn_test_job,
+        run_all_cleanup, send_webhook_notification,
+        send_mission_completion_notification, send_critical_finding_alert,
+        generate_mission_report, generate_executive_summary,
+    ]),
 )
 
 _WORKER_FUNCTIONS = [

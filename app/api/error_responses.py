@@ -13,11 +13,16 @@ Usage:
     raise bad_request("Invalid input", error_code="INVALID_INPUT")
 """
 
+import logging
+
 from fastapi import HTTPException, status
+
+logger = logging.getLogger("spectra.api.error_responses")
 
 
 def _build(status_code: int, detail: str, error_code: str) -> HTTPException:
     """Build an HTTPException with a consistent detail payload."""
+    logger.debug("Building error response status=%d code=%s detail=%s", status_code, error_code, detail)
     return HTTPException(
         status_code=status_code,
         detail={

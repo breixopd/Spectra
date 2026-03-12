@@ -1,3 +1,13 @@
+[project]
+name = "spectra"
+version = "0.1.0"
+description = "AI-Driven Security Assessment Platform"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
 [tool.bandit]
 exclude_dirs = ["tests", "alembic"]
 skips = ["B101"]  # assert is fine in non-production code

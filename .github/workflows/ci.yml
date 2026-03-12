@@ -20,6 +20,7 @@ jobs:
           python-version: "3.11"
       - run: pip install ruff
       - run: ruff check app/
+      - run: ruff format --check app/ tests/
 
   test:
     name: Unit Tests
@@ -38,7 +39,7 @@ jobs:
             --cov-config=.coveragerc \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
-            --cov-fail-under=60
+            --cov-fail-under=65
         env:
           AI_PROVIDER: mock
           DATABASE_URL: "sqlite+aiosqlite:///test.db"
@@ -133,6 +134,19 @@ jobs:
       # pip-audit: keep || true because transitive dependency vulns in pinned
       # packages shouldn't block CI; ignore known disputed advisories.
       - run: pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 || true
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install pyright -r requirements.txt
+      - run: pyright app/ --pythonversion 3.11
 
   version-check:
     name: Version file check
