@@ -70,15 +70,16 @@ swagger_ui_params = {
 }
 
 # --- FastAPI Application ---
+# API v1 - current version, prefix: /api/v1/
 app = FastAPI(
     title="Spectra Security Assessment API",
     description="AI-driven security assessment platform with MAKER Framework.",
     version=__version__,
     lifespan=lifespan,
     swagger_ui_parameters=swagger_ui_params,
-    docs_url="/api/docs" if settings.DEBUG else None,
-    redoc_url="/api/redoc" if settings.DEBUG else None,
-    openapi_url="/api/openapi.json" if settings.DEBUG else None,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 
