@@ -50,6 +50,50 @@ import html
 from app.services.ai.context import truncate_for_llm
 
 
+async def _log_tool_audit(
+    tool_name: str,
+    target: str,
+    args: dict[str, Any] | None,
+    exit_code: int,
+    output_size: int,
+    duration_seconds: float,
+    success: bool,
+    parsed_ok: bool,
+    mission_id: str,
+    user_id: str | None = None,
+) -> None:
+    """Log a tool execution event to the audit trail."""
+    try:
+        from app.core.database import get_session
+        from app.models.audit_log import AuditEventType
+        from app.repositories.audit_log import AuditLogRepository
+
+        details = {
+            "tool": tool_name,
+            "target": target,
+            "args": {k: str(v)[:200] for k, v in (args or {}).items()},
+            "exit_code": exit_code,
+            "output_size": output_size,
+            "duration_seconds": round(duration_seconds, 2),
+            "success": success,
+            "parsed_ok": parsed_ok,
+            "mission_id": mission_id,
+        }
+
+        import json
+
+        async with get_session() as session:
+            repo = AuditLogRepository(session)
+            await repo.create(
+                event_type=AuditEventType.TOOL_EXECUTED.value,
+                user_id=user_id,
+                details=json.dumps(details),
+            )
+            await session.commit()
+    except Exception as e:
+        logger.debug("Failed to write tool audit log: %s", e)
+
+
 def sanitize_tool_output(output: str) -> str:
     """Sanitize tool output for safe display in the UI."""
     return html.escape(output)
@@ -385,6 +429,22 @@ class ToolExecutionService:
 
             # --- Learn from this execution ---
             self._record_to_memory(mission, tool_name, target, args, result)
+
+            # --- Audit trail ---
+            parsed_ok = result.success and len(result.parsed_findings) > 0
+            user_id = getattr(mission, "user_id", None)
+            await _log_tool_audit(
+                tool_name=tool_name,
+                target=target,
+                args=args,
+                exit_code=result.exit_code,
+                output_size=len(result.stdout),
+                duration_seconds=result.duration_seconds,
+                success=result.success,
+                parsed_ok=parsed_ok,
+                mission_id=getattr(mission, "id", ""),
+                user_id=user_id,
+            )
 
             return result
 
