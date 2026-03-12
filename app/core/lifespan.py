@@ -24,6 +24,8 @@ except ImportError:
 from app.core.background_tasks import (
     add_system_operation,
     cache_cleanup_loop,
+    daily_maintenance_loop,
+    mission_timeout_loop,
     periodic_cleanup_loop,
     remove_system_operation,
     resource_collection_loop,
@@ -45,7 +47,9 @@ logger = logging.getLogger("spectra.lifespan")
 __all__ = [
     "add_system_operation",
     "cache_cleanup_loop",
+    "daily_maintenance_loop",
     "lifespan",
+    "mission_timeout_loop",
     "periodic_cleanup_loop",
     "remove_system_operation",
     "resource_collection_loop",
@@ -486,6 +490,12 @@ async def _initialize_services() -> None:
 
     # Start periodic system cleanup (sessions, old jobs, orphaned sandboxes)
     asyncio.create_task(periodic_cleanup_loop())
+
+    # Start mission timeout checker (every 15 min)
+    asyncio.create_task(mission_timeout_loop())
+
+    # Start daily maintenance (audit log pruning, DB stats, table sizes)
+    asyncio.create_task(daily_maintenance_loop())
 
     # Start metrics snapshot store
     from app.core.metrics_store import get_metrics_store
