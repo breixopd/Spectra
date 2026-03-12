@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -229,6 +230,19 @@ async def rate_limit_handler(request: Request, exc: Exception) -> HTMLResponse |
             status_code=429,
         )
     return JSONResponse({"detail": "Too many requests"}, status_code=429)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request: Request, exc: RequestValidationError) -> HTMLResponse | JSONResponse:
+    if _wants_html(request):
+        return HTMLResponse(
+            content=_error_templates.get_template("errors/422.html").render(),
+            status_code=422,
+        )
+    errors = [
+        {"field": ".".join(str(loc) for loc in e.get("loc", [])), "message": e.get("msg", "")} for e in exc.errors()
+    ]
+    return JSONResponse({"detail": "Validation error", "errors": errors, "status_code": 422}, status_code=422)
 
 
 @app.exception_handler(400)
