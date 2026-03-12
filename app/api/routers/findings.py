@@ -149,9 +149,15 @@ async def list_findings(
     db: AsyncSession = Depends(get_async_session),
     __current_user: User = Depends(get_current_active_user),
 ):
-    """List all findings with optional filters.
+    """Retrieve a paginated list of security findings.
 
-    Pagination: max 100 items per page.
+    Returns findings discovered during missions. Supports filtering by:
+
+    - **severity**: Filter by severity level (critical, high, medium, low, info).
+    - **status**: Filter by finding status (open, confirmed, false_positive, remediated).
+    - **page** / **per_page**: Pagination controls (max 100 items per page).
+
+    Non-admin users only see findings from their own missions.
     """
     repo = FindingRepository(db)
 

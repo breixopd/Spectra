@@ -147,9 +147,14 @@ async def login_for_access_token(
     session: AsyncSession = Depends(get_async_session),
 ):
     """
-    OAuth2 compatible token login, get an access token for future requests.
+    Authenticate and obtain JWT tokens.
 
-    Rate limited to 5 attempts per minute per IP address.
+    Accepts OAuth2 password credentials (username + password) and returns
+    a JWT access token and a refresh token. The access token should be
+    included in subsequent requests via the `Authorization: Bearer <token>` header.
+
+    - Accounts are locked after repeated failures (configurable threshold).
+    - Rate limited to 5 attempts per minute per IP address.
     """
     client_ip = request.client.host if request.client else "unknown"
 

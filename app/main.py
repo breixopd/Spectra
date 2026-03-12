@@ -73,9 +73,11 @@ swagger_ui_params = {
 # --- FastAPI Application ---
 # API v1 - current version, prefix: /api/v1/
 app = FastAPI(
-    title="Spectra Security Assessment API",
-    description="AI-driven security assessment platform with MAKER Framework.",
+    title="Spectra API",
+    description="AI-Driven Security Assessment Platform API",
     version=__version__,
+    contact={"name": "Spectra Team"},
+    license_info={"name": "Proprietary"},
     lifespan=lifespan,
     swagger_ui_parameters=swagger_ui_params,
     docs_url="/api/docs",
@@ -284,7 +286,7 @@ async def service_unavailable_handler(request: Request, exc: Exception) -> HTMLR
 # --- API v1 (canonical versioned prefix) ---
 api_v1 = APIRouter(prefix="/api/v1")
 api_v1.include_router(health.router, tags=["Health"])
-api_v1.include_router(auth.router, prefix="/auth", tags=["Auth"])
+api_v1.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 api_v1.include_router(tools.router, tags=["Tools"])
 api_v1.include_router(missions.router, tags=["Missions"])
 api_v1.include_router(targets.router, tags=["Targets"])
@@ -308,7 +310,7 @@ app.include_router(metrics.router, tags=["Metrics"])
 # --- Non-versioned routes (UI pages, public, admin) ---
 app.include_router(public.router, tags=["Public"])
 app.include_router(ui.router, tags=["UI"])
-app.include_router(admin.router, tags=["Admin"])
+app.include_router(admin.router, tags=["Administration"])
 
 
 # --- WebSocket Endpoint ---
