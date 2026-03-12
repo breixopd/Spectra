@@ -87,7 +87,10 @@ async def provision_server(
     from app.services.provisioning.provisioner import ServerConfig
 
     if body.service_type != "sandbox_worker":
-        raise HTTPException(400, f"Invalid service_type: {body.service_type}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid service_type: {body.service_type}",
+        )
 
     config = ServerConfig(
         host=body.host,

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.api.error_responses import internal_error, not_found
 from app.core.database import get_async_session
 from app.models.user import User
 from app.services.webhooks.service import WebhookService
@@ -76,6 +77,9 @@ async def create_webhook(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Failed to create webhook for user %s", user.id)
+        raise internal_error("Failed to create webhook")
     return wh
 
 
@@ -85,7 +89,11 @@ async def list_webhooks(
     user: User = Depends(get_current_active_user),
 ):
     svc = WebhookService(db)
-    return await svc.list_for_user(str(user.id))
+    try:
+        return await svc.list_for_user(str(user.id))
+    except Exception:
+        logger.exception("Failed to list webhooks for user %s", user.id)
+        raise internal_error("Failed to list webhooks")
 
 
 @router.get("/{webhook_id}", response_model=WebhookResponse, summary="Get webhook")
@@ -97,7 +105,7 @@ async def get_webhook(
     svc = WebhookService(db)
     wh = await svc.get_by_id(webhook_id, str(user.id))
     if not wh:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook not found")
+        raise not_found("Webhook", webhook_id)
     return wh
 
 
@@ -120,8 +128,11 @@ async def update_webhook(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    except Exception:
+        logger.exception("Failed to update webhook %s", webhook_id)
+        raise internal_error("Failed to update webhook")
     if not wh:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook not found")
+        raise not_found("Webhook", webhook_id)
     return wh
 
 
@@ -134,7 +145,7 @@ async def delete_webhook(
     svc = WebhookService(db)
     deleted = await svc.delete(webhook_id, str(user.id))
     if not deleted:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook not found")
+        raise not_found("Webhook", webhook_id)
 
 
 @router.post(
@@ -157,7 +168,7 @@ async def test_webhook(
     svc = WebhookService(db)
     wh = await svc.get_by_id(webhook_id, str(user.id))
     if not wh:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Webhook not found")
+        raise not_found("Webhook", webhook_id)
 
     body = {"event": "ping", "data": {"message": "Webhook test from Spectra"}}
     headers: dict[str, str] = {"Content-Type": "application/json"}

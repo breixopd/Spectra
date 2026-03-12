@@ -12,12 +12,13 @@ import json
 import logging
 from io import StringIO
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, Query, Request, status
 from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.api.error_responses import bad_request, forbidden, not_found
 from app.api.schemas import FindingResponse, PaginatedResponse
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
@@ -40,7 +41,7 @@ def _check_finding_owner(finding_obj: Finding, user: User) -> None:
     if user.is_superuser:
         return
     if finding_obj.user_id and finding_obj.user_id != str(user.id):
-        raise HTTPException(status_code=403, detail="Not authorized to access this finding")
+        raise forbidden("Not authorized to access this finding")
 
 
 # --- Schemas ---
@@ -261,7 +262,7 @@ async def export_findings_csv(
 
     if encrypted:
         if not password:
-            raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
+            raise bad_request("X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
 
         payload = encrypt_data_with_password(payload, password)
@@ -313,7 +314,7 @@ async def export_findings_json(
 
     if encrypted:
         if not password:
-            raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
+            raise bad_request("X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
 
         payload = encrypt_data_with_password(payload, password)
@@ -346,10 +347,7 @@ async def get_finding(
     finding = await repo.get_by_id(finding_id)
 
     if not finding:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
+        raise not_found("Finding", finding_id)
     _check_finding_owner(finding, _current_user)
 
     return FindingDetailResponse(
@@ -384,10 +382,7 @@ async def update_finding(
 
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
+        raise not_found("Finding", finding_id)
     _check_finding_owner(existing, _current_user)
 
     # Filter out None values
@@ -396,10 +391,7 @@ async def update_finding(
     updated = await repo.update(finding_id, **update_data)
 
     if not updated:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
+        raise not_found("Finding", finding_id)
     await db.commit()
 
     return FindingDetailResponse(
@@ -433,10 +425,7 @@ async def delete_finding(
 
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
+        raise not_found("Finding", finding_id)
     _check_finding_owner(existing, _current_user)
 
     await repo.delete(finding_id)
@@ -459,10 +448,7 @@ async def verify_finding(
 
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
+        raise not_found("Finding", finding_id)
     _check_finding_owner(existing, _current_user)
 
     updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
@@ -499,10 +485,7 @@ async def mark_false_positive(
 
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
+        raise not_found("Finding", finding_id)
     _check_finding_owner(existing, _current_user)
 
     updated = await repo.update(finding_id, status=FindingStatus.FALSE_POSITIVE)
@@ -559,7 +542,7 @@ async def confirm_finding(
     repo = FindingRepository(db)
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+        raise not_found("Finding", finding_id)
     _check_finding_owner(existing, _current_user)
     updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
     await db.commit()
@@ -581,7 +564,7 @@ async def dismiss_finding(
     repo = FindingRepository(db)
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+        raise not_found("Finding", finding_id)
     _check_finding_owner(existing, _current_user)
     updated = await repo.update(finding_id, status=FindingStatus.DISMISSED)
     await db.commit()
@@ -603,7 +586,7 @@ async def retest_finding(
     repo = FindingRepository(db)
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+        raise not_found("Finding", finding_id)
     _check_finding_owner(existing, _current_user)
     updated = await repo.update(finding_id, status=FindingStatus.RETEST_PENDING)
     await db.commit()
@@ -639,18 +622,12 @@ async def bulk_update_findings(
 ):
     """Bulk update multiple findings. Max 100 per request."""
     if len(request.finding_ids) > MAX_BULK_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Maximum {MAX_BULK_SIZE} findings per batch",
-        )
+        raise bad_request(f"Maximum {MAX_BULK_SIZE} findings per batch")
 
     repo = FindingRepository(db)
     update_data = request.update.model_dump(exclude_unset=True)
     if not update_data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No fields to update",
-        )
+        raise bad_request("No fields to update")
 
     updated_count = 0
     for fid in request.finding_ids:
