@@ -316,7 +316,6 @@ class TestFindingsAuth:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.asyncio
 class TestRateLimitDecorator:
     def test_list_findings_has_rate_limit(self):
         from app.api.routers.findings import list_findings
