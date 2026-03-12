@@ -86,6 +86,9 @@ class JSONFormatter(logging.Formatter):
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
             "correlation_id": getattr(record, "correlation_id", ""),
         }
         if record.exc_info and record.exc_info[1] is not None:
@@ -143,3 +146,9 @@ def configure_logging(log_format: str = "", log_level: str = "") -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(getattr(logging, level_name, logging.INFO))
+
+    # Reduce noise from chatty libraries
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
