@@ -23,6 +23,11 @@ data/auth/
 !data/.gitkeep
 !data/*/.gitkeep
 
+htmlcov/
+*.egg-info/
+dist/
+build/
+
 docs/plan/
 reports/coverage/
 !reports/coverage/.gitkeep
