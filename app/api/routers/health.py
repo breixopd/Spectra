@@ -165,7 +165,7 @@ async def detailed_health_check(
 @router.get(
     "/health/ready",
     summary="Readiness probe",
-    description="Check if all components (database, LLM, embeddings) are ready to serve traffic. Returns 503 if any is not ready.",
+    description="Check if all components (database, LLM, embeddings, registered services) are ready to serve traffic. Returns 503 if any is not ready.",
 )
 async def readiness_check(
     response: Response,
@@ -175,7 +175,7 @@ async def readiness_check(
     Readiness probe - checks if ALL components are ready to serve traffic.
     Returns 503 if any component is not ready.
     """
-    checks = {"database": False, "llm": False, "embeddings": False}
+    checks: dict[str, bool] = {"database": False, "llm": False, "embeddings": False}
 
     # Database
     try:
@@ -201,6 +201,17 @@ async def readiness_check(
         checks["embeddings"] = rag.is_functional
     except Exception:
         logger.debug("Health check: embeddings unavailable", exc_info=True)
+
+    # Registered services (sandbox, etc.) via service registry
+    try:
+        from app.services.gateway.service_registry import get_service_registry
+
+        registry = get_service_registry()
+        service_health = await registry.check_services_health()
+        for name, healthy in service_health.items():
+            checks[f"service:{name}"] = healthy
+    except Exception:
+        logger.debug("Health check: service registry unavailable", exc_info=True)
 
     all_ready = all(checks.values())
     result = {
