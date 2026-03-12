@@ -8,7 +8,7 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +20,7 @@ from app.api.dependencies import (
     get_current_active_user,
     require_mission_quota,
 )
+from app.api.error_responses import bad_request, conflict, forbidden, internal_error, not_found
 from app.api.schemas import MissionResponse, PaginatedResponse, StartMissionRequest
 from app.core.database import get_async_session
 from app.core.rate_limit import get_plan_dynamic_limit, limiter
@@ -44,7 +45,7 @@ def _check_mission_owner(mission_obj, user: User) -> None:
         return
     owner = getattr(mission_obj, "user_id", None)
     if owner and owner != str(user.id):
-        raise HTTPException(status_code=403, detail="Not authorized to access this mission")
+        raise forbidden("Not authorized to access this mission")
 
 
 class SteerMissionRequest(BaseModel):
@@ -86,7 +87,7 @@ async def get_adversary_playbook_detail(
 
     pb = get_adversary_playbook(playbook_id)
     if not pb:
-        raise HTTPException(status_code=404, detail="Playbook not found")
+        raise not_found("Playbook", playbook_id)
     return pb.model_dump()
 
 
@@ -144,6 +145,7 @@ async def get_attack_coverage(
             findings.append({"tool_name": lesson.tool_id, "source": "tool_execution"})
         return get_attack_summary(findings)
     except Exception:
+        logger.warning("Failed to compute attack coverage", exc_info=True)
         return {"tactics": {}, "total_techniques": 0}
 
 
@@ -181,10 +183,7 @@ async def start_mission(
             host = host.rsplit(":", 1)[0]
 
         if is_internal_ip(host) or is_internal_network(host):
-            raise HTTPException(
-                status_code=403,
-                detail="Targeting internal network addresses is not permitted",
-            )
+            raise forbidden("Targeting internal network addresses is not permitted")
 
     await check_mission_limit(_current_user, db)
     await check_feature_allowed(_current_user, db, "autonomous_mode")
@@ -199,7 +198,7 @@ async def start_mission(
     mission = await mission_manager.get_mission(mission_id)
 
     if not mission:
-        raise HTTPException(status_code=500, detail="Failed to create mission")
+        raise internal_error("Failed to create mission")
 
     # Record usage for quota tracking
     from app.services.billing.usage_tracker import UsageTracker
@@ -291,14 +290,14 @@ async def list_missions(
         try:
             from_dt = dt.fromisoformat(date_from)
         except ValueError:
-            raise HTTPException(status_code=422, detail=f"Invalid date_from format: {date_from}. Use ISO 8601.")
+            raise bad_request(f"Invalid date_from format: {date_from}. Use ISO 8601.")
         base = base.where(Mission.created_at >= from_dt)
 
     if date_to:
         try:
             to_dt = dt.fromisoformat(date_to)
         except ValueError:
-            raise HTTPException(status_code=422, detail=f"Invalid date_to format: {date_to}. Use ISO 8601.")
+            raise bad_request(f"Invalid date_to format: {date_to}. Use ISO 8601.")
         base = base.where(Mission.created_at <= to_dt)
 
     if search:
@@ -351,7 +350,7 @@ async def download_pdf_report(
     repo = MissionRepository(session)
     mission = await repo.get_by_id(mission_id)
     if not mission:
-        raise HTTPException(status_code=404, detail="Mission not found")
+        raise not_found("Mission", mission_id)
     _check_mission_owner(mission, _current_user)
 
     # Check plan allows PDF export
@@ -360,7 +359,7 @@ async def download_pdf_report(
         if plan and plan.features:
             allowed = plan.features.get("report_export", ["json", "pdf", "html"])
             if isinstance(allowed, list) and "pdf" not in allowed:
-                raise HTTPException(403, "PDF export not available on your plan")
+                raise forbidden("PDF export not available on your plan")
 
     mission_data = {
         "id": mission.id,
@@ -374,7 +373,7 @@ async def download_pdf_report(
 
     pdf_bytes = generate_pdf_report(mission_data)
     if not pdf_bytes:
-        raise HTTPException(status_code=500, detail="PDF generation failed")
+        raise internal_error("PDF generation failed")
 
     return FastAPIResponse(
         content=pdf_bytes,
@@ -397,7 +396,7 @@ async def export_mission_json(
     repo = MissionRepository(session)
     mission = await repo.get_by_id(mission_id)
     if not mission:
-        raise HTTPException(status_code=404, detail="Mission not found")
+        raise not_found("Mission", mission_id)
     _check_mission_owner(mission, _current_user)
 
     # Check plan allows JSON export
@@ -406,7 +405,7 @@ async def export_mission_json(
         if plan and plan.features:
             allowed = plan.features.get("report_export", ["json", "pdf", "html"])
             if isinstance(allowed, list) and "json" not in allowed:
-                raise HTTPException(403, "JSON export not available on your plan")
+                raise forbidden("JSON export not available on your plan")
 
     summary = mission.summary or {}
     export_data = {
@@ -427,7 +426,7 @@ async def export_mission_json(
 
     if encrypted:
         if not password:
-            raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
+            raise bad_request("X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
 
         payload = encrypt_data_with_password(payload, password)
@@ -454,7 +453,7 @@ async def get_mission_findings(
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
     if not mission:
-        raise HTTPException(status_code=404, detail="Mission not found")
+        raise not_found("Mission", mission_id)
     _check_mission_owner(mission, _current_user)
     raw_findings = mission.summary.get("findings", []) if mission.summary else []
     return [
@@ -516,7 +515,7 @@ async def get_mission(
     db_mission = await repo.get_by_id(mission_id)
 
     if not db_mission:
-        raise HTTPException(status_code=404, detail="Mission not found")
+        raise not_found("Mission", mission_id)
     _check_mission_owner(db_mission, _current_user)
 
     return MissionResponse(
@@ -546,7 +545,7 @@ async def delete_mission(
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
     if not mission:
-        raise HTTPException(status_code=404, detail="Mission not found")
+        raise not_found("Mission", mission_id)
     _check_mission_owner(mission, _current_user)
 
     active_statuses = {
@@ -562,10 +561,7 @@ async def delete_mission(
         "paused",
     }
     if mission.status in active_statuses:
-        raise HTTPException(
-            status_code=409,
-            detail="Cannot delete an active mission. Stop it first.",
-        )
+        raise conflict("Cannot delete an active mission. Stop it first.")
 
     await repo.delete(mission_id)
     await db.commit()
@@ -609,7 +605,7 @@ async def stop_mission(
         _check_mission_owner(active, _current_user)
     result = await mission_manager.stop_mission(mission_id)
     if not result:
-        raise HTTPException(status_code=404, detail="Mission not found or not active")
+        raise not_found("Mission", mission_id)
     return {"message": "Mission stopping"}
 
 
@@ -632,7 +628,7 @@ async def pause_mission(
         _check_mission_owner(active, _current_user)
     result = await mission_manager.pause_mission(mission_id)
     if not result:
-        raise HTTPException(status_code=404, detail="Mission not found or not active")
+        raise not_found("Mission", mission_id)
     return {"message": "Mission paused"}
 
 
@@ -655,7 +651,7 @@ async def resume_mission(
         _check_mission_owner(active, _current_user)
     result = await mission_manager.resume_mission(mission_id)
     if not result:
-        raise HTTPException(status_code=404, detail="Mission not found or not active")
+        raise not_found("Mission", mission_id)
     return {"message": "Mission resumed"}
 
 
@@ -678,12 +674,12 @@ async def diff_missions(
 
     old_db = await repo.get_by_id(mission_id)
     if not old_db:
-        raise HTTPException(status_code=404, detail=f"Mission {mission_id} not found")
+        raise not_found("Mission", mission_id)
     _check_mission_owner(old_db, _current_user)
 
     new_db = await repo.get_by_id(other_mission_id)
     if not new_db:
-        raise HTTPException(status_code=404, detail=f"Mission {other_mission_id} not found")
+        raise not_found("Mission", other_mission_id)
     _check_mission_owner(new_db, _current_user)
 
     old_dict = {
@@ -745,10 +741,10 @@ async def steer_mission(
         )
         return result
     except ValueError as e:
-        logger.error("Mission steering error: %s", e, exc_info=True)
+        logger.error("Mission steering error: %s", e)
         if "not found" in str(e):
-            raise HTTPException(status_code=404, detail="Mission or target not found")
-        raise HTTPException(status_code=400, detail="Invalid steering request")
+            raise not_found("Mission or target")
+        raise bad_request("Invalid steering request")
 
 
 @router.get("/{mission_id}/task-tree", response_model=dict)
@@ -759,7 +755,7 @@ async def get_task_tree(
     """Get the task tree for a mission."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
-        raise HTTPException(status_code=404, detail="Mission not found")
+        raise not_found("Mission", mission_id)
     _check_mission_owner(mission, _current_user)
     return mission.task_tree.to_dict()
 
@@ -772,6 +768,6 @@ async def get_mission_progress(
     """Get estimated mission progress."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
-        raise HTTPException(status_code=404, detail="Mission not found")
+        raise not_found("Mission", mission_id)
     _check_mission_owner(mission, _current_user)
     return mission.get_progress()

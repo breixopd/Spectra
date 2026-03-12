@@ -48,6 +48,7 @@ def _get_ui_user(request: Request) -> dict | None:
         if payload and payload.get("sub"):
             return payload
     except Exception:
+        logger.debug("Failed to decode UI token", exc_info=True)
         return None
 
 

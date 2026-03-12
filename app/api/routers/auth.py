@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.api.error_responses import bad_request, forbidden, rate_limited, unauthorized
 from app.api.schemas import SystemSetupRequest, Token, UserResponse
 from app.api.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
 from app.core.config import settings
@@ -104,10 +105,7 @@ def _check_lockout(ip: str) -> None:
             return
         locked_until = entry.get("locked_until", 0)
         if locked_until and time.time() < locked_until:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Account temporarily locked due to too many failed attempts",
-            )
+            raise rate_limited("Account temporarily locked due to too many failed attempts")
         # If lockout expired, keep count for escalation but clear lock
         if locked_until and time.time() >= locked_until:
             entry["locked_until"] = 0
@@ -196,7 +194,7 @@ async def login_for_access_token(
         )
 
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
+        raise forbidden("User account is inactive")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -260,21 +258,12 @@ async def refresh_token(
     try:
         payload = decode_token(refresh_token)
         if payload.get("type") != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type",
-            )
+            raise unauthorized("Invalid token type")
         username = payload.get("sub")
         if not username:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token subject",
-            )
+            raise unauthorized("Invalid token subject")
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
-        )
+        raise unauthorized("Invalid refresh token")
 
     # Check if user exists and is active
     stmt = select(User).where(User.username == username)
@@ -282,10 +271,7 @@ async def refresh_token(
     user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-        )
+        raise unauthorized("User not found or inactive")
 
     # Create new access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -323,10 +309,7 @@ async def setup_admin_user(
     stmt = select(User.id).limit(1)
     result = await session.execute(stmt)
     if result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Setup already completed. Users exist.",
-        )
+        raise forbidden("Setup already completed. Users exist.")
 
     from app.services.system.setup import SystemSetupService
 
@@ -362,18 +345,12 @@ async def logout(request: Request, response: Response, session: AsyncSession = D
     """Logout by blacklisting the current access token and clearing cookie."""
     auth_header = request.headers.get("authorization", "")
     if not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing bearer token",
-        )
+        raise unauthorized("Missing bearer token")
     token = auth_header[7:]
     try:
         payload = decode_token(token)  # Validate token is still valid
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
+        raise unauthorized("Invalid token")
     invalidate_token(token)
     response.delete_cookie(key="access_token", path="/", httponly=True, secure=True, samesite="strict")
 
@@ -461,7 +438,7 @@ async def change_password(
 ):
     """Change current user's password."""
     if not verify_password(body.current_password, user.hashed_password):
-        raise HTTPException(400, "Current password is incorrect")
+        raise bad_request("Current password is incorrect")
 
     user.hashed_password = get_password_hash(body.new_password)
     await session.commit()
@@ -508,14 +485,14 @@ async def reset_password(
     """Reset password using a valid reset token."""
     user_id = verify_password_reset_token(body.token)
     if not user_id:
-        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+        raise bad_request("Invalid or expired reset token")
 
     from app.repositories.user import UserRepository
 
     user_repo = UserRepository(session)
     user = await user_repo.get_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+        raise bad_request("Invalid or expired reset token")
 
     user.hashed_password = get_password_hash(body.new_password)
     await session.commit()
@@ -551,10 +528,7 @@ async def create_api_key(
     # Enforce max 10 active keys per user
     existing = await repo.get_active_by_user(str(current_user.id))
     if len(existing) >= 10:
-        raise HTTPException(
-            status_code=400,
-            detail="Maximum of 10 active API keys allowed",
-        )
+        raise bad_request("Maximum of 10 active API keys allowed")
 
     raw_key = f"sk-{secrets.token_urlsafe(40)}"
     prefix = raw_key[:8]
@@ -632,7 +606,9 @@ async def revoke_api_key(
     api_key = await repo.get_by_id(key_id)
 
     if api_key is None or api_key.user_id != str(current_user.id):
-        raise HTTPException(status_code=404, detail="API key not found")
+        from app.api.error_responses import not_found as _not_found
+
+        raise _not_found("API key", key_id)
 
     await repo.deactivate(key_id)
     await session.commit()
