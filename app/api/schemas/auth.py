@@ -9,6 +9,7 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str | None = None
     token_type: str = "bearer"
+    mfa_required: bool = False
 
 
 class TokenData(BaseModel):
@@ -93,3 +94,23 @@ class ResetPasswordRequest(BaseModel):
         if not any(c.isdigit() for c in v):
             raise ValueError("Password must contain at least one digit")
         return v
+
+
+class MFASetupResponse(BaseModel):
+    """Response for MFA setup initiation."""
+
+    secret: str = Field(..., description="Base32-encoded TOTP secret")
+    provisioning_uri: str = Field(..., description="otpauth:// URI for QR code generation")
+
+
+class MFAVerifyRequest(BaseModel):
+    """Request to verify a TOTP code."""
+
+    code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class MFADisableRequest(BaseModel):
+    """Request to disable MFA."""
+
+    password: str = Field(..., min_length=1)
+    code: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")

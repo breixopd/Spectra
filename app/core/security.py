@@ -6,6 +6,7 @@ Follows OWASP security best practices.
 """
 
 import asyncio
+import base64
 import hashlib
 import json
 import logging
@@ -15,6 +16,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
+import pyotp
+from cryptography.fernet import Fernet, InvalidToken
 from jose import JWTError, jwt
 
 from app.core.config import settings
@@ -30,6 +33,9 @@ __all__ = [
     "invalidate_token",
     "is_token_blacklisted",
     "invalidate_all_user_tokens",
+    "encrypt_mfa_secret",
+    "decrypt_mfa_secret",
+    "verify_totp",
     "JWTError",
 ]
 
@@ -410,3 +416,33 @@ def get_password_hash(password: str) -> str:
     salt = bcrypt.gensalt(rounds=12)  # Increased from default 10 for better security
     hashed = bcrypt.hashpw(password_bytes, salt)
     return hashed.decode("utf-8")
+
+
+# --- MFA / TOTP Helpers ---
+
+
+def _get_fernet() -> Fernet:
+    """Derive a Fernet key from JWT_SECRET_KEY."""
+    key_bytes = settings.JWT_SECRET_KEY.get_secret_value().encode("utf-8")
+    # Fernet requires a 32-byte url-safe base64-encoded key
+    derived = hashlib.sha256(key_bytes).digest()
+    return Fernet(base64.urlsafe_b64encode(derived))
+
+
+def encrypt_mfa_secret(secret: str) -> str:
+    """Encrypt a TOTP secret for database storage."""
+    return _get_fernet().encrypt(secret.encode("utf-8")).decode("utf-8")
+
+
+def decrypt_mfa_secret(encrypted: str) -> str:
+    """Decrypt a stored TOTP secret."""
+    try:
+        return _get_fernet().decrypt(encrypted.encode("utf-8")).decode("utf-8")
+    except InvalidToken:
+        raise ValueError("Failed to decrypt MFA secret")
+
+
+def verify_totp(secret: str, code: str) -> bool:
+    """Verify a TOTP code against a secret with 1-step tolerance."""
+    totp = pyotp.TOTP(secret)
+    return totp.verify(code, valid_window=1)

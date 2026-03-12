@@ -44,8 +44,10 @@ class User(Base):
         String, ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True
     )
     api_key_prefix: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    mfa_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
 
-    __exclude_fields__ = {"hashed_password"}
+    __exclude_fields__ = {"hashed_password", "mfa_secret"}
 
     def __repr__(self) -> str:
         """String representation of the user."""
