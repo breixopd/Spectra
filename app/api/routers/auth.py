@@ -36,6 +36,7 @@ from app.core.security import (
     decode_token,
     get_password_hash,
     get_user_sessions,
+    invalidate_all_user_tokens,
     invalidate_token,
     register_session,
     revoke_session,
@@ -469,6 +470,10 @@ async def change_password(
 
     user.hashed_password = get_password_hash(body.new_password)
     await session.commit()
+
+    # Invalidate all existing tokens so sessions using the old password are revoked
+    invalidate_all_user_tokens(user.username)
+
     logger.info("Password changed for user '%s'", user.username)
 
     # Audit log
@@ -524,6 +529,11 @@ async def reset_password(
 
     user.hashed_password = get_password_hash(body.new_password)
     await session.commit()
+
+    # Invalidate all existing tokens so sessions using the old password are revoked
+    invalidate_all_user_tokens(user.username)
+
+    logger.info("Password reset for user '%s'", user.username)
     return {"message": "Password reset successfully"}
 
 
