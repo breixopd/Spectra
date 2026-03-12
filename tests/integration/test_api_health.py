@@ -21,23 +21,31 @@ async def client():
 
 
 @pytest.mark.asyncio
-async def test_health_returns_healthy(client):
-    """GET /api/health should return 200 with status and version fields."""
+async def test_health_returns_alive(client):
+    """GET /api/health should return 200 with alive status (liveness probe)."""
     resp = await client.get("/api/health")
     assert resp.status_code == 200
     data = resp.json()
-    assert "status" in data
-    assert data["status"] in ("healthy", "degraded")
-    assert "service" in data
+    assert data["status"] == "alive"
     assert data["service"] == "spectra"
     assert "version" in data
+
+
+@pytest.mark.asyncio
+async def test_health_detailed_returns_components(client):
+    """GET /api/health/detailed should return 200 with component statuses."""
+    resp = await client.get("/api/health/detailed")
+    assert resp.status_code in (200, 503)
+    data = resp.json()
+    assert "status" in data
+    assert data["status"] in ("healthy", "degraded")
     assert "components" in data
 
 
 @pytest.mark.asyncio
-async def test_health_verbose_includes_extra_components(client):
-    """GET /api/health?verbose=true should include additional components."""
-    resp = await client.get("/api/health", params={"verbose": "true"})
+async def test_health_detailed_verbose_includes_extra_components(client):
+    """GET /api/health/detailed?verbose=true should include additional components."""
+    resp = await client.get("/api/health/detailed", params={"verbose": "true"})
     assert resp.status_code in (200, 503)
     data = resp.json()
     components = data.get("components", {})
