@@ -9,8 +9,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.ai.llm as llm_module
-from app.api.schemas import SystemSetupRequest
 from app.core.config import settings
+from app.core.schemas import SystemSetupRequest
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.services.ai.llm import close_global_llm_client, get_llm_client
