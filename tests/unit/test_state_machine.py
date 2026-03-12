@@ -109,7 +109,12 @@ class TestValidTransitionsMap:
             assert status in VALID_TRANSITIONS, f"{status} missing from VALID_TRANSITIONS"
 
     def test_terminal_states_empty(self):
-        for terminal in (MissionStatus.COMPLETED, MissionStatus.FAILED, MissionStatus.CANCELLED):
+        for terminal in (
+            MissionStatus.COMPLETED,
+            MissionStatus.FAILED,
+            MissionStatus.CANCELLED,
+            MissionStatus.TIMED_OUT,
+        ):
             assert VALID_TRANSITIONS[terminal] == set()
 
     def test_cancelled_reachable_from_most_states(self):

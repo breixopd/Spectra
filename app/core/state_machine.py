@@ -51,18 +51,21 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
         MissionStatus.PAUSED,
         MissionStatus.SCANNING,
         MissionStatus.ANALYZING,
+        MissionStatus.TIMED_OUT,
     },
     MissionStatus.SCANNING: {
         MissionStatus.EXECUTING,
         MissionStatus.ANALYZING,
         MissionStatus.FAILED,
         MissionStatus.CANCELLED,
+        MissionStatus.TIMED_OUT,
     },
     MissionStatus.ANALYZING: {
         MissionStatus.EXECUTING,
         MissionStatus.EXPLOITING,
         MissionStatus.FAILED,
         MissionStatus.CANCELLED,
+        MissionStatus.TIMED_OUT,
     },
     MissionStatus.EXPLOITING: {
         MissionStatus.REPORTING,
@@ -70,6 +73,7 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
         MissionStatus.FAILED,
         MissionStatus.CANCELLED,
         MissionStatus.PAUSED,
+        MissionStatus.TIMED_OUT,
     },
     MissionStatus.REPORTING: {
         MissionStatus.COMPLETED,
@@ -89,6 +93,7 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
         MissionStatus.CANCELLED,
         MissionStatus.STOPPING,
         MissionStatus.PAUSED,
+        MissionStatus.TIMED_OUT,
     },
     MissionStatus.STOPPING: {
         MissionStatus.CANCELLED,
@@ -98,6 +103,7 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
     MissionStatus.COMPLETED: set(),
     MissionStatus.FAILED: set(),
     MissionStatus.CANCELLED: set(),
+    MissionStatus.TIMED_OUT: set(),
 }
 
 
@@ -152,6 +158,7 @@ class MissionStateMachine:
             MissionStatus.COMPLETED,
             MissionStatus.FAILED,
             MissionStatus.CANCELLED,
+            MissionStatus.TIMED_OUT,
         }
 
     @property
