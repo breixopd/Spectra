@@ -68,8 +68,8 @@ class TestGetAdminMetrics:
         }
 
         with (
-            patch("app.api.routers.admin.metrics.telemetry") as mock_tel,
-            patch("app.api.routers.admin.metrics.get_metrics_store") as mock_store_fn,
+            patch("app.core.telemetry.telemetry") as mock_tel,
+            patch("app.core.metrics_store.get_metrics_store") as mock_store_fn,
         ):
             mock_tel.get_metrics_summary.return_value = mock_summary
             mock_tel.get_overview_stats.return_value = mock_overview
