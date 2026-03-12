@@ -311,6 +311,31 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
         return await loop.run_in_executor(None, db.search_exploitdb, query)
 
     # ------------------------------------------------------------------
+    # RAG historical context
+    # ------------------------------------------------------------------
+
+    async def _query_rag_history(self, query: str) -> list[dict[str, Any]]:
+        """Retrieve historical findings/exploits from RAG for context."""
+        try:
+            from app.services.rag.service import get_rag_facade
+
+            facade = get_rag_facade()
+            results = await facade.search(query, limit=5)
+            return [
+                {
+                    "source": "rag_history",
+                    "doc_type": r.document.doc_type,
+                    "content": r.document.content[:500],
+                    "score": r.score,
+                    "severity": r.document.severity,
+                }
+                for r in results
+            ]
+        except Exception as e:
+            logger.debug("RAG history query failed: %s", e)
+            return []
+
+    # ------------------------------------------------------------------
     # LLM enrichment
     # ------------------------------------------------------------------
 
@@ -384,6 +409,11 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
             if qt in ("technology_intel", "service_fingerprint", "exploit_search"):
                 tasks["exploitdb"] = self._query_exploitdb(technology, version)
 
+            # RAG: retrieve historical context for similar targets/technologies
+            rag_query_parts = [p for p in (technology, version) if p]
+            if rag_query_parts:
+                tasks["rag_history"] = self._query_rag_history(" ".join(rag_query_parts))
+
             # Execute concurrently
             if tasks:
                 keys = list(tasks.keys())
@@ -407,6 +437,8 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
                     all_findings.extend(result)
                 elif key == "exploitdb":
                     exploit_refs.extend(result)
+                    all_findings.extend(result)
+                elif key == "rag_history":
                     all_findings.extend(result)
 
             # LLM enrichment (optional, only if we have findings)

@@ -29,6 +29,8 @@ def mock_manager_context():
         ),
         patch("app.core.database.async_session_maker") as mock_session_maker,
         patch("app.services.mission.manager.lifecycle.resolve_ip", new_callable=AsyncMock) as mock_resolve_ip,
+        patch("app.services.mission.state_store.async_session_maker") as mock_state_store_session,
+        patch("app.services.billing.quota_enforcer.async_session_maker") as mock_quota_session,
     ):
         # Setup DB mocks details
         mock_session = AsyncMock()
@@ -40,6 +42,11 @@ def mock_manager_context():
 
         # Make the callable return the context manager
         mock_session_maker.return_value = mock_session_ctx
+
+        # Configure state store and quota enforcer session mocks
+        mock_state_store_session.return_value = mock_session_ctx
+        mock_quota_session.return_value = mock_session_ctx
+        mock_session.get = AsyncMock(return_value=None)
 
         # session.begin() returns a transaction context manager
         mock_transaction_ctx = MagicMock()

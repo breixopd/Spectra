@@ -259,13 +259,20 @@ class TestEnforceApiRateLimit:
         from app.api.dependencies import enforce_api_rate_limit
 
         user = _make_user()
+        mock_enforcer = MagicMock()
+        mock_enforcer.check_api_quota = AsyncMock(return_value=(True, ""))
         mock_tracker = MagicMock()
-        mock_tracker.check_rate_limit = AsyncMock(return_value=(True, 5, 100))
         mock_tracker.record_api_request = AsyncMock()
 
-        with patch(
-            "app.services.billing.usage_tracker.UsageTracker",
-            return_value=mock_tracker,
+        with (
+            patch(
+                "app.services.billing.quota_enforcer.QuotaEnforcer",
+                return_value=mock_enforcer,
+            ),
+            patch(
+                "app.services.billing.usage_tracker.UsageTracker",
+                return_value=mock_tracker,
+            ),
         ):
             result = await enforce_api_rate_limit(user=user)
 
@@ -277,13 +284,15 @@ class TestEnforceApiRateLimit:
         from app.api.dependencies import enforce_api_rate_limit
 
         user = _make_user()
-        mock_tracker = MagicMock()
-        mock_tracker.check_rate_limit = AsyncMock(return_value=(False, 100, 100))
+        mock_enforcer = MagicMock()
+        mock_enforcer.check_api_quota = AsyncMock(return_value=(False, "Hourly API limit reached: 100/100"))
+        mock_enforcer.seconds_until_api_reset = AsyncMock(return_value=1800)
 
         with patch(
-            "app.services.billing.usage_tracker.UsageTracker",
-            return_value=mock_tracker,
+            "app.services.billing.quota_enforcer.QuotaEnforcer",
+            return_value=mock_enforcer,
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await enforce_api_rate_limit(user=user)
             assert exc_info.value.status_code == 429
+            assert exc_info.value.headers["Retry-After"] == "1800"
