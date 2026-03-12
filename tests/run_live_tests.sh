@@ -66,7 +66,28 @@ curl -sf http://localhost:5000/api/health > /dev/null || {
     exit 1
 }
 
+# Support optional test filter: ./run_live_tests.sh [pytest-filter-expr]
+TEST_FILTER="${1:-}"
+TEST_PATH="tests/integration/test_live_targets.py"
+FILTER_ARGS=""
+if [ -n "$TEST_FILTER" ]; then
+    FILTER_ARGS="-k $TEST_FILTER"
+    echo "  Filter:   $TEST_FILTER"
+fi
+
 echo ""
 echo "Running live integration tests (timeout 600s per test)..."
 $COMPOSE run --rm --entrypoint sh test-runner -c \
-    "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && python3 -m pytest tests/integration/test_live_targets.py -v --timeout=600 --tb=short"
+    "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout pytest-cov httpx aiohttp aiosqlite && \
+     python3 -m pytest $TEST_PATH -v --timeout=600 --tb=short \
+     --cov=app --cov-report=term-missing --cov-report=html:reports/coverage/live \
+     $FILTER_ARGS" 
+EXIT_CODE=$?
+
+echo ""
+if [ $EXIT_CODE -eq 0 ]; then
+    echo "=== All live integration tests PASSED ==="
+else
+    echo "=== Live integration tests FAILED (exit code: $EXIT_CODE) ==="
+fi
+exit $EXIT_CODE

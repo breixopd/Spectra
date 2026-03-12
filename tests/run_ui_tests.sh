@@ -4,9 +4,18 @@ set -euo pipefail
 COMPOSE_FILE="docker/docker-compose.test.yml"
 
 echo "=== Spectra UI Tests ==="
+
+# Support optional test filter: ./run_ui_tests.sh [additional-args]
 echo "Starting test environment..."
 
 cd "$(dirname "$0")/.."
+
+cleanup() {
+    echo ""
+    echo "Tearing down test services..."
+    docker compose -f "$COMPOSE_FILE" down -v --remove-orphans 2>/dev/null || true
+}
+trap cleanup EXIT
 
 # Start services
 docker compose -f "$COMPOSE_FILE" up -d --force-recreate db app
@@ -38,5 +47,11 @@ except urllib.error.HTTPError as exc:
 echo "Running UI tests..."
 docker compose -f "$COMPOSE_FILE" build ui-test-runner
 docker compose -f "$COMPOSE_FILE" run --rm ui-test-runner "$@"
+EXIT_CODE=$?
 
-echo "=== Done ==="
+if [ $EXIT_CODE -eq 0 ]; then
+    echo "=== All UI tests PASSED ==="
+else
+    echo "=== UI tests FAILED (exit code: $EXIT_CODE) ==="
+fi
+exit $EXIT_CODE

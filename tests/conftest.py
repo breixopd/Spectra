@@ -204,3 +204,67 @@ def mock_llm():
 def test_target_ip():
     """Return a test target IP."""
     return "192.168.1.100"
+
+
+# ---------------------------------------------------------------------------
+# Mock factories
+# ---------------------------------------------------------------------------
+
+
+def make_mock_user(
+    *,
+    username: str = "testuser",
+    email: str = "test@spectra.dev",
+    role: str = "admin",
+    is_active: bool = True,
+    is_superuser: bool = True,
+    user_id: str | None = None,
+) -> MagicMock:
+    """Create a mock User object for test fixtures.
+
+    Returns a MagicMock matching the User model interface so it can be
+    injected via dependency overrides without touching the database.
+    """
+    from uuid import uuid4
+
+    user = MagicMock()
+    user.id = user_id or str(uuid4())
+    user.username = username
+    user.email = email
+    user.role = role
+    user.is_active = is_active
+    user.is_superuser = is_superuser
+    user.plan_id = None
+    return user
+
+
+def make_mock_mission(
+    *,
+    mission_id: str | None = None,
+    target: str = "192.168.1.100",
+    directive: str = "Full security assessment",
+    status: str = "created",
+) -> MagicMock:
+    """Create a mock Mission object for test fixtures."""
+    from uuid import uuid4
+
+    m = MagicMock()
+    m.id = mission_id or str(uuid4())
+    m.target = target
+    m.directive = directive
+    m.status = status
+    m.logs = []
+    m.findings = []
+    m.tools_run = []
+    m.tool_executions = []
+    m.report_path = None
+    m.attack_surface = None
+    m.plan = None
+    m.user_id = None
+    return m
+
+
+@pytest.fixture
+def mock_user():
+    """Provide a ready-made mock admin user."""
+    return make_mock_user()
