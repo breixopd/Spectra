@@ -93,6 +93,15 @@ class CommandToolAdapter(ToolAdapter):
 
         return max(exec_config.min_timeout, min(calculated, exec_config.max_timeout))
 
+    @staticmethod
+    def _save_raw_output(output_dir: Path, stdout: str, stderr: str) -> None:
+        """Persist raw stdout/stderr alongside parsed results."""
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if stdout:
+            _write_file_safe(output_dir / "raw_stdout.txt", stdout)
+        if stderr:
+            _write_file_safe(output_dir / "raw_stderr.txt", stderr)
+
     async def execute(
         self,
         request: ToolExecutionRequest,
@@ -131,6 +140,10 @@ class CommandToolAdapter(ToolAdapter):
             stdout = stdout_bytes.decode("utf-8", errors="replace")
             stderr = stderr_bytes.decode("utf-8", errors="replace")
 
+            # Save raw output alongside parsed results for audit trail
+            if output_dir:
+                self._save_raw_output(Path(output_dir), stdout, stderr)
+
             parsed: list = []
             try:
                 parsed = await self.parser.parse_output(
@@ -139,7 +152,14 @@ class CommandToolAdapter(ToolAdapter):
                     str(Path(output_dir) / f"{self.config.id}_output") if output_dir else None,
                 )
             except Exception as e:
-                logger.warning("Failed to parse tool output: %s", e)
+                logger.warning(
+                    "Failed to parse %s output (exit=%s, stdout_len=%d, stderr_len=%d): %s",
+                    self.config.id,
+                    proc.returncode,
+                    len(stdout),
+                    len(stderr),
+                    e,
+                )
 
             success = proc.returncode == 0
             await record_tool_execution(
@@ -184,3 +204,12 @@ class CommandToolAdapter(ToolAdapter):
 def create_adapter(config: ToolConfig) -> ToolAdapter:
     """Create a tool adapter from a configuration."""
     return CommandToolAdapter(config)
+
+
+def _write_file_safe(path: Path, content: str, max_size: int = 5 * 1024 * 1024) -> None:
+    """Write content to a file, truncating if it exceeds max_size."""
+    try:
+        truncated = content[:max_size]
+        path.write_text(truncated, encoding="utf-8")
+    except OSError as e:
+        logger.debug("Failed to save raw output to %s: %s", path, e)

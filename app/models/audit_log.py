@@ -25,6 +25,7 @@ class AuditEventType(StrEnum):
     API_KEY_CREATED = "API_KEY_CREATED"
     API_KEY_REVOKED = "API_KEY_REVOKED"
     PLAN_CHANGED = "PLAN_CHANGED"
+    TOOL_EXECUTED = "TOOL_EXECUTED"
 
 
 class AuditLog(Base):
