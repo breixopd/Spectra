@@ -30,7 +30,10 @@ class AuditEventType(StrEnum):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
-    __table_args__ = (Index("ix_audit_logs_user_id_created_at", "user_id", "created_at"),)
+    __table_args__ = (
+        Index("ix_audit_logs_user_id_created_at", "user_id", "created_at"),
+        Index("ix_audit_logs_created_at", "created_at"),
+    )
 
     user_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
