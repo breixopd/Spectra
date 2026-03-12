@@ -52,7 +52,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         for key, value in headers.items():
             response.headers[key] = value
 
-        # CSP - all assets served locally for air-gapped support
+        # CSP - all assets served locally (no external CDN dependencies)
         if not request.url.path.startswith("/api/"):
             # Restrict WebSocket connect-src to the app's own host
             host = request.headers.get("host", "localhost")

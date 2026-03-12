@@ -1,9 +1,10 @@
-"""Admin audit log and dashboard statistics endpoints."""
+"""Admin audit log, dashboard statistics, and LLM usage endpoints."""
 
 from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -12,10 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.schemas import PaginatedResponse
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
+from app.core.telemetry import telemetry
 from app.models.audit_log import AuditLog
 from app.models.mission import Mission
 from app.models.plan import Plan
 from app.models.user import User
+from app.services.ai.cost_tracker import get_cost_trackers
 
 logger = logging.getLogger("spectra.admin")
 
@@ -110,4 +113,44 @@ async def admin_stats(
         "total_audit_events": total_audit_events,
         "role_counts": role_counts,
         "service_topology": topology,
+    }
+
+
+@router.get("/api/admin/usage")
+async def admin_usage(
+    _user: User = require_permission(Permission.MANAGE_USERS),
+) -> dict[str, Any]:
+    """Return aggregated LLM usage stats from active cost trackers."""
+    trackers = get_cost_trackers()
+    saas = telemetry.get_saas_metrics()
+
+    missions: list[dict[str, Any]] = []
+    grand_tokens = 0
+    grand_cost = 0.0
+    grand_calls = 0
+
+    for _mid, tracker in trackers.items():
+        summary = tracker.get_summary()
+        grand_tokens += summary["total_tokens"]
+        grand_cost += summary["total_cost_usd"]
+        grand_calls += summary["total_calls"]
+
+        for agent_name, agent_data in summary.get("by_agent", {}).items():
+            missions.append({
+                "mission_id": summary["mission_id"],
+                "agent_name": agent_name,
+                "role": agent_data["role"],
+                "calls": agent_data["calls"],
+                "tokens": agent_data["tokens"],
+                "cost_usd": agent_data["cost_usd"],
+                "avg_latency_ms": agent_data["avg_latency_ms"],
+                "errors": agent_data["errors"],
+            })
+
+    return {
+        "total_calls": grand_calls,
+        "total_tokens": grand_tokens,
+        "total_cost_usd": round(grand_cost, 6),
+        "active_missions": saas.get("missions", {}).get("started", 0),
+        "by_agent": missions,
     }

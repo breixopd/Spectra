@@ -4,7 +4,7 @@ CVE Intelligence Service.
 Provides up-to-date CVE awareness for agents:
 1. Live fetching from NVD API 2.0 (free, no auth required)
 2. Local JSON cache with configurable TTL (default 24h)
-3. Built-in fallback database for offline/air-gapped operation
+3. Built-in fallback database for API downtime resilience
 4. Version-to-CVE correlation for discovered services
 
 Agents get real CVE data instead of hallucinating IDs.

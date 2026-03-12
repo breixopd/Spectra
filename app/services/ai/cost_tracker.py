@@ -9,6 +9,15 @@ from typing import Any
 
 logger = logging.getLogger("spectra.ai.cost")
 
+# Global registry of active cost trackers keyed by mission_id
+_cost_trackers: dict[str, CostTracker] = {}
+
+
+def get_cost_trackers() -> dict[str, CostTracker]:
+    """Return the global registry of active cost trackers."""
+    return _cost_trackers
+
+
 # Approximate pricing per 1M tokens (input/output) by model prefix
 MODEL_PRICING: dict[str, tuple[float, float]] = {
     # (input_per_1M, output_per_1M)
@@ -120,6 +129,14 @@ class CostTracker:
                 for name, u in self._usage.items()
             },
         }
+
+    def register(self) -> None:
+        """Register this tracker in the global registry."""
+        _cost_trackers[self.mission_id] = self
+
+    def unregister(self) -> None:
+        """Remove this tracker from the global registry."""
+        _cost_trackers.pop(self.mission_id, None)
 
     def get_agent_usage(self, agent_name: str) -> AgentUsage | None:
         """Get usage for a specific agent."""
