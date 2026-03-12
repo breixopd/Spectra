@@ -7,7 +7,7 @@ import pytest
 from app.core.websocket import ConnectionManager
 
 
-class TestEnum(StrEnum):
+class _TestEnum(StrEnum):
     TEST = "test"
 
 
@@ -20,7 +20,7 @@ async def test_broadcast_event_serialization():
     complex_data = {
         "id": uuid.uuid4(),
         "timestamp": datetime.now(),
-        "status": TestEnum.TEST,
+        "status": _TestEnum.TEST,
         "nested": {"id": uuid.uuid4()},
     }
 
