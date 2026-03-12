@@ -293,8 +293,29 @@ class PlaybookEngine:
         except Exception as e:
             logger.warning("Failed to load exploit patterns: %s", e)
 
+    async def load_patterns_from_db(self) -> None:
+        """Load exploit patterns from DB cache (call after init in async context).
+
+        If DB has patterns, they replace the filesystem-loaded ones.
+        If DB is empty but filesystem patterns exist, import them into DB.
+        """
+        try:
+            from app.core.constants import CACHE_NS_PLAYBOOK
+            from app.services.cache import CacheService
+
+            cached = await CacheService.get(CACHE_NS_PLAYBOOK, "exploit_patterns")
+            if cached:
+                data = json.loads(cached)
+                self.exploit_patterns = [ExploitPattern(**p) for p in data]
+                logger.info("Loaded %d exploit patterns from DB", len(self.exploit_patterns))
+            elif self.exploit_patterns:
+                # Import filesystem patterns to DB
+                await self._save_patterns_to_db()
+        except Exception as e:
+            logger.debug("Failed to load patterns from DB: %s", e)
+
     def _save_patterns(self) -> None:
-        """Atomically persist exploit patterns to disk."""
+        """Atomically persist exploit patterns to disk and schedule DB save."""
         tmp = self._PATTERNS_FILE.with_suffix(".tmp")
         try:
             self._PATTERNS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -308,6 +329,28 @@ class PlaybookEngine:
             logger.warning("Failed to save exploit patterns: %s", e)
             if tmp.exists():
                 tmp.unlink()
+
+        # Schedule async DB save if event loop is running
+        try:
+            import asyncio
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._save_patterns_to_db())
+        except RuntimeError:
+            pass  # No event loop running
+
+    async def _save_patterns_to_db(self) -> None:
+        """Persist exploit patterns to DB cache."""
+        try:
+            from app.core.constants import CACHE_NS_PLAYBOOK, CACHE_TTL_PLAYBOOK_HOURS
+            from app.services.cache import CacheService
+
+            data = json.dumps(
+                [p.model_dump() for p in self.exploit_patterns],
+                default=str,
+            )
+            await CacheService.set(CACHE_NS_PLAYBOOK, "exploit_patterns", data, ttl_hours=CACHE_TTL_PLAYBOOK_HOURS)
+        except Exception as e:
+            logger.debug("Failed to save patterns to DB: %s", e)
 
     def _load_custom(self, directory: Path) -> None:
         """Load custom playbooks from a directory."""

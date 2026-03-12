@@ -20,12 +20,14 @@ from typing import Any
 
 import httpx
 
+from app.core.constants import CACHE_NS_CVE_INTEL, CACHE_TTL_CVE_HOURS
+
 logger = logging.getLogger("spectra.ai.cve_intel")
 
 # NVD API configuration
 NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 NVD_RATE_LIMIT_DELAY = 6.5  # seconds between requests (5 req / 30s limit)
-CVE_CACHE_DIR = Path("data/cache/cve_cache")
+CVE_CACHE_DIR = Path("data/cache/cve_cache")  # filesystem fallback only
 CVE_CACHE_TTL = 86400  # 24 hours
 
 
@@ -92,7 +94,7 @@ async def fetch_cves_from_nvd(
     global _last_nvd_request
 
     # Check cache first
-    cached = _load_cache(keyword)
+    cached = await _load_cache(keyword)
     if cached is not None:
         return cached
 
@@ -171,7 +173,7 @@ async def fetch_cves_from_nvd(
             })
 
         # Cache results
-        _save_cache(keyword, results)
+        await _save_cache(keyword, results)
 
         logger.info("Fetched %d CVEs from NVD for '%s'", len(results), keyword)
         return results
@@ -216,40 +218,75 @@ def _infer_vuln_type(description: str) -> str:
 # =============================================================================
 
 
+def _cache_key(keyword: str) -> str:
+    """Get cache key for a keyword."""
+    return keyword.lower().replace(" ", "_").replace("/", "_")[:50]
+
+
 def _cache_path(keyword: str) -> Path:
-    """Get cache file path for a keyword."""
-    safe_name = keyword.lower().replace(" ", "_").replace("/", "_")[:50]
-    return CVE_CACHE_DIR / f"{safe_name}.json"
+    """Get filesystem cache file path for a keyword (fallback only)."""
+    return CVE_CACHE_DIR / f"{_cache_key(keyword)}.json"
 
 
-def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
-    """Load cached CVE results if still fresh."""
+async def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
+    """Load cached CVE results if still fresh (DB first, filesystem fallback)."""
+    key = _cache_key(keyword)
+
+    # 1. Try DB cache
+    try:
+        from app.services.cache import CacheService
+        raw = await CacheService.get(CACHE_NS_CVE_INTEL, key)
+        if raw is not None:
+            data = json.loads(raw)
+            return data.get("results", [])
+    except Exception:
+        pass
+
+    # 2. Filesystem fallback
     path = _cache_path(keyword)
     if not path.exists():
         return None
-
     try:
         data = json.loads(path.read_text())
         cached_at = data.get("cached_at", 0)
         if time.time() - cached_at > CVE_CACHE_TTL:
             return None
-        return data.get("results", [])
+        results = data.get("results", [])
+        # Migrate to DB
+        try:
+            from app.services.cache import CacheService
+            await CacheService.set(
+                CACHE_NS_CVE_INTEL, key,
+                json.dumps({"keyword": keyword, "cached_at": cached_at, "results": results}),
+                ttl_hours=CACHE_TTL_CVE_HOURS,
+            )
+        except Exception:
+            pass
+        return results
     except Exception:
         return None
 
 
-def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
-    """Save CVE results to cache."""
-    CVE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    path = _cache_path(keyword)
+async def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
+    """Save CVE results to DB cache."""
+    key = _cache_key(keyword)
+    payload = json.dumps({
+        "keyword": keyword,
+        "cached_at": time.time(),
+        "results": results,
+    })
     try:
-        path.write_text(json.dumps({
-            "keyword": keyword,
-            "cached_at": time.time(),
-            "results": results,
-        }, indent=2))
+        from app.services.cache import CacheService
+        await CacheService.set(CACHE_NS_CVE_INTEL, key, payload, ttl_hours=CACHE_TTL_CVE_HOURS)
     except Exception as e:
-        logger.debug("Failed to cache CVEs: %s", e)
+        logger.debug("Failed to cache CVEs to DB: %s", e)
+        # Fallback to filesystem
+        CVE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        path = _cache_path(keyword)
+        try:
+            path.write_text(payload)
+        except Exception as fe:
+            logger.debug("Failed to cache CVEs to filesystem: %s", fe)
 
 
 # =============================================================================
