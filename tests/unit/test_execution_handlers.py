@@ -46,7 +46,7 @@ class TestGetKnownTools:
     def test_fallback_set_is_correct(self):
         """Verify the hardcoded fallback set has the expected tools."""
         # Directly test the fallback path by making get_registry raise
-        import app.services.tools.registry as reg_mod
+        import app.services.tools.registry.registry as reg_mod
         original = reg_mod._registry_instance
         try:
             reg_mod._registry_instance = None

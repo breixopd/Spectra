@@ -257,7 +257,7 @@ class TestSavePlugin:
     async def test_writes_to_disk(self, registry, tmp_path):
         config = _make_config("new-tool", name="New Tool")
 
-        with patch("app.services.tools.registry.aiofiles.open") as mock_aiofiles:
+        with patch("app.services.tools.registry.registry.aiofiles.open") as mock_aiofiles:
             mock_file = AsyncMock()
             mock_aiofiles.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aiofiles.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -283,7 +283,7 @@ class TestSavePlugin:
         reg = ToolRegistry(plugins_dir=nested_dir, safe_mode=False)
         config = _make_config("test-tool")
 
-        with patch("app.services.tools.registry.aiofiles.open") as mock_aiofiles:
+        with patch("app.services.tools.registry.registry.aiofiles.open") as mock_aiofiles:
             mock_file = AsyncMock()
             mock_aiofiles.return_value.__aenter__ = AsyncMock(return_value=mock_file)
             mock_aiofiles.return_value.__aexit__ = AsyncMock(return_value=False)

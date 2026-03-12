@@ -157,36 +157,44 @@ class TestCVECache:
         path = _cache_path("test keyword/special")
         assert "/" not in path.name or str(path).endswith(".json")
 
-    def test_save_and_load_cache(self, tmp_path):
+    @pytest.mark.asyncio
+    async def test_save_and_load_cache(self, tmp_path):
         results = [{"cve": "CVE-2021-1234", "severity": "high"}]
-        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path):
-            _save_cache("test_keyword", results)
-            loaded = _load_cache("test_keyword")
+        mock_cs = MagicMock(get=AsyncMock(side_effect=Exception("no db")), set=AsyncMock(side_effect=Exception("no db")))
+        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path), patch("app.services.cache.CacheService", mock_cs):
+            await _save_cache("test_keyword", results)
+            loaded = await _load_cache("test_keyword")
             assert loaded is not None
             assert len(loaded) == 1
             assert loaded[0]["cve"] == "CVE-2021-1234"
 
-    def test_load_expired_cache(self, tmp_path):
-        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path):
-            _save_cache("old_keyword", [{"cve": "CVE-2020-0001"}])
+    @pytest.mark.asyncio
+    async def test_load_expired_cache(self, tmp_path):
+        mock_cs = MagicMock(get=AsyncMock(side_effect=Exception("no db")), set=AsyncMock(side_effect=Exception("no db")))
+        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path), patch("app.services.cache.CacheService", mock_cs):
+            await _save_cache("old_keyword", [{"cve": "CVE-2020-0001"}])
             # Make it expired
             cache_file = tmp_path / "old_keyword.json"
             data = json.loads(cache_file.read_text())
             data["cached_at"] = time.time() - CVE_CACHE_TTL - 100
             cache_file.write_text(json.dumps(data))
 
-            loaded = _load_cache("old_keyword")
+            loaded = await _load_cache("old_keyword")
             assert loaded is None
 
-    def test_load_missing_cache(self, tmp_path):
-        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path):
-            assert _load_cache("nonexistent") is None
+    @pytest.mark.asyncio
+    async def test_load_missing_cache(self, tmp_path):
+        mock_cs = MagicMock(get=AsyncMock(side_effect=Exception("no db")))
+        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path), patch("app.services.cache.CacheService", mock_cs):
+            assert await _load_cache("nonexistent") is None
 
-    def test_load_corrupt_cache(self, tmp_path):
-        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path):
+    @pytest.mark.asyncio
+    async def test_load_corrupt_cache(self, tmp_path):
+        mock_cs = MagicMock(get=AsyncMock(side_effect=Exception("no db")))
+        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path), patch("app.services.cache.CacheService", mock_cs):
             bad_file = tmp_path / "corrupt.json"
             bad_file.write_text("not json{{{")
-            assert _load_cache("corrupt") is None
+            assert await _load_cache("corrupt") is None
 
 
 class TestFetchCVEsFromNVD:
