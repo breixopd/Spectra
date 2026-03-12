@@ -270,9 +270,7 @@ class TestActionValidation:
         from app.services.ai.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
-        action = AgentAction(
-            action_type="test", confidence=0.5, reasoning="ok"
-        )
+        action = AgentAction(action_type="test", confidence=0.5, reasoning="ok")
         valid, err = await agent.validate_action(action)
         assert valid is True
         assert err is None
@@ -282,9 +280,7 @@ class TestActionValidation:
         from app.services.ai.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
-        action = AgentAction(
-            action_type="test", confidence=0.2, reasoning="low"
-        )
+        action = AgentAction(action_type="test", confidence=0.2, reasoning="low")
         valid, err = await agent.validate_action(action)
         assert valid is False
         assert "Confidence too low" in err
@@ -369,21 +365,21 @@ class TestLLMGenerateHelpers:
     async def test_llm_generate_structured_returns_model(self):
         from app.services.ai.agents.scope import ScopeAction, ScopeAgent
 
-        mock_llm = MockLLMClient(structured_responses={
-            "ScopeAction": {
-                "action_type": "define_scope",
-                "confidence": 0.9,
-                "risk_level": "low",
-                "reasoning": "test",
-                "targets": [],
-                "total_hosts": 0,
-                "warnings": [],
+        mock_llm = MockLLMClient(
+            structured_responses={
+                "ScopeAction": {
+                    "action_type": "define_scope",
+                    "confidence": 0.9,
+                    "risk_level": "low",
+                    "reasoning": "test",
+                    "targets": [],
+                    "total_hosts": 0,
+                    "warnings": [],
+                }
             }
-        })
-        agent = ScopeAgent(mock_llm)
-        result = await agent._llm_generate_structured(
-            prompt="test", response_model=ScopeAction
         )
+        agent = ScopeAgent(mock_llm)
+        result = await agent._llm_generate_structured(prompt="test", response_model=ScopeAction)
         assert isinstance(result, ScopeAction)
 
 
@@ -483,22 +479,26 @@ class TestDebriefAgentExecute:
     async def test_execute_returns_result(self):
         from app.services.ai.agents.debrief import DebriefAgent, DebriefInput
 
-        agent = DebriefAgent(MockLLMClient(structured_responses={
-            "DebriefOutput": {
-                "action_type": "debrief",
-                "confidence": 0.8,
-                "risk_level": "medium",
-                "reasoning": "mock debrief",
-                "executive_summary": "Test summary",
-                "what_worked": ["nmap"],
-                "what_failed": [],
-                "human_comparison": "n/a",
-                "remediation_priorities": [],
-                "lessons_learned": [],
-                "risk_rating": "medium",
-                "next_steps": [],
-            }
-        }))
+        agent = DebriefAgent(
+            MockLLMClient(
+                structured_responses={
+                    "DebriefOutput": {
+                        "action_type": "debrief",
+                        "confidence": 0.8,
+                        "risk_level": "medium",
+                        "reasoning": "mock debrief",
+                        "executive_summary": "Test summary",
+                        "what_worked": ["nmap"],
+                        "what_failed": [],
+                        "human_comparison": "n/a",
+                        "remediation_priorities": [],
+                        "lessons_learned": [],
+                        "risk_rating": "medium",
+                        "next_steps": [],
+                    }
+                }
+            )
+        )
         ctx = _make_context()
         inp = DebriefInput(
             target="10.0.0.1",

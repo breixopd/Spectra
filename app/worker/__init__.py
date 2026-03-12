@@ -48,15 +48,29 @@ logger = logging.getLogger("spectra.worker")
 
 logger.info(
     "Worker module loaded: %d job functions registered",
-    len([
-        execute_tool_job, install_tool_job, uninstall_tool_job,
-        install_all_tools_job, reload_plugins_job, get_tool_status_job,
-        sync_all_status_job, run_command_job, execute_script_job,
-        vpn_connect_job, vpn_disconnect_job, vpn_status_job, vpn_test_job,
-        run_all_cleanup, send_webhook_notification,
-        send_mission_completion_notification, send_critical_finding_alert,
-        generate_mission_report, generate_executive_summary,
-    ]),
+    len(
+        [
+            execute_tool_job,
+            install_tool_job,
+            uninstall_tool_job,
+            install_all_tools_job,
+            reload_plugins_job,
+            get_tool_status_job,
+            sync_all_status_job,
+            run_command_job,
+            execute_script_job,
+            vpn_connect_job,
+            vpn_disconnect_job,
+            vpn_status_job,
+            vpn_test_job,
+            run_all_cleanup,
+            send_webhook_notification,
+            send_mission_completion_notification,
+            send_critical_finding_alert,
+            generate_mission_report,
+            generate_executive_summary,
+        ]
+    ),
 )
 
 _WORKER_FUNCTIONS = [

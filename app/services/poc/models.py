@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+
 class POCMetadata(BaseModel):
     """Metadata for a custom POC."""
 

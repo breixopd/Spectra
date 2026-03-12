@@ -19,9 +19,7 @@ class SystemConfig(Base):
 
     __tablename__ = "system_config"
 
-    key: Mapped[str] = mapped_column(
-        String(50), unique=True, index=True, nullable=False
-    )
+    key: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     value: Mapped[str] = mapped_column(Text, nullable=True)
     description: Mapped[str] = mapped_column(String(255), nullable=True)
     is_secret: Mapped[bool] = mapped_column(default=False)

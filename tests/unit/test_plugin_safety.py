@@ -51,9 +51,7 @@ def registry(tmp_path, keys):
     plugins_dir = tmp_path / "plugins"
     plugins_dir.mkdir()
 
-    return ToolRegistry(
-        plugins_dir=plugins_dir, public_key_path=keys[1], safe_mode=True
-    )
+    return ToolRegistry(plugins_dir=plugins_dir, public_key_path=keys[1], safe_mode=True)
 
 
 def sign_data(data: dict, key_path: Path) -> str:
@@ -64,9 +62,7 @@ def sign_data(data: dict, key_path: Path) -> str:
     if not isinstance(private_key, Ed25519PrivateKey):
         raise TypeError(f"Expected Ed25519 private key, got {type(private_key)}")
 
-    canonical_json = json.dumps(data, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    canonical_json = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
     return private_key.sign(canonical_json).hex()
 

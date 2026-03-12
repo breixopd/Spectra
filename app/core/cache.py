@@ -153,18 +153,22 @@ class CacheService:
                 # Use dialect-aware upsert: PostgreSQL ON CONFLICT, SQLite fallback
                 dialect = session.bind.dialect.name if session.bind else "postgresql"
                 if dialect == "postgresql":
-                    stmt = pg_insert(CacheEntry).values(
-                        key=key,
-                        value=json_value,
-                        expires_at=expires_at,
-                        created_at=now,
-                    ).on_conflict_do_update(
-                        index_elements=["key"],
-                        set_={
-                            "value": json_value,
-                            "expires_at": expires_at,
-                            "created_at": now,
-                        },
+                    stmt = (
+                        pg_insert(CacheEntry)
+                        .values(
+                            key=key,
+                            value=json_value,
+                            expires_at=expires_at,
+                            created_at=now,
+                        )
+                        .on_conflict_do_update(
+                            index_elements=["key"],
+                            set_={
+                                "value": json_value,
+                                "expires_at": expires_at,
+                                "created_at": now,
+                            },
+                        )
                     )
                     await session.execute(stmt)
                 else:
@@ -174,12 +178,14 @@ class CacheService:
                         existing.expires_at = expires_at
                         existing.created_at = now
                     else:
-                        session.add(CacheEntry(
-                            key=key,
-                            value=json_value,
-                            expires_at=expires_at,
-                            created_at=now,
-                        ))
+                        session.add(
+                            CacheEntry(
+                                key=key,
+                                value=json_value,
+                                expires_at=expires_at,
+                                created_at=now,
+                            )
+                        )
                 await session.commit()
             self._stats["sets"] += 1
             return True
@@ -257,9 +263,13 @@ class CacheService:
         try:
             async with self._session_maker() as session:
                 now = _now()
-                stmt = select(func.count()).select_from(CacheEntry).where(
-                    CacheEntry.key == key,
-                    (CacheEntry.expires_at.is_(None)) | (CacheEntry.expires_at > now),
+                stmt = (
+                    select(func.count())
+                    .select_from(CacheEntry)
+                    .where(
+                        CacheEntry.key == key,
+                        (CacheEntry.expires_at.is_(None)) | (CacheEntry.expires_at > now),
+                    )
                 )
                 result = await session.execute(stmt)
                 return result.scalar_one() > 0

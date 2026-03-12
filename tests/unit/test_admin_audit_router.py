@@ -164,9 +164,7 @@ class TestAdminStats:
         _override_deps(app, user, mock_session)
 
         transport = ASGITransport(app=app)
-        with patch(
-            "app.services.gateway.service_registry.get_service_registry"
-        ) as mock_reg:
+        with patch("app.services.gateway.service_registry.get_service_registry") as mock_reg:
             mock_reg.return_value.get_service_topology.return_value = {}
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
                 resp = await ac.get("/api/admin/stats")

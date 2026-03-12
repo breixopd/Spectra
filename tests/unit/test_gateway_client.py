@@ -28,24 +28,30 @@ class TestGatewayClientRequest:
         mock.assert_awaited_once()
 
     async def test_retries_on_connection_error_then_succeeds(self, client: GatewayClient):
-        with patch.object(client, "_do_request", new_callable=AsyncMock) as mock, \
-             patch("app.services.gateway.http_client.asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch.object(client, "_do_request", new_callable=AsyncMock) as mock,
+            patch("app.services.gateway.http_client.asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock.side_effect = [aiohttp.ClientConnectionError("fail"), {"ok": True}]
             result = await client.get("/test")
         assert result == {"ok": True}
         assert mock.await_count == 2
 
     async def test_retries_on_timeout_then_succeeds(self, client: GatewayClient):
-        with patch.object(client, "_do_request", new_callable=AsyncMock) as mock, \
-             patch("app.services.gateway.http_client.asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch.object(client, "_do_request", new_callable=AsyncMock) as mock,
+            patch("app.services.gateway.http_client.asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock.side_effect = [TimeoutError(), TimeoutError(), {"ok": True}]
             result = await client.get("/test")
         assert result == {"ok": True}
         assert mock.await_count == 3
 
     async def test_gives_up_after_max_retries(self, client: GatewayClient):
-        with patch.object(client, "_do_request", new_callable=AsyncMock) as mock, \
-             patch("app.services.gateway.http_client.asyncio.sleep", new_callable=AsyncMock):
+        with (
+            patch.object(client, "_do_request", new_callable=AsyncMock) as mock,
+            patch("app.services.gateway.http_client.asyncio.sleep", new_callable=AsyncMock),
+        ):
             mock.side_effect = aiohttp.ClientConnectionError("fail")
             with pytest.raises(aiohttp.ClientConnectionError):
                 await client.get("/test")

@@ -44,6 +44,7 @@ async def periodic_cleanup_loop() -> None:
         try:
             await asyncio.sleep(_SYSTEM_CLEANUP_INTERVAL)
             from app.worker.cleanup_jobs import run_all_cleanup
+
             await run_all_cleanup()
         except asyncio.CancelledError:
             logger.info("System cleanup task stopped")
@@ -88,9 +89,7 @@ async def sandbox_watchdog_loop() -> None:
                 continue
 
             async with async_session_maker() as session:
-                result = await session.execute(
-                    select(Sandbox).where(Sandbox.status == "running")
-                )
+                result = await session.execute(select(Sandbox).where(Sandbox.status == "running"))
                 sandboxes = list(result.scalars().all())
 
             now = datetime.now(UTC)
@@ -107,7 +106,9 @@ async def sandbox_watchdog_loop() -> None:
                 if idle_seconds > settings.SANDBOX_IDLE_TIMEOUT:
                     logger.warning(
                         "Watchdog: reaping stale sandbox %s (mission=%s, idle=%.0fs)",
-                        sb.container_name, sb.mission_id[:8], idle_seconds,
+                        sb.container_name,
+                        sb.mission_id[:8],
+                        idle_seconds,
                     )
                     await pool.destroy(sb.mission_id)
 
@@ -125,11 +126,15 @@ async def set_system_status(status: str, message: str) -> None:
 
         cache = get_cache()
         if cache:
-            await cache.set("spectra:system:status", {
-                "status": status,
-                "message": message,
-                "timestamp": datetime.now().isoformat(),
-            }, ttl=3600)
+            await cache.set(
+                "spectra:system:status",
+                {
+                    "status": status,
+                    "message": message,
+                    "timestamp": datetime.now().isoformat(),
+                },
+                ttl=3600,
+            )
     except Exception as e:
         logger.debug("Failed to set system status: %s", e)
 

@@ -128,7 +128,10 @@ async def get_cost_summary(
         for agent_name, agent_info in cost_data.get("by_agent", {}).items():
             if agent_name not in by_agent:
                 by_agent[agent_name] = {
-                    "calls": 0, "tokens": 0, "cost_usd": 0.0, "errors": 0,
+                    "calls": 0,
+                    "tokens": 0,
+                    "cost_usd": 0.0,
+                    "errors": 0,
                 }
             by_agent[agent_name]["calls"] += agent_info.get("calls", 0)
             by_agent[agent_name]["tokens"] += agent_info.get("tokens", 0)
@@ -144,17 +147,12 @@ async def get_cost_summary(
         "total_cost_usd": round(total_cost, 6),
         "total_tokens": total_tokens,
         "total_calls": total_calls,
-        "missions_with_cost_data": sum(
-            1 for m in rows if (m.summary or {}).get("cost_data")
-        ),
+        "missions_with_cost_data": sum(1 for m in rows if (m.summary or {}).get("cost_data")),
         "by_agent": {
             name: {k: round(v, 6) if isinstance(v, float) else v for k, v in info.items()}
             for name, info in by_agent.items()
         },
-        "daily_costs": [
-            {"date": d, "cost_usd": round(c, 6)}
-            for d, c in sorted(daily_costs.items())
-        ],
+        "daily_costs": [{"date": d, "cost_usd": round(c, 6)} for d, c in sorted(daily_costs.items())],
     }
 
 

@@ -33,6 +33,7 @@ def _user_wordlists_dir(user: User) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     return d
 
+
 PRESET_WORDLISTS = {
     "common-web-paths": {
         "name": "Common Web Paths",
@@ -82,14 +83,16 @@ async def list_wordlists(
                     lines = sum(1 for _ in fh)
             except Exception as e:
                 logger.debug("Failed to count wordlist lines: %s", e)
-            system.append({
-                "name": f.stem.replace("-", " ").replace("_", " ").title(),
-                "filename": f.name,
-                "size_bytes": f.stat().st_size,
-                "lines": lines,
-                "path": str(f),
-                "scope": "system",
-            })
+            system.append(
+                {
+                    "name": f.stem.replace("-", " ").replace("_", " ").title(),
+                    "filename": f.name,
+                    "size_bytes": f.stat().st_size,
+                    "lines": lines,
+                    "path": str(f),
+                    "scope": "system",
+                }
+            )
 
     # Per-user wordlists
     user_dir = _user_wordlists_dir(_current_user)
@@ -102,14 +105,16 @@ async def list_wordlists(
                     lines = sum(1 for _ in fh)
             except Exception as e:
                 logger.debug("Failed to count wordlist lines: %s", e)
-            user_local.append({
-                "name": f.stem.replace("-", " ").replace("_", " ").title(),
-                "filename": f.name,
-                "size_bytes": f.stat().st_size,
-                "lines": lines,
-                "path": str(f),
-                "scope": "user",
-            })
+            user_local.append(
+                {
+                    "name": f.stem.replace("-", " ").replace("_", " ").title(),
+                    "filename": f.name,
+                    "size_bytes": f.stat().st_size,
+                    "lines": lines,
+                    "path": str(f),
+                    "scope": "user",
+                }
+            )
 
     presets = []
     for key, preset in PRESET_WORDLISTS.items():
@@ -163,6 +168,7 @@ async def download_preset(
 
     try:
         import httpx
+
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(preset["url"])
             resp.raise_for_status()

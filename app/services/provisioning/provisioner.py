@@ -19,6 +19,7 @@ logger = logging.getLogger("spectra.provisioning")
 @dataclass
 class ServerConfig:
     """Connection details for a remote server."""
+
     host: str
     port: int = 22
     username: str = "root"
@@ -32,6 +33,7 @@ class ServerConfig:
 @dataclass
 class ProvisioningResult:
     """Result of a provisioning operation."""
+
     success: bool
     server_host: str
     service_type: str
@@ -99,7 +101,11 @@ class ServerProvisioner:
 
                         if ssh_result.returncode != 0:  # type: ignore[operator]
                             if step.required:
-                                err_msg = ssh_result.stderr.strip() if ssh_result.stderr else f"Exit code {ssh_result.returncode}"
+                                err_msg = (
+                                    ssh_result.stderr.strip()
+                                    if ssh_result.stderr
+                                    else f"Exit code {ssh_result.returncode}"
+                                )
                                 result.error = f"Step '{step.name}' failed: {err_msg}"
                                 result.logs.append(f"FAILED: {result.error}")
                                 return result
@@ -177,7 +183,9 @@ class ServerProvisioner:
         """Remove Spectra service from a remote server."""
         logger.info("Starting deprovision: host=%s service=%s", config.host, config.service_type)
         result = ProvisioningResult(
-            success=False, server_host=config.host, service_type=config.service_type,
+            success=False,
+            server_host=config.host,
+            service_type=config.service_type,
         )
 
         conn_kwargs = self._build_conn_kwargs(config)
@@ -239,7 +247,7 @@ class ServerProvisioner:
         """Format environment variables for docker command, safely quoted."""
         parts = []
         for key, value in env.items():
-            if not key.replace('_', '').isalnum():
+            if not key.replace("_", "").isalnum():
                 logger.warning("Skipping invalid env var key: %s", key)
                 continue
             parts.append(f"-e {shlex.quote(f'{key}={value}')}")

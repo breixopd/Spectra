@@ -1,6 +1,5 @@
 """Tests for app.core.rbac module."""
 
-
 from app.core.rbac import ROLE_PERMISSIONS, Permission, has_permission
 
 
@@ -11,10 +10,18 @@ class TestPermissionEnum:
 
     def test_expected_permissions_exist(self):
         expected = {
-            "view_missions", "create_missions", "manage_missions",
-            "view_findings", "manage_findings", "view_targets",
-            "manage_targets", "use_tools", "view_reports",
-            "manage_settings", "manage_users", "view_audit_log",
+            "view_missions",
+            "create_missions",
+            "manage_missions",
+            "view_findings",
+            "manage_findings",
+            "view_targets",
+            "manage_targets",
+            "use_tools",
+            "view_reports",
+            "manage_settings",
+            "manage_users",
+            "view_audit_log",
             "shell_access",
         }
         actual = {p.value for p in Permission}

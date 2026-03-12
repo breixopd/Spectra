@@ -9,6 +9,7 @@ from fastapi import HTTPException
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_user(
     *,
     username="testuser",
@@ -39,6 +40,7 @@ def _make_plan(*, max_concurrent_missions=None, max_targets=None, features=None)
 # get_current_active_user
 # ---------------------------------------------------------------------------
 
+
 class TestGetCurrentActiveUser:
     @pytest.mark.asyncio
     async def test_active_user_passes(self):
@@ -62,6 +64,7 @@ class TestGetCurrentActiveUser:
 # get_current_superuser
 # ---------------------------------------------------------------------------
 
+
 class TestGetCurrentSuperuser:
     @pytest.mark.asyncio
     async def test_superuser_passes(self):
@@ -84,6 +87,7 @@ class TestGetCurrentSuperuser:
 # ---------------------------------------------------------------------------
 # check_mission_limit
 # ---------------------------------------------------------------------------
+
 
 class TestCheckMissionLimit:
     @pytest.mark.asyncio
@@ -145,6 +149,7 @@ class TestCheckMissionLimit:
 # check_target_limit
 # ---------------------------------------------------------------------------
 
+
 class TestCheckTargetLimit:
     @pytest.mark.asyncio
     async def test_admin_bypasses(self):
@@ -194,6 +199,7 @@ class TestCheckTargetLimit:
 # check_feature_allowed
 # ---------------------------------------------------------------------------
 
+
 class TestCheckFeatureAllowed:
     @pytest.mark.asyncio
     async def test_admin_bypasses(self):
@@ -237,6 +243,7 @@ class TestCheckFeatureAllowed:
 # ---------------------------------------------------------------------------
 # enforce_api_rate_limit
 # ---------------------------------------------------------------------------
+
 
 class TestEnforceApiRateLimit:
     @pytest.mark.asyncio

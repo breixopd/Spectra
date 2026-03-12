@@ -106,7 +106,11 @@ class MockLLMClient(LLMClient):
             enum_vals = prop_info.get("enum")
             if not enum_vals:
                 # Check $ref to enum definition
-                ref = prop_info.get("$ref") or prop_info.get("allOf", [{}])[0].get("$ref") if prop_info.get("allOf") else None
+                ref = (
+                    prop_info.get("$ref") or prop_info.get("allOf", [{}])[0].get("$ref")
+                    if prop_info.get("allOf")
+                    else None
+                )
                 if ref and isinstance(ref, str):
                     ref_name = ref.split("/")[-1]
                     ref_def = defs.get(ref_name, {})
@@ -170,8 +174,15 @@ class PentestMockLLMClient(MockLLMClient):
         task_type: str | None = None,
     ) -> LLMResponse:
         """Return context-aware pentest mock responses."""
-        self.call_history.append({"prompt": prompt, "system_prompt": system_prompt,
-                                  "temperature": temperature, "max_tokens": max_tokens, "timeout": timeout})
+        self.call_history.append(
+            {
+                "prompt": prompt,
+                "system_prompt": system_prompt,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "timeout": timeout,
+            }
+        )
         self._call_count += 1
 
         content = self._get_pentest_response(prompt, system_prompt or "")
@@ -194,9 +205,16 @@ class PentestMockLLMClient(MockLLMClient):
         task_type: str | None = None,
     ) -> T:
         """Return realistic structured responses for pentest models."""
-        self.call_history.append({"prompt": prompt, "system_prompt": system_prompt,
-                                  "response_model": response_model.__name__,
-                                  "temperature": temperature, "max_tokens": max_tokens, "timeout": timeout})
+        self.call_history.append(
+            {
+                "prompt": prompt,
+                "system_prompt": system_prompt,
+                "response_model": response_model.__name__,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "timeout": timeout,
+            }
+        )
         self._call_count += 1
 
         model_name = response_model.__name__
@@ -222,34 +240,48 @@ class PentestMockLLMClient(MockLLMClient):
         if "scope" in prompt_lower or "target" in prompt_lower:
             return "Target is in scope. Proceeding with reconnaissance."
         elif "nmap" in prompt_lower or "scan" in prompt_lower:
-            return ("Based on the scan results, the target has open ports 22 (SSH), 80 (HTTP), "
-                    "and 443 (HTTPS). The HTTP server appears to be Apache with PHP enabled. "
-                    "Recommend running nikto and dirb/dirsearch for web enumeration.")
+            return (
+                "Based on the scan results, the target has open ports 22 (SSH), 80 (HTTP), "
+                "and 443 (HTTPS). The HTTP server appears to be Apache with PHP enabled. "
+                "Recommend running nikto and dirb/dirsearch for web enumeration."
+            )
         elif "vulnerability" in prompt_lower or "vuln" in prompt_lower:
-            return ("Several vulnerabilities identified: 1) Apache server version disclosure (Info), "
-                    "2) phpinfo() page exposed at /info.php (Medium), 3) Directory listing enabled (Low), "
-                    "4) Backup configuration file at /backup/config.bak containing credentials (High), "
-                    "5) Default admin credentials on /admin/ (Critical)")
+            return (
+                "Several vulnerabilities identified: 1) Apache server version disclosure (Info), "
+                "2) phpinfo() page exposed at /info.php (Medium), 3) Directory listing enabled (Low), "
+                "4) Backup configuration file at /backup/config.bak containing credentials (High), "
+                "5) Default admin credentials on /admin/ (Critical)"
+            )
         elif "exploit" in prompt_lower:
-            return ("Recommend testing default credentials on admin panel (admin:admin123). "
-                    "Also check the backup config file for database credentials. "
-                    "For SSH, test weak credentials (root:toor).")
+            return (
+                "Recommend testing default credentials on admin panel (admin:admin123). "
+                "Also check the backup config file for database credentials. "
+                "For SSH, test weak credentials (root:toor)."
+            )
         elif "report" in prompt_lower or "debrief" in prompt_lower:
-            return ("Assessment complete. Found 5 findings: 1 Critical (default credentials), "
-                    "1 High (credential exposure), 1 Medium (information disclosure), "
-                    "2 Low (config issues). Recommend immediate password changes and removing exposed files.")
+            return (
+                "Assessment complete. Found 5 findings: 1 Critical (default credentials), "
+                "1 High (credential exposure), 1 Medium (information disclosure), "
+                "2 Low (config issues). Recommend immediate password changes and removing exposed files."
+            )
         elif "safety" in prompt_lower or "approve" in prompt_lower:
             return "Action is within scope and poses no risk to availability. Approved."
         elif "tool" in prompt_lower or "select" in prompt_lower or "recommend" in prompt_lower:
-            return ("Recommend running: 1) nmap for port discovery, 2) whatweb for technology fingerprinting, "
-                    "3) nikto for web vulnerability scanning, 4) dirsearch for directory enumeration")
+            return (
+                "Recommend running: 1) nmap for port discovery, 2) whatweb for technology fingerprinting, "
+                "3) nikto for web vulnerability scanning, 4) dirsearch for directory enumeration"
+            )
         elif "analyze" in prompt_lower or "result" in prompt_lower or "output" in prompt_lower:
-            return ("Analysis of tool output shows multiple interesting findings. Open ports detected. "
-                    "Web technologies identified. Several potential vulnerabilities found that warrant "
-                    "further investigation.")
+            return (
+                "Analysis of tool output shows multiple interesting findings. Open ports detected. "
+                "Web technologies identified. Several potential vulnerabilities found that warrant "
+                "further investigation."
+            )
         else:
-            return ("Proceeding with the next phase of the assessment. Current findings suggest "
-                    "the target has several areas of concern that need further investigation.")
+            return (
+                "Proceeding with the next phase of the assessment. Current findings suggest "
+                "the target has several areas of concern that need further investigation."
+            )
 
     def _get_pentest_structured(self, model_name: str, prompt: str) -> dict | None:
         """Return pentest-aware structured data for known models."""

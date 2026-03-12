@@ -493,17 +493,11 @@ class TestAttackSurface:
     def test_get_summary(self, attack_surface):
         """get_summary should return correct counts."""
         # Add services
-        attack_surface.services.append(
-            DiscoveredService(host="192.168.1.1", port=22, service="ssh")
-        )
-        attack_surface.services.append(
-            DiscoveredService(host="192.168.1.1", port=80, service="http")
-        )
+        attack_surface.services.append(DiscoveredService(host="192.168.1.1", port=22, service="ssh"))
+        attack_surface.services.append(DiscoveredService(host="192.168.1.1", port=80, service="http"))
 
         # Add vulnerabilities
-        attack_surface.vulnerabilities.append(
-            Vulnerability(id="v1", title="Test Vuln", severity="high")
-        )
+        attack_surface.vulnerabilities.append(Vulnerability(id="v1", title="Test Vuln", severity="high"))
 
         # Add vectors
         attack_surface.add_vector(

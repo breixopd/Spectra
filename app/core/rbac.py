@@ -81,10 +81,10 @@ def require_permission(permission: Permission):
         current_user: User = Depends(get_current_active_user),
     ) -> User:
         if not has_permission(current_user.role, permission):
-            logger.warning("Permission denied user=%s role=%s perm=%s", current_user.username, current_user.role, permission)
-            raise HTTPException(
-                status_code=403, detail="Insufficient permissions"
+            logger.warning(
+                "Permission denied user=%s role=%s perm=%s", current_user.username, current_user.role, permission
             )
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
         return current_user
 
     return Depends(dependency)

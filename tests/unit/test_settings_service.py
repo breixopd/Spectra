@@ -30,6 +30,7 @@ def _break_circular_import():
 
 def _mod():
     from app.services.system import settings_service
+
     return settings_service
 
 
@@ -169,9 +170,11 @@ class TestApplySettingsUpdate:
         db = AsyncMock()
         db.commit = AsyncMock()
 
-        with patch("app.services.system.settings_service.upsert_system_config_values") as mock_upsert, \
-             patch("app.services.system.settings_service.hydrate_runtime_settings_from_db") as mock_hydrate, \
-             patch("app.services.system.settings_service.settings") as mock_settings:
+        with (
+            patch("app.services.system.settings_service.upsert_system_config_values") as mock_upsert,
+            patch("app.services.system.settings_service.hydrate_runtime_settings_from_db") as mock_hydrate,
+            patch("app.services.system.settings_service.settings") as mock_settings,
+        ):
             mock_settings.save_runtime_settings = MagicMock()
             result = await apply_settings_update(data, db)
 

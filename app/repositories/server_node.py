@@ -21,17 +21,11 @@ class ServerNodeRepository(BaseRepository[ServerNode]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_by_service_type(
-        self, service_type: str, skip: int = 0, limit: int = 100
-    ) -> Sequence[ServerNode]:
+    async def get_by_service_type(self, service_type: str, skip: int = 0, limit: int = 100) -> Sequence[ServerNode]:
         """Get all nodes providing a given service type."""
-        return await self.find_many_by(
-            service_type=service_type, skip=skip, limit=limit
-        )
+        return await self.find_many_by(service_type=service_type, skip=skip, limit=limit)
 
-    async def get_active_nodes(
-        self, service_type: str | None = None
-    ) -> Sequence[ServerNode]:
+    async def get_active_nodes(self, service_type: str | None = None) -> Sequence[ServerNode]:
         """Get active (healthy) nodes, optionally filtered by service type."""
         stmt = select(self.model).where(self.model.is_active.is_(True))
         if service_type:

@@ -55,9 +55,7 @@ async def test_stealth_mode_enforcement(tool_selector, mock_nmap_tool):
     # We test the internal method directly or we'd need to mock the registry
     # Let's test _apply_stealth_settings directly
 
-    overridden_args = tool_selector._apply_stealth_settings(
-        mock_nmap_tool, aggressive_args
-    )
+    overridden_args = tool_selector._apply_stealth_settings(mock_nmap_tool, aggressive_args)
 
     # Assertions
     assert overridden_args["-T"] == "1"  # Should be forced to 1 (Paranoid)

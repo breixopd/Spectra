@@ -22,16 +22,12 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
     from app.services.ai.llm import get_global_llm_client
 
     async with async_session_maker() as session:
-        mission_result = await session.execute(
-            select(Mission).where(Mission.id == mission_id)
-        )
+        mission_result = await session.execute(select(Mission).where(Mission.id == mission_id))
         mission = mission_result.scalar_one_or_none()
         if not mission:
             raise ValueError(f"Mission {mission_id} not found")
 
-        findings_result = await session.execute(
-            select(Finding).where(Finding.mission_id == mission_id)
-        )
+        findings_result = await session.execute(select(Finding).where(Finding.mission_id == mission_id))
         findings = [
             {
                 "title": getattr(f, "title", ""),
@@ -75,16 +71,12 @@ async def generate_executive_summary(mission_id: str) -> str:
     from app.services.ai.llm import get_global_llm_client
 
     async with async_session_maker() as session:
-        mission_result = await session.execute(
-            select(Mission).where(Mission.id == mission_id)
-        )
+        mission_result = await session.execute(select(Mission).where(Mission.id == mission_id))
         mission = mission_result.scalar_one_or_none()
         if not mission:
             raise ValueError(f"Mission {mission_id} not found")
 
-        findings_result = await session.execute(
-            select(Finding).where(Finding.mission_id == mission_id)
-        )
+        findings_result = await session.execute(select(Finding).where(Finding.mission_id == mission_id))
         findings = [
             {
                 "title": getattr(f, "title", ""),

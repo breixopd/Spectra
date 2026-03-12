@@ -40,9 +40,7 @@ class TestStorageServiceInit:
     def test_lazy_import_not_called_in_local_mode(self):
         with patch("app.services.storage.service.settings") as mock_settings:
             mock_settings.S3_ENDPOINT_URL = ""
-            with patch(
-                "app.services.storage.service._import_s3_deps"
-            ) as mock_import:
+            with patch("app.services.storage.service._import_s3_deps") as mock_import:
                 import app.services.storage.service as svc_mod
 
                 svc_mod.StorageService()

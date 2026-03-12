@@ -35,6 +35,7 @@ class SandboxPool:
         self._client: Any = None  # docker.DockerClient
         try:
             import docker
+
             self._client = docker.from_env()
             self._client.ping()
             self.available = True
@@ -53,7 +54,14 @@ class SandboxPool:
         tier = tiers[tier_name]
         return tier["memory"], tier["cpu_shares"]
 
-    async def create(self, mission_id: str, *, resource_tier: str = "medium", vpn_config_path: str | None = None, user_id: str | None = None) -> SandboxInfo:
+    async def create(
+        self,
+        mission_id: str,
+        *,
+        resource_tier: str = "medium",
+        vpn_config_path: str | None = None,
+        user_id: str | None = None,
+    ) -> SandboxInfo:
         """Create a new sandbox container for a mission.
 
         Raises:
@@ -130,6 +138,7 @@ class SandboxPool:
 
         # Mount plugins from host if bind-mounted, otherwise use app working dir
         import pathlib
+
         app_root = pathlib.Path(__file__).resolve().parents[4]
         plugins_dir = app_root / "plugins"
         if plugins_dir.is_dir():
@@ -140,7 +149,9 @@ class SandboxPool:
         # Mount VPN config if provided
         if vpn_config_path:
             mounts.append(
-                docker.types.Mount(target="/app/vpn_configs/mission.conf", source=vpn_config_path, type="bind", read_only=True)
+                docker.types.Mount(
+                    target="/app/vpn_configs/mission.conf", source=vpn_config_path, type="bind", read_only=True
+                )
             )
 
         # Create isolated network if enabled
@@ -219,7 +230,10 @@ class SandboxPool:
             )
             logger.info(
                 "Sandbox created: %s (queue=%s, mission=%s, isolated=%s)",
-                container_name, queue_name, mission_id[:8], bool(sandbox_network_id),
+                container_name,
+                queue_name,
+                mission_id[:8],
+                bool(sandbox_network_id),
             )
             return info
 
@@ -235,9 +249,7 @@ class SandboxPool:
             # Mark DB row as error
             async with async_session_maker() as session:
                 await session.execute(
-                    update(Sandbox)
-                    .where(Sandbox.id == sandbox_id)
-                    .values(status="error", error=str(exc)[:500])
+                    update(Sandbox).where(Sandbox.id == sandbox_id).values(status="error", error=str(exc)[:500])
                 )
                 await session.commit()
             logger.error("Failed to create sandbox for mission %s: %s", mission_id[:8], exc)
@@ -266,9 +278,7 @@ class SandboxPool:
 
         async with async_session_maker() as session:
             await session.execute(
-                update(Sandbox)
-                .where(Sandbox.id == row.id)
-                .values(status="destroyed", destroyed_at=datetime.now(UTC))
+                update(Sandbox).where(Sandbox.id == row.id).values(status="destroyed", destroyed_at=datetime.now(UTC))
             )
             await session.commit()
 
@@ -305,18 +315,16 @@ class SandboxPool:
 
         if self.available:
             try:
-                containers = self._client.containers.list(
-                    all=True, filters={"label": "spectra.sandbox=true"}
-                )
+                containers = self._client.containers.list(all=True, filters={"label": "spectra.sandbox=true"})
                 for c in containers:
                     try:
                         c.stop(timeout=5)
                     except Exception:
-                        logger.debug("Failed to stop container %s during cleanup", getattr(c, 'name', 'unknown'))
+                        logger.debug("Failed to stop container %s during cleanup", getattr(c, "name", "unknown"))
                     try:
                         c.remove(force=True)
                     except Exception:
-                        logger.debug("Failed to remove container %s during cleanup", getattr(c, 'name', 'unknown'))
+                        logger.debug("Failed to remove container %s during cleanup", getattr(c, "name", "unknown"))
                     count += 1
 
                 # Clean up orphaned sandbox networks
@@ -325,7 +333,7 @@ class SandboxPool:
                     try:
                         net.remove()
                     except Exception:
-                        logger.debug("Failed to remove orphaned network %s", getattr(net, 'name', 'unknown'))
+                        logger.debug("Failed to remove orphaned network %s", getattr(net, "name", "unknown"))
                 if networks:
                     logger.info("Cleaned up %d orphaned sandbox networks", len(networks))
             except (APIError, DockerException) as exc:
@@ -353,9 +361,7 @@ class SandboxPool:
             return result
 
         async with async_session_maker() as session:
-            rows = await session.execute(
-                select(Sandbox).where(Sandbox.status == "running")
-            )
+            rows = await session.execute(select(Sandbox).where(Sandbox.status == "running"))
             running = list(rows.scalars().all())
 
         now = datetime.now(UTC)
@@ -367,7 +373,9 @@ class SandboxPool:
                 reason = "expired" if alive else "dead"
                 logger.warning(
                     "Reaping sandbox %s (mission=%s, reason=%s)",
-                    row.container_name, row.mission_id[:8], reason,
+                    row.container_name,
+                    row.mission_id[:8],
+                    reason,
                 )
                 await self.destroy(row.mission_id)
                 result["sandboxes"][row.mission_id] = reason
@@ -381,9 +389,7 @@ class SandboxPool:
     async def _count_running(self) -> int:
         """Count sandboxes in running or creating state."""
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(Sandbox).where(Sandbox.status.in_(["creating", "running"]))
-            )
+            result = await session.execute(select(Sandbox).where(Sandbox.status.in_(["creating", "running"])))
             return len(list(result.scalars().all()))
 
     def _is_container_alive(self, container_id: str) -> bool:
@@ -430,7 +436,12 @@ class SandboxPool:
                     try:
                         net.disconnect(cid, force=True)
                     except Exception:
-                        logger.debug("Failed to disconnect container %s from network %s", cid[:12], network_id[:12], exc_info=True)
+                        logger.debug(
+                            "Failed to disconnect container %s from network %s",
+                            cid[:12],
+                            network_id[:12],
+                            exc_info=True,
+                        )
                 net.remove()
                 logger.info("Removed isolated network %s (sandbox=%s)", network_id[:12], sandbox_name)
             except Exception as exc:

@@ -54,9 +54,7 @@ async def get_observability_stats(
 @router.get("/traces")
 async def get_traces(
     limit: int = Query(default=100, ge=1, le=500, description="Max traces to return"),
-    status: str | None = Query(
-        default=None, pattern="^(ok|error)$", description="Filter by status"
-    ),
+    status: str | None = Query(default=None, pattern="^(ok|error)$", description="Filter by status"),
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get recent traces with optional filtering."""
@@ -149,16 +147,11 @@ async def get_cache_stats(
 @router.get("/events")
 async def get_events(
     limit: int = Query(default=100, ge=1, le=500, description="Max events to return"),
-    event_type: str | None = Query(
-        default=None, max_length=50, description="Filter by event type"
-    ),
+    event_type: str | None = Query(default=None, max_length=50, description="Filter by event type"),
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get recent events."""
-    return [
-        e.to_dict()
-        for e in events.get_history(event_type=event_type, limit=min(limit, 500))
-    ]
+    return [e.to_dict() for e in events.get_history(event_type=event_type, limit=min(limit, 500))]
 
 
 @router.get("/events/stats")

@@ -30,7 +30,8 @@ PENTEST_PRINCIPLES = """
 # Base Agent
 # =============================================================================
 
-BASE_SYSTEM_PROMPT = """You are {name}, an AI agent in the Spectra autonomous pentesting platform.
+BASE_SYSTEM_PROMPT = (
+    """You are {name}, an AI agent in the Spectra autonomous pentesting platform.
 
 Your role: {description}
 
@@ -39,8 +40,11 @@ Context:
 - Target: {target}
 - Phase: {phase}
 - Mission: {mission}
-""" + PENTEST_PRINCIPLES + """
+"""
+    + PENTEST_PRINCIPLES
+    + """
 Respond ONLY with valid JSON matching the required schema."""
+)
 
 # =============================================================================
 # Mission Controller

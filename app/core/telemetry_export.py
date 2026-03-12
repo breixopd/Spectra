@@ -138,9 +138,7 @@ def get_all_metrics(
         labels = _parse_labels(label_str)
         if name not in families:
             desc = METRIC_DESCRIPTIONS.get(name, "")
-            families[name] = MetricFamily(
-                name=name, description=desc, type="counter"
-            )
+            families[name] = MetricFamily(name=name, description=desc, type="counter")
         families[name].samples.append(Sample(labels=labels, value=value))
 
     # Gauges
@@ -149,9 +147,7 @@ def get_all_metrics(
         labels = _parse_labels(label_str)
         if name not in families:
             desc = METRIC_DESCRIPTIONS.get(name, "")
-            families[name] = MetricFamily(
-                name=name, description=desc, type="gauge"
-            )
+            families[name] = MetricFamily(name=name, description=desc, type="gauge")
         families[name].samples.append(Sample(labels=labels, value=value))
 
     # Histograms → emitted as "summary" (quantiles + _count + _sum)
@@ -165,9 +161,7 @@ def get_all_metrics(
 
         if name not in families:
             desc = METRIC_DESCRIPTIONS.get(name, "")
-            families[name] = MetricFamily(
-                name=name, description=desc, type="summary"
-            )
+            families[name] = MetricFamily(name=name, description=desc, type="summary")
 
         for q, q_label in ((0.5, "0.5"), (0.9, "0.9"), (0.99, "0.99")):
             idx = min(int(n * q), n - 1)
@@ -182,19 +176,11 @@ def get_all_metrics(
         count_name = f"{name}_count"
         sum_name = f"{name}_sum"
         if count_name not in families:
-            families[count_name] = MetricFamily(
-                name=count_name, description="", type="counter"
-            )
-        families[count_name].samples.append(
-            Sample(labels=labels, value=float(n))
-        )
+            families[count_name] = MetricFamily(name=count_name, description="", type="counter")
+        families[count_name].samples.append(Sample(labels=labels, value=float(n)))
         if sum_name not in families:
-            families[sum_name] = MetricFamily(
-                name=sum_name, description="", type="counter"
-            )
-        families[sum_name].samples.append(
-            Sample(labels=labels, value=round(sum(sorted_v), 4))
-        )
+            families[sum_name] = MetricFamily(name=sum_name, description="", type="counter")
+        families[sum_name].samples.append(Sample(labels=labels, value=round(sum(sorted_v), 4)))
 
     return list(families.values())
 
@@ -207,9 +193,7 @@ def export_otlp_format(
 ) -> dict[str, Any]:
     """Export metrics and traces in OTLP JSON-compatible format."""
     res_attrs = get_resource_attributes()
-    resource_attrs = [
-        {"key": k, "value": {"stringValue": v}} for k, v in res_attrs.items()
-    ]
+    resource_attrs = [{"key": k, "value": {"stringValue": v}} for k, v in res_attrs.items()]
     resource = {"attributes": resource_attrs}
     now_ns = int(datetime.now().timestamp() * 1e9)
 
@@ -218,48 +202,60 @@ def export_otlp_format(
 
     for key, value in counters.items():
         name = key.split(":")[0]
-        otlp_metrics.append({
-            "name": name,
-            "sum": {
-                "dataPoints": [{
-                    "asDouble": value,
-                    "timeUnixNano": str(now_ns),
-                    "isMonotonic": True,
-                    "aggregationTemporality": 2,
-                }],
-            },
-        })
+        otlp_metrics.append(
+            {
+                "name": name,
+                "sum": {
+                    "dataPoints": [
+                        {
+                            "asDouble": value,
+                            "timeUnixNano": str(now_ns),
+                            "isMonotonic": True,
+                            "aggregationTemporality": 2,
+                        }
+                    ],
+                },
+            }
+        )
 
     for key, values in histograms.items():
         name = key.split(":")[0]
         if not values:
             continue
         sorted_v = sorted(values)
-        otlp_metrics.append({
-            "name": name,
-            "histogram": {
-                "dataPoints": [{
-                    "count": str(len(sorted_v)),
-                    "sum": sum(sorted_v),
-                    "min": sorted_v[0],
-                    "max": sorted_v[-1],
-                    "timeUnixNano": str(now_ns),
-                    "aggregationTemporality": 2,
-                }],
-            },
-        })
+        otlp_metrics.append(
+            {
+                "name": name,
+                "histogram": {
+                    "dataPoints": [
+                        {
+                            "count": str(len(sorted_v)),
+                            "sum": sum(sorted_v),
+                            "min": sorted_v[0],
+                            "max": sorted_v[-1],
+                            "timeUnixNano": str(now_ns),
+                            "aggregationTemporality": 2,
+                        }
+                    ],
+                },
+            }
+        )
 
     for key, value in gauges.items():
         name = key.split(":")[0]
-        otlp_metrics.append({
-            "name": name,
-            "gauge": {
-                "dataPoints": [{
-                    "asDouble": value,
-                    "timeUnixNano": str(now_ns),
-                }],
-            },
-        })
+        otlp_metrics.append(
+            {
+                "name": name,
+                "gauge": {
+                    "dataPoints": [
+                        {
+                            "asDouble": value,
+                            "timeUnixNano": str(now_ns),
+                        }
+                    ],
+                },
+            }
+        )
 
     # --- traces ---
     otlp_spans: list[dict[str, Any]] = []
@@ -271,10 +267,7 @@ def export_otlp_format(
             "kind": 1,  # SPAN_KIND_INTERNAL
             "startTimeUnixNano": str(int(span.start_time.timestamp() * 1e9)),
             "status": {"code": 2 if span.status == "error" else 1},
-            "attributes": [
-                {"key": k, "value": {"stringValue": str(v)}}
-                for k, v in span.attributes.items()
-            ],
+            "attributes": [{"key": k, "value": {"stringValue": str(v)}} for k, v in span.attributes.items()],
         }
         if span.end_time:
             otlp_span["endTimeUnixNano"] = str(int(span.end_time.timestamp() * 1e9))
@@ -283,18 +276,26 @@ def export_otlp_format(
         otlp_spans.append(otlp_span)
 
     return {
-        "resourceMetrics": [{
-            "resource": resource,
-            "scopeMetrics": [{
-                "scope": {"name": "spectra.telemetry"},
-                "metrics": otlp_metrics,
-            }],
-        }],
-        "resourceSpans": [{
-            "resource": resource,
-            "scopeSpans": [{
-                "scope": {"name": "spectra.telemetry"},
-                "spans": otlp_spans,
-            }],
-        }],
+        "resourceMetrics": [
+            {
+                "resource": resource,
+                "scopeMetrics": [
+                    {
+                        "scope": {"name": "spectra.telemetry"},
+                        "metrics": otlp_metrics,
+                    }
+                ],
+            }
+        ],
+        "resourceSpans": [
+            {
+                "resource": resource,
+                "scopeSpans": [
+                    {
+                        "scope": {"name": "spectra.telemetry"},
+                        "spans": otlp_spans,
+                    }
+                ],
+            }
+        ],
     }

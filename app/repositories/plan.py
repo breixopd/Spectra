@@ -19,9 +19,7 @@ class PlanRepository(BaseRepository[Plan]):
         """Find a plan by its unique name."""
         return await self.find_one_by(name=name)
 
-    async def get_active_plans(
-        self, skip: int = 0, limit: int = 100
-    ) -> Sequence[Plan]:
+    async def get_active_plans(self, skip: int = 0, limit: int = 100) -> Sequence[Plan]:
         """Get all active plans ordered by sort_order."""
         stmt = (
             select(self.model)

@@ -11,11 +11,13 @@ class TestWarmPoolConfig:
 
     def test_warm_pool_enabled_default_false(self):
         from app.core.config import Settings
+
         s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
         assert s.SANDBOX_WARM_POOL_ENABLED is False
 
     def test_warm_pool_size_default(self):
         from app.core.config import Settings
+
         s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
         assert s.SANDBOX_WARM_POOL_SIZE == 2
 
@@ -25,15 +27,18 @@ class TestWarmPoolManager:
 
     def test_import(self):
         from app.services.tools.sandbox.warm_pool import WarmPoolManager
+
         assert WarmPoolManager is not None
 
     def test_constants(self):
         from app.services.tools.sandbox.warm_pool import WarmPoolManager
+
         assert WarmPoolManager.WARM_STATUS == "warm"
         assert WarmPoolManager.WARM_QUEUE_PREFIX == "warm_"
 
     def test_init_with_pool(self):
         from app.services.tools.sandbox.warm_pool import WarmPoolManager
+
         mock_pool = MagicMock()
         wm = WarmPoolManager(mock_pool)
         assert wm._pool is mock_pool
@@ -41,6 +46,7 @@ class TestWarmPoolManager:
     @pytest.mark.asyncio
     async def test_claim_returns_none_when_disabled(self):
         from app.services.tools.sandbox.warm_pool import WarmPoolManager
+
         mock_pool = MagicMock()
         wm = WarmPoolManager(mock_pool)
         with patch("app.services.tools.sandbox.warm_pool.get_settings") as mock_settings:
@@ -51,6 +57,7 @@ class TestWarmPoolManager:
     @pytest.mark.asyncio
     async def test_maintain_skips_when_disabled(self):
         from app.services.tools.sandbox.warm_pool import WarmPoolManager
+
         mock_pool = MagicMock(available=True)
         wm = WarmPoolManager(mock_pool)
         wm._spawn_warm_container = AsyncMock()
@@ -71,7 +78,9 @@ class TestWarmPoolManager:
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=None)
-        mock_session.execute = AsyncMock(return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[])))))
+        mock_session.execute = AsyncMock(
+            return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))))
+        )
         mock_session.commit = AsyncMock()
 
         with patch("app.services.tools.sandbox.warm_pool.async_session_maker", return_value=mock_session):
@@ -84,6 +93,7 @@ class TestWarmPoolSingleton:
 
     def test_get_set_warm_pool_manager(self):
         from app.services.tools.sandbox import get_warm_pool_manager, set_warm_pool_manager
+
         mock = MagicMock()
         set_warm_pool_manager(mock)  # type: ignore[arg-type]
         assert get_warm_pool_manager() is mock

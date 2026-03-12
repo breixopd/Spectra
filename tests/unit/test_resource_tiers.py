@@ -11,6 +11,7 @@ class TestGetTierLimits:
 
     def test_light_tier_returns_correct_limits(self):
         from app.services.tools.sandbox.pool import SandboxPool
+
         default_tiers = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
         with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=default_tiers)
@@ -20,6 +21,7 @@ class TestGetTierLimits:
 
     def test_heavy_tier_returns_correct_limits(self):
         from app.services.tools.sandbox.pool import SandboxPool
+
         default_tiers = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
         with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=default_tiers)
@@ -29,6 +31,7 @@ class TestGetTierLimits:
 
     def test_unknown_tier_falls_back_to_medium(self):
         from app.services.tools.sandbox.pool import SandboxPool
+
         default_tiers = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
         with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=default_tiers)
@@ -38,6 +41,7 @@ class TestGetTierLimits:
 
     def test_extreme_tier(self):
         from app.services.tools.sandbox.pool import SandboxPool
+
         default_tiers = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
         with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=default_tiers)
@@ -47,6 +51,7 @@ class TestGetTierLimits:
 
     def test_custom_tiers_from_settings(self):
         from app.services.tools.sandbox.pool import SandboxPool
+
         custom = '{"medium": {"memory": "16g", "cpu_shares": 4096}}'
         with patch("app.services.tools.sandbox.pool.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(SANDBOX_RESOURCE_TIERS=custom)
@@ -60,6 +65,7 @@ class TestPluginResourceTiers:
 
     def test_all_plugins_have_resources_field(self):
         from pathlib import Path
+
         plugins_dir = Path("plugins")
         if not plugins_dir.exists():
             pytest.skip("plugins directory not found")
@@ -70,6 +76,7 @@ class TestPluginResourceTiers:
 
     def test_all_plugin_tiers_are_valid(self):
         from pathlib import Path
+
         valid_tiers = {"light", "medium", "heavy", "extreme"}
         plugins_dir = Path("plugins")
         if not plugins_dir.exists():
@@ -86,17 +93,27 @@ class TestSandboxInfoResourceTier:
     def test_sandbox_info_has_resource_tier(self):
 
         from app.services.tools.sandbox.models import SandboxInfo
+
         info = SandboxInfo(
-            container_id="abc", container_name="test", mission_id="m1",
-            queue_name="q1", status="running", image="spectra-tools",
+            container_id="abc",
+            container_name="test",
+            mission_id="m1",
+            queue_name="q1",
+            status="running",
+            image="spectra-tools",
             resource_tier="heavy",
         )
         assert info.resource_tier == "heavy"
 
     def test_sandbox_info_default_resource_tier(self):
         from app.services.tools.sandbox.models import SandboxInfo
+
         info = SandboxInfo(
-            container_id="abc", container_name="test", mission_id="m1",
-            queue_name="q1", status="running", image="spectra-tools",
+            container_id="abc",
+            container_name="test",
+            mission_id="m1",
+            queue_name="q1",
+            status="running",
+            image="spectra-tools",
         )
         assert info.resource_tier == "medium"

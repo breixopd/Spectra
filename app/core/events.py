@@ -123,9 +123,7 @@ class EventBus:
             handler: Sync or async function to call when event fires
             critical: If True, exceptions in handler will be propagated
         """
-        event_name = (
-            event_type.value if isinstance(event_type, EventType) else event_type
-        )
+        event_name = event_type.value if isinstance(event_type, EventType) else event_type
 
         if event_name not in self._handlers:
             self._handlers[event_name] = []
@@ -139,15 +137,11 @@ class EventBus:
         handler: Callable,
     ) -> None:
         """Unsubscribe a handler from an event type."""
-        event_name = (
-            event_type.value if isinstance(event_type, EventType) else event_type
-        )
+        event_name = event_type.value if isinstance(event_type, EventType) else event_type
 
         if event_name in self._handlers:
             # Remove handler regardless of criticality
-            self._handlers[event_name] = [
-                h for h in self._handlers[event_name] if h[0] != handler
-            ]
+            self._handlers[event_name] = [h for h in self._handlers[event_name] if h[0] != handler]
             logger.debug("Unsubscribed handler from %s", event_name)
 
     async def emit(
@@ -164,9 +158,7 @@ class EventBus:
             source: Source component emitting the event
             **data: Event payload data
         """
-        event_name = (
-            event_type.value if isinstance(event_type, EventType) else event_type
-        )
+        event_name = event_type.value if isinstance(event_type, EventType) else event_type
 
         try:
             resolved_type = EventType(event_name)
@@ -194,9 +186,7 @@ class EventBus:
                 if asyncio.iscoroutine(result):
                     await result
             except Exception as e:
-                logger.error(
-                    "Event handler error for %s: %s", event_name, e, exc_info=True
-                )
+                logger.error("Event handler error for %s: %s", event_name, e, exc_info=True)
                 if critical:
                     raise
 
@@ -216,9 +206,7 @@ class EventBus:
             loop.create_task(self.emit(event_type, source, **data))
         except RuntimeError:
             # No running loop - skip async handlers
-            event_name = (
-                event_type.value if isinstance(event_type, EventType) else event_type
-            )
+            event_name = event_type.value if isinstance(event_type, EventType) else event_type
             logger.debug("Sync emit (no loop): %s", event_name)
 
     def get_history(
@@ -230,9 +218,7 @@ class EventBus:
         events = list(self._event_history)
 
         if event_type:
-            event_name = (
-                event_type.value if isinstance(event_type, EventType) else event_type
-            )
+            event_name = event_type.value if isinstance(event_type, EventType) else event_type
             events = [e for e in events if e.type.value == event_name]
 
         return events[-limit:]

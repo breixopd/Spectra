@@ -35,7 +35,9 @@ class WarmPoolManager:
         self._pool = pool  # SandboxPool instance
         self._maintain_lock = asyncio.Lock()
 
-    async def claim(self, mission_id: str, *, resource_tier: str = "medium", user_id: str | None = None) -> SandboxInfo | None:
+    async def claim(
+        self, mission_id: str, *, resource_tier: str = "medium", user_id: str | None = None
+    ) -> SandboxInfo | None:
         """Claim a warm container for a mission.
 
         Uses SELECT FOR UPDATE to prevent race conditions between concurrent claims.
@@ -50,10 +52,7 @@ class WarmPoolManager:
         async with async_session_maker() as session:
             # Atomically claim one warm container
             result = await session.execute(
-                select(Sandbox)
-                .where(Sandbox.status == self.WARM_STATUS)
-                .with_for_update(skip_locked=True)
-                .limit(1)
+                select(Sandbox).where(Sandbox.status == self.WARM_STATUS).with_for_update(skip_locked=True).limit(1)
             )
             warm = result.scalar_one_or_none()
 
@@ -105,7 +104,9 @@ class WarmPoolManager:
             if needed <= 0:
                 return
 
-            logger.info("Warm pool: %d/%d containers, spawning %d", current_warm, settings.SANDBOX_WARM_POOL_SIZE, needed)
+            logger.info(
+                "Warm pool: %d/%d containers, spawning %d", current_warm, settings.SANDBOX_WARM_POOL_SIZE, needed
+            )
 
             for _ in range(needed):
                 await self._spawn_warm_container()
@@ -114,9 +115,7 @@ class WarmPoolManager:
         """Remove all warm containers. Called on shutdown."""
         count = 0
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(Sandbox).where(Sandbox.status == self.WARM_STATUS)
-            )
+            result = await session.execute(select(Sandbox).where(Sandbox.status == self.WARM_STATUS))
             warm_containers = list(result.scalars().all())
 
         for sb in warm_containers:
@@ -175,6 +174,7 @@ class WarmPoolManager:
 
             # Minimal volume mounts for warm containers
             import docker.types
+
             mounts = [
                 docker.types.Mount(target="/app/data", source="spectra_data", type="volume"),
                 docker.types.Mount(target="/opt/spectra_tools", source="spectra_tools_data", type="volume"),
@@ -244,7 +244,5 @@ class WarmPoolManager:
     async def _count_warm(self) -> int:
         """Count containers in warm status."""
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(Sandbox).where(Sandbox.status == self.WARM_STATUS)
-            )
+            result = await session.execute(select(Sandbox).where(Sandbox.status == self.WARM_STATUS))
             return len(result.scalars().all())

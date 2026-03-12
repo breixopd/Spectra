@@ -71,9 +71,7 @@ class OngoingOperation(BaseModel):
 class SystemStatusResponse(BaseModel):
     """Complete system status response."""
 
-    status: str = Field(
-        description="Overall system status: ready, initializing, degraded, error"
-    )
+    status: str = Field(description="Overall system status: ready, initializing, degraded, error")
     message: str = Field(description="Human-readable status message for UI display")
     timestamp: str = Field(description="ISO timestamp of status check")
 
@@ -125,6 +123,7 @@ def _get_tool_cache_stats() -> dict[str, int]:
     """Get tool result cache statistics."""
     try:
         from app.core.optimizations import tool_cache
+
         return tool_cache.stats
     except Exception:
         return {"size": 0, "hits": 0, "misses": 0, "hit_rate_pct": 0}
@@ -235,9 +234,7 @@ async def get_safety_stats(
         blocked = 0
         flagged = 0
         for event in getattr(event_bus, "history", []):
-            etype = getattr(event, "type", "") or (
-                event.get("type", "") if isinstance(event, dict) else ""
-            )
+            etype = getattr(event, "type", "") or (event.get("type", "") if isinstance(event, dict) else "")
             if etype == "safety_check":
                 data = (
                     getattr(event, "data", {})
@@ -286,6 +283,7 @@ async def get_system_status(
 
     try:
         from app.services.storage import get_storage_service
+
         storage = get_storage_service()
         storage_health = await storage.health_check()
     except Exception as e:
@@ -346,6 +344,7 @@ async def get_system_status(
     rag_status = "unknown"
     try:
         from app.services.ai.rag import RAGService
+
         rag = RAGService()
         if rag.is_functional:
             rag_status = "healthy"
@@ -358,9 +357,7 @@ async def get_system_status(
 
     if tool_stats.installing > 0:
         setup_complete = False
-        setup_message = (
-            setup_message or f"Installing {tool_stats.installing} tool(s)..."
-        )
+        setup_message = setup_message or f"Installing {tool_stats.installing} tool(s)..."
 
     if overall_status == "ready" and setup_complete:
         message = "System is ready"

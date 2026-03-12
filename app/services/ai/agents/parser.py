@@ -103,15 +103,17 @@ class ParserAgent(Agent[ParserInput, ParserOutput]):
             )
 
             ctx = ContextManager(max_context_tokens=6000)
-            prompt = ctx.build([
-                ContextSection("task", task_text, Priority.CRITICAL),
-                ContextSection(
-                    "tool_output",
-                    f"**Tool Output:**\n```\n{tool_output}\n```",
-                    Priority.HIGH,
-                    max_tokens=4000,
-                ),
-            ])
+            prompt = ctx.build(
+                [
+                    ContextSection("task", task_text, Priority.CRITICAL),
+                    ContextSection(
+                        "tool_output",
+                        f"**Tool Output:**\n```\n{tool_output}\n```",
+                        Priority.HIGH,
+                        max_tokens=4000,
+                    ),
+                ]
+            )
 
             action = await self._llm_generate_structured(
                 prompt=prompt,

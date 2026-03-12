@@ -322,6 +322,6 @@ class TestRateLimitDecorator:
         from app.api.routers.findings import list_findings
 
         # slowapi wraps the function and adds _rate_limits
-        assert hasattr(list_findings, "__wrapped__") or hasattr(
-            list_findings, "_rate_limits"
-        ), "list_findings should have a rate-limit decorator"
+        assert hasattr(list_findings, "__wrapped__") or hasattr(list_findings, "_rate_limits"), (
+            "list_findings should have a rate-limit decorator"
+        )

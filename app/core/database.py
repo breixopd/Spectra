@@ -52,7 +52,9 @@ def _configure_database_url(url: str) -> tuple[str, dict]:
 
 db_url, connect_args = _configure_database_url(settings.DATABASE_URL.get_secret_value())
 
-logger.info("Configuring async engine pool_size=%d max_overflow=%d", settings.DATABASE_POOL_SIZE, settings.DATABASE_MAX_OVERFLOW)
+logger.info(
+    "Configuring async engine pool_size=%d max_overflow=%d", settings.DATABASE_POOL_SIZE, settings.DATABASE_MAX_OVERFLOW
+)
 
 
 engine = create_async_engine(

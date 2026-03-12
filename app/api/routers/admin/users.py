@@ -122,9 +122,7 @@ async def get_user(
     _user: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> UserAdminResponse:
-    row = (
-        await session.execute(select(User).where(User.id == user_id))
-    ).scalar_one_or_none()
+    row = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
     return UserAdminResponse(
@@ -149,11 +147,7 @@ async def create_user(
 ) -> UserAdminResponse:
     # Check uniqueness
     exists = (
-        await session.execute(
-            select(User.id).where(
-                or_(User.username == body.username, User.email == body.email)
-            )
-        )
+        await session.execute(select(User.id).where(or_(User.username == body.username, User.email == body.email)))
     ).scalar_one_or_none()
     if exists:
         raise HTTPException(status_code=409, detail="Username or email already taken")
@@ -201,9 +195,7 @@ async def update_user(
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> UserAdminResponse:
-    row = (
-        await session.execute(select(User).where(User.id == user_id))
-    ).scalar_one_or_none()
+    row = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -216,9 +208,7 @@ async def update_user(
         row.plan_id = body.plan_id or None
     if body.email is not None:
         dup = (
-            await session.execute(
-                select(User.id).where(User.email == body.email, User.id != user_id)
-            )
+            await session.execute(select(User.id).where(User.email == body.email, User.id != user_id))
         ).scalar_one_or_none()
         if dup:
             raise HTTPException(status_code=409, detail="Email already in use")
@@ -254,9 +244,7 @@ async def deactivate_user(
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
-    row = (
-        await session.execute(select(User).where(User.id == user_id))
-    ).scalar_one_or_none()
+    row = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
     if row.id == admin.id:
@@ -281,9 +269,7 @@ async def reset_password(
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
-    row = (
-        await session.execute(select(User).where(User.id == user_id))
-    ).scalar_one_or_none()
+    row = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
 

@@ -47,9 +47,7 @@ async def real_mission_manager():
     def new_init(self, llm, config=None):
         if config is None:
             # Use single voter for tests to avoid timeouts and consensus issues with small models
-            config = consensus.VotingConfig(
-                num_voters=1, k_threshold=1, min_confidence=0.5
-            )
+            config = consensus.VotingConfig(num_voters=1, k_threshold=1, min_confidence=0.5)
         original_init(self, llm, config)
 
     # Apply patch
@@ -112,6 +110,7 @@ def disable_rate_limiting_for_unit_tests(request):
         yield
         return
     from app.core.rate_limit import limiter
+
     original = limiter.enabled
     limiter.enabled = False
     yield

@@ -71,7 +71,9 @@ class TaskDispatcher:
         # Initialize sub-handler groups
         self._recon = ReconHandlers(tool_service, agents, self._broadcast_agent_state)
         self._exploit = ExploitHandlers(
-            tool_service, exploitation_manager, agents,
+            tool_service,
+            exploitation_manager,
+            agents,
             self._broadcast_agent_state,
             self._recon.handle_tool_selector,
         )
@@ -110,9 +112,7 @@ class TaskDispatcher:
             mission.log(f"Unknown agent type: {task.agent_type}")
             mission.task_tree.update_status(task_tree_id, TaskStatus.SKIPPED)
 
-    def _get_task_handler(
-        self, agent_type: str
-    ) -> Callable[[Mission, Task, AgentContext], Awaitable[None]] | None:
+    def _get_task_handler(self, agent_type: str) -> Callable[[Mission, Task, AgentContext], Awaitable[None]] | None:
         """Get the handler method for an agent type."""
         handlers = {
             "tool_selector": self._recon.handle_tool_selector,
@@ -156,10 +156,7 @@ class TaskDispatcher:
         if not rules:
             return False
 
-        phase_tool_count = sum(
-            1 for e in mission.tool_executions
-            if e.get("success", False)
-        )
+        phase_tool_count = sum(1 for e in mission.tool_executions if e.get("success", False))
 
         if phase_tool_count >= rules["max_tools"]:
             mission.log(f"Phase {current_phase}: max tools ({rules['max_tools']}) reached, transitioning")
@@ -182,13 +179,11 @@ class TaskDispatcher:
 
         max_failures = rules.get("max_failures")
         if max_failures:
-            failure_count = sum(
-                1 for e in mission.tool_executions
-                if not e.get("success", False)
-            )
+            failure_count = sum(1 for e in mission.tool_executions if not e.get("success", False))
             if failure_count >= max_failures:
                 mission.log(
-                    f"Phase {current_phase}: {failure_count} failures reached max ({max_failures}), transitioning")
+                    f"Phase {current_phase}: {failure_count} failures reached max ({max_failures}), transitioning"
+                )
                 return True
 
         return False
@@ -210,9 +205,7 @@ class TaskDispatcher:
                     version=finding.get("version"),
                 )
                 if context and "vector_generator" in self.agents:
-                    await self._generate_dynamic_vectors(
-                        mission, context, "service", svc.model_dump()
-                    )
+                    await self._generate_dynamic_vectors(mission, context, "service", svc.model_dump())
 
             if finding.get("severity") and finding.get("name"):
                 vuln = mission.add_vulnerability(
@@ -222,9 +215,7 @@ class TaskDispatcher:
                     cve_id=finding.get("cve_id"),
                 )
                 if context and "vector_generator" in self.agents:
-                    await self._generate_dynamic_vectors(
-                        mission, context, "vulnerability", vuln.model_dump()
-                    )
+                    await self._generate_dynamic_vectors(mission, context, "vulnerability", vuln.model_dump())
 
             if finding.get("url") and finding.get("technologies"):
                 app = mission.add_webapp(
@@ -232,9 +223,7 @@ class TaskDispatcher:
                     technologies=finding.get("technologies", []),
                 )
                 if context and "vector_generator" in self.agents:
-                    await self._generate_dynamic_vectors(
-                        mission, context, "webapp", app.model_dump()
-                    )
+                    await self._generate_dynamic_vectors(mission, context, "webapp", app.model_dump())
 
         except Exception as e:
             logger.warning("Failed to update attack surface: %s", e)

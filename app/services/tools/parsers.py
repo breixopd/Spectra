@@ -8,6 +8,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 def xml_to_dict(element: ET.Element) -> dict[str, Any]:
     """Convert an XML element's children into a dictionary.
 
@@ -65,15 +66,9 @@ def parse_nmap_xml(root: ET.Element) -> list[dict[str, Any]]:
                     "portid": port.get("portid", ""),
                     "protocol": port.get("protocol", ""),
                     "state": "open",
-                    "service": service_elem.get("name")
-                    if service_elem is not None
-                    else None,
-                    "product": service_elem.get("product")
-                    if service_elem is not None
-                    else None,
-                    "version": service_elem.get("version")
-                    if service_elem is not None
-                    else None,
+                    "service": service_elem.get("name") if service_elem is not None else None,
+                    "product": service_elem.get("product") if service_elem is not None else None,
+                    "version": service_elem.get("version") if service_elem is not None else None,
                 }
             )
 

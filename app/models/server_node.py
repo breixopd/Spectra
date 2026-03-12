@@ -16,6 +16,7 @@ logger = logging.getLogger("spectra.models.server_node")
 
 class ServerNode(Base):
     """Tracks registered server nodes across the infrastructure."""
+
     __tablename__ = "server_nodes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)  # type: ignore[assignment]
@@ -35,7 +36,9 @@ class ServerNode(Base):
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)  # type: ignore[assignment]
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)  # type: ignore[assignment]
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
+    )  # type: ignore[assignment]
 
     def to_dict(self) -> dict:
         return {
@@ -62,6 +65,7 @@ class ServerNode(Base):
             return
         try:
             from app.core.encryption import _get_default_secret, encrypt_field
+
             self.api_key = encrypt_field(plaintext_key, _get_default_secret())
         except Exception:
             logger.warning("Encryption unavailable, storing api_key as-is")
@@ -73,6 +77,7 @@ class ServerNode(Base):
             return None
         try:
             from app.core.encryption import _get_default_secret, decrypt_field
+
             return decrypt_field(self.api_key, _get_default_secret())
         except Exception:
             # Fallback: may be stored as plaintext from before encryption was added

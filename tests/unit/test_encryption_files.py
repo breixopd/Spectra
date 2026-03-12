@@ -109,6 +109,7 @@ class TestReportEncryptionAtRest:
             from cryptography.fernet import Fernet
 
             from app.core.encryption import _derive_fernet_key
+
             f = Fernet(_derive_fernet_key("test-key"))
             content = f.decrypt(saved.read_bytes())
         assert content == b"<html>report</html>"
@@ -132,5 +133,6 @@ class TestReportEncryptionAtRest:
             from cryptography.fernet import Fernet
 
             from app.core.encryption import _derive_fernet_key
+
             f = Fernet(_derive_fernet_key("test-key"))
             assert f.decrypt(saved.read_bytes()) == pdf_data

@@ -84,9 +84,7 @@ class ToolAction(AgentAction):
 
     action_type: str = "run_tool"
     tool_name: str = Field(..., description="Name of tool to run")
-    tool_args: dict[str, Any] = Field(
-        default_factory=dict, description="Tool arguments"
-    )
+    tool_args: dict[str, Any] = Field(default_factory=dict, description="Tool arguments")
     target: str = Field(..., description="Target for the tool")
     estimated_duration: int = Field(60, description="Estimated duration in seconds")
 

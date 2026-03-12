@@ -355,11 +355,7 @@ def _build_legacy_model_config_from_settings() -> tuple[list[dict], list[dict], 
                     "litellm_params": {
                         "model": cloud_model,
                         "api_key": api_key,
-                        **(
-                            {"api_base": settings.LLM_API_BASE_URL}
-                            if settings.LLM_API_BASE_URL
-                            else {}
-                        ),
+                        **({"api_base": settings.LLM_API_BASE_URL} if settings.LLM_API_BASE_URL else {}),
                     },
                 }
             )
@@ -381,16 +377,8 @@ def _build_legacy_model_config_from_settings() -> tuple[list[dict], list[dict], 
                 "model_name": "default",
                 "litellm_params": {
                     "model": litellm_model,
-                    **(
-                        {"api_key": api_key}
-                        if api_key
-                        else {}
-                    ),
-                    **(
-                        {"api_base": settings.LLM_API_BASE_URL}
-                        if settings.LLM_API_BASE_URL
-                        else {}
-                    ),
+                    **({"api_key": api_key} if api_key else {}),
+                    **({"api_base": settings.LLM_API_BASE_URL} if settings.LLM_API_BASE_URL else {}),
                 },
             }
         )
@@ -488,10 +476,7 @@ def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
     if not profiles or routing.get("default") not in profiles:
         return _build_legacy_model_config_from_settings()
 
-    model_list = [
-        _build_model_config_for_profile(profile_name, profile)
-        for profile_name, profile in profiles.items()
-    ]
+    model_list = [_build_model_config_for_profile(profile_name, profile) for profile_name, profile in profiles.items()]
     default_model = routing.get("default", "default")
     fallbacks: list[dict[str, list[str]]] = []
     seen_sources: set[str] = set()
@@ -514,8 +499,7 @@ def create_smart_router() -> LLMClient:
             from tests.mocks.llm import PentestMockLLMClient
         except ImportError:
             raise ValueError(
-                "Mock provider requires test dependencies. "
-                "Set AI_PROVIDER to 'litellm' for production use."
+                "Mock provider requires test dependencies. Set AI_PROVIDER to 'litellm' for production use."
             ) from None
         return PentestMockLLMClient()
 
@@ -549,7 +533,9 @@ def create_smart_router() -> LLMClient:
         )
         logger.info(
             "Tier routing configured: T1=%s T2=%s T3=%s",
-            tier1 or "(default)", tier2 or "(default)", tier3 or "(default)",
+            tier1 or "(default)",
+            tier2 or "(default)",
+            tier3 or "(default)",
         )
 
     return router

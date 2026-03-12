@@ -22,7 +22,9 @@ def _mock_mission(mission_id="m-1", target="10.0.0.1", directive="Full scan"):
     return m
 
 
-def _mock_finding(title="XSS", severity="high", description="Reflected XSS", source="nuclei", confirmed=True, tool_name="nuclei"):
+def _mock_finding(
+    title="XSS", severity="high", description="Reflected XSS", source="nuclei", confirmed=True, tool_name="nuclei"
+):
     f = MagicMock()
     f.title = title
     f.severity = severity

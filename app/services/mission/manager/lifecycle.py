@@ -24,8 +24,12 @@ class MissionLifecycleManager:
         self.active_missions = active_missions
 
     async def start_mission(
-        self, target: str, directive: str, requirements: str | None = None,
-        vpn_config: str | None = None, user_id: str | None = None,
+        self,
+        target: str,
+        directive: str,
+        requirements: str | None = None,
+        vpn_config: str | None = None,
+        user_id: str | None = None,
     ) -> Mission:
         """Create and start a new mission."""
         mission = Mission(target, directive, requirements=requirements, vpn_config=vpn_config, user_id=user_id)
@@ -58,9 +62,10 @@ class MissionLifecycleManager:
         if mission_id in self.active_missions:
             mission = self.active_missions[mission_id]
             # Disconnect VPN if configured
-            if getattr(mission, 'vpn_config', None):
+            if getattr(mission, "vpn_config", None):
                 try:
                     from app.services.tools.vpn import VPNManager
+
                     vpn_mgr = VPNManager()
                     await vpn_mgr.disconnect(mission.vpn_config)
                     logger.info("VPN disconnected for stopped mission %s", mission_id)
@@ -159,6 +164,7 @@ class MissionLifecycleManager:
             if mission.vpn_config:
                 try:
                     from app.services.tools.vpn import VPNManager
+
                     vpn_mgr = VPNManager()
                     result = await vpn_mgr.connect(mission.vpn_config)
                     mission.log(f"[VPN] Connected via '{mission.vpn_config}' (job: {result.get('job_id', 'N/A')})")
@@ -167,6 +173,7 @@ class MissionLifecycleManager:
                     if job_id:
                         try:
                             from app.core.queue import Job
+
                             job = Job(job_id)
                             await job.result(timeout=30)
                             mission.log("[VPN] Tunnel established successfully")
@@ -180,6 +187,7 @@ class MissionLifecycleManager:
                 # Log VPN status
                 try:
                     from app.services.tools.vpn import VPNManager
+
                     vpn_mgr = VPNManager()
                     configs = await vpn_mgr.list_configs()
                     if configs:
@@ -189,18 +197,14 @@ class MissionLifecycleManager:
                 except Exception:
                     mission.log("[VPN] Could not check VPN status")
 
-            self._broadcast_state(
-                mission.id, "mission_controller", "running", plan="Initializing..."
-            )
+            self._broadcast_state(mission.id, "mission_controller", "running", plan="Initializing...")
 
             # Resolve GeoIP
             mission.log("Resolving target location...")
             geo = await resolve_ip(mission.target)
             if geo:
                 mission.geo_info = geo
-                mission.log(
-                    f"Target located in {geo.get('city')}, {geo.get('country')}"
-                )
+                mission.log(f"Target located in {geo.get('city')}, {geo.get('country')}")
                 mission._broadcast("geo", geo)
 
             effective_mission = mission.directive
@@ -225,9 +229,7 @@ class MissionLifecycleManager:
             await self.update_db_status(mission)
             return None
 
-    def _broadcast_state(
-        self, mission_id: str, agent_id: str, status: str, **kwargs
-    ) -> None:
+    def _broadcast_state(self, mission_id: str, agent_id: str, status: str, **kwargs) -> None:
         """Broadcast agent state."""
         # Using events to broadcast. Note: original used self._broadcast which uses events.emit_sync
         # We need to make sure we keep the same signature/behavior.

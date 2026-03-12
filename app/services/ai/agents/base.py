@@ -149,7 +149,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
             f"Action type: {action.action_type}\n"
             f"Confidence: {action.confidence}\n"
             f"Reasoning: {action.reasoning}\n\n"
-            'Rate the quality of this output on a scale of 0.0 to 1.0 and provide brief feedback.\n'
+            "Rate the quality of this output on a scale of 0.0 to 1.0 and provide brief feedback.\n"
             'Respond in JSON: {"quality": 0.85, "feedback": "..."}'
         )
         try:
@@ -160,7 +160,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
                 max_tokens=256,
             )
             content = response.content
-            data = _json.loads(content[content.find("{"):content.rfind("}") + 1])
+            data = _json.loads(content[content.find("{") : content.rfind("}") + 1])
             return float(data.get("quality", 0.8)), str(data.get("feedback", ""))
         except Exception as e:
             logger.debug("Reflection failed: %s", e)
@@ -191,9 +191,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
 
             quality, feedback = await self._reflect(context, result.action)
 
-            self.broadcast_thought(
-                f"[Reflection #{iteration + 1}] Quality: {quality:.2f} — {feedback}"
-            )
+            self.broadcast_thought(f"[Reflection #{iteration + 1}] Quality: {quality:.2f} — {feedback}")
 
             if quality > best_quality:
                 best_result = result
@@ -203,8 +201,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
                 return result
 
             context.extra_context += (
-                f"\n\n[Self-critique feedback]: {feedback}\n"
-                "Please improve your output based on this feedback."
+                f"\n\n[Self-critique feedback]: {feedback}\nPlease improve your output based on this feedback."
             )
 
         return best_result or result  # type: ignore[possibly-undefined]
@@ -288,18 +285,14 @@ class Agent(ABC, Generic[InputT, OutputT]):
             RecursionError: If depth exceeds max_depth.
         """
         if depth >= max_depth:
-            raise RecursionError(
-                f"Sub-agent spawn depth {depth} exceeds max_depth {max_depth}"
-            )
+            raise RecursionError(f"Sub-agent spawn depth {depth} exceeds max_depth {max_depth}")
 
         from app.services.ai.agents.registry import get_agent_registry
 
         registry = get_agent_registry()
         sub_agent = registry.create(role, self.llm)
 
-        self.broadcast_thought(
-            f"Spawning sub-agent {sub_agent.name} (role={role}, depth={depth + 1})"
-        )
+        self.broadcast_thought(f"Spawning sub-agent {sub_agent.name} (role={role}, depth={depth + 1})")
 
         result = await sub_agent.execute(context, input_data)
 
@@ -385,7 +378,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
             except Exception as exc:
                 last_error = exc
                 if attempt < max_retries:
-                    delay = backoff_factor ** attempt
+                    delay = backoff_factor**attempt
                     logger.warning(
                         "%s retry %d/%d after error: %s (backoff %.1fs)",
                         self.name,
@@ -403,10 +396,20 @@ class Agent(ABC, Generic[InputT, OutputT]):
         input_data: InputT,
     ) -> AgentResult:
         """Allow agents to be called directly."""
-        logger.info("%s executing for mission=%s target=%s phase=%s", self.name, context.mission_id, context.target, context.phase)
+        logger.info(
+            "%s executing for mission=%s target=%s phase=%s",
+            self.name,
+            context.mission_id,
+            context.target,
+            context.phase,
+        )
         result = await self.execute(context, input_data)
         if result.error:
             logger.error("%s failed: %s", self.name, result.error)
         else:
-            logger.info("%s completed successfully (action=%s)", self.name, result.action.action_type if result.action else "none")
+            logger.info(
+                "%s completed successfully (action=%s)",
+                self.name,
+                result.action.action_type if result.action else "none",
+            )
         return result

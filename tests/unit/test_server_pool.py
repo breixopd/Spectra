@@ -30,9 +30,7 @@ def _make_mock_node(**overrides):
     node = MagicMock()
     for k, v in defaults.items():
         setattr(node, k, v)
-    node.to_dict.return_value = {
-        k: v for k, v in defaults.items() if k != "metadata_" and k != "updated_at"
-    }
+    node.to_dict.return_value = {k: v for k, v in defaults.items() if k != "metadata_" and k != "updated_at"}
     node.to_dict.return_value["metadata"] = defaults.get("metadata_")
     return node
 
@@ -42,10 +40,12 @@ class TestServerPoolManagerInit:
 
     def test_import(self):
         from app.services.scaling.pool_manager import ServerPoolManager
+
         assert ServerPoolManager is not None
 
     def test_init(self):
         from app.services.scaling.pool_manager import ServerPoolManager
+
         mgr = ServerPoolManager()
         assert mgr._health_task is None
         assert mgr._health_interval == 30
@@ -67,8 +67,12 @@ class TestAddNode:
 
         with patch("app.models.server_node.ServerNode", return_value=mock_instance):
             result = await mgr.add_node(
-                session, "sandbox_worker", "new-worker",
-                "http://new:8080", weight=2, max_capacity=5,
+                session,
+                "sandbox_worker",
+                "new-worker",
+                "http://new:8080",
+                weight=2,
+                max_capacity=5,
             )
 
         session.add.assert_called_once()
@@ -148,8 +152,24 @@ class TestSelectNode:
         from app.services.scaling.pool_manager import ServerPoolManager
 
         mgr = ServerPoolManager()
-        node1 = _make_mock_node(id=1, weight=1, current_load=5, max_capacity=10, health_status="healthy", is_active=True, service_type="sandbox_worker")
-        node2 = _make_mock_node(id=2, weight=2, current_load=2, max_capacity=10, health_status="healthy", is_active=True, service_type="sandbox_worker")
+        node1 = _make_mock_node(
+            id=1,
+            weight=1,
+            current_load=5,
+            max_capacity=10,
+            health_status="healthy",
+            is_active=True,
+            service_type="sandbox_worker",
+        )
+        node2 = _make_mock_node(
+            id=2,
+            weight=2,
+            current_load=2,
+            max_capacity=10,
+            health_status="healthy",
+            is_active=True,
+            service_type="sandbox_worker",
+        )
 
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = [node1, node2]

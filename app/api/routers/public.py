@@ -42,6 +42,7 @@ templates.env.globals["app_name"] = settings.APP_NAME
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_user_from_cookie(request: Request) -> dict | None:
     """Try to decode the JWT from the access_token cookie. Returns claims or None."""
     token = request.cookies.get("access_token")
@@ -57,6 +58,7 @@ def _get_user_from_cookie(request: Request) -> dict | None:
 # Page routes
 # ---------------------------------------------------------------------------
 
+
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def landing_page(request: Request):
     """Landing page — redirects authenticated users to /dashboard."""
@@ -64,11 +66,7 @@ async def landing_page(request: Request):
         return RedirectResponse(url="/dashboard", status_code=302)
 
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(Plan)
-            .where(Plan.is_active.is_(True))
-            .order_by(Plan.sort_order)
-        )
+        result = await session.execute(select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order))
         plans = result.scalars().all()
 
     return templates.TemplateResponse(
@@ -90,23 +88,17 @@ async def pricing_page(request: Request):
 
 @router.get("/legal/terms", response_class=HTMLResponse, include_in_schema=False)
 async def legal_terms(request: Request):
-    return templates.TemplateResponse(
-        "legal/terms.html", {"request": request, "app_name": settings.APP_NAME}
-    )
+    return templates.TemplateResponse("legal/terms.html", {"request": request, "app_name": settings.APP_NAME})
 
 
 @router.get("/legal/privacy", response_class=HTMLResponse, include_in_schema=False)
 async def legal_privacy(request: Request):
-    return templates.TemplateResponse(
-        "legal/privacy.html", {"request": request, "app_name": settings.APP_NAME}
-    )
+    return templates.TemplateResponse("legal/privacy.html", {"request": request, "app_name": settings.APP_NAME})
 
 
 @router.get("/legal/cookies", response_class=HTMLResponse, include_in_schema=False)
 async def legal_cookies(request: Request):
-    return templates.TemplateResponse(
-        "legal/cookie.html", {"request": request, "app_name": settings.APP_NAME}
-    )
+    return templates.TemplateResponse("legal/cookie.html", {"request": request, "app_name": settings.APP_NAME})
 
 
 @router.get("/register", response_class=HTMLResponse, include_in_schema=False)
@@ -130,15 +122,12 @@ async def reset_password_page(request: Request):
 # Public API
 # ---------------------------------------------------------------------------
 
+
 @router.get("/api/public/plans", tags=["Public"])
 async def list_public_plans():
     """Return active plans with features for the pricing section."""
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(Plan)
-            .where(Plan.is_active.is_(True))
-            .order_by(Plan.sort_order)
-        )
+        result = await session.execute(select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order))
         plans = result.scalars().all()
 
     return [
@@ -159,6 +148,7 @@ async def list_public_plans():
 
 
 # --- Self-service auth schemas ---
+
 
 def _validate_password_strength(v: str) -> str:
     """Shared password strength validator."""
@@ -205,9 +195,7 @@ async def register_user(request: Request, body: RegisterRequest):
     async with async_session_maker() as session:
         # Check uniqueness
         existing = await session.execute(
-            select(User.id).where(
-                (User.username == body.username) | (User.email == body.email)
-            )
+            select(User.id).where((User.username == body.username) | (User.email == body.email))
         )
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(
@@ -216,9 +204,7 @@ async def register_user(request: Request, body: RegisterRequest):
             )
 
         # Find default plan
-        default_plan = await session.execute(
-            select(Plan).where(Plan.is_default.is_(True)).limit(1)
-        )
+        default_plan = await session.execute(select(Plan).where(Plan.is_default.is_(True)).limit(1))
         plan = default_plan.scalar_one_or_none()
 
         user = User(
@@ -252,9 +238,7 @@ async def register_user(request: Request, body: RegisterRequest):
 async def forgot_password(request: Request, body: ForgotPasswordRequest):
     """Request a password reset token. In production this sends an email."""
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(User).where(User.email == body.email)
-        )
+        result = await session.execute(select(User).where(User.email == body.email))
         user = result.scalar_one_or_none()
 
     # Always return success to prevent user enumeration
@@ -295,9 +279,7 @@ async def reset_password(request: Request, body: ResetPasswordRequest):
         )
 
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(User).where(User.username == username)
-        )
+        result = await session.execute(select(User).where(User.username == username))
         user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(

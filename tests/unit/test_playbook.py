@@ -51,9 +51,7 @@ class TestPlaybookEngine:
     def test_filters_already_run(self, engine):
         services = [{"service": "http", "port": 80}]
         recs_all = engine.get_recommended_tools(services)
-        recs_filtered = engine.get_recommended_tools(
-            services, tools_already_run=["nmap"]
-        )
+        recs_filtered = engine.get_recommended_tools(services, tools_already_run=["nmap"])
         assert len(recs_filtered) < len(recs_all)
         assert not any(r["tool"] == "nmap" for r in recs_filtered)
 

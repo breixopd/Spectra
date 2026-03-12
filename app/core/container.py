@@ -66,4 +66,3 @@ def get_storage_service():
     from app.services.storage.service import StorageService
 
     return StorageService()
-

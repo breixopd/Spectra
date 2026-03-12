@@ -27,10 +27,7 @@ class TestPluginUploadAccess:
         """Verify the upload_plugin route has get_current_superuser in its dependencies."""
         from app.api.routers.tools import router
 
-        upload_routes = [
-            r for r in router.routes
-            if getattr(r, "path", "").rstrip("/").endswith("/upload")
-        ]
+        upload_routes = [r for r in router.routes if getattr(r, "path", "").rstrip("/").endswith("/upload")]
         assert upload_routes, "No /upload route found"
 
         route = upload_routes[0]
@@ -212,8 +209,7 @@ class TestPluginReadAccess:
         list_routes = [
             r
             for r in router.routes
-            if "GET" in getattr(r, "methods", set())
-            and getattr(r, "path", "").rstrip("/") in ("", "/tools")
+            if "GET" in getattr(r, "methods", set()) and getattr(r, "path", "").rstrip("/") in ("", "/tools")
         ]
         assert list_routes, "No GET /api/tools route found"
 

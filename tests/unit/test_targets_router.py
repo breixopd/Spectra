@@ -38,6 +38,7 @@ def _fake_target(**overrides):
 
 def _make_app() -> FastAPI:
     from app.core.rate_limit import limiter
+
     app = FastAPI()
     app.state.limiter = limiter
     limiter.enabled = False
@@ -50,6 +51,7 @@ async def client():
     app = _make_app()
     from app.api.dependencies import get_current_active_user
     from app.core.database import get_async_session
+
     user = _fake_user()
     app.dependency_overrides[get_current_active_user] = lambda: user
 
@@ -144,10 +146,13 @@ class TestCreateTarget:
             mp.setattr(TargetRepository, "find_one_by", AsyncMock(return_value=None))
             mp.setattr(TargetRepository, "create", AsyncMock(return_value=created))
             mp.setattr("app.api.routers.targets.check_target_limit", AsyncMock())
-            resp = await ac.post("/api/v1/targets", json={
-                "address": "192.168.1.1",
-                "description": "web server",
-            })
+            resp = await ac.post(
+                "/api/v1/targets",
+                json={
+                    "address": "192.168.1.1",
+                    "description": "web server",
+                },
+            )
 
         assert resp.status_code == 201
         assert resp.json()["address"] == "192.168.1.1"
@@ -160,9 +165,12 @@ class TestCreateTarget:
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "find_one_by", AsyncMock(return_value=existing))
             mp.setattr("app.api.routers.targets.check_target_limit", AsyncMock())
-            resp = await ac.post("/api/v1/targets", json={
-                "address": "192.168.1.1",
-            })
+            resp = await ac.post(
+                "/api/v1/targets",
+                json={
+                    "address": "192.168.1.1",
+                },
+            )
 
         assert resp.status_code == 400
 

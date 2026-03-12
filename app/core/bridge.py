@@ -62,8 +62,6 @@ class EventWebSocketBridge:
         try:
             # Broadcast using the standard format: {type: event_type, data: ...}
             # We use event.type.value for the string representation
-            await ws_manager.broadcast_event(
-                event_type=event.type.value, data=event.data
-            )
+            await ws_manager.broadcast_event(event_type=event.type.value, data=event.data)
         except Exception as e:
             logger.error("Failed to bridge event %s to WebSocket: %s", event.type, e)

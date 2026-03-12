@@ -102,21 +102,23 @@ def _collect_general_db_settings(
     return result
 
 
-_AI_FIELD_NAMES = frozenset({
-    "ai_provider",
-    "llm_api_key",
-    "llm_api_base_url",
-    "llm_model",
-    "ollama_host",
-    "ollama_model",
-    "ollama_enabled",
-    "provider_profiles",
-    "provider_routing",
-    "provider_fallbacks",
-    "llm_tier1_model",
-    "llm_tier2_model",
-    "llm_tier3_model",
-})
+_AI_FIELD_NAMES = frozenset(
+    {
+        "ai_provider",
+        "llm_api_key",
+        "llm_api_base_url",
+        "llm_model",
+        "ollama_host",
+        "ollama_model",
+        "ollama_enabled",
+        "provider_profiles",
+        "provider_routing",
+        "provider_fallbacks",
+        "llm_tier1_model",
+        "llm_tier2_model",
+        "llm_tier3_model",
+    }
+)
 
 
 def _collect_ai_db_settings(
@@ -130,52 +132,23 @@ def _collect_ai_db_settings(
     runtime_ai_config = build_runtime_ai_config_from_payload(
         base_config=get_runtime_ai_config_from_settings(settings),
         provider_profiles=(
-            {
-                name: profile.model_dump(exclude_none=True)
-                for name, profile in data.provider_profiles.items()
-            }
+            {name: profile.model_dump(exclude_none=True) for name, profile in data.provider_profiles.items()}
             if data.provider_profiles is not None
             else None
         ),
-        provider_routing=(
-            data.provider_routing.as_dict()
-            if data.provider_routing is not None
-            else None
-        ),
-        provider_fallbacks=(
-            data.provider_fallbacks.as_dict()
-            if data.provider_fallbacks is not None
-            else None
-        ),
-        legacy_provider=(
-            data.ai_provider if "ai_provider" in fields_set else None
-        ),
+        provider_routing=(data.provider_routing.as_dict() if data.provider_routing is not None else None),
+        provider_fallbacks=(data.provider_fallbacks.as_dict() if data.provider_fallbacks is not None else None),
+        legacy_provider=(data.ai_provider if "ai_provider" in fields_set else None),
         legacy_model=(data.llm_model if "llm_model" in fields_set else None),
-        legacy_api_key=(
-            data.llm_api_key if "llm_api_key" in fields_set else None
-        ),
-        legacy_api_base_url=(
-            data.llm_api_base_url if "llm_api_base_url" in fields_set else None
-        ),
-        legacy_ollama_host=(
-            data.ollama_host if "ollama_host" in fields_set else None
-        ),
-        legacy_ollama_model=(
-            data.ollama_model if "ollama_model" in fields_set else None
-        ),
-        legacy_ollama_enabled=(
-            data.ollama_enabled if "ollama_enabled" in fields_set else None
-        ),
+        legacy_api_key=(data.llm_api_key if "llm_api_key" in fields_set else None),
+        legacy_api_base_url=(data.llm_api_base_url if "llm_api_base_url" in fields_set else None),
+        legacy_ollama_host=(data.ollama_host if "ollama_host" in fields_set else None),
+        legacy_ollama_model=(data.ollama_model if "ollama_model" in fields_set else None),
+        legacy_ollama_enabled=(data.ollama_enabled if "ollama_enabled" in fields_set else None),
         legacy_tier_models={
-            "LLM_TIER1_MODEL": (
-                data.llm_tier1_model if "llm_tier1_model" in fields_set else None
-            ),
-            "LLM_TIER2_MODEL": (
-                data.llm_tier2_model if "llm_tier2_model" in fields_set else None
-            ),
-            "LLM_TIER3_MODEL": (
-                data.llm_tier3_model if "llm_tier3_model" in fields_set else None
-            ),
+            "LLM_TIER1_MODEL": (data.llm_tier1_model if "llm_tier1_model" in fields_set else None),
+            "LLM_TIER2_MODEL": (data.llm_tier2_model if "llm_tier2_model" in fields_set else None),
+            "LLM_TIER3_MODEL": (data.llm_tier3_model if "llm_tier3_model" in fields_set else None),
         },
     )
     return serialize_runtime_ai_config_values(runtime_ai_config)
@@ -204,9 +177,7 @@ def get_current_settings() -> dict[str, Any]:
     from app.services.ai.router import PROVIDER_PRESETS
 
     resolved_ai = get_resolved_runtime_ai_config_snapshot(settings_obj=settings)
-    provider = public_ai_provider(
-        resolved_ai.get("default_route", {}).get("provider") or settings.AI_PROVIDER
-    )
+    provider = public_ai_provider(resolved_ai.get("default_route", {}).get("provider") or settings.AI_PROVIDER)
 
     return {
         "ai_provider": provider,
@@ -267,9 +238,7 @@ async def get_ai_status_snapshot() -> dict[str, Any]:
     is_healthy = await client.health_check()
     resolved_ai = get_resolved_runtime_ai_config_snapshot(settings_obj=settings)
     resolved_routing = {"default": resolved_ai["default_route"], **resolved_ai["tiers"]}
-    provider = public_ai_provider(
-        resolved_ai.get("default_route", {}).get("provider") or settings.AI_PROVIDER
-    )
+    provider = public_ai_provider(resolved_ai.get("default_route", {}).get("provider") or settings.AI_PROVIDER)
 
     return {
         "provider": provider,

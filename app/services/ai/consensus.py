@@ -125,9 +125,7 @@ class VotingSystem:
         votes = await self._collect_votes_with_params(action, context, num_voters)
 
         # Analyze votes with gate-specific thresholds
-        return self._analyze_votes_with_params(
-            votes, action, k_threshold, min_confidence
-        )
+        return self._analyze_votes_with_params(votes, action, k_threshold, min_confidence)
 
     async def vote_on_action(
         self,
@@ -172,7 +170,7 @@ class VotingSystem:
         Uses risk-aware consensus_threshold: LOW risk skips voting entirely.
         """
         risk = action.risk_level
-        risk_str = risk.value if hasattr(risk, 'value') else str(risk)
+        risk_str = risk.value if hasattr(risk, "value") else str(risk)
         threshold_entry = self.config.consensus_threshold.get(risk_str)
         if threshold_entry is not None:
             num_voters, _k, _conf = threshold_entry
@@ -216,9 +214,7 @@ class VotingSystem:
         context: dict[str, Any] | None,
     ) -> list[Vote]:
         """Collect votes from multiple LLM instances."""
-        return await self._collect_votes_with_params(
-            action, context, self.config.num_voters
-        )
+        return await self._collect_votes_with_params(action, context, self.config.num_voters)
 
     async def _collect_votes_with_params(
         self,
@@ -233,10 +229,7 @@ class VotingSystem:
         temperatures = [temp_min + i * temp_step for i in range(num_voters)]
 
         # Create voting tasks
-        tasks = [
-            self._get_vote(action, context, f"voter_{i}", temp)
-            for i, temp in enumerate(temperatures)
-        ]
+        tasks = [self._get_vote(action, context, f"voter_{i}", temp) for i, temp in enumerate(temperatures)]
 
         # Run in parallel
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -307,9 +300,7 @@ Vote NEEDS_INFO if more context is required."""
         """Build the prompt for voters."""
         context_str = ""
         if context:
-            context_str = "\n\nContext:\n" + "\n".join(
-                f"- {k}: {v}" for k, v in context.items()
-            )
+            context_str = "\n\nContext:\n" + "\n".join(f"- {k}: {v}" for k, v in context.items())
 
         return f"""Evaluate this proposed security assessment action.
 The user has authorized this assessment against the target.
@@ -335,9 +326,7 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
         action: AgentAction,
     ) -> ConsensusResult:
         """Analyze collected votes and determine consensus."""
-        return self._analyze_votes_with_params(
-            votes, action, self.config.k_threshold, self.config.min_confidence
-        )
+        return self._analyze_votes_with_params(votes, action, self.config.k_threshold, self.config.min_confidence)
 
     def _analyze_votes_with_params(
         self,
@@ -361,11 +350,7 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
 
         # Calculate average confidence of approvals
         approve_votes = [v for v in votes if v.decision == VoteDecision.APPROVE]
-        avg_confidence = (
-            sum(v.confidence for v in approve_votes) / len(approve_votes)
-            if approve_votes
-            else 0.0
-        )
+        avg_confidence = sum(v.confidence for v in approve_votes) / len(approve_votes) if approve_votes else 0.0
 
         # Determine status
         status: ConsensusStatus
@@ -378,17 +363,19 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
                 final_decision = True
             else:
                 status = ConsensusStatus.NO_CONSENSUS
-                escalation_reason = f"Approval votes met but confidence too low ({avg_confidence:.2f} < {min_confidence})"
+                escalation_reason = (
+                    f"Approval votes met but confidence too low ({avg_confidence:.2f} < {min_confidence})"
+                )
         elif reject_count > len(votes) // 2:
             status = ConsensusStatus.REJECTED
             # Collect rejection reasons
-            rejection_reasons = [
-                v.reasoning for v in votes if v.decision == VoteDecision.REJECT
-            ]
+            rejection_reasons = [v.reasoning for v in votes if v.decision == VoteDecision.REJECT]
             escalation_reason = "; ".join(rejection_reasons[:3])
         else:
             status = ConsensusStatus.NO_CONSENSUS
-            escalation_reason = f"No clear majority (approve: {approve_count}, reject: {reject_count}, abstain: {abstain_count})"
+            escalation_reason = (
+                f"No clear majority (approve: {approve_count}, reject: {reject_count}, abstain: {abstain_count})"
+            )
 
         # NO_CONSENSUS escalation: handle based on action risk level
         if status == ConsensusStatus.NO_CONSENSUS:
@@ -396,14 +383,20 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
             risk_str = risk.value if hasattr(risk, "value") else str(risk)
             logger.warning(
                 "NO_CONSENSUS for %s (risk=%s): approve=%d reject=%d abstain=%d conf=%.2f — %s",
-                action.action_type, risk_str,
-                approve_count, reject_count, abstain_count, avg_confidence,
+                action.action_type,
+                risk_str,
+                approve_count,
+                reject_count,
+                abstain_count,
+                avg_confidence,
                 escalation_reason,
             )
             if risk_str == ActionRisk.CRITICAL.value:
                 # Critical actions with no consensus must be reviewed by a human
                 status = ConsensusStatus.PENDING_HUMAN
-                escalation_reason = f"CRITICAL action with no consensus — flagged for human review ({escalation_reason})"
+                escalation_reason = (
+                    f"CRITICAL action with no consensus — flagged for human review ({escalation_reason})"
+                )
             elif approve_count > reject_count:
                 # Lower-risk: fall back to majority vote even if below k-threshold
                 status = ConsensusStatus.APPROVED

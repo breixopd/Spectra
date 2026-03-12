@@ -35,11 +35,11 @@ LEGACY_AI_CONFIG_KEYS = (
     "LLM_API_KEY",
 )
 GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
-        # S3/MinIO Object Storage
-        "S3_ENDPOINT_URL": ("S3_ENDPOINT_URL", "str"),
-        "S3_ACCESS_KEY": ("S3_ACCESS_KEY", "secret"),
-        "S3_SECRET_KEY": ("S3_SECRET_KEY", "secret"),
-        "S3_REGION": ("S3_REGION", "str"),
+    # S3/MinIO Object Storage
+    "S3_ENDPOINT_URL": ("S3_ENDPOINT_URL", "str"),
+    "S3_ACCESS_KEY": ("S3_ACCESS_KEY", "secret"),
+    "S3_SECRET_KEY": ("S3_SECRET_KEY", "secret"),
+    "S3_REGION": ("S3_REGION", "str"),
     "LOG_LEVEL": ("LOG_LEVEL", "str"),
     "PLUGIN_SAFE_MODE": ("PLUGIN_SAFE_MODE", "bool"),
     "CONNECT_BACK_HOST": ("CONNECT_BACK_HOST", "str"),
@@ -122,9 +122,7 @@ def _get_secret_value(secret: Any) -> str:
     return str(secret or "")
 
 
-def _find_first_profile(
-    profiles: dict[str, dict[str, Any]], providers: tuple[str, ...]
-) -> dict[str, Any] | None:
+def _find_first_profile(profiles: dict[str, dict[str, Any]], providers: tuple[str, ...]) -> dict[str, Any] | None:
     for profile in profiles.values():
         if profile.get("provider") in providers:
             return profile
@@ -328,9 +326,7 @@ def normalize_runtime_ai_config(rows: dict[str, str]) -> RuntimeAIConfig:
 def runtime_ai_rows_from_settings(settings_obj: Any | None = None) -> dict[str, str]:
     """Create a normalized row-like snapshot from in-memory settings."""
     target_settings = settings_obj or settings
-    has_structured_profiles = bool(
-        getattr(target_settings, "AI_PROVIDER_PROFILES", {}) or {}
-    )
+    has_structured_profiles = bool(getattr(target_settings, "AI_PROVIDER_PROFILES", {}) or {})
     return {
         "AI_PROVIDER": str(getattr(target_settings, "AI_PROVIDER", "mock") or "mock"),
         "LLM_MODEL": str(getattr(target_settings, "LLM_MODEL", "") or ""),
@@ -350,12 +346,8 @@ def runtime_ai_rows_from_settings(settings_obj: Any | None = None) -> dict[str, 
         "OLLAMA_HOST": str(getattr(target_settings, "OLLAMA_HOST", "") or ""),
         "OLLAMA_MODEL": str(getattr(target_settings, "OLLAMA_MODEL", "") or ""),
         "LLM_API_KEY": _get_secret_value(getattr(target_settings, "LLM_API_KEY", "")),
-        "AI_PROVIDER_PROFILES": json.dumps(
-            getattr(target_settings, "AI_PROVIDER_PROFILES", {}) or {}, sort_keys=True
-        ),
-        "AI_PROVIDER_ROUTING": json.dumps(
-            getattr(target_settings, "AI_PROVIDER_ROUTING", {}) or {}, sort_keys=True
-        ),
+        "AI_PROVIDER_PROFILES": json.dumps(getattr(target_settings, "AI_PROVIDER_PROFILES", {}) or {}, sort_keys=True),
+        "AI_PROVIDER_ROUTING": json.dumps(getattr(target_settings, "AI_PROVIDER_ROUTING", {}) or {}, sort_keys=True),
         "AI_PROVIDER_FALLBACKS": json.dumps(
             getattr(target_settings, "AI_PROVIDER_FALLBACKS", {}) or {}, sort_keys=True
         ),
@@ -384,8 +376,7 @@ def build_runtime_ai_config_from_payload(
 ) -> RuntimeAIConfig:
     """Build merged runtime AI config from structured or legacy request payloads."""
     has_structured_payload = any(
-        value is not None
-        for value in (provider_profiles, provider_routing, provider_fallbacks)
+        value is not None for value in (provider_profiles, provider_routing, provider_fallbacks)
     )
     if not has_structured_payload:
         rows = runtime_ai_rows_from_settings()
@@ -509,7 +500,7 @@ def serialize_runtime_ai_config_values(
     if ollama_profile:
         ollama_model = str(ollama_profile.get("model", ""))
         if ollama_model.startswith("ollama/"):
-            ollama_model = ollama_model[len("ollama/"):]
+            ollama_model = ollama_model[len("ollama/") :]
         values["OLLAMA_MODEL"] = (ollama_model, False)
         values["OLLAMA_HOST"] = (str(ollama_profile.get("base_url", "") or ""), False)
 
@@ -632,7 +623,7 @@ def apply_runtime_settings(rows: dict[str, str], runtime_ai_config: RuntimeAICon
     if ollama_profile:
         ollama_model = str(ollama_profile.get("model", settings.OLLAMA_MODEL))
         if ollama_model.startswith("ollama/"):
-            ollama_model = ollama_model[len("ollama/"):]
+            ollama_model = ollama_model[len("ollama/") :]
         settings.OLLAMA_MODEL = ollama_model
         if ollama_profile.get("base_url"):
             settings.OLLAMA_HOST = str(ollama_profile["base_url"])
@@ -640,7 +631,7 @@ def apply_runtime_settings(rows: dict[str, str], runtime_ai_config: RuntimeAICon
     default_model = str(default_profile.get("model", ""))
     if default_provider == "litellm":
         if default_model.startswith("ollama/"):
-            settings.OLLAMA_MODEL = default_model[len("ollama/"):]
+            settings.OLLAMA_MODEL = default_model[len("ollama/") :]
             if default_profile.get("base_url"):
                 settings.OLLAMA_HOST = str(default_profile["base_url"])
         else:
@@ -657,15 +648,9 @@ def apply_runtime_settings(rows: dict[str, str], runtime_ai_config: RuntimeAICon
         for profile_name, profile in runtime_ai_config.profiles.items()
         if profile_name != default_profile_name
     )
-    settings.LLM_TIER1_MODEL = _serialize_tier_model(
-        "tier1", runtime_ai_config.routing, runtime_ai_config.profiles
-    )
-    settings.LLM_TIER2_MODEL = _serialize_tier_model(
-        "tier2", runtime_ai_config.routing, runtime_ai_config.profiles
-    )
-    settings.LLM_TIER3_MODEL = _serialize_tier_model(
-        "tier3", runtime_ai_config.routing, runtime_ai_config.profiles
-    )
+    settings.LLM_TIER1_MODEL = _serialize_tier_model("tier1", runtime_ai_config.routing, runtime_ai_config.profiles)
+    settings.LLM_TIER2_MODEL = _serialize_tier_model("tier2", runtime_ai_config.routing, runtime_ai_config.profiles)
+    settings.LLM_TIER3_MODEL = _serialize_tier_model("tier3", runtime_ai_config.routing, runtime_ai_config.profiles)
 
 
 async def upsert_system_config_values(

@@ -262,9 +262,7 @@ class TestAuditLogRepository:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = AuditLogRepository(session)
         assert repo.session is session
         assert issubclass(AuditLogRepository, BaseRepository)
@@ -281,9 +279,7 @@ class TestAuditLogRepository:
         session.execute.return_value = result_mock
 
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = AuditLogRepository(session)
         events = await repo.list_events(skip=0, limit=10)
         assert events == ["log1", "log2"]
@@ -300,9 +296,7 @@ class TestUserRepository:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         assert repo.session is session
         assert issubclass(UserRepository, BaseRepository)
@@ -313,9 +307,7 @@ class TestUserRepository:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         with patch.object(repo, "find_one_by", new_callable=AsyncMock, return_value="user1") as mock:
             result = await repo.get_by_username("admin")
@@ -328,9 +320,7 @@ class TestUserRepository:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         with patch.object(repo, "find_one_by", new_callable=AsyncMock, return_value="user2") as mock:
             result = await repo.get_by_email("a@b.com")
@@ -343,9 +333,7 @@ class TestUserRepository:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         with patch.object(repo, "find_many_by", new_callable=AsyncMock, return_value=["u1"]) as mock:
             result = await repo.get_active_users(skip=0, limit=50)
@@ -358,9 +346,7 @@ class TestUserRepository:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = UserRepository(session)
         with patch.object(repo, "find_many_by", new_callable=AsyncMock, return_value=[]) as mock:
             result = await repo.get_superusers()
@@ -380,9 +366,7 @@ class TestTargetRepositoryCrud:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = TargetRepository(session)
         with patch.object(repo, "find_one_by", new_callable=AsyncMock, return_value="target1") as mock:
             result = await repo.find_by_address("10.0.0.1")
@@ -395,9 +379,7 @@ class TestTargetRepositoryCrud:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = TargetRepository(session)
         with patch.object(repo, "find_one_by", new_callable=AsyncMock, return_value=None) as mock:
             await repo.find_by_address("10.0.0.1", user_id="u-1")
@@ -409,9 +391,7 @@ class TestTargetRepositoryCrud:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = TargetRepository(session)
         with patch.object(repo, "update", new_callable=AsyncMock, return_value="updated") as mock:
             result = await repo.update_status("t-1", "scanning")
@@ -430,9 +410,7 @@ class TestMissionRepositoryCrud:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = MissionRepository(session)
         assert issubclass(MissionRepository, BaseRepository)
         assert repo.session is session
@@ -449,9 +427,7 @@ class TestExploitRepositoryCrud:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = ExploitRepository(session)
         assert issubclass(ExploitRepository, BaseRepository)
         assert repo.session is session
@@ -468,9 +444,7 @@ class TestFindingRepositoryCrud:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = FindingRepository(session)
         assert issubclass(FindingRepository, BaseRepository)
         assert repo.session is session
@@ -487,9 +461,7 @@ class TestPentestSessionRepositoryCrud:
 
         session = _mock_session()
         with patch("app.repositories.base.inspect") as mock_inspect:
-            mock_inspect.return_value = MagicMock(
-                mapper=MagicMock(column_attrs=[])
-            )
+            mock_inspect.return_value = MagicMock(mapper=MagicMock(column_attrs=[]))
             repo = PentestSessionRepository(session)
         assert issubclass(PentestSessionRepository, BaseRepository)
         assert repo.session is session

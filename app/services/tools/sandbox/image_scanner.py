@@ -104,11 +104,13 @@ class ImageScanner:
             if isinstance(result, dict) and "Results" in result:
                 for target in result["Results"]:
                     vulns = target.get("Vulnerabilities", [])
-                    raw_results.append({
-                        "target": target.get("Target", ""),
-                        "type": target.get("Type", ""),
-                        "vulnerability_count": len(vulns),
-                    })
+                    raw_results.append(
+                        {
+                            "target": target.get("Target", ""),
+                            "type": target.get("Type", ""),
+                            "vulnerability_count": len(vulns),
+                        }
+                    )
                     for vuln in vulns:
                         severity = vuln.get("Severity", "").upper()
                         if severity == "CRITICAL":
@@ -147,12 +149,18 @@ class ImageScanner:
             if blocked:
                 logger.warning(
                     "Image %s BLOCKED: %d critical CVEs found",
-                    image_tag, critical,
+                    image_tag,
+                    critical,
                 )
             else:
                 logger.info(
                     "Image %s scanned: %d vulns (C:%d H:%d M:%d L:%d)",
-                    image_tag, total, critical, high, medium, low,
+                    image_tag,
+                    total,
+                    critical,
+                    high,
+                    medium,
+                    low,
                 )
 
             # Store in system status
@@ -177,9 +185,7 @@ class ImageScanner:
             from app.models.infrastructure import SystemStatus
 
             async with async_session_maker() as session:
-                result = await session.execute(
-                    select(SystemStatus).where(SystemStatus.key == "image_scan_result")
-                )
+                result = await session.execute(select(SystemStatus).where(SystemStatus.key == "image_scan_result"))
                 row = result.scalar_one_or_none()
                 if row and isinstance(row.value, dict):
                     return row.value
@@ -192,8 +198,10 @@ class ImageScanner:
         cmd = [
             self._trivy_path,
             "image",
-            "--format", "json",
-            "--severity", "CRITICAL,HIGH,MEDIUM,LOW",
+            "--format",
+            "json",
+            "--severity",
+            "CRITICAL,HIGH,MEDIUM,LOW",
             "--quiet",
             image_tag,
         ]
@@ -204,7 +212,8 @@ class ImageScanner:
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await asyncio.wait_for(
-            process.communicate(), timeout=600  # 10 min timeout for large images
+            process.communicate(),
+            timeout=600,  # 10 min timeout for large images
         )
 
         if process.returncode not in (0, 1):  # Trivy returns 1 when vulns found
@@ -221,9 +230,7 @@ class ImageScanner:
             from app.models.infrastructure import SystemStatus
 
             async with async_session_maker() as session:
-                existing = await session.execute(
-                    select(SystemStatus).where(SystemStatus.key == "image_scan_result")
-                )
+                existing = await session.execute(select(SystemStatus).where(SystemStatus.key == "image_scan_result"))
                 row = existing.scalar_one_or_none()
                 if row:
                     row.value = scan_result.to_dict()

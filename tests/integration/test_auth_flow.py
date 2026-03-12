@@ -4,7 +4,6 @@ Tests the full registration → login → protected resource → refresh → log
 cycle using the httpx async test client against the FastAPI app.
 """
 
-
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

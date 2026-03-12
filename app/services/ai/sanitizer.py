@@ -8,11 +8,14 @@ logger = logging.getLogger("spectra.ai.sanitizer")
 
 # Patterns that could manipulate the LLM's behavior
 INJECTION_PATTERNS = [
-    re.compile(r'(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions?|prompts?|rules?|context)', re.IGNORECASE),
-    re.compile(r'you\s+are\s+now\s+(?:a|an|in)\s+', re.IGNORECASE),
-    re.compile(r'system\s*:\s*', re.IGNORECASE),
-    re.compile(r'<\|(?:im_start|im_end|system|user|assistant)\|>', re.IGNORECASE),
-    re.compile(r'\[INST\]|\[/INST\]|<<SYS>>|<</SYS>>', re.IGNORECASE),
+    re.compile(
+        r"(?:ignore|disregard|forget)\s+(?:all\s+)?(?:previous|above|prior)\s+(?:instructions?|prompts?|rules?|context)",
+        re.IGNORECASE,
+    ),
+    re.compile(r"you\s+are\s+now\s+(?:a|an|in)\s+", re.IGNORECASE),
+    re.compile(r"system\s*:\s*", re.IGNORECASE),
+    re.compile(r"<\|(?:im_start|im_end|system|user|assistant)\|>", re.IGNORECASE),
+    re.compile(r"\[INST\]|\[/INST\]|<<SYS>>|<</SYS>>", re.IGNORECASE),
 ]
 
 
@@ -27,9 +30,9 @@ def sanitize_for_prompt(text: str, max_length: int = 10000, field_name: str = "i
         return str(text)[:max_length]
 
     # Normalize Unicode to prevent homoglyph bypasses (Cyrillic а vs Latin a, etc.)
-    text = unicodedata.normalize('NFKD', text)
+    text = unicodedata.normalize("NFKD", text)
     # Strip zero-width characters
-    text = re.sub(r'[\u200b\u200c\u200d\u2060\ufeff]', '', text)
+    text = re.sub(r"[\u200b\u200c\u200d\u2060\ufeff]", "", text)
 
     # Truncate
     if len(text) > max_length:

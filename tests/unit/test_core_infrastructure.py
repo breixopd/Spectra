@@ -89,9 +89,7 @@ class TestEventBus:
             received.append(event)
 
         bus.subscribe(EventType.MISSION_STARTED, handler)
-        bus._handlers[EventType.MISSION_STARTED.value][0][0](
-            Event(type=EventType.MISSION_STARTED)
-        )
+        bus._handlers[EventType.MISSION_STARTED.value][0][0](Event(type=EventType.MISSION_STARTED))
 
         assert len(received) == 1
         assert received[0].type == EventType.MISSION_STARTED

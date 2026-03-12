@@ -117,9 +117,7 @@ async def test_update_settings_merges_partial_runtime_ai_payload(test_app):
                             "base_url": "http://ollama:11434",
                         }
                     },
-                    "provider_fallbacks": {
-                        "default": ["tier1", "tier2"]
-                    },
+                    "provider_fallbacks": {"default": ["tier1", "tier2"]},
                 },
             )
 

@@ -54,12 +54,8 @@ class MissionInput(BaseModel):
     """Input for the MissionController."""
 
     directive: str = Field(..., description="User's high-level directive")
-    is_steering: bool = Field(
-        False, description="Is this a mid-mission steering command?"
-    )
-    force_phase: AssessmentPhase | None = Field(
-        None, description="Force transition to phase"
-    )
+    is_steering: bool = Field(False, description="Is this a mid-mission steering command?")
+    force_phase: AssessmentPhase | None = Field(None, description="Force transition to phase")
 
 
 class Task(BaseModel):
@@ -70,9 +66,7 @@ class Task(BaseModel):
     agent_type: str = Field(..., description="Which agent handles this task")
     phase: AssessmentPhase = Field(..., description="Assessment phase")
     priority: int = Field(1, ge=1, le=5, description="Priority 1-5 (1 is highest)")
-    dependencies: list[str] = Field(
-        default_factory=list, description="Task IDs this depends on"
-    )
+    dependencies: list[str] = Field(default_factory=list, description="Task IDs this depends on")
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -106,9 +100,7 @@ class PhaseTransition(AgentAction):
 
 
 @register_agent
-class MissionController(
-    Agent[MissionInput, MissionPlan | PhaseTransition | SteeringAction]
-):
+class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | SteeringAction]):
     """
     The "Manager" agent that orchestrates the assessment workflow.
     """
@@ -203,13 +195,15 @@ class MissionController(
         )
 
         ctx = ContextManager(max_context_tokens=6000)
-        prompt = ctx.build([
-            ContextSection("task", plan_prompt_text, Priority.CRITICAL),
-            ContextSection("tools", tools_context, Priority.HIGH, max_tokens=800),
-            ContextSection("methodology", methodology_summary, Priority.LOW, max_tokens=400),
-            ContextSection("memory", memory_context, Priority.MEDIUM, max_tokens=500),
-            ContextSection("rag", rag_context, Priority.LOW, max_tokens=500),
-        ])
+        prompt = ctx.build(
+            [
+                ContextSection("task", plan_prompt_text, Priority.CRITICAL),
+                ContextSection("tools", tools_context, Priority.HIGH, max_tokens=800),
+                ContextSection("methodology", methodology_summary, Priority.LOW, max_tokens=400),
+                ContextSection("memory", memory_context, Priority.MEDIUM, max_tokens=500),
+                ContextSection("rag", rag_context, Priority.LOW, max_tokens=500),
+            ]
+        )
 
         system_prompt = (
             self._build_system_prompt(context)
@@ -237,9 +231,7 @@ Your plan must be:
                     )
                     return plan
                 except Exception as e:
-                    logger.warning(
-                        "Plan generation attempt %d failed: %s", attempt + 1, e
-                    )
+                    logger.warning("Plan generation attempt %d failed: %s", attempt + 1, e)
                     if attempt == max_retries - 1:
                         raise LLMParseError(agent=self.name, raw_response=str(e)) from e
                     # Slightly adjust prompt or temperature on retry if needed

@@ -89,9 +89,7 @@ async def test_configure_system(service, setup_request, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_configure_system_persists_db_backed_profiles_and_fallbacks(
-    service, mock_session
-):
+async def test_configure_system_persists_db_backed_profiles_and_fallbacks(service, mock_session):
     setup_request = SystemSetupRequest(
         user=UserCreate(
             username="admin",
@@ -129,11 +127,7 @@ async def test_configure_system_persists_db_backed_profiles_and_fallbacks(
 
     await service._configure_system(setup_request)
 
-    added_configs = [
-        call.args[0]
-        for call in mock_session.add.call_args_list
-        if isinstance(call.args[0], SystemConfig)
-    ]
+    added_configs = [call.args[0] for call in mock_session.add.call_args_list if isinstance(call.args[0], SystemConfig)]
     config_map = {config.key: config for config in added_configs}
 
     assert "AI_PROVIDER_PROFILES" in config_map
@@ -205,9 +199,7 @@ async def test_generate_signing_keys_new(service):
         patch("app.services.system.setup.Path.exists") as mock_exists,
         patch("app.services.system.setup.Path.mkdir"),
         patch("builtins.open", new_callable=mock_open),
-        patch(
-            "cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate"
-        ) as mock_gen,
+        patch("cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate") as mock_gen,
         patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread,
     ):
         mock_exists.return_value = False

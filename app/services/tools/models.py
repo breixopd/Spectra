@@ -15,6 +15,7 @@ from app.core.enums import RiskLevel
 
 logger = logging.getLogger(__name__)
 
+
 class ToolCategory(StrEnum):
     """Primary categories for security tools."""
 
@@ -131,22 +132,14 @@ class OutputFormat(StrEnum):
 class InstallationConfig(BaseModel):
     """Configuration for tool installation."""
 
-    method: InstallationMethod = Field(
-        default=InstallationMethod.SCRIPT, description="Installation method"
-    )
-    commands: list[str] = Field(
-        default_factory=list, description="Shell commands to run for installation"
-    )
+    method: InstallationMethod = Field(default=InstallationMethod.SCRIPT, description="Installation method")
+    commands: list[str] = Field(default_factory=list, description="Shell commands to run for installation")
     verification_command: str | None = Field(
         None,
         description="Command to verify successful installation (e.g., 'nmap --version')",
     )
-    verification_regex: str | None = Field(
-        None, description="Regex to match against verification output"
-    )
-    uninstall_commands: list[str] = Field(
-        default_factory=list, description="Shell commands to run for uninstallation"
-    )
+    verification_regex: str | None = Field(None, description="Regex to match against verification output")
+    uninstall_commands: list[str] = Field(default_factory=list, description="Shell commands to run for uninstallation")
 
 
 class ExecutionConfig(BaseModel):
@@ -157,21 +150,13 @@ class ExecutionConfig(BaseModel):
         "",
         description="Argument template with placeholders (e.g., '-sV {target} -oX {output_file}')",
     )
-    args_schema: dict[str, Any] = Field(
-        default_factory=dict, description="JSON Schema for arguments validation"
-    )
+    args_schema: dict[str, Any] = Field(default_factory=dict, description="JSON Schema for arguments validation")
     timeout: int = Field(300, description="Default timeout in seconds")
-    timeout_per_host: int = Field(
-        60, description="Estimated seconds per host for dynamic timeout calculation"
-    )
-    min_timeout: int = Field(
-        60, description="Minimum timeout regardless of calculation"
-    )
+    timeout_per_host: int = Field(60, description="Estimated seconds per host for dynamic timeout calculation")
+    min_timeout: int = Field(60, description="Minimum timeout regardless of calculation")
     max_timeout: int = Field(3600, description="Maximum timeout cap (1 hour default)")
     working_dir: str | None = Field(None, description="Working directory for execution")
-    env: dict[str, str] = Field(
-        default_factory=dict, description="Additional environment variables"
-    )
+    env: dict[str, str] = Field(default_factory=dict, description="Additional environment variables")
     arg_modifiers: dict[str, dict[str, str]] = Field(
         default_factory=dict,
         description="Modifiers for arguments (e.g., {'ports': {'prefix': '-p', 'separator': ','}})",
@@ -191,9 +176,7 @@ class ParsingConfig(BaseModel):
     3. format=text + llm_extraction=True: Use LLM to extract findings (universal)
     """
 
-    format: OutputFormat = Field(
-        OutputFormat.TEXT, description="Output format of the tool"
-    )
+    format: OutputFormat = Field(OutputFormat.TEXT, description="Output format of the tool")
     mapping: dict[str, str] = Field(
         default_factory=dict,
         description="Field mapping from tool output to Spectra's Finding model",
@@ -207,26 +190,18 @@ class ParsingConfig(BaseModel):
     )
 
     # LLM-based extraction for complex/unknown formats
-    llm_extraction: bool = Field(
-        False, description="Use LLM to extract structured findings from text output"
-    )
+    llm_extraction: bool = Field(False, description="Use LLM to extract structured findings from text output")
     extraction_hint: str = Field(
         "",
         description="Hint to LLM about what kind of data to extract (e.g., 'ports and services')",
     )
 
-    jq_filter: str | None = Field(
-        None, description="Optional jq filter for JSON output"
-    )
+    jq_filter: str | None = Field(None, description="Optional jq filter for JSON output")
     output_file_pattern: str | None = Field(
         None, description="Glob pattern for output files if tool writes multiple files"
     )
-    capture_stderr: bool = Field(
-        True, description="Whether to capture stderr in addition to stdout"
-    )
-    combine_outputs: bool = Field(
-        False, description="Combine stdout and output file contents for parsing"
-    )
+    capture_stderr: bool = Field(True, description="Whether to capture stderr in addition to stdout")
+    combine_outputs: bool = Field(False, description="Combine stdout and output file contents for parsing")
 
 
 class UIConfig(BaseModel):
@@ -239,15 +214,9 @@ class UIConfig(BaseModel):
 class StealthConfig(BaseModel):
     """Stealth mode configuration for a tool."""
 
-    rate_limit: int | None = Field(
-        default=None, description="Maximum requests/packets per second in stealth mode"
-    )
-    delay_ms: int | None = Field(
-        default=None, description="Delay between requests in milliseconds"
-    )
-    extra_args: dict[str, Any] = Field(
-        default_factory=dict, description="Additional arguments for stealth mode"
-    )
+    rate_limit: int | None = Field(default=None, description="Maximum requests/packets per second in stealth mode")
+    delay_ms: int | None = Field(default=None, description="Delay between requests in milliseconds")
+    extra_args: dict[str, Any] = Field(default_factory=dict, description="Additional arguments for stealth mode")
 
 
 class ToolMetadata(BaseModel):
@@ -276,9 +245,7 @@ class ToolMetadata(BaseModel):
     )
 
     # Risk level of using this tool
-    risk_level: RiskLevel = Field(
-        default=RiskLevel.LOW, description="Risk level of running this tool"
-    )
+    risk_level: RiskLevel = Field(default=RiskLevel.LOW, description="Risk level of running this tool")
 
     # Tags for flexible categorization
     tags: list[str] = Field(
@@ -287,9 +254,7 @@ class ToolMetadata(BaseModel):
     )
 
     # Use cases - when to use this tool
-    use_cases: list[str] = Field(
-        default_factory=list, description="Specific scenarios where this tool excels"
-    )
+    use_cases: list[str] = Field(default_factory=list, description="Specific scenarios where this tool excels")
 
     # When NOT to use this tool
     limitations: list[str] = Field(
@@ -298,9 +263,7 @@ class ToolMetadata(BaseModel):
     )
 
     # Tools that work well together with this one
-    complements: list[str] = Field(
-        default_factory=list, description="Tool IDs that complement this tool"
-    )
+    complements: list[str] = Field(default_factory=list, description="Tool IDs that complement this tool")
 
     # Tools that should run before this one
     prerequisites: list[str] = Field(
@@ -325,12 +288,8 @@ class ToolConfig(BaseModel):
         pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$",
     )
     name: str = Field(..., description="Human-readable display name")
-    version: str = Field(
-        ..., description="Semantic version (e.g., '1.0.0')", pattern=r"^\d+\.\d+\.\d+$"
-    )
-    category: ToolCategory = Field(
-        ..., description="Primary tool category for organization"
-    )
+    version: str = Field(..., description="Semantic version (e.g., '1.0.0')", pattern=r"^\d+\.\d+\.\d+$")
+    category: ToolCategory = Field(..., description="Primary tool category for organization")
     description: str = Field(..., description="Brief description of what the tool does")
 
     # NEW: Rich metadata for AI
@@ -360,9 +319,7 @@ class ToolConfig(BaseModel):
     )
 
     # Security
-    signature: str | None = Field(
-        None, description="Ed25519 signature of the plugin (hex-encoded)"
-    )
+    signature: str | None = Field(None, description="Ed25519 signature of the plugin (hex-encoded)")
     is_system: bool = Field(
         default=False,
         description="Whether this is a built-in system tool that cannot be removed",
@@ -420,9 +377,7 @@ class ToolExecutionRequest(BaseModel):
 
     tool_id: str = Field(..., description="ID of the tool to run")
     target: str = Field(..., description="Target for the tool (IP, URL, domain)")
-    args: dict[str, Any] = Field(
-        default_factory=dict, description="Additional arguments to pass to the tool"
-    )
+    args: dict[str, Any] = Field(default_factory=dict, description="Additional arguments to pass to the tool")
     timeout: int | None = Field(None, description="Override the default timeout")
 
 

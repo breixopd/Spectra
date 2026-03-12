@@ -36,8 +36,18 @@ def _get_known_tools() -> set[str]:
     except Exception as e:
         logger.debug("Failed to get tool registry: %s", e)
     return {
-        "nmap", "naabu", "nuclei", "nikto", "wpscan", "gobuster",
-        "ffuf", "sqlmap", "hydra", "metasploit", "searchsploit", "amass",
+        "nmap",
+        "naabu",
+        "nuclei",
+        "nikto",
+        "wpscan",
+        "gobuster",
+        "ffuf",
+        "sqlmap",
+        "hydra",
+        "metasploit",
+        "searchsploit",
+        "amass",
     }
 
 
@@ -69,9 +79,7 @@ def extract_tool_hint_from_description(description: str) -> str | None:
 
     for tool in known_tools:
         if tool in desc_lower:
-            logger.debug(
-                "Found tool '%s' in description: %s", tool, description[:50]
-            )
+            logger.debug("Found tool '%s' in description: %s", tool, description[:50])
             return tool
 
     return None
@@ -118,13 +126,11 @@ class ReconHandlers:
                 mission.blackboard.read("vulnerabilities")
                 if bb_creds and isinstance(bb_creds, list):
                     context.extra_context = (
-                        getattr(context, "extra_context", "")
-                        + f"\nDiscovered credentials: {bb_creds[:5]}"
+                        getattr(context, "extra_context", "") + f"\nDiscovered credentials: {bb_creds[:5]}"
                     )
                 if bb_ports and isinstance(bb_ports, list):
                     context.extra_context = (
-                        getattr(context, "extra_context", "")
-                        + f"\nDiscovered open ports: {bb_ports[:20]}"
+                        getattr(context, "extra_context", "") + f"\nDiscovered open ports: {bb_ports[:20]}"
                     )
 
             selector_input = ToolSelectorInput(
@@ -139,19 +145,15 @@ class ReconHandlers:
                 tags_filter=task.parameters.get("tags", []),
             )
 
-            if getattr(agent, 'enable_reflection', False) is True:
+            if getattr(agent, "enable_reflection", False) is True:
                 result = await agent.execute_with_reflection(context, selector_input)
             else:
                 result = await agent.execute(context, selector_input)
 
             if result.success and isinstance(result.action, ParallelToolAction):
                 parallel_action = result.action
-                mission.log(
-                    f"Parallel execution: {[t.tool_name for t in parallel_action.tools]}"
-                )
-                results = await self._execute_parallel_tools(
-                    mission, parallel_action, context
-                )
+                mission.log(f"Parallel execution: {[t.tool_name for t in parallel_action.tools]}")
+                results = await self._execute_parallel_tools(mission, parallel_action, context)
                 for r in results:
                     tool_name = r.get("tool")
                     if tool_name:
@@ -165,9 +167,7 @@ class ReconHandlers:
                     mission.log(f"No more tools for phase: {reason}")
                     return
 
-                success = await self.tool_service.execute_tool_action(
-                    mission, action, context
-                )
+                success = await self.tool_service.execute_tool_action(mission, action, context)
 
                 if success and mission.findings:
                     mission.blackboard.write(
@@ -177,14 +177,10 @@ class ReconHandlers:
                     )
 
                 if not success:
-                    mission.log(
-                        f"Tool {action.tool_name} execution failed or was blocked."
-                    )
+                    mission.log(f"Tool {action.tool_name} execution failed or was blocked.")
 
                 if success:
-                    await self.process_tool_chain(
-                        mission, action.tool_name, context
-                    )
+                    await self.process_tool_chain(mission, action.tool_name, context)
             else:
                 mission.log(f"Tool selection failed: {result.error}")
 
@@ -213,7 +209,7 @@ class ReconHandlers:
                 max_hosts=task.parameters.get("max_hosts", MAX_HOSTS_DEFAULT),
             )
 
-            if getattr(agent, 'enable_reflection', False) is True:
+            if getattr(agent, "enable_reflection", False) is True:
                 result = await agent.execute_with_reflection(context, scope_input)
             else:
                 result = await agent.execute(context, scope_input)
@@ -246,7 +242,7 @@ class ReconHandlers:
                 target=mission.target,
             )
 
-            if getattr(agent, 'enable_reflection', False) is True:
+            if getattr(agent, "enable_reflection", False) is True:
                 result = await agent.execute_with_reflection(context, reporter_input)
             else:
                 result = await agent.execute(context, reporter_input)
@@ -291,9 +287,7 @@ class ReconHandlers:
                 mission.log("Script execution failed: No content provided")
                 return
 
-            result = await self.tool_service.execute_custom_script(
-                mission, content, language, target
-            )
+            result = await self.tool_service.execute_custom_script(mission, content, language, target)
 
             if result.success:
                 mission.log("Custom script executed successfully.")
@@ -318,9 +312,7 @@ class ReconHandlers:
         async def _run_one(tool_action: ToolAction) -> dict[str, Any]:
             async with sem:
                 mission.log(f"Parallel start: {tool_action.tool_name}")
-                success = await self.tool_service.execute_tool_action(
-                    mission, tool_action, context
-                )
+                success = await self.tool_service.execute_tool_action(mission, tool_action, context)
                 if success and mission.findings:
                     mission.blackboard.write(
                         "tool_selector",
@@ -360,15 +352,12 @@ class ReconHandlers:
             mission.blackboard.write(
                 "output_intelligence",
                 f"intel_{item.type}_{item.value[:30]}",
-                {"type": item.type, "value": item.value, "confidence": item.confidence,
-                 "source": item.source_tool},
+                {"type": item.type, "value": item.value, "confidence": item.confidence, "source": item.source_tool},
             )
 
         # 1b. Auto-expand scope if new hosts/subdomains discovered
         host_findings = [
-            {"type": item.type, "value": item.value}
-            for item in intel_items
-            if item.type in ("subdomain", "host", "ip")
+            {"type": item.type, "value": item.value} for item in intel_items if item.type in ("subdomain", "host", "ip")
         ]
         if host_findings:
             current_scope = {"target": mission.target}
@@ -377,7 +366,8 @@ class ReconHandlers:
                 for exp in expansions:
                     mission.log(f"[SCOPE] Auto-discovered: {exp['type']} {exp['value']}")
                 mission.blackboard.write(
-                    "scope", "auto_expansions",
+                    "scope",
+                    "auto_expansions",
                     {"expansions": expansions},
                 )
 
@@ -410,11 +400,12 @@ class ReconHandlers:
 
             parent_id = f"{tool_name}-chain"
             if not mission.task_tree.get_node(parent_id):
-                mission.task_tree.add_task(
-                    parent_id, f"{tool_name} chains", f"chain/{tool_name}")
+                mission.task_tree.add_task(parent_id, f"{tool_name} chains", f"chain/{tool_name}")
             mission.task_tree.add_task(
-                new_task.task_id, rule.description[:60],
-                f"chain/{rule.next_tool}", parent_id=parent_id,
+                new_task.task_id,
+                rule.description[:60],
+                f"chain/{rule.next_tool}",
+                parent_id=parent_id,
                 tool_used=rule.next_tool,
             )
             chain_count += 1

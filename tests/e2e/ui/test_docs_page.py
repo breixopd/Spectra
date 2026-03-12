@@ -1,4 +1,5 @@
 """Browser tests for API docs and help pages."""
+
 import pytest
 from playwright.async_api import Page
 

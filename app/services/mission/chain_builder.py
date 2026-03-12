@@ -24,6 +24,7 @@ logger = logging.getLogger("spectra.mission.chain_builder")
 
 class ChainStage(BaseModel):
     """A single stage in an exploit chain."""
+
     id: str
     name: str
     description: str = ""
@@ -39,6 +40,7 @@ class ChainStage(BaseModel):
 
 class ExploitChain(BaseModel):
     """A complete multi-stage exploit chain."""
+
     id: str
     name: str
     description: str = ""
@@ -49,6 +51,7 @@ class ExploitChain(BaseModel):
 
 class ChainExecutionResult(BaseModel):
     """Result of executing a chain."""
+
     chain_id: str
     success: bool = False
     stages_completed: int = 0
@@ -112,9 +115,28 @@ BUILTIN_CHAINS: list[dict[str, Any]] = [
         "description": "Exploit web vulnerability to gain shell access",
         "stages": [
             {"id": "scan", "name": "Service Discovery", "tool": "nmap", "phase": "discovery", "success_regex": "open"},
-            {"id": "vuln", "name": "Vulnerability Scan", "tool": "nuclei", "phase": "vulnerability", "success_regex": "critical|high"},
-            {"id": "exploit", "name": "Exploit Vulnerability", "tool": "sqlmap", "phase": "exploitation", "success_regex": "injection|dumped", "fallback_stage": "brute"},
-            {"id": "brute", "name": "Default Credentials", "tool": "hydra", "phase": "exploitation", "success_regex": "login:|password:"},
+            {
+                "id": "vuln",
+                "name": "Vulnerability Scan",
+                "tool": "nuclei",
+                "phase": "vulnerability",
+                "success_regex": "critical|high",
+            },
+            {
+                "id": "exploit",
+                "name": "Exploit Vulnerability",
+                "tool": "sqlmap",
+                "phase": "exploitation",
+                "success_regex": "injection|dumped",
+                "fallback_stage": "brute",
+            },
+            {
+                "id": "brute",
+                "name": "Default Credentials",
+                "tool": "hydra",
+                "phase": "exploitation",
+                "success_regex": "login:|password:",
+            },
         ],
     },
     {
@@ -123,9 +145,20 @@ BUILTIN_CHAINS: list[dict[str, Any]] = [
         "description": "Gain access then enumerate internal network",
         "stages": [
             {"id": "scan", "name": "Port Scan", "tool": "nmap", "phase": "discovery", "success_regex": "open"},
-            {"id": "enum", "name": "Service Enumeration", "tool": "nuclei", "phase": "enumeration", "success_regex": "template-id"},
+            {
+                "id": "enum",
+                "name": "Service Enumeration",
+                "tool": "nuclei",
+                "phase": "enumeration",
+                "success_regex": "template-id",
+            },
             {"id": "exploit", "name": "Initial Access", "phase": "exploitation", "success_regex": "session|shell"},
-            {"id": "internal", "name": "Internal Recon", "phase": "post_exploitation", "success_regex": "192\\.168|10\\.0|172\\.16"},
+            {
+                "id": "internal",
+                "name": "Internal Recon",
+                "phase": "post_exploitation",
+                "success_regex": "192\\.168|10\\.0|172\\.16",
+            },
         ],
     },
 ]
@@ -136,12 +169,14 @@ def get_builtin_chains() -> list[ExploitChain]:
     chains = []
     for chain_data in BUILTIN_CHAINS:
         stages = [ChainStage(**s) for s in chain_data.get("stages", [])]
-        chains.append(ExploitChain(
-            id=chain_data["id"],
-            name=chain_data["name"],
-            description=chain_data.get("description", ""),
-            stages=stages,
-        ))
+        chains.append(
+            ExploitChain(
+                id=chain_data["id"],
+                name=chain_data["name"],
+                description=chain_data.get("description", ""),
+                stages=stages,
+            )
+        )
     return chains
 
 
@@ -157,13 +192,15 @@ def load_custom_chains() -> list[ExploitChain]:
         chains = []
         for item in data:
             stages = [ChainStage(**s) for s in item.get("stages", [])]
-            chains.append(ExploitChain(
-                id=item["id"],
-                name=item["name"],
-                description=item.get("description", ""),
-                stages=stages,
-                metadata=item.get("metadata", {}),
-            ))
+            chains.append(
+                ExploitChain(
+                    id=item["id"],
+                    name=item["name"],
+                    description=item.get("description", ""),
+                    stages=stages,
+                    metadata=item.get("metadata", {}),
+                )
+            )
         return chains
     except Exception as e:
         logger.warning("Failed to load custom chains: %s", e)
@@ -175,6 +212,4 @@ def save_custom_chain(chain: ExploitChain) -> None:
     existing = load_custom_chains()
     existing.append(chain)
     CUSTOM_CHAINS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CUSTOM_CHAINS_PATH.write_text(
-        json.dumps([c.model_dump() for c in existing], indent=2, default=str)
-    )
+    CUSTOM_CHAINS_PATH.write_text(json.dumps([c.model_dump() for c in existing], indent=2, default=str))

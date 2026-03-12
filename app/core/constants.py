@@ -125,7 +125,9 @@ API_RATE_LIMIT: str = "100/minute"
 # ---------------------------------------------------------------------------
 
 #: URL for Metasploit module metadata (raw GitHub).
-MSF_METADATA_URL: str = "https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json"
+MSF_METADATA_URL: str = (
+    "https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json"
+)
 
 #: URL for CISA Known Exploited Vulnerabilities catalog.
 CISA_KEV_URL: str = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"

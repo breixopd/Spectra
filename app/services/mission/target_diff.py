@@ -105,24 +105,12 @@ def compare_missions(
     new_vuln_map = {_vuln_key(v): v for v in new_vulns}
 
     return {
-        "new_services": [
-            new_svc_map[k] for k in new_svc_map if k not in old_svc_map
-        ],
-        "removed_services": [
-            old_svc_map[k] for k in old_svc_map if k not in new_svc_map
-        ],
-        "new_findings": [
-            new_find_map[k] for k in new_find_map if k not in old_find_map
-        ],
-        "resolved_findings": [
-            old_find_map[k] for k in old_find_map if k not in new_find_map
-        ],
-        "new_vulns": [
-            new_vuln_map[k] for k in new_vuln_map if k not in old_vuln_map
-        ],
-        "patched_vulns": [
-            old_vuln_map[k] for k in old_vuln_map if k not in new_vuln_map
-        ],
+        "new_services": [new_svc_map[k] for k in new_svc_map if k not in old_svc_map],
+        "removed_services": [old_svc_map[k] for k in old_svc_map if k not in new_svc_map],
+        "new_findings": [new_find_map[k] for k in new_find_map if k not in old_find_map],
+        "resolved_findings": [old_find_map[k] for k in old_find_map if k not in new_find_map],
+        "new_vulns": [new_vuln_map[k] for k in new_vuln_map if k not in old_vuln_map],
+        "patched_vulns": [old_vuln_map[k] for k in old_vuln_map if k not in new_vuln_map],
     }
 
 

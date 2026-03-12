@@ -45,9 +45,7 @@ class TestMissionLoop:
 
     @pytest.mark.asyncio
     async def test_loop_sets_status_on_exception(self, execution_manager):
-        execution_manager.lifecycle.initialize_mission = AsyncMock(
-            return_value=MagicMock()
-        )
+        execution_manager.lifecycle.initialize_mission = AsyncMock(return_value=MagicMock())
 
         mission = MagicMock()
         mission.record_demo = False
@@ -57,9 +55,7 @@ class TestMissionLoop:
         mission.findings = []
 
         # Make scope phase fail
-        execution_manager._run_scope_phase = AsyncMock(
-            side_effect=RuntimeError("scope failed")
-        )
+        execution_manager._run_scope_phase = AsyncMock(side_effect=RuntimeError("scope failed"))
         execution_manager._broadcast_state = MagicMock()
 
         with patch("app.services.mission.manager.execution.shell_manager"):
@@ -70,9 +66,7 @@ class TestMissionLoop:
 
     @pytest.mark.asyncio
     async def test_loop_demo_recorder_integration(self, execution_manager):
-        execution_manager.lifecycle.initialize_mission = AsyncMock(
-            return_value=MagicMock()
-        )
+        execution_manager.lifecycle.initialize_mission = AsyncMock(return_value=MagicMock())
 
         mission = MagicMock()
         mission.record_demo = True
@@ -83,9 +77,7 @@ class TestMissionLoop:
         mission.log = MagicMock()
 
         # Make scope phase fail to short-circuit
-        execution_manager._run_scope_phase = AsyncMock(
-            side_effect=RuntimeError("test")
-        )
+        execution_manager._run_scope_phase = AsyncMock(side_effect=RuntimeError("test"))
         execution_manager._broadcast_state = MagicMock()
 
         with patch("app.services.mission.manager.execution.shell_manager"):

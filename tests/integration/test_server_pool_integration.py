@@ -2,6 +2,7 @@
 
 Requires PostgreSQL.
 """
+
 import os
 
 import pytest
@@ -9,11 +10,9 @@ import pytest
 pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.integration,
-    pytest.mark.skipif(
-        "sqlite" in os.environ.get("DATABASE_URL", "sqlite"),
-        reason="Requires PostgreSQL"
-    ),
+    pytest.mark.skipif("sqlite" in os.environ.get("DATABASE_URL", "sqlite"), reason="Requires PostgreSQL"),
 ]
+
 
 async def test_full_node_lifecycle():
     """Add, list, update, health check, remove a node."""
@@ -23,9 +22,12 @@ async def test_full_node_lifecycle():
     pool = get_pool_manager()
     async with async_session_maker() as session:
         node = await pool.add_node(
-            session, "sandbox_worker", "test-worker-1",
+            session,
+            "sandbox_worker",
+            "test-worker-1",
             "http://localhost:8080",
-            weight=2, max_capacity=5,
+            weight=2,
+            max_capacity=5,
         )
         await session.commit()
         assert node["name"] == "test-worker-1"

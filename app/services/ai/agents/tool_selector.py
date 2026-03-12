@@ -38,36 +38,20 @@ class ToolSelectorInput(BaseModel):
     current_phase: str = Field("discovery", description="Current assessment phase")
     target: str = Field(..., description="Current target")
     target_type: str = Field("ip", description="Type of target: ip, domain, url")
-    known_services: list[dict[str, Any]] = Field(
-        default_factory=list, description="Services discovered so far"
-    )
-    known_vulns: list[dict[str, Any]] = Field(
-        default_factory=list, description="Vulnerabilities found so far"
-    )
-    tools_already_run: list[str] = Field(
-        default_factory=list, description="Tools that have already been run"
-    )
-    user_preference: str | None = Field(
-        None, description="User's tool preference if any"
-    )
-    required_capability: str | None = Field(
-        None, description="Specific capability needed"
-    )
-    tags_filter: list[str] = Field(
-        default_factory=list, description="Filter tools by tags"
-    )
+    known_services: list[dict[str, Any]] = Field(default_factory=list, description="Services discovered so far")
+    known_vulns: list[dict[str, Any]] = Field(default_factory=list, description="Vulnerabilities found so far")
+    tools_already_run: list[str] = Field(default_factory=list, description="Tools that have already been run")
+    user_preference: str | None = Field(None, description="User's tool preference if any")
+    required_capability: str | None = Field(None, description="Specific capability needed")
+    tags_filter: list[str] = Field(default_factory=list, description="Filter tools by tags")
 
 
 class ToolSelectorOutput(ToolAction):
     """Output from the ToolSelector agent."""
 
     action_type: str = "run_tool"
-    alternatives: list[str] = Field(
-        default_factory=list, description="Alternative tools that could be used"
-    )
-    skip_reason: str | None = Field(
-        default=None, description="Reason if no tool selected"
-    )
+    alternatives: list[str] = Field(default_factory=list, description="Alternative tools that could be used")
+    skip_reason: str | None = Field(default=None, description="Reason if no tool selected")
 
 
 # --- ToolSelector Implementation ---
@@ -86,9 +70,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
 
     role: ClassVar[AgentRole] = AgentRole.TOOL_SELECTOR
     name: ClassVar[str] = "ToolSelector"
-    description: ClassVar[str] = (
-        "Analyzes context and selects the optimal security tool to run"
-    )
+    description: ClassVar[str] = "Analyzes context and selects the optimal security tool to run"
 
     # Pre-defined groups of tools safe to run in parallel
     PARALLEL_TOOL_GROUPS: ClassVar[dict[str, list[str]]] = {
@@ -194,10 +176,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
 
         for group_name, group_tools in self.PARALLEL_TOOL_GROUPS.items():
             # Filter to tools that are available and not yet run
-            candidates = [
-                t for t in group_tools
-                if t in available_tool_ids and t not in input_data.tools_already_run
-            ]
+            candidates = [t for t in group_tools if t in available_tool_ids and t not in input_data.tools_already_run]
             if len(candidates) < 2:
                 continue
 
@@ -259,10 +238,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 t
                 for t in all_tools
                 if t.config.id not in input_data.tools_already_run
-                or (
-                    input_data.user_preference
-                    and t.config.id == input_data.user_preference
-                )
+                or (input_data.user_preference and t.config.id == input_data.user_preference)
             ]
 
             if not candidates:
@@ -295,7 +271,9 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             if not input_data.user_preference and input_data.known_services:
                 primary_svc = input_data.known_services[0].get("service", "")
                 quick = self._quick_select(
-                    primary_svc, input_data.current_phase, input_data.tools_already_run,
+                    primary_svc,
+                    input_data.current_phase,
+                    input_data.tools_already_run,
                 )
                 if quick:
                     # Find the first quick-select tool that exists in candidates
@@ -324,11 +302,16 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             if not selected_tool and action.tool_name:
                 # LLM hallucinated a tool name - try fuzzy match
                 available_ids = [t.config.id for t in all_tools]
-                matches = [t for t in available_ids if action.tool_name.lower() in t.lower() or t.lower() in action.tool_name.lower()]
+                matches = [
+                    t
+                    for t in available_ids
+                    if action.tool_name.lower() in t.lower() or t.lower() in action.tool_name.lower()
+                ]
                 if matches:
                     logger.warning(
                         "LLM suggested non-existent tool '%s', using closest match '%s'",
-                        action.tool_name, matches[0],
+                        action.tool_name,
+                        matches[0],
                     )
                     action.tool_name = matches[0]
                     selected_tool = registry.get_tool(action.tool_name)
@@ -341,31 +324,21 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             if selected_tool:
                 # Apply stealth mode adjustments from tool config
                 if context.stealth_mode:
-                    action.tool_args = self._apply_stealth_settings(
-                        selected_tool, action.tool_args
-                    )
+                    action.tool_args = self._apply_stealth_settings(selected_tool, action.tool_args)
 
                 # Set risk level from tool metadata
-                action.risk_level = self._map_risk_level(
-                    selected_tool.config.metadata.risk_level
-                )
+                action.risk_level = self._map_risk_level(selected_tool.config.metadata.risk_level)
 
                 # Validate arguments against registry schema if possible, or basic types
                 self._validate_tool_args(selected_tool, action.tool_args)
 
                 # Set estimated duration from tool config if not provided or too low
                 # Use min_timeout as a threshold to detect if LLM defaulted to 60s
-                if (
-                    action.estimated_duration
-                    <= selected_tool.config.execution.min_timeout
-                ):
+                if action.estimated_duration <= selected_tool.config.execution.min_timeout:
                     action.estimated_duration = selected_tool.config.execution.timeout
 
             # Spawn ParameterTuner sub-agent for complex tools with sufficient context
-            if (
-                action.tool_name
-                and input_data.target
-            ):
+            if action.tool_name and input_data.target:
                 try:
                     from app.services.ai.agents.parameter_tuner import (
                         ParameterTunerAgent,
@@ -374,10 +347,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
 
                     if ParameterTunerAgent.is_complex_tool(action.tool_name):
                         # Gather previous results from blackboard-style context
-                        previous_results = [
-                            {"tool": t, "findings_count": 0}
-                            for t in input_data.tools_already_run
-                        ]
+                        previous_results = [{"tool": t, "findings_count": 0} for t in input_data.tools_already_run]
                         tuner_input = TunerInput(
                             tool_name=action.tool_name,
                             target=input_data.target,
@@ -387,7 +357,10 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                             previous_results=previous_results,
                         )
                         tuner_result = await self.spawn_sub_agent(
-                            AgentRole.PARAMETER_TUNER, context, tuner_input, depth=0,
+                            AgentRole.PARAMETER_TUNER,
+                            context,
+                            tuner_input,
+                            depth=0,
                         )
                         if tuner_result.success and tuner_result.action:
                             tuned = tuner_result.action
@@ -443,25 +416,17 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         # If user specified a tool preference, check if it's available and use it directly
         if input_data.user_preference:
             preferred_tool = next(
-                (
-                    t
-                    for t in available_tools
-                    if t.config.id == input_data.user_preference
-                ),
+                (t for t in available_tools if t.config.id == input_data.user_preference),
                 None,
             )
             if preferred_tool:
-                logger.info(
-                    "Using specified tool preference: %s", input_data.user_preference
-                )
+                logger.info("Using specified tool preference: %s", input_data.user_preference)
                 return ToolSelectorOutput(
                     tool_name=preferred_tool.config.id,
                     target=input_data.target,
                     tool_args={},
                     confidence=0.95,
-                    risk_level=self._map_risk_level(
-                        preferred_tool.config.metadata.risk_level
-                    ),
+                    risk_level=self._map_risk_level(preferred_tool.config.metadata.risk_level),
                     reasoning=f"Using specified tool: {preferred_tool.config.name}",
                     alternatives=[],
                     estimated_duration=preferred_tool.config.execution.timeout,
@@ -505,9 +470,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             preferred_tool_info = f"\n**[IMPORTANT] REQUIRED TOOL: {input_data.user_preference}** - You MUST select this tool if available.\n"
 
         # Get RAG context using centralized service
-        rag_context = await get_tool_usage_context(
-            input_data.current_phase, input_data.known_services
-        )
+        rag_context = await get_tool_usage_context(input_data.current_phase, input_data.known_services)
 
         # Get methodology guidance using centralized service
         methodology_context = get_methodology_guidance(input_data.current_phase)
@@ -559,13 +522,9 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             if input_data.known_services:
                 # Try live NVD lookup first, fall back to builtin
                 try:
-                    cve_context = await get_cve_context_for_services_live(
-                        input_data.known_services
-                    )
+                    cve_context = await get_cve_context_for_services_live(input_data.known_services)
                 except Exception:
-                    cve_context = get_cve_context_for_services(
-                        input_data.known_services
-                    )
+                    cve_context = get_cve_context_for_services(input_data.known_services)
         except Exception as e:
             logger.debug("CVE context fetch failed: %s", e)
 
@@ -591,9 +550,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             logger.debug("Wordlist context fetch failed: %s", e)
 
         # Combine all learned context
-        learned_context = "\n\n".join(
-            filter(None, [memory_context, playbook_context, cve_context, wordlist_context])
-        )
+        learned_context = "\n\n".join(filter(None, [memory_context, playbook_context, cve_context, wordlist_context]))
 
         from app.services.ai.context import ContextManager, ContextSection, Priority
 
@@ -614,13 +571,15 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         )
 
         ctx = ContextManager(max_context_tokens=6000)
-        prompt = ctx.build([
-            ContextSection("task", task_text, Priority.CRITICAL),
-            ContextSection("tools", tools_text, Priority.HIGH, max_tokens=800),
-            ContextSection("methodology", methodology_context, Priority.LOW, max_tokens=400),
-            ContextSection("learned", learned_context, Priority.MEDIUM, max_tokens=500),
-            ContextSection("rag", rag_context, Priority.LOW, max_tokens=400),
-        ])
+        prompt = ctx.build(
+            [
+                ContextSection("task", task_text, Priority.CRITICAL),
+                ContextSection("tools", tools_text, Priority.HIGH, max_tokens=800),
+                ContextSection("methodology", methodology_context, Priority.LOW, max_tokens=400),
+                ContextSection("learned", learned_context, Priority.MEDIUM, max_tokens=500),
+                ContextSection("rag", rag_context, Priority.LOW, max_tokens=400),
+            ]
+        )
 
         system_prompt = self._build_system_prompt(context)
 
@@ -650,15 +609,11 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             config = tool.config
 
             # Score by capability match
-            matching_caps = sum(
-                1 for cap in phase_caps if cap in config.metadata.capabilities
-            )
+            matching_caps = sum(1 for cap in phase_caps if cap in config.metadata.capabilities)
             score += matching_caps * 10
 
             # Score by prerequisites (prefer tools with no unmet prereqs)
-            prereqs_met = all(
-                p in input_data.tools_already_run for p in config.metadata.prerequisites
-            )
+            prereqs_met = all(p in input_data.tools_already_run for p in config.metadata.prerequisites)
             if prereqs_met:
                 score += 20
 
@@ -686,11 +641,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             confidence=0.6,
             risk_level=self._map_risk_level(selected_tool.config.metadata.risk_level),
             reasoning=f"Fallback selection based on capability matching: {selected_tool.config.name}",
-            alternatives=[
-                t.config.id
-                for t in available_tools[1:4]
-                if t.config.id != selected_tool.config.id
-            ],
+            alternatives=[t.config.id for t in available_tools[1:4] if t.config.id != selected_tool.config.id],
             estimated_duration=selected_tool.config.execution.timeout,
         )
 
@@ -751,18 +702,12 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             # Remove Python list syntax that LLM might generate
             # e.g., "-t ['cves/']" -> "" (invalid), "['*']" -> "" (invalid)
             if "[" in val_str or "]" in val_str:
-                logger.warning(
-                    f"Removing malformed list syntax from arg {key}: {val_str}"
-                )
+                logger.warning(f"Removing malformed list syntax from arg {key}: {val_str}")
                 import re
 
                 items = re.findall(r"'([^']+)'", val_str)
                 if items:
-                    valid_items = [
-                        i
-                        for i in items
-                        if i and i not in ("", "*", "/") and not i.startswith("-")
-                    ]
+                    valid_items = [i for i in items if i and i not in ("", "*", "/") and not i.startswith("-")]
                     if valid_items:
                         args[key] = ",".join(valid_items)
                     else:
@@ -783,7 +728,9 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                     if clean_val:
                         logger.warning(
                             "Removing flag prefix from arg %s: %s -> %s",
-                            key, val_str, clean_val,
+                            key,
+                            val_str,
+                            clean_val,
                         )
                         args[key] = clean_val
                     else:
@@ -802,10 +749,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         for key in ["port", "ports", "p"]:
             if key in args:
                 val = args[key]
-                if (
-                    isinstance(val, str)
-                    and not val.replace(",", "").replace("-", "").isdigit()
-                ):
+                if isinstance(val, str) and not val.replace(",", "").replace("-", "").isdigit():
                     # Attempt to fix strict comma spacing e.g. "80, 443" -> "80,443"
                     args[key] = val.replace(" ", "")
 
@@ -815,9 +759,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 try:
                     args[key] = int(args[key])
                 except (ValueError, TypeError):
-                    logger.warning(
-                        f"Invalid integer for {key}: {args[key]}, using default"
-                    )
+                    logger.warning(f"Invalid integer for {key}: {args[key]}, using default")
                     args.pop(key)
 
         # Apply argument modifiers from tool configuration

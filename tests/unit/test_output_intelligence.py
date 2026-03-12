@@ -1,6 +1,5 @@
 """Tests for output intelligence extraction."""
 
-
 from app.services.ai.output_intelligence import ExtractedIntel, extract_intelligence
 
 

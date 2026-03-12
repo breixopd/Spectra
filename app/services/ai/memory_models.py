@@ -97,8 +97,7 @@ OS_SIGNATURES = {
 # Performance Optimization: Pre-compute lowercase signatures to avoid recalculating
 # them inside the hot path during output matching.
 OS_SIGNATURES_LOWER: dict[str, list[str]] = {
-    os_family: [sig.lower() for sig in signatures]
-    for os_family, signatures in OS_SIGNATURES.items()
+    os_family: [sig.lower() for sig in signatures] for os_family, signatures in OS_SIGNATURES.items()
 }
 
 
@@ -120,8 +119,5 @@ def detect_os_from_output(output: str) -> str:
 
 def detect_os_from_services(services: list[dict[str, Any]]) -> str:
     """Detect OS family from discovered services."""
-    all_text = " ".join(
-        f"{s.get('product', '')} {s.get('version', '')} {s.get('service', '')}"
-        for s in services
-    )
+    all_text = " ".join(f"{s.get('product', '')} {s.get('version', '')} {s.get('service', '')}" for s in services)
     return detect_os_from_output(all_text)

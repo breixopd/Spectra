@@ -31,7 +31,11 @@ async def test_db_connectivity_success(caplog):
     # Also mock the table check session
     mock_table_result = MagicMock()
     mock_table_result.fetchall.return_value = [
-        ("users",), ("missions",), ("targets",), ("findings",), ("exploits",),
+        ("users",),
+        ("missions",),
+        ("targets",),
+        ("findings",),
+        ("exploits",),
     ]
     mock_session2 = AsyncMock()
     mock_session2.execute = AsyncMock(return_value=mock_table_result)
@@ -52,6 +56,7 @@ async def test_db_connectivity_success(caplog):
     with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
         with caplog.at_level("INFO", logger="spectra.core.lifespan"):
             from app.core.lifespan import run_startup_checks
+
             await run_startup_checks()
 
     assert any("Database connectivity verified" in r.message for r in caplog.records)
@@ -69,6 +74,7 @@ async def test_db_connectivity_failure(caplog):
     with patch("app.core.lifespan.async_session_maker", side_effect=ConnectionError("refused")):
         with caplog.at_level("WARNING", logger="spectra.core.lifespan"):
             from app.core.lifespan import run_startup_checks
+
             await run_startup_checks()
 
     assert any("connectivity check failed" in r.message for r in caplog.records)
@@ -105,6 +111,7 @@ async def test_missing_tables_warning(caplog):
     with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
         with caplog.at_level("WARNING", logger="spectra.core.lifespan"):
             from app.core.lifespan import run_startup_checks
+
             await run_startup_checks()
 
     assert any("Missing database tables" in r.message for r in caplog.records)
@@ -120,7 +127,11 @@ async def test_disk_space_ok(caplog):
     mock_session.execute = AsyncMock(return_value=mock_result)
     mock_table_result = MagicMock()
     mock_table_result.fetchall.return_value = [
-        ("users",), ("missions",), ("targets",), ("findings",), ("exploits",),
+        ("users",),
+        ("missions",),
+        ("targets",),
+        ("findings",),
+        ("exploits",),
     ]
 
     call_count = 0
@@ -145,6 +156,7 @@ async def test_disk_space_ok(caplog):
         with patch("shutil.disk_usage", return_value=fake_usage):
             with caplog.at_level("INFO", logger="spectra.core.lifespan"):
                 from app.core.lifespan import run_startup_checks
+
                 await run_startup_checks()
 
     assert any("Disk space" in r.message and "free" in r.message for r in caplog.records)
@@ -159,7 +171,11 @@ async def test_low_disk_space_warning(caplog):
     mock_session.execute = AsyncMock(return_value=mock_result)
     mock_table_result = MagicMock()
     mock_table_result.fetchall.return_value = [
-        ("users",), ("missions",), ("targets",), ("findings",), ("exploits",),
+        ("users",),
+        ("missions",),
+        ("targets",),
+        ("findings",),
+        ("exploits",),
     ]
 
     call_count = 0
@@ -184,6 +200,7 @@ async def test_low_disk_space_warning(caplog):
         with patch("shutil.disk_usage", return_value=fake_usage):
             with caplog.at_level("WARNING", logger="spectra.core.lifespan"):
                 from app.core.lifespan import run_startup_checks
+
                 await run_startup_checks()
 
     assert any("Low disk space" in r.message for r in caplog.records)

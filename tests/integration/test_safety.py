@@ -102,9 +102,7 @@ class TestSafetyBlocking:
         assert isinstance(result.action, SafetyAction)
         # The mock is configured to block, but real implementation should also block
 
-    async def test_blocks_out_of_scope_target(
-        self, safety_agent: SafetySupervisorAgent
-    ):
+    async def test_blocks_out_of_scope_target(self, safety_agent: SafetySupervisorAgent):
         """Test that out-of-scope targets are blocked."""
         # Configure mock to block out-of-scope
         safety_agent.llm = MockLLMClient(
@@ -143,9 +141,7 @@ class TestSafetyBlocking:
         assert result.success
         assert isinstance(result.action, SafetyAction)
         assert not result.action.allowed
-        assert (
-            "scope" in result.action.reason.lower() or "8.8.8.8" in result.action.reason
-        )
+        assert "scope" in result.action.reason.lower() or "8.8.8.8" in result.action.reason
 
     async def test_allows_safe_commands(self):
         """Test that safe commands are allowed."""
@@ -297,9 +293,7 @@ class TestConsensusRejection:
 class TestTaskFailureHandling:
     """Test task failure handling with adaptive replanning (E2E-07)."""
 
-    async def test_task_failure_triggers_replan(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_task_failure_triggers_replan(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that task failure triggers replanning."""
         replan_triggered = False
 
@@ -308,7 +302,6 @@ class TestTaskFailureHandling:
 
         # Track if MissionController is called with is_steering=True
         from app.services.ai.agents.mission_controller import MissionInput
-
 
         async def mock_execute(context, input_data):
             nonlocal replan_triggered
@@ -370,14 +363,10 @@ class TestTaskFailureHandling:
                 "validate_at_gate",
                 side_effect=mock_consensus,
             ):
-                with patch(
-                    "app.services.mission.manager.lifecycle.async_session_maker"
-                ):
+                with patch("app.services.mission.manager.lifecycle.async_session_maker"):
                     with patch("app.core.events.events.emit_sync"):
                         # Create a mission manually without going through start_mission
-                        mission = Mission(
-                            target=test_target_ip, directive="Test failure handling"
-                        )
+                        mission = Mission(target=test_target_ip, directive="Test failure handling")
                         mission_manager.active_missions[mission.id] = mission
 
                         from app.services.ai.agents.mission_controller import (
@@ -415,9 +404,7 @@ class TestTaskFailureHandling:
         # Replan should have been triggered
         assert replan_triggered, "Replanning was not triggered on task failure"
 
-    async def test_failure_logged(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_failure_logged(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that failures are properly logged."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -460,13 +447,9 @@ class TestTaskFailureHandling:
 
                     # Check logs
                     logs = mission.logs
-                    assert any("[ADAPT]" in log for log in logs), (
-                        "Adaptation not logged"
-                    )
+                    assert any("[ADAPT]" in log for log in logs), "Adaptation not logged"
 
-    async def test_multiple_failures_handled(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_multiple_failures_handled(self, mission_manager: MissionManager, test_target_ip: str):
         """Test handling multiple consecutive failures."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -521,22 +504,15 @@ class TestTaskFailureHandling:
 class TestIntegratedSafety:
     """Test integrated safety in mission execution."""
 
-    async def test_tool_execution_has_safety_supervisor(
-        self, mission_manager: MissionManager
-    ):
+    async def test_tool_execution_has_safety_supervisor(self, mission_manager: MissionManager):
         """Test that mission executor has safety supervisor configured."""
         # Ensure agents initialized
         await mission_manager._ensure_agents()
 
         # Verify the tool service has a safety supervisor
         # Structure: mission_manager.execution.executor.tool_service.safety_supervisor
-        assert (
-            mission_manager.execution.executor.tool_service.safety_supervisor
-            is not None
-        )
-        assert hasattr(
-            mission_manager.execution.executor.tool_service.safety_supervisor, "execute"
-        )
+        assert mission_manager.execution.executor.tool_service.safety_supervisor is not None
+        assert hasattr(mission_manager.execution.executor.tool_service.safety_supervisor, "execute")
 
     async def test_run_tool_checks_safety_before_execution(self):
         """Test that tool execution includes safety check logic."""
@@ -548,8 +524,6 @@ class TestIntegratedSafety:
         source = inspect.getsource(ToolExecutionService.execute_request)
 
         assert "safety" in source.lower(), "execute_request should reference safety"
-        assert (
-            "SafetyInput" in source
-            or "safety_supervisor" in source
-            or "_perform_safety_check" in source
-        ), "execute_request should use safety supervisor"
+        assert "SafetyInput" in source or "safety_supervisor" in source or "_perform_safety_check" in source, (
+            "execute_request should use safety supervisor"
+        )

@@ -50,9 +50,7 @@ def _check_mission_owner(mission_obj, user: User) -> None:
 class SteerMissionRequest(BaseModel):
     """Schema for steering a mission."""
 
-    action: str = Field(
-        ..., description="Steering action: skip_phase, prioritize_target, focus_vuln"
-    )
+    action: str = Field(..., description="Steering action: skip_phase, prioritize_target, focus_vuln")
     phase: str | None = Field(None, description="Phase to skip (for skip_phase action)")
     target: str | None = Field(None, description="Target to prioritize")
     vulnerability: str | None = Field(None, description="Vulnerability to focus on")
@@ -64,6 +62,7 @@ async def get_scan_presets(
 ):
     """Get available scan presets."""
     from app.services.mission.presets import SCAN_PRESETS
+
     return SCAN_PRESETS
 
 
@@ -142,9 +141,7 @@ async def get_attack_coverage(
         memory = get_memory()
         findings = []
         for lesson in memory.tool_lessons[-50:]:
-            findings.append(
-                {"tool_name": lesson.tool_id, "source": "tool_execution"}
-            )
+            findings.append({"tool_name": lesson.tool_id, "source": "tool_execution"})
         return get_attack_summary(findings)
     except Exception:
         return {"tactics": {}, "total_techniques": 0}
@@ -218,9 +215,7 @@ async def start_mission(
         tools_run=mission.tools_run or [],
         tool_executions=getattr(mission, "tool_executions", []),
         report_path=getattr(mission, "report_path", None),
-        attack_surface=mission.attack_surface.get_summary()
-        if mission.attack_surface
-        else None,
+        attack_surface=mission.attack_surface.get_summary() if mission.attack_surface else None,
     )
 
 
@@ -363,9 +358,7 @@ async def download_pdf_report(
     return FastAPIResponse(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f"attachment; filename=spectra_report_{mission_id[:8]}.pdf"
-        },
+        headers={"Content-Disposition": f"attachment; filename=spectra_report_{mission_id[:8]}.pdf"},
     )
 
 
@@ -415,6 +408,7 @@ async def export_mission_json(
         if not password:
             raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
+
         payload = encrypt_data_with_password(payload, password)
         return FastAPIResponse(
             content=payload,
@@ -493,9 +487,7 @@ async def get_mission(
             tools_run=mission.tools_run or [],
             tool_executions=getattr(mission, "tool_executions", []),
             report_path=getattr(mission, "report_path", None),
-            attack_surface=mission.attack_surface.get_summary()
-            if mission.attack_surface
-            else None,
+            attack_surface=mission.attack_surface.get_summary() if mission.attack_surface else None,
         )
 
     # Try DB
@@ -510,9 +502,7 @@ async def get_mission(
         id=db_mission.id,
         target=db_mission.target,
         status=db_mission.status,
-        current_phase=db_mission.summary.get("current_phase")
-        if db_mission.summary
-        else None,
+        current_phase=db_mission.summary.get("current_phase") if db_mission.summary else None,
         logs=db_mission.logs or [],
         directive=db_mission.directive,
         findings=db_mission.summary.get("findings", []) if db_mission.summary else [],
@@ -539,8 +529,16 @@ async def delete_mission(
     _check_mission_owner(mission, _current_user)
 
     active_statuses = {
-        "created", "initializing", "scoping", "planning", "running",
-        "scanning", "analyzing", "executing", "exploiting", "paused",
+        "created",
+        "initializing",
+        "scoping",
+        "planning",
+        "running",
+        "scanning",
+        "analyzing",
+        "executing",
+        "exploiting",
+        "paused",
     }
     if mission.status in active_statuses:
         raise HTTPException(
@@ -664,9 +662,7 @@ async def diff_missions(
 
     new_db = await repo.get_by_id(other_mission_id)
     if not new_db:
-        raise HTTPException(
-            status_code=404, detail=f"Mission {other_mission_id} not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Mission {other_mission_id} not found")
     _check_mission_owner(new_db, _current_user)
 
     old_dict = {

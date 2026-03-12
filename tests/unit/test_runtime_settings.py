@@ -143,7 +143,9 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("app.core.lifespan.add_system_operation", new_callable=AsyncMock))
         stack.enter_context(patch("app.core.lifespan.remove_system_operation", new_callable=AsyncMock))
         stack.enter_context(patch("app.core.lifespan.telemetry.update_service_status"))
-        mock_init_registry = stack.enter_context(patch("app.services.tools.registry.initialize_registry", new_callable=AsyncMock))
+        mock_init_registry = stack.enter_context(
+            patch("app.services.tools.registry.initialize_registry", new_callable=AsyncMock)
+        )
         stack.enter_context(patch("app.core.lifespan.events.emit", new_callable=AsyncMock))
         stack.enter_context(patch("app.core.lifespan.run_startup_tasks"))
         stack.enter_context(patch("app.core.lifespan.close_global_llm_client", new_callable=AsyncMock))
@@ -152,16 +154,29 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("app.core.lifespan.asyncio.gather", new_callable=AsyncMock))
         stack.enter_context(patch("app.core.lifespan.asyncio.wait_for", new_callable=AsyncMock))
         stack.enter_context(patch("app.core.lifespan.asyncio.create_task", return_value=task))
-        mock_hydrate = stack.enter_context(patch("app.core.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock))
+        mock_hydrate = stack.enter_context(
+            patch("app.core.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
+        )
         stack.enter_context(patch("app.services.ai.embeddings.EmbeddingService", FakeEmbeddingService))
         stack.enter_context(patch("app.core.bridge.EventWebSocketBridge", return_value=FakeBridge()))
         stack.enter_context(patch("app.core.lifespan.run_startup_checks", new_callable=AsyncMock))
         stack.enter_context(patch("app.core.lifespan.seed_default_plans", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock())))
+        stack.enter_context(
+            patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
+        )
         stack.enter_context(patch("app.services.storage.get_storage_service", return_value=MagicMock(is_s3=False)))
-        stack.enter_context(patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock()))
-        stack.enter_context(patch("app.services.scaling.get_pool_manager", return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock())))
-        stack.enter_context(patch("app.services.tools.sandbox.pool.SandboxPool", return_value=MagicMock(available=False)))
+        stack.enter_context(
+            patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock())
+        )
+        stack.enter_context(
+            patch(
+                "app.services.scaling.get_pool_manager",
+                return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock()),
+            )
+        )
+        stack.enter_context(
+            patch("app.services.tools.sandbox.pool.SandboxPool", return_value=MagicMock(available=False))
+        )
         stack.enter_context(patch("app.services.tools.sandbox.SandboxPool", return_value=MagicMock(available=False)))
 
         from app.core.lifespan import lifespan
@@ -194,6 +209,7 @@ class TestGeneralRuntimeFieldMapIncludes:
 
     def test_field_map_has_original_sandbox_keys(self):
         from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
+
         assert "SANDBOX_MAX_CONTAINERS" in GENERAL_RUNTIME_FIELD_MAP
         assert "SANDBOX_MEMORY_LIMIT" in GENERAL_RUNTIME_FIELD_MAP
         assert "SANDBOX_CPU_SHARES" in GENERAL_RUNTIME_FIELD_MAP
@@ -201,6 +217,7 @@ class TestGeneralRuntimeFieldMapIncludes:
 
     def test_field_map_has_new_sandbox_keys(self):
         from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
+
         new_keys = [
             "SANDBOX_RESOURCE_TIERS",
             "SANDBOX_NETWORK_ISOLATION",
@@ -220,6 +237,7 @@ class TestGeneralRuntimeFieldMapIncludes:
 
     def test_field_map_types_correct(self):
         from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
+
         type_checks = {
             "SANDBOX_NETWORK_ISOLATION": "bool",
             "SANDBOX_OOM_ESCALATION_ENABLED": "bool",

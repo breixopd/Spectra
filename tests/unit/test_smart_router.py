@@ -78,9 +78,7 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 20
         mock_response.usage.total_tokens = 30
 
-        fake_litellm = types.SimpleNamespace(
-            acompletion=AsyncMock(return_value=mock_response)
-        )
+        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
         with patch.dict(sys.modules, {"litellm": fake_litellm}):
             result = await router.generate("hello")
             assert result.content == "test response"
@@ -100,9 +98,7 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 5
         mock_response.usage.total_tokens = 10
 
-        fake_litellm = types.SimpleNamespace(
-            acompletion=AsyncMock(return_value=mock_response)
-        )
+        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
         with patch.dict(sys.modules, {"litellm": fake_litellm}):
             await router.generate("select a tool", task_type="tool_selection")
             call_args = fake_litellm.acompletion.call_args
@@ -119,18 +115,14 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 1
         mock_response.usage.total_tokens = 2
 
-        fake_litellm = types.SimpleNamespace(
-            acompletion=AsyncMock(return_value=mock_response)
-        )
+        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
         with patch.dict(sys.modules, {"litellm": fake_litellm}):
             assert await router.health_check() is True
 
     @pytest.mark.asyncio
     async def test_health_check_failure(self):
         router = LiteLLMRouter()
-        fake_litellm = types.SimpleNamespace(
-            acompletion=AsyncMock(side_effect=Exception("down"))
-        )
+        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(side_effect=Exception("down")))
         with patch.dict(sys.modules, {"litellm": fake_litellm}):
             assert await router.health_check() is False
 
@@ -227,9 +219,7 @@ class TestRoleTaskMap:
     def test_mapped_task_types_in_tiers(self):
         """Every task_type in ROLE_TASK_MAP should exist in TASK_TIERS."""
         for role, task_type in ROLE_TASK_MAP.items():
-            assert task_type in TASK_TIERS, (
-                f"ROLE_TASK_MAP[{role.name}] = '{task_type}' not in TASK_TIERS"
-            )
+            assert task_type in TASK_TIERS, f"ROLE_TASK_MAP[{role.name}] = '{task_type}' not in TASK_TIERS"
 
     def test_exploit_crafter_is_tier3(self):
         task = ROLE_TASK_MAP[AgentRole.EXPLOIT_CRAFTER]

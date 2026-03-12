@@ -60,13 +60,9 @@ class PluginValidator:
         # Check signature if safe mode
         if self.safe_mode:
             if not signature_hex:
-                raise PluginSignatureError(
-                    "Plugin has no signature and safe_mode is enabled"
-                )
+                raise PluginSignatureError("Plugin has no signature and safe_mode is enabled")
             if not self._public_key:
-                raise PluginSignatureError(
-                    "No public key configured for signature verification"
-                )
+                raise PluginSignatureError("No public key configured for signature verification")
             self._verify_signature(validation_data, signature_hex)
 
         # Validate schema
@@ -101,9 +97,7 @@ class PluginValidator:
                 raise PluginSignatureError("Invalid public key type")
 
             # Canonicalize JSON (same as sign_plugin.py)
-            canonical_json = json.dumps(
-                data, sort_keys=True, separators=(",", ":")
-            ).encode("utf-8")
+            canonical_json = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
             # Validate hex string before conversion
             try:
@@ -139,6 +133,4 @@ class PluginValidator:
                 continue
             for pattern in DANGEROUS_PATTERNS:
                 if pattern.search(cmd):
-                    raise PluginValidationError(
-                        f"Dangerous command pattern detected: {pattern.pattern}"
-                    )
+                    raise PluginValidationError(f"Dangerous command pattern detected: {pattern.pattern}")

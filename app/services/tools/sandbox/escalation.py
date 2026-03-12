@@ -63,22 +63,21 @@ async def attempt_oom_escalation(mission_id: str) -> tuple[bool, str]:
             return False, f"Already at maximum tier ({current_tier}), cannot escalate"
 
         # Mark current sandbox as escalated
-        await session.execute(
-            update(Sandbox)
-            .where(Sandbox.id == sandbox.id)
-            .values(escalated=True)
-        )
+        await session.execute(update(Sandbox).where(Sandbox.id == sandbox.id).values(escalated=True))
         await session.commit()
 
     # Destroy current sandbox and recreate at new tier
     from app.services.tools.sandbox import get_sandbox_pool
+
     pool = get_sandbox_pool()
     if not pool:
         return False, "Sandbox pool not available"
 
     logger.warning(
         "OOM escalation: mission=%s, %s → %s",
-        mission_id[:8], current_tier, new_tier,
+        mission_id[:8],
+        current_tier,
+        new_tier,
     )
 
     # Destroy old sandbox

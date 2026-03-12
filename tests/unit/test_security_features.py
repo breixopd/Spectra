@@ -30,6 +30,7 @@ from app.core.websocket import ConnectionManager
 
 # --- Fixtures ---
 
+
 @pytest.fixture(autouse=True)
 def _clear_blacklist():
     """Clear token blacklist state before each test."""
@@ -53,6 +54,7 @@ def _clear_lockout():
 
 
 # --- Token Blacklist Tests ---
+
 
 class TestTokenBlacklist:
     def test_invalidate_token_blocks_decode(self):
@@ -95,6 +97,7 @@ class TestTokenBlacklist:
 
 
 # --- Account Lockout Tests ---
+
 
 class TestAccountLockout:
     def test_no_lockout_initially(self):
@@ -147,6 +150,7 @@ class TestAccountLockout:
 
 
 # --- WebSocket Auth Tests ---
+
 
 class TestWebSocketAuth:
     @pytest.mark.asyncio
@@ -207,6 +211,7 @@ class TestWebSocketAuth:
 
 # --- Settings RBAC Tests ---
 
+
 class TestSettingsRBAC:
     def test_settings_endpoint_has_superuser_dependency(self):
         """Verify the settings POST endpoint requires superuser auth."""
@@ -222,20 +227,24 @@ class TestSettingsRBAC:
 
 # --- RAG Functional Guard Tests ---
 
+
 class TestRAGFunctionalGuard:
     def test_embedding_service_is_functional_false_on_fallback(self):
         from app.services.ai.embeddings import EmbeddingService
+
         svc = EmbeddingService()
         svc._use_fallback = True
         assert svc.is_functional is False
 
     def test_embedding_service_is_functional_false_no_model(self):
         from app.services.ai.embeddings import EmbeddingService
+
         svc = EmbeddingService()
         assert svc.is_functional is False
 
     def test_rag_service_is_functional_false(self):
         from app.services.ai.rag import RAGService
+
         svc = RAGService()
         svc.embeddings._use_fallback = True
         svc.embeddings._api_ready = False
@@ -244,6 +253,7 @@ class TestRAGFunctionalGuard:
     @pytest.mark.asyncio
     async def test_rag_search_returns_empty_on_fallback(self):
         from app.services.ai.rag import RAGService
+
         svc = RAGService()
         svc.embeddings._use_fallback = True
         svc._table_ready = True
@@ -253,9 +263,11 @@ class TestRAGFunctionalGuard:
 
 # --- Audit Log Model Tests ---
 
+
 class TestAuditLogModel:
     def test_audit_event_type_values(self):
         from app.models.audit_log import AuditEventType
+
         assert AuditEventType.LOGIN.value == "LOGIN"
         assert AuditEventType.LOGOUT.value == "LOGOUT"
         assert AuditEventType.SETTINGS_CHANGED.value == "SETTINGS_CHANGED"
@@ -263,4 +275,5 @@ class TestAuditLogModel:
 
     def test_audit_log_model_tablename(self):
         from app.models.audit_log import AuditLog
+
         assert AuditLog.__tablename__ == "audit_logs"

@@ -62,9 +62,7 @@ class TestExploitCrafter:
         """When _find_exploit_candidates returns empty, execute returns error."""
         agent = ExploitCrafter(llm=mock_llm)
 
-        with patch.object(
-            agent, "_find_exploit_candidates", new_callable=AsyncMock, return_value=[]
-        ):
+        with patch.object(agent, "_find_exploit_candidates", new_callable=AsyncMock, return_value=[]):
             input_data = ExploitInput(target="10.0.0.1")
             result = await agent.execute(context, input_data)
 
@@ -215,9 +213,7 @@ class TestExploitCrafter:
         candidate = {"name": "ms17_010", "type": "cve"}
         input_data = ExploitInput(target="10.0.0.1", service_info={"port": 445})
 
-        action = await agent._configure_exploit(
-            context, candidate, input_data, attempt=2
-        )
+        action = await agent._configure_exploit(context, candidate, input_data, attempt=2)
 
         assert isinstance(action, ExploitAction)
         assert action.attempt_number == 2  # overridden by the method
@@ -233,9 +229,7 @@ class TestExploitCrafter:
         candidate = {"name": "fallback_exploit", "type": "generic"}
         input_data = ExploitInput(target="10.0.0.1", service_info={"port": 80})
 
-        action = await agent._configure_exploit(
-            context, candidate, input_data, attempt=1
-        )
+        action = await agent._configure_exploit(context, candidate, input_data, attempt=1)
 
         assert isinstance(action, ExploitAction)
         assert action.exploit_name == "fallback_exploit"
@@ -258,26 +252,17 @@ class TestExploitCrafter:
     @pytest.mark.asyncio
     async def test_verify_success_meterpreter(self, mock_llm):
         agent = ExploitCrafter(llm=mock_llm)
-        assert (
-            await agent.verify_success("10.0.0.1", "Meterpreter session 1 opened")
-            is True
-        )
+        assert await agent.verify_success("10.0.0.1", "Meterpreter session 1 opened") is True
 
     @pytest.mark.asyncio
     async def test_verify_success_command_shell(self, mock_llm):
         agent = ExploitCrafter(llm=mock_llm)
-        assert (
-            await agent.verify_success("10.0.0.1", "Command shell opened at 10.0.0.1")
-            is True
-        )
+        assert await agent.verify_success("10.0.0.1", "Command shell opened at 10.0.0.1") is True
 
     @pytest.mark.asyncio
     async def test_verify_success_administrator(self, mock_llm):
         agent = ExploitCrafter(llm=mock_llm)
-        assert (
-            await agent.verify_success("10.0.0.1", "Administrator session started")
-            is True
-        )
+        assert await agent.verify_success("10.0.0.1", "Administrator session started") is True
 
     @pytest.mark.asyncio
     async def test_verify_success_no_match(self, mock_llm):

@@ -25,10 +25,7 @@ REPORT_TEMPLATES: dict[str, dict[str, Any]] = {
 
 def list_report_templates() -> list[dict[str, Any]]:
     """Return summary of available report templates."""
-    return [
-        {"id": tid, "name": t["name"], "sections": t["sections"]}
-        for tid, t in REPORT_TEMPLATES.items()
-    ]
+    return [{"id": tid, "name": t["name"], "sections": t["sections"]} for tid, t in REPORT_TEMPLATES.items()]
 
 
 def get_report_template(template_id: str) -> dict[str, Any] | None:

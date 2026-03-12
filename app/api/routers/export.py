@@ -44,7 +44,18 @@ _CSV_INJECTION_CHARS = ("=", "+", "-", "@", "\t", "\r")
 # Column definitions per entity type
 _COLUMNS: dict[str, list[str]] = {
     "missions": ["id", "target", "directive", "status", "created_at"],
-    "findings": ["id", "target_id", "title", "description", "severity", "status", "cvss_score", "cve_id", "tool_source", "created_at"],
+    "findings": [
+        "id",
+        "target_id",
+        "title",
+        "description",
+        "severity",
+        "status",
+        "cvss_score",
+        "cve_id",
+        "tool_source",
+        "created_at",
+    ],
     "targets": ["id", "address", "description", "status", "os", "created_at"],
     "exploits": ["id", "target_id", "name", "type", "success", "output", "timestamp"],
 }
@@ -90,7 +101,9 @@ async def export_data(
     _current_user: User = Depends(get_current_active_user),
 ) -> StreamingResponse:
     if entity_type not in _VALID_ENTITIES:
-        raise HTTPException(status_code=400, detail=f"Invalid entity_type. Must be one of: {', '.join(sorted(_VALID_ENTITIES))}")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid entity_type. Must be one of: {', '.join(sorted(_VALID_ENTITIES))}"
+        )
     if format not in _VALID_FORMATS:
         raise HTTPException(status_code=400, detail="Invalid format. Must be 'json' or 'csv'.")
 

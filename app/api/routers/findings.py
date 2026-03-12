@@ -193,7 +193,17 @@ async def list_findings(
 
 # --- Export Endpoints (must be before /{finding_id} to avoid path conflicts) ---
 
-_CSV_COLUMNS = ["id", "severity", "title", "description", "tool_source", "target_id", "cve_id", "cvss_score", "created_at"]
+_CSV_COLUMNS = [
+    "id",
+    "severity",
+    "title",
+    "description",
+    "tool_source",
+    "target_id",
+    "cve_id",
+    "cvss_score",
+    "created_at",
+]
 
 _CSV_INJECTION_CHARS = ("=", "+", "-", "@", "\t", "\r")
 
@@ -233,17 +243,19 @@ async def export_findings_csv(
     writer = csv.writer(buf)
     writer.writerow(_CSV_COLUMNS)
     for f in findings:
-        writer.writerow([
-            _sanitize_csv_value(f.id),
-            _sanitize_csv_value(f.severity.value),
-            _sanitize_csv_value(f.title),
-            _sanitize_csv_value(f.description or ""),
-            _sanitize_csv_value(f.tool_source),
-            _sanitize_csv_value(f.target_id),
-            _sanitize_csv_value(f.cve_id or ""),
-            _sanitize_csv_value(f.cvss_score if f.cvss_score is not None else ""),
-            _sanitize_csv_value(f.created_at.isoformat() if f.created_at else ""),
-        ])
+        writer.writerow(
+            [
+                _sanitize_csv_value(f.id),
+                _sanitize_csv_value(f.severity.value),
+                _sanitize_csv_value(f.title),
+                _sanitize_csv_value(f.description or ""),
+                _sanitize_csv_value(f.tool_source),
+                _sanitize_csv_value(f.target_id),
+                _sanitize_csv_value(f.cve_id or ""),
+                _sanitize_csv_value(f.cvss_score if f.cvss_score is not None else ""),
+                _sanitize_csv_value(f.created_at.isoformat() if f.created_at else ""),
+            ]
+        )
 
     payload = buf.getvalue().encode()
 
@@ -251,6 +263,7 @@ async def export_findings_csv(
         if not password:
             raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
+
         payload = encrypt_data_with_password(payload, password)
         return FastAPIResponse(
             content=payload,
@@ -302,6 +315,7 @@ async def export_findings_json(
         if not password:
             raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
+
         payload = encrypt_data_with_password(payload, password)
         return FastAPIResponse(
             content=payload,
@@ -601,12 +615,14 @@ async def retest_finding(
 
 class BulkUpdateRequest(BaseModel):
     """Request body for bulk-updating findings."""
+
     finding_ids: list[str] = Field(..., max_length=MAX_BULK_SIZE)
     update: FindingUpdate
 
 
 class BulkUpdateResponse(BaseModel):
     """Response for bulk update."""
+
     updated: int
 
 

@@ -96,6 +96,7 @@ async def spectra_error_handler(request: Request, exc: SpectraError) -> JSONResp
     status_code = get_status_code_for_exception(exc)
     return JSONResponse(exc.to_dict(), status_code=status_code)
 
+
 # --- GZip Compression ---
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
@@ -149,6 +150,7 @@ async def limit_request_body_size(request: Request, call_next):
         return StarletteResponse("Request body too large", status_code=413)
     response = await call_next(request)
     return response
+
 
 # --- Static Files ---
 app.mount(
@@ -256,6 +258,7 @@ async def service_unavailable_handler(request: Request, exc: Exception) -> HTMLR
         )
     return JSONResponse({"detail": "Service unavailable"}, status_code=503)
 
+
 # --- Include Routers ---
 
 # --- API v1 (canonical versioned prefix) ---
@@ -331,17 +334,13 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
 
             # Validate message size (DoS protection)
             if len(data) > 65536:  # 64KB max message size
-                logger.warning(
-                    "WebSocket message too large from %s, ignoring", user.username
-                )
+                logger.warning("WebSocket message too large from %s, ignoring", user.username)
                 continue
 
             try:
                 message_json = json.loads(data)
                 if not isinstance(message_json, dict) or "type" not in message_json:
-                    logger.warning(
-                        "Invalid WebSocket message format from %s", user.username
-                    )
+                    logger.warning("Invalid WebSocket message format from %s", user.username)
                     continue
 
                 msg_type = message_json.get("type")
@@ -350,9 +349,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
                 else:
                     logger.debug("Received WS message type: %s", msg_type)
             except json.JSONDecodeError:
-                logger.warning(
-                    "Invalid JSON in WebSocket message from %s", user.username
-                )
+                logger.warning("Invalid JSON in WebSocket message from %s", user.username)
 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)

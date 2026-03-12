@@ -36,9 +36,7 @@ async def test_install_success(mock_registry):
     mock_registry.get_tool.return_value = mock_tool
 
     # Mock _is_installed to return False initially
-    with patch.object(
-        installer, "_is_installed", new_callable=AsyncMock
-    ) as mock_is_installed:
+    with patch.object(installer, "_is_installed", new_callable=AsyncMock) as mock_is_installed:
         mock_is_installed.return_value = False
 
         result = await installer.install("test-tool")
@@ -56,9 +54,7 @@ async def test_install_already_installed(mock_registry):
     mock_registry._tools = {"test-tool": mock_tool}
     mock_registry.get_tool.return_value = mock_tool
 
-    with patch.object(
-        installer, "_is_installed", new_callable=AsyncMock
-    ) as mock_is_installed:
+    with patch.object(installer, "_is_installed", new_callable=AsyncMock) as mock_is_installed:
         mock_is_installed.return_value = True
 
         # If already installed, it logs and does 'pass', allowing execution to proceed to install_tool

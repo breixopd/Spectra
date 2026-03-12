@@ -22,6 +22,7 @@ router = APIRouter()
 
 # --- Pydantic request models ---
 
+
 class ServerConnectionRequest(BaseModel):
     host: str
     port: int = 22
@@ -176,6 +177,7 @@ async def list_server_nodes(
 ):
     """List all registered server nodes."""
     from app.services.scaling import get_pool_manager
+
     pool = get_pool_manager()
     return await pool.list_nodes(session, service_type=service_type)
 
@@ -194,11 +196,17 @@ async def add_server_node(
 ):
     """Register a new server node in the pool."""
     from app.services.scaling import get_pool_manager
+
     pool = get_pool_manager()
     node = await pool.add_node(
-        session, service_type, name, url,
-        api_key=api_key, is_primary=is_primary,
-        weight=weight, max_capacity=max_capacity,
+        session,
+        service_type,
+        name,
+        url,
+        api_key=api_key,
+        is_primary=is_primary,
+        weight=weight,
+        max_capacity=max_capacity,
     )
     await session.commit()
     logger.info("Server node added: %s (%s)", name, service_type)
@@ -213,6 +221,7 @@ async def remove_server_node(
 ):
     """Remove a server node from the pool."""
     from app.services.scaling import get_pool_manager
+
     pool = get_pool_manager()
     removed = await pool.remove_node(session, node_id)
     if not removed:
@@ -230,6 +239,7 @@ async def update_server_node(
 ):
     """Update a server node's configuration."""
     from app.services.scaling import get_pool_manager
+
     filtered = {k: v for k, v in body.model_dump(exclude_unset=True).items()}
     pool = get_pool_manager()
     node = await pool.update_node(session, node_id, **filtered)
@@ -245,6 +255,7 @@ async def check_all_server_health(
 ):
     """Run health checks on all active server nodes."""
     from app.services.scaling import get_pool_manager
+
     pool = get_pool_manager()
     results = await pool.health_check_all()
     return results

@@ -9,6 +9,7 @@ from app.services.mission.target_diff import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_mission(
     *,
     services=None,
@@ -55,13 +56,17 @@ class TestCompareMissions:
         assert diff["patched_vulns"] == []
 
     def test_new_services_detected(self):
-        old = _make_mission(services=[
-            {"host": "10.0.0.1", "port": 22, "service": "ssh"},
-        ])
-        new = _make_mission(services=[
-            {"host": "10.0.0.1", "port": 22, "service": "ssh"},
-            {"host": "10.0.0.1", "port": 80, "service": "http"},
-        ])
+        old = _make_mission(
+            services=[
+                {"host": "10.0.0.1", "port": 22, "service": "ssh"},
+            ]
+        )
+        new = _make_mission(
+            services=[
+                {"host": "10.0.0.1", "port": 22, "service": "ssh"},
+                {"host": "10.0.0.1", "port": 80, "service": "http"},
+            ]
+        )
         diff = compare_missions(old, new)
 
         assert len(diff["new_services"]) == 1
@@ -69,13 +74,17 @@ class TestCompareMissions:
         assert diff["removed_services"] == []
 
     def test_removed_services_detected(self):
-        old = _make_mission(services=[
-            {"host": "10.0.0.1", "port": 22, "service": "ssh"},
-            {"host": "10.0.0.1", "port": 80, "service": "http"},
-        ])
-        new = _make_mission(services=[
-            {"host": "10.0.0.1", "port": 22, "service": "ssh"},
-        ])
+        old = _make_mission(
+            services=[
+                {"host": "10.0.0.1", "port": 22, "service": "ssh"},
+                {"host": "10.0.0.1", "port": 80, "service": "http"},
+            ]
+        )
+        new = _make_mission(
+            services=[
+                {"host": "10.0.0.1", "port": 22, "service": "ssh"},
+            ]
+        )
         diff = compare_missions(old, new)
 
         assert diff["new_services"] == []
@@ -84,18 +93,22 @@ class TestCompareMissions:
 
     def test_new_findings_detected(self):
         old = _make_mission(findings=[])
-        new = _make_mission(findings=[
-            {"name": "sqli", "host": "10.0.0.1", "port": 80},
-        ])
+        new = _make_mission(
+            findings=[
+                {"name": "sqli", "host": "10.0.0.1", "port": 80},
+            ]
+        )
         diff = compare_missions(old, new)
 
         assert len(diff["new_findings"]) == 1
         assert diff["resolved_findings"] == []
 
     def test_resolved_findings_detected(self):
-        old = _make_mission(findings=[
-            {"name": "sqli", "host": "10.0.0.1", "port": 80},
-        ])
+        old = _make_mission(
+            findings=[
+                {"name": "sqli", "host": "10.0.0.1", "port": 80},
+            ]
+        )
         new = _make_mission(findings=[])
         diff = compare_missions(old, new)
 
@@ -104,18 +117,22 @@ class TestCompareMissions:
 
     def test_new_vulns_detected(self):
         old = _make_mission(vulns=[])
-        new = _make_mission(vulns=[
-            {"id": "vuln-1", "title": "XSS", "severity": "high"},
-        ])
+        new = _make_mission(
+            vulns=[
+                {"id": "vuln-1", "title": "XSS", "severity": "high"},
+            ]
+        )
         diff = compare_missions(old, new)
 
         assert len(diff["new_vulns"]) == 1
         assert diff["patched_vulns"] == []
 
     def test_patched_vulns_detected(self):
-        old = _make_mission(vulns=[
-            {"id": "vuln-1", "title": "XSS", "severity": "high"},
-        ])
+        old = _make_mission(
+            vulns=[
+                {"id": "vuln-1", "title": "XSS", "severity": "high"},
+            ]
+        )
         new = _make_mission(vulns=[])
         diff = compare_missions(old, new)
 

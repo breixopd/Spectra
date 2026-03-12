@@ -238,10 +238,7 @@ async def run_startup_checks() -> None:
         expected_tables = {"users", "missions", "targets", "findings", "exploits"}
         async with async_session_maker() as session:
             result = await session.execute(
-                sa_text(
-                    "SELECT tablename FROM pg_catalog.pg_tables "
-                    "WHERE schemaname = 'public'"
-                )
+                sa_text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public'")
             )
             existing = {row[0] for row in result.fetchall()}
 
@@ -260,9 +257,7 @@ async def run_startup_checks() -> None:
         usage = shutil.disk_usage(str(data_dir))
         free_mb = usage.free / (1024 * 1024)
         if free_mb < 100:
-            logger.warning(
-                "[CHECK][WARN] Low disk space for data directory: %.0f MB free", free_mb
-            )
+            logger.warning("[CHECK][WARN] Low disk space for data directory: %.0f MB free", free_mb)
         else:
             logger.info("[CHECK][OK] Disk space: %.0f MB free", free_mb)
     except Exception as e:
@@ -276,9 +271,7 @@ async def run_startup_tasks() -> None:
     try:
         logger.info("Running startup tasks...")
 
-        await add_system_operation(
-            "tool_install", "install", "Installing security tools"
-        )
+        await add_system_operation("tool_install", "install", "Installing security tools")
 
         # Mark tools as ready immediately so the UI works.
         # If the tools worker (Kali container) is running, it will update
@@ -309,11 +302,20 @@ def _validate_production_secrets() -> None:
         return
 
     _insecure_defaults = {
-        "", "change-me-in-production", "test-key", "secret",
-        "changeme", "password", "default",
+        "",
+        "change-me-in-production",
+        "test-key",
+        "secret",
+        "changeme",
+        "password",
+        "default",
     }
     jwt_val = settings.JWT_SECRET_KEY.get_secret_value()
-    secret_val = settings.SECRET_KEY.get_secret_value() if isinstance(settings.SECRET_KEY, SecretStr) else str(settings.SECRET_KEY)
+    secret_val = (
+        settings.SECRET_KEY.get_secret_value()
+        if isinstance(settings.SECRET_KEY, SecretStr)
+        else str(settings.SECRET_KEY)
+    )
     if jwt_val.lower() in _insecure_defaults:
         raise RuntimeError(
             "JWT_SECRET_KEY is empty or using a default value. "
@@ -321,8 +323,7 @@ def _validate_production_secrets() -> None:
         )
     if len(jwt_val) < 32:
         logger.warning(
-            "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. "
-            "Use a longer secret for production security."
+            "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. Use a longer secret for production security."
         )
     if secret_val.lower() in _insecure_defaults:
         raise RuntimeError(
@@ -366,6 +367,7 @@ async def _seed_default_data() -> None:
     await seed_default_plans()
 
     from app.services.gateway.service_registry import get_service_registry
+
     get_service_registry()
     logger.info("[OK] Service registry initialized")
 
@@ -430,6 +432,7 @@ async def _initialize_services() -> None:
             # Initialize warm pool manager
             if settings.SANDBOX_WARM_POOL_ENABLED:
                 from app.services.tools.sandbox import WarmPoolManager, set_warm_pool_manager
+
                 warm_manager = WarmPoolManager(sandbox_pool)
                 set_warm_pool_manager(warm_manager)
 
@@ -468,6 +471,7 @@ async def _initialize_services() -> None:
     # Initialize server pool manager
     try:
         from app.services.scaling import get_pool_manager
+
         pool_mgr = get_pool_manager()
         await pool_mgr.start_health_loop()
         logger.info("[OK] Server pool manager initialized")
@@ -485,6 +489,7 @@ async def _initialize_services() -> None:
 
     # Start metrics snapshot store
     from app.core.metrics_store import get_metrics_store
+
     metrics_store = get_metrics_store()
     await metrics_store.start()
     logger.info("[OK] Metrics store started")
@@ -507,6 +512,7 @@ async def _start_event_bridge() -> Any | None:
     """Start the event-to-websocket bridge. Returns the bridge instance or None."""
     try:
         from app.core.bridge import EventWebSocketBridge
+
         bridge = EventWebSocketBridge()
         bridge.start()
         logger.info("[OK] Event bridge started")
@@ -521,6 +527,7 @@ async def _shutdown_services() -> None:
     # Close storage service
     try:
         from app.services.storage import close_storage_service
+
         await close_storage_service()
         logger.info("[OK] Storage service closed")
     except Exception as e:
@@ -531,6 +538,7 @@ async def _shutdown_services() -> None:
     # Stop server pool health loop
     try:
         from app.services.scaling import get_pool_manager
+
         pool_mgr = get_pool_manager()
         await pool_mgr.stop_health_loop()
     except Exception as e:
@@ -539,6 +547,7 @@ async def _shutdown_services() -> None:
     # Clean up warm pool first
     try:
         from app.services.tools.sandbox import get_warm_pool_manager
+
         wm = get_warm_pool_manager()
         if wm:
             await wm.cleanup()
@@ -565,14 +574,13 @@ async def _shutdown_services() -> None:
                 task.cancel()
 
             try:
-                await asyncio.wait_for(
-                    asyncio.gather(*tasks, return_exceptions=True), timeout=5.0
-                )
+                await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=5.0)
             except TimeoutError:
                 logger.warning("Timed out waiting for tasks to cancel")
 
         # Close service registry (all gateway connections)
         from app.services.gateway.service_registry import close_service_registry
+
         await close_service_registry()
         logger.info("[OK] Service registry closed")
 

@@ -17,9 +17,7 @@ def normalize_app_base_url(app_base_url: str) -> str:
     parsed_url = urllib.parse.urlsplit(app_base_url)
     if parsed_url.scheme not in ALLOWED_APP_URL_SCHEMES or not parsed_url.netloc:
         raise ValueError("APP_BASE_URL must use http or https and include a host")
-    return urllib.parse.urlunsplit(
-        (parsed_url.scheme, parsed_url.netloc, parsed_url.path.rstrip("/"), "", "")
-    )
+    return urllib.parse.urlunsplit((parsed_url.scheme, parsed_url.netloc, parsed_url.path.rstrip("/"), "", ""))
 
 
 @pytest.fixture(scope="session")
@@ -39,9 +37,7 @@ def auth_token(app_url: str):
         }
     ).encode()
 
-    connection_cls = (
-        http.client.HTTPSConnection if parsed_url.scheme == "https" else http.client.HTTPConnection
-    )
+    connection_cls = http.client.HTTPSConnection if parsed_url.scheme == "https" else http.client.HTTPConnection
     connection = connection_cls(parsed_url.netloc, timeout=15)
     try:
         connection.request(

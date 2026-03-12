@@ -20,9 +20,7 @@ class PluginLoader:
         self.plugins_dir = plugins_dir
         self.validator = validator
 
-    async def load_plugins(
-        self, existing_tools: dict[str, RegisteredTool]
-    ) -> dict[str, RegisteredTool]:
+    async def load_plugins(self, existing_tools: dict[str, RegisteredTool]) -> dict[str, RegisteredTool]:
         """Scan the plugins directory and load all valid plugins.
 
         Args:
@@ -63,9 +61,7 @@ class PluginLoader:
 
         return tools
 
-    async def _load_plugin_file(
-        self, path: Path, tools: dict[str, RegisteredTool]
-    ) -> str:
+    async def _load_plugin_file(self, path: Path, tools: dict[str, RegisteredTool]) -> str:
         """Load a single plugin file."""
         async with aiofiles.open(path, encoding="utf-8") as f:
             content = await f.read()
@@ -87,9 +83,7 @@ class PluginLoader:
             config=config,
             status=status,
         )
-        logger.debug(
-            "Registered plugin: %s (%s) [Status: %s]", config.id, config.name, status
-        )
+        logger.debug("Registered plugin: %s (%s) [Status: %s]", config.id, config.name, status)
         return config.id
 
     async def _check_tool_availability(self, config) -> ToolStatus:

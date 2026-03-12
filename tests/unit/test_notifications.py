@@ -55,6 +55,7 @@ class TestIsSafeUrl:
 
     def test_handles_dns_failure(self):
         import socket
+
         with patch("app.services.notifications.socket.getaddrinfo", side_effect=socket.gaierror("no dns")):
             assert _is_safe_url("http://does.not.exist.example/hook") is False
 

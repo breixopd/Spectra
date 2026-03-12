@@ -1,6 +1,5 @@
 """Tests for app.core.exceptions module."""
 
-
 from app.core.exceptions import (
     AuthenticationError,
     AuthorizationError,

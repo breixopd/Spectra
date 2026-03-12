@@ -67,9 +67,7 @@ async def get_current_active_user(
     """
     if not current_user.is_active:
         logger.warning("Inactive user attempted access user=%s", current_user.username)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
     return current_user
 
 
@@ -197,11 +195,7 @@ async def check_target_limit(user: User, session: AsyncSession) -> None:
         return
     from app.models.target import Target
 
-    count = (
-        await session.execute(
-            select(func.count(Target.id)).where(Target.user_id == str(user.id))
-        )
-    ).scalar() or 0
+    count = (await session.execute(select(func.count(Target.id)).where(Target.user_id == str(user.id)))).scalar() or 0
     if count >= plan.max_targets:
         raise HTTPException(
             status_code=429,
@@ -254,9 +248,7 @@ async def enforce_api_rate_limit(
     from app.services.billing.usage_tracker import UsageTracker
 
     tracker = UsageTracker()
-    within_limit, current, maximum = await tracker.check_rate_limit(
-        str(user.id), "api_requests"
-    )
+    within_limit, current, maximum = await tracker.check_rate_limit(str(user.id), "api_requests")
     if not within_limit and maximum > 0:
         raise HTTPException(
             status_code=429,

@@ -38,9 +38,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
     HEADER = "X-Correlation-ID"
     REQUEST_ID_HEADER = "X-Request-ID"
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         cid = request.headers.get(self.HEADER) or request.headers.get(self.REQUEST_ID_HEADER) or str(uuid4())
         token = correlation_id_var.set(cid)
         try:
@@ -64,9 +62,12 @@ class SensitiveFieldFilter(logging.Filter):
     """Redacts sensitive values from log records before output."""
 
     PATTERNS = [
-        (re.compile(r'(password|passwd|pwd)"?\s*[=:]\s*"?\S+', re.IGNORECASE), r'\1=***REDACTED***'),
-        (re.compile(r'(token|api_key|apikey|secret|authorization)"?\s*[=:]\s*"?\S+', re.IGNORECASE), r'\1=***REDACTED***'),
-        (re.compile(r'(Bearer\s+)\S+', re.IGNORECASE), r'\1***REDACTED***'),
+        (re.compile(r'(password|passwd|pwd)"?\s*[=:]\s*"?\S+', re.IGNORECASE), r"\1=***REDACTED***"),
+        (
+            re.compile(r'(token|api_key|apikey|secret|authorization)"?\s*[=:]\s*"?\S+', re.IGNORECASE),
+            r"\1=***REDACTED***",
+        ),
+        (re.compile(r"(Bearer\s+)\S+", re.IGNORECASE), r"\1***REDACTED***"),
     ]
 
     def filter(self, record: logging.LogRecord) -> bool:
@@ -81,9 +82,7 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         log_entry: dict[str, Any] = {
-            "timestamp": datetime.fromtimestamp(
-                record.created, tz=UTC
-            ).isoformat(),
+            "timestamp": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

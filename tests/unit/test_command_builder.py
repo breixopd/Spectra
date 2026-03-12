@@ -68,9 +68,7 @@ class TestBuildCommandBasic:
             args_template="{target} --port {port} --proto {proto}",
         )
         builder = CommandBuilder(config)
-        request = _make_request(
-            target="example.com", args={"port": "443", "proto": "tcp"}
-        )
+        request = _make_request(target="example.com", args={"port": "443", "proto": "tcp"})
 
         cmd = builder.build_command(request)
 
@@ -79,9 +77,7 @@ class TestBuildCommandBasic:
         assert "tcp" in cmd
 
     def test_leftover_placeholders_removed(self):
-        config = _make_tool_config(
-            command="scan", args_template="{target} {flags} {options}"
-        )
+        config = _make_tool_config(command="scan", args_template="{target} {flags} {options}")
         builder = CommandBuilder(config)
         request = _make_request(target="host.com")
 
@@ -92,9 +88,7 @@ class TestBuildCommandBasic:
         assert "host.com" in cmd
 
     def test_extra_spaces_collapsed(self):
-        config = _make_tool_config(
-            command="tool", args_template="{target}  {unused}  {also_unused}"
-        )
+        config = _make_tool_config(command="tool", args_template="{target}  {unused}  {also_unused}")
         builder = CommandBuilder(config)
         request = _make_request(target="host")
 

@@ -54,9 +54,7 @@ class LLMTimeoutError(LLMError):
 
     code = "LLM_TIMEOUT"
 
-    def __init__(
-        self, message: str = "LLM request timed out", timeout: int | None = None
-    ):
+    def __init__(self, message: str = "LLM request timed out", timeout: int | None = None):
         super().__init__(message, details={"timeout_seconds": timeout})
 
 
@@ -65,9 +63,7 @@ class LLMConnectionError(LLMError):
 
     code = "LLM_CONNECTION_ERROR"
 
-    def __init__(
-        self, message: str = "Failed to connect to LLM service", host: str | None = None
-    ):
+    def __init__(self, message: str = "Failed to connect to LLM service", host: str | None = None):
         super().__init__(message, details={"host": host})
 
 
@@ -91,11 +87,7 @@ class LLMParseError(LLMError):
         raw_content: str | None = None,
     ):
         # Truncate raw content for safety
-        truncated = (
-            raw_content[:500] + "..."
-            if raw_content and len(raw_content) > 500
-            else raw_content
-        )
+        truncated = raw_content[:500] + "..." if raw_content and len(raw_content) > 500 else raw_content
         super().__init__(message, details={"raw_content": truncated})
 
 
@@ -177,9 +169,7 @@ class MissionNotFoundError(MissionError):
     code = "MISSION_NOT_FOUND"
 
     def __init__(self, mission_id: str):
-        super().__init__(
-            f"Mission not found: {mission_id}", details={"mission_id": mission_id}
-        )
+        super().__init__(f"Mission not found: {mission_id}", details={"mission_id": mission_id})
 
 
 class MissionStateError(MissionError):
@@ -210,9 +200,7 @@ class MissionCancelledError(MissionError):
     code = "MISSION_CANCELLED"
 
     def __init__(self, mission_id: str):
-        super().__init__(
-            f"Mission {mission_id} was cancelled", details={"mission_id": mission_id}
-        )
+        super().__init__(f"Mission {mission_id} was cancelled", details={"mission_id": mission_id})
 
 
 # --- Plugin Errors ---

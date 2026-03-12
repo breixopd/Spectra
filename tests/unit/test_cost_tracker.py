@@ -1,6 +1,5 @@
 """Tests for per-agent LLM cost tracking."""
 
-
 from app.services.ai.cost_tracker import AgentUsage, CostTracker
 
 

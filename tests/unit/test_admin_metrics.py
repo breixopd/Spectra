@@ -15,6 +15,7 @@ from app.api.routers.admin.metrics import router as metrics_router
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_admin() -> MagicMock:
     u = MagicMock()
     u.id = "uid-admin"
@@ -76,9 +77,7 @@ class TestGetAdminMetrics:
             mock_tel.get_service_health.return_value = {"db": {"healthy": True}}
             mock_store_fn.return_value.get_history.return_value = []
 
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as ac:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.get("/api/admin/metrics")
 
         assert resp.status_code == 200
@@ -101,9 +100,7 @@ class TestGetAdminMetrics:
 
         app = _build_app(viewer)
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get("/api/admin/metrics")
 
         assert resp.status_code == 403
@@ -147,9 +144,7 @@ class TestGetCostSummary:
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get("/api/admin/cost-summary")
 
         assert resp.status_code == 200
@@ -178,9 +173,7 @@ class TestGetCostSummary:
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get("/api/admin/cost-summary?days=7")
 
         assert resp.status_code == 200
@@ -217,9 +210,7 @@ class TestGetUsageStats:
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get("/api/admin/usage-stats")
 
         assert resp.status_code == 200
@@ -245,9 +236,7 @@ class TestGetUsageStats:
 
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get("/api/admin/usage-stats?days=7")
 
         assert resp.status_code == 200

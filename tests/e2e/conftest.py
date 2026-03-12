@@ -20,14 +20,10 @@ async def wait_for_mission_status(
 
     mission = await mission_manager.get_mission(mission_id)
     current_status = mission.status if mission else "unknown"
-    raise TimeoutError(
-        f"Mission {mission_id} did not reach {target_statuses} in {timeout}s. Current: {current_status}"
-    )
+    raise TimeoutError(f"Mission {mission_id} did not reach {target_statuses} in {timeout}s. Current: {current_status}")
 
 
-async def get_mission_logs(
-    mission_manager: MissionManager, mission_id: str
-) -> list[str]:
+async def get_mission_logs(mission_manager: MissionManager, mission_id: str) -> list[str]:
     """Get logs for a mission."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:

@@ -120,7 +120,9 @@ class TestUsageTrackerRecord:
 
         with (
             patch.object(
-                UsageTracker, "record", wraps=None,
+                UsageTracker,
+                "record",
+                wraps=None,
             ) as mock_record,
         ):
             # Simpler: just verify record can be called. The DB logic
@@ -210,9 +212,7 @@ class TestUsageTrackerCheckRateLimit:
             from app.services.billing.usage_tracker import UsageTracker
 
             tracker = UsageTracker()
-            within, current, maximum = await tracker.check_rate_limit(
-                "u-1", "api_requests"
-            )
+            within, current, maximum = await tracker.check_rate_limit("u-1", "api_requests")
 
         assert within is True
         assert current == 50
@@ -256,9 +256,7 @@ class TestUsageTrackerCheckRateLimit:
             from app.services.billing.usage_tracker import UsageTracker
 
             tracker = UsageTracker()
-            within, current, maximum = await tracker.check_rate_limit(
-                "u-1", "api_requests"
-            )
+            within, current, maximum = await tracker.check_rate_limit("u-1", "api_requests")
 
         assert within is False
         assert current == 15
@@ -282,9 +280,7 @@ class TestUsageTrackerCheckRateLimit:
             from app.services.billing.usage_tracker import UsageTracker
 
             tracker = UsageTracker()
-            within, current, maximum = await tracker.check_rate_limit(
-                "u-1", "api_requests"
-            )
+            within, current, maximum = await tracker.check_rate_limit("u-1", "api_requests")
 
         assert within is False
         assert current == 0

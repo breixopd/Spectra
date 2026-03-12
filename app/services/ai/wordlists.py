@@ -25,7 +25,9 @@ def generate_tech_wordlist(technologies: list[str]) -> list[str]:
     }
 
     paths = set()
-    paths.update(["/robots.txt", "/sitemap.xml", "/.git/", "/.env", "/backup/", "/admin/", "/login/", "/api/", "/.well-known/"])
+    paths.update(
+        ["/robots.txt", "/sitemap.xml", "/.git/", "/.env", "/backup/", "/admin/", "/login/", "/api/", "/.well-known/"]
+    )
 
     for tech in technologies:
         tech_lower = tech.lower()
@@ -39,11 +41,23 @@ def generate_tech_wordlist(technologies: list[str]) -> list[str]:
 def generate_credential_list(service: str, product: str | None = None) -> dict[str, list[str]]:
     """Generate default credential pairs for a service. Small list only — no brute force."""
     SERVICE_CREDS = {
-        "ssh": {"users": ["root", "admin", "ubuntu", "pi", "ec2-user"], "passwords": ["root", "toor", "admin", "password", "ubuntu", "raspberry", "changeme"]},
-        "ftp": {"users": ["anonymous", "ftp", "admin", "root"], "passwords": ["", "anonymous", "ftp", "admin", "password"]},
-        "mysql": {"users": ["root", "admin", "mysql", "webapp"], "passwords": ["", "root", "admin", "password", "mysql", "toor"]},
+        "ssh": {
+            "users": ["root", "admin", "ubuntu", "pi", "ec2-user"],
+            "passwords": ["root", "toor", "admin", "password", "ubuntu", "raspberry", "changeme"],
+        },
+        "ftp": {
+            "users": ["anonymous", "ftp", "admin", "root"],
+            "passwords": ["", "anonymous", "ftp", "admin", "password"],
+        },
+        "mysql": {
+            "users": ["root", "admin", "mysql", "webapp"],
+            "passwords": ["", "root", "admin", "password", "mysql", "toor"],
+        },
         "postgresql": {"users": ["postgres", "admin", "root"], "passwords": ["postgres", "admin", "password", "root"]},
-        "http": {"users": ["admin", "root", "administrator", "user"], "passwords": ["admin", "password", "admin123", "root", "123456", "changeme"]},
+        "http": {
+            "users": ["admin", "root", "administrator", "user"],
+            "passwords": ["admin", "password", "admin123", "root", "123456", "changeme"],
+        },
         "smb": {"users": ["administrator", "admin", "guest"], "passwords": ["", "admin", "password", "Password1"]},
         "rdp": {"users": ["administrator", "admin"], "passwords": ["admin", "password", "Password1", "P@ssw0rd"]},
         "telnet": {"users": ["root", "admin"], "passwords": ["root", "admin", "password", "default"]},

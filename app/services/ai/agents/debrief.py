@@ -57,7 +57,14 @@ class DebriefAgent(Agent[DebriefInput, DebriefOutput]):
             findings_summary += f"- [{sev.upper()}] {name}" + (f" (x{count})" if count > 1 else "") + "\n"
 
         # Key log entries only
-        key_logs = [entry for entry in input_data.logs[-50:] if any(k in entry for k in ["[OK]", "[ERROR]", "[SUCCESS]", "[FAIL]", "[APPROVED]", "[REJECTED]", "[LEARN]", "[ADAPT]"])]
+        key_logs = [
+            entry
+            for entry in input_data.logs[-50:]
+            if any(
+                k in entry
+                for k in ["[OK]", "[ERROR]", "[SUCCESS]", "[FAIL]", "[APPROVED]", "[REJECTED]", "[LEARN]", "[ADAPT]"]
+            )
+        ]
         logs_text = "\n".join(key_logs[-20:]) if key_logs else "No significant log entries"
 
         base_prompt = """Analyze this completed penetration test and provide a comprehensive debrief.
@@ -74,18 +81,32 @@ Provide:
 
         target_section = f"""**Target:** {input_data.target}
 **Directive:** {input_data.directive}
-**Tools Used:** {', '.join(input_data.tools_run)}
+**Tools Used:** {", ".join(input_data.tools_run)}
 **Total Findings:** {len(input_data.findings)}"""
 
         ctx = ContextManager(max_context_tokens=6000)
-        prompt = ctx.build([
-            ContextSection("task", base_prompt, Priority.CRITICAL),
-            ContextSection("target", target_section, Priority.CRITICAL),
-            ContextSection("findings", f"**Findings:**\n{findings_summary or 'No findings discovered'}", Priority.HIGH, max_tokens=1500),
-            ContextSection("logs", f"**Key Events:**\n{logs_text}", Priority.MEDIUM, max_tokens=500),
-            ContextSection("attack_surface", f"**Attack Surface:** {input_data.attack_surface_summary}", Priority.LOW, max_tokens=400),
-            ContextSection("tools_run", f"**Tools Run:** {', '.join(input_data.tools_run)}", Priority.LOW, max_tokens=200),
-        ])
+        prompt = ctx.build(
+            [
+                ContextSection("task", base_prompt, Priority.CRITICAL),
+                ContextSection("target", target_section, Priority.CRITICAL),
+                ContextSection(
+                    "findings",
+                    f"**Findings:**\n{findings_summary or 'No findings discovered'}",
+                    Priority.HIGH,
+                    max_tokens=1500,
+                ),
+                ContextSection("logs", f"**Key Events:**\n{logs_text}", Priority.MEDIUM, max_tokens=500),
+                ContextSection(
+                    "attack_surface",
+                    f"**Attack Surface:** {input_data.attack_surface_summary}",
+                    Priority.LOW,
+                    max_tokens=400,
+                ),
+                ContextSection(
+                    "tools_run", f"**Tools Run:** {', '.join(input_data.tools_run)}", Priority.LOW, max_tokens=200
+                ),
+            ]
+        )
 
         try:
             result = await self._llm_generate_structured(

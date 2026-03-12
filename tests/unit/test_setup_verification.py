@@ -43,15 +43,9 @@ async def test_check_docker_connection_success(mock_setup_service):
 async def test_verify_system_requirements_all_pass(mock_setup_service):
     """Test full system verification where all checks pass."""
     with (
-        patch.object(
-            mock_setup_service, "check_database", new_callable=AsyncMock
-        ) as mock_db,
-        patch.object(
-            mock_setup_service, "check_docker", new_callable=AsyncMock
-        ) as mock_docker,
-        patch.object(
-            mock_setup_service, "check_directories", new_callable=AsyncMock
-        ) as mock_dirs,
+        patch.object(mock_setup_service, "check_database", new_callable=AsyncMock) as mock_db,
+        patch.object(mock_setup_service, "check_docker", new_callable=AsyncMock) as mock_docker,
+        patch.object(mock_setup_service, "check_directories", new_callable=AsyncMock) as mock_dirs,
     ):
         mock_db.return_value = True
         mock_docker.return_value = True
@@ -68,15 +62,9 @@ async def test_verify_system_requirements_all_pass(mock_setup_service):
 async def test_verify_system_requirements_failure(mock_setup_service):
     """Test verification reporting failure."""
     with (
-        patch.object(
-            mock_setup_service, "check_database", new_callable=AsyncMock
-        ) as mock_db,
-        patch.object(
-            mock_setup_service, "check_docker", new_callable=AsyncMock
-        ) as m_d,
-        patch.object(
-            mock_setup_service, "check_directories", new_callable=AsyncMock
-        ) as m_dir,
+        patch.object(mock_setup_service, "check_database", new_callable=AsyncMock) as mock_db,
+        patch.object(mock_setup_service, "check_docker", new_callable=AsyncMock) as m_d,
+        patch.object(mock_setup_service, "check_directories", new_callable=AsyncMock) as m_dir,
     ):
         mock_db.return_value = False  # Fail DB
         m_d.return_value = True

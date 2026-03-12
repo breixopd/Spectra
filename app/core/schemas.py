@@ -45,6 +45,7 @@ class UserCreate(UserBase):
             raise ValueError("Password must contain at least one digit")
         return v
 
+
 # ---------------------------------------------------------------------------
 # AI Provider helpers
 # ---------------------------------------------------------------------------
@@ -143,8 +144,8 @@ class SystemSetupRequest(BaseModel):
     llm_api_base: str | None = None
     ollama_host: str | None = None
     ollama_model: str | None = None  # Ollama model when both providers configured
-    provider_ollama: bool = False     # Whether ollama is enabled
-    provider_api: bool = False        # Whether API is enabled
+    provider_ollama: bool = False  # Whether ollama is enabled
+    provider_api: bool = False  # Whether API is enabled
     provider_profiles: dict[str, AIProviderProfile] | None = None
     provider_routing: AIProviderRouting | None = None
     provider_fallbacks: AIProviderFallbacks | None = None
@@ -178,9 +179,7 @@ class SystemSetupRequest(BaseModel):
             return self
         if self.llm_provider and self.llm_model:
             return self
-        raise ValueError(
-            "Either provider_profiles or llm_provider with llm_model is required"
-        )
+        raise ValueError("Either provider_profiles or llm_provider with llm_model is required")
 
 
 class SettingsUpdateRequest(BaseModel):

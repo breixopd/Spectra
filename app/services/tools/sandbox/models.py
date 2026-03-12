@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass(frozen=True)
 class SandboxInfo:
     """Immutable snapshot of a sandbox's state."""

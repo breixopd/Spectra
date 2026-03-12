@@ -106,7 +106,10 @@ class TestParameterTunerExecute:
         llm = MockLLMClient(
             structured_responses={
                 "TunerOutput": TunerOutput(
-                    tool_args={}, timeout=300, confidence=0.8, reasoning="ok",
+                    tool_args={},
+                    timeout=300,
+                    confidence=0.8,
+                    reasoning="ok",
                 ).model_dump(),
             },
         )
@@ -128,7 +131,10 @@ class TestParameterTunerExecute:
         llm = MockLLMClient(
             structured_responses={
                 "TunerOutput": TunerOutput(
-                    tool_args={}, timeout=300, confidence=0.8, reasoning="ok",
+                    tool_args={},
+                    timeout=300,
+                    confidence=0.8,
+                    reasoning="ok",
                 ).model_dump(),
             },
         )

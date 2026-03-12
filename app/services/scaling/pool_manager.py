@@ -40,6 +40,7 @@ class ServerPoolManager:
     ) -> dict:
         """Register a new server node."""
         from app.models.server_node import ServerNode
+
         node = ServerNode(
             service_type=service_type,
             name=name,
@@ -58,6 +59,7 @@ class ServerPoolManager:
     async def remove_node(self, session: AsyncSession, node_id: int) -> bool:
         """Remove a server node."""
         from app.models.server_node import ServerNode
+
         result = await session.execute(select(ServerNode).where(ServerNode.id == node_id))
         node = result.scalar_one_or_none()
         if node:
@@ -71,6 +73,7 @@ class ServerPoolManager:
     ) -> list[dict]:
         """List server nodes, optionally filtered by service type."""
         from app.models.server_node import ServerNode
+
         query = select(ServerNode)
         if service_type:
             query = query.where(ServerNode.service_type == service_type)
@@ -83,15 +86,15 @@ class ServerPoolManager:
     async def get_node(self, session: AsyncSession, node_id: int) -> dict | None:
         """Get a single node by ID."""
         from app.models.server_node import ServerNode
+
         result = await session.execute(select(ServerNode).where(ServerNode.id == node_id))
         node = result.scalar_one_or_none()
         return node.to_dict() if node else None
 
-    async def update_node(
-        self, session: AsyncSession, node_id: int, **kwargs
-    ) -> dict | None:
+    async def update_node(self, session: AsyncSession, node_id: int, **kwargs) -> dict | None:
         """Update node fields."""
         from app.models.server_node import ServerNode
+
         result = await session.execute(select(ServerNode).where(ServerNode.id == node_id))
         node = result.scalar_one_or_none()
         if not node:
@@ -111,6 +114,7 @@ class ServerPoolManager:
         Ties broken randomly for distribution.
         """
         from app.models.server_node import ServerNode
+
         async with async_session_maker() as session:
             result = await session.execute(
                 select(ServerNode).where(
@@ -141,17 +145,17 @@ class ServerPoolManager:
     async def increment_load(self, node_id: int) -> None:
         """Increment a node's current load counter."""
         from app.models.server_node import ServerNode
+
         async with async_session_maker() as session:
             await session.execute(
-                update(ServerNode)
-                .where(ServerNode.id == node_id)
-                .values(current_load=ServerNode.current_load + 1)
+                update(ServerNode).where(ServerNode.id == node_id).values(current_load=ServerNode.current_load + 1)
             )
             await session.commit()
 
     async def decrement_load(self, node_id: int) -> None:
         """Decrement a node's current load counter."""
         from app.models.server_node import ServerNode
+
         async with async_session_maker() as session:
             await session.execute(
                 update(ServerNode)
@@ -163,6 +167,7 @@ class ServerPoolManager:
     async def health_check_node(self, node: dict) -> dict:
         """Health check a single node. Returns updated status."""
         import httpx
+
         url = node["url"]
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -176,11 +181,10 @@ class ServerPoolManager:
     async def health_check_all(self) -> dict[str, list[dict]]:
         """Health check all active nodes. Returns results grouped by service type."""
         from app.models.server_node import ServerNode
+
         results: dict[str, list[dict]] = {}
         async with async_session_maker() as session:
-            all_nodes = await session.execute(
-                select(ServerNode).where(ServerNode.is_active)
-            )
+            all_nodes = await session.execute(select(ServerNode).where(ServerNode.is_active))
             nodes = all_nodes.scalars().all()
 
             for node in nodes:
@@ -192,11 +196,13 @@ class ServerPoolManager:
                 stype = node.service_type
                 if stype not in results:
                     results[stype] = []
-                results[stype].append({
-                    **node.to_dict(),
-                    "health_status": check["health_status"],
-                    "last_error": check.get("last_error"),
-                })
+                results[stype].append(
+                    {
+                        **node.to_dict(),
+                        "health_status": check["health_status"],
+                        "last_error": check.get("last_error"),
+                    }
+                )
 
             await session.commit()
 
@@ -205,6 +211,7 @@ class ServerPoolManager:
 
     async def start_health_loop(self) -> None:
         """Start periodic health check loop."""
+
         async def _loop():
             while True:
                 try:
@@ -212,6 +219,7 @@ class ServerPoolManager:
                 except Exception:
                     logger.exception("Health check loop error")
                 await asyncio.sleep(self._health_interval)
+
         self._health_task = asyncio.create_task(_loop())
         logger.info("Health check loop started (interval=%ds)", self._health_interval)
 

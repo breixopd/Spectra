@@ -63,6 +63,7 @@ class ConnectionManager:
                 return False
             try:
                 from app.core.security import decode_token
+
                 payload = decode_token(token)
                 user_id = payload.get("sub")
             except (JWTError, Exception):
@@ -208,9 +209,7 @@ class ConnectionManager:
         from datetime import date
 
         try:
-            message = json.dumps(
-                {"type": event_type, "data": data}, default=json_serializer
-            )
+            message = json.dumps({"type": event_type, "data": data}, default=json_serializer)
             await self.broadcast(message)
         except Exception as e:
             logger.error("Failed to serialize event %s: %s", event_type, e)

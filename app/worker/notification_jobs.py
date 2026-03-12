@@ -36,9 +36,7 @@ async def send_mission_completion_notification(mission_id: str, session) -> None
     from app.models.mission import Mission
     from app.services.notifications import notify_mission_completed
 
-    result = await session.execute(
-        select(Mission).where(Mission.id == mission_id)
-    )
+    result = await session.execute(select(Mission).where(Mission.id == mission_id))
     mission = result.scalar_one_or_none()
     if not mission:
         logger.warning("Mission %s not found for notification", mission_id)
@@ -47,9 +45,7 @@ async def send_mission_completion_notification(mission_id: str, session) -> None
     # Count findings
     from app.models.finding import Finding
 
-    findings_result = await session.execute(
-        select(Finding).where(Finding.mission_id == mission_id)
-    )
+    findings_result = await session.execute(select(Finding).where(Finding.mission_id == mission_id))
     findings = list(findings_result.scalars().all())
     total = len(findings)
     critical = sum(1 for f in findings if getattr(f, "severity", "").lower() == "critical")
@@ -64,9 +60,7 @@ async def send_critical_finding_alert(finding_id: str, session) -> None:
     from app.models.finding import Finding
     from app.services.notifications import send_notification
 
-    result = await session.execute(
-        select(Finding).where(Finding.id == finding_id)
-    )
+    result = await session.execute(select(Finding).where(Finding.id == finding_id))
     finding = result.scalar_one_or_none()
     if not finding:
         logger.warning("Finding %s not found for alert", finding_id)

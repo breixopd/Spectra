@@ -33,9 +33,7 @@ async def prometheus_metrics() -> str:
             lines.append(f"# TYPE {prom} {family.type}")
 
         for sample in family.samples:
-            label_parts = ",".join(
-                f'{k}="{v}"' for k, v in sample.labels.items()
-            )
+            label_parts = ",".join(f'{k}="{v}"' for k, v in sample.labels.items())
             label_str = f"{{{label_parts}}}" if label_parts else ""
             lines.append(f"{prom}{label_str} {sample.value}")
 

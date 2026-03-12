@@ -13,6 +13,7 @@ def sqlite_engine():
     InfrastructureBase.metadata.create_all(engine)
     return engine
 
+
 @pytest.fixture
 def db_session(sqlite_engine):
     Session = sessionmaker(bind=sqlite_engine)
@@ -20,31 +21,42 @@ def db_session(sqlite_engine):
     yield session
     session.close()
 
+
 class MockSessionManager:
     def __init__(self, db_session):
         self.db_session = db_session
+
     async def __aenter__(self):
         return self
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         pass
+
     async def commit(self):
         self.db_session.commit()
+
     async def connection(self):
         class MockConnection:
             async def get_raw_connection(self):
                 class MockRawConn:
                     pass
+
                 return MockRawConn()
+
         return MockConnection()
+
     def add(self, obj):
         self.db_session.add(obj)
+
     async def execute(self, stmt):
         # Synchronously execute on db_session
         result = self.db_session.execute(stmt)
+
         # Mock result for async
         class MockResult:
             def __init__(self, res):
                 self.res = res
+
             def scalar_one_or_none(self):
                 # Attempt to get single scalar or full row based on what was requested
                 row = self.res.first()
@@ -52,15 +64,19 @@ class MockSessionManager:
                     return None
                 if len(row) == 1:
                     return row[0]
-                return row[0] # Return the ORM object if it's the whole row
+                return row[0]  # Return the ORM object if it's the whole row
+
         return MockResult(result)
+
 
 @pytest.fixture
 def mock_session_maker(db_session, monkeypatch):
     def maker():
         return MockSessionManager(db_session)
+
     monkeypatch.setattr(app.core.queue, "async_session_maker", maker)
     return maker
+
 
 @pytest.mark.asyncio
 async def test_postgres_job_queue_enqueue(db_session, mock_session_maker):
@@ -78,6 +94,7 @@ async def test_postgres_job_queue_enqueue(db_session, mock_session_maker):
     assert job_record.kwargs == {"kwarg1": "val1"}
     assert job_record.status == "queued"
     assert job_record.timeout == 10
+
 
 @pytest.mark.asyncio
 async def test_job_status_and_result(db_session, mock_session_maker):

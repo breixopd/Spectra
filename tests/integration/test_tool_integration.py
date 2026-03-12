@@ -51,9 +51,7 @@ def mock_registry():
     registry = ToolRegistry()
     registry._tools = {
         "test-echo": RegisteredTool(config=DUMMY_TOOL_CONFIG, status=ToolStatus.READY),
-        "test-fail": RegisteredTool(
-            config=DUMMY_FAIL_TOOL_CONFIG, status=ToolStatus.READY
-        ),
+        "test-fail": RegisteredTool(config=DUMMY_FAIL_TOOL_CONFIG, status=ToolStatus.READY),
     }
     return registry
 
@@ -67,9 +65,7 @@ def integration_context(mock_registry):
         patch("app.services.tools.service.get_registry", return_value=mock_registry),
         patch("app.services.tools.service.SafetySupervisorAgent") as MockSafetyAgent,
         patch("app.services.tools.service.VotingSystem") as MockVotingSystem,
-        patch(
-            "app.services.ai.agents.tool_selector.ToolSelectorAgent"
-        ) as MockToolSelector,
+        patch("app.services.ai.agents.tool_selector.ToolSelectorAgent") as MockToolSelector,
     ):
         # Setup Safety Supervisor to always approve
         mock_safety = MockSafetyAgent.return_value
@@ -81,9 +77,7 @@ def integration_context(mock_registry):
 
         # Setup Voting System to always approve
         mock_voting = MockVotingSystem.return_value
-        mock_voting.register_vote = AsyncMock(
-            return_value=True
-        )  # Assuming simple approval
+        mock_voting.register_vote = AsyncMock(return_value=True)  # Assuming simple approval
 
         # Setup ToolSelector (will be customized in tests)
         mock_selector = MockToolSelector.return_value
@@ -152,9 +146,7 @@ async def test_integration_flow_success(integration_context):
         reasoning="Testing integration",
         estimated_duration=10,
     )
-    mock_selector.execute = AsyncMock(
-        return_value=AgentResult(success=True, action=action)
-    )
+    mock_selector.execute = AsyncMock(return_value=AgentResult(success=True, action=action))
 
     # 3. Execute
     await executor.execute_task(mission, task, context)
@@ -205,9 +197,7 @@ async def test_integration_flow_failure_adaptation(integration_context):
         reasoning="Testing failure",
         estimated_duration=10,
     )
-    mock_selector.execute = AsyncMock(
-        return_value=AgentResult(success=True, action=action)
-    )
+    mock_selector.execute = AsyncMock(return_value=AgentResult(success=True, action=action))
 
     # 3. Execute
     await executor.execute_task(mission, task, context)
@@ -220,9 +210,5 @@ async def test_integration_flow_failure_adaptation(integration_context):
     # mission.log should be called with failure info
     # executor.py lines 270+: if not success: mission.log(...)
 
-    fails = [
-        args[0]
-        for name, args, kwargs in mission.log.mock_calls
-        if "failed" in str(args[0]).lower()
-    ]
+    fails = [args[0] for name, args, kwargs in mission.log.mock_calls if "failed" in str(args[0]).lower()]
     assert fails, "Should have logged a failure message"

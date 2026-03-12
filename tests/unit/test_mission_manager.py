@@ -19,9 +19,7 @@ def mock_manager_context():
     # Patch dependencies WHERE THEY ARE USED to handle imports correctly
     with (
         patch("app.services.mission.manager.execution.MissionExecutor") as MockExecutor,
-        patch(
-            "app.services.mission.manager.execution.MissionController"
-        ) as MockController,
+        patch("app.services.mission.manager.execution.MissionController") as MockController,
         patch("app.services.mission.manager.execution.ScopeAgent") as MockScope,
         patch("app.services.mission.manager.execution.VotingSystem") as MockVoting,
         patch("app.services.mission.manager.lifecycle.MissionRepository") as MockRepo,
@@ -30,9 +28,7 @@ def mock_manager_context():
             new_callable=AsyncMock,
         ),
         patch("app.core.database.async_session_maker") as mock_session_maker,
-        patch(
-            "app.services.mission.manager.lifecycle.resolve_ip", new_callable=AsyncMock
-        ) as mock_resolve_ip,
+        patch("app.services.mission.manager.lifecycle.resolve_ip", new_callable=AsyncMock) as mock_resolve_ip,
     ):
         # Setup DB mocks details
         mock_session = AsyncMock()
@@ -90,9 +86,7 @@ async def test_start_mission(mock_manager_context):
     resolve_ip.return_value = {"city": "Test City", "country": "Test Country"}
 
     # Patch self.execution.run_mission_loop
-    with patch.object(
-        manager.execution, "run_mission_loop", new_callable=AsyncMock
-    ) as mock_loop:
+    with patch.object(manager.execution, "run_mission_loop", new_callable=AsyncMock) as mock_loop:
         mission_id = await manager.start_mission("127.0.0.1", "test directive")
 
         # Yield to let the background task start
@@ -194,9 +188,7 @@ async def test_adaptive_replanning(mock_manager_context):
 
     mission.plan = MissionPlan(mission_type=MissionType.CUSTOM, tasks=[task])
 
-    context = AgentContext(
-        mission_id="test-mission-1", session_id="1", target="1.1.1.1", mission="test"
-    )
+    context = AgentContext(mission_id="test-mission-1", session_id="1", target="1.1.1.1", mission="test")
 
     replan_result = MagicMock()
     replan_result.success = True
@@ -281,16 +273,12 @@ async def test_steer_mission(mock_manager_context):
     manager.active_missions[mission.id] = mission
 
     # Action: skip_phase
-    result = await manager.steer_mission(
-        mission.id, action="skip_phase", phase="discovery"
-    )
+    result = await manager.steer_mission(mission.id, action="skip_phase", phase="discovery")
     assert "skipped" in result["message"]
     assert "discovery" in mission.skipped_phases
 
     # Action: prioritize_target
-    result = await manager.steer_mission(
-        mission.id, action="prioritize_target", target="192.168.1.5"
-    )
+    result = await manager.steer_mission(mission.id, action="prioritize_target", target="192.168.1.5")
     assert "prioritized" in result["message"]
     # Verify it added a vector.
     # Note: MissionSteeringManager creates a new vector.
@@ -299,9 +287,7 @@ async def test_steer_mission(mock_manager_context):
     assert any("Prioritizing target: 192.168.1.5" in log for log in mission.logs)
 
     # Action: focus_vuln
-    result = await manager.steer_mission(
-        mission.id, action="focus_vuln", vulnerability="CVE-2024-1234"
-    )
+    result = await manager.steer_mission(mission.id, action="focus_vuln", vulnerability="CVE-2024-1234")
     assert "Focusing" in result["message"]
 
     # Action: invalid mission

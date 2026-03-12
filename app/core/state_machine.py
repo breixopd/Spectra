@@ -134,9 +134,7 @@ class MissionStateMachine:
         ...
     """
 
-    def __init__(
-        self, mission_id: str, initial_state: MissionStatus = MissionStatus.CREATED
-    ):
+    def __init__(self, mission_id: str, initial_state: MissionStatus = MissionStatus.CREATED):
         self.mission_id = mission_id
         self._state = initial_state
         self._history: list[StateTransition] = []
@@ -201,7 +199,9 @@ class MissionStateMachine:
             MissionStateError: If transition is invalid
         """
         if not self.can_transition_to(new_state):
-            logger.warning("Invalid transition mission=%s from=%s to=%s", self.mission_id, self._state.value, new_state.value)
+            logger.warning(
+                "Invalid transition mission=%s from=%s to=%s", self.mission_id, self._state.value, new_state.value
+            )
             raise MissionStateError(
                 self.mission_id,
                 self._state.value,
@@ -219,7 +219,9 @@ class MissionStateMachine:
         self._state = new_state
         self._history.append(transition)
 
-        logger.info("State transition mission=%s %s -> %s reason=%s", self.mission_id, old_state.value, new_state.value, reason)
+        logger.info(
+            "State transition mission=%s %s -> %s reason=%s", self.mission_id, old_state.value, new_state.value, reason
+        )
 
         # Emit event
         events.emit_sync(
@@ -281,9 +283,7 @@ class MissionStateMachine:
                 # Find when we left this state
                 if i + 1 < len(self._history):
                     next_transition = self._history[i + 1]
-                    duration = (
-                        next_transition.timestamp - transition.timestamp
-                    ).total_seconds()
+                    duration = (next_transition.timestamp - transition.timestamp).total_seconds()
                 else:
                     # Still in this state
                     duration = (datetime.now() - transition.timestamp).total_seconds()

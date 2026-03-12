@@ -168,15 +168,18 @@ Provide a JSON response with:
 """
 
         from app.services.ai.sanitizer import sanitize_for_prompt
+
         sanitized_target = sanitize_for_prompt(input_data.target, field_name="safety_target")
         command_info = f"Command: `{input_data.command}`\nTool: {input_data.tool_id}\nTarget: {sanitized_target}"
 
         ctx = ContextManager(max_context_tokens=2000)
-        prompt = ctx.build([
-            ContextSection("task", base_prompt, Priority.CRITICAL),
-            ContextSection("command", command_info, Priority.HIGH, max_tokens=500),
-            ContextSection("mission", f"Mission context: {context.mission}", Priority.MEDIUM, max_tokens=200),
-        ])
+        prompt = ctx.build(
+            [
+                ContextSection("task", base_prompt, Priority.CRITICAL),
+                ContextSection("command", command_info, Priority.HIGH, max_tokens=500),
+                ContextSection("mission", f"Mission context: {context.mission}", Priority.MEDIUM, max_tokens=200),
+            ]
+        )
 
         try:
             action = await self._llm_generate_structured(

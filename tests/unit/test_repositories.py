@@ -42,7 +42,6 @@ def _mock_session():
 
 
 class TestPlanRepository:
-
     @pytest.mark.asyncio
     async def test_get_by_name_delegates(self):
         session = _mock_session()
@@ -82,7 +81,6 @@ class TestPlanRepository:
 
 
 class TestSubscriptionRepository:
-
     @pytest.mark.asyncio
     async def test_get_by_user_id(self):
         session = _mock_session()
@@ -108,7 +106,6 @@ class TestSubscriptionRepository:
 
 
 class TestApiKeyRepository:
-
     @pytest.mark.asyncio
     async def test_get_by_user_id(self):
         session = _mock_session()
@@ -152,7 +149,6 @@ class TestApiKeyRepository:
 
 
 class TestServerNodeRepository:
-
     @pytest.mark.asyncio
     async def test_get_by_service_type(self):
         session = _mock_session()
@@ -204,7 +200,6 @@ class TestServerNodeRepository:
 
 
 class TestSystemConfigRepository:
-
     @pytest.mark.asyncio
     async def test_get_by_key(self):
         session = _mock_session()
@@ -227,8 +222,10 @@ class TestSystemConfigRepository:
     async def test_upsert_creates_when_not_existing(self):
         session = _mock_session()
         repo = SystemConfigRepository(session)
-        with patch.object(repo, "get_by_key", new_callable=AsyncMock, return_value=None), \
-             patch.object(repo, "create", new_callable=AsyncMock, return_value="new-cfg") as mock_create:
+        with (
+            patch.object(repo, "get_by_key", new_callable=AsyncMock, return_value=None),
+            patch.object(repo, "create", new_callable=AsyncMock, return_value="new-cfg") as mock_create,
+        ):
             result = await repo.upsert("NEW_KEY", "value1", is_secret=False)
             mock_create.assert_awaited_once_with(key="NEW_KEY", value="value1", is_secret=False)
         assert result == "new-cfg"
@@ -239,8 +236,10 @@ class TestSystemConfigRepository:
         repo = SystemConfigRepository(session)
         existing = MagicMock()
         existing.id = "cfg-id-1"
-        with patch.object(repo, "get_by_key", new_callable=AsyncMock, return_value=existing), \
-             patch.object(repo, "update", new_callable=AsyncMock, return_value="updated-cfg") as mock_update:
+        with (
+            patch.object(repo, "get_by_key", new_callable=AsyncMock, return_value=existing),
+            patch.object(repo, "update", new_callable=AsyncMock, return_value="updated-cfg") as mock_update,
+        ):
             result = await repo.upsert("EXISTING", "new-val", is_secret=True)
             mock_update.assert_awaited_once_with("cfg-id-1", value="new-val", is_secret=True)
         assert result == "updated-cfg"
@@ -337,7 +336,6 @@ class TestBaseRepositoryValidateFilters:
 
 
 class TestBaseRepositoryAttributes:
-
     def test_model_and_session_stored(self):
         repo, model, session = _make_base_repo()
         assert repo.model is model
@@ -456,7 +454,6 @@ _ALL_CONCRETE_REPOS = [
 
 
 class TestConcreteRepositories:
-
     @pytest.mark.parametrize("repo_cls", _ALL_CONCRETE_REPOS)
     def test_is_subclass_of_base(self, repo_cls):
         assert issubclass(repo_cls, BaseRepository)

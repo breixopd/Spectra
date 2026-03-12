@@ -76,9 +76,7 @@ def mock_registry():
     registry.get_available_tools.return_value = tools
     registry.list_tools.return_value = tools
     registry.sync_status_from_cache = AsyncMock()
-    registry.get_tool.side_effect = lambda x: next(
-        (t for t in tools if t.config.id == x), None
-    )
+    registry.get_tool.side_effect = lambda x: next((t for t in tools if t.config.id == x), None)
 
     return registry
 
@@ -135,9 +133,7 @@ class TestMockLLMClient:
             name: str
             value: int
 
-        llm = MockLLMClient(
-            structured_responses={"TestModel": {"name": "test", "value": 42}}
-        )
+        llm = MockLLMClient(structured_responses={"TestModel": {"name": "test", "value": 42}})
 
         result = await llm.generate_structured("prompt", TestModel)
 
@@ -308,9 +304,7 @@ class TestToolSelectorAgent:
     """Tests for ToolSelectorAgent."""
 
     @pytest.mark.asyncio
-    async def test_selects_tool_for_discovery(
-        self, mock_llm, agent_context, mock_registry
-    ):
+    async def test_selects_tool_for_discovery(self, mock_llm, agent_context, mock_registry):
         """Test tool selection for discovery phase."""
         # Configure mock to return valid tool selection
         mock_llm.structured_responses["ToolSelectorOutput"] = {
@@ -352,9 +346,7 @@ class TestToolSelectorAgent:
             assert tool_names & {"nmap", "naabu"}
 
     @pytest.mark.asyncio
-    async def test_respects_user_preference(
-        self, mock_llm, agent_context, mock_registry
-    ):
+    async def test_respects_user_preference(self, mock_llm, agent_context, mock_registry):
         """Test that user tool preference is respected."""
         # Configure mock LLM to return valid response
         mock_llm.structured_responses["ToolSelectorOutput"] = {
@@ -390,9 +382,7 @@ class TestToolSelectorAgent:
         assert result.action.tool_name == "naabu"
 
     @pytest.mark.asyncio
-    async def test_skips_already_run_tools(
-        self, mock_llm, agent_context, mock_registry
-    ):
+    async def test_skips_already_run_tools(self, mock_llm, agent_context, mock_registry):
         """Test that already-run tools are skipped."""
         agent = ToolSelectorAgent(mock_llm)
 

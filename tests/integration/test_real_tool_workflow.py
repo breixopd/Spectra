@@ -93,9 +93,7 @@ class TestRealToolRegistry:
         assert config.execution.command == "nmap"
         assert "{target}" in config.execution.args_template
 
-    async def test_nuclei_plugin_has_correct_metadata(
-        self, real_registry: ToolRegistry
-    ):
+    async def test_nuclei_plugin_has_correct_metadata(self, real_registry: ToolRegistry):
         """Verify nuclei plugin has proper configuration."""
         nuclei = real_registry.get_tool("nuclei")
         assert nuclei is not None, "nuclei plugin not found"
@@ -105,9 +103,7 @@ class TestRealToolRegistry:
         assert ToolCapability.VULN_SCAN in config.metadata.capabilities
         assert config.metadata.risk_level in [RiskLevel.LOW, RiskLevel.MEDIUM]
 
-    async def test_sqlmap_plugin_has_exploitation_category(
-        self, real_registry: ToolRegistry
-    ):
+    async def test_sqlmap_plugin_has_exploitation_category(self, real_registry: ToolRegistry):
         """Verify sqlmap is categorized correctly."""
         sqlmap = real_registry.get_tool("sqlmap")
         if sqlmap:
@@ -115,9 +111,7 @@ class TestRealToolRegistry:
             assert config.category in [ToolCategory.EXPLOITATION, ToolCategory.WEB]
             assert ToolCapability.SQL_INJECTION in config.metadata.capabilities
 
-    async def test_all_plugins_have_valid_execution_config(
-        self, real_registry: ToolRegistry
-    ):
+    async def test_all_plugins_have_valid_execution_config(self, real_registry: ToolRegistry):
         """Verify all plugins have valid execution configurations."""
         tools = real_registry.list_tools()
 
@@ -135,19 +129,13 @@ class TestRealToolRegistry:
         for tool in tools:
             metadata = tool.config.metadata
             # Should have at least one capability
-            assert len(metadata.capabilities) > 0, (
-                f"{tool.config.id} has no capabilities"
-            )
+            assert len(metadata.capabilities) > 0, f"{tool.config.id} has no capabilities"
             # Should have risk level
-            assert metadata.risk_level is not None, (
-                f"{tool.config.id} has no risk_level"
-            )
+            assert metadata.risk_level is not None, f"{tool.config.id} has no risk_level"
             # Should have AI description
             assert metadata.ai_description, f"{tool.config.id} has no ai_description"
 
-    async def test_get_ai_summary_produces_useful_output(
-        self, real_registry: ToolRegistry
-    ):
+    async def test_get_ai_summary_produces_useful_output(self, real_registry: ToolRegistry):
         """Verify get_ai_summary produces parseable output."""
         nmap = real_registry.get_tool("nmap")
         assert nmap is not None
@@ -244,9 +232,7 @@ class TestRealCommandExecution:
                 timeout=30,
             ),
             parsing=ParsingConfig(format=OutputFormat.TEXT),
-            metadata=ToolMetadata(
-                capabilities=[], risk_level=RiskLevel.PASSIVE, ai_description="test"
-            ),
+            metadata=ToolMetadata(capabilities=[], risk_level=RiskLevel.PASSIVE, ai_description="test"),
         )
 
         adapter = CommandToolAdapter(config)
@@ -278,9 +264,7 @@ class TestRealCommandExecution:
                 timeout=30,
             ),
             parsing=ParsingConfig(format=OutputFormat.TEXT),
-            metadata=ToolMetadata(
-                capabilities=[], risk_level=RiskLevel.PASSIVE, ai_description="test"
-            ),
+            metadata=ToolMetadata(capabilities=[], risk_level=RiskLevel.PASSIVE, ai_description="test"),
         )
 
         adapter = CommandToolAdapter(config)
@@ -312,9 +296,7 @@ class TestRealCommandExecution:
                 timeout=30,
             ),
             parsing=ParsingConfig(format=OutputFormat.TEXT),
-            metadata=ToolMetadata(
-                capabilities=[], risk_level=RiskLevel.PASSIVE, ai_description="test"
-            ),
+            metadata=ToolMetadata(capabilities=[], risk_level=RiskLevel.PASSIVE, ai_description="test"),
         )
 
         adapter = CommandToolAdapter(config)
@@ -362,9 +344,7 @@ class TestRealCommandExecution:
                 timeout=30,
             ),
             parsing=ParsingConfig(format=OutputFormat.NDJSON),
-            metadata=ToolMetadata(
-                capabilities=[], risk_level=RiskLevel.PASSIVE, ai_description="test"
-            ),
+            metadata=ToolMetadata(capabilities=[], risk_level=RiskLevel.PASSIVE, ai_description="test"),
         )
 
         adapter = CommandToolAdapter(config)
@@ -582,15 +562,9 @@ class TestRealAttackSurface:
     def test_attack_surface_summary(self, attack_surface: AttackSurface):
         """Test summary generation."""
         # Add various items
-        attack_surface.add_service(
-            DiscoveredService(host="192.168.1.1", port=22, service="ssh")
-        )
-        attack_surface.add_service(
-            DiscoveredService(host="192.168.1.1", port=80, service="http")
-        )
-        attack_surface.add_vulnerability(
-            Vulnerability(id="v1", title="Test", severity="high")
-        )
+        attack_surface.add_service(DiscoveredService(host="192.168.1.1", port=22, service="ssh"))
+        attack_surface.add_service(DiscoveredService(host="192.168.1.1", port=80, service="http"))
+        attack_surface.add_vulnerability(Vulnerability(id="v1", title="Test", severity="high"))
         attack_surface.add_vector(
             AttackVector(
                 id="vec1",
@@ -717,12 +691,8 @@ class TestRealMissionState:
 
     def test_get_known_services_format(self, mission: Mission):
         """Test that known services are returned in correct format for agents."""
-        mission.add_service(
-            host="192.168.1.1", port=22, service="ssh", product="OpenSSH", version="8.2"
-        )
-        mission.add_service(
-            host="192.168.1.1", port=80, service="http", product="nginx", version="1.18"
-        )
+        mission.add_service(host="192.168.1.1", port=22, service="ssh", product="OpenSSH", version="8.2")
+        mission.add_service(host="192.168.1.1", port=80, service="http", product="nginx", version="1.18")
 
         services = mission.get_known_services()
 
@@ -828,9 +798,7 @@ class TestToolToAttackSurfaceIntegration:
                     id=finding["template-id"],
                     title=finding["name"],
                     severity=finding["severity"],
-                    cve_id=finding["template-id"]
-                    if finding["template-id"].startswith("cve-")
-                    else None,
+                    cve_id=finding["template-id"] if finding["template-id"].startswith("cve-") else None,
                 )
                 attack_surface.add_vulnerability(vuln)
 
@@ -876,9 +844,7 @@ class TestPluginFileIntegrity:
             expected_id = plugin_file.stem
             actual_id = data.get("id")
 
-            assert actual_id == expected_id, (
-                f"{plugin_file.name}: id '{actual_id}' != filename '{expected_id}'"
-            )
+            assert actual_id == expected_id, f"{plugin_file.name}: id '{actual_id}' != filename '{expected_id}'"
 
     def test_all_plugins_have_verification_commands(self, plugins_dir: Path):
         """All plugins should have installation verification."""
@@ -892,9 +858,7 @@ class TestPluginFileIntegrity:
             # Only require verification for tools that need installation
             if method != "none":
                 verification_cmd = installation.get("verification_command")
-                assert verification_cmd, (
-                    f"{plugin_file.name} missing verification_command"
-                )
+                assert verification_cmd, f"{plugin_file.name} missing verification_command"
 
     def test_all_plugins_have_ai_metadata(self, plugins_dir: Path):
         """All plugins should have AI-friendly metadata."""
@@ -904,12 +868,8 @@ class TestPluginFileIntegrity:
 
             metadata = data.get("metadata", {})
 
-            assert metadata.get("ai_description"), (
-                f"{plugin_file.name} missing ai_description"
-            )
-            assert metadata.get("capabilities"), (
-                f"{plugin_file.name} missing capabilities"
-            )
+            assert metadata.get("ai_description"), f"{plugin_file.name} missing ai_description"
+            assert metadata.get("capabilities"), f"{plugin_file.name} missing capabilities"
             assert metadata.get("risk_level"), f"{plugin_file.name} missing risk_level"
 
     def test_plugin_command_templates_have_target_placeholder(self, plugins_dir: Path):

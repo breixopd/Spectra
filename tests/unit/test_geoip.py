@@ -106,9 +106,7 @@ class TestResolveIp:
     async def test_resolve_api_failure(self):
         mock_resp = AsyncMock()
         mock_resp.status = 200
-        mock_resp.json = AsyncMock(
-            return_value={"success": False, "message": "reserved range"}
-        )
+        mock_resp.json = AsyncMock(return_value={"success": False, "message": "reserved range"})
 
         mock_session_ctx = AsyncMock()
         mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_resp)

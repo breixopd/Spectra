@@ -66,16 +66,12 @@ class UniversalParser:
         # Parse each output source
         all_findings: list[dict[str, Any]] = []
         for raw_output in outputs:
-            findings = await self._parse_single_output(
-                raw_output, parsing_config.format
-            )
+            findings = await self._parse_single_output(raw_output, parsing_config.format)
             all_findings.extend(findings)
 
         return all_findings
 
-    def _collect_output_content(
-        self, stdout: str, output_file: str | None
-    ) -> list[str]:
+    def _collect_output_content(self, stdout: str, output_file: str | None) -> list[str]:
         """Collect content from output files and/or stdout."""
         outputs: list[str] = []
         parsing_config = self.config.parsing
@@ -108,9 +104,7 @@ class UniversalParser:
 
         return outputs
 
-    def _safe_read_file(
-        self, path: Path, max_size: int = 10 * 1024 * 1024
-    ) -> str | None:
+    def _safe_read_file(self, path: Path, max_size: int = 10 * 1024 * 1024) -> str | None:
         """Safely read a file, skipping binary and large files."""
         try:
             if path.stat().st_size > max_size:
@@ -169,9 +163,7 @@ class UniversalParser:
         try:
             data = json.loads(output)
             if isinstance(data, list):
-                return [
-                    self._apply_mapping(item) for item in data if isinstance(item, dict)
-                ]
+                return [self._apply_mapping(item) for item in data if isinstance(item, dict)]
             elif isinstance(data, dict):
                 return [self._apply_mapping(data)]
             return [{"value": data}]
@@ -313,7 +305,6 @@ class UniversalParser:
             return []
 
         try:
-
             from pydantic import BaseModel
 
             class ExtractedFinding(BaseModel):
@@ -334,9 +325,7 @@ class UniversalParser:
 
                 findings: list[ExtractedFinding]
 
-            hint = (
-                self.config.parsing.extraction_hint or "security-relevant information"
-            )
+            hint = self.config.parsing.extraction_hint or "security-relevant information"
 
             # Truncate very long outputs
             truncated = output[:8000] if len(output) > 8000 else output

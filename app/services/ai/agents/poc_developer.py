@@ -49,9 +49,7 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
 
     role: ClassVar[AgentRole] = AgentRole.POC_DEVELOPER
     name: ClassVar[str] = "POCDeveloper"
-    description: ClassVar[str] = (
-        "Writes custom exploit scripts (Python/Go/Bash) for specific vulnerabilities."
-    )
+    description: ClassVar[str] = "Writes custom exploit scripts (Python/Go/Bash) for specific vulnerabilities."
     enable_reflection: ClassVar[bool] = True
     reflection_threshold: ClassVar[float] = 0.75
 
@@ -82,11 +80,15 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
             )
 
             ctx = ContextManager(max_context_tokens=3000)
-            prompt = ctx.build([
-                ContextSection("task", full_prompt, Priority.CRITICAL),
-                ContextSection("vulnerability", f"Vulnerability Description:\n{vuln_desc}", Priority.HIGH, max_tokens=500),
-                ContextSection("target", f"Target Details:\n{target_details}", Priority.MEDIUM, max_tokens=300),
-            ])
+            prompt = ctx.build(
+                [
+                    ContextSection("task", full_prompt, Priority.CRITICAL),
+                    ContextSection(
+                        "vulnerability", f"Vulnerability Description:\n{vuln_desc}", Priority.HIGH, max_tokens=500
+                    ),
+                    ContextSection("target", f"Target Details:\n{target_details}", Priority.MEDIUM, max_tokens=300),
+                ]
+            )
 
             system_prompt = (
                 "You are a senior security researcher writing educational exploit code. "

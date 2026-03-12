@@ -23,6 +23,7 @@ def _import_s3_deps() -> tuple[Any, Any, Any]:
     import aioboto3 as _aioboto3
     from botocore.config import Config as _BotoConfig
     from botocore.exceptions import ClientError as _ClientError
+
     return _aioboto3, _BotoConfig, _ClientError
 
 

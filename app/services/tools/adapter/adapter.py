@@ -125,9 +125,7 @@ class CommandToolAdapter(ToolAdapter):
                 stderr=asyncio.subprocess.PIPE,
                 start_new_session=True,
             )
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout + 30
-            )
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout + 30)
             duration = time.time() - start_time
 
             stdout = stdout_bytes.decode("utf-8", errors="replace")
@@ -138,9 +136,7 @@ class CommandToolAdapter(ToolAdapter):
                 parsed = await self.parser.parse_output(
                     stdout,
                     stderr,
-                    str(Path(output_dir) / f"{self.config.id}_output")
-                    if output_dir
-                    else None,
+                    str(Path(output_dir) / f"{self.config.id}_output") if output_dir else None,
                 )
             except Exception as e:
                 logger.warning("Failed to parse tool output: %s", e)
@@ -160,9 +156,7 @@ class CommandToolAdapter(ToolAdapter):
                 stdout=stdout,
                 stderr=stderr,
                 duration_seconds=duration,
-                output_file=str(Path(output_dir) / f"{self.config.id}_output")
-                if output_dir
-                else None,
+                output_file=str(Path(output_dir) / f"{self.config.id}_output") if output_dir else None,
                 parsed_findings=parsed,
             )
         except TimeoutError:

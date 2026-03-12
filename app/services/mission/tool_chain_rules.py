@@ -25,73 +25,143 @@ class ChainRule:
 
 # Placeholder names indexed by capture group position
 _PLACEHOLDER_NAMES = (
-    "port", "version", "path", "cve_id", "url",
-    "user", "pass", "subdomain", "binary",
+    "port",
+    "version",
+    "path",
+    "cve_id",
+    "url",
+    "user",
+    "pass",
+    "subdomain",
+    "binary",
 )
 
 CHAIN_RULES: list[ChainRule] = [
     # Port scan -> Service enumeration
-    ChainRule("nmap", r"(\d+)/tcp\s+open\s+http", "whatweb",
-              {"target": "{host}:{port}"}, "Web service detected -> fingerprint", 3),
-    ChainRule("nmap", r"(\d+)/tcp\s+open\s+http", "nikto",
-              {"target": "{host}", "port": "{port}"}, "Web service -> vuln scan", 5),
-    ChainRule("nmap", r"(\d+)/tcp\s+open\s+http", "dirsearch",
-              {"target": "http://{host}:{port}"}, "Web service -> directory brute", 6),
-
+    ChainRule(
+        "nmap",
+        r"(\d+)/tcp\s+open\s+http",
+        "whatweb",
+        {"target": "{host}:{port}"},
+        "Web service detected -> fingerprint",
+        3,
+    ),
+    ChainRule(
+        "nmap",
+        r"(\d+)/tcp\s+open\s+http",
+        "nikto",
+        {"target": "{host}", "port": "{port}"},
+        "Web service -> vuln scan",
+        5,
+    ),
+    ChainRule(
+        "nmap",
+        r"(\d+)/tcp\s+open\s+http",
+        "dirsearch",
+        {"target": "http://{host}:{port}"},
+        "Web service -> directory brute",
+        6,
+    ),
     # Port scan -> Protocol-specific tools
-    ChainRule("nmap", r"445/tcp\s+open", "enum4linux",
-              {"target": "{host}"}, "SMB detected -> enumerate", 3),
-    ChainRule("nmap", r"445/tcp\s+open", "crackmapexec",
-              {"target": "{host}", "protocol": "smb"}, "SMB -> CrackMapExec enum", 5),
-    ChainRule("nmap", r"88/tcp\s+open", "kerbrute",
-              {"target": "{host}", "mode": "userenum"}, "Kerberos -> user enumeration", 4),
-    ChainRule("nmap", r"3306/tcp\s+open", "hydra",
-              {"target": "{host}", "service": "mysql"}, "MySQL -> brute force", 7),
-    ChainRule("nmap", r"5432/tcp\s+open", "hydra",
-              {"target": "{host}", "service": "postgres"}, "PostgreSQL -> brute force", 7),
-    ChainRule("nmap", r"21/tcp\s+open", "hydra",
-              {"target": "{host}", "service": "ftp"}, "FTP -> brute force", 7),
-    ChainRule("nmap", r"22/tcp\s+open", "hydra",
-              {"target": "{host}", "service": "ssh"}, "SSH -> brute force", 8),
-
+    ChainRule("nmap", r"445/tcp\s+open", "enum4linux", {"target": "{host}"}, "SMB detected -> enumerate", 3),
+    ChainRule(
+        "nmap",
+        r"445/tcp\s+open",
+        "crackmapexec",
+        {"target": "{host}", "protocol": "smb"},
+        "SMB -> CrackMapExec enum",
+        5,
+    ),
+    ChainRule(
+        "nmap",
+        r"88/tcp\s+open",
+        "kerbrute",
+        {"target": "{host}", "mode": "userenum"},
+        "Kerberos -> user enumeration",
+        4,
+    ),
+    ChainRule("nmap", r"3306/tcp\s+open", "hydra", {"target": "{host}", "service": "mysql"}, "MySQL -> brute force", 7),
+    ChainRule(
+        "nmap", r"5432/tcp\s+open", "hydra", {"target": "{host}", "service": "postgres"}, "PostgreSQL -> brute force", 7
+    ),
+    ChainRule("nmap", r"21/tcp\s+open", "hydra", {"target": "{host}", "service": "ftp"}, "FTP -> brute force", 7),
+    ChainRule("nmap", r"22/tcp\s+open", "hydra", {"target": "{host}", "service": "ssh"}, "SSH -> brute force", 8),
     # Web fingerprint -> CVE scan
-    ChainRule("whatweb", r"Apache[/ ](\d+\.\d+\.\d+)", "nuclei",
-              {"target": "{host}", "tags": "apache,cve"}, "Apache version -> CVE scan", 3),
-    ChainRule("whatweb", r"WordPress", "wpscan",
-              {"target": "http://{host}"}, "WordPress detected -> WPScan", 2),
-    ChainRule("whatweb", r"nginx[/ ](\d+\.\d+)", "nuclei",
-              {"target": "{host}", "tags": "nginx,cve"}, "nginx version -> CVE scan", 3),
-
+    ChainRule(
+        "whatweb",
+        r"Apache[/ ](\d+\.\d+\.\d+)",
+        "nuclei",
+        {"target": "{host}", "tags": "apache,cve"},
+        "Apache version -> CVE scan",
+        3,
+    ),
+    ChainRule("whatweb", r"WordPress", "wpscan", {"target": "http://{host}"}, "WordPress detected -> WPScan", 2),
+    ChainRule(
+        "whatweb",
+        r"nginx[/ ](\d+\.\d+)",
+        "nuclei",
+        {"target": "{host}", "tags": "nginx,cve"},
+        "nginx version -> CVE scan",
+        3,
+    ),
     # Directory discovery -> deeper scan
-    ChainRule("dirsearch", r"200\s+\d+\S*\s+(/[\w/.-]+\.php)", "sqlmap",
-              {"target": "http://{host}{path}"}, "PHP endpoint -> SQLi test", 5),
-    ChainRule("gobuster", r"Status: 200.*(/[\w/.-]+)", "nuclei",
-              {"target": "http://{host}{path}"}, "Found path -> vuln scan", 6),
-    ChainRule("ffuf", r"Status: 200.*(/[\w/.-]+)", "nuclei",
-              {"target": "http://{host}{path}"}, "Found path -> vuln scan", 6),
-
+    ChainRule(
+        "dirsearch",
+        r"200\s+\d+\S*\s+(/[\w/.-]+\.php)",
+        "sqlmap",
+        {"target": "http://{host}{path}"},
+        "PHP endpoint -> SQLi test",
+        5,
+    ),
+    ChainRule(
+        "gobuster",
+        r"Status: 200.*(/[\w/.-]+)",
+        "nuclei",
+        {"target": "http://{host}{path}"},
+        "Found path -> vuln scan",
+        6,
+    ),
+    ChainRule(
+        "ffuf", r"Status: 200.*(/[\w/.-]+)", "nuclei", {"target": "http://{host}{path}"}, "Found path -> vuln scan", 6
+    ),
     # Vulnerability scan -> exploitation
-    ChainRule("nuclei", r"\[critical\].*CVE-\d+-\d+", "searchsploit",
-              {"query": "{cve_id}"}, "Critical CVE -> find exploit", 2),
-    ChainRule("nuclei", r"\[high\].*sql.*injection", "sqlmap",
-              {"target": "{url}"}, "SQLi vuln -> sqlmap exploitation", 3),
-
+    ChainRule(
+        "nuclei", r"\[critical\].*CVE-\d+-\d+", "searchsploit", {"query": "{cve_id}"}, "Critical CVE -> find exploit", 2
+    ),
+    ChainRule(
+        "nuclei", r"\[high\].*sql.*injection", "sqlmap", {"target": "{url}"}, "SQLi vuln -> sqlmap exploitation", 3
+    ),
     # Credential found -> pivot
-    ChainRule("hydra", r"login:\s+(\S+)\s+password:\s+(\S+)", "crackmapexec",
-              {"target": "{host}", "username": "{user}", "password": "{pass}"},
-              "Creds found -> lateral movement", 2),
-
+    ChainRule(
+        "hydra",
+        r"login:\s+(\S+)\s+password:\s+(\S+)",
+        "crackmapexec",
+        {"target": "{host}", "username": "{user}", "password": "{pass}"},
+        "Creds found -> lateral movement",
+        2,
+    ),
     # Enum4linux -> Kerberoasting
-    ChainRule("enum4linux", r"user:\[(\w+)\]", "kerbrute",
-              {"target": "{host}", "mode": "passwordspray"}, "Users found -> password spray", 5),
-
+    ChainRule(
+        "enum4linux",
+        r"user:\[(\w+)\]",
+        "kerbrute",
+        {"target": "{host}", "mode": "passwordspray"},
+        "Users found -> password spray",
+        5,
+    ),
     # Subfinder -> httpx
-    ChainRule("subfinder", r"([\w.-]+\.[\w]+)", "httpx",
-              {"target": "{subdomain}"}, "Subdomain found -> probe alive", 3),
-
+    ChainRule(
+        "subfinder", r"([\w.-]+\.[\w]+)", "httpx", {"target": "{subdomain}"}, "Subdomain found -> probe alive", 3
+    ),
     # Post-exploitation chains
-    ChainRule("linpeas", r"SUID.*(/usr/\S+)", "searchsploit",
-              {"query": "{binary} privilege escalation"}, "SUID binary -> find privesc", 3),
+    ChainRule(
+        "linpeas",
+        r"SUID.*(/usr/\S+)",
+        "searchsploit",
+        {"query": "{binary} privilege escalation"},
+        "SUID binary -> find privesc",
+        3,
+    ),
 ]
 
 

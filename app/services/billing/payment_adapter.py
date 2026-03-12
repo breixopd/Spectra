@@ -43,9 +43,7 @@ class PaymentAdapter(ABC):
     async def get_subscription_status(self, subscription_id: str) -> str: ...
 
     @abstractmethod
-    async def create_checkout_session(
-        self, user_id: str, plan_id: str, success_url: str, cancel_url: str
-    ) -> str:
+    async def create_checkout_session(self, user_id: str, plan_id: str, success_url: str, cancel_url: str) -> str:
         """Returns a checkout URL."""
         ...
 
@@ -77,9 +75,7 @@ class NoopPaymentAdapter(PaymentAdapter):
     async def get_subscription_status(self, subscription_id: str) -> str:
         return "active"
 
-    async def create_checkout_session(
-        self, user_id: str, plan_id: str, success_url: str, cancel_url: str
-    ) -> str:
+    async def create_checkout_session(self, user_id: str, plan_id: str, success_url: str, cancel_url: str) -> str:
         return ""
 
     async def handle_webhook(self, payload: bytes, signature: str) -> dict:
@@ -121,9 +117,7 @@ class PaymentService:
             if plan is None:
                 raise ValueError(f"Plan {plan_id!r} not found")
 
-            result = await session.execute(
-                select(Subscription).where(Subscription.user_id == user_id)
-            )
+            result = await session.execute(select(Subscription).where(Subscription.user_id == user_id))
             sub = result.scalar_one_or_none()
 
             now = datetime.now(UTC)
@@ -150,9 +144,7 @@ class PaymentService:
     async def cancel_user_subscription(self, user_id: str) -> bool:
         """Cancel the user's active subscription."""
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(Subscription).where(Subscription.user_id == user_id)
-            )
+            result = await session.execute(select(Subscription).where(Subscription.user_id == user_id))
             sub = result.scalar_one_or_none()
             if sub is None:
                 return False
@@ -182,9 +174,7 @@ class PaymentService:
         tracker = UsageTracker()
         await tracker.record(user_id, metric, amount)
 
-    async def check_usage_limit(
-        self, user_id: str, metric: str
-    ) -> tuple[bool, int, int]:
+    async def check_usage_limit(self, user_id: str, metric: str) -> tuple[bool, int, int]:
         """Return (within_limit, current_usage, max_allowed)."""
         from app.services.billing.usage_tracker import UsageTracker
 

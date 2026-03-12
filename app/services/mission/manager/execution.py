@@ -111,6 +111,7 @@ class MissionExecutionManager:
                     from pathlib import Path
 
                     from app.core.config import get_settings
+
                     vpn_dir = Path(get_settings().VPN_CONFIG_DIR)
                     vpn_path = str(vpn_dir / mission.vpn_config)
                     if not (vpn_dir / mission.vpn_config).exists():
@@ -118,7 +119,9 @@ class MissionExecutionManager:
                         mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found, skipping VPN")
 
                 sandbox_info = await pool.create(mission.id, vpn_config_path=vpn_path)
-                mission.log(f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})")
+                mission.log(
+                    f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})"
+                )
             else:
                 mission.log("[WARN] Sandbox pool unavailable — tools will use default queue")
         except Exception as e:
@@ -178,14 +181,8 @@ class MissionExecutionManager:
             try:
                 from app.services.notifications import notify_mission_completed
 
-                critical = sum(
-                    1
-                    for f in mission.findings
-                    if str(f.get("severity", "")).lower() == "critical"
-                )
-                await notify_mission_completed(
-                    mission.target, len(mission.findings), critical
-                )
+                critical = sum(1 for f in mission.findings if str(f.get("severity", "")).lower() == "critical")
+                await notify_mission_completed(mission.target, len(mission.findings), critical)
             except Exception as e:
                 logger.warning("Failed to send mission completion notification: %s", e)
 
@@ -220,6 +217,7 @@ class MissionExecutionManager:
             if getattr(mission, "vpn_config", None):
                 try:
                     from app.services.tools.vpn import VPNManager
+
                     vpn_mgr = VPNManager()
                     await vpn_mgr.disconnect(mission.vpn_config)
                     mission.log(f"[VPN] Disconnected '{mission.vpn_config}'")
@@ -230,9 +228,7 @@ class MissionExecutionManager:
             try:
                 shell_manager.notify_mission_complete(str(mission.id))
             except Exception as e:
-                logger.error(
-                    f"Failed to notify shell manager of mission completion: {e}"
-                )
+                logger.error(f"Failed to notify shell manager of mission completion: {e}")
 
     async def _run_scope_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run scope definition phase."""
@@ -255,18 +251,16 @@ class MissionExecutionManager:
 
         # Fallback: if scope agent found no targets but we have a raw target string,
         # treat it as a hostname
-        if (
-            not scope_result.success
-            and scope_result.action
-            and not scope_result.action.targets
-            and mission.target
-        ):
+        if not scope_result.success and scope_result.action and not scope_result.action.targets and mission.target:
             from app.services.ai.agents.scope import TargetSpec
-            scope_result.action.targets = [TargetSpec(
-                value=mission.target,
-                target_type="hostname",
-                notes="Direct target from mission input",
-            )]
+
+            scope_result.action.targets = [
+                TargetSpec(
+                    value=mission.target,
+                    target_type="hostname",
+                    notes="Direct target from mission input",
+                )
+            ]
             scope_result.success = True
             scope_result.error = None
 
@@ -276,9 +270,7 @@ class MissionExecutionManager:
         target_count = len(scope_result.action.targets)  # type: ignore
         mission.log(f"Scope defined: {target_count} targets")
 
-    async def _run_planning_phase(
-        self, mission: Mission, context: AgentContext
-    ) -> None:
+    async def _run_planning_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run mission planning phase with quality gate validation."""
         mission.log("Generating mission plan...")
 
@@ -333,20 +325,14 @@ class MissionExecutionManager:
         if vote_result.status != "approved":
             raise RuntimeError(f"Plan rejected: {vote_result.escalation_reason}")
 
-        mission.log(
-            f"[APPROVED] Plan validated (Confidence: {vote_result.average_confidence:.2f})"
-        )
+        mission.log(f"[APPROVED] Plan validated (Confidence: {vote_result.average_confidence:.2f})")
         mission.plan = plan_action
 
         task_count = len(mission.plan.tasks)
         mission.log(f"Plan created: {task_count} tasks")
-        self._broadcast_state(
-            "mission_controller", "running", plan=f"{task_count} tasks planned"
-        )
+        self._broadcast_state("mission_controller", "running", plan=f"{task_count} tasks planned")
 
-    async def _execute_mission_tasks(
-        self, mission: Mission, context: AgentContext
-    ) -> None:
+    async def _execute_mission_tasks(self, mission: Mission, context: AgentContext) -> None:
         """Execute all mission tasks with dynamic plan adaptation.
 
         Tasks are grouped by phase and independent tasks within the same phase
@@ -376,12 +362,9 @@ class MissionExecutionManager:
                 break
 
             # Mission-level timeout check
-            elapsed = time.time() - getattr(mission, '_start_wall_time', time.time())
+            elapsed = time.time() - getattr(mission, "_start_wall_time", time.time())
             if elapsed > MISSION_TIMEOUT_SECONDS:
-                mission.log(
-                    f"[TIMEOUT] Mission timed out after {int(elapsed)}s "
-                    f"(limit: {MISSION_TIMEOUT_SECONDS}s)"
-                )
+                mission.log(f"[TIMEOUT] Mission timed out after {int(elapsed)}s (limit: {MISSION_TIMEOUT_SECONDS}s)")
                 mission.set_status("timed_out")
                 break
 
@@ -401,15 +384,13 @@ class MissionExecutionManager:
             independent = [
                 (i, t)
                 for i, t in indexed_tasks
-                if not t.dependencies
-                or all(d in completed_task_ids for d in t.dependencies)
+                if not t.dependencies or all(d in completed_task_ids for d in t.dependencies)
             ]
-            dependent = [
-                (i, t) for i, t in indexed_tasks if (i, t) not in independent
-            ]
+            dependent = [(i, t) for i, t in indexed_tasks if (i, t) not in independent]
 
             # --- Run independent tasks in parallel ---
             if independent:
+
                 async def _run_task(
                     idx: int,
                     task: Any,
@@ -418,9 +399,7 @@ class MissionExecutionManager:
                     """Execute a single task with full lifecycle handling."""
                     mission.current_task_index = idx
                     total = len(mission.plan.tasks) if mission.plan else 0
-                    mission.log(
-                        f"[TASK] Executing task [{idx + 1}/{total}]: {task.description}"
-                    )
+                    mission.log(f"[TASK] Executing task [{idx + 1}/{total}]: {task.description}")
                     _context_copy = AgentContext(
                         mission_id=_context.mission_id,
                         session_id=_context.session_id,
@@ -440,25 +419,16 @@ class MissionExecutionManager:
 
                 for (idx, task), result in zip(independent, results, strict=False):
                     if isinstance(result, Exception):
-                        await self._handle_task_failure(
-                            mission, task, str(result), context
-                        )
+                        await self._handle_task_failure(mission, task, str(result), context)
                         await self.lifecycle.update_db_status(mission)
                     else:
                         completed_task_ids.add(task.task_id)
                         # Check plan adaptation after each successful task
                         current_findings = len(mission.findings)
                         new_findings = current_findings - last_findings_count
-                        effective_idx = global_task_counter + independent.index(
-                            (idx, task)
-                        )
-                        if (
-                            new_findings >= 3
-                            and effective_idx > last_adaptation_index + 2
-                        ):
-                            await self._adapt_plan_to_findings(
-                                mission, context, new_findings
-                            )
+                        effective_idx = global_task_counter + independent.index((idx, task))
+                        if new_findings >= 3 and effective_idx > last_adaptation_index + 2:
+                            await self._adapt_plan_to_findings(mission, context, new_findings)
                             last_adaptation_index = effective_idx
                             last_findings_count = current_findings
                         await self.lifecycle.update_db_status(mission)
@@ -475,9 +445,7 @@ class MissionExecutionManager:
 
                 mission.current_task_index = idx
                 total = len(mission.plan.tasks) if mission.plan else 0
-                mission.log(
-                    f"[TASK] Executing task [{idx + 1}/{total}]: {task.description}"
-                )
+                mission.log(f"[TASK] Executing task [{idx + 1}/{total}]: {task.description}")
                 context.phase = task.phase.value
 
                 try:
@@ -488,16 +456,9 @@ class MissionExecutionManager:
 
                     current_findings = len(mission.findings)
                     new_findings = current_findings - last_findings_count
-                    effective_idx = global_task_counter + len(independent) + dependent.index(
-                        (idx, task)
-                    )
-                    if (
-                        new_findings >= 3
-                        and effective_idx > last_adaptation_index + 2
-                    ):
-                        await self._adapt_plan_to_findings(
-                            mission, context, new_findings
-                        )
+                    effective_idx = global_task_counter + len(independent) + dependent.index((idx, task))
+                    if new_findings >= 3 and effective_idx > last_adaptation_index + 2:
+                        await self._adapt_plan_to_findings(mission, context, new_findings)
                         last_adaptation_index = effective_idx
                         last_findings_count = current_findings
 
@@ -510,34 +471,21 @@ class MissionExecutionManager:
 
             global_task_counter += len(indexed_tasks)
 
-    async def _adapt_plan_to_findings(
-        self, mission: Mission, context: AgentContext, new_findings_count: int
-    ) -> None:
+    async def _adapt_plan_to_findings(self, mission: Mission, context: AgentContext, new_findings_count: int) -> None:
         """Adapt mission plan based on new findings (PTES/MAKER methodology)."""
-        mission.log(
-            f"[ADAPT] {new_findings_count} new findings discovered. Evaluating plan adaptation..."
-        )
+        mission.log(f"[ADAPT] {new_findings_count} new findings discovered. Evaluating plan adaptation...")
 
         try:
             # Summarize recent findings for context
             recent_findings = mission.findings[-new_findings_count:]
-            critical_high = [
-                f
-                for f in recent_findings
-                if str(f.get("severity", "")).lower() in ("critical", "high")
-            ]
+            critical_high = [f for f in recent_findings if str(f.get("severity", "")).lower() in ("critical", "high")]
 
             if not critical_high:
-                mission.log(
-                    "[ADAPT] No critical/high findings - continuing with current plan"
-                )
+                mission.log("[ADAPT] No critical/high findings - continuing with current plan")
                 return
 
             finding_summary = "; ".join(
-                [
-                    f"{f.get('title', 'Unknown')} ({f.get('severity', 'unknown')})"
-                    for f in critical_high[:5]
-                ]
+                [f"{f.get('title', 'Unknown')} ({f.get('severity', 'unknown')})" for f in critical_high[:5]]
             )
 
             # Ask mission controller to adapt
@@ -569,13 +517,9 @@ class MissionExecutionManager:
                     if new_tasks and mission.plan:
                         # Insert new tasks after current position
                         insert_pos = mission.current_task_index + 1
-                        for j, new_task in enumerate(
-                            new_tasks[:5]
-                        ):  # Limit to 5 new tasks
+                        for j, new_task in enumerate(new_tasks[:5]):  # Limit to 5 new tasks
                             mission.plan.tasks.insert(insert_pos + j, new_task)
-                        mission.log(
-                            f"[ADAPT] Added {len(new_tasks[:5])} new tasks to plan"
-                        )
+                        mission.log(f"[ADAPT] Added {len(new_tasks[:5])} new tasks to plan")
             else:
                 mission.log("[ADAPT] Plan adaptation not needed")
 
@@ -624,9 +568,7 @@ class MissionExecutionManager:
                     )
 
                     if vote_result.status != "approved":
-                        mission.log(
-                            f"[REJECTED] Replan rejected: {vote_result.escalation_reason}"
-                        )
+                        mission.log(f"[REJECTED] Replan rejected: {vote_result.escalation_reason}")
                         mission.log("[ADAPT] Continuing with original plan")
                         return
 
@@ -702,9 +644,17 @@ class MissionExecutionManager:
                 "findings": mission.findings,
                 "attack_surface": {
                     "services": [
-                        {"host": s.host, "port": s.port, "service": s.service, "product": s.product, "version": s.version}
+                        {
+                            "host": s.host,
+                            "port": s.port,
+                            "service": s.service,
+                            "product": s.product,
+                            "version": s.version,
+                        }
                         for s in mission.attack_surface.services
-                    ] if mission.attack_surface else [],
+                    ]
+                    if mission.attack_surface
+                    else [],
                 },
                 "tools_used": mission.tools_run or [],
             }
@@ -741,16 +691,12 @@ class MissionExecutionManager:
                 )
                 if count >= 5 and severity == "info":
                     memory.record_false_positive(template)
-                    mission.log(
-                        f"[LEARN] Marked '{template}' as probable false positive ({count} duplicates)"
-                    )
+                    mission.log(f"[LEARN] Marked '{template}' as probable false positive ({count} duplicates)")
 
             # Record OS profile if detected
             os_family = getattr(mission, "_detected_os", None)
             if os_family and os_family != "unknown":
-                services = [
-                    s.service for s in mission.attack_surface.services if s.service
-                ]
+                services = [s.service for s in mission.attack_surface.services if s.service]
                 memory.update_target_profile(
                     os_family,
                     services=services,
@@ -805,10 +751,7 @@ class MissionExecutionManager:
 
             # Index successful exploit vectors (max 10)
             if mission.attack_surface:
-                successful = [
-                    v for v in mission.attack_surface.vectors
-                    if v.status == VectorStatus.SUCCESS
-                ][:10]
+                successful = [v for v in mission.attack_surface.vectors if v.status == VectorStatus.SUCCESS][:10]
                 for vector in successful:
                     tool = vector.suggested_tools[0] if vector.suggested_tools else "manual"
                     doc = Document(
@@ -848,10 +791,7 @@ class MissionExecutionManager:
             indexed += 1
 
             # Index debrief lessons from logs (max 10)
-            lessons = [
-                entry for entry in (mission.logs or [])
-                if isinstance(entry, str) and "[LEARN]" in entry
-            ][:10]
+            lessons = [entry for entry in (mission.logs or []) if isinstance(entry, str) and "[LEARN]" in entry][:10]
             for i, lesson in enumerate(lessons):
                 doc = Document(
                     id=f"lesson-{mission_id}-{i}",
@@ -870,9 +810,7 @@ class MissionExecutionManager:
 
     def _broadcast_state(self, agent_id: str, status: str, **kwargs) -> None:
         """Broadcast agent state."""
-        self._broadcast(
-            "agent_state", {"agent_id": agent_id, "status": status, **kwargs}
-        )
+        self._broadcast("agent_state", {"agent_id": agent_id, "status": status, **kwargs})
 
     def _broadcast(self, msg_type: str, data: Any) -> None:
         """Broadcast to WebSocket clients via EventBus."""

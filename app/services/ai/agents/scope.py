@@ -73,9 +73,7 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
 
     role: ClassVar[AgentRole] = AgentRole.SCOPE
     name: ClassVar[str] = "ScopeAgent"
-    description: ClassVar[str] = (
-        "Parses user input to define strict assessment boundaries (IPs, domains, CIDRs)"
-    )
+    description: ClassVar[str] = "Parses user input to define strict assessment boundaries (IPs, domains, CIDRs)"
 
     # Regex patterns for common target types
     IP_PATTERN = re.compile(
@@ -86,9 +84,7 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
         r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
         r"(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(?:[0-9]|[12][0-9]|3[0-2])\b"
     )
-    DOMAIN_PATTERN = re.compile(
-        r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+" r"[a-zA-Z]{2,}\b"
-    )
+    DOMAIN_PATTERN = re.compile(r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+" r"[a-zA-Z]{2,}\b")
     URL_PATTERN = re.compile(r"https?://[^\s]+")
     PORT_RANGE_PATTERN = re.compile(r":(\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)")
 
@@ -128,8 +124,7 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
             # Check against max_hosts limit
             if total_hosts > input_data.max_hosts:
                 warnings.append(
-                    f"Scope exceeds max hosts ({total_hosts} > {input_data.max_hosts}). "
-                    "Consider narrowing the scope."
+                    f"Scope exceeds max hosts ({total_hosts} > {input_data.max_hosts}). Consider narrowing the scope."
                 )
 
             action = ScopeAction(
@@ -216,26 +211,41 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
 
         # Extract bare hostnames (not already captured by other patterns)
         # Only consider words that look like hostnames (contain hyphens or match known patterns)
-        words = re.findall(r'\b[a-zA-Z][a-zA-Z0-9-]+\b', text)
+        words = re.findall(r"\b[a-zA-Z][a-zA-Z0-9-]+\b", text)
         # Filter: must contain at least one hyphen (to distinguish from regular words)
         # OR be known to be a target (starts with common host prefixes)
-        _skip_words = frozenset((
-            'the', 'and', 'not', 'but', 'for', 'all', 'internal', 'external',
-            'except', 'exclude', 'between', 'production', 'staging', 'only',
-        ))
+        _skip_words = frozenset(
+            (
+                "the",
+                "and",
+                "not",
+                "but",
+                "for",
+                "all",
+                "internal",
+                "external",
+                "except",
+                "exclude",
+                "between",
+                "production",
+                "staging",
+                "only",
+            )
+        )
         for word in words:
             value = word.lower()
             if value not in seen and (
-                '-' in value
-                or value.startswith(('target', 'host', 'server', 'vm', 'container'))
+                "-" in value or value.startswith(("target", "host", "server", "vm", "container"))
             ):
                 if value not in _skip_words:
                     seen.add(value)
-                    targets.append(TargetSpec(
-                        value=value,
-                        target_type="hostname",
-                        notes="Bare hostname (no domain suffix)",
-                    ))
+                    targets.append(
+                        TargetSpec(
+                            value=value,
+                            target_type="hostname",
+                            notes="Bare hostname (no domain suffix)",
+                        )
+                    )
 
         return targets, warnings
 
@@ -277,13 +287,16 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
         )
 
         from app.services.ai.sanitizer import sanitize_for_prompt
+
         sanitized_input = sanitize_for_prompt(input_data.raw_input, field_name="scope_raw_input")
 
         ctx = ContextManager(max_context_tokens=4000)
-        prompt = ctx.build([
-            ContextSection("task", base_prompt, Priority.CRITICAL),
-            ContextSection("raw_input", f'User Input: "{sanitized_input}"', Priority.HIGH, max_tokens=2000),
-        ])
+        prompt = ctx.build(
+            [
+                ContextSection("task", base_prompt, Priority.CRITICAL),
+                ContextSection("raw_input", f'User Input: "{sanitized_input}"', Priority.HIGH, max_tokens=2000),
+            ]
+        )
 
         system_prompt = self._build_system_prompt(context)
 
@@ -320,9 +333,7 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
                 # Basic domain validation
                 if len(target.value) > 253:
                     return False, 0
-                if not all(
-                    len(label) <= 63 and label for label in target.value.split(".")
-                ):
+                if not all(len(label) <= 63 and label for label in target.value.split(".")):
                     return False, 0
                 return True, 1  # Count as 1, may resolve to multiple IPs
 
@@ -332,7 +343,7 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
 
             elif target.target_type == "hostname":
                 # Bare hostname - valid if it's reasonable length and chars
-                if re.match(r'^[a-zA-Z][a-zA-Z0-9-]{0,62}$', target.value):
+                if re.match(r"^[a-zA-Z][a-zA-Z0-9-]{0,62}$", target.value):
                     return True, 1
                 return False, 0
 

@@ -101,10 +101,10 @@ class VotingConfig:
     # HIGH+ risk → full 3/3 consensus
     consensus_threshold: dict[str, tuple[int, int, float]] = field(
         default_factory=lambda: {
-            ActionRisk.LOW.value: (0, 0, 0.0),       # Skip consensus
-            ActionRisk.MEDIUM.value: (3, 2, 0.5),     # 2 of 3, moderate confidence
-            ActionRisk.HIGH.value: (3, 3, 0.7),       # 3 of 3, high confidence
-            ActionRisk.CRITICAL.value: (3, 3, 0.8),   # 3 of 3, strict confidence
+            ActionRisk.LOW.value: (0, 0, 0.0),  # Skip consensus
+            ActionRisk.MEDIUM.value: (3, 2, 0.5),  # 2 of 3, moderate confidence
+            ActionRisk.HIGH.value: (3, 3, 0.7),  # 3 of 3, high confidence
+            ActionRisk.CRITICAL.value: (3, 3, 0.8),  # 3 of 3, strict confidence
         }
     )
 

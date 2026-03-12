@@ -43,8 +43,13 @@ class TestCorrelationFilter:
     def test_injects_correlation_id_into_record(self):
         filt = _CorrelationFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg="hello", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="hello",
+            args=(),
+            exc_info=None,
         )
         token = correlation_id_var.set("filter-cid")
         try:
@@ -57,8 +62,13 @@ class TestCorrelationFilter:
     def test_empty_string_when_no_correlation_id(self):
         filt = _CorrelationFilter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg="hello", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="hello",
+            args=(),
+            exc_info=None,
         )
         result = filt.filter(record)
         assert result is True
@@ -70,8 +80,13 @@ class TestJSONFormatter:
 
     def _make_record(self, msg="test message", level=logging.INFO, cid=""):
         record = logging.LogRecord(
-            name="spectra.test", level=level, pathname="test.py",
-            lineno=42, msg=msg, args=(), exc_info=None,
+            name="spectra.test",
+            level=level,
+            pathname="test.py",
+            lineno=42,
+            msg=msg,
+            args=(),
+            exc_info=None,
         )
         record.correlation_id = cid  # type: ignore[attr-defined]
         return record
@@ -100,9 +115,15 @@ class TestJSONFormatter:
             raise ValueError("boom")
         except ValueError:
             import sys
+
             record = logging.LogRecord(
-                name="test", level=logging.ERROR, pathname="", lineno=0,
-                msg="error", args=(), exc_info=sys.exc_info(),
+                name="test",
+                level=logging.ERROR,
+                pathname="",
+                lineno=0,
+                msg="error",
+                args=(),
+                exc_info=sys.exc_info(),
             )
             record.correlation_id = ""  # type: ignore[attr-defined]
 
@@ -116,8 +137,13 @@ class TestHumanFormatter:
 
     def _make_record(self, msg="test", cid=""):
         record = logging.LogRecord(
-            name="spectra.test", level=logging.INFO, pathname="test.py",
-            lineno=1, msg=msg, args=(), exc_info=None,
+            name="spectra.test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=1,
+            msg=msg,
+            args=(),
+            exc_info=None,
         )
         record.correlation_id = cid  # type: ignore[attr-defined]
         return record

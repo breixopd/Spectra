@@ -108,11 +108,25 @@ TOOL_KNOWLEDGE: dict[str, str] = {
 }
 
 # Tools with complex parameter spaces that benefit from tuning
-COMPLEX_TOOLS = frozenset({
-    "nmap", "nuclei", "gobuster", "ffuf", "sqlmap", "hydra",
-    "naabu", "dirsearch", "wpscan", "metasploit", "crackmapexec",
-    "feroxbuster", "nikto", "amass", "subfinder",
-})
+COMPLEX_TOOLS = frozenset(
+    {
+        "nmap",
+        "nuclei",
+        "gobuster",
+        "ffuf",
+        "sqlmap",
+        "hydra",
+        "naabu",
+        "dirsearch",
+        "wpscan",
+        "metasploit",
+        "crackmapexec",
+        "feroxbuster",
+        "nikto",
+        "amass",
+        "subfinder",
+    }
+)
 
 TUNER_PROMPT = """You are a security tool parameter tuner. Given the context below,
 generate optimal parameters for the tool.
@@ -173,21 +187,23 @@ class ParameterTunerAgent(Agent[TunerInput, TunerOutput]):
                 prev_summary = "Previous scan results:\n" + "\n".join(prev_lines)
 
             ctx_mgr = ContextManager(max_context_tokens=3000)
-            prompt = ctx_mgr.build([
-                ContextSection("task", task_text, Priority.CRITICAL),
-                ContextSection(
-                    "tool_knowledge",
-                    f"**Tool Reference:**\n{tool_knowledge}" if tool_knowledge else "",
-                    Priority.HIGH,
-                    max_tokens=500,
-                ),
-                ContextSection(
-                    "previous_results",
-                    prev_summary,
-                    Priority.MEDIUM,
-                    max_tokens=300,
-                ),
-            ])
+            prompt = ctx_mgr.build(
+                [
+                    ContextSection("task", task_text, Priority.CRITICAL),
+                    ContextSection(
+                        "tool_knowledge",
+                        f"**Tool Reference:**\n{tool_knowledge}" if tool_knowledge else "",
+                        Priority.HIGH,
+                        max_tokens=500,
+                    ),
+                    ContextSection(
+                        "previous_results",
+                        prev_summary,
+                        Priority.MEDIUM,
+                        max_tokens=300,
+                    ),
+                ]
+            )
 
             action = await self._llm_generate_structured(
                 prompt=prompt,

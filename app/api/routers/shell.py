@@ -74,9 +74,7 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
     # Verify the user owns the mission associated with this shell session
     if session.mission_id and not user.is_superuser:
         async with async_session_maker() as db:
-            result = await db.execute(
-                select(Mission).where(Mission.id == session.mission_id)
-            )
+            result = await db.execute(select(Mission).where(Mission.id == session.mission_id))
             mission = result.scalar_one_or_none()
             if mission and mission.user_id and mission.user_id != str(user.id):
                 await websocket.close(code=4003, reason="Not authorized for this session")
@@ -109,15 +107,10 @@ async def list_sessions(request: Request, _current_user: User = Depends(get_curr
     # Filter to sessions belonging to the user's missions
     user_id = str(_current_user.id)
     async with async_session_maker() as db:
-        result = await db.execute(
-            select(Mission.id).where(Mission.user_id == user_id)
-        )
+        result = await db.execute(select(Mission.id).where(Mission.user_id == user_id))
         user_mission_ids = {row[0] for row in result.all()}
 
-    return [
-        s for s in all_sessions
-        if not s.get("mission_id") or s["mission_id"] in user_mission_ids
-    ]
+    return [s for s in all_sessions if not s.get("mission_id") or s["mission_id"] in user_mission_ids]
 
 
 @router.post("/reconnect/{finding_id}")

@@ -43,9 +43,7 @@ async def _get_user_plan(user_id: str, db: AsyncSession) -> Plan | None:
     return await db.get(Plan, sub.plan_id)
 
 
-async def _get_usage(
-    user_id: str, period_type: str, period_start: datetime, db: AsyncSession
-) -> UsageRecord | None:
+async def _get_usage(user_id: str, period_type: str, period_start: datetime, db: AsyncSession) -> UsageRecord | None:
     result = await db.execute(
         select(UsageRecord).where(
             UsageRecord.user_id == user_id,

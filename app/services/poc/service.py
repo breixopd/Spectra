@@ -40,9 +40,7 @@ class POCService:
 
             # Start listener if reverse shell
             # Allocate a free port
-            shell_manager.start_listener(
-                callback_port, context.session_id, request.target
-            )
+            shell_manager.start_listener(callback_port, context.session_id, request.target)
 
             # 2. Generate Code
             dev_input = POCDeveloperInput(
@@ -101,9 +99,7 @@ class POCService:
                 shell_type="reverse_shell",
             )
 
-            return POCResult(
-                success=True, content=poc_output.code_content, metadata=metadata
-            )
+            return POCResult(success=True, content=poc_output.code_content, metadata=metadata)
 
         except Exception as e:
             logger.error("POC Service error: %s", e, exc_info=True)

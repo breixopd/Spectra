@@ -34,10 +34,7 @@ _KEV_TTL_SECONDS = 86_400  # 24 hours
 
 _NVD_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 _EPSS_BASE = "https://api.first.org/data/v1/epss"
-_KEV_URL = (
-    "https://www.cisa.gov/sites/default/files/feeds/"
-    "known_exploited_vulnerabilities.json"
-)
+_KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 
 _HTTP_TIMEOUT = 30.0
 _NVD_DELAY_NO_KEY = 6.0
@@ -52,32 +49,31 @@ class OsintSanitizer:
     """Ensures no target-identifying information leaks to external APIs."""
 
     _IP_PATTERN = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
-    _DOMAIN_PATTERN = re.compile(
-        r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}\b"
-    )
-    _INTERNAL_PATTERN = re.compile(
-        r"\b(?:10\.\d+|192\.168\.\d+|172\.(?:1[6-9]|2\d|3[01])\.)\.\d+\b"
-    )
+    _DOMAIN_PATTERN = re.compile(r"\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}\b")
+    _INTERNAL_PATTERN = re.compile(r"\b(?:10\.\d+|192\.168\.\d+|172\.(?:1[6-9]|2\d|3[01])\.)\.\d+\b")
 
     # Well-known domains that are *not* target identifiers
-    _SAFE_DOMAINS = frozenset({
-        "nvd.nist.gov",
-        "nist.gov",
-        "cisa.gov",
-        "api.first.org",
-        "first.org",
-        "services.nvd.nist.gov",
-        "www.cisa.gov",
-        "exploit-db.com",
-        "github.com",
-        "cve.org",
-    })
+    _SAFE_DOMAINS = frozenset(
+        {
+            "nvd.nist.gov",
+            "nist.gov",
+            "cisa.gov",
+            "api.first.org",
+            "first.org",
+            "services.nvd.nist.gov",
+            "www.cisa.gov",
+            "exploit-db.com",
+            "github.com",
+            "cve.org",
+        }
+    )
 
     @classmethod
     def sanitize(cls, text: str) -> str:
         """Remove all target-identifying information from text."""
         text = cls._INTERNAL_PATTERN.sub("[REDACTED_IP]", text)
         text = cls._IP_PATTERN.sub("[REDACTED_IP]", text)
+
         # Only strip domains that aren't in the safe-list
         def _replace_domain(m: re.Match[str]) -> str:
             domain = m.group(0).lower()
@@ -107,9 +103,7 @@ class OsintSanitizer:
 # Input / Output models
 # ---------------------------------------------------------------------------
 
-QueryType = Literal[
-    "cve_lookup", "technology_intel", "service_fingerprint", "exploit_search"
-]
+QueryType = Literal["cve_lookup", "technology_intel", "service_fingerprint", "exploit_search"]
 
 
 class ReconIntelInput(BaseModel):
@@ -176,9 +170,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
                     continue
 
                 try:
-                    resp = await client.get(
-                        _NVD_BASE, params=params, headers=headers
-                    )
+                    resp = await client.get(_NVD_BASE, params=params, headers=headers)
                     resp.raise_for_status()
                     data = resp.json()
                 except httpx.HTTPError as exc:
@@ -189,9 +181,10 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
                     cve_data = vuln.get("cve", {})
                     metrics = cve_data.get("metrics", {})
                     cvss_v31 = (
-                        metrics.get("cvssMetricV31", [{}])[0]
-                        .get("cvssData", {})
-                    ) if metrics.get("cvssMetricV31") else {}
+                        (metrics.get("cvssMetricV31", [{}])[0].get("cvssData", {}))
+                        if metrics.get("cvssMetricV31")
+                        else {}
+                    )
 
                     descriptions = cve_data.get("descriptions", [])
                     desc = next(
@@ -199,18 +192,16 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
                         "",
                     )
 
-                    results.append({
-                        "cve_id": cve_data.get("id", cve_id),
-                        "description": desc,
-                        "cvss_score": cvss_v31.get("baseScore"),
-                        "cvss_vector": cvss_v31.get("vectorString"),
-                        "severity": cvss_v31.get("baseSeverity"),
-                        "references": [
-                            r.get("url")
-                            for r in cve_data.get("references", [])
-                            if r.get("url")
-                        ],
-                    })
+                    results.append(
+                        {
+                            "cve_id": cve_data.get("id", cve_id),
+                            "description": desc,
+                            "cvss_score": cvss_v31.get("baseScore"),
+                            "cvss_vector": cvss_v31.get("vectorString"),
+                            "severity": cvss_v31.get("baseSeverity"),
+                            "references": [r.get("url") for r in cve_data.get("references", []) if r.get("url")],
+                        }
+                    )
 
         return results
 
@@ -261,9 +252,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
             {
                 "cve_id": cve_id,
                 "in_kev": cve_id in kev_set,
-                "kev_detail": next(
-                    (v for v in vulns if v.get("cveID") == cve_id), None
-                ),
+                "kev_detail": next((v for v in vulns if v.get("cveID") == cve_id), None),
             }
             for cve_id in cve_ids
             if cve_id in kev_set
@@ -294,20 +283,20 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
 
         results: list[dict[str, Any]] = []
         for entry in data.get("data", []):
-            results.append({
-                "cve_id": entry.get("cve"),
-                "epss_score": float(entry.get("epss", 0)),
-                "percentile": float(entry.get("percentile", 0)),
-            })
+            results.append(
+                {
+                    "cve_id": entry.get("cve"),
+                    "epss_score": float(entry.get("epss", 0)),
+                    "percentile": float(entry.get("percentile", 0)),
+                }
+            )
         return results
 
     # ------------------------------------------------------------------
     # ExploitDB (local index via existing service)
     # ------------------------------------------------------------------
 
-    async def _query_exploitdb(
-        self, technology: str | None, version: str | None
-    ) -> list[dict[str, Any]]:
+    async def _query_exploitdb(self, technology: str | None, version: str | None) -> list[dict[str, Any]]:
         """Search local ExploitDB index."""
         from app.services.ai.exploit_db import ExploitDatabase
 
@@ -398,9 +387,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
             # Execute concurrently
             if tasks:
                 keys = list(tasks.keys())
-                results = await asyncio.gather(
-                    *tasks.values(), return_exceptions=True
-                )
+                results = await asyncio.gather(*tasks.values(), return_exceptions=True)
                 source_results = dict(zip(keys, results, strict=True))
             else:
                 source_results = {}
@@ -424,9 +411,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
 
             # LLM enrichment (optional, only if we have findings)
             if all_findings:
-                recommendations = await self._enrich_with_llm(
-                    context, technology, all_findings
-                )
+                recommendations = await self._enrich_with_llm(context, technology, all_findings)
 
             confidence = min(0.9, 0.3 + 0.1 * len(all_findings))
 

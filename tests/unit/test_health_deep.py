@@ -102,12 +102,15 @@ async def test_health_verbose_includes_llm():
     mock_pool = MagicMock()
     mock_pool.available = True
 
-    with patch.dict("sys.modules", {
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=lambda: mock_router),
-        "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
-        "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: mock_pool),
-    }):
+    with patch.dict(
+        "sys.modules",
+        {
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=lambda: mock_router),
+            "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: mock_pool),
+        },
+    ):
         result = await health_check(response=response, db=db, verbose=True)
 
     assert "llm" in result["components"]
@@ -126,12 +129,15 @@ async def test_health_verbose_cache_healthy():
     mock_rag = MagicMock()
     mock_rag.is_functional = False
 
-    with patch.dict("sys.modules", {
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception("no LLM"))),
-        "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
-        "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: None),
-    }):
+    with patch.dict(
+        "sys.modules",
+        {
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception("no LLM"))),
+            "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: None),
+        },
+    ):
         result = await health_check(response=response, db=db, verbose=True)
 
     assert result["components"]["cache"]["status"] == "healthy"
@@ -147,12 +153,15 @@ async def test_health_verbose_cache_unavailable():
     mock_rag = MagicMock()
     mock_rag.is_functional = False
 
-    with patch.dict("sys.modules", {
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception)),
-        "app.core.cache": MagicMock(get_cache=lambda: None),
-        "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=Exception)),
-    }):
+    with patch.dict(
+        "sys.modules",
+        {
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception)),
+            "app.core.cache": MagicMock(get_cache=lambda: None),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=Exception)),
+        },
+    ):
         result = await health_check(response=response, db=db, verbose=True)
 
     assert result["components"]["cache"]["status"] == "unavailable"
@@ -165,19 +174,22 @@ async def test_health_verbose_disk_info():
     response = _mock_response()
 
     mock_usage = MagicMock()
-    mock_usage.free = 50 * (1024 ** 3)
-    mock_usage.total = 100 * (1024 ** 3)
-    mock_usage.used = 50 * (1024 ** 3)
+    mock_usage.free = 50 * (1024**3)
+    mock_usage.total = 100 * (1024**3)
+    mock_usage.used = 50 * (1024**3)
 
     mock_rag = MagicMock()
     mock_rag.is_functional = False
 
-    with patch.dict("sys.modules", {
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception)),
-        "app.core.cache": MagicMock(get_cache=lambda: None),
-        "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=Exception)),
-    }):
+    with patch.dict(
+        "sys.modules",
+        {
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception)),
+            "app.core.cache": MagicMock(get_cache=lambda: None),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=Exception)),
+        },
+    ):
         with patch("app.api.routers.health.shutil.disk_usage", return_value=mock_usage):
             result = await health_check(response=response, db=db, verbose=True)
 
@@ -200,10 +212,13 @@ async def test_readiness_all_ready():
     mock_rag.is_functional = True
     mock_router = MagicMock()
 
-    with patch.dict("sys.modules", {
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=lambda: mock_router),
-    }):
+    with patch.dict(
+        "sys.modules",
+        {
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=lambda: mock_router),
+        },
+    ):
         result = await readiness_check(response=response, db=db)
 
     assert result["ready"] is True
@@ -219,10 +234,13 @@ async def test_readiness_db_down():
     mock_rag = MagicMock()
     mock_rag.is_functional = True
 
-    with patch.dict("sys.modules", {
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=lambda: MagicMock()),
-    }):
+    with patch.dict(
+        "sys.modules",
+        {
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=lambda: MagicMock()),
+        },
+    ):
         result = await readiness_check(response=response, db=db)
 
     assert result["ready"] is False
@@ -236,10 +254,13 @@ async def test_readiness_llm_unavailable():
     db.execute = AsyncMock()
     response = _mock_response()
 
-    with patch.dict("sys.modules", {
-        "app.services.ai.rag": MagicMock(RAGService=MagicMock(side_effect=Exception)),
-        "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception)),
-    }):
+    with patch.dict(
+        "sys.modules",
+        {
+            "app.services.ai.rag": MagicMock(RAGService=MagicMock(side_effect=Exception)),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception)),
+        },
+    ):
         result = await readiness_check(response=response, db=db)
 
     assert result["ready"] is False

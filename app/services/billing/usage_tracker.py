@@ -84,13 +84,9 @@ class UsageTracker:
             await session.commit()
 
         # Record to telemetry
-        telemetry.increment_counter(
-            f"billing.usage.{metric}", amount, {"user_id": user_id, "period": period_type}
-        )
+        telemetry.increment_counter(f"billing.usage.{metric}", amount, {"user_id": user_id, "period": period_type})
 
-    async def check_rate_limit(
-        self, user_id: str, metric: str
-    ) -> tuple[bool, int, int]:
+    async def check_rate_limit(self, user_id: str, metric: str) -> tuple[bool, int, int]:
         """Return ``(within_limit, current_usage, max_allowed)``.
 
         If the plan has no limit (``None``), ``max_allowed`` is ``0`` and the
@@ -105,9 +101,7 @@ class UsageTracker:
 
         async with async_session_maker() as session:
             # Fetch subscription + plan
-            sub_result = await session.execute(
-                select(Subscription).where(Subscription.user_id == user_id)
-            )
+            sub_result = await session.execute(select(Subscription).where(Subscription.user_id == user_id))
             sub = sub_result.scalar_one_or_none()
             if sub is None:
                 return (False, 0, 0)

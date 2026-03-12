@@ -26,9 +26,7 @@ class Mission(Base):
     """
 
     __tablename__ = "missions"
-    __table_args__ = (
-        Index("ix_missions_user_id_status", "user_id", "status"),
-    )
+    __table_args__ = (Index("ix_missions_user_id_status", "user_id", "status"),)
 
     user_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
@@ -43,16 +41,10 @@ class Mission(Base):
     )
     logs: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
     summary: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
-    attack_surface: Mapped[dict | None] = mapped_column(
-        JSON, nullable=True, default=dict
-    )
-    checkpoint_data: Mapped[dict | None] = mapped_column(
-        JSON, nullable=True, default=None
-    )
+    attack_surface: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=dict)
+    checkpoint_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     resume: Mapped[bool] = mapped_column(default=False, nullable=False)
-    vpn_config: Mapped[str | None] = mapped_column(
-        String(64), nullable=True, default=None
-    )
+    vpn_config: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
 
     def __repr__(self) -> str:
         """String representation of the mission."""
