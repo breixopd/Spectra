@@ -16,15 +16,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from app.services.ai.agents.base import AgentContext, ToolAction
-from app.services.ai.agents.safety import (
-    SafetyAction,
-    SafetyInput,
-    SafetySupervisorAgent,
-)
+from app.services.ai.agents.safety import SafetySupervisorAgent
 from app.services.ai.consensus import VotingSystem
 from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.models import ToolExecutionRequest, ToolExecutionResult
 from app.services.tools.registry import get_registry
+from app.services.tools.result_processor import (
+    log_success,
+    record_to_memory,
+    update_attack_surface_from_finding,
+)
+from app.services.tools.safety import (
+    perform_consensus_check,
+    perform_safety_check,
+    perform_safety_check_with_retry,
+)
 
 if TYPE_CHECKING:
     from app.services.mission.mission import Mission
@@ -517,38 +523,9 @@ class ToolExecutionService:
         args: dict[str, Any] | None,
     ) -> tuple[bool, str]:
         """Run the command through the Safety Supervisor."""
-        safety_input = SafetyInput(
-            command=command,
-            tool_id=tool_name,
-            target=target,
-            args=args or {},
+        return await perform_safety_check(
+            self.safety_supervisor, mission, command, tool_name, target, args
         )
-
-        try:
-            safety_context = AgentContext(
-                mission_id=mission.id,
-                session_id=mission.id,
-                target=mission.target,
-                mission=mission.directive,
-                phase="safety_check",
-                stealth_mode=False,  # We want the supervisor to be thorough, not stealthy itself
-                max_concurrency=1,
-            )
-
-            safety_result = await self.safety_supervisor.execute(
-                safety_context, safety_input
-            )
-
-            if safety_result.success and isinstance(safety_result.action, SafetyAction):
-                if not safety_result.action.allowed:
-                    mission.log(
-                        f"[BLOCK] Safety check blocked: {safety_result.action.reason}"
-                    )
-                    return False, safety_result.action.reason
-            return True, "Safe"
-        except Exception as e:
-            mission.log(f"Safety check failed verification: {e}")
-            return False, str(e)
 
     async def _perform_safety_check_with_retry(
         self,
@@ -561,149 +538,19 @@ class ToolExecutionService:
         output_dir: Path,
         max_retries: int = MAX_RETRIES,
     ) -> tuple[bool, str, dict[str, Any] | None]:
-        """
-        Run safety check with automatic command fixing on failure.
-
-        Returns:
-            Tuple of (is_safe, reason, fixed_args or None)
-        """
-        current_args = args
-        current_command = command
-
-        for attempt in range(max_retries + 1):
-            is_safe, reason = await self._perform_safety_check(
-                mission, current_command, tool_name, target, current_args
-            )
-
-            if is_safe:
-                # Return fixed args if we modified them
-                return True, "Safe", current_args if attempt > 0 else None
-
-            if attempt < max_retries:
-                mission.log(
-                    f"[ADAPT] Attempting to fix command (attempt {attempt + 1}/{max_retries})..."
-                )
-
-                # Try to fix the command using LLM
-                fixed_args = await self._try_fix_command(
-                    mission, tool_name, target, current_args, reason
-                )
-
-                if fixed_args is not None and fixed_args != current_args:
-                    current_args = fixed_args
-                    # Rebuild command with fixed args
-                    from app.services.tools.models import ToolExecutionRequest
-
-                    fixed_request = ToolExecutionRequest(
-                        tool_id=tool_name,
-                        target=target,
-                        args=fixed_args,
-                        timeout=None,
-                    )
-                    current_command = builder.builder.build_command(
-                        fixed_request, output_dir=str(output_dir)
-                    )
-                    mission.log(f"[INFO] Retrying with fixed args: {fixed_args}")
-                else:
-                    # Couldn't fix, break out
-                    break
-
-        return False, reason, None
-
-    async def _try_fix_command(
-        self,
-        mission: Mission,
-        tool_name: str,
-        target: str,
-        args: dict[str, Any] | None,
-        error_reason: str,
-    ) -> dict[str, Any] | None:
-        """Use LLM to try to fix a blocked command."""
-        try:
-            # Get tool config for context
-            registry = get_registry()
-            tool = registry.get_tool(tool_name)
-            if not tool:
-                return None
-
-            prompt = f"""The following command was blocked by safety checks:
-Tool: {tool_name}
-Target: {target}
-Arguments: {args}
-Error: {error_reason}
-
-Tool description: {tool.config.description}
-Available arguments: {tool.config.execution.args_template}
-
-Please provide ONLY a valid JSON object with corrected arguments that would fix the safety issue.
-The arguments must be valid for this tool. Do not include any explanation, just the JSON.
-
-Example response format:
-{{"module": "exploit/unix/ftp/vsftpd_234_backdoor", "RHOSTS": "192.168.1.1"}}"""
-
-            llm_response = await self.llm.generate(
-                prompt=prompt,
-                system_prompt="You are a security tool expert. Fix malformed commands by providing valid arguments as JSON.",
-                temperature=0.1,
-            )
-
-            # Parse the JSON response - handle LLMResponse object
-            import json
-
-            # Extract text from LLMResponse object if needed
-            if hasattr(llm_response, "content"):
-                response_text = llm_response.content
-            elif hasattr(llm_response, "text"):
-                response_text = llm_response.text
-            else:
-                response_text = str(llm_response)
-
-            response_text = response_text.strip()
-            if response_text.startswith("```"):
-                # Remove code blocks
-                lines = response_text.split("\n")
-                response_text = "\n".join(line for line in lines if not line.startswith("```"))
-
-            fixed_args = json.loads(response_text)
-            if isinstance(fixed_args, dict):
-                mission.log(f"[INFO] LLM suggested fix: {fixed_args}")
-                return fixed_args
-
-        except Exception as e:
-            logger.warning("Failed to fix command via LLM: %s", e)
-
-        return None
+        """Run safety check with automatic command fixing on failure."""
+        return await perform_safety_check_with_retry(
+            self.safety_supervisor, self.llm, mission, command, tool_name,
+            target, args, builder, output_dir, max_retries,
+        )
 
     async def _perform_consensus_check(
         self, mission: Mission, tool_name: str, risk_level: str
     ) -> bool:
         """Get consensus for high-risk actions."""
-        mission.log(f"[VOTE] High-risk action: {tool_name} ({risk_level})")
-
-        # Construct proxy action for consensus check
-        # Construct action for consensus validation
-        from app.services.ai.agents.base import ActionRisk, AgentAction
-
-        proxy_action = AgentAction(
-            action_type="tool_execution",
-            risk_level=ActionRisk.HIGH if risk_level == "high" else ActionRisk.CRITICAL,
-            confidence=1.0,
-            reasoning=f"Execute high-risk tool {tool_name}",
+        return await perform_consensus_check(
+            self.consensus, mission, tool_name, risk_level
         )
-
-        vote_result = await self.consensus.vote_on_action(
-            proxy_action,
-            {"target": mission.target, "tool": tool_name},
-        )
-
-        if vote_result.status != "approved":
-            mission.log(
-                f"[REJECTED] Action blocked by consensus: {vote_result.escalation_reason}"
-            )
-            return False
-
-        mission.log("[APPROVED] Action validated by consensus")
-        return True
 
     def _record_to_memory(
         self,
@@ -714,74 +561,7 @@ Example response format:
         result: ToolExecutionResult,
     ) -> None:
         """Record tool execution results to persistent memory for learning."""
-        try:
-            from app.services.ai.memory import detect_os_from_output, get_memory
-
-            memory = get_memory()
-
-            # Determine service context from mission's attack surface
-            service = "unknown"
-            product = None
-            version = None
-            for svc in mission.attack_surface.services:
-                if str(svc.port) in target or svc.host in target:
-                    service = svc.service or "unknown"
-                    product = svc.product
-                    version = svc.version
-                    break
-            if service == "unknown" and mission.attack_surface.services:
-                svc = mission.attack_surface.services[0]
-                service = svc.service or "unknown"
-                product = svc.product
-                version = svc.version
-
-            # Detect OS from output if this is nmap or similar
-            detected_os = None
-            if result.stdout and tool_name in ("nmap", "naabu"):
-                detected_os = detect_os_from_output(result.stdout)
-                if detected_os and detected_os != "unknown":
-                    mission.log(f"[LEARN] Detected OS: {detected_os}")
-                    # Store on mission for other agents to use
-                    if not hasattr(mission, "_detected_os") or not mission._detected_os:
-                        mission._detected_os = detected_os
-                        memory.update_target_profile(
-                            detected_os,
-                            services=[service] if service != "unknown" else [],
-                        )
-
-            # Get OS from mission if previously detected
-            os_family = getattr(mission, "_detected_os", None) or detected_os
-
-            # Record finding types
-            finding_types = []
-            for f in result.parsed_findings:
-                ft = f.get("severity") or f.get("state") or f.get("type", "info")
-                if ft not in finding_types:
-                    finding_types.append(ft)
-
-            memory.record_tool_result(
-                tool_id=tool_name,
-                target_service=service,
-                success=result.success and len(result.parsed_findings) > 0,
-                findings_count=len(result.parsed_findings),
-                finding_types=finding_types,
-                target_product=product,
-                target_version=version,
-                target_os=os_family,
-                args_used=args or {},
-            )
-
-            # Update target profile with effective/ineffective tools
-            if os_family and os_family != "unknown":
-                if result.success and result.parsed_findings:
-                    memory.update_target_profile(os_family, effective_tools=[tool_name])
-                elif not result.success:
-                    memory.update_target_profile(
-                        os_family, ineffective_tools=[tool_name]
-                    )
-
-        except Exception as e:
-            logger.warning("Memory recording failed: %s", e)
+        record_to_memory(mission, tool_name, target, args, result)
 
     def _prepare_output_directory(self, mission_id: str, run_id: str) -> Path:
         """Create and return the output directory path."""
@@ -822,164 +602,10 @@ Example response format:
         self, mission: Mission, tool_name: str, result: ToolExecutionResult
     ) -> None:
         """Log detailed successful execution summary."""
-        finding_count = len(result.parsed_findings)
-        summary_parts = []
-        details = []
-
-        if finding_count > 0:
-            findings = result.parsed_findings
-
-            # Collect open ports (nmap, naabu style)
-            open_ports = [
-                f.get("port")
-                for f in findings
-                if f.get("state") == "open" and f.get("port")
-            ]
-            if open_ports:
-                summary_parts.append(f"{len(open_ports)} open port(s)")
-                details.append(f"Ports: {', '.join(str(p) for p in open_ports[:10])}")
-                if len(open_ports) > 10:
-                    details[-1] += f"... (+{len(open_ports) - 10} more)"
-
-            # Collect services discovered
-            services = [
-                f"{f.get('service', 'unknown')}:{f.get('port')}"
-                for f in findings
-                if f.get("service") and f.get("port")
-            ]
-            if services and len(services) <= 8:
-                details.append(f"Services: {', '.join(services)}")
-            elif services:
-                details.append(f"Services: {len(services)} discovered")
-
-            # Collect vulnerabilities (nuclei, nikto style)
-            vulns = [
-                f
-                for f in findings
-                if f.get("severity")
-                or (f.get("info", {}) if isinstance(f.get("info"), dict) else {}).get(
-                    "severity"
-                )
-            ]
-            if vulns:
-                # Count by severity
-                sev_counts = {}
-                for v in vulns:
-                    sev = (
-                        v.get("severity")
-                        or (
-                            v.get("info", {}) if isinstance(v.get("info"), dict) else {}
-                        ).get("severity")
-                        or "info"
-                    )
-                    sev_counts[sev.lower()] = sev_counts.get(sev.lower(), 0) + 1
-
-                sev_strs = []
-                for sev in ["critical", "high", "medium", "low", "info"]:
-                    if sev in sev_counts:
-                        sev_strs.append(f"{sev_counts[sev]} {sev}")
-
-                summary_parts.append(f"{len(vulns)} vulnerability finding(s)")
-                if sev_strs:
-                    details.append(f"Severity: {', '.join(sev_strs)}")
-
-                # Show top 3 vulnerability names
-                vuln_names = [
-                    v.get("name")
-                    or (
-                        v.get("info", {}) if isinstance(v.get("info"), dict) else {}
-                    ).get("name")
-                    or v.get("template-id", "")
-                    for v in vulns[:3]
-                ]
-                vuln_names = [n for n in vuln_names if n]
-                if vuln_names:
-                    details.append(f"Found: {', '.join(vuln_names)}")
-
-            # Collect directories/files (gobuster, ffuf style)
-            dirs = [
-                f.get("url") or f.get("path")
-                for f in findings
-                if f.get("status") in (200, 301, 302, 403) or f.get("words")
-            ]
-            if dirs and not open_ports and not vulns:
-                summary_parts.append(f"{len(dirs)} path(s) discovered")
-                if len(dirs) <= 5:
-                    details.append(f"Paths: {', '.join(str(d) for d in dirs)}")
-
-            # Collect credentials (hydra style)
-            creds = [f for f in findings if f.get("login") or f.get("password")]
-            if creds:
-                summary_parts.append(f"{len(creds)} credential(s) found")
-                details.append("Valid credentials discovered!")
-
-            # If no specific category matched
-            if not summary_parts:
-                summary_parts.append(f"{finding_count} finding(s)")
-        else:
-            summary_parts.append("scan complete, no findings")
-
-        # Build final message
-        summary_str = ", ".join(summary_parts)
-        duration_str = (
-            f" ({result.duration_seconds:.1f}s)" if result.duration_seconds else ""
-        )
-
-        mission.log(f"[OK] {tool_name}{duration_str}: {summary_str}")
-        for detail in details[:4]:  # Max 4 detail lines
-            mission.log(f"    -> {detail}")
+        log_success(mission, tool_name, result)
 
     def _update_attack_surface_from_finding(
         self, mission: Mission, finding: dict[str, Any]
     ) -> None:
         """Update attack surface from a parsed finding."""
-        import uuid
-
-        # Handle nmap-style port/service findings
-        if finding.get("port") or finding.get("portid"):
-            port = finding.get("port") or finding.get("portid")
-            try:
-                port = int(port)
-                mission.add_service(
-                    host=finding.get("ip") or finding.get("host") or mission.target,
-                    port=port,
-                    service=finding.get("service") or finding.get("name"),
-                    product=finding.get("product"),
-                    version=finding.get("version"),
-                )
-            except (ValueError, TypeError):
-                pass
-
-        # Handle vulnerability findings (from nuclei, etc.)
-        info = finding.get("info") if isinstance(finding.get("info"), dict) else {}
-        severity = finding.get("severity") or info.get("severity")
-        name = (
-            finding.get("name")
-            or info.get("name")
-            or finding.get("template-id")
-        )
-
-        if (
-            severity
-            and name
-            and severity.lower() in ("info", "low", "medium", "high", "critical")
-        ):
-            classification = info.get("classification") if isinstance(info.get("classification"), dict) else {}
-            cve_id = finding.get("cve_id") or classification.get("cve-id")
-            if isinstance(cve_id, list):
-                cve_id = cve_id[0] if cve_id else None
-
-            mission.add_vulnerability(
-                vuln_id=finding.get("template-id") or f"vuln-{uuid.uuid4().hex[:8]}",
-                title=name,
-                severity=severity,
-                cve_id=cve_id,
-            )
-
-        # Handle web app findings
-        url = finding.get("url") or finding.get("matched-at")
-        if url and (finding.get("technologies") or finding.get("matcher-name")):
-            techs = finding.get("technologies") or []
-            if finding.get("matcher-name"):
-                techs.append(finding.get("matcher-name"))
-            mission.add_webapp(url=url, technologies=techs)
+        update_attack_surface_from_finding(mission, finding)
