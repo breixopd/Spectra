@@ -5,9 +5,11 @@ Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
+import hashlib
 import logging
+from datetime import UTC, datetime
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy import func, select
@@ -15,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
 from app.core.security import decode_token
+from app.models.plan import ApiKey
 from app.models.user import User
 
 logger = logging.getLogger("spectra.api.dependencies")
@@ -84,6 +87,61 @@ async def get_current_superuser(
     return current_user
 
 
+async def _authenticate_api_key(raw_key: str, session: AsyncSession) -> User:
+    """Validate an API key and return the associated user."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired API key",
+        headers={"WWW-Authenticate": "ApiKey"},
+    )
+    prefix = raw_key[:8]
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+
+    stmt = select(ApiKey).where(ApiKey.key_prefix == prefix, ApiKey.is_active.is_(True))
+    result = await session.execute(stmt)
+    api_key = result.scalar_one_or_none()
+
+    if api_key is None or api_key.key_hash != key_hash:
+        raise credentials_exception
+
+    if api_key.expires_at and api_key.expires_at < datetime.now(UTC):
+        raise credentials_exception
+
+    # Update last_used_at
+    api_key.last_used_at = datetime.now(UTC)
+    await session.commit()
+
+    # Fetch the owning user
+    user_stmt = select(User).where(User.id == api_key.user_id)
+    user_result = await session.execute(user_stmt)
+    user = user_result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise credentials_exception
+
+    return user
+
+
+async def get_current_user_from_token_or_api_key(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+) -> User:
+    """Authenticate via JWT token OR API key header."""
+    api_key = request.headers.get("X-API-Key")
+    if api_key:
+        return await _authenticate_api_key(api_key, session)
+
+    # Fall back to JWT
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        user = await get_current_user(token=token, session=session)
+        return await get_current_active_user(current_user=user)
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required (Bearer token or X-API-Key header)",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 # ---------------------------------------------------------------------------
