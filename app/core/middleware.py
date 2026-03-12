@@ -48,6 +48,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "X-XSS-Protection": "0",
             "Referrer-Policy": "strict-origin-when-cross-origin",
             "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+            "Cross-Origin-Opener-Policy": "same-origin",
+            "Cross-Origin-Resource-Policy": "same-origin",
         }
         # HSTS only in production (non-DEBUG) to avoid issues with local HTTP
         if not settings.DEBUG:

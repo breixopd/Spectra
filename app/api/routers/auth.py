@@ -299,6 +299,17 @@ async def refresh_token(
         data={"sub": user.username},
     )
 
+    # Update HttpOnly cookie with new access token
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
     return Token(
         access_token=access_token,
         token_type="bearer",
