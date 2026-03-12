@@ -58,7 +58,7 @@ class SteerMissionRequest(BaseModel):
     vulnerability: str | None = Field(None, description="Vulnerability to focus on")
 
 
-@router.get("/presets")
+@router.get("/presets", response_model=list[dict])
 async def get_scan_presets(
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -67,7 +67,7 @@ async def get_scan_presets(
     return SCAN_PRESETS
 
 
-@router.get("/adversary-playbooks")
+@router.get("/adversary-playbooks", response_model=list[dict])
 async def get_adversary_playbooks(
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -77,7 +77,7 @@ async def get_adversary_playbooks(
     return list_adversary_playbooks()
 
 
-@router.get("/adversary-playbooks/{playbook_id}")
+@router.get("/adversary-playbooks/{playbook_id}", response_model=dict)
 async def get_adversary_playbook_detail(
     playbook_id: str,
     _current_user: User = Depends(get_current_active_user),
@@ -91,7 +91,7 @@ async def get_adversary_playbook_detail(
     return pb.model_dump()
 
 
-@router.get("/exploit-chains")
+@router.get("/exploit-chains", response_model=list[dict])
 async def get_exploit_chains(
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -111,7 +111,7 @@ class CreateChainRequest(BaseModel):
     stages: list[dict[str, Any]] = Field(default_factory=list)
 
 
-@router.post("/exploit-chains")
+@router.post("/exploit-chains", response_model=dict)
 async def create_exploit_chain(
     chain_in: CreateChainRequest,
     _current_user: User = Depends(get_current_active_user),
@@ -128,7 +128,7 @@ async def create_exploit_chain(
     return {"chain": chain.model_dump(), "warnings": warnings}
 
 
-@router.get("/attack-summary")
+@router.get("/attack-summary", response_model=dict)
 async def get_attack_coverage(
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -429,7 +429,7 @@ async def export_mission_json(
     )
 
 
-@router.get("/{mission_id}/findings")
+@router.get("/{mission_id}/findings", response_model=list[dict])
 async def get_mission_findings(
     mission_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -521,6 +521,7 @@ async def get_mission(
 
 @router.delete(
     "/{mission_id}",
+    response_model=dict,
     summary="Delete mission",
     description="Permanently delete a completed or failed mission and its associated storage data.",
 )
@@ -572,6 +573,7 @@ async def delete_mission(
 
 @router.post(
     "/{mission_id}/stop",
+    response_model=dict,
     summary="Stop mission",
     description="Stop a running mission. The mission must be in an active state.",
 )
@@ -594,6 +596,7 @@ async def stop_mission(
 
 @router.post(
     "/{mission_id}/pause",
+    response_model=dict,
     summary="Pause mission",
     description="Pause a running mission. It can be resumed later.",
 )
@@ -616,6 +619,7 @@ async def pause_mission(
 
 @router.post(
     "/{mission_id}/resume",
+    response_model=dict,
     summary="Resume mission",
     description="Resume a previously paused mission from where it left off.",
 )
@@ -636,7 +640,7 @@ async def resume_mission(
     return {"message": "Mission resumed"}
 
 
-@router.get("/{mission_id}/diff/{other_mission_id}")
+@router.get("/{mission_id}/diff/{other_mission_id}", response_model=dict)
 async def diff_missions(
     mission_id: str,
     other_mission_id: str,
@@ -693,7 +697,7 @@ async def diff_missions(
     }
 
 
-@router.post("/{mission_id}/steer")
+@router.post("/{mission_id}/steer", response_model=dict)
 @limiter.limit("30/minute")
 async def steer_mission(
     request: Request,
@@ -730,7 +734,7 @@ async def steer_mission(
         raise HTTPException(status_code=400, detail="Invalid steering request")
 
 
-@router.get("/{mission_id}/task-tree")
+@router.get("/{mission_id}/task-tree", response_model=dict)
 async def get_task_tree(
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
@@ -743,7 +747,7 @@ async def get_task_tree(
     return mission.task_tree.to_dict()
 
 
-@router.get("/{mission_id}/progress")
+@router.get("/{mission_id}/progress", response_model=dict)
 async def get_mission_progress(
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),

@@ -346,6 +346,7 @@ async def setup_admin_user(
 
 @router.get(
     "/setup/status",
+    response_model=dict,
     summary="Check setup status",
     description="Returns whether the initial admin setup has been completed.",
 )
@@ -361,6 +362,7 @@ async def check_setup_status(
 
 @router.post(
     "/logout",
+    response_model=dict,
     summary="Logout",
     description="Invalidate the current access token and clear the auth cookie.",
 )
@@ -403,7 +405,7 @@ class ChangePasswordRequest(BaseModel):
         return v
 
 
-@router.get("/me", tags=["Auth"])
+@router.get("/me", response_model=dict, tags=["Auth"])
 async def get_current_profile(
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -434,7 +436,7 @@ async def get_current_profile(
     }
 
 
-@router.get("/me/usage", tags=["Auth"])
+@router.get("/me/usage", response_model=dict, tags=["Auth"])
 async def get_usage_summary(
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -445,7 +447,7 @@ async def get_usage_summary(
     return await QuotaService.get_usage_summary(str(user.id), session)
 
 
-@router.post("/change-password", tags=["Auth"])
+@router.post("/change-password", response_model=dict, tags=["Auth"])
 @limiter.limit("5/minute")
 async def change_password(
     request: Request,
@@ -482,7 +484,7 @@ async def forgot_password(
     return Response(status_code=204)
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", response_model=dict)
 @limiter.limit("5/minute")
 async def reset_password(
     request: Request,
@@ -516,7 +518,7 @@ class CreateApiKeyRequest(BaseModel):
     expires_in_days: int | None = Field(default=None, ge=1, le=365)
 
 
-@router.post("/api-keys", tags=["API Keys"])
+@router.post("/api-keys", response_model=dict, tags=["API Keys"])
 async def create_api_key(
     body: CreateApiKeyRequest = Body(CreateApiKeyRequest()),
     current_user: User = Depends(get_current_active_user),
@@ -568,7 +570,7 @@ async def create_api_key(
     }
 
 
-@router.get("/api-keys", tags=["API Keys"])
+@router.get("/api-keys", response_model=list[dict], tags=["API Keys"])
 async def list_api_keys(
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -592,7 +594,7 @@ async def list_api_keys(
     ]
 
 
-@router.delete("/api-keys/{key_id}", tags=["API Keys"])
+@router.delete("/api-keys/{key_id}", response_model=dict, tags=["API Keys"])
 async def revoke_api_key(
     key_id: str,
     current_user: User = Depends(get_current_active_user),
