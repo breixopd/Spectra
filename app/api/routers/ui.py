@@ -24,6 +24,7 @@ from app.services.system.settings_service import (
     get_current_settings,
     test_llm_connection,
 )
+from app.version import __version__
 
 router = APIRouter()
 logger = logging.getLogger("spectra.ui")
@@ -32,6 +33,7 @@ logger = logging.getLogger("spectra.ui")
 APP_DIR = Path(__file__).resolve().parent.parent.parent
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 templates.env.globals["app_name"] = settings.APP_NAME
+templates.env.globals["version"] = __version__
 
 
 def _get_ui_user(request: Request) -> dict | None:

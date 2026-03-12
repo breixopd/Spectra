@@ -86,6 +86,10 @@
     <h1>Terms of Service</h1>
     <p class="legal-meta">Last updated: March 10, 2026 &middot; Effective immediately upon acceptance</p>
 
+    {% if content_override %}
+    {{ content_override | safe }}
+    {% else %}
+
     <h2>1. Acceptance of Terms</h2>
     <p>By accessing or using the <span class="placeholder">[Company Name]</span> platform ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree, you may not use the Service.</p>
     <p>These Terms constitute a legally binding agreement between you ("User", "you") and <span class="placeholder">[Company Name]</span> ("Company", "we", "us").</p>
@@ -160,6 +164,8 @@
 
     <h2>14. Contact</h2>
     <p>For questions about these Terms, contact us at <span class="placeholder">[Contact Email]</span>.</p>
+
+    {% endif %}
 </div>
 
 <footer>&copy; 2026 {{ app_name }}. All rights reserved.</footer>

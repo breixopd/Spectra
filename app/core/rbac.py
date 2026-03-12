@@ -75,6 +75,8 @@ def require_permission(permission: Permission):
     async def dependency(
         current_user: User = Depends(get_current_active_user),
     ) -> User:
+        if current_user.is_superuser:
+            return current_user
         if not has_permission(current_user.role, permission):
             raise HTTPException(
                 status_code=403, detail="Insufficient permissions"

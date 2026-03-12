@@ -66,12 +66,7 @@
         .legal-container th { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); color: #fff; font-weight: 600; }
         .legal-container td { padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-muted); }
         .placeholder { color: var(--violet); font-weight: 600; }
-        .gdpr-badge {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            padding: 0.375rem 1rem; border: 1px solid var(--accent-dim);
-            border-radius: 9999px; font-size: 0.75rem; font-weight: 600;
-            color: var(--accent); background: rgba(0,255,136,0.05);
-        }
+
         footer {
             border-top: 1px solid var(--border); padding: 2rem;
             text-align: center; font-size: 0.75rem; color: var(--text-muted);
@@ -92,9 +87,12 @@
 <div class="legal-container">
     <h1>Privacy Policy</h1>
     <p class="legal-meta">
-        Last updated: March 10, 2026 &middot;
-        <span class="gdpr-badge">GDPR Compliant</span>
+        Last updated: March 10, 2026
     </p>
+
+    {% if content_override %}
+    {{ content_override | safe }}
+    {% else %}
 
     <h2>1. Introduction</h2>
     <p><span class="placeholder">[Company Name]</span> ("we", "us", "our") is committed to protecting your personal data. This Privacy Policy explains how we collect, use, store, and share your information when you use {{ app_name }} ("Service").</p>
@@ -203,6 +201,8 @@
     Email: <span class="placeholder">[DPO Email]</span><br>
     Address: <span class="placeholder">[Company Address]</span></p>
     <p>You also have the right to lodge a complaint with your local data protection authority.</p>
+
+    {% endif %}
 </div>
 
 <footer>&copy; 2026 {{ app_name }}. All rights reserved.</footer>

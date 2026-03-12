@@ -178,9 +178,9 @@ class TestBuildModelConfig:
             mock_settings.AI_PROVIDER_FALLBACKS = {}
             mock_settings.AI_PROVIDER = "mock"
             router = create_smart_router()
-            from tests.mocks.llm import MockLLMClient
+            from app.services.ai.mock_client import MockLLMClient as ProductionMock
 
-            assert isinstance(router, MockLLMClient)
+            assert isinstance(router, ProductionMock)
 
     def test_no_api_key(self):
         with patch("app.services.ai.router.settings") as mock_settings:

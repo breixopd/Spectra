@@ -19,7 +19,7 @@ class HealthResponse(BaseModel):
 
 # --- AI Provider Schemas ---
 
-_SUPPORTED_AI_PROVIDERS = {"ollama", "api", "openai", "litellm", "mock"}
+_SUPPORTED_AI_PROVIDERS = {"ollama", "api", "openai", "litellm", "mock", "qwen", "z.ai", "anthropic", "groq"}
 
 
 def _normalize_ai_provider(value: str) -> str:
@@ -105,7 +105,7 @@ class SystemSetupRequest(BaseModel):
     """Schema for system setup."""
 
     user: UserCreate
-    llm_provider: str | None = Field(None, pattern="^(ollama|api|litellm|mock)$")
+    llm_provider: str | None = Field(None, pattern="^(ollama|api|litellm|mock|qwen|z\\.ai|anthropic|groq|openai)$")
     llm_model: str | None = None
     llm_api_key: str | None = None
     llm_api_base: str | None = None

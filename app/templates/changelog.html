@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl mx-auto py-10 px-4">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-white">Changelog</h1>
+            <p class="text-sm text-slate-500 mt-1">{{ app_name }} v{{ version }}</p>
+        </div>
+        <a href="/dashboard" class="text-xs text-slate-400 hover:text-white transition-colors">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    {% if changelogs %}
+        {% for entry in changelogs %}
+        <div class="glass-panel rounded-xl p-6 mb-4 animate-fade-in-up" style="animation-delay: {{ loop.index0 * 0.05 }}s">
+            <h2 class="text-lg font-semibold text-white mb-3">{{ entry.title }}</h2>
+            {% if entry.content is mapping %}
+                {% for section, items in entry.content.items() %}
+                <div class="mb-3">
+                    <h3 class="text-sm font-semibold text-violet-400 uppercase tracking-wider mb-1">{{ section }}</h3>
+                    {% if items is iterable and items is not string %}
+                    <ul class="space-y-1">
+                        {% for item in items %}
+                        <li class="text-sm text-slate-300 flex items-start gap-2">
+                            <span class="text-violet-500 mt-1">•</span>
+                            <span>{{ item }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-sm text-slate-300">{{ items }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-sm text-slate-300">{{ entry.content }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state glass-panel rounded-xl">
+            <i class="fa-solid fa-scroll"></i>
+            <h3>No changelog entries yet</h3>
+            <p>Changelog entries can be managed from the Admin panel under Content management.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

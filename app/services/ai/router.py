@@ -495,13 +495,9 @@ def create_smart_router() -> LLMClient:
     """Create a SmartRouter from current settings."""
     normalized_provider = _normalize_provider_name(settings.AI_PROVIDER)
     if normalized_provider == "mock":
-        try:
-            from tests.mocks.llm import PentestMockLLMClient
-        except ImportError:
-            raise ValueError(
-                "Mock provider requires test dependencies. Set AI_PROVIDER to 'litellm' for production use."
-            ) from None
-        return PentestMockLLMClient()
+        from app.services.ai.mock_client import MockLLMClient
+
+        return MockLLMClient()
 
     model_list, fallbacks, default_model = build_model_config_from_settings()
 

@@ -61,7 +61,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 f"script-src 'self' 'nonce-{nonce}'; "
                 "style-src 'self' 'unsafe-inline'; "
                 "font-src 'self'; "
-                "img-src 'self' data:; "
+                "img-src 'self' data: https://*.basemaps.cartocdn.com; "
                 f"connect-src 'self' ws://{host} wss://{host}; "
                 "frame-ancestors 'none'; "
                 "base-uri 'self'; "

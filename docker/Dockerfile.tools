@@ -44,7 +44,14 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 RUN mkdir -p /opt/spectra_tools
 
-COPY app/ ./app/
+# Only copy modules needed by the worker (not templates/static/API routers)
+COPY app/__init__.py app/version.py ./app/
+COPY app/core/ ./app/core/
+COPY app/models/ ./app/models/
+COPY app/services/ ./app/services/
+COPY app/worker/ ./app/worker/
+COPY app/utils/ ./app/utils/
+COPY app/repositories/ ./app/repositories/
 
 # Run as non-root for security
 RUN useradd --create-home --shell /bin/bash spectra && \

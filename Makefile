@@ -3,7 +3,7 @@
 
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
        lint format check clean docker-build docker-up docker-down \
-       deploy rollback deploy-check scale help
+       deploy rollback deploy-check help
 
 SHELL := /bin/bash
 
@@ -67,5 +67,4 @@ deploy-check: ## Run pre-deploy checks without deploying
 	@test -x scripts/health_check.sh || { echo "ERROR: health_check.sh not executable"; exit 1; }
 	@echo "All pre-deploy checks passed."
 
-scale: ## Scale services (usage: make scale SERVICE=app COUNT=3)
-	@./scripts/scale.sh $(SERVICE) $(COUNT)
+

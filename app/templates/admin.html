@@ -83,6 +83,12 @@
             <a href="#" data-section="services" role="tab" aria-selected="false" aria-controls="section-services" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i class="fa-solid fa-network-wired mr-3 text-slate-500 w-5 text-center"></i> Services
             </a>
+            <a href="#" data-section="content" role="tab" aria-selected="false" aria-controls="section-content" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                <i class="fa-solid fa-file-lines mr-3 text-slate-500 w-5 text-center"></i> Content
+            </a>
+            <a href="#" data-section="llm" role="tab" aria-selected="false" aria-controls="section-llm" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                <i class="fa-solid fa-brain mr-3 text-slate-500 w-5 text-center"></i> LLM Config
+            </a>
             <a href="/settings" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium hover:bg-white/5">
                 <i class="fa-solid fa-gear mr-3 text-slate-500 w-5 text-center"></i> System Settings
             </a>
@@ -287,6 +293,109 @@
             </div>
         </div>
 
+        <!-- Content Management -->
+        <div id="section-content" class="section-panel space-y-5" role="tabpanel">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-lg font-semibold text-white">Content Management</h2>
+            </div>
+            
+            <!-- Sub-tabs for content types -->
+            <div class="flex gap-2 mb-4">
+                <button onclick="switchContentType('review')" class="content-type-btn active px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-600/20 text-violet-300 border border-violet-500/30">Reviews</button>
+                <button onclick="switchContentType('changelog')" class="content-type-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 border border-white/10">Changelog</button>
+                <button onclick="switchContentType('legal_terms')" class="content-type-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 border border-white/10">Terms</button>
+                <button onclick="switchContentType('legal_privacy')" class="content-type-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-white/5 text-slate-400 border border-white/10">Privacy</button>
+            </div>
+
+            <!-- Add button -->
+            <button onclick="openContentModal()" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors mb-3">
+                <i class="fa-solid fa-plus mr-1"></i> Add Item
+            </button>
+
+            <!-- Content list -->
+            <div id="content-list" class="space-y-3"></div>
+        </div>
+
+        <!-- LLM Configuration -->
+        <div id="section-llm" class="section-panel space-y-5" role="tabpanel">
+            <h2 class="text-lg font-semibold text-white mb-4">LLM Configuration</h2>
+            <p class="text-sm text-slate-400 mb-4">Configure the AI provider and model settings. Changes take effect immediately.</p>
+            
+            <form id="llm-config-form" class="space-y-4">
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <h3 class="text-sm font-semibold text-white">Provider</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">AI Provider</label>
+                            <select id="llm-provider" class="form-input form-select">
+                                <option value="qwen">Qwen (DashScope)</option>
+                                <option value="z.ai">Z.AI (Zhipu GLM)</option>
+                                <option value="litellm">LiteLLM (Custom)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Default Model</label>
+                            <input id="llm-model" class="form-input" placeholder="qwen3.5-plus">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">API Base URL</label>
+                            <input id="llm-base-url" class="form-input" placeholder="https://dashscope-intl.aliyuncs.com/compatible-mode/v1">
+                        </div>
+                        <div>
+                            <label class="form-label">API Key</label>
+                            <input id="llm-api-key" type="password" class="form-input" placeholder="sk-...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <h3 class="text-sm font-semibold text-white">Per-Tier Model Routing</h3>
+                    <p class="text-xs text-slate-500">Assign different models for different task complexities. Leave empty to use the default model.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="form-label">Tier 1 (Simple tasks)</label>
+                            <input id="llm-tier1" class="form-input" placeholder="fast/cheap model">
+                        </div>
+                        <div>
+                            <label class="form-label">Tier 2 (Moderate tasks)</label>
+                            <input id="llm-tier2" class="form-input" placeholder="balanced model">
+                        </div>
+                        <div>
+                            <label class="form-label">Tier 3 (Complex tasks)</label>
+                            <input id="llm-tier3" class="form-input" placeholder="most capable model">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-5 space-y-4">
+                    <h3 class="text-sm font-semibold text-white">Advanced</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Max Timeout (seconds)</label>
+                            <input id="llm-timeout" type="number" class="form-input" value="600" min="30" max="1200">
+                        </div>
+                        <div>
+                            <label class="form-label">Embedding Model</label>
+                            <input id="llm-embedding" class="form-input" placeholder="text-embedding-3-small">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="testLLMConnection()" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg text-sm font-medium border border-emerald-500/30">
+                        <i class="fa-solid fa-plug mr-1"></i> Test Connection
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium">
+                        Save LLM Config
+                    </button>
+                </div>
+            </form>
+            
+            <div id="llm-test-result" class="hidden mt-3 p-3 rounded-lg text-sm"></div>
+        </div>
+
         <!-- Audit Logs -->
         <div id="section-audit" class="section-panel space-y-4" role="tabpanel" aria-labelledby="tab-audit">
             <div class="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -327,6 +436,75 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+<!-- Content Modal -->
+<div id="content-modal" class="modal-backdrop">
+    <div class="modal-content" style="max-width:600px;">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-white" id="content-modal-title">Add Content</h3>
+            <button onclick="closeContentModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <form id="content-form" class="space-y-3">
+            <input type="hidden" id="content-edit-id">
+            <input type="hidden" id="content-type-field">
+            <div>
+                <label class="form-label">Title</label>
+                <input id="content-title" class="form-input" placeholder="e.g. v2.1 Release">
+            </div>
+            <!-- Review-specific fields -->
+            <div id="review-fields">
+                <div>
+                    <label class="form-label">Quote</label>
+                    <textarea id="content-quote" class="form-input" rows="3" placeholder="Review text..."></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label">Author Name</label>
+                        <input id="content-author" class="form-input" placeholder="Lead Pentester">
+                    </div>
+                    <div>
+                        <label class="form-label">Author Role</label>
+                        <input id="content-role" class="form-input" placeholder="Security Team Lead">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Initials</label>
+                    <input id="content-initials" class="form-input" placeholder="LP" maxlength="3">
+                </div>
+            </div>
+            <!-- Changelog-specific fields -->
+            <div id="changelog-fields" style="display:none;">
+                <div>
+                    <label class="form-label">Version</label>
+                    <input id="content-version" class="form-input" placeholder="v2.1.0">
+                </div>
+                <div>
+                    <label class="form-label">Changes (one per line)</label>
+                    <textarea id="content-changes" class="form-input" rows="5" placeholder="Added new feature X\nFixed bug Y"></textarea>
+                </div>
+            </div>
+            <!-- Legal-specific fields -->
+            <div id="legal-fields" style="display:none;">
+                <div>
+                    <label class="form-label">HTML Content</label>
+                    <textarea id="content-html" class="form-input" rows="10" placeholder="<h2>Section Title</h2><p>Content...</p>"></textarea>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <label class="form-label" style="margin:0;">Active</label>
+                <input type="checkbox" id="content-active" checked>
+            </div>
+            <div>
+                <label class="form-label">Sort Order</label>
+                <input type="number" id="content-sort" class="form-input" value="0" style="width:100px;">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeContentModal()" class="px-3 py-1.5 text-sm text-slate-400 hover:text-white">Cancel</button>
+                <button type="submit" class="px-4 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium">Save</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -449,9 +627,32 @@
                 </div>
             </div>
             <div>
-                <label class="form-label">Features (JSON)</label>
+                <label class="form-label">Feature Toggles</label>
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-api-access" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="api_access"> API Access
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-byok" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="byok"> BYOK (Bring Your Own Key)
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-custom-plugins" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="custom_plugins"> Custom Plugins
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-priority-support" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="priority_support"> Priority Support
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-advanced-reporting" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="advanced_reporting"> Advanced Reporting
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+                        <input type="checkbox" id="plan-feat-team-collab" class="rounded bg-slate-800 border-white/10 plan-feature-toggle" data-feature="team_collaboration"> Team Collaboration
+                    </label>
+                </div>
+            </div>
+            <div>
+                <label class="form-label">Additional Features (JSON)</label>
                 <textarea id="plan-form-features" class="form-input font-mono text-xs" rows="3" placeholder='{"rag_enabled": true, "export_pdf": true}'></textarea>
-                <p class="text-xs text-slate-500 mt-1">Optional feature flags as JSON object</p>
+                <p class="text-xs text-slate-500 mt-1">Extra feature flags merged with toggles above</p>
             </div>
             <div class="flex items-center gap-2">
                 <input id="plan-form-default" type="checkbox" class="rounded bg-slate-800 border-white/10">
@@ -547,9 +748,12 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="form-label">Service Type</label>
-                    <select id="prov-service-type" class="form-input form-select">
-                        <!-- LLM Gateway option removed -->
+                    <select id="prov-service-type" class="form-input form-select" onchange="updateProvisionDefaults()">
                         <option value="sandbox_worker">Sandbox Worker</option>
+                        <option value="app_worker">App Worker (Horizontal Scaling)</option>
+                        <option value="tools_worker">Tools Worker (Scan Scaling)</option>
+                        <option value="db_replica">DB Replica (Read Performance)</option>
+                        <option value="db_backup">DB Backup Server</option>
                     </select>
                 </div>
                 <div>
@@ -666,6 +870,8 @@
         if (name === 'audit') loadAuditLogs();
         if (name === 'usage') loadUsage();
         if (name === 'services') loadServices();
+        if (name === 'content') loadContent();
+        if (name === 'llm') loadLLMConfig();
     };
 
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(a => {
@@ -893,6 +1099,7 @@
         document.getElementById('plan-form').reset();
         document.getElementById('plan-form-id').value = '';
         document.getElementById('plan-form-name').disabled = false;
+        document.querySelectorAll('.plan-feature-toggle').forEach(cb => { cb.checked = false; });
         openModal('plan-modal');
     };
 
@@ -914,6 +1121,11 @@
         document.getElementById('plan-form-default').checked = p.is_default;
         document.getElementById('plan-form-resource-tier').value = p.sandbox_resource_tier || 'medium';
         document.getElementById('plan-form-features').value = p.features ? JSON.stringify(p.features, null, 2) : '';
+        // Set feature toggle checkboxes from features object
+        const feats = p.features || {};
+        document.querySelectorAll('.plan-feature-toggle').forEach(cb => {
+            cb.checked = !!feats[cb.dataset.feature];
+        });
         openModal('plan-modal');
     };
 
@@ -935,12 +1147,17 @@
             is_default: document.getElementById('plan-form-default').checked,
             sandbox_resource_tier: document.getElementById('plan-form-resource-tier').value,
         };
+        // Merge feature toggles with JSON features
+        const toggleFeatures = {};
+        document.querySelectorAll('.plan-feature-toggle').forEach(cb => {
+            toggleFeatures[cb.dataset.feature] = cb.checked;
+        });
         const featuresRaw = document.getElementById('plan-form-features').value.trim();
+        let extraFeatures = {};
         if (featuresRaw) {
-            try { body.features = JSON.parse(featuresRaw); } catch { toast('Invalid JSON in features field', 'error'); return; }
-        } else {
-            body.features = null;
+            try { extraFeatures = JSON.parse(featuresRaw); } catch { toast('Invalid JSON in features field', 'error'); return; }
         }
+        body.features = Object.assign({}, toggleFeatures, extraFeatures);
         if (!isEdit) body.name = document.getElementById('plan-form-name').value;
 
         try {
@@ -1279,6 +1496,13 @@
         document.getElementById('prov-key-group').style.display = method === 'key' ? '' : 'none';
     };
 
+    window.updateProvisionDefaults = function() {
+        const type = document.getElementById('prov-service-type').value;
+        const portEl = document.getElementById('prov-service-port');
+        const defaults = { sandbox_worker: 8080, app_worker: 5000, tools_worker: 5000, db_replica: 5432, db_backup: 22 };
+        portEl.value = defaults[type] || 8080;
+    };
+
     function getProvisionConfig() {
         const method = document.querySelector('input[name="prov-auth"]:checked').value;
         const cfg = {
@@ -1394,6 +1618,190 @@
                 }
             } catch(e) { toast('Deprovision request failed', 'error'); }
         });
+    };
+
+    // ---- Content Management ----
+    let currentContentType = 'review';
+
+    window.switchContentType = function(type) {
+        currentContentType = type;
+        document.querySelectorAll('.content-type-btn').forEach(b => {
+            b.classList.remove('active', 'bg-violet-600/20', 'text-violet-300', 'border-violet-500/30');
+            b.classList.add('bg-white/5', 'text-slate-400', 'border-white/10');
+        });
+        event.target.classList.add('active', 'bg-violet-600/20', 'text-violet-300', 'border-violet-500/30');
+        event.target.classList.remove('bg-white/5', 'text-slate-400', 'border-white/10');
+        loadContent();
+    };
+
+    async function loadContent() {
+        try {
+            const resp = await fetch(`/api/admin/content?content_type=${currentContentType}`);
+            const items = await resp.json();
+            const list = document.getElementById('content-list');
+            if (!items.length) { list.innerHTML = '<p class="text-sm text-slate-500">No items yet.</p>'; return; }
+            list.innerHTML = items.map(item => `
+                <div class="glass-panel rounded-lg p-4 flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-white">${escapeHtml(item.title || item.content_type)}</p>
+                        <p class="text-xs text-slate-500 mt-1">${escapeHtml(JSON.stringify(item.content).slice(0,100))}...</p>
+                        <span class="text-xs ${item.is_active ? 'text-emerald-400' : 'text-slate-500'}">${item.is_active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editContent('${item.id}')" class="text-xs text-violet-400 hover:text-violet-300"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteContent('${item.id}')" class="text-xs text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        } catch(e) { console.error('Load content error', e); }
+    }
+
+    window.openContentModal = function(existingData) {
+        document.getElementById('content-modal').classList.add('open');
+        document.getElementById('content-type-field').value = currentContentType;
+        document.getElementById('review-fields').style.display = currentContentType === 'review' ? '' : 'none';
+        document.getElementById('changelog-fields').style.display = currentContentType === 'changelog' ? '' : 'none';
+        document.getElementById('legal-fields').style.display = currentContentType.startsWith('legal') ? '' : 'none';
+        if (existingData) {
+            document.getElementById('content-modal-title').textContent = 'Edit Content';
+            document.getElementById('content-edit-id').value = existingData.id;
+            document.getElementById('content-title').value = existingData.title || '';
+            document.getElementById('content-active').checked = existingData.is_active;
+            document.getElementById('content-sort').value = existingData.sort_order || 0;
+            const c = existingData.content || {};
+            if (currentContentType === 'review') {
+                document.getElementById('content-quote').value = c.quote || '';
+                document.getElementById('content-author').value = c.author_name || '';
+                document.getElementById('content-role').value = c.author_role || '';
+                document.getElementById('content-initials').value = c.initials || '';
+            } else if (currentContentType === 'changelog') {
+                document.getElementById('content-version').value = c.version || '';
+                document.getElementById('content-changes').value = (c.changes || []).join('\n');
+            } else {
+                document.getElementById('content-html').value = c.html || '';
+            }
+        } else {
+            document.getElementById('content-modal-title').textContent = 'Add Content';
+        }
+    };
+
+    window.closeContentModal = function() {
+        document.getElementById('content-modal').classList.remove('open');
+        document.getElementById('content-form').reset();
+        document.getElementById('content-edit-id').value = '';
+    };
+
+    window.editContent = async function(id) {
+        const resp = await fetch(`/api/admin/content?content_type=${currentContentType}`);
+        const items = await resp.json();
+        const item = items.find(i => i.id === id);
+        if (item) openContentModal(item);
+    };
+
+    window.deleteContent = async function(id) {
+        if (!confirm('Delete this item?')) return;
+        await fetch(`/api/admin/content/${id}`, {method: 'DELETE'});
+        loadContent();
+        toast('Content deleted', 'success');
+    };
+
+    document.getElementById('content-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const editId = document.getElementById('content-edit-id').value;
+        let content = {};
+        if (currentContentType === 'review') {
+            content = {
+                quote: document.getElementById('content-quote').value,
+                author_name: document.getElementById('content-author').value,
+                author_role: document.getElementById('content-role').value,
+                initials: document.getElementById('content-initials').value,
+            };
+        } else if (currentContentType === 'changelog') {
+            content = {
+                version: document.getElementById('content-version').value,
+                changes: document.getElementById('content-changes').value.split('\n').filter(Boolean),
+            };
+        } else {
+            content = { html: document.getElementById('content-html').value };
+        }
+        const payload = {
+            content_type: currentContentType,
+            title: document.getElementById('content-title').value,
+            content,
+            is_active: document.getElementById('content-active').checked,
+            sort_order: parseInt(document.getElementById('content-sort').value) || 0,
+        };
+        const url = editId ? `/api/admin/content/${editId}` : '/api/admin/content';
+        const method = editId ? 'PUT' : 'POST';
+        try {
+            const r = await fetch(url, {method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
+            if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.detail || 'Failed'); }
+            closeContentModal();
+            loadContent();
+            toast('Content saved', 'success');
+        } catch(e) { toast(e.message, 'error'); }
+    });
+
+    // ---- LLM Config ----
+    async function loadLLMConfig() {
+        try {
+            const resp = await fetch('/api/settings');
+            const data = await resp.json();
+            if (data.ai_provider) document.getElementById('llm-provider').value = data.ai_provider;
+            if (data.llm_model) document.getElementById('llm-model').value = data.llm_model;
+            if (data.llm_api_base_url) document.getElementById('llm-base-url').value = data.llm_api_base_url;
+            if (data.llm_timeout) document.getElementById('llm-timeout').value = data.llm_timeout;
+            if (data.embedding_model) document.getElementById('llm-embedding').value = data.embedding_model;
+            if (data.llm_tier1_model) document.getElementById('llm-tier1').value = data.llm_tier1_model;
+            if (data.llm_tier2_model) document.getElementById('llm-tier2').value = data.llm_tier2_model;
+            if (data.llm_tier3_model) document.getElementById('llm-tier3').value = data.llm_tier3_model;
+        } catch(e) { console.error('Load LLM config error', e); }
+    }
+
+    document.getElementById('llm-config-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            ai_provider: document.getElementById('llm-provider').value,
+            llm_model: document.getElementById('llm-model').value,
+            llm_api_base_url: document.getElementById('llm-base-url').value,
+            llm_api_key: document.getElementById('llm-api-key').value || undefined,
+            llm_timeout: parseFloat(document.getElementById('llm-timeout').value),
+            embedding_model: document.getElementById('llm-embedding').value,
+            llm_tier1_model: document.getElementById('llm-tier1').value,
+            llm_tier2_model: document.getElementById('llm-tier2').value,
+            llm_tier3_model: document.getElementById('llm-tier3').value,
+        };
+        try {
+            const resp = await fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+            });
+            if (resp.ok) toast('LLM config saved', 'success');
+            else toast('Failed to save', 'error');
+        } catch(e) { toast('Error: ' + e.message, 'error'); }
+    });
+
+    window.testLLMConnection = async function() {
+        const result = document.getElementById('llm-test-result');
+        result.classList.remove('hidden');
+        result.className = 'mt-3 p-3 rounded-lg text-sm bg-blue-600/10 text-blue-300 border border-blue-500/30';
+        result.textContent = 'Testing connection...';
+        try {
+            const resp = await fetch('/api/v1/health?verbose=true');
+            const data = await resp.json();
+            const llmStatus = data.components?.llm || 'unknown';
+            if (llmStatus === 'healthy' || resp.ok) {
+                result.className = 'mt-3 p-3 rounded-lg text-sm bg-emerald-600/10 text-emerald-300 border border-emerald-500/30';
+                result.textContent = '\u2713 LLM connection successful';
+            } else {
+                result.className = 'mt-3 p-3 rounded-lg text-sm bg-red-600/10 text-red-300 border border-red-500/30';
+                result.textContent = '\u2717 LLM connection failed: ' + llmStatus;
+            }
+        } catch(e) {
+            result.className = 'mt-3 p-3 rounded-lg text-sm bg-red-600/10 text-red-300 border border-red-500/30';
+            result.textContent = '\u2717 Error: ' + e.message;
+        }
     };
 
     // ---- Init ----

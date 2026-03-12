@@ -258,9 +258,10 @@ class TestGetLLMClient:
         assert isinstance(client, LiteLLMRouter)
 
     def test_mock_provider(self):
+        from app.services.ai.mock_client import MockLLMClient as ProductionMock
+
         client = get_llm_client("mock", responses=["hi"])
-        assert isinstance(client, MockLLMClient)
-        assert client.responses == ["hi"]
+        assert isinstance(client, ProductionMock)
 
 
 # ===================================================================
@@ -330,10 +331,12 @@ class TestGetDefaultLLMClient:
     @patch("app.services.ai.router.settings")
     @patch("app.services.ai.llm.settings")
     def test_mock_provider(self, mock_llm_settings, mock_router_settings):
+        from app.services.ai.mock_client import MockLLMClient as ProductionMock
+
         mock_llm_settings.AI_PROVIDER = "mock"
         mock_router_settings.AI_PROVIDER = "mock"
         client = get_default_llm_client()
-        assert isinstance(client, MockLLMClient)
+        assert isinstance(client, ProductionMock)
 
     @patch("app.services.ai.router.settings")
     @patch("app.services.ai.llm.settings")

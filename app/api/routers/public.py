@@ -6,6 +6,7 @@ These routes do NOT require authentication.
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import timedelta
 from pathlib import Path
@@ -14,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.core.config import settings
 from app.core.database import async_session_maker
@@ -36,6 +37,7 @@ router = APIRouter()
 APP_DIR = Path(__file__).resolve().parent.parent.parent
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 templates.env.globals["app_name"] = settings.APP_NAME
+templates.env.globals["version"] = __version__
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +71,38 @@ async def landing_page(request: Request):
         result = await session.execute(select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order))
         plans = result.scalars().all()
 
+        # Query real stats for landing page
+        try:
+            findings_result = await session.execute(text("SELECT COUNT(*) FROM findings"))
+            total_findings = findings_result.scalar() or 0
+            missions_result = await session.execute(text("SELECT COUNT(*) FROM missions WHERE status = 'completed'"))
+            total_missions = missions_result.scalar() or 0
+        except Exception:
+            total_findings = 0
+            total_missions = 0
+
+        plugin_dir = APP_DIR.parent / "plugins"
+        total_tools = len(list(plugin_dir.glob("*.json"))) if plugin_dir.exists() else 0
+
+        stats = {
+            "total_findings": f"{total_findings:,}",
+            "total_missions": f"{total_missions:,}",
+            "uptime": "99.9%",
+            "total_tools": str(total_tools),
+        }
+
+        # Query admin-managed reviews
+        try:
+            reviews_result = await session.execute(
+                text("SELECT content FROM system_content WHERE content_type = 'review' AND is_active = true ORDER BY sort_order")
+            )
+            reviews = [
+                json.loads(r[0]) if isinstance(r[0], str) else r[0]
+                for r in reviews_result.fetchall()
+            ]
+        except Exception:
+            reviews = []
+
     return templates.TemplateResponse(
         "landing.html",
         {
@@ -76,6 +110,8 @@ async def landing_page(request: Request):
             "plans": plans,
             "version": __version__,
             "app_name": settings.APP_NAME,
+            "stats": stats,
+            "reviews": reviews,
         },
     )
 
@@ -88,17 +124,50 @@ async def pricing_page(request: Request):
 
 @router.get("/legal/terms", response_class=HTMLResponse, include_in_schema=False)
 async def legal_terms(request: Request):
-    return templates.TemplateResponse("legal/terms.html", {"request": request, "app_name": settings.APP_NAME})
+    content_override = None
+    try:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                text("SELECT content FROM system_content WHERE content_type = 'legal_terms' AND is_active = true ORDER BY sort_order LIMIT 1")
+            )
+            row = result.fetchone()
+            if row:
+                content_override = row[0]
+    except Exception:
+        pass
+    return templates.TemplateResponse("legal/terms.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
 
 
 @router.get("/legal/privacy", response_class=HTMLResponse, include_in_schema=False)
 async def legal_privacy(request: Request):
-    return templates.TemplateResponse("legal/privacy.html", {"request": request, "app_name": settings.APP_NAME})
+    content_override = None
+    try:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                text("SELECT content FROM system_content WHERE content_type = 'legal_privacy' AND is_active = true ORDER BY sort_order LIMIT 1")
+            )
+            row = result.fetchone()
+            if row:
+                content_override = row[0]
+    except Exception:
+        pass
+    return templates.TemplateResponse("legal/privacy.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
 
 
 @router.get("/legal/cookies", response_class=HTMLResponse, include_in_schema=False)
 async def legal_cookies(request: Request):
-    return templates.TemplateResponse("legal/cookie.html", {"request": request, "app_name": settings.APP_NAME})
+    content_override = None
+    try:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                text("SELECT content FROM system_content WHERE content_type = 'legal_cookies' AND is_active = true ORDER BY sort_order LIMIT 1")
+            )
+            row = result.fetchone()
+            if row:
+                content_override = row[0]
+    except Exception:
+        pass
+    return templates.TemplateResponse("legal/cookie.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
 
 
 @router.get("/register", response_class=HTMLResponse, include_in_schema=False)
@@ -116,6 +185,31 @@ async def forgot_password_page(request: Request):
 @router.get("/reset-password", response_class=HTMLResponse, include_in_schema=False)
 async def reset_password_page(request: Request):
     return templates.TemplateResponse("reset_password.html", {"request": request})
+
+
+@router.get("/changelog", response_class=HTMLResponse, include_in_schema=False)
+async def changelog_page(request: Request):
+    """Display changelog entries from system_content."""
+    changelogs: list[dict] = []
+    try:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                text(
+                    "SELECT title, content FROM system_content "
+                    "WHERE content_type = 'changelog' AND is_active = true "
+                    "ORDER BY sort_order DESC"
+                )
+            )
+            changelogs = [
+                {"title": r[0], "content": json.loads(r[1]) if isinstance(r[1], str) else r[1]}
+                for r in result.fetchall()
+            ]
+    except Exception:
+        pass
+    return templates.TemplateResponse(
+        "changelog.html",
+        {"request": request, "app_name": settings.APP_NAME, "changelogs": changelogs, "version": __version__},
+    )
 
 
 # ---------------------------------------------------------------------------

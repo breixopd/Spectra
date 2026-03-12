@@ -239,10 +239,13 @@ class Settings(BaseSettings):
     @classmethod
     def validate_ai_provider(cls, v: str) -> str:
         """Validate AI provider is supported."""
-        valid_providers = {"ollama", "api", "litellm", "mock"}
-        normalized = v.lower()
-        if normalized not in valid_providers:
-            raise ValueError(f"AI_PROVIDER must be one of {valid_providers}")
+        # Core providers + named presets (qwen, z.ai, etc.)
+        core_providers = {"ollama", "api", "litellm", "mock"}
+        # Named presets route through litellm with preset configs
+        preset_providers = {"qwen", "z.ai", "openai", "anthropic", "groq"}
+        normalized = v.lower().strip()
+        if normalized not in core_providers and normalized not in preset_providers:
+            raise ValueError(f"AI_PROVIDER must be one of {core_providers | preset_providers}")
         if normalized == "api":
             return "litellm"
         return normalized

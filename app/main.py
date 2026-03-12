@@ -276,6 +276,9 @@ api_v1.include_router(shell.router, tags=["Shell"])
 api_v1.include_router(vpn.router, tags=["VPN"])
 app.include_router(api_v1)
 
+# Non-versioned health endpoint for Docker/LB probes
+app.include_router(health.router, prefix="/api", tags=["Health"], include_in_schema=False)
+
 # --- Non-versioned routes (UI pages, public, admin) ---
 app.include_router(public.router, tags=["Public"])
 app.include_router(ui.router, tags=["UI"])

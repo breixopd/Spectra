@@ -38,7 +38,7 @@ class ProvisionRequest(ServerConnectionRequest):
 
 
 class DeprovisionRequest(ServerConnectionRequest):
-    pass
+    service_type: str = "sandbox_worker"
 
 
 class UpdateServerNodeRequest(BaseModel):
@@ -86,8 +86,9 @@ async def provision_server(
     from app.services.provisioning import ServerProvisioner
     from app.services.provisioning.provisioner import ServerConfig
 
-    if body.service_type != "sandbox_worker":
-        raise HTTPException(400, f"Invalid service_type: {body.service_type}")
+    valid_types = {"sandbox_worker", "app_worker", "tools_worker", "db_replica", "db_backup"}
+    if body.service_type not in valid_types:
+        raise HTTPException(400, f"Invalid service_type: {body.service_type}. Must be one of: {', '.join(sorted(valid_types))}")
 
     config = ServerConfig(
         host=body.host,
@@ -144,7 +145,7 @@ async def deprovision_server(
         username=body.username,
         password=body.password,
         private_key=body.private_key,
-        service_type="sandbox_worker",
+        service_type=body.service_type,
     )
 
     provisioner = ServerProvisioner()
@@ -157,7 +158,7 @@ async def deprovision_server(
         details={
             "action": "server_deprovisioned" if result.success else "server_deprovision_failed",
             "host": config.host,
-            "service_type": config.service_type,
+            "service_type": body.service_type,
         },
         request=request,
     )
@@ -185,7 +186,7 @@ async def list_server_nodes(
 @router.post("/api/admin/servers", status_code=201)
 async def add_server_node(
     name: str = Body(...),
-    service_type: str = Body(..., pattern=r"^(sandbox_worker|db_replica|storage)$"),
+    service_type: str = Body(..., pattern=r"^(sandbox_worker|app_worker|tools_worker|db_replica|db_backup|storage)$"),
     url: str = Body(...),
     api_key: str | None = Body(None),
     is_primary: bool = Body(False),
