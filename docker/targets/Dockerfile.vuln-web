@@ -1,0 +1,94 @@
+# Spectra Test Target: Vulnerable Web Application
+# Vulns: SQL injection, directory traversal, XSS, default admin creds
+# Size: ~60MB (Alpine + Python/Flask)
+FROM python:3.11-alpine
+
+LABEL spectra.target="vuln-web" \
+      spectra.difficulty="easy" \
+      spectra.services="http"
+
+RUN pip install --no-cache-dir flask==3.0.0
+
+RUN mkdir -p /app/static /app/templates /app/secret
+WORKDIR /app
+
+# Plant discoverable secret files
+RUN echo "DB_PASSWORD=r00tP@ss!" > /app/secret/config.bak && \
+    echo "admin:admin123" > /app/secret/.htpasswd
+
+COPY <<'PYEOF' /app/server.py
+"""Intentionally vulnerable Flask app for security testing."""
+import os, sqlite3
+from flask import Flask, request, render_template_string
+
+app = Flask(__name__)
+
+def get_db():
+    db = sqlite3.connect(":memory:")
+    db.execute("CREATE TABLE IF NOT EXISTS users (id INT, name TEXT, email TEXT)")
+    db.execute("INSERT OR IGNORE INTO users VALUES (1,'admin','admin@test.local')")
+    db.execute("INSERT OR IGNORE INTO users VALUES (2,'guest','guest@test.local')")
+    db.commit()
+    return db
+
+@app.route("/")
+def index():
+    return render_template_string("""<html><body>
+    <h1>Test App</h1>
+    <ul>
+      <li><a href="/user?id=1">User Lookup</a></li>
+      <li><a href="/search?q=test">Search</a></li>
+      <li><a href="/admin">Admin Panel</a></li>
+      <li><a href="/file?name=readme.txt">File Viewer</a></li>
+    </ul></body></html>""")
+
+# VULN: SQL Injection — unsanitised user input in query
+@app.route("/user")
+def user_lookup():
+    uid = request.args.get("id", "1")
+    db = get_db()
+    try:
+        rows = db.execute(f"SELECT * FROM users WHERE id = {uid}").fetchall()
+        return f"<pre>Results: {rows}</pre>"
+    except Exception as e:
+        return f"<pre>Error: {e}</pre>"
+
+# VULN: Reflected XSS — user input rendered unescaped
+@app.route("/search")
+def search():
+    q = request.args.get("q", "")
+    return f"<html><body><h2>Search results for: {q}</h2><p>No results.</p></body></html>"
+
+# VULN: Default credentials on admin panel
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+    if request.method == "POST":
+        if request.form.get("user") == "admin" and request.form.get("pass") == "admin123":
+            return "<h1>Welcome, admin!</h1><p>Secret admin dashboard.</p>"
+        return "<p>Invalid credentials.</p>"
+    return """<form method=post>
+      User: <input name=user><br>Pass: <input name=pass type=password><br>
+      <input type=submit value=Login></form>"""
+
+# VULN: Directory traversal — path not sanitised
+@app.route("/file")
+def file_viewer():
+    name = request.args.get("name", "")
+    try:
+        with open(os.path.join("/app/static", name)) as f:
+            return f"<pre>{f.read()}</pre>"
+    except Exception as e:
+        return f"<pre>Error: {e}</pre>"
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=80)
+PYEOF
+
+RUN echo "This is a readme." > /app/static/readme.txt
+
+EXPOSE 80
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+  CMD wget -q --spider http://localhost:80/ || exit 1
+
+CMD ["python", "/app/server.py"]

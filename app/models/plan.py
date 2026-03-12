@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -44,10 +45,10 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
 
     user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False, index=True
     )
     plan_id: Mapped[str] = mapped_column(
-        String, ForeignKey("plans.id", ondelete="RESTRICT"), nullable=False, index=True
+        UUID(as_uuid=False), ForeignKey("plans.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -69,7 +70,7 @@ class ApiKey(Base):
 
     __tablename__ = "api_keys"
 
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     key_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     key_prefix: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -89,7 +90,7 @@ class UsageRecord(Base):
 
     __tablename__ = "usage_records"
 
-    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     period_type: Mapped[str] = mapped_column(String(20), nullable=False)
     api_requests: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

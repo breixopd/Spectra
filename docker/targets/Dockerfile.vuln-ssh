@@ -1,0 +1,31 @@
+# Spectra Test Target: Weak SSH Credentials
+# Vulns: brute-forceable passwords, root login enabled
+# Size: ~15MB (Alpine + OpenSSH)
+FROM alpine:3.19
+
+LABEL spectra.target="vuln-ssh" \
+      spectra.difficulty="easy" \
+      spectra.services="ssh"
+
+RUN apk add --no-cache openssh-server
+
+# Create users with weak passwords
+RUN echo 'root:toor' | chpasswd && \
+    adduser -D -s /bin/sh admin && \
+    echo 'admin:password123' | chpasswd
+
+# Intentionally insecure SSH config
+RUN ssh-keygen -A && \
+    sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#MaxAuthTries.*/MaxAuthTries 10/' /etc/ssh/sshd_config && \
+    echo "Protocol 2" >> /etc/ssh/sshd_config
+
+RUN mkdir -p /run/sshd
+
+EXPOSE 22
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+  CMD nc -z localhost 22 || exit 1
+
+CMD ["/usr/sbin/sshd", "-D", "-e"]

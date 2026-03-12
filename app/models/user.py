@@ -5,6 +5,7 @@ Stores user credentials and role information for the Spectra platform.
 """
 
 from sqlalchemy import Boolean, ForeignKey, String
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -41,7 +42,7 @@ class User(Base):
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     role: Mapped[str] = mapped_column(String(20), default="operator", nullable=False, server_default="operator")
     plan_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True
+        UUID(as_uuid=False), ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True
     )
     api_key_prefix: Mapped[str | None] = mapped_column(String(10), nullable=True)
     mfa_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)

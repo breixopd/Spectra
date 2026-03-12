@@ -1,0 +1,94 @@
+# Spectra — Vulnerable Test Targets
+#
+# Lightweight containers purpose-built for live integration testing.
+# All targets join spectra-network for direct scanning from spectra-tools.
+#
+# Usage:
+#   docker compose -f docker/docker-compose.targets.yml up -d
+#   docker compose -f docker/docker-compose.targets.yml down -v
+
+services:
+  # ── HTTP Vulnerability Target ────────────────────────────────
+  # SQLi, XSS, directory traversal, default admin creds
+  vuln-web:
+    build:
+      context: targets
+      dockerfile: Dockerfile.vuln-web
+    container_name: spectra-vuln-web
+    labels:
+      spectra.role: test-target
+      spectra.target: vuln-web
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:80/')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+    networks:
+      - spectra-network
+
+  # ── SSH Brute-Force Target ──────────────────────────────────
+  # Weak credentials: admin/password123, root/toor
+  vuln-ssh:
+    build:
+      context: targets
+      dockerfile: Dockerfile.vuln-ssh
+    container_name: spectra-vuln-ssh
+    labels:
+      spectra.role: test-target
+      spectra.target: vuln-ssh
+    expose:
+      - "22"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "22"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 32M
+    networks:
+      - spectra-network
+
+  # ── Network Services Target ─────────────────────────────────
+  # FTP(21), HTTP(80), HTTPS(443), MySQL(3306) banners
+  vuln-network:
+    build:
+      context: targets
+      dockerfile: Dockerfile.vuln-network
+    container_name: spectra-vuln-network
+    labels:
+      spectra.role: test-target
+      spectra.target: vuln-network
+    expose:
+      - "21"
+      - "80"
+      - "443"
+      - "3306"
+    healthcheck:
+      test: ["CMD-SHELL", "echo | nc -w 1 localhost 80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 32M
+    networks:
+      - spectra-network
+
+networks:
+  spectra-network:
+    external: true
