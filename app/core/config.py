@@ -100,6 +100,9 @@ class Settings(BaseSettings):
     MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 10 MB
 
     # --- CORS ---
+    # Set CORS_ORIGINS env var as comma-separated URLs for SaaS/multi-tenant.
+    # In production (DEBUG=False), defaults to PLATFORM_BASE_URL + localhost.
+    # In dev (DEBUG=True), allows common local dev origins.
     CORS_ORIGINS: list[str] = [
         "http://localhost:5000",
         "http://127.0.0.1:5000",
@@ -111,10 +114,15 @@ class Settings(BaseSettings):
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
         if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
+            return [i.strip() for i in v.split(",") if i.strip()]
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Auto-include PLATFORM_BASE_URL in CORS origins if set."""
+        if self.PLATFORM_BASE_URL and self.PLATFORM_BASE_URL not in self.CORS_ORIGINS:
+            self.CORS_ORIGINS.append(self.PLATFORM_BASE_URL)
 
     # --- JWT Authentication ---
     JWT_SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var or generated
