@@ -87,8 +87,12 @@ class TestAddServerNode:
 
         with patch("app.models.server_node.ServerNode", return_value=mock_node):
             result = await pool.add_node(
-                session, "sandbox_worker", "new-worker", "http://new:8080",
-                weight=1, max_capacity=10,
+                session,
+                "sandbox_worker",
+                "new-worker",
+                "http://new:8080",
+                weight=1,
+                max_capacity=10,
             )
 
         assert result["name"] == "new-worker"

@@ -9,6 +9,7 @@ from pydantic import ValidationError
 # Validators
 # ---------------------------------------------------------------------------
 
+
 class TestSettingsValidators:
     def test_valid_log_levels(self):
         from app.core.config import Settings
@@ -70,6 +71,7 @@ class TestSettingsValidators:
 # SMTP / Email config
 # ---------------------------------------------------------------------------
 
+
 class TestEmailConfig:
     def test_default_smtp_settings(self):
         from app.core.config import Settings
@@ -100,6 +102,7 @@ class TestEmailConfig:
 # Webhook config
 # ---------------------------------------------------------------------------
 
+
 class TestWebhookConfig:
     def test_default_notification_webhook_none(self):
         from app.core.config import Settings
@@ -117,6 +120,7 @@ class TestWebhookConfig:
 # ---------------------------------------------------------------------------
 # Runtime settings save / load
 # ---------------------------------------------------------------------------
+
 
 class TestRuntimeSettings:
     def test_save_creates_file(self, tmp_path, monkeypatch):
@@ -143,10 +147,14 @@ class TestRuntimeSettings:
         monkeypatch.chdir(tmp_path)
         runtime_path = tmp_path / "data" / "config" / "runtime_settings.json"
         runtime_path.parent.mkdir(parents=True, exist_ok=True)
-        runtime_path.write_text(json.dumps({
-            "LOG_LEVEL": "WARNING",
-            "PLUGIN_SAFE_MODE": True,
-        }))
+        runtime_path.write_text(
+            json.dumps(
+                {
+                    "LOG_LEVEL": "WARNING",
+                    "PLUGIN_SAFE_MODE": True,
+                }
+            )
+        )
 
         s = Settings(_env_file=None)
         s.load_runtime_settings()
@@ -158,13 +166,17 @@ class TestRuntimeSettings:
         monkeypatch.chdir(tmp_path)
         runtime_path = tmp_path / "data" / "config" / "runtime_settings.json"
         runtime_path.parent.mkdir(parents=True, exist_ok=True)
-        runtime_path.write_text(json.dumps({
-            "LOG_LEVEL": "ERROR",
-            "JWT_SECRET_KEY": "hacked",
-            "DATABASE_URL": "bad-url",
-            "LLM_API_KEY": "stolen",
-            "AI_PROVIDER": "ollama",
-        }))
+        runtime_path.write_text(
+            json.dumps(
+                {
+                    "LOG_LEVEL": "ERROR",
+                    "JWT_SECRET_KEY": "hacked",
+                    "DATABASE_URL": "bad-url",
+                    "LLM_API_KEY": "stolen",
+                    "AI_PROVIDER": "ollama",
+                }
+            )
+        )
 
         s = Settings(_env_file=None)
         original_jwt = s.JWT_SECRET_KEY
@@ -179,6 +191,7 @@ class TestRuntimeSettings:
 # ---------------------------------------------------------------------------
 # Defaults
 # ---------------------------------------------------------------------------
+
 
 class TestDefaults:
     def test_default_app_name(self):
@@ -203,6 +216,7 @@ class TestDefaults:
 # ---------------------------------------------------------------------------
 # SMTP_PORT validation
 # ---------------------------------------------------------------------------
+
 
 class TestSmtpPortValidation:
     def test_smtp_port_rejects_negative(self):
@@ -245,6 +259,7 @@ class TestSmtpPortValidation:
 # ---------------------------------------------------------------------------
 # DATABASE_POOL_SIZE / DATABASE_MAX_OVERFLOW validation
 # ---------------------------------------------------------------------------
+
 
 class TestDatabasePoolValidation:
     def test_pool_size_rejects_zero(self):
@@ -322,6 +337,7 @@ class TestDatabasePoolValidation:
 # ---------------------------------------------------------------------------
 # get_settings singleton
 # ---------------------------------------------------------------------------
+
 
 class TestGetSettings:
     def test_jwt_secret_auto_generated_when_empty(self):

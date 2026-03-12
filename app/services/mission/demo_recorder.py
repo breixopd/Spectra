@@ -86,9 +86,7 @@ class DemoRecorder:
         try:
             storage = get_storage_service()
             key = f"{self.mission_id}/demo.cast"
-            location = await storage.upload(
-                settings.S3_BUCKET_MISSIONS, key, content.encode()
-            )
+            location = await storage.upload(settings.S3_BUCKET_MISSIONS, key, content.encode())
             logger.info("Demo recording saved: %s", location)
             return location
         except Exception as e:

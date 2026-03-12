@@ -39,9 +39,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    role: Mapped[str] = mapped_column(
-        String(20), default="operator", nullable=False, server_default="operator"
-    )
+    role: Mapped[str] = mapped_column(String(20), default="operator", nullable=False, server_default="operator")
     plan_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("plans.id", ondelete="SET NULL"), nullable=True, index=True
     )

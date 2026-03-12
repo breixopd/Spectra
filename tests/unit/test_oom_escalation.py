@@ -10,22 +10,27 @@ class TestTierEscalationPath:
 
     def test_light_escalates_to_medium(self):
         from app.services.tools.sandbox.escalation import next_tier
+
         assert next_tier("light") == "medium"
 
     def test_medium_escalates_to_heavy(self):
         from app.services.tools.sandbox.escalation import next_tier
+
         assert next_tier("medium") == "heavy"
 
     def test_heavy_escalates_to_extreme(self):
         from app.services.tools.sandbox.escalation import next_tier
+
         assert next_tier("heavy") == "extreme"
 
     def test_extreme_has_no_escalation(self):
         from app.services.tools.sandbox.escalation import next_tier
+
         assert next_tier("extreme") is None
 
     def test_unknown_tier_has_no_escalation(self):
         from app.services.tools.sandbox.escalation import next_tier
+
         assert next_tier("nonexistent") is None
 
 
@@ -34,22 +39,27 @@ class TestIsOomExit:
 
     def test_exit_137_is_oom(self):
         from app.services.tools.sandbox.escalation import is_oom_exit
+
         assert is_oom_exit(137) is True
 
     def test_exit_0_is_not_oom(self):
         from app.services.tools.sandbox.escalation import is_oom_exit
+
         assert is_oom_exit(0) is False
 
     def test_exit_1_is_not_oom(self):
         from app.services.tools.sandbox.escalation import is_oom_exit
+
         assert is_oom_exit(1) is False
 
     def test_exit_none_is_not_oom(self):
         from app.services.tools.sandbox.escalation import is_oom_exit
+
         assert is_oom_exit(None) is False
 
     def test_exit_139_is_not_oom(self):
         from app.services.tools.sandbox.escalation import is_oom_exit
+
         assert is_oom_exit(139) is False
 
 
@@ -59,6 +69,7 @@ class TestAttemptOomEscalation:
     @pytest.mark.asyncio
     async def test_disabled_returns_false(self):
         from app.services.tools.sandbox.escalation import attempt_oom_escalation
+
         with patch("app.services.tools.sandbox.escalation.get_settings") as mock:
             mock.return_value = MagicMock(SANDBOX_OOM_ESCALATION_ENABLED=False)
             success, msg = await attempt_oom_escalation("mission-123")
@@ -68,9 +79,13 @@ class TestAttemptOomEscalation:
     @pytest.mark.asyncio
     async def test_already_escalated_returns_false(self):
         from app.services.tools.sandbox.escalation import attempt_oom_escalation
+
         mock_sandbox = MagicMock(
-            id="sb1", mission_id="m1", escalated=True,
-            resource_tier="heavy", user_id=None,
+            id="sb1",
+            mission_id="m1",
+            escalated=True,
+            resource_tier="heavy",
+            user_id=None,
         )
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
@@ -91,9 +106,13 @@ class TestAttemptOomEscalation:
     @pytest.mark.asyncio
     async def test_extreme_tier_cannot_escalate(self):
         from app.services.tools.sandbox.escalation import attempt_oom_escalation
+
         mock_sandbox = MagicMock(
-            id="sb1", mission_id="m1", escalated=False,
-            resource_tier="extreme", user_id=None,
+            id="sb1",
+            mission_id="m1",
+            escalated=False,
+            resource_tier="extreme",
+            user_id=None,
         )
         mock_session = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
@@ -119,9 +138,11 @@ class TestOomConfig:
         from pydantic import SecretStr
 
         from app.core.config import Settings
+
         s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
         assert s.SANDBOX_OOM_ESCALATION_ENABLED is True
 
     def test_escalated_column_on_sandbox(self):
         from app.models.infrastructure import Sandbox
+
         assert hasattr(Sandbox, "escalated")

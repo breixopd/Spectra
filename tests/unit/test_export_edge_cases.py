@@ -33,10 +33,42 @@ def _fake_user(is_superuser: bool = True) -> MagicMock:
 
 def _make_row(entity_type: str, **overrides):
     defaults = {
-        "missions": {"id": "m-1", "target": "192.168.1.1", "directive": "scan", "status": "active", "created_at": datetime(2026, 1, 1)},
-        "findings": {"id": "f-1", "target_id": "t-1", "title": "XSS", "description": "desc", "severity": "high", "status": "open", "cvss_score": 7.5, "cve_id": "CVE-2026-001", "tool_source": "nmap", "created_at": datetime(2026, 1, 1)},
-        "targets": {"id": "t-1", "address": "10.0.0.1", "description": "web", "status": "scanned", "os": "Linux", "created_at": datetime(2026, 1, 1)},
-        "exploits": {"id": "e-1", "target_id": "t-1", "name": "rce", "type": "remote", "success": True, "output": "shell", "timestamp": datetime(2026, 1, 1)},
+        "missions": {
+            "id": "m-1",
+            "target": "192.168.1.1",
+            "directive": "scan",
+            "status": "active",
+            "created_at": datetime(2026, 1, 1),
+        },
+        "findings": {
+            "id": "f-1",
+            "target_id": "t-1",
+            "title": "XSS",
+            "description": "desc",
+            "severity": "high",
+            "status": "open",
+            "cvss_score": 7.5,
+            "cve_id": "CVE-2026-001",
+            "tool_source": "nmap",
+            "created_at": datetime(2026, 1, 1),
+        },
+        "targets": {
+            "id": "t-1",
+            "address": "10.0.0.1",
+            "description": "web",
+            "status": "scanned",
+            "os": "Linux",
+            "created_at": datetime(2026, 1, 1),
+        },
+        "exploits": {
+            "id": "e-1",
+            "target_id": "t-1",
+            "name": "rce",
+            "type": "remote",
+            "success": True,
+            "output": "shell",
+            "timestamp": datetime(2026, 1, 1),
+        },
     }
     vals = {**defaults[entity_type], **overrides}
     row = MagicMock()

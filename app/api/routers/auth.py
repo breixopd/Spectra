@@ -54,10 +54,10 @@ _login_failures: dict[str, dict] = {}  # ip -> {"count": int, "locked_until": fl
 _lockout_lock = threading.Lock()
 _lockout_loaded = False
 
-LOCKOUT_THRESHOLD_1 = 5   # failures before first lockout
+LOCKOUT_THRESHOLD_1 = 5  # failures before first lockout
 LOCKOUT_DURATION_1 = 300  # 5 minutes in seconds
 LOCKOUT_THRESHOLD_2 = 10  # failures before extended lockout
-LOCKOUT_DURATION_2 = 1800 # 30 minutes in seconds
+LOCKOUT_DURATION_2 = 1800  # 30 minutes in seconds
 
 
 def _ensure_lockout_loaded() -> None:
@@ -165,14 +165,10 @@ async def login_for_access_token(
 
     # Always verify password even if user doesn't exist (timing-safe)
     dummy_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCJzFhWMu"
-    password_valid = verify_password(
-        form_data.password, user.hashed_password if user else dummy_hash
-    )
+    password_valid = verify_password(form_data.password, user.hashed_password if user else dummy_hash)
 
     if not user or not password_valid:
-        logger.warning(
-            "Failed login attempt for user '%s' from %s", form_data.username, client_ip
-        )
+        logger.warning("Failed login attempt for user '%s' from %s", form_data.username, client_ip)
 
         _record_failure(client_ip)
 
@@ -183,9 +179,7 @@ async def login_for_access_token(
             username=form_data.username,
             client_ip=client_ip,
         )
-        telemetry.increment_counter(
-            "login_failed", 1, {"reason": "invalid_credentials"}
-        )
+        telemetry.increment_counter("login_failed", 1, {"reason": "invalid_credentials"})
 
         # Audit log
         await audit_log_event(
@@ -202,9 +196,7 @@ async def login_for_access_token(
         )
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -431,7 +423,9 @@ async def get_current_profile(
             "features": plan.features,
             "max_concurrent_missions": plan.max_concurrent_missions,
             "max_targets": plan.max_targets,
-        } if plan else None,
+        }
+        if plan
+        else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 

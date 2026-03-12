@@ -252,9 +252,7 @@ class TestCommandBuilder:
         )
 
         # Update config to have placeholders
-        builder.config.execution.args_template = (
-            "--target {target} {flags} --output {output_file}"
-        )
+        builder.config.execution.args_template = "--target {target} {flags} --output {output_file}"
 
         command = builder.build_command(request, "/tmp/output")
 
@@ -333,9 +331,7 @@ class TestOutputParser:
     @pytest.mark.asyncio
     async def test_parse_ndjson_output(self, parser):
         """Test NDJSON (newline-delimited JSON) parsing."""
-        parser.config.parsing.format = (
-            "ndjson"  # Verify NDJSON format logic if needed, or parser auto-detects
-        )
+        parser.config.parsing.format = "ndjson"  # Verify NDJSON format logic if needed, or parser auto-detects
         # Updating config to match expected behavior if format matters
 
         output = '{"level": "high", "title": "XSS"}\n{"level": "low", "title": "Info Disclosure"}'
@@ -440,6 +436,4 @@ class TestDangerousPatterns:
     def test_dangerous_patterns(self, command, should_match):
         """Test that dangerous patterns are detected correctly."""
         matched = any(pattern.search(command) for pattern in DANGEROUS_PATTERNS)
-        assert matched == should_match, (
-            f"Command '{command}' should {'match' if should_match else 'not match'}"
-        )
+        assert matched == should_match, f"Command '{command}' should {'match' if should_match else 'not match'}"

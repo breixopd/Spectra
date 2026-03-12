@@ -56,15 +56,11 @@ async def perform_safety_check(
             max_concurrency=1,
         )
 
-        safety_result = await safety_supervisor.execute(
-            safety_context, safety_input
-        )
+        safety_result = await safety_supervisor.execute(safety_context, safety_input)
 
         if safety_result.success and isinstance(safety_result.action, SafetyAction):
             if not safety_result.action.allowed:
-                mission.log(
-                    f"[BLOCK] Safety check blocked: {safety_result.action.reason}"
-                )
+                mission.log(f"[BLOCK] Safety check blocked: {safety_result.action.reason}")
                 return False, safety_result.action.reason
         return True, "Safe"
     except Exception as e:
@@ -102,13 +98,9 @@ async def perform_safety_check_with_retry(
             return True, "Safe", current_args if attempt > 0 else None
 
         if attempt < max_retries:
-            mission.log(
-                f"[ADAPT] Attempting to fix command (attempt {attempt + 1}/{max_retries})..."
-            )
+            mission.log(f"[ADAPT] Attempting to fix command (attempt {attempt + 1}/{max_retries})...")
 
-            fixed_args = await _try_fix_command(
-                llm, mission, tool_name, target, current_args, reason
-            )
+            fixed_args = await _try_fix_command(llm, mission, tool_name, target, current_args, reason)
 
             if fixed_args is not None and fixed_args != current_args:
                 current_args = fixed_args
@@ -120,9 +112,7 @@ async def perform_safety_check_with_retry(
                     args=fixed_args,
                     timeout=None,
                 )
-                current_command = builder.builder.build_command(
-                    fixed_request, output_dir=str(output_dir)
-                )
+                current_command = builder.builder.build_command(fixed_request, output_dir=str(output_dir))
                 mission.log(f"[INFO] Retrying with fixed args: {fixed_args}")
             else:
                 break
@@ -154,9 +144,7 @@ async def perform_consensus_check(
     )
 
     if vote_result.status != "approved":
-        mission.log(
-            f"[REJECTED] Action blocked by consensus: {vote_result.escalation_reason}"
-        )
+        mission.log(f"[REJECTED] Action blocked by consensus: {vote_result.escalation_reason}")
         return False
 
     mission.log("[APPROVED] Action validated by consensus")

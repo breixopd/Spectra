@@ -57,10 +57,7 @@ async def test_rag_cve_search(rag_service):
 async def test_batch_indexing(rag_service):
     """Test batch indexing."""
 
-    docs = [
-        Document(id=f"batch-{i}", content=f"Batch document number {i}", doc_type="test")
-        for i in range(5)
-    ]
+    docs = [Document(id=f"batch-{i}", content=f"Batch document number {i}", doc_type="test") for i in range(5)]
 
     count = await rag_service.index_batch(docs)
     assert count == 5

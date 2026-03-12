@@ -23,9 +23,7 @@ async def test_send_webhook_makes_http_post():
         patch("app.services.notifications._is_safe_url", return_value=True),
         patch("httpx.AsyncClient", return_value=mock_client),
     ):
-        result = await send_webhook_notification(
-            {"event": "test"}, "https://hooks.example.com/test"
-        )
+        result = await send_webhook_notification({"event": "test"}, "https://hooks.example.com/test")
 
     assert result is True
     mock_client.post.assert_awaited_once()
@@ -47,9 +45,7 @@ async def test_send_webhook_handles_http_error_gracefully():
         patch("app.services.notifications._is_safe_url", return_value=True),
         patch("httpx.AsyncClient", return_value=mock_client),
     ):
-        result = await send_webhook_notification(
-            {"event": "fail"}, "https://hooks.example.com/fail"
-        )
+        result = await send_webhook_notification({"event": "fail"}, "https://hooks.example.com/fail")
 
     assert result is False
 
@@ -67,9 +63,7 @@ async def test_send_webhook_handles_network_exception():
         patch("app.services.notifications._is_safe_url", return_value=True),
         patch("httpx.AsyncClient", return_value=mock_client),
     ):
-        result = await send_webhook_notification(
-            {"event": "err"}, "https://hooks.example.com/err"
-        )
+        result = await send_webhook_notification({"event": "err"}, "https://hooks.example.com/err")
 
     assert result is False
 
@@ -79,9 +73,7 @@ async def test_send_webhook_blocks_unsafe_url():
     from app.worker.notification_jobs import send_webhook_notification
 
     with patch("app.services.notifications._is_safe_url", return_value=False):
-        result = await send_webhook_notification(
-            {"event": "bad"}, "http://169.254.169.254/metadata"
-        )
+        result = await send_webhook_notification({"event": "bad"}, "http://169.254.169.254/metadata")
 
     assert result is False
 

@@ -23,9 +23,17 @@ logger = logging.getLogger("spectra.api.vpn")
 router = APIRouter(prefix="/vpn", tags=["VPN"])
 
 DANGEROUS_OPENVPN_DIRECTIVES = [
-    'up ', 'down ', 'client-connect', 'client-disconnect',
-    'learn-address', 'auth-user-pass-verify', 'tls-verify',
-    'ipchange', 'route-up', 'route-pre-down', 'script-security',
+    "up ",
+    "down ",
+    "client-connect",
+    "client-disconnect",
+    "learn-address",
+    "auth-user-pass-verify",
+    "tls-verify",
+    "ipchange",
+    "route-up",
+    "route-pre-down",
+    "script-security",
 ]
 
 _vpn_manager: VPNManager | None = None
@@ -46,7 +54,7 @@ def _scoped_name(user: User, name: str) -> str:
 def _unscoped_name(user: User, scoped: str) -> str:
     """Strip user_id prefix from config name."""
     prefix = f"u_{user.id}_"
-    return scoped[len(prefix):] if scoped.startswith(prefix) else scoped
+    return scoped[len(prefix) :] if scoped.startswith(prefix) else scoped
 
 
 # --- Schemas ---
@@ -100,8 +108,8 @@ async def upload_vpn_config(
             raise HTTPException(status_code=400, detail="VPN config file too large (max 1MB)")
 
         # Reject OpenVPN configs with dangerous directives that allow arbitrary command execution
-        if vpn_type == 'openvpn':
-            content_lower = content.decode(errors='replace').lower()
+        if vpn_type == "openvpn":
+            content_lower = content.decode(errors="replace").lower()
             for directive in DANGEROUS_OPENVPN_DIRECTIVES:
                 if directive in content_lower:
                     raise HTTPException(

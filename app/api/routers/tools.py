@@ -91,17 +91,13 @@ async def validate_plugin_config(
     except Exception as e:
         # Log full error but return generic message
         logger.warning("Plugin validation failed: %s", e)
-        raise HTTPException(
-            status_code=400, detail="Invalid plugin configuration"
-        ) from e
+        raise HTTPException(status_code=400, detail="Invalid plugin configuration") from e
 
 
 @router.post("/sign")
 async def sign_plugin_config(
     config: dict = Body(...),
-    private_key_pem: str | None = Body(
-        None, description="Optional PEM-encoded Ed25519 private key"
-    ),
+    private_key_pem: str | None = Body(None, description="Optional PEM-encoded Ed25519 private key"),
     _current_user: User = Depends(get_current_superuser),
 ):
     """
@@ -122,17 +118,13 @@ async def sign_plugin_config(
                 key_data = private_key_pem.encode("utf-8")
                 loaded_key = serialization.load_pem_private_key(key_data, password=None)
                 if not isinstance(loaded_key, Ed25519PrivateKey):
-                    raise HTTPException(
-                        status_code=400, detail="Key must be Ed25519 type"
-                    )
+                    raise HTTPException(status_code=400, detail="Key must be Ed25519 type")
                 private_key = loaded_key
             except HTTPException:
                 raise
             except Exception as e:
                 logger.warning("Private key parsing failed: %s", e)
-                raise HTTPException(
-                    status_code=400, detail="Invalid private key format"
-                ) from e
+                raise HTTPException(status_code=400, detail="Invalid private key format") from e
         else:
             # Use server key (DEBUG only)
             if not settings.DEBUG:
@@ -143,9 +135,7 @@ async def sign_plugin_config(
 
             key_path = Path("keys/plugin_signing.pem")
             if not key_path.exists():
-                raise HTTPException(
-                    status_code=503, detail="Signing key not available on server"
-                )
+                raise HTTPException(status_code=503, detail="Signing key not available on server")
 
             with open(key_path, "rb") as f:
                 loaded_key = serialization.load_pem_private_key(f.read(), password=None)
@@ -158,9 +148,7 @@ async def sign_plugin_config(
         config.pop("signature", None)
 
         # Canonicalize
-        canonical_json = json.dumps(
-            config, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8")
+        canonical_json = json.dumps(config, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
         # Sign
         signature = private_key.sign(canonical_json)
@@ -169,16 +157,12 @@ async def sign_plugin_config(
         return config
 
     except ImportError as e:
-        raise HTTPException(
-            status_code=500, detail="Cryptography package not available"
-        ) from e
+        raise HTTPException(status_code=500, detail="Cryptography package not available") from e
     except HTTPException:
         raise
     except Exception as e:
         logger.error("Plugin signing failed: %s", e)
-        raise HTTPException(
-            status_code=500, detail="Signing failed - check server logs"
-        ) from e
+        raise HTTPException(status_code=500, detail="Signing failed - check server logs") from e
 
 
 @router.post("/save-unsigned")
@@ -224,7 +208,9 @@ async def save_plugin_unsigned(
         }
     except Exception as e:
         logger.error("Failed to save unsigned plugin: %s", e)
-        raise HTTPException(status_code=400, detail="Failed to save unsigned plugin due to validation or server error.") from e
+        raise HTTPException(
+            status_code=400, detail="Failed to save unsigned plugin due to validation or server error."
+        ) from e
 
 
 @router.get(
@@ -399,18 +385,14 @@ async def upload_plugin(
         raise HTTPException(status_code=400, detail="File must be a JSON file")
 
     if file.content_type != "application/json":
-        raise HTTPException(
-            status_code=400, detail="Invalid Content-Type. Must be application/json"
-        )
+        raise HTTPException(status_code=400, detail="Invalid Content-Type. Must be application/json")
 
     # Read and parse (with size limit)
     MAX_PLUGIN_SIZE = 5 * 1024 * 1024  # 5MB
     try:
         content = await file.read(MAX_PLUGIN_SIZE + 1)
         if len(content) > MAX_PLUGIN_SIZE:
-            raise HTTPException(
-                status_code=413, detail="Plugin file too large (max 5MB)"
-            )
+            raise HTTPException(status_code=413, detail="Plugin file too large (max 5MB)")
         data = json.loads(content.decode("utf-8"))
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON: {e}") from e
@@ -438,13 +420,9 @@ async def upload_plugin(
             message=f"Plugin '{tool.config.name}' uploaded successfully. Installation queued in background.",
         )
     except PluginSignatureError as e:
-        raise HTTPException(
-            status_code=403, detail=f"Signature verification failed: {e}"
-        ) from e
+        raise HTTPException(status_code=403, detail=f"Signature verification failed: {e}") from e
     except PluginValidationError as e:
-        raise HTTPException(
-            status_code=400, detail=f"Plugin validation failed: {e}"
-        ) from e
+        raise HTTPException(status_code=400, detail=f"Plugin validation failed: {e}") from e
 
 
 @router.post("/install-all")

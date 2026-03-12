@@ -71,6 +71,7 @@ async def health_check(
         # Check RAG/Embedding service
         try:
             from app.services.ai.rag import RAGService
+
             rag = RAGService()
             if rag.is_functional:
                 health_status["components"]["embeddings"] = "healthy"
@@ -82,8 +83,9 @@ async def health_check(
         # Check LLM provider
         try:
             from app.services.ai.router import get_smart_router
+
             router_instance = get_smart_router()
-            provider = getattr(router_instance, 'provider', 'unknown')
+            provider = getattr(router_instance, "provider", "unknown")
             health_status["components"]["llm"] = f"configured: {provider}"
         except Exception as e:
             health_status["components"]["llm"] = f"unavailable: {type(e).__name__}"
@@ -91,6 +93,7 @@ async def health_check(
         # Check cache
         try:
             from app.core.cache import get_cache
+
             cache = get_cache()
             if cache:
                 stats = cache.get_stats()
@@ -106,6 +109,7 @@ async def health_check(
         # Check worker / sandbox pool
         try:
             from app.services.tools.sandbox import get_sandbox_pool
+
             pool = get_sandbox_pool()
             if pool and pool.available:
                 health_status["components"]["sandbox_pool"] = "healthy"
@@ -119,8 +123,8 @@ async def health_check(
         # Disk space for data directory
         try:
             usage = shutil.disk_usage(DATA_DIR)
-            free_gb = round(usage.free / (1024 ** 3), 2)
-            total_gb = round(usage.total / (1024 ** 3), 2)
+            free_gb = round(usage.free / (1024**3), 2)
+            total_gb = round(usage.total / (1024**3), 2)
             used_pct = round(usage.used / usage.total * 100, 1)
             disk_status = "healthy" if used_pct < 90 else "warning: low disk space"
             health_status["components"]["disk"] = {
@@ -164,6 +168,7 @@ async def readiness_check(
     # LLM
     try:
         from app.services.ai.router import get_smart_router
+
         router_instance = get_smart_router()
         checks["llm"] = router_instance is not None
     except Exception:
@@ -172,6 +177,7 @@ async def readiness_check(
     # Embeddings
     try:
         from app.services.ai.rag import RAGService
+
         rag = RAGService()
         checks["embeddings"] = rag.is_functional
     except Exception:

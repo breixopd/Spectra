@@ -12,14 +12,13 @@ from app.models.infrastructure import JSONBType
 
 logger = logging.getLogger(__name__)
 
+
 class Webhook(Base):
     """A registered webhook endpoint for event delivery."""
 
     __tablename__ = "webhooks"
 
-    user_id: Mapped[str] = mapped_column(
-        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    user_id: Mapped[str] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     url: Mapped[str] = mapped_column(Text, nullable=False)
     secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
     events: Mapped[list] = mapped_column(JSONBType, nullable=False, default=list)

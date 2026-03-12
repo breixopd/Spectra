@@ -100,9 +100,7 @@ PTES_METHODOLOGY = {
 
 def get_methodology_guidance(phase: str) -> str:
     """Get PTES methodology guidance for a specific phase."""
-    return PTES_METHODOLOGY.get(
-        phase, "Follow standard penetration testing methodology."
-    )
+    return PTES_METHODOLOGY.get(phase, "Follow standard penetration testing methodology.")
 
 
 def get_full_methodology() -> str:
@@ -235,13 +233,9 @@ async def get_available_tools_context(grouped: bool = True) -> str:
                 if cat not in by_category:
                     by_category[cat] = []
                 status_marker = "[ready]" if tool.is_available else "[pending]"
-                by_category[cat].append(
-                    f"{tool.config.name} ({tool.config.id}) {status_marker}"
-                )
+                by_category[cat].append(f"{tool.config.name} ({tool.config.id}) {status_marker}")
 
-            lines = [
-                "**Available Security Tools** ([ready]=installed, [pending]=will auto-install):"
-            ]
+            lines = ["**Available Security Tools** ([ready]=installed, [pending]=will auto-install):"]
 
             for cat, tool_names in by_category.items():
                 lines.append(f"- {cat}: {', '.join(tool_names)}")
@@ -251,9 +245,7 @@ async def get_available_tools_context(grouped: bool = True) -> str:
             # Detailed list with descriptions
             tool_descriptions = []
             for tool in tools[:15]:  # Limit to avoid prompt overflow
-                caps = ", ".join(
-                    [c.value for c in tool.config.metadata.capabilities[:3]]
-                )
+                caps = ", ".join([c.value for c in tool.config.metadata.capabilities[:3]])
                 status = "installed" if tool.is_available else "auto-install"
                 tool_descriptions.append(
                     f"- {tool.config.name} [{status}]: {tool.config.description[:100]}... (Capabilities: {caps})"

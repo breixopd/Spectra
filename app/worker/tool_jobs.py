@@ -62,9 +62,7 @@ async def execute_tool_job(
             )
         tool = registry.get_tool(tool_id)
         if not tool or not tool.is_available:
-            return _error_result(
-                tool_id, target, "Tool still not available after install"
-            )
+            return _error_result(tool_id, target, "Tool still not available after install")
 
     # Setup output directory
     if not output_dir:
@@ -97,9 +95,7 @@ async def execute_tool_job(
         try:
             network = ipaddress.ip_network(target, strict=False)
             host_count = min(network.num_addresses, MAX_HOSTS_DEFAULT)
-            effective_timeout = max(
-                effective_timeout, config.execution.timeout_per_host * host_count
-            )
+            effective_timeout = max(effective_timeout, config.execution.timeout_per_host * host_count)
         except ValueError:
             logger.debug(
                 "Target '%s' is not a valid IP network; skipping dynamic timeout adjustment",
@@ -124,9 +120,7 @@ async def execute_tool_job(
     success = returncode in success_codes
     if returncode == 124:  # timeout exit code
         success = False
-        stderr = (
-            stderr or ""
-        ) + f"\n[Spectra] Command timed out after {effective_timeout}s"
+        stderr = (stderr or "") + f"\n[Spectra] Command timed out after {effective_timeout}s"
 
     # Parse output
     output_file = None
@@ -220,9 +214,7 @@ async def install_all_tools_job(
         if result.get("success"):
             results["installed"].append(tool_id)
         else:
-            results["failed"].append(
-                {"tool_id": tool_id, "error": result.get("error", "Unknown error")}
-            )
+            results["failed"].append({"tool_id": tool_id, "error": result.get("error", "Unknown error")})
 
     return results
 

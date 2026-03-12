@@ -220,9 +220,7 @@ class TestValidateAtGate:
             reasoning="Test plan",
         )
 
-        result = await voting.validate_at_gate(
-            QualityGate.PLAN, action, {"target": "192.168.1.1", "task_count": 5}
-        )
+        result = await voting.validate_at_gate(QualityGate.PLAN, action, {"target": "192.168.1.1", "task_count": 5})
 
         # With mock returning approve, should be approved
         assert result.status == ConsensusStatus.APPROVED
@@ -482,13 +480,19 @@ class TestConsensusEdgeCases:
     @staticmethod
     def _action(risk=ActionRisk.HIGH):
         return AgentAction(
-            action_type="run_tool", confidence=0.8, risk_level=risk, reasoning="test",
+            action_type="run_tool",
+            confidence=0.8,
+            risk_level=risk,
+            reasoning="test",
         )
 
     @staticmethod
     def _vote(vid, decision, confidence=0.8):
         return Vote(
-            voter_id=vid, decision=decision, confidence=confidence, reasoning=f"{decision}",
+            voter_id=vid,
+            decision=decision,
+            confidence=confidence,
+            reasoning=f"{decision}",
         )
 
     def test_unanimous_approval_high_confidence(self):
@@ -586,6 +590,7 @@ class TestConsensusEdgeCases:
     async def test_all_voters_timeout(self):
         """When LLM raises for every voter, _get_vote returns ABSTAIN votes."""
         from unittest.mock import AsyncMock
+
         llm = AsyncMock()
         llm.generate_structured.side_effect = TimeoutError("timeout")
         vs = VotingSystem(llm=llm, config=VotingConfig(num_voters=3, k_threshold=2))

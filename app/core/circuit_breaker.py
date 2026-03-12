@@ -134,14 +134,10 @@ class CircuitBreaker:
         """Validate that exception tuples contain proper Exception subclasses."""
         for exc in self.config.expected_exceptions:
             if not isinstance(exc, type) or not issubclass(exc, BaseException):
-                raise TypeError(
-                    f"expected_exceptions must contain Exception types, got {exc}"
-                )
+                raise TypeError(f"expected_exceptions must contain Exception types, got {exc}")
         for exc in self.config.excluded_exceptions:
             if not isinstance(exc, type) or not issubclass(exc, BaseException):
-                raise TypeError(
-                    f"excluded_exceptions must contain Exception types, got {exc}"
-                )
+                raise TypeError(f"excluded_exceptions must contain Exception types, got {exc}")
 
     @property
     def state(self) -> CircuitState:
@@ -335,9 +331,7 @@ class CircuitBreaker:
             "total_successes": self._state.total_successes,
             "times_opened": self._state.times_opened,
             "failure_rate": (
-                self._state.total_failures / self._state.total_calls * 100
-                if self._state.total_calls > 0
-                else 0
+                self._state.total_failures / self._state.total_calls * 100 if self._state.total_calls > 0 else 0
             ),
         }
 

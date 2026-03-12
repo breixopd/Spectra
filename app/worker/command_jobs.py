@@ -101,9 +101,7 @@ async def execute_script_job(
         logger.info("Executing custom script (%s) against %s", language, target)
 
         wrapped = ["timeout", "-k", "10s", f"{timeout}s"] + cmd
-        returncode, stdout, stderr = await _run_command(
-            wrapped, timeout + 30, str(work_dir)
-        )
+        returncode, stdout, stderr = await _run_command(wrapped, timeout + 30, str(work_dir))
 
         return {
             "success": returncode == 0,

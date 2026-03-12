@@ -9,6 +9,7 @@ Requires:
 Run with:
     SPECTRA_URL=http://localhost:5050 python3 -m pytest tests/integration/test_live_targets.py -v --timeout=300
 """
+
 import os
 import time
 
@@ -57,10 +58,7 @@ def auth_headers():
             setup_resp = client.post("/api/auth/setup", json=setup_payload)
             assert setup_resp.status_code == 200, f"Setup failed: {setup_resp.text}"
 
-        resp = client.post("/api/auth/token", data={
-            "username": "admin",
-            "password": "Admin123!"
-        })
+        resp = client.post("/api/auth/token", data={"username": "admin", "password": "Admin123!"})
         assert resp.status_code == 200, f"Auth failed: {resp.text}"
         token = resp.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
@@ -82,6 +80,7 @@ def require_real_llm(auth_headers):
 # ============================================================
 # Section 1: API Health & Smoke Tests
 # ============================================================
+
 
 class TestAIProvider:
     """Verify AI provider configuration for live tests."""
@@ -106,9 +105,7 @@ class TestAPISmoke:
 
     def test_auth_flow(self, client):
         # Get token
-        resp = client.post("/api/auth/token", data={
-            "username": "admin", "password": "Admin123!"
-        })
+        resp = client.post("/api/auth/token", data={"username": "admin", "password": "Admin123!"})
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data
@@ -116,9 +113,7 @@ class TestAPISmoke:
         assert data["token_type"] == "bearer"
 
     def test_auth_wrong_password(self, client):
-        resp = client.post("/api/auth/token", data={
-            "username": "admin", "password": "wrong"
-        })
+        resp = client.post("/api/auth/token", data={"username": "admin", "password": "wrong"})
         assert resp.status_code in (401, 403)
 
     def test_protected_endpoint_no_auth(self, client):
@@ -137,6 +132,7 @@ class TestAPISmoke:
 # ============================================================
 # Section 2: Tool Registry Tests
 # ============================================================
+
 
 class TestToolRegistry:
     """Test tool listing and configuration."""
@@ -175,14 +171,16 @@ class TestToolRegistry:
 # Section 3: Target Management Tests
 # ============================================================
 
+
 class TestTargetManagement:
     """Test target CRUD and bulk operations."""
 
     def test_create_target(self, client, auth_headers):
-        resp = client.post("/api/targets", headers=auth_headers, json={
-            "address": TARGET_EASY,
-            "description": "Easy vulnerable target for testing"
-        })
+        resp = client.post(
+            "/api/targets",
+            headers=auth_headers,
+            json={"address": TARGET_EASY, "description": "Easy vulnerable target for testing"},
+        )
         assert resp.status_code in (200, 201, 400, 422), f"Create target failed: {resp.text}"
 
     def test_list_targets(self, client, auth_headers):
@@ -192,13 +190,17 @@ class TestTargetManagement:
         assert isinstance(targets, (list, dict))
 
     def test_bulk_import_targets(self, client, auth_headers):
-        resp = client.post("/api/targets/bulk-import", headers=auth_headers, json={
-            "targets": [
-                {"address": TARGET_EASY, "description": "Easy target"},
-                {"address": TARGET_MEDIUM, "description": "Medium target"},
-                {"address": TARGET_HARD, "description": "Hard target"},
-            ]
-        })
+        resp = client.post(
+            "/api/targets/bulk-import",
+            headers=auth_headers,
+            json={
+                "targets": [
+                    {"address": TARGET_EASY, "description": "Easy target"},
+                    {"address": TARGET_MEDIUM, "description": "Medium target"},
+                    {"address": TARGET_HARD, "description": "Hard target"},
+                ]
+            },
+        )
         # Accept both success and validation errors (if format differs)
         assert resp.status_code in (200, 201, 422), f"Bulk import: {resp.text}"
 
@@ -206,6 +208,7 @@ class TestTargetManagement:
 # ============================================================
 # Section 4: Manual Helpers Tests
 # ============================================================
+
 
 class TestManualHelpers:
     """Test checklists, payloads, GTFOBins, CVSS calculator."""
@@ -261,9 +264,9 @@ class TestManualHelpers:
         assert resp.status_code == 200
 
     def test_cvss_calculate(self, client, auth_headers):
-        resp = client.post("/api/cvss/calculate", headers=auth_headers, json={
-            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
-        })
+        resp = client.post(
+            "/api/cvss/calculate", headers=auth_headers, json={"vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "base_score" in data or "score" in data
@@ -271,9 +274,9 @@ class TestManualHelpers:
         assert score >= 9.0  # This is a critical vector
 
     def test_cvss_calculate_medium(self, client, auth_headers):
-        resp = client.post("/api/cvss/calculate", headers=auth_headers, json={
-            "vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:L/A:N"
-        })
+        resp = client.post(
+            "/api/cvss/calculate", headers=auth_headers, json={"vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:L/A:N"}
+        )
         assert resp.status_code == 200
         data = resp.json()
         score = data.get("base_score") or data.get("score")
@@ -290,14 +293,19 @@ class TestManualHelpers:
 # Section 5: Pentest Session Tests
 # ============================================================
 
+
 class TestPentestSessions:
     """Test pentest session workflow."""
 
     def test_create_session(self, client, auth_headers, require_real_llm):
-        resp = client.post("/api/pentest-sessions", headers=auth_headers, json={
-            "name": "Live Integration Test Session",
-            "target": TARGET_EASY,
-        })
+        resp = client.post(
+            "/api/pentest-sessions",
+            headers=auth_headers,
+            json={
+                "name": "Live Integration Test Session",
+                "target": TARGET_EASY,
+            },
+        )
         assert resp.status_code in (200, 201), f"Create session: {resp.text}"
         data = resp.json()
         session_id = data.get("id") or data.get("session_id")
@@ -310,35 +318,49 @@ class TestPentestSessions:
 
     def test_session_scope(self, client, auth_headers):
         # Create session first
-        create_resp = client.post("/api/pentest-sessions", headers=auth_headers, json={
-            "name": "Scope Test Session",
-        })
+        create_resp = client.post(
+            "/api/pentest-sessions",
+            headers=auth_headers,
+            json={
+                "name": "Scope Test Session",
+            },
+        )
         if create_resp.status_code in (200, 201):
             session_id = create_resp.json().get("id") or create_resp.json().get("session_id")
             if session_id:
-                resp = client.put(f"/api/pentest-sessions/{session_id}/scope",
-                    headers=auth_headers, json={
+                resp = client.put(
+                    f"/api/pentest-sessions/{session_id}/scope",
+                    headers=auth_headers,
+                    json={
                         "targets": [
                             {"type": "domain", "value": TARGET_EASY, "notes": "Primary target"},
-                            {"type": "domain", "value": TARGET_MEDIUM, "notes": "Secondary"}
+                            {"type": "domain", "value": TARGET_MEDIUM, "notes": "Secondary"},
                         ],
                         "exclusions": [],
-                        "rules_of_engagement": "Testing only. No destructive actions."
-                    })
+                        "rules_of_engagement": "Testing only. No destructive actions.",
+                    },
+                )
                 assert resp.status_code in (200, 201, 204)
 
     def test_session_notes(self, client, auth_headers):
-        create_resp = client.post("/api/pentest-sessions", headers=auth_headers, json={
-            "name": "Notes Test",
-        })
+        create_resp = client.post(
+            "/api/pentest-sessions",
+            headers=auth_headers,
+            json={
+                "name": "Notes Test",
+            },
+        )
         if create_resp.status_code in (200, 201):
             session_id = create_resp.json().get("id") or create_resp.json().get("session_id")
             if session_id:
                 # Add a note
-                resp = client.post(f"/api/pentest-sessions/{session_id}/notes",
-                    headers=auth_headers, json={
+                resp = client.post(
+                    f"/api/pentest-sessions/{session_id}/notes",
+                    headers=auth_headers,
+                    json={
                         "content": "Found phpinfo() exposed on target-easy at /info.php",
-                    })
+                    },
+                )
                 assert resp.status_code in (200, 201)
 
     def test_session_id_validation(self, client, auth_headers):
@@ -351,15 +373,17 @@ class TestPentestSessions:
 # Section 6: Finding Management Tests
 # ============================================================
 
+
 class TestFindingManagement:
     """Test finding CRUD and status workflow."""
 
     def test_create_finding(self, client, auth_headers):
         # Create a target first to get a valid target_id
-        target_resp = client.post("/api/targets", headers=auth_headers, json={
-            "address": TARGET_EASY,
-            "description": "Target for finding test"
-        })
+        target_resp = client.post(
+            "/api/targets",
+            headers=auth_headers,
+            json={"address": TARGET_EASY, "description": "Target for finding test"},
+        )
         target_id = "unknown"
         if target_resp.status_code in (200, 201):
             target_id = target_resp.json().get("id", "unknown")
@@ -371,13 +395,17 @@ class TestFindingManagement:
                 if isinstance(targets, list) and targets:
                     target_id = targets[0].get("id", "unknown")
 
-        resp = client.post("/api/findings", headers=auth_headers, json={
-            "title": "phpinfo() Information Disclosure",
-            "description": "phpinfo() page exposed at /info.php on target-easy",
-            "severity": "medium",
-            "target_id": target_id,
-            "tool_source": "manual",
-        })
+        resp = client.post(
+            "/api/findings",
+            headers=auth_headers,
+            json={
+                "title": "phpinfo() Information Disclosure",
+                "description": "phpinfo() page exposed at /info.php on target-easy",
+                "severity": "medium",
+                "target_id": target_id,
+                "tool_source": "manual",
+            },
+        )
         assert resp.status_code in (200, 201, 422), f"Create finding: {resp.text}"
 
     def test_list_findings(self, client, auth_headers):
@@ -397,13 +425,17 @@ class TestFindingManagement:
                 target_id = targets[0].get("id", "unknown")
 
         # Create a finding first
-        create_resp = client.post("/api/findings", headers=auth_headers, json={
-            "title": "Test Finding for Workflow",
-            "description": "Testing status transitions",
-            "severity": "low",
-            "target_id": target_id,
-            "tool_source": "manual",
-        })
+        create_resp = client.post(
+            "/api/findings",
+            headers=auth_headers,
+            json={
+                "title": "Test Finding for Workflow",
+                "description": "Testing status transitions",
+                "severity": "low",
+                "target_id": target_id,
+                "tool_source": "manual",
+            },
+        )
         if create_resp.status_code in (200, 201):
             finding_id = create_resp.json().get("id") or create_resp.json().get("finding_id")
             if finding_id:
@@ -415,6 +447,7 @@ class TestFindingManagement:
 # ============================================================
 # Section 7: Mission Execution Tests (against live targets)
 # ============================================================
+
 
 class TestMissionExecution:
     """Test autonomous mission execution against vulnerable targets.
@@ -431,11 +464,15 @@ class TestMissionExecution:
 
     def test_launch_recon_mission(self, client, auth_headers):
         """Launch a reconnaissance mission against the easy target."""
-        resp = client.post("/api/missions", headers=auth_headers, json={
-            "target": TARGET_EASY,
-            "directive": "Perform reconnaissance on the target. Discover open ports and services.",
-            "stealth_level": "none",
-        })
+        resp = client.post(
+            "/api/missions",
+            headers=auth_headers,
+            json={
+                "target": TARGET_EASY,
+                "directive": "Perform reconnaissance on the target. Discover open ports and services.",
+                "stealth_level": "none",
+            },
+        )
         # Mission creation should succeed even if tools aren't available
         # The mission will fail at execution but should be created
         assert resp.status_code in (200, 201, 422, 503), f"Launch mission: {resp.status_code} {resp.text}"
@@ -467,10 +504,14 @@ class TestMissionExecution:
     def test_mission_steering(self, client, auth_headers):
         """Test mission control (pause/resume/stop)."""
         # Launch a mission first
-        resp = client.post("/api/missions", headers=auth_headers, json={
-            "target": TARGET_EASY,
-            "directive": "Quick recon scan",
-        })
+        resp = client.post(
+            "/api/missions",
+            headers=auth_headers,
+            json={
+                "target": TARGET_EASY,
+                "directive": "Quick recon scan",
+            },
+        )
         if resp.status_code in (200, 201):
             mission_id = resp.json().get("id") or resp.json().get("mission_id")
             if mission_id:
@@ -488,6 +529,7 @@ class TestMissionExecution:
 # ============================================================
 # Section 8: CVE Intelligence Tests
 # ============================================================
+
 
 class TestCVEIntelligence:
     """Test CVE lookup functionality."""
@@ -508,6 +550,7 @@ class TestCVEIntelligence:
 # ============================================================
 # Section 9: Observability Tests
 # ============================================================
+
 
 class TestObservability:
     """Test monitoring and observability endpoints."""
@@ -548,6 +591,7 @@ class TestObservability:
 # Section 10: Settings & Configuration Tests
 # ============================================================
 
+
 class TestSettings:
     """Test settings management."""
 
@@ -565,6 +609,7 @@ class TestSettings:
 # ============================================================
 # Section 11: Exploit Resources Tests
 # ============================================================
+
 
 class TestExploitResources:
     """Test exploit database endpoints."""
@@ -594,6 +639,7 @@ class TestExploitResources:
 # Section 12: Security Tests
 # ============================================================
 
+
 class TestSecurity:
     """Security regression tests."""
 
@@ -606,8 +652,9 @@ class TestSecurity:
         ]
         for mid in malicious_ids:
             resp = client.get(f"/api/pentest-sessions/{mid}", headers=auth_headers)
-            assert resp.status_code in (400, 404, 422), \
+            assert resp.status_code in (400, 404, 422), (
                 f"Path traversal not blocked for: {mid} (got {resp.status_code})"
+            )
 
     def test_token_required_on_sensitive_endpoints(self, client):
         """Sensitive endpoints should require authentication."""
@@ -620,12 +667,11 @@ class TestSecurity:
         ]
         for endpoint in sensitive:
             resp = client.get(endpoint)
-            assert resp.status_code in (401, 403, 307), \
-                f"{endpoint} accessible without auth (got {resp.status_code})"
+            assert resp.status_code in (401, 403, 307), f"{endpoint} accessible without auth (got {resp.status_code})"
 
     def test_invalid_token_rejected(self, client):
         """Tampered JWT tokens should be rejected."""
-        resp = client.get("/api/missions", headers={
-            "Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.FAKE"
-        })
+        resp = client.get(
+            "/api/missions", headers={"Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.FAKE"}
+        )
         assert resp.status_code in (401, 403)

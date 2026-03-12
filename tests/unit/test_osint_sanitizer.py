@@ -1,6 +1,5 @@
 """Tests for OsintSanitizer privacy safeguards."""
 
-
 from app.services.ai.agents.recon_intel import OsintSanitizer
 
 

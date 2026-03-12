@@ -11,11 +11,15 @@ from app.services.mission.mission import Mission
 @pytest.fixture
 def mission():
     with patch("app.services.mission.mission.get_blackboard") as mock_bb:
-        mock_bb.return_value = type("BB", (), {
-            "write": lambda self, k, v, **kw: None,
-            "read": lambda self, k, **kw: None,
-            "read_all": lambda self: {},
-        })()
+        mock_bb.return_value = type(
+            "BB",
+            (),
+            {
+                "write": lambda self, k, v, **kw: None,
+                "read": lambda self, k, **kw: None,
+                "read_all": lambda self: {},
+            },
+        )()
         m = Mission(target="10.0.0.1", directive="Test scan")
         yield m
 

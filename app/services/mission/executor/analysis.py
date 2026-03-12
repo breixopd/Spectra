@@ -27,6 +27,7 @@ SUCCESS_INDICATORS_LOWER = [
     "[+]",
 ]
 
+
 def check_exploit_success(output: str) -> bool:
     """Check if exploit output indicates success."""
     output_lower = output.lower()
@@ -80,11 +81,7 @@ def suggest_retry(result: Any, vector: AttackVector) -> str | None:
         return "Try slower scan rate or different approach"
 
     # Authentication required
-    if (
-        "401" in stderr
-        or "unauthorized" in combined
-        or "authentication required" in combined
-    ):
+    if "401" in stderr or "unauthorized" in combined or "authentication required" in combined:
         return "Credentials needed, try default creds or brute force"
 
     # Service not vulnerable
@@ -157,9 +154,7 @@ def analyze_unexpected_output(
     for name, pattern in interesting_patterns:
         matches = re.findall(pattern, combined, re.IGNORECASE)
         if matches:
-            analysis["interesting_findings"].extend(
-                [f"{name}: {m}" for m in matches[:3]]
-            )
+            analysis["interesting_findings"].extend([f"{name}: {m}" for m in matches[:3]])
 
     # Generate suggestions based on analysis
     if analysis["error_type"] == "timeout":
@@ -167,9 +162,7 @@ def analyze_unexpected_output(
     elif analysis["error_type"] == "rate_limited":
         analysis["suggestions"].append("Add delay between requests")
     elif analysis["error_type"] == "blocked":
-        analysis["suggestions"].append(
-            "Try from different IP or use evasion techniques"
-        )
+        analysis["suggestions"].append("Try from different IP or use evasion techniques")
     elif analysis["error_type"] == "auth":
         analysis["suggestions"].append("Try default credentials or brute force")
 

@@ -63,9 +63,7 @@ class CostTracker:
     ) -> None:
         """Record a single LLM call's usage."""
         if agent_name not in self._usage:
-            self._usage[agent_name] = AgentUsage(
-                agent_name=agent_name, role=agent_role
-            )
+            self._usage[agent_name] = AgentUsage(agent_name=agent_name, role=agent_role)
 
         entry = self._usage[agent_name]
         entry.calls += 1
@@ -85,13 +83,9 @@ class CostTracker:
             entry._latencies.append(latency_ms)
             entry.avg_latency_ms = sum(entry._latencies) / len(entry._latencies)
 
-        entry.estimated_cost_usd += self._estimate_cost(
-            model, input_tokens, output_tokens
-        )
+        entry.estimated_cost_usd += self._estimate_cost(model, input_tokens, output_tokens)
 
-    def _estimate_cost(
-        self, model: str, input_tokens: int, output_tokens: int
-    ) -> float:
+    def _estimate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Estimate cost based on model pricing."""
         model_lower = model.lower()
         # Sort by prefix length descending so "gpt-4o-mini" matches before "gpt-4o"
@@ -99,10 +93,7 @@ class CostTracker:
             MODEL_PRICING.items(), key=lambda kv: len(kv[0]), reverse=True
         ):
             if prefix in model_lower:
-                return (
-                    (input_tokens / 1_000_000) * input_price
-                    + (output_tokens / 1_000_000) * output_price
-                )
+                return (input_tokens / 1_000_000) * input_price + (output_tokens / 1_000_000) * output_price
         return 0.0  # Unknown model, assume free
 
     def get_summary(self) -> dict[str, Any]:

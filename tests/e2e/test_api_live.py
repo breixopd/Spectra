@@ -3,6 +3,7 @@
 Run with: pytest tests/e2e/test_api_live.py -v
 Requires APP_BASE_URL environment variable.
 """
+
 import os
 
 import httpx
@@ -13,10 +14,7 @@ BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.e2e,
-    pytest.mark.skipif(
-        not os.environ.get("APP_BASE_URL"),
-        reason="APP_BASE_URL not set"
-    ),
+    pytest.mark.skipif(not os.environ.get("APP_BASE_URL"), reason="APP_BASE_URL not set"),
 ]
 
 
@@ -29,10 +27,13 @@ async def client():
 @pytest.fixture
 async def auth_client(client):
     """Authenticated client — logs in and returns client with auth headers."""
-    resp = await client.post("/api/auth/login", json={
-        "username": os.environ.get("TEST_USERNAME", "admin"),
-        "password": os.environ.get("TEST_PASSWORD", "admin"),
-    })
+    resp = await client.post(
+        "/api/auth/login",
+        json={
+            "username": os.environ.get("TEST_USERNAME", "admin"),
+            "password": os.environ.get("TEST_PASSWORD", "admin"),
+        },
+    )
     if resp.status_code != 200:
         pytest.skip("Cannot authenticate — check TEST_USERNAME/TEST_PASSWORD")
     token = resp.json().get("access_token") or resp.cookies.get("access_token")
@@ -80,11 +81,14 @@ async def test_service_topology(auth_client):
 async def test_server_pool_crud(auth_client):
     """Full CRUD cycle on server pool."""
     # Create
-    resp = await auth_client.post("/api/admin/servers", json={
-        "name": "e2e-test-worker",
-        "service_type": "sandbox_worker",
-        "url": "http://test.invalid:8080",
-    })
+    resp = await auth_client.post(
+        "/api/admin/servers",
+        json={
+            "name": "e2e-test-worker",
+            "service_type": "sandbox_worker",
+            "url": "http://test.invalid:8080",
+        },
+    )
     assert resp.status_code == 201
     node = resp.json()
     node_id = node["id"]
@@ -95,9 +99,12 @@ async def test_server_pool_crud(auth_client):
     assert any(n["id"] == node_id for n in resp.json())
 
     # Update
-    resp = await auth_client.patch(f"/api/admin/servers/{node_id}", json={
-        "weight": 5,
-    })
+    resp = await auth_client.patch(
+        f"/api/admin/servers/{node_id}",
+        json={
+            "weight": 5,
+        },
+    )
     assert resp.status_code == 200
     assert resp.json()["weight"] == 5
 

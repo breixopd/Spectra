@@ -227,9 +227,7 @@ class TestToolSelectorFallback:
             required_capability=None,
         )
 
-        result = agent._smart_fallback_selection(
-            input_data, [mock_tool_high, mock_tool_low]
-        )
+        result = agent._smart_fallback_selection(input_data, [mock_tool_high, mock_tool_low])
 
         # Lower risk should be preferred
         assert result.tool_name == "safe_scanner"
@@ -284,9 +282,7 @@ class TestToolSelectorExecution:
         )
 
         # Mock registry to return available tools
-        with patch(
-            "app.services.ai.agents.tool_selector.get_registry"
-        ) as mock_registry:
+        with patch("app.services.ai.agents.tool_selector.get_registry") as mock_registry:
             mock_tool = MagicMock()
             mock_tool.is_available = True
             mock_tool.config.id = "nmap"
@@ -328,9 +324,7 @@ class TestToolSelectorExecution:
         )
 
         # Mock registry to return no tools
-        with patch(
-            "app.services.ai.agents.tool_selector.get_registry"
-        ) as mock_registry:
+        with patch("app.services.ai.agents.tool_selector.get_registry") as mock_registry:
             mock_registry.return_value.list_tools.return_value = []
 
             result = await agent.execute(context, input_data)
@@ -375,8 +369,4 @@ class TestToolSelectorStealthMode:
 
         prompt = agent._build_system_prompt(context)
 
-        assert (
-            "stealth" in prompt.lower()
-            or "quiet" in prompt.lower()
-            or "evasion" in prompt.lower()
-        )
+        assert "stealth" in prompt.lower() or "quiet" in prompt.lower() or "evasion" in prompt.lower()

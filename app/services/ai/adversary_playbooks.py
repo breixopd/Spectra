@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+
 class PlaybookStep(BaseModel):
     name: str
     description: str
@@ -45,12 +46,49 @@ ADVERSARY_PLAYBOOKS: list[dict[str, Any]] = [
         "tags": ["apt", "web", "credential-harvest", "persistence"],
         "mitre_tactics": ["TA0043", "TA0001", "TA0006", "TA0003"],
         "steps": [
-            {"name": "web_recon", "description": "Technology fingerprinting and service enumeration", "tool": "whatweb", "phase": "discovery", "mitre_technique": "T1592"},
-            {"name": "vuln_scan", "description": "Targeted vulnerability scanning", "tool": "nuclei", "phase": "vulnerability", "mitre_technique": "T1595.002"},
-            {"name": "dir_enum", "description": "Directory and file discovery for admin panels", "tool": "gobuster", "phase": "enumeration", "mitre_technique": "T1083"},
-            {"name": "exploit_web", "description": "Exploit discovered web vulnerabilities", "tool": "sqlmap", "phase": "exploitation", "mitre_technique": "T1190", "success_criteria": "injection found"},
-            {"name": "cred_harvest", "description": "Extract credentials from compromised database", "tool": "sqlmap", "tool_args": {"dump": True}, "phase": "exploitation", "mitre_technique": "T1555"},
-            {"name": "persistence", "description": "Establish persistence via web shell or backdoor", "phase": "post_exploitation", "mitre_technique": "T1505.003"},
+            {
+                "name": "web_recon",
+                "description": "Technology fingerprinting and service enumeration",
+                "tool": "whatweb",
+                "phase": "discovery",
+                "mitre_technique": "T1592",
+            },
+            {
+                "name": "vuln_scan",
+                "description": "Targeted vulnerability scanning",
+                "tool": "nuclei",
+                "phase": "vulnerability",
+                "mitre_technique": "T1595.002",
+            },
+            {
+                "name": "dir_enum",
+                "description": "Directory and file discovery for admin panels",
+                "tool": "gobuster",
+                "phase": "enumeration",
+                "mitre_technique": "T1083",
+            },
+            {
+                "name": "exploit_web",
+                "description": "Exploit discovered web vulnerabilities",
+                "tool": "sqlmap",
+                "phase": "exploitation",
+                "mitre_technique": "T1190",
+                "success_criteria": "injection found",
+            },
+            {
+                "name": "cred_harvest",
+                "description": "Extract credentials from compromised database",
+                "tool": "sqlmap",
+                "tool_args": {"dump": True},
+                "phase": "exploitation",
+                "mitre_technique": "T1555",
+            },
+            {
+                "name": "persistence",
+                "description": "Establish persistence via web shell or backdoor",
+                "phase": "post_exploitation",
+                "mitre_technique": "T1505.003",
+            },
         ],
     },
     {
@@ -62,12 +100,45 @@ ADVERSARY_PLAYBOOKS: list[dict[str, Any]] = [
         "tags": ["apt", "financial", "web", "lateral-movement"],
         "mitre_tactics": ["TA0001", "TA0002", "TA0008", "TA0010"],
         "steps": [
-            {"name": "port_scan", "description": "Full port scan with service detection", "tool": "nmap", "phase": "discovery", "mitre_technique": "T1046"},
-            {"name": "web_vuln", "description": "Web vulnerability assessment", "tool": "nuclei", "phase": "vulnerability", "mitre_technique": "T1190"},
-            {"name": "default_creds", "description": "Test default credentials on discovered services", "tool": "hydra", "phase": "exploitation", "mitre_technique": "T1078.001"},
-            {"name": "exploit", "description": "Exploit most promising vulnerability", "phase": "exploitation", "mitre_technique": "T1190"},
-            {"name": "internal_recon", "description": "Enumerate internal network from compromised host", "phase": "post_exploitation", "mitre_technique": "T1018"},
-            {"name": "data_staging", "description": "Identify and stage sensitive data", "phase": "post_exploitation", "mitre_technique": "T1074"},
+            {
+                "name": "port_scan",
+                "description": "Full port scan with service detection",
+                "tool": "nmap",
+                "phase": "discovery",
+                "mitre_technique": "T1046",
+            },
+            {
+                "name": "web_vuln",
+                "description": "Web vulnerability assessment",
+                "tool": "nuclei",
+                "phase": "vulnerability",
+                "mitre_technique": "T1190",
+            },
+            {
+                "name": "default_creds",
+                "description": "Test default credentials on discovered services",
+                "tool": "hydra",
+                "phase": "exploitation",
+                "mitre_technique": "T1078.001",
+            },
+            {
+                "name": "exploit",
+                "description": "Exploit most promising vulnerability",
+                "phase": "exploitation",
+                "mitre_technique": "T1190",
+            },
+            {
+                "name": "internal_recon",
+                "description": "Enumerate internal network from compromised host",
+                "phase": "post_exploitation",
+                "mitre_technique": "T1018",
+            },
+            {
+                "name": "data_staging",
+                "description": "Identify and stage sensitive data",
+                "phase": "post_exploitation",
+                "mitre_technique": "T1074",
+            },
         ],
     },
     {
@@ -79,11 +150,40 @@ ADVERSARY_PLAYBOOKS: list[dict[str, Any]] = [
         "tags": ["network", "standard", "ptes"],
         "mitre_tactics": ["TA0043", "TA0001", "TA0002", "TA0004"],
         "steps": [
-            {"name": "discovery", "description": "Port scanning and service enumeration", "tool": "nmap", "phase": "discovery", "mitre_technique": "T1046"},
-            {"name": "vuln_scan", "description": "Vulnerability scanning with multiple tools", "tool": "nuclei", "phase": "vulnerability", "mitre_technique": "T1595.002"},
-            {"name": "web_enum", "description": "Web directory enumeration", "tool": "gobuster", "phase": "enumeration", "mitre_technique": "T1083"},
-            {"name": "cve_search", "description": "Search for public exploits", "tool": "searchsploit", "phase": "vulnerability", "mitre_technique": "T1588.005"},
-            {"name": "exploitation", "description": "Attempt exploitation of found vulns", "phase": "exploitation", "mitre_technique": "T1190"},
+            {
+                "name": "discovery",
+                "description": "Port scanning and service enumeration",
+                "tool": "nmap",
+                "phase": "discovery",
+                "mitre_technique": "T1046",
+            },
+            {
+                "name": "vuln_scan",
+                "description": "Vulnerability scanning with multiple tools",
+                "tool": "nuclei",
+                "phase": "vulnerability",
+                "mitre_technique": "T1595.002",
+            },
+            {
+                "name": "web_enum",
+                "description": "Web directory enumeration",
+                "tool": "gobuster",
+                "phase": "enumeration",
+                "mitre_technique": "T1083",
+            },
+            {
+                "name": "cve_search",
+                "description": "Search for public exploits",
+                "tool": "searchsploit",
+                "phase": "vulnerability",
+                "mitre_technique": "T1588.005",
+            },
+            {
+                "name": "exploitation",
+                "description": "Attempt exploitation of found vulns",
+                "phase": "exploitation",
+                "mitre_technique": "T1190",
+            },
             {"name": "reporting", "description": "Generate assessment report", "phase": "reporting"},
         ],
     },
@@ -96,11 +196,39 @@ ADVERSARY_PLAYBOOKS: list[dict[str, Any]] = [
         "tags": ["insider", "privilege-escalation", "data-exfil"],
         "mitre_tactics": ["TA0004", "TA0006", "TA0009", "TA0010"],
         "steps": [
-            {"name": "internal_scan", "description": "Scan internal network for services", "tool": "nmap", "phase": "discovery", "mitre_technique": "T1046"},
-            {"name": "service_enum", "description": "Enumerate accessible services", "tool": "nuclei", "phase": "enumeration", "mitre_technique": "T1046"},
-            {"name": "default_creds", "description": "Test default and weak credentials", "tool": "hydra", "phase": "exploitation", "mitre_technique": "T1110.001"},
-            {"name": "priv_esc", "description": "Attempt privilege escalation", "phase": "post_exploitation", "mitre_technique": "T1068"},
-            {"name": "data_discovery", "description": "Search for sensitive data", "phase": "post_exploitation", "mitre_technique": "T1083"},
+            {
+                "name": "internal_scan",
+                "description": "Scan internal network for services",
+                "tool": "nmap",
+                "phase": "discovery",
+                "mitre_technique": "T1046",
+            },
+            {
+                "name": "service_enum",
+                "description": "Enumerate accessible services",
+                "tool": "nuclei",
+                "phase": "enumeration",
+                "mitre_technique": "T1046",
+            },
+            {
+                "name": "default_creds",
+                "description": "Test default and weak credentials",
+                "tool": "hydra",
+                "phase": "exploitation",
+                "mitre_technique": "T1110.001",
+            },
+            {
+                "name": "priv_esc",
+                "description": "Attempt privilege escalation",
+                "phase": "post_exploitation",
+                "mitre_technique": "T1068",
+            },
+            {
+                "name": "data_discovery",
+                "description": "Search for sensitive data",
+                "phase": "post_exploitation",
+                "mitre_technique": "T1083",
+            },
         ],
     },
 ]

@@ -69,7 +69,12 @@ class VectorGeneratorAgent(Agent[VectorGeneratorInput, VectorGeneratorOutput]):
         ],
         "smb": [
             {"name": "SMB Enumeration", "tools": ["enum4linux", "crackmapexec"], "phase": "recon"},
-            {"name": "EternalBlue Check", "tools": ["nmap"], "nmap_scripts": ["smb-vuln-ms17-010"], "phase": "vuln_scan"},
+            {
+                "name": "EternalBlue Check",
+                "tools": ["nmap"],
+                "nmap_scripts": ["smb-vuln-ms17-010"],
+                "phase": "vuln_scan",
+            },
             {"name": "SMB Brute Force", "tools": ["hydra", "crackmapexec"], "phase": "exploitation"},
         ],
         "ssh": [
@@ -82,7 +87,12 @@ class VectorGeneratorAgent(Agent[VectorGeneratorInput, VectorGeneratorOutput]):
         ],
         "mysql": [
             {"name": "MySQL Brute Force", "tools": ["hydra"], "phase": "exploitation"},
-            {"name": "MySQL Enumeration", "tools": ["nmap"], "nmap_scripts": ["mysql-info", "mysql-databases"], "phase": "recon"},
+            {
+                "name": "MySQL Enumeration",
+                "tools": ["nmap"],
+                "nmap_scripts": ["mysql-info", "mysql-databases"],
+                "phase": "recon",
+            },
         ],
         "dns": [
             {"name": "DNS Zone Transfer", "tools": ["nmap"], "nmap_scripts": ["dns-zone-transfer"], "phase": "recon"},
@@ -123,15 +133,17 @@ class VectorGeneratorAgent(Agent[VectorGeneratorInput, VectorGeneratorOutput]):
                 for rv in raw:
                     host = target_data.get("host", "unknown")
                     port = rv.get("target_port", target_data.get("port", 0))
-                    det_vectors.append(AttackVector(
-                        id=f"det-{uuid.uuid4().hex[:8]}",
-                        name=rv["name"],
-                        description=f"Deterministic vector for {rv.get('target_service', '')}",
-                        priority=phase_priorities.get(rv.get("phase", ""), VectorPriority.MEDIUM),
-                        suggested_tools=rv["tools"],
-                        target_type=input_data.target_type,
-                        target_ref=f"{host}:{port}",
-                    ))
+                    det_vectors.append(
+                        AttackVector(
+                            id=f"det-{uuid.uuid4().hex[:8]}",
+                            name=rv["name"],
+                            description=f"Deterministic vector for {rv.get('target_service', '')}",
+                            priority=phase_priorities.get(rv.get("phase", ""), VectorPriority.MEDIUM),
+                            suggested_tools=rv["tools"],
+                            target_type=input_data.target_type,
+                            target_ref=f"{host}:{port}",
+                        )
+                    )
 
             # 2. LLM-generated creative vectors
             action = await self._generate_with_llm(context, input_data)
@@ -198,13 +210,17 @@ Think like an experienced penetration tester following PTES methodology:
 - Consider default credentials, known CVEs, misconfigurations, and protocol-specific attacks."""
 
         ctx = ContextManager(max_context_tokens=6000)
-        prompt = ctx.build([
-            ContextSection("task", base_prompt, Priority.CRITICAL),
-            ContextSection("target_data", f"Target Data: {input_data.target_data}", Priority.HIGH, max_tokens=500),
-            ContextSection("tools", tools_context, Priority.HIGH, max_tokens=800),
-            ContextSection("rag", rag_context, Priority.MEDIUM, max_tokens=500),
-            ContextSection("context_notes", f"Context: {input_data.context_notes or 'None'}", Priority.LOW, max_tokens=200),
-        ])
+        prompt = ctx.build(
+            [
+                ContextSection("task", base_prompt, Priority.CRITICAL),
+                ContextSection("target_data", f"Target Data: {input_data.target_data}", Priority.HIGH, max_tokens=500),
+                ContextSection("tools", tools_context, Priority.HIGH, max_tokens=800),
+                ContextSection("rag", rag_context, Priority.MEDIUM, max_tokens=500),
+                ContextSection(
+                    "context_notes", f"Context: {input_data.context_notes or 'None'}", Priority.LOW, max_tokens=200
+                ),
+            ]
+        )
 
         system_prompt = self._build_system_prompt(context)
 
@@ -232,9 +248,7 @@ Think like an experienced penetration tester following PTES methodology:
                         vector.target_ref = "unknown"
 
                 # Normalize tool names to lowercase (tool IDs are lowercase)
-                vector.suggested_tools = [
-                    self._normalize_tool_name(t) for t in vector.suggested_tools
-                ]
+                vector.suggested_tools = [self._normalize_tool_name(t) for t in vector.suggested_tools]
 
             return response
 

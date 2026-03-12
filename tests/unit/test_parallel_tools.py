@@ -1,6 +1,5 @@
 """Tests for parallel tool execution."""
 
-
 from app.services.ai.agents.base import (
     AgentContext,
     ParallelToolAction,

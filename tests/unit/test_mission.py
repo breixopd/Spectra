@@ -2,7 +2,6 @@
 Tests for the Mission class and attack surface tracking.
 """
 
-
 from app.models.attack_surface import (
     AttackVector,
     VectorPriority,
@@ -80,12 +79,8 @@ class TestMissionServiceTracking:
         """get_known_services returns services as dicts."""
         mission = Mission("192.168.1.1", "test")
 
-        mission.add_service(
-            host="192.168.1.1", port=22, service="ssh", product="OpenSSH", version="8.9"
-        )
-        mission.add_service(
-            host="192.168.1.1", port=80, service="http", product="nginx"
-        )
+        mission.add_service(host="192.168.1.1", port=22, service="ssh", product="OpenSSH", version="8.9")
+        mission.add_service(host="192.168.1.1", port=80, service="http", product="nginx")
 
         services = mission.get_known_services()
 
@@ -169,9 +164,7 @@ class TestAttackSurfaceIntegration:
         """add_webapp should track web applications."""
         mission = Mission("https://example.com", "Web assessment")
 
-        webapp = mission.add_webapp(
-            url="https://example.com", technologies=["WordPress", "PHP", "nginx"]
-        )
+        webapp = mission.add_webapp(url="https://example.com", technologies=["WordPress", "PHP", "nginx"])
 
         assert webapp.url == "https://example.com"
         assert "WordPress" in webapp.technologies

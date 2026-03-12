@@ -188,9 +188,7 @@ class TestGetQueueName:
         """_get_queue_name routes through SandboxInfo.make_queue_name."""
         from app.services.tools.service import ToolExecutionService
 
-        result = ToolExecutionService._get_queue_name(
-            "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-        )
+        result = ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
         assert result == "mission_a1b2c3d4"
 
 
@@ -261,11 +259,8 @@ class TestWorkerQueueEnv:
         worker_path = Path("app/worker/__main__.py")
         source = worker_path.read_text()
 
-        assert (
-            'os.environ.get("QUEUE_NAME"' in source
-            or "os.environ.get('QUEUE_NAME'" in source
-        ), "Worker should read QUEUE_NAME from environment"
-
-        assert "queue_name=queue_name" in source, (
-            "Worker should pass queue_name to worker_loop"
+        assert 'os.environ.get("QUEUE_NAME"' in source or "os.environ.get('QUEUE_NAME'" in source, (
+            "Worker should read QUEUE_NAME from environment"
         )
+
+        assert "queue_name=queue_name" in source, "Worker should pass queue_name to worker_loop"

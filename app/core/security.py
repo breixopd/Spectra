@@ -80,27 +80,33 @@ async def _persist_to_db() -> None:
         async with async_session_maker() as session:
             for token_hash, expiry in _blacklisted_tokens.items():
                 if expiry > now:
-                    await session.execute(text(
-                        "INSERT INTO cache_entries (key, value, expires_at, created_at) "
-                        "VALUES (:key, :value, :expires_at, :created_at) "
-                        "ON CONFLICT (key) DO UPDATE SET value = :value, expires_at = :expires_at"
-                    ), {
-                        "key": f"blacklist:token:{token_hash}",
-                        "value": json.dumps({"type": "token", "expiry": expiry}),
-                        "expires_at": datetime.fromtimestamp(expiry, tz=UTC),
-                        "created_at": datetime.now(UTC),
-                    })
+                    await session.execute(
+                        text(
+                            "INSERT INTO cache_entries (key, value, expires_at, created_at) "
+                            "VALUES (:key, :value, :expires_at, :created_at) "
+                            "ON CONFLICT (key) DO UPDATE SET value = :value, expires_at = :expires_at"
+                        ),
+                        {
+                            "key": f"blacklist:token:{token_hash}",
+                            "value": json.dumps({"type": "token", "expiry": expiry}),
+                            "expires_at": datetime.fromtimestamp(expiry, tz=UTC),
+                            "created_at": datetime.now(UTC),
+                        },
+                    )
 
             for username, invalidated_before in _user_token_blacklist.items():
-                await session.execute(text(
-                    "INSERT INTO cache_entries (key, value, expires_at, created_at) "
-                    "VALUES (:key, :value, NULL, :created_at) "
-                    "ON CONFLICT (key) DO UPDATE SET value = :value"
-                ), {
-                    "key": f"blacklist:user:{username}",
-                    "value": json.dumps({"type": "user", "invalidated_before": invalidated_before}),
-                    "created_at": datetime.now(UTC),
-                })
+                await session.execute(
+                    text(
+                        "INSERT INTO cache_entries (key, value, expires_at, created_at) "
+                        "VALUES (:key, :value, NULL, :created_at) "
+                        "ON CONFLICT (key) DO UPDATE SET value = :value"
+                    ),
+                    {
+                        "key": f"blacklist:user:{username}",
+                        "value": json.dumps({"type": "user", "invalidated_before": invalidated_before}),
+                        "created_at": datetime.now(UTC),
+                    },
+                )
 
             await session.commit()
     except Exception as e:
@@ -115,9 +121,11 @@ async def _load_from_db() -> None:
         from app.core.database import async_session_maker
 
         async with async_session_maker() as session:
-            rows = (await session.execute(text(
-                "SELECT key, value FROM cache_entries WHERE key LIKE 'blacklist:%'"
-            ))).mappings().all()
+            rows = (
+                (await session.execute(text("SELECT key, value FROM cache_entries WHERE key LIKE 'blacklist:%'")))
+                .mappings()
+                .all()
+            )
 
         now = _time.time()
         loaded_tokens = 0
@@ -127,18 +135,17 @@ async def _load_from_db() -> None:
                 data = json.loads(row["value"])
                 key: str = row["key"]
                 if key.startswith("blacklist:token:"):
-                    token_hash = key[len("blacklist:token:"):]
+                    token_hash = key[len("blacklist:token:") :]
                     expiry = data.get("expiry", 0)
                     if expiry > now:
                         _blacklisted_tokens[token_hash] = expiry
                         loaded_tokens += 1
                 elif key.startswith("blacklist:user:"):
-                    username = key[len("blacklist:user:"):]
+                    username = key[len("blacklist:user:") :]
                     _user_token_blacklist[username] = data.get("invalidated_before", 0)
                     loaded_users += 1
 
-        _logger.info("Loaded %d token + %d user blacklist entries from DB",
-                     loaded_tokens, loaded_users)
+        _logger.info("Loaded %d token + %d user blacklist entries from DB", loaded_tokens, loaded_users)
     except Exception as e:
         _logger.warning("Failed to load blacklist from DB: %s", e)
 
@@ -255,9 +262,7 @@ def create_access_token(
     to_encode = data.copy()
 
     now = datetime.now(UTC)
-    expire = now + (
-        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
+    expire = now + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
 
     to_encode.update(
         {

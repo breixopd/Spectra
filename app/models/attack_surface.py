@@ -88,9 +88,7 @@ class ExploitAttempt(BaseModel):
     payload: str | None = None
     encoding: str | None = None
     waf_bypass: str | None = None
-    configuration: dict[str, Any] = Field(
-        default_factory=dict
-    )  # Added for storing config
+    configuration: dict[str, Any] = Field(default_factory=dict)  # Added for storing config
 
     success: bool
     output: str = ""
@@ -123,18 +121,13 @@ class AttackVector(BaseModel):
     max_attempts: int = 3
 
     # Dependencies
-    requires_vectors: list[str] = Field(
-        default_factory=list
-    )  # Vector IDs that must succeed first
+    requires_vectors: list[str] = Field(default_factory=list)  # Vector IDs that must succeed first
     chain_id: str | None = None  # ID of the exploit chain this belongs to
 
     @property
     def can_retry(self) -> bool:
         """Check if this vector can be retried."""
-        return (
-            self.status == VectorStatus.FAILED
-            and len(self.attempts) < self.max_attempts
-        )
+        return self.status == VectorStatus.FAILED and len(self.attempts) < self.max_attempts
 
     @property
     def attempts_remaining(self) -> int:
@@ -242,9 +235,7 @@ class AttackSurface(BaseModel):
                     continue
 
                 # Check dependencies
-                deps_met = all(
-                    self._vector_succeeded(dep_id) for dep_id in vector.requires_vectors
-                )
+                deps_met = all(self._vector_succeeded(dep_id) for dep_id in vector.requires_vectors)
 
                 if deps_met:
                     return vector
@@ -290,13 +281,9 @@ class AttackSurface(BaseModel):
         """Get attack surface summary."""
         # Count vectors by priority
         vectors_by_priority = {
-            "critical": len(
-                [v for v in self.vectors if v.priority == VectorPriority.CRITICAL]
-            ),
+            "critical": len([v for v in self.vectors if v.priority == VectorPriority.CRITICAL]),
             "high": len([v for v in self.vectors if v.priority == VectorPriority.HIGH]),
-            "medium": len(
-                [v for v in self.vectors if v.priority == VectorPriority.MEDIUM]
-            ),
+            "medium": len([v for v in self.vectors if v.priority == VectorPriority.MEDIUM]),
             "low": len([v for v in self.vectors if v.priority == VectorPriority.LOW]),
         }
 
@@ -306,19 +293,12 @@ class AttackSurface(BaseModel):
             "web_apps": len(self.web_apps),
             "vulnerabilities": len(self.vulnerabilities),
             "vectors_total": len(self.vectors),
-            "vectors_pending": len(
-                [v for v in self.vectors if v.status == VectorStatus.PENDING]
-            ),
-            "vectors_success": len(
-                [v for v in self.vectors if v.status == VectorStatus.SUCCESS]
-            ),
-            "vectors_failed": len(
-                [v for v in self.vectors if v.status == VectorStatus.FAILED]
-            ),
+            "vectors_pending": len([v for v in self.vectors if v.status == VectorStatus.PENDING]),
+            "vectors_success": len([v for v in self.vectors if v.status == VectorStatus.SUCCESS]),
+            "vectors_failed": len([v for v in self.vectors if v.status == VectorStatus.FAILED]),
             "vectors_by_priority": vectors_by_priority,
             "exploitation_success_rate": (
-                self.exploitation_successes
-                / max(1, self.exploitation_successes + self.exploitation_failures)
+                self.exploitation_successes / max(1, self.exploitation_successes + self.exploitation_failures)
             ),
         }
 

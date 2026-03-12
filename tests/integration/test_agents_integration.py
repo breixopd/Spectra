@@ -135,18 +135,14 @@ async def test_exploit_crafter_flow(mock_llm):
     }
 
     agent = ExploitCrafter(mock_llm)
-    inp = ExploitInput(
-        target="1.1.1.1", vulnerability_id="CVE-2024-0001", service_info={"port": 80}
-    )
+    inp = ExploitInput(target="1.1.1.1", vulnerability_id="CVE-2024-0001", service_info={"port": 80})
     context = MagicMock(spec=AgentContext)
     context.session_id = "test-session"
     context.previous_actions = []
 
     # Mock specialized methods via patching if needed or rely on MockLLM for simple flow
     # _find_exploit_candidates calls RAG which might fail if not mocked
-    with patch(
-        "app.services.ai.agents.exploit_crafter.ExploitCrafter._find_exploit_candidates"
-    ) as mock_find:
+    with patch("app.services.ai.agents.exploit_crafter.ExploitCrafter._find_exploit_candidates") as mock_find:
         mock_find.return_value = [{"name": "test_exploit", "type": "cve"}]
 
         result = await agent.execute(context, inp)
@@ -192,12 +188,8 @@ async def test_mission_controller_planning(mock_llm):
             "app.services.ai.knowledge.get_available_tools_context",
             new_callable=MagicMock,
         ) as mock_tools,
-        patch(
-            "app.services.ai.knowledge.get_mission_context", new_callable=MagicMock
-        ) as mock_ctx,
-        patch(
-            "app.services.ai.knowledge.get_full_methodology", new_callable=MagicMock
-        ) as mock_meth,
+        patch("app.services.ai.knowledge.get_mission_context", new_callable=MagicMock) as mock_ctx,
+        patch("app.services.ai.knowledge.get_full_methodology", new_callable=MagicMock) as mock_meth,
     ):
         mock_tools.return_value = "Tools available"
         mock_ctx.return_value = "Context"

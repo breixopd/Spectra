@@ -6,6 +6,7 @@ import pytest
 def _validate(password: str) -> str:
     """Import and call the shared password validator."""
     from app.api.routers.public import _validate_password_strength
+
     return _validate_password_strength(password)
 
 

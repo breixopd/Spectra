@@ -12,11 +12,13 @@ class TestImageScanConfig:
 
     def test_scan_enabled_default_true(self):
         from app.core.config import Settings
+
         s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"), SANDBOX_IMAGE_SCAN_ENABLED=True)
         assert s.SANDBOX_IMAGE_SCAN_ENABLED is True
 
     def test_block_critical_default_false(self):
         from app.core.config import Settings
+
         s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
         assert s.SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL is False
 
@@ -26,10 +28,15 @@ class TestScanResult:
 
     def test_to_dict(self):
         from app.services.tools.sandbox.image_scanner import ScanResult
+
         r = ScanResult(
             image="spectra-tools:latest",
             status="warnings",
-            critical=0, high=3, medium=10, low=5, total=18,
+            critical=0,
+            high=3,
+            medium=10,
+            low=5,
+            total=18,
         )
         d = r.to_dict()
         assert d["image"] == "spectra-tools:latest"
@@ -40,9 +47,12 @@ class TestScanResult:
 
     def test_blocked_flag(self):
         from app.services.tools.sandbox.image_scanner import ScanResult
+
         r = ScanResult(
-            image="img", status="critical",
-            critical=2, blocked=True,
+            image="img",
+            status="critical",
+            critical=2,
+            blocked=True,
         )
         assert r.blocked is True
         assert r.to_dict()["blocked"] is True
@@ -53,16 +63,19 @@ class TestImageScanner:
 
     def test_import(self):
         from app.services.tools.sandbox.image_scanner import ImageScanner
+
         assert ImageScanner is not None
 
     def test_unavailable_without_trivy(self):
         from app.services.tools.sandbox.image_scanner import ImageScanner
+
         with patch("shutil.which", return_value=None):
             scanner = ImageScanner()
             assert scanner.available is False
 
     def test_available_with_trivy(self):
         from app.services.tools.sandbox.image_scanner import ImageScanner
+
         with patch("shutil.which", return_value="/usr/bin/trivy"):
             scanner = ImageScanner()
             assert scanner.available is True
@@ -70,6 +83,7 @@ class TestImageScanner:
     @pytest.mark.asyncio
     async def test_scan_returns_unavailable_without_trivy(self):
         from app.services.tools.sandbox.image_scanner import ImageScanner
+
         with patch("shutil.which", return_value=None):
             scanner = ImageScanner()
             result = await scanner.scan("test-image:latest")
@@ -79,20 +93,22 @@ class TestImageScanner:
     async def test_scan_parses_trivy_output(self):
         from app.services.tools.sandbox.image_scanner import ImageScanner
 
-        trivy_output = json.dumps({
-            "Results": [
-                {
-                    "Target": "test-image",
-                    "Type": "os",
-                    "Vulnerabilities": [
-                        {"VulnerabilityID": "CVE-2024-001", "Severity": "CRITICAL"},
-                        {"VulnerabilityID": "CVE-2024-002", "Severity": "HIGH"},
-                        {"VulnerabilityID": "CVE-2024-003", "Severity": "MEDIUM"},
-                        {"VulnerabilityID": "CVE-2024-004", "Severity": "LOW"},
-                    ]
-                }
-            ]
-        }).encode()
+        trivy_output = json.dumps(
+            {
+                "Results": [
+                    {
+                        "Target": "test-image",
+                        "Type": "os",
+                        "Vulnerabilities": [
+                            {"VulnerabilityID": "CVE-2024-001", "Severity": "CRITICAL"},
+                            {"VulnerabilityID": "CVE-2024-002", "Severity": "HIGH"},
+                            {"VulnerabilityID": "CVE-2024-003", "Severity": "MEDIUM"},
+                            {"VulnerabilityID": "CVE-2024-004", "Severity": "LOW"},
+                        ],
+                    }
+                ]
+            }
+        ).encode()
 
         mock_process = AsyncMock()
         mock_process.communicate = AsyncMock(return_value=(trivy_output, b""))
@@ -126,9 +142,15 @@ class TestImageScanner:
         from app.services.tools.sandbox.image_scanner import ImageScanner
 
         trivy_output = {
-            "Results": [{"Target": "img", "Type": "os", "Vulnerabilities": [
-                {"VulnerabilityID": "CVE-2024-001", "Severity": "CRITICAL"},
-            ]}]
+            "Results": [
+                {
+                    "Target": "img",
+                    "Type": "os",
+                    "Vulnerabilities": [
+                        {"VulnerabilityID": "CVE-2024-001", "Severity": "CRITICAL"},
+                    ],
+                }
+            ]
         }
 
         with (
@@ -150,9 +172,15 @@ class TestImageScanner:
         from app.services.tools.sandbox.image_scanner import ImageScanner
 
         trivy_output = {
-            "Results": [{"Target": "img", "Type": "os", "Vulnerabilities": [
-                {"VulnerabilityID": "CVE-2024-002", "Severity": "HIGH"},
-            ]}]
+            "Results": [
+                {
+                    "Target": "img",
+                    "Type": "os",
+                    "Vulnerabilities": [
+                        {"VulnerabilityID": "CVE-2024-002", "Severity": "HIGH"},
+                    ],
+                }
+            ]
         }
 
         with (

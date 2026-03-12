@@ -16,6 +16,7 @@ from app.api.routers.admin.users import router as users_router
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_user(role: str = "admin", user_id: str = "uid-1") -> MagicMock:
     u = MagicMock()
     u.id = user_id
@@ -38,6 +39,7 @@ def _build_app(override_user: MagicMock | None = None) -> FastAPI:
 
     if override_user is not None:
         from app.api.dependencies import get_current_active_user
+
         app.dependency_overrides[get_current_active_user] = lambda: override_user
 
     return app
@@ -75,6 +77,7 @@ class TestListUsers:
         mock_sess.execute = AsyncMock(side_effect=[mock_count_result, mock_rows_result])
 
         from app.core.database import get_async_session
+
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
@@ -100,6 +103,7 @@ class TestGetUser:
         mock_sess.execute = AsyncMock(return_value=mock_result)
 
         from app.core.database import get_async_session
+
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
@@ -119,6 +123,7 @@ class TestGetUser:
         mock_sess.execute = AsyncMock(return_value=mock_result)
 
         from app.core.database import get_async_session
+
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
@@ -142,6 +147,7 @@ class TestUpdateUserRole:
         mock_sess.refresh = AsyncMock()
 
         from app.core.database import get_async_session
+
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         with patch("app.api.routers.admin.users.audit_log_event", new_callable=AsyncMock):
@@ -192,32 +198,38 @@ class TestCreatePlan:
 
         from app.core.database import get_async_session
         from app.models.plan import Plan as PlanModel
+
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
-        with patch("app.api.routers.admin.plans.audit_log_event", new_callable=AsyncMock), \
-             patch("app.api.routers.admin.plans.Plan") as MockPlan:
+        with (
+            patch("app.api.routers.admin.plans.audit_log_event", new_callable=AsyncMock),
+            patch("app.api.routers.admin.plans.Plan") as MockPlan,
+        ):
             instance = plan
             MockPlan.return_value = instance
             MockPlan.id = PlanModel.id
             MockPlan.name = PlanModel.name
 
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.post("/api/admin/plans", json={
-                    "name": "pro",
-                    "display_name": "Pro",
-                    "description": "Pro plan",
-                    "is_default": False,
-                    "sort_order": 1,
-                    "max_concurrent_missions": 5,
-                    "max_missions_per_month": 100,
-                    "max_targets": 50,
-                    "max_api_requests_per_hour": 1000,
-                    "max_api_requests_per_day": 10000,
-                    "sandbox_max_containers": 3,
-                    "max_storage_mb": 5000,
-                    "sandbox_resource_tier": "medium",
-                    "features": {},
-                })
+                resp = await ac.post(
+                    "/api/admin/plans",
+                    json={
+                        "name": "pro",
+                        "display_name": "Pro",
+                        "description": "Pro plan",
+                        "is_default": False,
+                        "sort_order": 1,
+                        "max_concurrent_missions": 5,
+                        "max_missions_per_month": 100,
+                        "max_targets": 50,
+                        "max_api_requests_per_hour": 1000,
+                        "max_api_requests_per_day": 10000,
+                        "sandbox_max_containers": 3,
+                        "max_storage_mb": 5000,
+                        "sandbox_resource_tier": "medium",
+                        "features": {},
+                    },
+                )
 
         assert resp.status_code == 201
 
@@ -252,6 +264,7 @@ class TestListPlans:
         mock_sess.execute = AsyncMock(return_value=mock_result)
 
         from app.core.database import get_async_session
+
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
@@ -299,15 +312,26 @@ class TestNonSuperuserAccessDenied:
 # Plan update & validation
 # ---------------------------------------------------------------------------
 
+
 def _make_plan(**overrides):
     """Return a MagicMock that looks like a Plan ORM object."""
     defaults = dict(
-        id="plan-1", name="pro", display_name="Pro", description="Pro plan",
-        is_active=True, is_default=False, sort_order=1,
-        max_concurrent_missions=5, max_missions_per_month=100, max_targets=50,
-        max_api_requests_per_hour=1000, max_api_requests_per_day=10000,
-        sandbox_max_containers=3, max_storage_mb=5000,
-        sandbox_resource_tier="medium", features={},
+        id="plan-1",
+        name="pro",
+        display_name="Pro",
+        description="Pro plan",
+        is_active=True,
+        is_default=False,
+        sort_order=1,
+        max_concurrent_missions=5,
+        max_missions_per_month=100,
+        max_targets=50,
+        max_api_requests_per_hour=1000,
+        max_api_requests_per_day=10000,
+        sandbox_max_containers=3,
+        max_storage_mb=5000,
+        sandbox_resource_tier="medium",
+        features={},
     )
     defaults.update(overrides)
     p = MagicMock()
@@ -332,14 +356,18 @@ class TestUpdatePlan:
         mock_sess.refresh = AsyncMock()
 
         from app.core.database import get_async_session
+
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         with patch("app.api.routers.admin.plans.audit_log_event", new_callable=AsyncMock):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.put("/api/admin/plans/plan-1", json={
-                    "display_name": "Pro Plus",
-                    "max_targets": 100,
-                })
+                resp = await ac.put(
+                    "/api/admin/plans/plan-1",
+                    json={
+                        "display_name": "Pro Plus",
+                        "max_targets": 100,
+                    },
+                )
 
         assert resp.status_code == 200
         body = resp.json()
@@ -356,12 +384,16 @@ class TestUpdatePlan:
         mock_sess.execute = AsyncMock(return_value=mock_result)
 
         from app.core.database import get_async_session
+
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            resp = await ac.put("/api/admin/plans/nonexistent", json={
-                "display_name": "X",
-            })
+            resp = await ac.put(
+                "/api/admin/plans/nonexistent",
+                json={
+                    "display_name": "X",
+                },
+            )
 
         assert resp.status_code == 404
 
@@ -378,25 +410,29 @@ class TestCreatePlanDuplicate:
         mock_sess.execute = AsyncMock(return_value=mock_dup)
 
         from app.core.database import get_async_session
+
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            resp = await ac.post("/api/admin/plans", json={
-                "name": "pro",
-                "display_name": "Pro",
-                "description": "Dup",
-                "is_default": False,
-                "sort_order": 1,
-                "max_concurrent_missions": 5,
-                "max_missions_per_month": 100,
-                "max_targets": 50,
-                "max_api_requests_per_hour": 1000,
-                "max_api_requests_per_day": 10000,
-                "sandbox_max_containers": 3,
-                "max_storage_mb": 5000,
-                "sandbox_resource_tier": "medium",
-                "features": {},
-            })
+            resp = await ac.post(
+                "/api/admin/plans",
+                json={
+                    "name": "pro",
+                    "display_name": "Pro",
+                    "description": "Dup",
+                    "is_default": False,
+                    "sort_order": 1,
+                    "max_concurrent_missions": 5,
+                    "max_missions_per_month": 100,
+                    "max_targets": 50,
+                    "max_api_requests_per_hour": 1000,
+                    "max_api_requests_per_day": 10000,
+                    "sandbox_max_containers": 3,
+                    "max_storage_mb": 5000,
+                    "sandbox_resource_tier": "medium",
+                    "features": {},
+                },
+            )
 
         assert resp.status_code == 409
 

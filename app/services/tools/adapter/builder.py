@@ -10,6 +10,7 @@ from app.services.tools.models import ToolConfig, ToolExecutionRequest
 
 logger = logging.getLogger(__name__)
 
+
 class CommandBuilder:
     """Handles command construction and argument templating."""
 
@@ -51,9 +52,7 @@ class CommandBuilder:
         # Handle output file requirement
         if "{output_file}" in args_template:
             if not output_dir:
-                raise ValueError(
-                    f"Tool {self.config.id} requires output_dir for {{output_file}} template"
-                )
+                raise ValueError(f"Tool {self.config.id} requires output_dir for {{output_file}} template")
 
             output_path = Path(output_dir) / f"{self.config.id}_output"
             substitutions["output_file"] = str(output_path)
@@ -174,9 +173,7 @@ class CommandBuilder:
 
         return result
 
-    def _process_conditional_blocks(
-        self, template: str, substitutions: dict[str, Any]
-    ) -> str:
+    def _process_conditional_blocks(self, template: str, substitutions: dict[str, Any]) -> str:
         """Process conditional blocks in the template.
 
         Format: [content {placeholder} content]

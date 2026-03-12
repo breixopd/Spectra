@@ -13,12 +13,14 @@ def sqlite_engine():
     InfrastructureBase.metadata.create_all(engine)
     return engine
 
+
 @pytest.fixture
 def db_session(sqlite_engine):
     Session = sessionmaker(bind=sqlite_engine)
     session = Session()
     yield session
     session.close()
+
 
 def test_jsonb_type_sqlite(db_session):
     # Test JSONBType behaves as expected with SQLite
@@ -30,29 +32,21 @@ def test_jsonb_type_sqlite(db_session):
     assert retrieved is not None
     assert retrieved.value == {"some": "data"}
 
+
 def test_jsonb_type_none_values(db_session):
     # Test JSONBType handles None correctly where column allows null
     # JobQueue.result is nullable, SystemCache.value is not
-    job = JobQueue(
-        id="job_null",
-        queue_name="test_q",
-        function="my_func",
-        result=None
-    )
+    job = JobQueue(id="job_null", queue_name="test_q", function="my_func", result=None)
     db_session.add(job)
     db_session.commit()
 
     retrieved = db_session.query(JobQueue).filter_by(id="job_null").first()
     assert retrieved.result is None
 
+
 def test_job_queue_model(db_session):
     job = JobQueue(
-        id="job_1",
-        queue_name="test_q",
-        function="my_func",
-        args=[1, 2],
-        kwargs={"test": "val"},
-        status="queued"
+        id="job_1", queue_name="test_q", function="my_func", args=[1, 2], kwargs={"test": "val"}, status="queued"
     )
     db_session.add(job)
     db_session.commit()
@@ -63,11 +57,9 @@ def test_job_queue_model(db_session):
     assert retrieved.kwargs == {"test": "val"}
     assert retrieved.status == "queued"
 
+
 def test_system_status_model(db_session):
-    status = SystemStatus(
-        key="test_status",
-        value={"is_ready": True}
-    )
+    status = SystemStatus(key="test_status", value={"is_ready": True})
     db_session.add(status)
     db_session.commit()
 

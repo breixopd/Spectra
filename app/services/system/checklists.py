@@ -63,7 +63,11 @@ BUILTIN_CHECKLISTS: dict[str, dict[str, Any]] = {
                 "name": "A06: Vulnerable Components",
                 "items": [
                     {"id": "a06-01", "text": "Identify component versions (whatweb, wappalyzer)", "tools": ["whatweb"]},
-                    {"id": "a06-02", "text": "Check for known CVEs (nuclei, searchsploit)", "tools": ["nuclei", "searchsploit"]},
+                    {
+                        "id": "a06-02",
+                        "text": "Check for known CVEs (nuclei, searchsploit)",
+                        "tools": ["nuclei", "searchsploit"],
+                    },
                 ],
             },
             {
@@ -118,7 +122,11 @@ BUILTIN_CHECKLISTS: dict[str, dict[str, Any]] = {
             {
                 "name": "Enumeration",
                 "items": [
-                    {"id": "net-06", "text": "SMB enumeration (shares, users)", "tools": ["enum4linux", "crackmapexec"]},
+                    {
+                        "id": "net-06",
+                        "text": "SMB enumeration (shares, users)",
+                        "tools": ["enum4linux", "crackmapexec"],
+                    },
                     {"id": "net-07", "text": "SNMP enumeration"},
                     {"id": "net-08", "text": "LDAP enumeration"},
                     {"id": "net-09", "text": "NFS enumeration (showmount)"},

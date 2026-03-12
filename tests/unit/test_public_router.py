@@ -13,6 +13,7 @@ from app.api.routers.public import router
 
 def _make_app() -> FastAPI:
     from app.core.rate_limit import limiter
+
     app = FastAPI()
     app.state.limiter = limiter
     limiter.enabled = False
@@ -60,9 +61,11 @@ class TestLandingPage:
         plan_result.scalars.return_value.all.return_value = []
         maker, _ = _mock_session_ctx([plan_result])
 
-        with patch("app.api.routers.public._get_user_from_cookie", return_value=None), \
-             patch("app.api.routers.public.async_session_maker", maker), \
-             patch("app.api.routers.public.templates") as mock_tmpl:
+        with (
+            patch("app.api.routers.public._get_user_from_cookie", return_value=None),
+            patch("app.api.routers.public.async_session_maker", maker),
+            patch("app.api.routers.public.templates") as mock_tmpl,
+        ):
             mock_tmpl.TemplateResponse.return_value = HTMLResponse("<html></html>")
             resp = await client.get("/")
         assert resp.status_code == 200
@@ -103,8 +106,7 @@ class TestRegisterEndpoint:
         maker, _ = _mock_session_ctx([uniq])
 
         body = RegisterRequest(username="taken", email="taken@example.com", password="StrongP4ss!")
-        with patch("app.api.routers.public.async_session_maker", maker), \
-             pytest.raises(HTTPException) as exc_info:
+        with patch("app.api.routers.public.async_session_maker", maker), pytest.raises(HTTPException) as exc_info:
             await register_user.__wrapped__(_fake_request(), body)
         assert exc_info.value.status_code == 409
 
@@ -140,8 +142,10 @@ class TestResetPassword:
         from app.api.routers.public import ResetPasswordRequest, reset_password
 
         body = ResetPasswordRequest(token="bad-token", new_password="NewStr0ng!")
-        with patch("app.api.routers.public.decode_token", side_effect=Exception("bad")), \
-             pytest.raises(HTTPException) as exc_info:
+        with (
+            patch("app.api.routers.public.decode_token", side_effect=Exception("bad")),
+            pytest.raises(HTTPException) as exc_info,
+        ):
             await reset_password.__wrapped__(_fake_request(), body)
         assert exc_info.value.status_code == 400
 
@@ -151,8 +155,10 @@ class TestResetPassword:
         from app.api.routers.public import ResetPasswordRequest, reset_password
 
         body = ResetPasswordRequest(token="tok", new_password="NewStr0ng!")
-        with patch("app.api.routers.public.decode_token", return_value={"type": "access", "sub": "user1"}), \
-             pytest.raises(HTTPException) as exc_info:
+        with (
+            patch("app.api.routers.public.decode_token", return_value={"type": "access", "sub": "user1"}),
+            pytest.raises(HTTPException) as exc_info,
+        ):
             await reset_password.__wrapped__(_fake_request(), body)
         assert exc_info.value.status_code == 400
 

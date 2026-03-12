@@ -103,9 +103,7 @@ class TestExecuteRouting:
         """When is_steering=False and no force_phase, creates mission plan."""
         input_data = MissionInput(directive="Scan the network")
 
-        with patch.object(
-            controller, "_create_mission_plan", new_callable=AsyncMock
-        ) as mock_plan:
+        with patch.object(controller, "_create_mission_plan", new_callable=AsyncMock) as mock_plan:
             mock_plan.return_value = MagicMock(spec=MissionPlan)
             result = await controller.execute(context, input_data)
 
@@ -117,9 +115,7 @@ class TestExecuteRouting:
         """When is_steering=True, routes to _handle_steering."""
         input_data = MissionInput(directive="focus on web", is_steering=True)
 
-        with patch.object(
-            controller, "_handle_steering", new_callable=AsyncMock
-        ) as mock_steer:
+        with patch.object(controller, "_handle_steering", new_callable=AsyncMock) as mock_steer:
             mock_steer.return_value = AgentResult(success=True, action=MagicMock())
             await controller.execute(context, input_data)
 
@@ -133,18 +129,14 @@ class TestExecuteRouting:
             force_phase=AssessmentPhase.EXPLOITATION,
         )
 
-        with patch.object(
-            controller, "_handle_phase_transition", new_callable=AsyncMock
-        ) as mock_trans:
+        with patch.object(controller, "_handle_phase_transition", new_callable=AsyncMock) as mock_trans:
             mock_trans.return_value = AgentResult(success=True, action=MagicMock())
             await controller.execute(context, input_data)
 
         mock_trans.assert_awaited_once_with(context, input_data)
 
     @pytest.mark.asyncio
-    async def test_steering_takes_precedence_over_force_phase(
-        self, controller, context
-    ):
+    async def test_steering_takes_precedence_over_force_phase(self, controller, context):
         """When both is_steering and force_phase are set, steering wins."""
         input_data = MissionInput(
             directive="stop",
@@ -152,9 +144,7 @@ class TestExecuteRouting:
             force_phase=AssessmentPhase.EXPLOITATION,
         )
 
-        with patch.object(
-            controller, "_handle_steering", new_callable=AsyncMock
-        ) as mock_steer:
+        with patch.object(controller, "_handle_steering", new_callable=AsyncMock) as mock_steer:
             mock_steer.return_value = AgentResult(success=True, action=MagicMock())
             await controller.execute(context, input_data)
 
@@ -200,9 +190,7 @@ class TestHandleSteering:
     @pytest.mark.asyncio
     async def test_focus_on_database(self, controller, context):
         """'prioritize database' adds databases to priority_targets."""
-        input_data = MissionInput(
-            directive="prioritize database scanning", is_steering=True
-        )
+        input_data = MissionInput(directive="prioritize database scanning", is_steering=True)
 
         result = await controller._handle_steering(context, input_data)
 
@@ -224,9 +212,7 @@ class TestHandleSteering:
     @pytest.mark.asyncio
     async def test_focus_multiple_targets(self, controller, context):
         """Multiple focus keywords yield multiple priority_targets."""
-        input_data = MissionInput(
-            directive="focus on web and database and api", is_steering=True
-        )
+        input_data = MissionInput(directive="focus on web and database and api", is_steering=True)
 
         result = await controller._handle_steering(context, input_data)
 
@@ -283,9 +269,7 @@ class TestHandleSteering:
     @pytest.mark.asyncio
     async def test_ambiguous_command_uses_llm(self, controller, context, mock_llm):
         """Ambiguous commands fall through to LLM interpretation."""
-        input_data = MissionInput(
-            directive="maybe try something different", is_steering=True
-        )
+        input_data = MissionInput(directive="maybe try something different", is_steering=True)
 
         result = await controller._handle_steering(context, input_data)
 
@@ -295,17 +279,11 @@ class TestHandleSteering:
         assert len(mock_llm.call_history) > 0
 
     @pytest.mark.asyncio
-    async def test_ambiguous_command_llm_failure_returns_fallback(
-        self, controller, context
-    ):
+    async def test_ambiguous_command_llm_failure_returns_fallback(self, controller, context):
         """When LLM interpretation fails, a safe fallback is returned."""
-        input_data = MissionInput(
-            directive="do the thing with the stuff", is_steering=True
-        )
+        input_data = MissionInput(directive="do the thing with the stuff", is_steering=True)
 
-        controller.llm.generate_structured = AsyncMock(
-            side_effect=RuntimeError("LLM timeout")
-        )
+        controller.llm.generate_structured = AsyncMock(side_effect=RuntimeError("LLM timeout"))
 
         result = await controller._handle_steering(context, input_data)
 
@@ -397,9 +375,7 @@ class TestCreateMissionPlan:
                 new_callable=AsyncMock,
                 return_value="ctx",
             ),
-            patch(
-                "app.services.ai.knowledge.get_full_methodology", return_value="method"
-            ),
+            patch("app.services.ai.knowledge.get_full_methodology", return_value="method"),
         ):
             with pytest.raises((RuntimeError, LLMParseError)):
                 await controller._create_mission_plan(context, input_data)
@@ -412,9 +388,7 @@ class TestCreateMissionPlan:
         """When all retries fail, exception propagates."""
         input_data = MissionInput(directive="Scan")
 
-        controller.llm.generate_structured = AsyncMock(
-            side_effect=RuntimeError("Permanent failure")
-        )
+        controller.llm.generate_structured = AsyncMock(side_effect=RuntimeError("Permanent failure"))
 
         with (
             patch(
@@ -427,9 +401,7 @@ class TestCreateMissionPlan:
                 new_callable=AsyncMock,
                 return_value="ctx",
             ),
-            patch(
-                "app.services.ai.knowledge.get_full_methodology", return_value="method"
-            ),
+            patch("app.services.ai.knowledge.get_full_methodology", return_value="method"),
         ):
             with pytest.raises((RuntimeError, LLMParseError)):
                 await controller._create_mission_plan(context, input_data)

@@ -6,6 +6,7 @@ from enum import IntEnum
 
 logger = logging.getLogger(__name__)
 
+
 class Priority(IntEnum):
     """Context section priority — lower number = higher priority (kept first)."""
 
@@ -92,8 +93,4 @@ def truncate_for_llm(text: str, max_chars: int = 3000, label: str = "output") ->
     if not text or len(text) <= max_chars:
         return text
     half = max_chars // 2
-    return (
-        text[:half]
-        + f"\n\n[... {len(text) - max_chars} chars of {label} omitted ...]\n\n"
-        + text[-half:]
-    )
+    return text[:half] + f"\n\n[... {len(text) - max_chars} chars of {label} omitted ...]\n\n" + text[-half:]

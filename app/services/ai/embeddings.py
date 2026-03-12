@@ -58,9 +58,7 @@ class EmbeddingService:
 
             api_key = settings.LLM_API_KEY.get_secret_value()
             if not api_key:
-                logger.warning(
-                    "Embedding service requires an AI API key. Configure LLM_API_KEY."
-                )
+                logger.warning("Embedding service requires an AI API key. Configure LLM_API_KEY.")
                 return
 
             import litellm  # noqa: F401
@@ -82,9 +80,7 @@ class EmbeddingService:
         await self._load_model()
 
         if not self._api_ready:
-            raise RuntimeError(
-                "Embedding service requires an AI API key. Configure LLM_API_KEY."
-            )
+            raise RuntimeError("Embedding service requires an AI API key. Configure LLM_API_KEY.")
 
         import litellm
 
@@ -109,9 +105,7 @@ class EmbeddingService:
         await self._load_model()
 
         if not self._api_ready:
-            raise RuntimeError(
-                "Embedding service requires an AI API key. Configure LLM_API_KEY."
-            )
+            raise RuntimeError("Embedding service requires an AI API key. Configure LLM_API_KEY.")
 
         if not texts:
             return []

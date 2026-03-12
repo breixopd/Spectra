@@ -17,10 +17,7 @@ class TestIncrementCounter:
     def test_basic_increment(self, collector):
         collector.increment_counter("requests", 1)
         summary = collector.get_metrics_summary()
-        assert (
-            "requests:" in list(summary["counters"].keys())[0]
-            or summary["counters"].get("requests:") == 1
-        )
+        assert "requests:" in list(summary["counters"].keys())[0] or summary["counters"].get("requests:") == 1
 
     def test_increment_with_labels(self, collector):
         collector.increment_counter("http_requests", 1, {"method": "GET"})
@@ -74,18 +71,14 @@ class TestServiceStatus:
         assert statuses["db"]["error"] is None
 
     def test_unhealthy_service_with_error(self, collector):
-        collector.update_service_status(
-            "cache", healthy=False, error="connection refused"
-        )
+        collector.update_service_status("cache", healthy=False, error="connection refused")
         statuses = collector.get_service_health()
         assert statuses["cache"]["healthy"] is False
         assert statuses["cache"]["error"] == "connection refused"
 
     def test_service_status_updates_overwrite(self, collector):
         collector.update_service_status("api", healthy=True, latency_ms=10.0)
-        collector.update_service_status(
-            "api", healthy=False, latency_ms=999.0, error="timeout"
-        )
+        collector.update_service_status("api", healthy=False, latency_ms=999.0, error="timeout")
         statuses = collector.get_service_health()
         assert statuses["api"]["healthy"] is False
         assert statuses["api"]["latency_ms"] == 999.0
@@ -152,9 +145,7 @@ class TestRecordLLMCall:
             await record_llm_call("openai", "gpt-4", 150.0, 500, success=True)
         summary = fresh.get_metrics_summary()
         assert summary["counters"]["llm_calls_total:model=gpt-4,provider=openai"] == 1
-        assert (
-            summary["counters"]["llm_tokens_total:model=gpt-4,provider=openai"] == 500
-        )
+        assert summary["counters"]["llm_tokens_total:model=gpt-4,provider=openai"] == 500
         assert "llm_errors_total:model=gpt-4,provider=openai" not in summary["counters"]
 
     @pytest.mark.asyncio
@@ -163,6 +154,4 @@ class TestRecordLLMCall:
         with patch("app.core.telemetry.telemetry", fresh):
             await record_llm_call("anthropic", "claude", 200.0, 0, success=False)
         summary = fresh.get_metrics_summary()
-        assert (
-            summary["counters"]["llm_errors_total:model=claude,provider=anthropic"] == 1
-        )
+        assert summary["counters"]["llm_errors_total:model=claude,provider=anthropic"] == 1

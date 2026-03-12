@@ -14,6 +14,7 @@ from app.services.mission.task_tree import TaskStatus
 
 # ===== Mission Progress =====
 
+
 class TestMissionProgress:
     def test_progress_empty_tree(self):
         mission = Mission("target.com", "test")
@@ -81,6 +82,7 @@ class TestMissionProgress:
 
 # ===== Auto Expand Scope =====
 
+
 class TestAutoExpandScope:
     def test_expand_subdomain(self):
         findings = [{"type": "subdomain", "value": "api.example.com"}]
@@ -122,6 +124,7 @@ class TestAutoExpandScope:
 
 
 # ===== Exploit Crafter Improvements =====
+
 
 class TestExploitCrafterDeterministic:
     def setup_method(self):
@@ -185,6 +188,7 @@ class TestExploitCrafterDeterministic:
 
 
 # ===== Vector Generator Deterministic =====
+
 
 class TestVectorGeneratorDeterministic:
     def test_generate_http_vectors(self):
@@ -253,6 +257,7 @@ class TestVectorGeneratorDeterministic:
 
 # ===== Tool Selector Quick Select =====
 
+
 class TestToolSelectorQuickSelect:
     def setup_method(self):
         self.mock_llm = MagicMock()
@@ -308,6 +313,7 @@ class TestToolSelectorQuickSelect:
 
 
 # ===== Phase Transition Rules =====
+
 
 class TestPhaseTransitionRules:
     def test_rules_exist(self):

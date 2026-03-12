@@ -82,6 +82,7 @@ class MissionSteeringManager:
             if not mission.plan:
                 raise ValueError("No plan exists to inject tasks into")
             from app.services.ai.agents.mission_controller import AssessmentPhase, Task
+
             new_task = Task(
                 task_id=str(uuid.uuid4()),
                 phase=AssessmentPhase(task.get("phase", "discovery")),
@@ -130,13 +131,9 @@ class MissionSteeringManager:
             return {"message": f"Target '{target}' will be skipped"}
 
         else:
-            raise ValueError(
-                f"Invalid action '{action}' or missing required parameters"
-            )
+            raise ValueError(f"Invalid action '{action}' or missing required parameters")
 
-    async def apply_steering_action(
-        self, mission: Mission, action: SteeringAction
-    ) -> None:
+    async def apply_steering_action(self, mission: Mission, action: SteeringAction) -> None:
         """Apply a steering action to modify mission flow."""
         mission.log(f"[STEERING] Applying: {action.reasoning}")
 
@@ -152,11 +149,7 @@ class MissionSteeringManager:
             mission.attack_surface.prioritize_vectors(action.priority_targets)
 
         # Phase transition
-        if (
-            hasattr(action, "new_phase")
-            and mission.plan
-            and action.new_phase != mission.plan.current_phase
-        ):
+        if hasattr(action, "new_phase") and mission.plan and action.new_phase != mission.plan.current_phase:
             mission.log(f"[STEERING] Transitioning to phase: {action.new_phase}")
 
             # Find first task of new phase

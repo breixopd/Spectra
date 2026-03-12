@@ -51,9 +51,7 @@ class TargetUpdate(BaseModel):
 class StartMissionRequest(BaseModel):
     """Schema for starting a new mission."""
 
-    target: str = Field(
-        ..., min_length=1, max_length=500, description="Target IP, domain, or URL"
-    )
+    target: str = Field(..., min_length=1, max_length=500, description="Target IP, domain, or URL")
     directive: str = Field(
         default="Perform a comprehensive security assessment",
         min_length=1,

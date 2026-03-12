@@ -1,6 +1,5 @@
 """Tests for ContextManager."""
 
-
 from app.services.ai.context import ContextManager, ContextSection, Priority
 
 

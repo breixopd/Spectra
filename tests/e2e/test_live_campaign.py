@@ -82,7 +82,6 @@ class TestLiveCampaign:
         # Check if 'spectra-tools' container is running
         import subprocess
 
-
         try:
             res = subprocess.run(
                 ["docker", "ps", "--format", "{{.Names}}"],
@@ -123,9 +122,7 @@ class TestLiveCampaign:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-    async def run_mission_until_completion(
-        self, mission_manager, mission_id, timeout=1800
-    ):
+    async def run_mission_until_completion(self, mission_manager, mission_id, timeout=1800):
         """Helper to monitor mission progress with detailed logging."""
         max_wait = timeout
         interval = 5
@@ -187,9 +184,7 @@ class TestLiveCampaign:
             directive=directive,
         )
 
-        mission = await self.run_mission_until_completion(
-            real_mission_manager, mission_id
-        )
+        mission = await self.run_mission_until_completion(real_mission_manager, mission_id)
 
         # Verification
         assert mission is not None
@@ -224,9 +219,7 @@ class TestLiveCampaign:
             directive=directive,
         )
 
-        mission = await self.run_mission_until_completion(
-            real_mission_manager, mission_id
-        )
+        mission = await self.run_mission_until_completion(real_mission_manager, mission_id)
 
         # Verification
         assert mission is not None

@@ -80,7 +80,9 @@ class TestForgotPasswordEndpoint:
 
             with (
                 patch("app.api.routers.auth.limiter") as mock_limiter,
-                patch("app.repositories.user.UserRepository.get_by_email", new_callable=AsyncMock, return_value=fake_user),
+                patch(
+                    "app.repositories.user.UserRepository.get_by_email", new_callable=AsyncMock, return_value=fake_user
+                ),
             ):
                 mock_limiter.limit.return_value = lambda f: f
                 resp = client.post(
@@ -90,6 +92,7 @@ class TestForgotPasswordEndpoint:
             assert resp.status_code == 204
         finally:
             from app.main import app
+
             app.dependency_overrides.clear()
 
     def test_returns_204_for_nonexistent_email(self):
@@ -107,6 +110,7 @@ class TestForgotPasswordEndpoint:
             assert resp.status_code == 204
         finally:
             from app.main import app
+
             app.dependency_overrides.clear()
 
 
@@ -136,6 +140,7 @@ class TestResetPasswordEndpoint:
             assert "reset" in resp.json().get("message", "").lower()
         finally:
             from app.main import app
+
             app.dependency_overrides.clear()
 
     def test_invalid_token_returns_400(self):
@@ -150,6 +155,7 @@ class TestResetPasswordEndpoint:
             assert resp.status_code == 400
         finally:
             from app.main import app
+
             app.dependency_overrides.clear()
 
     def test_expired_token_returns_400(self):
@@ -167,4 +173,5 @@ class TestResetPasswordEndpoint:
             assert resp.status_code == 400
         finally:
             from app.main import app
+
             app.dependency_overrides.clear()

@@ -1,6 +1,5 @@
 """Tests for shell injection blocklist and tool output sanitization."""
 
-
 from app.services.tools.registry.constants import (
     _DANGEROUS_PATTERN_STRINGS,
     DANGEROUS_PATTERNS,

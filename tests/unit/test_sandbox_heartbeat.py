@@ -13,11 +13,13 @@ class TestHeartbeatConfig:
 
     def test_idle_timeout_default(self):
         from app.core.config import Settings
+
         s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
         assert s.SANDBOX_IDLE_TIMEOUT == 600
 
     def test_heartbeat_interval_default(self):
         from app.core.config import Settings
+
         s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
         assert s.SANDBOX_HEARTBEAT_INTERVAL == 30
 
@@ -27,6 +29,7 @@ class TestSandboxModelHeartbeat:
 
     def test_last_heartbeat_column_exists(self):
         from app.models.infrastructure import Sandbox
+
         assert hasattr(Sandbox, "last_heartbeat")
 
 
@@ -37,6 +40,7 @@ class TestHeartbeatLoop:
     async def test_heartbeat_loop_exists(self):
         """heartbeat_loop is importable from worker module."""
         from app.worker import heartbeat_loop
+
         assert callable(heartbeat_loop)
 
     @pytest.mark.asyncio

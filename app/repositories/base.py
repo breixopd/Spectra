@@ -157,12 +157,7 @@ class BaseRepository(Generic[ModelType]):
         Returns:
             The updated entity or None.
         """
-        stmt = (
-            update(self.model)
-            .where(self.model.id == str(entity_id))
-            .values(**kwargs)
-            .returning(self.model)
-        )
+        stmt = update(self.model).where(self.model.id == str(entity_id)).values(**kwargs).returning(self.model)
         result = await self.session.execute(stmt)
         await self.session.flush()
         updated = result.scalar_one_or_none()

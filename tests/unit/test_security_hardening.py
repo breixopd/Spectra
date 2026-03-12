@@ -200,9 +200,7 @@ class TestBulkEncryption:
             "secret_data": "hidden",
             "status": "active",
         }
-        result = decrypt_sensitive_fields(
-            encrypt_sensitive_fields(data, secret), secret
-        )
+        result = decrypt_sensitive_fields(encrypt_sensitive_fields(data, secret), secret)
         assert result == data
 
     def test_nested_dict_encryption(self):
@@ -382,35 +380,43 @@ class TestEnhancedFindingDedup:
 
     def test_related_cves_deduped(self):
         mission = Mission("target.com", "test")
-        mission.add_finding({
-            "name": "Apache Path Traversal",
-            "host": "target.com",
-            "port": 80,
-            "cve_id": "CVE-2021-41773",
-        })
-        mission.add_finding({
-            "name": "Apache Path Traversal",
-            "host": "target.com",
-            "port": 80,
-            "cve_id": "CVE-2021-42013",
-        })
+        mission.add_finding(
+            {
+                "name": "Apache Path Traversal",
+                "host": "target.com",
+                "port": 80,
+                "cve_id": "CVE-2021-41773",
+            }
+        )
+        mission.add_finding(
+            {
+                "name": "Apache Path Traversal",
+                "host": "target.com",
+                "port": 80,
+                "cve_id": "CVE-2021-42013",
+            }
+        )
         # These are related CVEs (same host/port) — should fuzzy-dedup
         assert len(mission.findings) == 1
 
     def test_unrelated_cves_not_deduped(self):
         mission = Mission("target.com", "test")
-        mission.add_finding({
-            "name": "SQL Injection in login form via user parameter",
-            "host": "target.com",
-            "port": 8080,
-            "cve_id": "CVE-2020-1234",
-        })
-        mission.add_finding({
-            "name": "Remote Code Execution via deserialization flaw",
-            "host": "target.com",
-            "port": 8080,
-            "cve_id": "CVE-2022-5678",
-        })
+        mission.add_finding(
+            {
+                "name": "SQL Injection in login form via user parameter",
+                "host": "target.com",
+                "port": 8080,
+                "cve_id": "CVE-2020-1234",
+            }
+        )
+        mission.add_finding(
+            {
+                "name": "Remote Code Execution via deserialization flaw",
+                "host": "target.com",
+                "port": 8080,
+                "cve_id": "CVE-2022-5678",
+            }
+        )
         assert len(mission.findings) == 2
 
     def test_are_related_cves_class_method(self):

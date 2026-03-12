@@ -123,9 +123,9 @@ class TestVectorGeneratorAgent:
     @pytest.mark.asyncio
     async def test_execute_with_deterministic_vectors(self):
         mock_llm = AsyncMock()
-        mock_llm.generate_structured = AsyncMock(return_value=MagicMock(
-            vectors=[], confidence=0.8, risk_level="low", reasoning="test"
-        ))
+        mock_llm.generate_structured = AsyncMock(
+            return_value=MagicMock(vectors=[], confidence=0.8, risk_level="low", reasoning="test")
+        )
         agent = VectorGeneratorAgent(mock_llm)
 
         context = AgentContext(
@@ -139,7 +139,9 @@ class TestVectorGeneratorAgent:
         )
 
         with patch("app.services.ai.knowledge.get_exploit_context", new_callable=AsyncMock, return_value=""):
-            with patch("app.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""):
+            with patch(
+                "app.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""
+            ):
                 result = await agent.execute(context, input_data)
 
         assert result.success
@@ -149,9 +151,9 @@ class TestVectorGeneratorAgent:
     @pytest.mark.asyncio
     async def test_execute_unknown_service_falls_through_to_llm(self):
         mock_llm = AsyncMock()
-        mock_llm.generate_structured = AsyncMock(return_value=MagicMock(
-            vectors=[], confidence=0.5, risk_level="low", reasoning=""
-        ))
+        mock_llm.generate_structured = AsyncMock(
+            return_value=MagicMock(vectors=[], confidence=0.5, risk_level="low", reasoning="")
+        )
         agent = VectorGeneratorAgent(mock_llm)
 
         context = AgentContext(
@@ -165,7 +167,9 @@ class TestVectorGeneratorAgent:
         )
 
         with patch("app.services.ai.knowledge.get_exploit_context", new_callable=AsyncMock, return_value=""):
-            with patch("app.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""):
+            with patch(
+                "app.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""
+            ):
                 result = await agent.execute(context, input_data)
 
         assert result.success
@@ -187,7 +191,9 @@ class TestVectorGeneratorAgent:
         )
 
         with patch("app.services.ai.knowledge.get_exploit_context", new_callable=AsyncMock, return_value=""):
-            with patch("app.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""):
+            with patch(
+                "app.services.ai.knowledge.get_available_tools_context", new_callable=AsyncMock, return_value=""
+            ):
                 result = await agent.execute(context, input_data)
 
         # LLM error is caught in _generate_with_llm, deterministic vectors still returned

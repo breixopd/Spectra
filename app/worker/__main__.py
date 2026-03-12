@@ -18,9 +18,7 @@ async def _main() -> None:
 
     try:
         if queue_name != "default":
-            heartbeat_task = asyncio.create_task(
-                heartbeat_loop(queue_name, interval=heartbeat_interval)
-            )
+            heartbeat_task = asyncio.create_task(heartbeat_loop(queue_name, interval=heartbeat_interval))
         await worker_loop(_WORKER_FUNCTIONS, queue_name=queue_name)
     finally:
         if heartbeat_task:

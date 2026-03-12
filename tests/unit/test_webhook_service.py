@@ -79,9 +79,7 @@ async def test_deliver_includes_hmac_signature():
 
     body = {"event": event, "data": payload}
     raw = json.dumps(body, separators=(",", ":"), sort_keys=True).encode()
-    expected_sig = "sha256=" + hmac.new(
-        b"mysecret", raw, hashlib.sha256
-    ).hexdigest()
+    expected_sig = "sha256=" + hmac.new(b"mysecret", raw, hashlib.sha256).hexdigest()
 
     mock_response = MagicMock()
     mock_response.status_code = 200

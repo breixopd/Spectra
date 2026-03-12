@@ -20,11 +20,21 @@ logger = logging.getLogger("spectra.services.tools.vpn")
 _CONFIG_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,63}$")
 
 # Dangerous directives that allow arbitrary command execution
-_DANGEROUS_OPENVPN_DIRECTIVES = frozenset({
-    "up", "down", "client-connect", "client-disconnect",
-    "learn-address", "auth-user-pass-verify", "tls-verify",
-    "ipchange", "route-up", "route-pre-down", "script-security",
-})
+_DANGEROUS_OPENVPN_DIRECTIVES = frozenset(
+    {
+        "up",
+        "down",
+        "client-connect",
+        "client-disconnect",
+        "learn-address",
+        "auth-user-pass-verify",
+        "tls-verify",
+        "ipchange",
+        "route-up",
+        "route-pre-down",
+        "script-security",
+    }
+)
 
 _VPN_EXTENSIONS = {"wireguard": ".conf", "openvpn": ".ovpn"}
 
@@ -32,10 +42,7 @@ _VPN_EXTENSIONS = {"wireguard": ".conf", "openvpn": ".ovpn"}
 def _validate_config_name(name: str) -> str:
     """Validate and return a safe config name."""
     if not _CONFIG_NAME_RE.match(name):
-        raise ValueError(
-            "Config name must be 1-64 chars, alphanumeric and hyphens only, "
-            "starting with alphanumeric"
-        )
+        raise ValueError("Config name must be 1-64 chars, alphanumeric and hyphens only, starting with alphanumeric")
     return name
 
 
@@ -88,9 +95,7 @@ class VPNManager:
                 return vpn_type
         return None
 
-    async def upload_config(
-        self, name: str, config_content: bytes, vpn_type: str
-    ) -> dict[str, Any]:
+    async def upload_config(self, name: str, config_content: bytes, vpn_type: str) -> dict[str, Any]:
         """Save a VPN config file after validation."""
         name = _validate_config_name(name)
         if vpn_type not in _VPN_EXTENSIONS:
@@ -127,9 +132,7 @@ class VPNManager:
             raise ValueError(f"No config found for '{config_name}'")
 
         config_path = str(self._config_path(config_name, vpn_type))
-        job_id = await self._queue.enqueue_job(
-            "vpn_connect_job", config_path, vpn_type, _timeout=60
-        )
+        job_id = await self._queue.enqueue_job("vpn_connect_job", config_path, vpn_type, _timeout=60)
         logger.info("Enqueued VPN connect job %s for %s (%s)", job_id, config_name, vpn_type)
         return {"job_id": job_id, "config": config_name, "type": vpn_type, "action": "connect"}
 
@@ -140,9 +143,7 @@ class VPNManager:
         if not vpn_type:
             raise ValueError(f"No config found for '{config_name}'")
 
-        job_id = await self._queue.enqueue_job(
-            "vpn_disconnect_job", config_name, vpn_type, _timeout=30
-        )
+        job_id = await self._queue.enqueue_job("vpn_disconnect_job", config_name, vpn_type, _timeout=30)
         logger.info("Enqueued VPN disconnect job %s for %s", job_id, config_name)
         return {"job_id": job_id, "config": config_name, "type": vpn_type, "action": "disconnect"}
 
@@ -157,12 +158,14 @@ class VPNManager:
         configs: list[dict[str, Any]] = []
         for vpn_type, ext in _VPN_EXTENSIONS.items():
             for path in sorted(self.config_dir.glob(f"*{ext}")):
-                configs.append({
-                    "name": path.stem,
-                    "type": vpn_type,
-                    "path": str(path),
-                    "size": path.stat().st_size,
-                })
+                configs.append(
+                    {
+                        "name": path.stem,
+                        "type": vpn_type,
+                        "path": str(path),
+                        "size": path.stat().st_size,
+                    }
+                )
         return configs
 
     async def delete_config(self, name: str) -> bool:

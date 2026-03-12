@@ -10,6 +10,7 @@ from app.core.telemetry import TelemetryCollector
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_admin_user():
     user = MagicMock()
     user.is_superuser = True
@@ -27,6 +28,7 @@ def _make_regular_user():
 # ---------------------------------------------------------------------------
 # OTLP export endpoint
 # ---------------------------------------------------------------------------
+
 
 class TestOtlpExportEndpoint:
     @pytest.mark.asyncio
@@ -66,6 +68,7 @@ class TestOtlpExportEndpoint:
 # SaaS metrics endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestSaasMetricsEndpoint:
     @pytest.mark.asyncio
     async def test_saas_metrics_returns_kpis(self):
@@ -100,6 +103,7 @@ class TestSaasMetricsEndpoint:
 # Metrics summary endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestMetricsSummaryEndpoint:
     @pytest.mark.asyncio
     async def test_metrics_summary(self):
@@ -121,6 +125,7 @@ class TestMetricsSummaryEndpoint:
 # ---------------------------------------------------------------------------
 # Traces endpoints
 # ---------------------------------------------------------------------------
+
 
 class TestTracesEndpoints:
     @pytest.mark.asyncio
@@ -181,6 +186,7 @@ class TestTracesEndpoints:
 # Error traces and slow ops
 # ---------------------------------------------------------------------------
 
+
 class TestErrorAndSlowEndpoints:
     @pytest.mark.asyncio
     async def test_get_error_traces(self):
@@ -210,9 +216,7 @@ class TestErrorAndSlowEndpoints:
         collector._traces.append(span)
 
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await get_slow_operations(
-                threshold_ms=1000, limit=5, _current_user=_make_admin_user()
-            )
+            result = await get_slow_operations(threshold_ms=1000, limit=5, _current_user=_make_admin_user())
 
         assert len(result) == 1
         assert result[0]["name"] == "slow_op"
@@ -221,6 +225,7 @@ class TestErrorAndSlowEndpoints:
 # ---------------------------------------------------------------------------
 # Circuit breaker reset (superuser check)
 # ---------------------------------------------------------------------------
+
 
 class TestCircuitBreakerReset:
     @pytest.mark.asyncio

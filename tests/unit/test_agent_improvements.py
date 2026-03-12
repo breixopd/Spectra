@@ -1,6 +1,5 @@
 """Tests for agent system improvements (AGENT-001 through MISSION-005)."""
 
-
 import pytest
 
 from app.core.enums import MissionStatus
@@ -27,6 +26,7 @@ from tests.mocks.llm import MockLLMClient
 
 # ---- Fixtures ----
 
+
 @pytest.fixture
 def mock_llm():
     return MockLLMClient()
@@ -44,6 +44,7 @@ def context():
 # ===========================================================================
 # AGENT-001: Deterministic Exploit Verification
 # ===========================================================================
+
 
 class TestDeterministicExploitVerification:
     """Tests for XBOW-style deterministic checks."""
@@ -164,8 +165,8 @@ class TestDeterministicExploitVerification:
 # AGENT-003: REPORTER role
 # ===========================================================================
 
-class TestReporterRole:
 
+class TestReporterRole:
     def test_reporter_role_exists(self):
         assert hasattr(AgentRole, "REPORTER")
         assert AgentRole.REPORTER.value == "reporter"
@@ -179,8 +180,8 @@ class TestReporterRole:
 # AGENT-005: Mission-Scoped Blackboard
 # ===========================================================================
 
-class TestMissionBlackboard:
 
+class TestMissionBlackboard:
     def test_write_and_read(self):
         bb = MissionBlackboard("m-1")
         bb.write("recon", "open_ports", [22, 80, 443])
@@ -239,8 +240,8 @@ class TestMissionBlackboard:
 # AGENT-006: Configurable Consensus Gate
 # ===========================================================================
 
-class TestConfigurableConsensus:
 
+class TestConfigurableConsensus:
     def test_consensus_threshold_in_config(self):
         config = VotingConfig()
         assert "low" in config.consensus_threshold
@@ -270,9 +271,7 @@ class TestConfigurableConsensus:
         # Set voting threshold to MEDIUM so LOW actions would normally be below threshold
         config = VotingConfig(voting_risk_threshold=ActionRisk.LOW)
         vs = VotingSystem(llm, config)
-        low_action = AgentAction(
-            action_type="test", confidence=0.8, risk_level=ActionRisk.LOW, reasoning="t"
-        )
+        low_action = AgentAction(action_type="test", confidence=0.8, risk_level=ActionRisk.LOW, reasoning="t")
         # LOW risk → consensus_threshold says skip (num_voters=0)
         assert vs.requires_voting(low_action) is False
 
@@ -281,16 +280,18 @@ class TestConfigurableConsensus:
 # AGENT-007: Move POC Prompt to prompts.py
 # ===========================================================================
 
-class TestPOCPromptMoved:
 
+class TestPOCPromptMoved:
     def test_poc_prompt_in_prompts_module(self):
         from app.services.ai.prompts import POC_DEVELOPER_PROMPT
+
         assert "Exploit Developer" in POC_DEVELOPER_PROMPT
         assert "{target}" in POC_DEVELOPER_PROMPT
 
     def test_poc_developer_uses_prompt_from_prompts_module(self):
         """Verify the poc_developer module no longer defines its own prompt."""
         import app.services.ai.prompts as prompts_mod
+
         assert hasattr(prompts_mod, "POC_DEVELOPER_PROMPT")
 
 
@@ -298,8 +299,8 @@ class TestPOCPromptMoved:
 # AGENT-008: Base Agent Retry with Backoff
 # ===========================================================================
 
-class TestRetryWithBackoff:
 
+class TestRetryWithBackoff:
     @pytest.mark.asyncio
     async def test_retry_succeeds_on_second_attempt(self, mock_llm):
         class TestAgent(Agent):
@@ -365,8 +366,8 @@ class TestRetryWithBackoff:
 # AGENT-009: Adaptive Temperature
 # ===========================================================================
 
-class TestAdaptiveTemperature:
 
+class TestAdaptiveTemperature:
     def test_temperature_increases_with_attempt(self, mock_llm):
         class ExploitAgent(Agent):
             role = AgentRole.EXPLOIT_CRAFTER
@@ -415,8 +416,8 @@ class TestAdaptiveTemperature:
 # Task Tree
 # ===========================================================================
 
-class TestPentestTaskTree:
 
+class TestPentestTaskTree:
     def test_create_and_add_task(self):
         tree = PentestTaskTree("m-1")
         node = tree.add_task("t1", "Port Scan", "recon/port_scan")
@@ -481,8 +482,8 @@ class TestPentestTaskTree:
 # MISSION-001: Consolidated State Enums
 # ===========================================================================
 
-class TestConsolidatedStateEnums:
 
+class TestConsolidatedStateEnums:
     def test_mission_status_has_all_states(self):
         """MissionStatus should now include states from MissionState."""
         assert hasattr(MissionStatus, "CREATED")
@@ -507,16 +508,18 @@ class TestConsolidatedStateEnums:
 # MISSION-005: FSM integration in Mission
 # ===========================================================================
 
-class TestMissionFSMIntegration:
 
+class TestMissionFSMIntegration:
     def test_mission_has_fsm(self):
         from app.services.mission.mission import Mission
+
         m = Mission("10.0.0.1", "test")
         assert hasattr(m, "fsm")
         assert m.fsm.state == MissionState.CREATED
 
     def test_set_status_valid_transition(self):
         from app.services.mission.mission import Mission
+
         m = Mission("10.0.0.1", "test")
         m.set_status("initializing")
         assert m.status == "initializing"
@@ -524,6 +527,7 @@ class TestMissionFSMIntegration:
 
     def test_set_status_invalid_transition_still_sets_raw(self):
         from app.services.mission.mission import Mission
+
         m = Mission("10.0.0.1", "test")
         # CREATED -> COMPLETED is invalid, but raw status still updates
         m.set_status("completed")
@@ -533,6 +537,7 @@ class TestMissionFSMIntegration:
 
     def test_set_status_unknown_value(self):
         from app.services.mission.mission import Mission
+
         m = Mission("10.0.0.1", "test")
         # "running" is not in MissionState enum
         m.set_status("running")

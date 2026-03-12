@@ -80,9 +80,7 @@ class WebhookService:
 
     async def fire(self, event: str, payload: dict[str, Any]) -> None:
         """Deliver an event to all matching active webhooks (fire-and-forget)."""
-        result = await self._session.execute(
-            select(Webhook).where(Webhook.is_active.is_(True))
-        )
+        result = await self._session.execute(select(Webhook).where(Webhook.is_active.is_(True)))
         hooks = result.scalars().all()
         for wh in hooks:
             if event in (wh.events or []):
@@ -109,10 +107,15 @@ async def _deliver(wh: Webhook, event: str, payload: dict[str, Any]) -> None:
                     return
                 logger.warning(
                     "Webhook %s got %d for %s (attempt %d)",
-                    wh.id, resp.status_code, event, attempt + 1,
+                    wh.id,
+                    resp.status_code,
+                    event,
+                    attempt + 1,
                 )
             except Exception:
-                logger.warning("Webhook %s delivery failed for %s (attempt %d)", wh.id, event, attempt + 1, exc_info=True)
+                logger.warning(
+                    "Webhook %s delivery failed for %s (attempt %d)", wh.id, event, attempt + 1, exc_info=True
+                )
             if attempt < MAX_RETRIES - 1:
                 await asyncio.sleep(RETRY_DELAYS[attempt])
 

@@ -177,7 +177,11 @@ class RAGServiceProtocol(Protocol):
     """Interface for RAG operations — local PG or remote service."""
 
     async def search(
-        self, query: str, *, top_k: int = 5, min_score: float = 0.5,
+        self,
+        query: str,
+        *,
+        top_k: int = 5,
+        min_score: float = 0.5,
     ) -> list[dict]: ...
 
     async def index_document(self, content: str, metadata: dict) -> str: ...
@@ -224,7 +228,10 @@ class NotificationServiceProtocol(Protocol):
     ) -> bool: ...
 
     async def send_template(
-        self, recipient: str, template_name: str, context: dict,
+        self,
+        recipient: str,
+        template_name: str,
+        context: dict,
     ) -> bool: ...
 
 

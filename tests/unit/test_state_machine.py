@@ -50,8 +50,7 @@ class TestTelemetryOnTransition:
     """Verify that transitions emit telemetry counters."""
 
     def test_transition_increments_counter(self):
-        with patch("app.core.state_machine._telemetry") as mock_tel, \
-             patch("app.core.state_machine.events"):
+        with patch("app.core.state_machine._telemetry") as mock_tel, patch("app.core.state_machine.events"):
             fsm = MissionStateMachine("t-1")
             fsm.transition_to(MissionStatus.INITIALIZING)
 
@@ -62,8 +61,7 @@ class TestTelemetryOnTransition:
         )
 
     def test_multiple_transitions_emit_multiple_counters(self):
-        with patch("app.core.state_machine._telemetry") as mock_tel, \
-             patch("app.core.state_machine.events"):
+        with patch("app.core.state_machine._telemetry") as mock_tel, patch("app.core.state_machine.events"):
             fsm = MissionStateMachine("t-2")
             fsm.transition_to(MissionStatus.INITIALIZING)
             fsm.transition_to(MissionStatus.SCOPING)
@@ -75,8 +73,7 @@ class TestFullLifecycle:
     """Walk through the happy-path lifecycle."""
 
     def test_created_to_completed(self):
-        with patch("app.core.state_machine._telemetry"), \
-             patch("app.core.state_machine.events"):
+        with patch("app.core.state_machine._telemetry"), patch("app.core.state_machine.events"):
             fsm = MissionStateMachine("lifecycle-1")
             for state in [
                 MissionStatus.INITIALIZING,
@@ -94,15 +91,13 @@ class TestFullLifecycle:
         assert len(fsm.get_history()) == 6
 
     def test_no_valid_transitions_from_terminal(self):
-        with patch("app.core.state_machine._telemetry"), \
-             patch("app.core.state_machine.events"):
+        with patch("app.core.state_machine._telemetry"), patch("app.core.state_machine.events"):
             fsm = MissionStateMachine("term-1")
             fsm.force_transition(MissionStatus.FAILED)
 
         assert fsm.get_valid_transitions() == set()
         with pytest.raises(MissionStateError):
-            with patch("app.core.state_machine._telemetry"), \
-                 patch("app.core.state_machine.events"):
+            with patch("app.core.state_machine._telemetry"), patch("app.core.state_machine.events"):
                 fsm.transition_to(MissionStatus.EXECUTING)
 
 
@@ -121,8 +116,9 @@ class TestValidTransitionsMap:
         for status, targets in VALID_TRANSITIONS.items():
             if status in (MissionStatus.COMPLETED, MissionStatus.FAILED, MissionStatus.CANCELLED):
                 continue
-            assert MissionStatus.CANCELLED in targets or MissionStatus.FAILED in targets, \
+            assert MissionStatus.CANCELLED in targets or MissionStatus.FAILED in targets, (
                 f"{status} has no path to CANCELLED or FAILED"
+            )
 
 
 class TestStateMachineEdgeCases:
@@ -137,8 +133,7 @@ class TestStateMachineEdgeCases:
         assert fsm.get_duration() >= 0
 
     def test_to_dict_structure(self):
-        with patch("app.core.state_machine._telemetry"), \
-             patch("app.core.state_machine.events"):
+        with patch("app.core.state_machine._telemetry"), patch("app.core.state_machine.events"):
             fsm = MissionStateMachine("e-3")
             fsm.transition_to(MissionStatus.INITIALIZING)
 
@@ -157,8 +152,7 @@ class TestStateMachineEdgeCases:
         assert "[FORCED]" in (t.reason or "")
 
     def test_transition_with_reason_and_metadata(self):
-        with patch("app.core.state_machine._telemetry"), \
-             patch("app.core.state_machine.events"):
+        with patch("app.core.state_machine._telemetry"), patch("app.core.state_machine.events"):
             fsm = MissionStateMachine("e-5")
             t = fsm.transition_to(
                 MissionStatus.INITIALIZING,

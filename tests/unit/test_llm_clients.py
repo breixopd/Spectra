@@ -113,9 +113,7 @@ class TestMockLLMClient:
 
     @pytest.mark.asyncio
     async def test_generate_structured_with_structured_responses(self):
-        client = MockLLMClient(
-            structured_responses={"SimpleModel": {"name": "test", "value": 42}}
-        )
+        client = MockLLMClient(structured_responses={"SimpleModel": {"name": "test", "value": 42}})
         result = await client.generate_structured("prompt", SimpleModel)
         assert isinstance(result, SimpleModel)
         assert result.name == "test"
@@ -123,9 +121,7 @@ class TestMockLLMClient:
 
     @pytest.mark.asyncio
     async def test_generate_structured_records_call_history(self):
-        client = MockLLMClient(
-            structured_responses={"SimpleModel": {"name": "x", "value": 1}}
-        )
+        client = MockLLMClient(structured_responses={"SimpleModel": {"name": "x", "value": 1}})
         await client.generate_structured("prompt", SimpleModel, system_prompt="sys")
         assert len(client.call_history) == 1
         entry = client.call_history[0]
@@ -192,9 +188,7 @@ class TestGenerateStructured:
 
     @pytest.mark.asyncio
     async def test_parse_json_with_surrounding_text(self):
-        content = (
-            'Here is the result: {"name": "embedded", "value": 7} hope that helps!'
-        )
+        content = 'Here is the result: {"name": "embedded", "value": 7} hope that helps!'
         client = MockLLMClient(responses=[content])
         result = await _call_base_generate_structured(client, "prompt", SimpleModel)
         assert result.name == "embedded"
@@ -225,9 +219,7 @@ class TestGenerateStructured:
     async def test_system_prompt_includes_schema(self):
         raw_json = json.dumps({"name": "x", "value": 1})
         client = MockLLMClient(responses=[raw_json])
-        await _call_base_generate_structured(
-            client, "prompt", SimpleModel, system_prompt="custom sys"
-        )
+        await _call_base_generate_structured(client, "prompt", SimpleModel, system_prompt="custom sys")
         call = client.call_history[0]
         assert "custom sys" in call["system_prompt"]
         assert "JSON" in call["system_prompt"]
@@ -243,21 +235,25 @@ class TestGetLLMClient:
 
     def test_ollama_provider_returns_litellm_router(self):
         from app.services.ai.router import LiteLLMRouter
+
         client = get_llm_client("ollama", host="http://myhost:1234", model="mymodel")
         assert isinstance(client, LiteLLMRouter)
 
     def test_litellm_provider(self):
         from app.services.ai.router import LiteLLMRouter
+
         client = get_llm_client("litellm", model="gpt-4", api_key="sk-test")
         assert isinstance(client, LiteLLMRouter)
 
     def test_api_provider_returns_litellm_router(self):
         from app.services.ai.router import LiteLLMRouter
+
         client = get_llm_client("api", api_key="sk-test", model="gpt-4")
         assert isinstance(client, LiteLLMRouter)
 
     def test_openai_legacy_alias(self):
         from app.services.ai.router import LiteLLMRouter
+
         client = get_llm_client("openai", api_key="sk-test")
         assert isinstance(client, LiteLLMRouter)
 
@@ -354,6 +350,7 @@ class TestGetDefaultLLMClient:
         mock_router_settings.OLLAMA_MODEL = "qwen2.5:3b"
         mock_llm_settings.LLM_MODEL = "test-model"
         from app.services.ai.router import LiteLLMRouter
+
         client = get_default_llm_client()
         assert isinstance(client, LiteLLMRouter)
 

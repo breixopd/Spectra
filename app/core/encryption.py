@@ -86,9 +86,11 @@ def decrypt_sensitive_fields(data: dict, secret: str) -> dict:
 # File-level encryption at rest
 # ---------------------------------------------------------------------------
 
+
 def _get_default_secret() -> str:
     """Return the app SECRET_KEY for file encryption."""
     from app.core.config import get_settings
+
     return get_settings().SECRET_KEY
 
 

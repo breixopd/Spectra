@@ -100,9 +100,7 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
             severity_counts = self._count_by_severity(input_data.findings)
 
             # Generate executive summary
-            exec_summary = await self._generate_executive_summary(
-                context, input_data, severity_counts
-            )
+            exec_summary = await self._generate_executive_summary(context, input_data, severity_counts)
 
             # Generate detailed sections
             sections = self._generate_sections(input_data.findings)
@@ -124,9 +122,7 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
             )
 
             # Save report to disk
-            report_path = await self._save_report(
-                context.mission_id, report, input_data
-            )
+            report_path = await self._save_report(context.mission_id, report, input_data)
             report.report_path = report_path
 
             return AgentResult(
@@ -187,11 +183,17 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
         )
 
         ctx = ContextManager(max_context_tokens=4000)
-        prompt = ctx.build([
-            ContextSection("task", base_prompt, Priority.CRITICAL),
-            ContextSection("mission_summary", f"Mission Summary: {input_data.mission_summary}", Priority.HIGH, max_tokens=800),
-            ContextSection("findings_summary", f"Findings Summary:\n{findings_summary}", Priority.HIGH, max_tokens=600),
-        ])
+        prompt = ctx.build(
+            [
+                ContextSection("task", base_prompt, Priority.CRITICAL),
+                ContextSection(
+                    "mission_summary", f"Mission Summary: {input_data.mission_summary}", Priority.HIGH, max_tokens=800
+                ),
+                ContextSection(
+                    "findings_summary", f"Findings Summary:\n{findings_summary}", Priority.HIGH, max_tokens=600
+                ),
+            ]
+        )
 
         system_prompt = self._build_system_prompt(context)
 
@@ -264,9 +266,7 @@ Immediate attention is required for critical and high severity findings.
         for severity in severity_order:
             if severity in by_severity and by_severity[severity]:
                 items = by_severity[severity]
-                content = "\n\n".join(
-                    self._format_finding(f) for f in items
-                )
+                content = "\n\n".join(self._format_finding(f) for f in items)
 
                 sections.append(
                     ReportSection(
@@ -333,9 +333,7 @@ Immediate attention is required for critical and high severity findings.
                 parts.append(f"{k}: {v}")
         return "- " + ", ".join(parts) if parts else "- (no details)"
 
-    async def _save_report(
-        self, mission_id: str, report: ReportOutput, input_data: ReporterInput
-    ) -> str:
+    async def _save_report(self, mission_id: str, report: ReportOutput, input_data: ReporterInput) -> str:
         """Save report to storage in multiple formats."""
         import json
         from datetime import datetime
@@ -386,9 +384,7 @@ Immediate attention is required for critical and high severity findings.
         logger.info("Reports saved to storage: %s/%s/reports/", bucket, mission_id)
         return md_key
 
-    def _generate_markdown_report(
-        self, report: ReportOutput, input_data: ReporterInput
-    ) -> str:
+    def _generate_markdown_report(self, report: ReportOutput, input_data: ReporterInput) -> str:
         """Generate markdown formatted report."""
         from datetime import datetime
 
@@ -420,16 +416,12 @@ Immediate attention is required for critical and high severity findings.
 
 """
         for section in report.sections:
-            severity_badge = (
-                f" [{section.severity.upper()}]" if section.severity else ""
-            )
+            severity_badge = f" [{section.severity.upper()}]" if section.severity else ""
             md += f"## {section.title}{severity_badge}\n\n{section.content}\n\n---\n\n"
 
         return md
 
-    def _generate_html_report(
-        self, report: ReportOutput, input_data: ReporterInput
-    ) -> str:
+    def _generate_html_report(self, report: ReportOutput, input_data: ReporterInput) -> str:
         """Generate HTML formatted report."""
         from datetime import datetime
 

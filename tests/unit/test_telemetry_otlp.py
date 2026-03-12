@@ -14,6 +14,7 @@ def collector():
 # export_otlp_format
 # ---------------------------------------------------------------------------
 
+
 class TestExportOtlpFormat:
     def test_empty_collector_returns_valid_structure(self, collector):
         result = collector.export_otlp_format()
@@ -125,6 +126,7 @@ class TestExportOtlpFormat:
 # get_saas_metrics
 # ---------------------------------------------------------------------------
 
+
 class TestGetSaasMetrics:
     def test_empty_returns_zero_defaults(self, collector):
         result = collector.get_saas_metrics()
@@ -150,12 +152,8 @@ class TestGetSaasMetrics:
     def test_api_error_rates_by_path(self, collector):
         # The key format is "name:label1=v1,label2=v2" (sorted).
         # get_saas_metrics splits on "," and looks for parts starting with "route=".
-        collector.increment_counter(
-            "http.server.request.errors", 3, {"method": "GET", "route": "/api/missions"}
-        )
-        collector.increment_counter(
-            "http.server.request.errors", 1, {"method": "POST", "route": "/api/targets"}
-        )
+        collector.increment_counter("http.server.request.errors", 3, {"method": "GET", "route": "/api/missions"})
+        collector.increment_counter("http.server.request.errors", 1, {"method": "POST", "route": "/api/targets"})
         result = collector.get_saas_metrics()
         assert result["api_error_rates"]["/api/missions"] == 3
         assert result["api_error_rates"]["/api/targets"] == 1
@@ -164,7 +162,8 @@ class TestGetSaasMetrics:
         # add a second label so route= appears as a standalone comma-part
         for v in range(1, 101):
             collector.observe_histogram(
-                "http.server.request.duration", float(v),
+                "http.server.request.duration",
+                float(v),
                 {"method": "GET", "route": "/api/scan"},
             )
         result = collector.get_saas_metrics()

@@ -36,7 +36,9 @@ class GatewayClient:
                 enable_cleanup_closed=True,
             )
             self._session = aiohttp.ClientSession(
-                timeout=self.timeout, headers=headers, connector=self._connector,
+                timeout=self.timeout,
+                headers=headers,
+                connector=self._connector,
             )
         return self._session
 
@@ -55,10 +57,13 @@ class GatewayClient:
             except (aiohttp.ClientConnectionError, TimeoutError) as e:
                 last_error = e
                 if attempt < MAX_RETRIES - 1:
-                    wait = RETRY_BACKOFF_BASE * (2 ** attempt)
+                    wait = RETRY_BACKOFF_BASE * (2**attempt)
                     logger.warning(
                         "Gateway request failed (attempt %d/%d), retrying in %.1fs: %s",
-                        attempt + 1, MAX_RETRIES, wait, e,
+                        attempt + 1,
+                        MAX_RETRIES,
+                        wait,
+                        e,
                     )
                     await asyncio.sleep(wait)
         raise last_error  # type: ignore[misc]

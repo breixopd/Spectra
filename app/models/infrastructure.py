@@ -18,13 +18,15 @@ class InfrastructureBase(DeclarativeBase):
 
     metadata = Base.metadata
 
+
 class JSONBType(TypeDecorator):
     """Fallback JSONB type for SQLite testing."""
+
     impl = SAString
     cache_ok = True
 
     def load_dialect_impl(self, dialect):
-        if dialect.name == 'postgresql':
+        if dialect.name == "postgresql":
             return dialect.type_descriptor(JSONB())
         else:
             return dialect.type_descriptor(SAString())
@@ -32,16 +34,17 @@ class JSONBType(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return value
-        if dialect.name == 'postgresql':
+        if dialect.name == "postgresql":
             return value
         return json.dumps(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return value
-        if dialect.name == 'postgresql':
+        if dialect.name == "postgresql":
             return value
         return json.loads(value)
+
 
 class SystemCache(InfrastructureBase):
     """
@@ -63,9 +66,7 @@ class JobQueue(InfrastructureBase):
     """
 
     __tablename__ = "job_queue"
-    __table_args__ = (
-        Index("ix_job_queue_status_queue", "status", "queue_name"),
-    )
+    __table_args__ = (Index("ix_job_queue_status_queue", "status", "queue_name"),)
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     queue_name: Mapped[str] = mapped_column(String, nullable=False, default="default", index=True)
@@ -73,7 +74,9 @@ class JobQueue(InfrastructureBase):
     args: Mapped[list] = mapped_column(JSONBType, nullable=False, default=list)
     kwargs: Mapped[dict] = mapped_column(JSONBType, nullable=False, default=dict)
 
-    status: Mapped[str] = mapped_column(String, nullable=False, default="queued", index=True)  # queued, in_progress, completed, failed
+    status: Mapped[str] = mapped_column(
+        String, nullable=False, default="queued", index=True
+    )  # queued, in_progress, completed, failed
     result: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -81,7 +84,7 @@ class JobQueue(InfrastructureBase):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    timeout: Mapped[int | None] = mapped_column(Integer, nullable=True) # in seconds
+    timeout: Mapped[int | None] = mapped_column(Integer, nullable=True)  # in seconds
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=5, index=True)
 
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -90,6 +93,7 @@ class JobQueue(InfrastructureBase):
 
 class Sandbox(InfrastructureBase):
     """Tracks per-mission ephemeral sandbox containers."""
+
     __tablename__ = "sandboxes"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
@@ -119,7 +123,9 @@ class SystemStatus(InfrastructureBase):
 
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
 
 
 class CacheEntry(InfrastructureBase):

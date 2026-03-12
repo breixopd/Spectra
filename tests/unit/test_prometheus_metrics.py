@@ -35,9 +35,7 @@ class TestPrometheusMetrics:
         with patch("app.api.routers.metrics.telemetry") as mock_tel:
             mock_tel.get_all_metrics.return_value = families
 
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as ac:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.get("/metrics")
 
         assert resp.status_code == 200
@@ -68,9 +66,7 @@ class TestPrometheusMetrics:
         with patch("app.api.routers.metrics.telemetry") as mock_tel:
             mock_tel.get_all_metrics.return_value = families
 
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as ac:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.get("/metrics")
 
         body = resp.text
@@ -92,9 +88,7 @@ class TestPrometheusMetrics:
         with patch("app.api.routers.metrics.telemetry") as mock_tel:
             mock_tel.get_all_metrics.return_value = []
 
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as ac:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
                 resp = await ac.get("/metrics")
 
         assert resp.status_code == 200

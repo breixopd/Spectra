@@ -12,8 +12,13 @@ class TestSensitiveFieldFilter:
 
     def _make_record(self, msg: str) -> logging.LogRecord:
         return logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg=msg, args=None, exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg=msg,
+            args=None,
+            exc_info=None,
         )
 
     def setup_method(self):

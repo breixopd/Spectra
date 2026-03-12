@@ -69,9 +69,7 @@ async def _auto_install_pending() -> None:
                 if result.get("success"):
                     logger.info("[OK] Installed %s", tool_id)
                 else:
-                    logger.warning(
-                        "[FAIL] Failed to install %s: %s", tool_id, result.get("error")
-                    )
+                    logger.warning("[FAIL] Failed to install %s: %s", tool_id, result.get("error"))
 
                 await _sync_tool_status(tool_id, result)
             except Exception as e:

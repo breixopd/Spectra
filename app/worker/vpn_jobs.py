@@ -44,6 +44,7 @@ async def vpn_disconnect_job(config_name: str, vpn_type: str) -> dict[str, Any]:
     try:
         if vpn_type == "wireguard":
             from app.core.config import settings as _s
+
             config_path = f"{_s.VPN_CONFIG_DIR}/{config_name}.conf"
             cmd = f"wg-quick down {config_path}"
         elif vpn_type == "openvpn":
@@ -99,9 +100,7 @@ async def vpn_test_job() -> dict[str, Any]:
     """Test VPN connectivity by checking the public IP."""
     logger.info("VPN connectivity test")
     try:
-        rc, stdout, stderr = await _run_command(
-            "curl -s --max-time 10 https://ifconfig.me 2>/dev/null", 15
-        )
+        rc, stdout, stderr = await _run_command("curl -s --max-time 10 https://ifconfig.me 2>/dev/null", 15)
         if rc == 0 and stdout.strip():
             return {
                 "success": True,

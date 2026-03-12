@@ -84,9 +84,7 @@ async def test_verify_installation_success(mock_run, installer, mock_tool):
 
     result = await installer.install_tool(mock_tool)
     assert result is True
-    assert (
-        mock_run.call_count == 1
-    )  # Installation skipped because verification succeeded
+    assert mock_run.call_count == 1  # Installation skipped because verification succeeded
 
 
 @pytest.mark.asyncio

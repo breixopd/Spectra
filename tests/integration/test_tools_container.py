@@ -159,6 +159,4 @@ async def test_hot_load_plugin(tool_registry: ToolRegistry) -> None:
 
         # Reload to clear the registry of test plugin
         await tool_registry.load_plugins()
-        assert tool_registry.get_tool("hot-load-test") is None, (
-            "Test plugin was not removed after cleanup"
-        )
+        assert tool_registry.get_tool("hot-load-test") is None, "Test plugin was not removed after cleanup"

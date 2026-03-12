@@ -48,10 +48,7 @@ class Base(DeclarativeBase):
         """Convert model to dictionary."""
         data = {}
         for c in self.__table__.columns:
-            if (
-                self.__include_fields__ is not None
-                and c.name not in self.__include_fields__
-            ):
+            if self.__include_fields__ is not None and c.name not in self.__include_fields__:
                 continue
             if c.name in self.__exclude_fields__:
                 continue

@@ -21,6 +21,7 @@ logger = logging.getLogger("spectra.ai.rag_postgres")
 
 # --- Models ---
 
+
 class Document(BaseModel):
     """A document to be stored in the RAG system."""
 
@@ -69,7 +70,6 @@ class RAGConfig:
     distance_metric: str = "COSINE"
 
 
-
 class RAGService:
     """Retrieval-Augmented Generation service backed by PostgreSQL."""
 
@@ -107,7 +107,8 @@ class RAGService:
                 raise ValueError(f"Invalid embedding dimension: {dim}")
             async with async_session_maker() as session:
                 await session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-                await session.execute(text(f"""
+                await session.execute(
+                    text(f"""
                     CREATE TABLE IF NOT EXISTS rag_documents (
                         id TEXT PRIMARY KEY,
                         content TEXT NOT NULL,
@@ -120,14 +121,17 @@ class RAGService:
                         embedding vector({dim}) NOT NULL,
                         created_at TIMESTAMPTZ DEFAULT now()
                     )
-                """))
-                await session.execute(text(
-                    "CREATE INDEX IF NOT EXISTS idx_rag_documents_doc_type ON rag_documents (doc_type)"
-                ))
-                await session.execute(text(
-                    "CREATE INDEX IF NOT EXISTS idx_rag_embedding_hnsw "
-                    "ON rag_documents USING hnsw (embedding vector_cosine_ops)"
-                ))
+                """)
+                )
+                await session.execute(
+                    text("CREATE INDEX IF NOT EXISTS idx_rag_documents_doc_type ON rag_documents (doc_type)")
+                )
+                await session.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS idx_rag_embedding_hnsw "
+                        "ON rag_documents USING hnsw (embedding vector_cosine_ops)"
+                    )
+                )
                 await session.commit()
 
             self._table_ready = True
@@ -153,9 +157,11 @@ class RAGService:
         if len(doc.content) > self.MAX_DOCUMENT_SIZE:
             logger.warning(
                 "Document %s too large (%d chars), truncating to %d",
-                doc.id, len(doc.content), self.MAX_DOCUMENT_SIZE,
+                doc.id,
+                len(doc.content),
+                self.MAX_DOCUMENT_SIZE,
             )
-            doc = doc.model_copy(update={"content": doc.content[:self.MAX_DOCUMENT_SIZE]})
+            doc = doc.model_copy(update={"content": doc.content[: self.MAX_DOCUMENT_SIZE]})
 
         if not self.is_functional:
             logger.warning(
@@ -238,9 +244,7 @@ class RAGService:
                 params["doc_type"] = doc_type
 
             normalized_filters = {
-                self.FILTER_COLUMNS[k]: v
-                for k, v in (filters or {}).items()
-                if k in self.FILTER_COLUMNS
+                self.FILTER_COLUMNS[k]: v for k, v in (filters or {}).items() if k in self.FILTER_COLUMNS
             }
             for i, (field, value) in enumerate(normalized_filters.items()):
                 placeholder = f"filter_{i}"
@@ -265,9 +269,7 @@ class RAGService:
             params["top_k"] = top_k
 
             async with async_session_maker() as session:
-                rows = (
-                    await session.execute(text(sql), params)
-                ).mappings().all()
+                rows = (await session.execute(text(sql), params)).mappings().all()
 
             results: list[SearchResult] = []
             for row in rows:
@@ -302,17 +304,21 @@ class RAGService:
         try:
             async with async_session_maker() as session:
                 row = (
-                    await session.execute(
-                        text(
-                            """
+                    (
+                        await session.execute(
+                            text(
+                                """
                             SELECT id, content, doc_type, cve_id, severity, target, session_id, metadata
                             FROM rag_documents
                             WHERE id = :id
                             """
-                        ),
-                        {"id": doc_id},
+                            ),
+                            {"id": doc_id},
+                        )
                     )
-                ).mappings().first()
+                    .mappings()
+                    .first()
+                )
             if not row:
                 return None
 
@@ -343,9 +349,7 @@ class RAGService:
             await self.initialize()
         try:
             async with async_session_maker() as session:
-                result = await session.execute(
-                    text("DELETE FROM rag_documents WHERE id = :id"), {"id": doc_id}
-                )
+                result = await session.execute(text("DELETE FROM rag_documents WHERE id = :id"), {"id": doc_id})
                 deleted = result.rowcount > 0  # type: ignore[union-attr]
                 await session.commit()
                 return deleted
@@ -427,5 +431,6 @@ class RAGService:
             return ""
         context = "Relevant Context:\n\n" + "\n\n---\n\n".join(context_parts)
         from app.services.ai.sanitizer import sanitize_for_prompt
+
         context = sanitize_for_prompt(context, max_length=50000, field_name="rag_context")
         return context

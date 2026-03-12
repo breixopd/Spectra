@@ -40,6 +40,7 @@ class MissionManager:
 
         # Concurrent mission isolation
         from app.core.constants import MAX_CONCURRENT_MISSIONS
+
         self._global_semaphore = asyncio.Semaphore(MAX_CONCURRENT_MISSIONS)
         self._mission_llm_semaphores: dict[str, asyncio.Semaphore] = {}
 
@@ -58,8 +59,12 @@ class MissionManager:
     # --- Public API ---
 
     async def start_mission(
-        self, target: str, directive: str, requirements: str | None = None,
-        vpn_config: str | None = None, user_id: str | None = None,
+        self,
+        target: str,
+        directive: str,
+        requirements: str | None = None,
+        vpn_config: str | None = None,
+        user_id: str | None = None,
     ) -> str:
         """
         Start a new security assessment mission.
@@ -76,7 +81,9 @@ class MissionManager:
         """
         await self._ensure_agents()
 
-        mission = await self.lifecycle.start_mission(target, directive, requirements, vpn_config=vpn_config, user_id=user_id)
+        mission = await self.lifecycle.start_mission(
+            target, directive, requirements, vpn_config=vpn_config, user_id=user_id
+        )
 
         # Create per-mission LLM semaphore (max 1 concurrent LLM call)
         self._mission_llm_semaphores[mission.id] = asyncio.Semaphore(1)
@@ -144,9 +151,7 @@ class MissionManager:
         Raises:
             ValueError: If mission not found or input invalid
         """
-        return await self.steering.steer_mission(
-            mission_id, action, phase, target, vulnerability, **kwargs
-        )
+        return await self.steering.steer_mission(mission_id, action, phase, target, vulnerability, **kwargs)
 
     def list_missions(self) -> list[dict[str, Any]]:
         """List all missions with their status."""

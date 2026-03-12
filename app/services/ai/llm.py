@@ -65,10 +65,13 @@ class LLMClient(ABC):
             except Exception as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    delay = 2 ** attempt
+                    delay = 2**attempt
                     logger.warning(
                         "LLM call failed (attempt %d/%d): %s. Retrying in %ds...",
-                        attempt + 1, self.MAX_RETRIES, e, delay,
+                        attempt + 1,
+                        self.MAX_RETRIES,
+                        e,
+                        delay,
                     )
                     await asyncio.sleep(delay)
         raise last_error  # type: ignore[misc]
@@ -157,9 +160,7 @@ class LLMClient(ABC):
 
 Respond ONLY with the JSON object. No markdown, no explanation, just the JSON."""
 
-        full_system = (
-            f"{system_prompt}\n\n{schema_prompt}" if system_prompt else schema_prompt
-        )
+        full_system = f"{system_prompt}\n\n{schema_prompt}" if system_prompt else schema_prompt
 
         response = await self.generate(
             prompt=prompt,
@@ -251,8 +252,7 @@ def get_llm_client(
             from tests.mocks.llm import PentestMockLLMClient
         except ImportError:
             raise ValueError(
-                "Mock provider requires test dependencies. "
-                "Set AI_PROVIDER to 'litellm' for production use."
+                "Mock provider requires test dependencies. Set AI_PROVIDER to 'litellm' for production use."
             ) from None
         return PentestMockLLMClient(
             responses=kwargs.get("responses"),
@@ -289,7 +289,6 @@ def get_default_llm_client() -> LLMClient:
 
     Uses in-process LiteLLM router with provider profiles.
     """
-
 
     from app.services.ai.router import LiteLLMRouter, _normalize_provider_name, create_smart_router
 

@@ -26,9 +26,7 @@ pytestmark = [
 class TestUserSteering:
     """Test user steering functionality (E2E-02)."""
 
-    async def test_steering_action_applied(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_steering_action_applied(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that steering actions are properly applied to mission."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -51,18 +49,14 @@ class TestUserSteering:
                     skip_phases=["exploitation"],
                 )
 
-                await mission_manager.steering.apply_steering_action(
-                    mission, steering_action
-                )
+                await mission_manager.steering.apply_steering_action(mission, steering_action)
 
                 # Verify steering was applied
                 assert "exploitation" in mission.skipped_phases
                 logs = mission.logs
                 assert any("STEERING" in log for log in logs)
 
-    async def test_steering_skips_phases(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_steering_skips_phases(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that steering can skip phases."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -83,16 +77,12 @@ class TestUserSteering:
                     skip_phases=["exploitation", "post_exploitation"],
                 )
 
-                await mission_manager.steering.apply_steering_action(
-                    mission, steering_action
-                )
+                await mission_manager.steering.apply_steering_action(mission, steering_action)
 
                 assert "exploitation" in mission.skipped_phases
                 assert "post_exploitation" in mission.skipped_phases
 
-    async def test_steering_prioritizes_targets(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_steering_prioritizes_targets(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that steering can prioritize specific targets/vectors."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -138,17 +128,13 @@ class TestUserSteering:
                     priority_targets=["ssh", "SSH"],
                 )
 
-                await mission_manager.steering.apply_steering_action(
-                    mission, steering_action
-                )
+                await mission_manager.steering.apply_steering_action(mission, steering_action)
 
                 # Verify prioritization was logged
                 logs = mission.logs
                 assert any("Prioritizing" in log for log in logs)
 
-    async def test_steering_triggers_replan_validation(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_steering_triggers_replan_validation(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that steering triggers REPLAN quality gate validation."""
         replan_validated = False
 
@@ -215,13 +201,11 @@ class TestUserSteering:
                                 reasoning="Test Replan",
                                 new_phase="discovery",
                             )
-                            mission_manager.execution.mission_controller.execute = (
-                                AsyncMock(return_value=mock_controller_result)
+                            mission_manager.execution.mission_controller.execute = AsyncMock(
+                                return_value=mock_controller_result
                             )
 
-                        await mission_manager.execution._handle_task_failure(
-                            mission, task, "Test error", context
-                        )
+                        await mission_manager.execution._handle_task_failure(mission, task, "Test error", context)
 
         # If replan was successful and validated, this should be true
         assert replan_validated, "REPLAN gate was not validated"
@@ -230,9 +214,7 @@ class TestUserSteering:
 class TestEmergencyStop:
     """Test emergency stop functionality (E2E-03)."""
 
-    async def test_stop_mission_immediately(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_stop_mission_immediately(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that stop_mission stops execution immediately."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -251,9 +233,7 @@ class TestEmergencyStop:
                 assert mission is not None
                 assert mission.is_stopped()
 
-    async def test_stop_sets_stopped_flag(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_stop_sets_stopped_flag(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that stop sets the internal stopped flag."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -274,16 +254,12 @@ class TestEmergencyStop:
                 # Now stopped
                 assert mission.is_stopped()
 
-    async def test_stop_nonexistent_mission_returns_false(
-        self, mission_manager: MissionManager
-    ):
+    async def test_stop_nonexistent_mission_returns_false(self, mission_manager: MissionManager):
         """Test that stopping a nonexistent mission returns False."""
         result = await mission_manager.stop_mission("nonexistent-id")
         assert result is False
 
-    async def test_stopped_mission_skips_tasks(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_stopped_mission_skips_tasks(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that a stopped mission doesn't execute more tasks."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -307,9 +283,7 @@ class TestEmergencyStop:
                     # Should have stop-related log
                     assert mission.is_stopped()
 
-    async def test_stop_updates_status(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_stop_updates_status(self, mission_manager: MissionManager, test_target_ip: str):
         """Test that stopping updates mission status appropriately."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -334,9 +308,7 @@ class TestEmergencyStop:
 class TestMissionStateManagement:
     """Test mission state management during steering."""
 
-    async def test_list_missions(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_list_missions(self, mission_manager: MissionManager, test_target_ip: str):
         """Test listing all missions."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):
@@ -351,9 +323,7 @@ class TestMissionStateManagement:
                 assert id1 in mission_ids
                 assert id2 in mission_ids
 
-    async def test_mission_to_dict(
-        self, mission_manager: MissionManager, test_target_ip: str
-    ):
+    async def test_mission_to_dict(self, mission_manager: MissionManager, test_target_ip: str):
         """Test mission serialization."""
         with patch("app.services.mission.manager.lifecycle.async_session_maker"):
             with patch("app.core.events.events.emit_sync"):

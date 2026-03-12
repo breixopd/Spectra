@@ -190,6 +190,7 @@ async def test_smtp_provider_send_success(mock_settings):
 
         # Patch the import inside the method
         import sys
+
         sys.modules["aiosmtplib"] = mock_aio
 
         result = await provider.send("to@test.com", "Subj", "<p>Hi</p>")

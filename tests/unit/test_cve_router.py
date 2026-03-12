@@ -20,6 +20,7 @@ def _fake_user(is_superuser: bool = False):
 
 def _make_app() -> FastAPI:
     from app.core.rate_limit import limiter
+
     app = FastAPI()
     app.state.limiter = limiter
     limiter.enabled = False
@@ -104,8 +105,10 @@ class TestCveEnriched:
 class TestSearchSploit:
     async def test_searchsploit(self, client):
         results = [{"title": "Apache 2.4 RCE", "edb_id": "12345"}]
-        with patch("app.api.routers.cve.search_exploitdb", AsyncMock(return_value=results)), \
-             patch("app.api.routers.cve.get_metasploit_modules", return_value=[]):
+        with (
+            patch("app.api.routers.cve.search_exploitdb", AsyncMock(return_value=results)),
+            patch("app.api.routers.cve.get_metasploit_modules", return_value=[]),
+        ):
             resp = await client.get("/api/v1/cve/searchsploit/apache")
         assert resp.status_code == 200
         data = resp.json()
@@ -114,7 +117,9 @@ class TestSearchSploit:
 
     async def test_searchsploit_long_query(self, client):
         long_query = "a" * 201
-        with patch("app.api.routers.cve.search_exploitdb", AsyncMock(return_value=[])), \
-             patch("app.api.routers.cve.get_metasploit_modules", return_value=[]):
+        with (
+            patch("app.api.routers.cve.search_exploitdb", AsyncMock(return_value=[])),
+            patch("app.api.routers.cve.get_metasploit_modules", return_value=[]),
+        ):
             resp = await client.get(f"/api/v1/cve/searchsploit/{long_query}")
         assert resp.status_code == 422

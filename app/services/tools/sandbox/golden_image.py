@@ -62,13 +62,15 @@ class GoldenImageBuilder:
                 if not installation:
                     continue
 
-                plugins.append({
-                    "id": data.get("id", json_file.stem),
-                    "name": data.get("name", json_file.stem),
-                    "install_method": installation.get("method", ""),
-                    "install_commands": installation.get("commands", []),
-                    "verification_command": installation.get("verification_command", ""),
-                })
+                plugins.append(
+                    {
+                        "id": data.get("id", json_file.stem),
+                        "name": data.get("name", json_file.stem),
+                        "install_method": installation.get("method", ""),
+                        "install_commands": installation.get("commands", []),
+                        "verification_command": installation.get("verification_command", ""),
+                    }
+                )
             except (json.JSONDecodeError, KeyError) as exc:
                 logger.warning("Skipping malformed plugin %s: %s", json_file.name, exc)
 
@@ -140,24 +142,26 @@ class GoldenImageBuilder:
         if apt_packages:
             lines.append(f"    {' '.join(sorted(set(apt_packages)))} \\")
 
-        lines.extend([
-            "    && apt-get clean \\",
-            "    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*",
-            "",
-            "# Go setup",
-            "ENV GOPATH=/root/go",
-            "ENV PATH=$PATH:/root/go/bin:/usr/local/go/bin",
-            "",
-            "# Python virtualenv",
-            "RUN python3 -m venv /opt/venv",
-            'ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"',
-            "",
-            "# Python dependencies",
-            "COPY requirements-tools.txt .",
-            "RUN pip install --no-cache-dir --upgrade pip && \\",
-            "    pip install --no-cache-dir -r requirements-tools.txt",
-            "",
-        ])
+        lines.extend(
+            [
+                "    && apt-get clean \\",
+                "    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*",
+                "",
+                "# Go setup",
+                "ENV GOPATH=/root/go",
+                "ENV PATH=$PATH:/root/go/bin:/usr/local/go/bin",
+                "",
+                "# Python virtualenv",
+                "RUN python3 -m venv /opt/venv",
+                'ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"',
+                "",
+                "# Python dependencies",
+                "COPY requirements-tools.txt .",
+                "RUN pip install --no-cache-dir --upgrade pip && \\",
+                "    pip install --no-cache-dir -r requirements-tools.txt",
+                "",
+            ]
+        )
 
         if pip_packages:
             lines.append(f"RUN pip install --no-cache-dir {' '.join(sorted(set(pip_packages)))}")
@@ -175,14 +179,16 @@ class GoldenImageBuilder:
                 lines.append(f"RUN {cmd}")
             lines.append("")
 
-        lines.extend([
-            "# Worker code",
-            "COPY app/ ./app/",
-            "COPY plugins/ ./plugins/",
-            "",
-            "# Entrypoint",
-            'CMD ["python", "-m", "app.worker"]',
-        ])
+        lines.extend(
+            [
+                "# Worker code",
+                "COPY app/ ./app/",
+                "COPY plugins/ ./plugins/",
+                "",
+                "# Entrypoint",
+                'CMD ["python", "-m", "app.worker"]',
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -279,9 +285,11 @@ class GoldenImageBuilder:
 
             # Scan the image if scanning is enabled
             from app.core.config import get_settings as _get_settings
+
             _build_settings = _get_settings()
             if _build_settings.SANDBOX_IMAGE_SCAN_ENABLED:
                 from app.services.tools.sandbox.image_scanner import ImageScanner
+
                 scanner = ImageScanner()
                 if scanner.available:
                     scan_result = await scanner.scan(
@@ -292,9 +300,7 @@ class GoldenImageBuilder:
                     if scan_result.blocked:
                         # Untag the image to prevent it from being used
                         try:
-                            await asyncio.to_thread(
-                                self._client.images.remove, target_tag, noprune=True
-                            )
+                            await asyncio.to_thread(self._client.images.remove, target_tag, noprune=True)
                             result["status"] = "blocked"
                             result["message"] = f"Image blocked: {scan_result.critical} critical CVEs"
                             logger.warning("Golden image blocked due to %d critical CVEs", scan_result.critical)
@@ -328,9 +334,7 @@ class GoldenImageBuilder:
             from app.models.infrastructure import SystemStatus
 
             async with _asm() as session:
-                result = await session.execute(
-                    _select(SystemStatus).where(SystemStatus.key == "golden_image_build")
-                )
+                result = await session.execute(_select(SystemStatus).where(SystemStatus.key == "golden_image_build"))
                 row = result.scalar_one_or_none()
                 if row and isinstance(row.value, dict):
                     return row.value

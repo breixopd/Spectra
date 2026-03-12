@@ -8,6 +8,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+
 class TaskStatus(StrEnum):
     PENDING = "pending"
     ACTIVE = "active"
@@ -47,9 +48,7 @@ class PentestTaskTree:
         parent_id: str = "root",
         **kwargs: Any,
     ) -> TaskNode:
-        node = TaskNode(
-            id=task_id, name=name, technique=technique, parent_id=parent_id, **kwargs
-        )
+        node = TaskNode(id=task_id, name=name, technique=technique, parent_id=parent_id, **kwargs)
         self._nodes[task_id] = node
         if parent_id in self._nodes:
             self._nodes[parent_id].children.append(task_id)

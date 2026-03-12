@@ -11,6 +11,7 @@ from app.services.ai.context import truncate_for_llm
 # Fix #4: Port extraction (rsplit for IPv6 safety)
 # ---------------------------------------------------------------------------
 
+
 class TestPortExtraction:
     """Verify port extraction handles IPv4 and IPv6 addresses."""
 
@@ -38,12 +39,14 @@ class TestPortExtraction:
 # Fix #5: Missing TaskDispatcher handlers
 # ---------------------------------------------------------------------------
 
+
 class TestNewHandlers:
     """Verify post_exploitation and vector_generator handlers registered."""
 
     @pytest.fixture
     def dispatcher(self):
         from app.services.mission.executor.handlers import TaskDispatcher
+
         tool_service = AsyncMock()
         exploit_manager = AsyncMock()
         consensus = AsyncMock()
@@ -69,6 +72,7 @@ class TestNewHandlers:
 # ---------------------------------------------------------------------------
 # Fix #6: Output truncation
 # ---------------------------------------------------------------------------
+
 
 class TestOutputTruncation:
     """Verify tool output truncation for LLM context."""
@@ -106,6 +110,7 @@ class TestOutputTruncation:
 # Fix #7: Mission timeout constant
 # ---------------------------------------------------------------------------
 
+
 class TestMissionTimeout:
     """Verify mission timeout is configured."""
 
@@ -119,6 +124,7 @@ class TestMissionTimeout:
 # ---------------------------------------------------------------------------
 # Fix #8: LLM retry method
 # ---------------------------------------------------------------------------
+
 
 class TestLLMRetry:
     """Verify LLMClient retry wrapper."""
@@ -144,11 +150,13 @@ class TestLLMRetry:
 # Fix #9: auto_expand_scope wired
 # ---------------------------------------------------------------------------
 
+
 class TestAutoExpandScope:
     """Verify auto_expand_scope is importable and callable."""
 
     def test_import(self):
         from app.services.mission.executor.analysis import auto_expand_scope
+
         assert callable(auto_expand_scope)
 
     def test_returns_expansions_for_new_hosts(self):
@@ -179,16 +187,19 @@ class TestAutoExpandScope:
 # Fix #10: ChainBuilder integration
 # ---------------------------------------------------------------------------
 
+
 class TestChainBuilderIntegration:
     """Verify ChainBuilder is importable and chains are valid."""
 
     def test_builtin_chains_load(self):
         from app.services.mission.chain_builder import get_builtin_chains
+
         chains = get_builtin_chains()
         assert len(chains) >= 2
 
     def test_chain_validation(self):
         from app.services.mission.chain_builder import ChainBuilder, get_builtin_chains
+
         for chain in get_builtin_chains():
             warnings = ChainBuilder.validate_chain(chain)
             assert isinstance(warnings, list)
@@ -197,6 +208,7 @@ class TestChainBuilderIntegration:
 # ---------------------------------------------------------------------------
 # Fix #3: Tool name validation (tool_selector)
 # ---------------------------------------------------------------------------
+
 
 class TestToolSelectorValidation:
     """Verify tool_selector validates LLM-suggested tool names."""
@@ -219,16 +231,19 @@ class TestToolSelectorValidation:
 # Fix #11: Blackboard read integration
 # ---------------------------------------------------------------------------
 
+
 class TestBlackboardReads:
     """Verify blackboard read method works."""
 
     def test_blackboard_read_returns_none_for_missing(self):
         from app.services.ai.blackboard import MissionBlackboard
+
         bb = MissionBlackboard("test")
         assert bb.read("nonexistent") is None
 
     def test_blackboard_write_then_read(self):
         from app.services.ai.blackboard import MissionBlackboard
+
         bb = MissionBlackboard("test")
         bb.write("agent", "credentials", [{"user": "admin", "pass": "admin"}])
         result = bb.read("credentials")

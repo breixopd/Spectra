@@ -58,9 +58,7 @@ async def test_reporter_execution(reporter_agent, context):
 @pytest.mark.asyncio
 async def test_reporter_risk_calculation(reporter_agent):
     # Critical risk
-    assert (
-        reporter_agent._calculate_overall_risk({"critical": 1}) == ActionRisk.CRITICAL
-    )
+    assert reporter_agent._calculate_overall_risk({"critical": 1}) == ActionRisk.CRITICAL
 
     # High risk (>2 high)
     assert reporter_agent._calculate_overall_risk({"high": 3}) == ActionRisk.HIGH
@@ -77,9 +75,7 @@ async def test_reporter_llm_failure_fallback(reporter_agent, context):
     # Simulate LLM failure
     reporter_agent.llm.generate.side_effect = Exception("LLM Error")
 
-    input_data = ReporterInput(
-        findings=[], mission_summary="Mission summary", target="example.com"
-    )
+    input_data = ReporterInput(findings=[], mission_summary="Mission summary", target="example.com")
 
     result = await reporter_agent.execute(context, input_data)
 

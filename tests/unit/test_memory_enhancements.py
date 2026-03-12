@@ -59,9 +59,7 @@ class TestServiceIndex:
 
     def test_indexed_recommendations_same_as_before(self, memory):
         """Indexed get_tool_recommendations returns same results."""
-        memory.record_tool_result(
-            "nuclei", "http", success=True, findings_count=5, target_product="Apache"
-        )
+        memory.record_tool_result("nuclei", "http", success=True, findings_count=5, target_product="Apache")
         memory.record_tool_result("nikto", "http", success=True, findings_count=3)
         memory.record_tool_result("nmap", "ssh", success=True, findings_count=1)
 
@@ -122,13 +120,10 @@ class TestKnowledgeAggregation:
     """MEM-006: Cross-mission knowledge aggregation."""
 
     def test_aggregate_basic(self, memory):
-        memory.record_tool_result("nuclei", "http", success=True, findings_count=5,
-                                  finding_types=["xss", "sqli"])
-        memory.record_tool_result("nuclei", "http", success=True, findings_count=3,
-                                  finding_types=["sqli"])
+        memory.record_tool_result("nuclei", "http", success=True, findings_count=5, finding_types=["xss", "sqli"])
+        memory.record_tool_result("nuclei", "http", success=True, findings_count=3, finding_types=["sqli"])
         memory.record_tool_result("nuclei", "http", success=False, findings_count=0)
-        memory.record_tool_result("nikto", "http", success=True, findings_count=2,
-                                  finding_types=["misconfig"])
+        memory.record_tool_result("nikto", "http", success=True, findings_count=2, finding_types=["misconfig"])
 
         result = memory.aggregate_knowledge()
         assert "service_profiles" in result

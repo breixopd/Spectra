@@ -7,9 +7,11 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class ProvisionStep:
     """A single step in a provisioning recipe."""
+
     name: str
     command: str
     timeout: int = 120

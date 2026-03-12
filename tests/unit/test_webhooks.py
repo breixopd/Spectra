@@ -164,7 +164,6 @@ class TestWebhookRegistration:
 
 
 class TestWebhookListAndDelete:
-
     @pytest.mark.asyncio
     async def test_list_for_user(self):
         session = AsyncMock()
@@ -209,7 +208,6 @@ class TestWebhookListAndDelete:
 
 
 class TestWebhookDelivery:
-
     @pytest.mark.asyncio
     async def test_successful_delivery_single_try(self):
         wh = _mock_webhook()
@@ -260,7 +258,6 @@ class TestWebhookDelivery:
 
 
 class TestWebhookRetry:
-
     @pytest.mark.asyncio
     async def test_retries_on_server_error(self):
         wh = _mock_webhook()
@@ -331,7 +328,6 @@ class TestWebhookRetry:
 
 
 class TestWebhookSignature:
-
     @pytest.mark.asyncio
     async def test_hmac_signature_present_with_secret(self):
         wh = _mock_webhook(secret="my-secret-key")
@@ -394,7 +390,6 @@ class TestWebhookSignature:
 
 
 class TestWebhookFire:
-
     @pytest.mark.asyncio
     async def test_fire_delivers_to_matching_hooks(self):
         session = AsyncMock()

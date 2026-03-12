@@ -85,9 +85,7 @@ class PluginInstaller:
                 returncode, stdout, stderr = await run_command_safe(cmd)
 
                 if returncode != 0:
-                    raise PluginInstallationError(
-                        f"Command failed (exit {returncode}): {stderr}"
-                    )
+                    raise PluginInstallationError(f"Command failed (exit {returncode}): {stderr}")
 
             # Verify installation
             if config.installation.verification_command:
@@ -162,9 +160,7 @@ class PluginInstaller:
                     returncode, stdout, stderr = await run_command_safe(cmd)
 
                     if returncode != 0:
-                        raise PluginInstallationError(
-                            f"Uninstall command failed (exit {returncode}): {stderr}"
-                        )
+                        raise PluginInstallationError(f"Uninstall command failed (exit {returncode}): {stderr}")
             except Exception as e:
                 logger.error("Failed to uninstall %s: %s", tool_id, e)
                 # We still try to remove the plugin file even if commands fail
@@ -207,9 +203,7 @@ class PluginInstaller:
                 # If regex matches, we consider it a success even if exit code is non-zero
                 return True
             else:
-                logger.debug(
-                    "Verification regex for %s did not match output", config.id
-                )
+                logger.debug("Verification regex for %s did not match output", config.id)
 
         if returncode != 0:
             logger.error(

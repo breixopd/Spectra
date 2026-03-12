@@ -47,20 +47,14 @@ class TestToolLessons:
         assert len(recs) == 1
 
     def test_product_boosts_relevance(self, memory):
-        memory.record_tool_result(
-            "nuclei", "http", success=True, findings_count=2, target_product="Apache"
-        )
+        memory.record_tool_result("nuclei", "http", success=True, findings_count=2, target_product="Apache")
         memory.record_tool_result("nikto", "http", success=True, findings_count=1)
         recs = memory.get_tool_recommendations("http", product="Apache")
         assert recs[0]["tool"] == "nuclei"
 
     def test_os_boosts_relevance(self, memory):
-        memory.record_tool_result(
-            "nmap", "ssh", success=True, findings_count=1, target_os="linux"
-        )
-        memory.record_tool_result(
-            "nmap", "ssh", success=True, findings_count=1, target_os="windows"
-        )
+        memory.record_tool_result("nmap", "ssh", success=True, findings_count=1, target_os="linux")
+        memory.record_tool_result("nmap", "ssh", success=True, findings_count=1, target_os="windows")
         recs = memory.get_tool_recommendations("ssh", os_family="linux")
         assert len(recs) >= 1
 
@@ -72,9 +66,7 @@ class TestToolLessons:
 
     def test_max_recommendations(self, memory):
         for i in range(10):
-            memory.record_tool_result(
-                f"tool-{i}", "http", success=True, findings_count=i + 1
-            )
+            memory.record_tool_result(f"tool-{i}", "http", success=True, findings_count=i + 1)
         recs = memory.get_tool_recommendations("http")
         assert len(recs) <= 5
 
@@ -187,9 +179,7 @@ class TestPromptContext:
         assert memory.get_context_for_prompt("http") == ""
 
     def test_includes_tool_recommendations(self, memory):
-        memory.record_tool_result(
-            "nuclei", "http", success=True, findings_count=5, target_product="Apache"
-        )
+        memory.record_tool_result("nuclei", "http", success=True, findings_count=5, target_product="Apache")
         ctx = memory.get_context_for_prompt(service="http")
         assert "nuclei" in ctx
         assert "Past Experience" in ctx

@@ -6,6 +6,7 @@ Requires:
 
 Skip if not available.
 """
+
 import os
 
 import pytest
@@ -13,15 +14,14 @@ import pytest
 pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.integration,
-    pytest.mark.skipif(
-        not os.environ.get("S3_ENDPOINT_URL"),
-        reason="S3/MinIO not configured"
-    ),
+    pytest.mark.skipif(not os.environ.get("S3_ENDPOINT_URL"), reason="S3/MinIO not configured"),
 ]
+
 
 async def test_upload_download_roundtrip():
     """Upload data and download it back."""
     from app.services.storage import get_storage_service
+
     storage = get_storage_service()
 
     test_data = b"integration test data"
@@ -42,6 +42,7 @@ async def test_upload_download_roundtrip():
 async def test_list_objects_with_prefix():
     """List objects filtered by prefix."""
     from app.services.storage import get_storage_service
+
     storage = get_storage_service()
 
     bucket = "spectra-test"
@@ -61,6 +62,7 @@ async def test_list_objects_with_prefix():
 async def test_health_check():
     """Health check when S3 is configured."""
     from app.services.storage import get_storage_service
+
     storage = get_storage_service()
     result = await storage.health_check()
     assert result["status"] == "healthy"

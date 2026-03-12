@@ -74,7 +74,10 @@ class TestParserAgentExecute:
         llm = MockLLMClient(
             structured_responses={
                 "ParserOutput": ParserOutput(
-                    findings=[], summary="ok", confidence=0.8, reasoning="ok",
+                    findings=[],
+                    summary="ok",
+                    confidence=0.8,
+                    reasoning="ok",
                 ).model_dump(),
             },
         )
@@ -115,7 +118,10 @@ class TestParserAgentExecute:
         llm = MockLLMClient(
             structured_responses={
                 "ParserOutput": ParserOutput(
-                    findings=[], summary="ok", confidence=0.8, reasoning="ok",
+                    findings=[],
+                    summary="ok",
+                    confidence=0.8,
+                    reasoning="ok",
                 ).model_dump(),
             },
         )

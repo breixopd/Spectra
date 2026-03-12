@@ -227,17 +227,21 @@ class TestReportTemplates:
 
     def test_generate_report_success(self, tmp_path):
         session_file = tmp_path / "test.json"
-        session_file.write_text(json.dumps({
-            "id": "test",
-            "name": "Test Session",
-            "target": "192.168.1.1",
-            "findings": [
-                {"title": "SQLi", "severity": "high"},
-                {"title": "XSS", "severity": "medium"},
-            ],
-            "tools_used": ["nmap"],
-            "command_history": [],
-        }))
+        session_file.write_text(
+            json.dumps(
+                {
+                    "id": "test",
+                    "name": "Test Session",
+                    "target": "192.168.1.1",
+                    "findings": [
+                        {"title": "SQLi", "severity": "high"},
+                        {"title": "XSS", "severity": "medium"},
+                    ],
+                    "tools_used": ["nmap"],
+                    "command_history": [],
+                }
+            )
+        )
         result = generate_report_data(session_file, "technical")
         assert result["template"] == "technical"
         assert result["total_findings"] == 2

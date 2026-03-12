@@ -1,6 +1,5 @@
 """Tests for app.core.events module."""
 
-
 import pytest
 
 from app.core.events import Event, EventBus, EventType

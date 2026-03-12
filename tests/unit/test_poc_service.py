@@ -16,9 +16,11 @@ def mock_llm():
 
 @pytest.fixture
 def poc_service(mock_llm):
-    with patch("app.services.poc.service.POCDeveloperAgent"), \
-         patch("app.services.poc.service.VotingSystem") as MockVoting, \
-         patch("app.services.poc.service.ToolExecutionService") as MockToolSvc:
+    with (
+        patch("app.services.poc.service.POCDeveloperAgent"),
+        patch("app.services.poc.service.VotingSystem") as MockVoting,
+        patch("app.services.poc.service.ToolExecutionService") as MockToolSvc,
+    ):
         svc = POCService(mock_llm)
         svc.consensus = MockVoting.return_value
         svc.tool_service = MockToolSvc.return_value
@@ -83,9 +85,7 @@ class TestPOCServiceGenerate:
         mock_action.risk_assessment = "medium"
 
         poc_service.developer_agent = AsyncMock()
-        poc_service.developer_agent.execute = AsyncMock(
-            return_value=AgentResult(success=True, action=mock_action)
-        )
+        poc_service.developer_agent.execute = AsyncMock(return_value=AgentResult(success=True, action=mock_action))
 
         # Mock consensus approval
         mock_vote = MagicMock()
@@ -110,9 +110,7 @@ class TestPOCServiceGenerate:
     @pytest.mark.asyncio
     async def test_generate_agent_failure(self, poc_service, poc_request, agent_context):
         poc_service.developer_agent = AsyncMock()
-        poc_service.developer_agent.execute = AsyncMock(
-            return_value=AgentResult(success=False, error="LLM timeout")
-        )
+        poc_service.developer_agent.execute = AsyncMock(return_value=AgentResult(success=False, error="LLM timeout"))
 
         with patch("app.services.poc.service.shell_manager") as mock_shell:
             mock_shell.start_listener = MagicMock(return_value=4444)
@@ -129,9 +127,7 @@ class TestPOCServiceGenerate:
         mock_action.risk_assessment = "critical"
 
         poc_service.developer_agent = AsyncMock()
-        poc_service.developer_agent.execute = AsyncMock(
-            return_value=AgentResult(success=True, action=mock_action)
-        )
+        poc_service.developer_agent.execute = AsyncMock(return_value=AgentResult(success=True, action=mock_action))
 
         mock_vote = MagicMock()
         mock_vote.status = "rejected"
@@ -153,9 +149,7 @@ class TestPOCServiceGenerate:
         mock_action.risk_assessment = "low"
 
         poc_service.developer_agent = AsyncMock()
-        poc_service.developer_agent.execute = AsyncMock(
-            return_value=AgentResult(success=True, action=mock_action)
-        )
+        poc_service.developer_agent.execute = AsyncMock(return_value=AgentResult(success=True, action=mock_action))
 
         mock_vote = MagicMock()
         mock_vote.status = "approved"

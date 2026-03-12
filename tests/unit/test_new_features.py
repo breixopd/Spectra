@@ -113,18 +113,22 @@ class TestFindingDeduplication:
 
     def test_fuzzy_duplicate_same_host_port_similar_desc(self):
         mission = Mission("target.com", "test")
-        mission.add_finding({
-            "name": "short",
-            "description": "SQL injection in login parameter",
-            "host": "target.com",
-            "port": 80,
-        })
-        mission.add_finding({
-            "name": "short",
-            "description": "SQL injection in login parameter found",
-            "host": "target.com",
-            "port": 80,
-        })
+        mission.add_finding(
+            {
+                "name": "short",
+                "description": "SQL injection in login parameter",
+                "host": "target.com",
+                "port": 80,
+            }
+        )
+        mission.add_finding(
+            {
+                "name": "short",
+                "description": "SQL injection in login parameter found",
+                "host": "target.com",
+                "port": 80,
+            }
+        )
 
         assert len(mission.findings) == 1
         assert mission.findings[0]["count"] == 2
@@ -441,9 +445,7 @@ class TestPluginExamples:
             with open(plugin_file) as f:
                 plugin = json.load(f)
             assert "examples" in plugin, f"{plugin_file.name} missing 'examples' field"
-            assert len(plugin["examples"]) >= 2, (
-                f"{plugin_file.name} has fewer than 2 examples"
-            )
+            assert len(plugin["examples"]) >= 2, f"{plugin_file.name} has fewer than 2 examples"
 
     def test_examples_have_required_fields(self):
         import json
@@ -456,7 +458,5 @@ class TestPluginExamples:
             if "examples" not in plugin:
                 continue
             for ex in plugin["examples"]:
-                assert "description" in ex, (
-                    f"{plugin_file.name} example missing 'description'"
-                )
+                assert "description" in ex, f"{plugin_file.name} example missing 'description'"
                 assert "args" in ex, f"{plugin_file.name} example missing 'args'"

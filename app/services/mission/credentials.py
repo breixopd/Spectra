@@ -10,9 +10,7 @@ logger = logging.getLogger("spectra.mission.credentials")
 MAX_CREDENTIALS_PER_MISSION = 100
 
 # Patterns to extract credentials from tool output
-_HYDRA_PATTERN = re.compile(
-    r"\[(\d+)\]\[(\w+)\]\s+host:\s*(\S+)\s+login:\s*(\S+)\s+password:\s*(\S+)"
-)
+_HYDRA_PATTERN = re.compile(r"\[(\d+)\]\[(\w+)\]\s+host:\s*(\S+)\s+login:\s*(\S+)\s+password:\s*(\S+)")
 _GENERIC_CRED_PATTERN = re.compile(
     r"(?:login|user(?:name)?|account)\s*[:=]\s*(\S+)\s+(?:password|pass|pw)\s*[:=]\s*(\S+)",
     re.IGNORECASE,
@@ -89,9 +87,7 @@ class CredentialStore:
         lines = ["**Discovered Credentials:**"]
         for c in creds[:10]:
             verified = "verified" if c.verified else "unverified"
-            lines.append(
-                f"  [{verified}] {c.username}:{c.password} -> {c.service}@{c.host} (via {c.source})"
-            )
+            lines.append(f"  [{verified}] {c.username}:{c.password} -> {c.service}@{c.host} (via {c.source})")
         if len(creds) > 10:
             lines.append(f"  ... and {len(creds) - 10} more")
         return "\n".join(lines)

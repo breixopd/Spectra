@@ -130,11 +130,7 @@ def _resolve_techniques(tool_id: str, action: str) -> list[str]:
     """
     tool = tool_id.lower().strip()
     act = action.lower().strip() if action else "*"
-    return (
-        TECHNIQUE_MAP.get((tool, act))
-        or TECHNIQUE_MAP.get((tool, "*"))
-        or []
-    )
+    return TECHNIQUE_MAP.get((tool, act)) or TECHNIQUE_MAP.get((tool, "*")) or []
 
 
 # ---------------------------------------------------------------------------
@@ -154,20 +150,12 @@ def tag_finding_with_attack(finding: dict[str, Any]) -> dict[str, Any]:
         A new dict with ``mitre_techniques`` — a list of dicts, each
         containing ``id`` and ``name`` of the matched technique.
     """
-    tool_id = (
-        finding.get("tool_id")
-        or finding.get("tool")
-        or finding.get("source")
-        or ""
-    )
+    tool_id = finding.get("tool_id") or finding.get("tool") or finding.get("source") or ""
     action = finding.get("action") or finding.get("type") or "*"
 
     technique_ids = _resolve_techniques(tool_id, action)
 
-    techniques = [
-        {"id": tid, "name": TECHNIQUE_NAMES.get(tid, tid)}
-        for tid in technique_ids
-    ]
+    techniques = [{"id": tid, "name": TECHNIQUE_NAMES.get(tid, tid)} for tid in technique_ids]
 
     return {**finding, "mitre_techniques": techniques}
 
@@ -250,9 +238,7 @@ def get_attack_summary(findings: list[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "tactics": tactic_counts,
-        "tactic_names": {
-            tid: TACTIC_NAMES.get(tid, tid) for tid in tactic_counts
-        },
+        "tactic_names": {tid: TACTIC_NAMES.get(tid, tid) for tid in tactic_counts},
         "total_techniques": len(technique_set),
         "total_findings_mapped": total_mapped,
     }

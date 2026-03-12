@@ -35,9 +35,7 @@ def adapter(mock_tool_config):
 @pytest.mark.asyncio
 async def test_execute_local_without_container_config(adapter):
     """Test execution runs locally (no docker exec wrapping)."""
-    request = ToolExecutionRequest(
-        tool_id="test-tool", target="127.0.0.1", args={"ports": "80"}
-    )
+    request = ToolExecutionRequest(tool_id="test-tool", target="127.0.0.1", args={"ports": "80"})
 
     with (
         patch("asyncio.create_subprocess_shell") as mock_subprocess,
@@ -63,9 +61,7 @@ async def test_execute_local_without_container_config(adapter):
 @pytest.mark.asyncio
 async def test_execute_command_locally(adapter):
     """Test executing a command locally (sandbox wrapping is handled externally)."""
-    request = ToolExecutionRequest(
-        tool_id="test-tool", target="127.0.0.1", args={"ports": "80"}
-    )
+    request = ToolExecutionRequest(tool_id="test-tool", target="127.0.0.1", args={"ports": "80"})
 
     with (
         patch("asyncio.create_subprocess_shell") as mock_subprocess,

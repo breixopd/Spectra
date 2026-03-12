@@ -61,9 +61,7 @@ class ShellSession:
         if self.websocket and self._loop:
             try:
                 text = data.decode("utf-8", errors="replace")
-                asyncio.run_coroutine_threadsafe(
-                    self.websocket.send_text(text), self._loop
-                )
+                asyncio.run_coroutine_threadsafe(self.websocket.send_text(text), self._loop)
             except Exception as e:
                 logger.error("Failed to broadcast output: %s", e)
         else:
@@ -85,7 +83,7 @@ class ShellSessionManager:
         return cls._instance
 
     def __init__(self):
-        if hasattr(self, '_initialized'):
+        if hasattr(self, "_initialized"):
             return
         self._initialized = True
         self.sessions: dict[str, ShellSession] = {}
@@ -122,9 +120,7 @@ class ShellSessionManager:
                     raise RuntimeError("No free ports available for shell listeners")
                 continue
 
-    def start_listener(
-        self, session_id: str, target: str, mission_id: str = None, port: int = 0
-    ) -> int:
+    def start_listener(self, session_id: str, target: str, mission_id: str = None, port: int = 0) -> int:
         """Start a TCP listener for a reverse shell on a background thread.
 
         If port is 0, allocates a dynamic port.
@@ -155,7 +151,8 @@ class ShellSessionManager:
                 server.listen(1)
                 logger.info(
                     "Shell listener started on port %s for session %s",
-                    port, session_id,
+                    port,
+                    session_id,
                 )
 
                 self.listeners[port] = server
@@ -227,7 +224,8 @@ class ShellSessionManager:
                 except Exception as e:
                     logger.warning(
                         "Error closing socket for session %s: %s",
-                        session_id, e,
+                        session_id,
+                        e,
                     )
             del self.sessions[session_id]
 
@@ -244,14 +242,10 @@ class ShellSessionManager:
 
             if session.mission_id != finished_mission_id:
                 session.missions_survived += 1
-                logger.info(
-                    f"Session {session_id} survived {session.missions_survived} missions"
-                )
+                logger.info(f"Session {session_id} survived {session.missions_survived} missions")
 
                 if session.missions_survived >= 2:
-                    logger.info(
-                        f"Session {session_id} TTL expired (survived 2 missions). Killing."
-                    )
+                    logger.info(f"Session {session_id} TTL expired (survived 2 missions). Killing.")
                     # Run kill_session in the event loop since it's async (or just close socket)
                     # Since this method might be called from sync code, we can just close the socket
                     # which will trigger the listener thread to cleanup.

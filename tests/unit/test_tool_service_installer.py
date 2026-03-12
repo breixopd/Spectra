@@ -15,9 +15,7 @@ def mock_registry():
     tool.config.id = "nmap"
     tool.config.execution.command = "nmap"
     tool.config.installation.verification_command = None
-    tool.config.installation.verification_regex = (
-        None  # Explicitly None to avoid MagicMock truthness
-    )
+    tool.config.installation.verification_regex = None  # Explicitly None to avoid MagicMock truthness
     tool.status = "installed"
     tool.error_message = None
 
@@ -36,9 +34,7 @@ def installer():
 @pytest.mark.asyncio
 @patch("app.services.tools.installer.get_registry")
 @patch("app.services.tools.installer.ToolInstaller._is_installed")
-async def test_install_success(
-    mock_is_installed, mock_get_registry, installer, mock_registry
-):
+async def test_install_success(mock_is_installed, mock_get_registry, installer, mock_registry):
     mock_get_registry.return_value = mock_registry
     mock_is_installed.return_value = False
 
@@ -52,9 +48,7 @@ async def test_install_success(
 @pytest.mark.asyncio
 @patch("app.services.tools.installer.get_registry")
 @patch("app.services.tools.installer.ToolInstaller._is_installed")
-async def test_install_already_installed(
-    mock_is_installed, mock_get_registry, installer, mock_registry
-):
+async def test_install_already_installed(mock_is_installed, mock_get_registry, installer, mock_registry):
     mock_get_registry.return_value = mock_registry
     mock_is_installed.return_value = True
 

@@ -63,16 +63,15 @@ class TestTelemetryMiddleware:
         response = MagicMock(status_code=200)
         call_next = AsyncMock(return_value=response)
 
-        with patch("app.core.telemetry_middleware.telemetry") as mock_tel, \
-             patch("app.core.telemetry_middleware.get_correlation_id", return_value=None):
+        with (
+            patch("app.core.telemetry_middleware.telemetry") as mock_tel,
+            patch("app.core.telemetry_middleware.get_correlation_id", return_value=None),
+        ):
             result = await middleware.dispatch(request, call_next)
 
         assert result is response
         # Should have: adjust_gauge +1, adjust_gauge -1, requests counter, duration histogram
-        total_calls = [
-            c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.server.requests"
-        ]
+        total_calls = [c for c in mock_tel.increment_counter.call_args_list if c.args[0] == "http.server.requests"]
         assert len(total_calls) == 1
         # Check via the positional args pattern: increment_counter(name, value, labels)
         call_a = total_calls[0]
@@ -84,13 +83,14 @@ class TestTelemetryMiddleware:
         request = self._make_request("/api/findings")
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
-        with patch("app.core.telemetry_middleware.telemetry") as mock_tel, \
-             patch("app.core.telemetry_middleware.get_correlation_id", return_value=None):
+        with (
+            patch("app.core.telemetry_middleware.telemetry") as mock_tel,
+            patch("app.core.telemetry_middleware.get_correlation_id", return_value=None),
+        ):
             await middleware.dispatch(request, call_next)
 
         histogram_calls = [
-            c for c in mock_tel.observe_histogram.call_args_list
-            if c.args[0] == "http.server.request.duration"
+            c for c in mock_tel.observe_histogram.call_args_list if c.args[0] == "http.server.request.duration"
         ]
         assert len(histogram_calls) == 1
         # Duration should be a positive float
@@ -102,13 +102,14 @@ class TestTelemetryMiddleware:
         request = self._make_request("/api/fail")
         call_next = AsyncMock(return_value=MagicMock(status_code=500))
 
-        with patch("app.core.telemetry_middleware.telemetry") as mock_tel, \
-             patch("app.core.telemetry_middleware.get_correlation_id", return_value=None):
+        with (
+            patch("app.core.telemetry_middleware.telemetry") as mock_tel,
+            patch("app.core.telemetry_middleware.get_correlation_id", return_value=None),
+        ):
             await middleware.dispatch(request, call_next)
 
         error_calls = [
-            c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.server.request.errors"
+            c for c in mock_tel.increment_counter.call_args_list if c.args[0] == "http.server.request.errors"
         ]
         assert len(error_calls) == 1
 
@@ -118,13 +119,14 @@ class TestTelemetryMiddleware:
         request = self._make_request("/api/missing")
         call_next = AsyncMock(return_value=MagicMock(status_code=404))
 
-        with patch("app.core.telemetry_middleware.telemetry") as mock_tel, \
-             patch("app.core.telemetry_middleware.get_correlation_id", return_value=None):
+        with (
+            patch("app.core.telemetry_middleware.telemetry") as mock_tel,
+            patch("app.core.telemetry_middleware.get_correlation_id", return_value=None),
+        ):
             await middleware.dispatch(request, call_next)
 
         error_calls = [
-            c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.server.request.errors"
+            c for c in mock_tel.increment_counter.call_args_list if c.args[0] == "http.server.request.errors"
         ]
         assert len(error_calls) == 0
 
@@ -134,14 +136,15 @@ class TestTelemetryMiddleware:
         request = self._make_request("/api/boom")
         call_next = AsyncMock(side_effect=RuntimeError("kaboom"))
 
-        with patch("app.core.telemetry_middleware.telemetry") as mock_tel, \
-             patch("app.core.telemetry_middleware.get_correlation_id", return_value=None):
+        with (
+            patch("app.core.telemetry_middleware.telemetry") as mock_tel,
+            patch("app.core.telemetry_middleware.get_correlation_id", return_value=None),
+        ):
             with pytest.raises(RuntimeError, match="kaboom"):
                 await middleware.dispatch(request, call_next)
 
         error_calls = [
-            c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.server.request.errors"
+            c for c in mock_tel.increment_counter.call_args_list if c.args[0] == "http.server.request.errors"
         ]
         assert len(error_calls) == 1
 
@@ -151,14 +154,13 @@ class TestTelemetryMiddleware:
         request = self._make_request("/api/work")
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
-        with patch("app.core.telemetry_middleware.telemetry") as mock_tel, \
-             patch("app.core.telemetry_middleware.get_correlation_id", return_value=None):
+        with (
+            patch("app.core.telemetry_middleware.telemetry") as mock_tel,
+            patch("app.core.telemetry_middleware.get_correlation_id", return_value=None),
+        ):
             await middleware.dispatch(request, call_next)
 
-        active_calls = [
-            c for c in mock_tel.adjust_gauge.call_args_list
-            if c.args[0] == "http.server.active_requests"
-        ]
+        active_calls = [c for c in mock_tel.adjust_gauge.call_args_list if c.args[0] == "http.server.active_requests"]
         # Should have +1 then -1
         assert len(active_calls) == 2
         assert active_calls[0].args[1] == 1
@@ -167,19 +169,16 @@ class TestTelemetryMiddleware:
     @pytest.mark.asyncio
     async def test_path_normalization_in_labels(self, middleware):
         """Labels should use normalized path (IDs replaced)."""
-        request = self._make_request(
-            "/api/missions/550e8400-e29b-41d4-a716-446655440000"
-        )
+        request = self._make_request("/api/missions/550e8400-e29b-41d4-a716-446655440000")
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
-        with patch("app.core.telemetry_middleware.telemetry") as mock_tel, \
-             patch("app.core.telemetry_middleware.get_correlation_id", return_value=None):
+        with (
+            patch("app.core.telemetry_middleware.telemetry") as mock_tel,
+            patch("app.core.telemetry_middleware.get_correlation_id", return_value=None),
+        ):
             await middleware.dispatch(request, call_next)
 
-        total_calls = [
-            c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.server.requests"
-        ]
+        total_calls = [c for c in mock_tel.increment_counter.call_args_list if c.args[0] == "http.server.requests"]
         assert len(total_calls) == 1
         labels = total_calls[0][0][2]  # third positional arg
         assert labels["route"] == "/api/missions/{id}"
@@ -190,13 +189,12 @@ class TestTelemetryMiddleware:
         request = self._make_request("/api/data")
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
-        with patch("app.core.telemetry_middleware.telemetry") as mock_tel, \
-             patch("app.core.telemetry_middleware.get_correlation_id", return_value="req-abc-123"):
+        with (
+            patch("app.core.telemetry_middleware.telemetry") as mock_tel,
+            patch("app.core.telemetry_middleware.get_correlation_id", return_value="req-abc-123"),
+        ):
             await middleware.dispatch(request, call_next)
 
-        total_calls = [
-            c for c in mock_tel.increment_counter.call_args_list
-            if c.args[0] == "http.server.requests"
-        ]
+        total_calls = [c for c in mock_tel.increment_counter.call_args_list if c.args[0] == "http.server.requests"]
         labels = total_calls[0][0][2]
         assert labels["correlation_id"] == "req-abc-123"

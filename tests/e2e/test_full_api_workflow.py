@@ -161,9 +161,7 @@ class TestFullWorkflow:
             else:
                 pytest.fail(f"Failed to list targets: {list_response.text}")
         else:
-            pytest.fail(
-                f"Failed to create target: {response.status_code} - {response.text}"
-            )
+            pytest.fail(f"Failed to create target: {response.status_code} - {response.text}")
 
         # Step 2: Start a mission
         print("\nStep 2: Starting mission...")
@@ -179,9 +177,7 @@ class TestFullWorkflow:
         )
 
         if response.status_code not in (200, 201):
-            pytest.fail(
-                f"Failed to start mission: {response.status_code} - {response.text}"
-            )
+            pytest.fail(f"Failed to start mission: {response.status_code} - {response.text}")
 
         mission = response.json()
         mission_id = mission["id"]

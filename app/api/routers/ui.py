@@ -41,6 +41,7 @@ def _get_ui_user(request: Request) -> dict | None:
         return None
     try:
         from app.core.security import decode_token, is_token_blacklisted
+
         if is_token_blacklisted(token):
             return None
         payload = decode_token(token)
@@ -225,21 +226,46 @@ async def api_docs_page(request: Request):
     routes = []
     for route in fastapi_app.routes:
         if hasattr(route, "methods") and hasattr(route, "path"):
-            if route.path.startswith("/api/") and not route.path.startswith("/api/docs") and not route.path.startswith("/api/redoc") and not route.path.startswith("/api/openapi"):
+            if (
+                route.path.startswith("/api/")
+                and not route.path.startswith("/api/docs")
+                and not route.path.startswith("/api/redoc")
+                and not route.path.startswith("/api/openapi")
+            ):
                 params = []
                 if hasattr(route, "dependant"):
                     for param in getattr(route.dependant, "path_params", []):
-                        params.append({"name": param.name, "in": "path", "required": True, "type": getattr(param.field_info, "annotation", str).__name__ if hasattr(param.field_info, "annotation") else "string"})
+                        params.append(
+                            {
+                                "name": param.name,
+                                "in": "path",
+                                "required": True,
+                                "type": getattr(param.field_info, "annotation", str).__name__
+                                if hasattr(param.field_info, "annotation")
+                                else "string",
+                            }
+                        )
                     for param in getattr(route.dependant, "query_params", []):
-                        params.append({"name": param.name, "in": "query", "required": param.required, "type": getattr(param.field_info, "annotation", str).__name__ if hasattr(param.field_info, "annotation") else "string"})
-                routes.append({
-                    "path": route.path,
-                    "methods": sorted(route.methods - {"HEAD", "OPTIONS"}),
-                    "name": route.name or "",
-                    "description": (route.endpoint.__doc__ or "").strip(),
-                    "tags": getattr(route, "tags", []),
-                    "params": params,
-                })
+                        params.append(
+                            {
+                                "name": param.name,
+                                "in": "query",
+                                "required": param.required,
+                                "type": getattr(param.field_info, "annotation", str).__name__
+                                if hasattr(param.field_info, "annotation")
+                                else "string",
+                            }
+                        )
+                routes.append(
+                    {
+                        "path": route.path,
+                        "methods": sorted(route.methods - {"HEAD", "OPTIONS"}),
+                        "name": route.name or "",
+                        "description": (route.endpoint.__doc__ or "").strip(),
+                        "tags": getattr(route, "tags", []),
+                        "params": params,
+                    }
+                )
 
     groups: dict[str, list] = {}
     for r in routes:

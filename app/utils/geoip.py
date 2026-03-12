@@ -109,9 +109,7 @@ async def resolve_ip(ip: str) -> GeoLocation | None:
     return None
 
 
-async def resolve_batch(
-    ips: list[str], delay: float = 0.5
-) -> dict[str, GeoLocation | None]:
+async def resolve_batch(ips: list[str], delay: float = 0.5) -> dict[str, GeoLocation | None]:
     """
     Resolve multiple IP addresses with rate limiting.
 

@@ -49,9 +49,18 @@ class TestDangerousDirectiveDetection:
         assert not self._check_content_rejected(config)
 
     def test_directive_list_covers_known_dangerous(self):
-        expected = {"script-security", "up ", "down ", "client-connect",
-                    "client-disconnect", "tls-verify", "ipchange",
-                    "route-up", "route-pre-down", "auth-user-pass-verify",
-                    "learn-address"}
+        expected = {
+            "script-security",
+            "up ",
+            "down ",
+            "client-connect",
+            "client-disconnect",
+            "tls-verify",
+            "ipchange",
+            "route-up",
+            "route-pre-down",
+            "auth-user-pass-verify",
+            "learn-address",
+        }
         actual = set(DANGEROUS_OPENVPN_DIRECTIVES)
         assert expected.issubset(actual)

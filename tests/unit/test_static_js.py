@@ -9,10 +9,7 @@ STATIC_JS_DIR = Path(__file__).resolve().parents[2] / "app" / "static" / "js"
 API_JS = STATIC_JS_DIR / "api.js"
 
 # JS files that consume the API (exclude api.js itself and data-only helpers)
-CONSUMER_JS_FILES = [
-    f for f in sorted(STATIC_JS_DIR.glob("*.js"))
-    if f.name not in ("api.js", "helper_data.js")
-]
+CONSUMER_JS_FILES = [f for f in sorted(STATIC_JS_DIR.glob("*.js")) if f.name not in ("api.js", "helper_data.js")]
 
 
 class TestApiJsUtilities:
@@ -21,18 +18,15 @@ class TestApiJsUtilities:
 
     def test_debounce_function_defined(self):
         content = API_JS.read_text()
-        assert re.search(r"function\s+debounce\s*\(", content), \
-            "api.js must define a debounce function"
+        assert re.search(r"function\s+debounce\s*\(", content), "api.js must define a debounce function"
 
     def test_escape_html_function_defined(self):
         content = API_JS.read_text()
-        assert re.search(r"function\s+escapeHtml\s*\(", content), \
-            "api.js must define an escapeHtml function"
+        assert re.search(r"function\s+escapeHtml\s*\(", content), "api.js must define an escapeHtml function"
 
     def test_spectra_api_object_defined(self):
         content = API_JS.read_text()
-        assert "spectraApi" in content, \
-            "api.js must define the spectraApi object"
+        assert "spectraApi" in content, "api.js must define the spectraApi object"
 
 
 class TestJsUsesSpectraApi:
@@ -46,6 +40,5 @@ class TestJsUsesSpectraApi:
             pytest.skip(f"{js_file.name} makes no API calls")
         raw_fetches = re.findall(r"(?<!\.)\bfetch\s*\(", content)
         assert not raw_fetches, (
-            f"{js_file.name} uses raw fetch() instead of spectraApi "
-            f"({len(raw_fetches)} occurrence(s))"
+            f"{js_file.name} uses raw fetch() instead of spectraApi ({len(raw_fetches)} occurrence(s))"
         )

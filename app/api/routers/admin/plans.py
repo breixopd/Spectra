@@ -30,9 +30,7 @@ async def list_plans(
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ) -> list[PlanResponse]:
-    rows = (
-        await session.execute(select(Plan).order_by(Plan.sort_order, Plan.name))
-    ).scalars().all()
+    rows = (await session.execute(select(Plan).order_by(Plan.sort_order, Plan.name))).scalars().all()
     return [
         PlanResponse(
             id=p.id,
@@ -63,9 +61,7 @@ async def create_plan(
     admin: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ) -> PlanResponse:
-    dup = (
-        await session.execute(select(Plan.id).where(Plan.name == body.name))
-    ).scalar_one_or_none()
+    dup = (await session.execute(select(Plan.id).where(Plan.name == body.name))).scalar_one_or_none()
     if dup:
         raise HTTPException(status_code=409, detail="Plan name already exists")
 
@@ -127,9 +123,7 @@ async def update_plan(
     admin: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ) -> PlanResponse:
-    plan = (
-        await session.execute(select(Plan).where(Plan.id == plan_id))
-    ).scalar_one_or_none()
+    plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
 
@@ -189,9 +183,7 @@ async def deactivate_plan(
     admin: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
-    plan = (
-        await session.execute(select(Plan).where(Plan.id == plan_id))
-    ).scalar_one_or_none()
+    plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
 

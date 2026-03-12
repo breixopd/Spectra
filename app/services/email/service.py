@@ -15,8 +15,10 @@ def _get_provider() -> AbstractEmailProvider:
     """Return the email provider based on config."""
     if settings.SMTP_HOST:
         from app.services.email.providers.smtp import SMTPProvider
+
         return SMTPProvider()
     from app.services.email.providers.console import ConsoleProvider
+
     return ConsoleProvider()
 
 

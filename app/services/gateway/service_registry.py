@@ -67,9 +67,7 @@ class ServiceRegistry:
                 if hasattr(svc, "health_check"):
                     result = await svc.health_check()
                     if isinstance(result, bool):
-                        results[name] = {
-                            "status": "healthy" if result else "unhealthy"
-                        }
+                        results[name] = {"status": "healthy" if result else "unhealthy"}
                     elif isinstance(result, dict):
                         results[name] = result
                     else:
@@ -122,6 +120,7 @@ class ServiceRegistry:
         try:
             from app.core.database import async_session_maker
             from app.services.scaling import get_pool_manager
+
             pool = get_pool_manager()
             async with async_session_maker() as session:
                 for stype in ("sandbox_worker", "db_replica", "storage"):

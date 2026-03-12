@@ -205,9 +205,7 @@ class TestMissionCreationSetsUserId:
 
             # The rate-limiter wrapper requires a real request object; instead
             # we directly invoke the manager to show the router code wires user_id.
-            await mm.start_mission(
-                "10.0.0.1", "test", requirements=None, vpn_config=None, user_id=str(user.id)
-            )
+            await mm.start_mission("10.0.0.1", "test", requirements=None, vpn_config=None, user_id=str(user.id))
             assert captured_kwargs.get("user_id") == "user-99"
 
 

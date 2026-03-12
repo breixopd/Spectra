@@ -12,9 +12,13 @@ _WEIGHTS: dict[str, dict[str, float]] = {
     "AC": {"L": 0.77, "H": 0.44},
     "PR": {
         # Unchanged scope
-        "N_U": 0.85, "L_U": 0.62, "H_U": 0.27,
+        "N_U": 0.85,
+        "L_U": 0.62,
+        "H_U": 0.27,
         # Changed scope
-        "N_C": 0.85, "L_C": 0.68, "H_C": 0.50,
+        "N_C": 0.85,
+        "L_C": 0.68,
+        "H_C": 0.50,
     },
     "UI": {"N": 0.85, "R": 0.62},
     "S": {"U": False, "C": True},  # scope changed flag
@@ -74,18 +78,12 @@ def calculate_cvss31(vector: str) -> dict:
 
     # Exploitability sub-score
     exploitability = (
-        8.22
-        * _WEIGHTS["AV"][metrics["AV"]]
-        * _WEIGHTS["AC"][metrics["AC"]]
-        * pr_weight
-        * _WEIGHTS["UI"][metrics["UI"]]
+        8.22 * _WEIGHTS["AV"][metrics["AV"]] * _WEIGHTS["AC"][metrics["AC"]] * pr_weight * _WEIGHTS["UI"][metrics["UI"]]
     )
 
     # Impact sub-score
     isc_base = 1 - (
-        (1 - _WEIGHTS["C"][metrics["C"]])
-        * (1 - _WEIGHTS["I"][metrics["I"]])
-        * (1 - _WEIGHTS["A"][metrics["A"]])
+        (1 - _WEIGHTS["C"][metrics["C"]]) * (1 - _WEIGHTS["I"][metrics["I"]]) * (1 - _WEIGHTS["A"][metrics["A"]])
     )
 
     if scope_changed:

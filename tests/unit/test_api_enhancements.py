@@ -29,9 +29,11 @@ class TestExploitChainStorage:
 
     def test_load_custom_chains_empty(self, tmp_path):
         from app.services.mission.chain_builder import load_custom_chains
+
         # With no file, should return empty
         with patch("app.services.mission.chain_builder.CUSTOM_CHAINS_PATH", tmp_path / "chains.json"):
             from app.services.mission import chain_builder
+
             original = chain_builder.CUSTOM_CHAINS_PATH
             chain_builder.CUSTOM_CHAINS_PATH = tmp_path / "chains.json"
             try:
@@ -51,9 +53,12 @@ class TestExploitChainStorage:
         original = cb_module.CUSTOM_CHAINS_PATH
         cb_module.CUSTOM_CHAINS_PATH = tmp_path / "chains.json"
         try:
-            chain = ChainBuilder.create_chain("Test Chain", [
-                {"id": "s1", "name": "Scan", "tool": "nmap"},
-            ])
+            chain = ChainBuilder.create_chain(
+                "Test Chain",
+                [
+                    {"id": "s1", "name": "Scan", "tool": "nmap"},
+                ],
+            )
             save_custom_chain(chain)
 
             loaded = load_custom_chains()
@@ -65,6 +70,7 @@ class TestExploitChainStorage:
 
     def test_get_builtin_chains(self):
         from app.services.mission.chain_builder import get_builtin_chains
+
         chains = get_builtin_chains()
         assert len(chains) >= 2
         names = {c.name for c in chains}
@@ -78,6 +84,7 @@ class TestObservabilityGracefulDegradation:
     def test_cache_stats_returns_unavailable_when_no_cache(self):
         """Observability cache endpoint handles None cache gracefully."""
         from app.core.cache import get_cache
+
         # get_cache returns None when not initialized — that's fine
         cache = get_cache()
         # The observability code now handles this without crashing
@@ -128,6 +135,7 @@ class TestBulkUpdateSchema:
 
     def test_bulk_update_request_schema(self):
         from app.api.routers.findings import BulkUpdateRequest, FindingUpdate
+
         req = BulkUpdateRequest(
             finding_ids=["id1", "id2"],
             update=FindingUpdate(status=FindingStatus.VERIFIED),
@@ -137,6 +145,7 @@ class TestBulkUpdateSchema:
 
     def test_bulk_update_response_schema(self):
         from app.api.routers.findings import BulkUpdateResponse
+
         resp = BulkUpdateResponse(updated=5)
         assert resp.updated == 5
 
@@ -146,11 +155,13 @@ class TestBulkDeleteSchema:
 
     def test_bulk_delete_request_schema(self):
         from app.api.routers.targets import BulkDeleteRequest
+
         req = BulkDeleteRequest(target_ids=["t1", "t2", "t3"])
         assert len(req.target_ids) == 3
 
     def test_bulk_delete_response_schema(self):
         from app.api.routers.targets import BulkDeleteResponse
+
         resp = BulkDeleteResponse(deleted=2)
         assert resp.deleted == 2
 
@@ -160,11 +171,13 @@ class TestMissionFilterImports:
 
     def test_mission_router_imports(self):
         from app.api.routers.missions import router
+
         routes = [r.path for r in router.routes]
         assert "/missions" in routes or any("/missions" in r for r in routes)
 
     def test_create_chain_request_schema(self):
         from app.api.routers.missions import CreateChainRequest
+
         req = CreateChainRequest(
             name="My Chain",
             description="test",

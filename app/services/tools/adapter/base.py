@@ -11,6 +11,7 @@ from app.services.tools.models import (
 
 logger = logging.getLogger(__name__)
 
+
 class ToolExecutionError(Exception):
     """Raised when tool execution fails."""
 

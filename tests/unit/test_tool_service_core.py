@@ -85,9 +85,7 @@ async def test_execute_tool_success(mock_service_context):
     # Mock the ARQ worker execution path
     service._execute_via_worker = AsyncMock(return_value=result_obj)
 
-    result = await service.execute_request(
-        mission=mission, tool_name="nmap", target="127.0.0.1"
-    )
+    result = await service.execute_request(mission=mission, tool_name="nmap", target="127.0.0.1")
 
     if not result.success:
         print(f"FAILED stderr: {result.stderr}")
@@ -195,9 +193,7 @@ async def test_execute_tool_consensus_block(mock_service_context):
     service.consensus.vote_on_action.return_value = vote_result
 
     # Ensure risk level high triggers consensus
-    result = await service.execute_request(
-        mission, "nmap", "127.0.0.1", risk_level="high"
-    )
+    result = await service.execute_request(mission, "nmap", "127.0.0.1", risk_level="high")
 
     if "Blocked by Consensus" not in result.stderr:
         print(f"FAILED Consensus stderr: {result.stderr}")

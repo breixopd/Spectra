@@ -1,6 +1,5 @@
 """Tests for tool chain rules — deterministic follow-up tool queueing."""
 
-
 from app.services.mission.tool_chain_rules import (
     CHAIN_RULES,
     ChainRule,

@@ -16,8 +16,7 @@ def mock_llm():
 
 @pytest.fixture
 def tool_service(mock_llm):
-    with patch("app.services.tools.service.SafetySupervisorAgent"), \
-         patch("app.services.tools.service.VotingSystem"):
+    with patch("app.services.tools.service.SafetySupervisorAgent"), patch("app.services.tools.service.VotingSystem"):
         svc = ToolExecutionService(mock_llm)
         yield svc
 
@@ -109,18 +108,19 @@ class TestToolServiceExecution:
         # Mock safety check to allow execution
         tool_service._perform_safety_check = AsyncMock(return_value=(True, "Safe"))
 
-        with patch("app.core.queue.PostgresJobQueue") as MockQueue, \
-             patch("app.core.queue.Job") as MockJob:
+        with patch("app.core.queue.PostgresJobQueue") as MockQueue, patch("app.core.queue.Job") as MockJob:
             mock_queue = MockQueue.return_value
             mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 
             mock_job = MockJob.return_value
-            mock_job.result = AsyncMock(return_value={
-                "success": True,
-                "stdout": "pwned",
-                "stderr": "",
-                "exit_code": 0,
-            })
+            mock_job.result = AsyncMock(
+                return_value={
+                    "success": True,
+                    "stdout": "pwned",
+                    "stderr": "",
+                    "exit_code": 0,
+                }
+            )
 
             result = await tool_service.execute_custom_script(
                 mission=mission,
@@ -142,8 +142,7 @@ class TestToolServiceExecution:
 
         tool_service._perform_safety_check = AsyncMock(return_value=(True, "Safe"))
 
-        with patch("app.core.queue.PostgresJobQueue") as MockQueue, \
-             patch("app.core.queue.Job") as MockJob:
+        with patch("app.core.queue.PostgresJobQueue") as MockQueue, patch("app.core.queue.Job") as MockJob:
             mock_queue = MockQueue.return_value
             mock_queue.enqueue_job = AsyncMock(return_value="job-1")
 

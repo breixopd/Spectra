@@ -1,6 +1,5 @@
 """Unit tests for CredentialStore and credential extraction."""
 
-
 from app.services.mission.credentials import (
     MAX_CREDENTIALS_PER_MISSION,
     Credential,
@@ -77,7 +76,11 @@ class TestCredentialStore:
 
     def test_get_summary_for_prompt(self):
         store = CredentialStore()
-        store.add(Credential(username="admin", password="secret", service="ssh", host="10.0.0.1", source="hydra", verified=True))
+        store.add(
+            Credential(
+                username="admin", password="secret", service="ssh", host="10.0.0.1", source="hydra", verified=True
+            )
+        )
         summary = store.get_summary_for_prompt()
         assert "admin:secret" in summary
         assert "verified" in summary

@@ -29,7 +29,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                         break
 
                 if not allowed:
-                    logger.warning("Blocked cross-origin request from %s to %s %s", origin, request.method, request.url.path)
+                    logger.warning(
+                        "Blocked cross-origin request from %s to %s %s", origin, request.method, request.url.path
+                    )
                     return Response("Invalid Origin", status_code=HTTP_403_FORBIDDEN)
             elif origin and settings.DEBUG:
                 allowed_origins = settings.CORS_ORIGINS

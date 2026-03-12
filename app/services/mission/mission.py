@@ -40,7 +40,14 @@ class Mission:
     - Coordinate agents (see MissionManager)
     """
 
-    def __init__(self, target: str, directive: str, requirements: str | None = None, vpn_config: str | None = None, user_id: str | None = None):
+    def __init__(
+        self,
+        target: str,
+        directive: str,
+        requirements: str | None = None,
+        vpn_config: str | None = None,
+        user_id: str | None = None,
+    ):
         self.id = str(uuid.uuid4())
         self.target = target
         self.directive = directive
@@ -152,10 +159,7 @@ class Mission:
         for i, task in enumerate(new_tasks):
             self.plan.tasks.insert(insert_idx + i, task)
 
-        self.log(
-            f"[REPLAN] #{self.replan_count}: {reason} — "
-            f"inserted {len(new_tasks)} tasks at index {insert_idx}"
-        )
+        self.log(f"[REPLAN] #{self.replan_count}: {reason} — inserted {len(new_tasks)} tasks at index {insert_idx}")
         return True
 
     async def wait_if_paused(self) -> None:
@@ -284,9 +288,9 @@ class Mission:
         # Strip protocol prefixes for URL-based comparisons
         for prefix in ("https://", "http://"):
             if host.startswith(prefix):
-                host = host[len(prefix):]
+                host = host[len(prefix) :]
             if matched.startswith(prefix):
-                matched = matched[len(prefix):]
+                matched = matched[len(prefix) :]
 
         # Remove trailing slashes
         host = host.rstrip("/")
@@ -417,13 +421,12 @@ class Mission:
         nodes = self.task_tree._nodes
         total = len(nodes) - 1  # exclude root
         if total <= 0:
-            return {"percent": 0, "phase": "initializing",
-                    "completed_tasks": 0, "total_tasks": 0, "active_tasks": []}
+            return {"percent": 0, "phase": "initializing", "completed_tasks": 0, "total_tasks": 0, "active_tasks": []}
 
         completed = sum(
-            1 for n in nodes.values()
-            if n.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.SKIPPED)
-            and n.id != "root"
+            1
+            for n in nodes.values()
+            if n.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.SKIPPED) and n.id != "root"
         )
         active = [n for n in nodes.values() if n.status == TaskStatus.ACTIVE]
 
@@ -529,6 +532,7 @@ class Mission:
         if data.get("plan"):
             try:
                 from app.services.ai.agents.mission_controller import MissionPlan
+
                 mission.plan = MissionPlan.model_validate(data["plan"])
             except Exception as e:
                 logger.warning("Failed to restore plan: %s", e)

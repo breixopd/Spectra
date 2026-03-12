@@ -75,34 +75,22 @@ async def admin_stats(
     _user: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
-    total_users = (
-        await session.execute(select(func.count()).select_from(User))
-    ).scalar() or 0
+    total_users = (await session.execute(select(func.count()).select_from(User))).scalar() or 0
     active_users = (
-        await session.execute(
-            select(func.count()).select_from(User).where(User.is_active.is_(True))
-        )
+        await session.execute(select(func.count()).select_from(User).where(User.is_active.is_(True)))
     ).scalar() or 0
 
-    total_plans = (
-        await session.execute(select(func.count()).select_from(Plan))
-    ).scalar() or 0
+    total_plans = (await session.execute(select(func.count()).select_from(Plan))).scalar() or 0
 
     total_missions = 0
     try:
-        total_missions = (
-            await session.execute(select(func.count()).select_from(Mission))
-        ).scalar() or 0
+        total_missions = (await session.execute(select(func.count()).select_from(Mission))).scalar() or 0
     except Exception:
         logger.debug("Failed to count missions for audit stats", exc_info=True)
 
-    total_audit_events = (
-        await session.execute(select(func.count()).select_from(AuditLog))
-    ).scalar() or 0
+    total_audit_events = (await session.execute(select(func.count()).select_from(AuditLog))).scalar() or 0
 
-    role_result = await session.execute(
-        select(User.role, func.count()).group_by(User.role)
-    )
+    role_result = await session.execute(select(User.role, func.count()).group_by(User.role))
     role_counts = {r: 0 for r in ("admin", "operator", "viewer")}
     for role_name, cnt in role_result.all():
         if role_name in role_counts:
@@ -110,6 +98,7 @@ async def admin_stats(
 
     # Service topology
     from app.services.gateway.service_registry import get_service_registry
+
     svc_registry = get_service_registry()
     topology = svc_registry.get_service_topology()
 

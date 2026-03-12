@@ -53,18 +53,22 @@ class CacheService:
             async with async_session_maker() as session:
                 dialect = session.bind.dialect.name if session.bind else "postgresql"
                 if dialect == "postgresql":
-                    stmt = pg_insert(CacheEntry).values(
-                        key=full_key,
-                        value=value,
-                        expires_at=expires_at,
-                        created_at=now,
-                    ).on_conflict_do_update(
-                        index_elements=["key"],
-                        set_={
-                            "value": value,
-                            "expires_at": expires_at,
-                            "created_at": now,
-                        },
+                    stmt = (
+                        pg_insert(CacheEntry)
+                        .values(
+                            key=full_key,
+                            value=value,
+                            expires_at=expires_at,
+                            created_at=now,
+                        )
+                        .on_conflict_do_update(
+                            index_elements=["key"],
+                            set_={
+                                "value": value,
+                                "expires_at": expires_at,
+                                "created_at": now,
+                            },
+                        )
                     )
                     await session.execute(stmt)
                 else:
@@ -74,12 +78,14 @@ class CacheService:
                         existing.expires_at = expires_at
                         existing.created_at = now
                     else:
-                        session.add(CacheEntry(
-                            key=full_key,
-                            value=value,
-                            expires_at=expires_at,
-                            created_at=now,
-                        ))
+                        session.add(
+                            CacheEntry(
+                                key=full_key,
+                                value=value,
+                                expires_at=expires_at,
+                                created_at=now,
+                            )
+                        )
                 await session.commit()
         except Exception as e:
             logger.debug("Cache set failed (%s:%s): %s", namespace, key, e)
@@ -148,7 +154,10 @@ class CacheService:
 
     @staticmethod
     async def set_json(
-        namespace: str, key: str, value: dict | list, ttl_hours: int = 24,
+        namespace: str,
+        key: str,
+        value: dict | list,
+        ttl_hours: int = 24,
     ) -> None:
         """Convenience: JSON-serialize and set in one step."""
         await CacheService.set(namespace, key, json.dumps(value), ttl_hours=ttl_hours)

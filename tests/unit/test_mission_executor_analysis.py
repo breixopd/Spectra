@@ -44,25 +44,17 @@ class TestAnalysis:
     def test_suggest_retry_timeout(self):
         result = MagicMock(stdout="", stderr="Connection timed out")
         vector = MagicMock()
-        assert (
-            suggest_retry(result, vector) == "Increase timeout or try slower scan rate"
-        )
+        assert suggest_retry(result, vector) == "Increase timeout or try slower scan rate"
 
     def test_suggest_retry_rate_limit(self):
         result = MagicMock(stdout="", stderr="429 Too Many Requests")
         vector = MagicMock()
-        assert (
-            suggest_retry(result, vector)
-            == "Add delay between requests or reduce concurrency"
-        )
+        assert suggest_retry(result, vector) == "Add delay between requests or reduce concurrency"
 
     def test_suggest_retry_auth(self):
         result = MagicMock(stdout="", stderr="401 Unauthorized")
         vector = MagicMock()
-        assert (
-            suggest_retry(result, vector)
-            == "Credentials needed, try default creds or brute force"
-        )
+        assert suggest_retry(result, vector) == "Credentials needed, try default creds or brute force"
 
     def test_suggest_retry_payloads(self):
         result = MagicMock(stdout="", stderr="Exploit failed")

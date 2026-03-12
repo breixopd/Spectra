@@ -15,7 +15,11 @@ class TestRunStartupChecks:
         mock_result = MagicMock()
         mock_result.scalar.return_value = 1
         mock_result.fetchall.return_value = [
-            ("users",), ("missions",), ("targets",), ("findings",), ("exploits",),
+            ("users",),
+            ("missions",),
+            ("targets",),
+            ("findings",),
+            ("exploits",),
         ]
         mock_session.execute.return_value = mock_result
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
@@ -131,14 +135,21 @@ class TestLifespanContextManager:
         with (
             patch("app.services.storage.get_storage_service", return_value=mock_storage),
             patch("app.services.storage.close_storage_service", new_callable=AsyncMock),
-            patch("app.services.tools.registry.initialize_registry", new_callable=AsyncMock, return_value=MagicMock(list_tools=MagicMock(return_value=[]))),
+            patch(
+                "app.services.tools.registry.initialize_registry",
+                new_callable=AsyncMock,
+                return_value=MagicMock(list_tools=MagicMock(return_value=[])),
+            ),
             patch("app.services.tools.sandbox.SandboxPool", return_value=MagicMock(available=False)),
             patch("app.services.tools.sandbox.set_sandbox_pool"),
             patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock()),
             patch("app.services.gateway.service_registry.close_service_registry", new_callable=AsyncMock),
             patch("app.services.ai.embeddings.EmbeddingService", return_value=MagicMock(_load_model=AsyncMock())),
             patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock())),
-            patch("app.services.scaling.get_pool_manager", return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock())),
+            patch(
+                "app.services.scaling.get_pool_manager",
+                return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock()),
+            ),
             patch("app.core.bridge.EventWebSocketBridge", return_value=MagicMock()),
         ):
             app = MagicMock()

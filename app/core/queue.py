@@ -21,11 +21,13 @@ class PostgresJobQueue:
     """
 
     def __init__(self, queue_name: str = "default"):
-        if not re.match(r'^[a-z][a-z0-9_]{0,62}$', queue_name):
+        if not re.match(r"^[a-z][a-z0-9_]{0,62}$", queue_name):
             raise ValueError(f"Invalid queue_name: {queue_name!r}. Must match [a-z][a-z0-9_]{{0,62}}.")
         self.queue_name = queue_name
 
-    async def enqueue_job(self, function_name: str, *args, _timeout: int | None = None, _priority: int | None = None, **kwargs) -> str:
+    async def enqueue_job(
+        self, function_name: str, *args, _timeout: int | None = None, _priority: int | None = None, **kwargs
+    ) -> str:
         """Enqueue a new job and return its ID."""
         from app.core.config import get_settings
 
@@ -103,13 +105,17 @@ class PostgresJobQueue:
                 job.completed_at = datetime.now(UTC)
                 logger.warning(
                     "Job %s moved to dead letter after %d retries: %s",
-                    job_id, job.retry_count, error,
+                    job_id,
+                    job.retry_count,
+                    error,
                 )
             else:
                 job.status = "pending"
                 logger.info(
                     "Job %s queued for retry %d/%d",
-                    job_id, job.retry_count, job.max_retries,
+                    job_id,
+                    job.retry_count,
+                    job.max_retries,
                 )
             job.error = error
             await session.commit()
@@ -131,6 +137,7 @@ class PostgresJobQueue:
 
 class Job:
     """Job handle for checking status or waiting for completion."""
+
     def __init__(self, job_id: str, pool: PostgresJobQueue | None = None):
         self.job_id = job_id
         self.pool = pool
@@ -188,8 +195,10 @@ class Job:
 
 class WorkerState:
     """Mock the worker state injected into functions."""
+
     def __init__(self, functions: list) -> None:
         self.functions = {f.__name__: f for f in functions}
+
 
 async def worker_loop(functions: list, queue_name: str = "default", poll_delay: float = 1.0) -> None:
     """
@@ -241,10 +250,10 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
 
                 # 4. Success -> Completed
                 async with async_session_maker() as session:
-                    stmt = update(JobQueue).where(JobQueue.id == job.id).values(
-                        status="completed",
-                        result=res,
-                        completed_at=datetime.now(UTC)
+                    stmt = (
+                        update(JobQueue)
+                        .where(JobQueue.id == job.id)
+                        .values(status="completed", result=res, completed_at=datetime.now(UTC))
                     )
                     await session.execute(stmt)
                     await session.commit()
@@ -263,10 +272,10 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
             if current_job_id:
                 try:
                     async with async_session_maker() as session:
-                        stmt = update(JobQueue).where(JobQueue.id == current_job_id).values(
-                            status="failed",
-                            error="Worker shutdown",
-                            completed_at=datetime.now(UTC)
+                        stmt = (
+                            update(JobQueue)
+                            .where(JobQueue.id == current_job_id)
+                            .values(status="failed", error="Worker shutdown", completed_at=datetime.now(UTC))
                         )
                         await session.execute(stmt)
                         await session.commit()

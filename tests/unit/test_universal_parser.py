@@ -406,9 +406,7 @@ class TestParseWithRegex:
     def test_regex_with_mapping(self):
         patterns = [{"pattern": r"(?P<addr>\d+\.\d+\.\d+\.\d+)"}]
         mapping = {"ip_address": "addr"}
-        config = _make_config(
-            fmt=OutputFormat.TEXT, regex_patterns=patterns, mapping=mapping
-        )
+        config = _make_config(fmt=OutputFormat.TEXT, regex_patterns=patterns, mapping=mapping)
         parser = UniversalParser(config)
 
         result = parser._parse_with_regex("scan 10.0.0.1")
@@ -534,9 +532,7 @@ class TestCollectOutputContent:
         config = _make_config()
         parser = UniversalParser(config)
 
-        result = parser._collect_output_content(
-            "fallback stdout", "/tmp/nonexistent_file_xyz_123"
-        )
+        result = parser._collect_output_content("fallback stdout", "/tmp/nonexistent_file_xyz_123")
         assert result == ["fallback stdout"]
 
     def test_output_file_pattern(self, tmp_path):

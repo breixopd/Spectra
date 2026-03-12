@@ -59,8 +59,7 @@ def _make_agent(
         enable_reflection: ClassVar[bool] = _refl  # type: ignore[assignment]
         reflection_threshold: ClassVar[float] = _thresh  # type: ignore[assignment]
 
-        async def execute(self, context: AgentContext, input_data: _Input) -> AgentResult:
-            ...  # replaced by mock
+        async def execute(self, context: AgentContext, input_data: _Input) -> AgentResult: ...  # replaced by mock
 
     ag = _Ag(MagicMock())
     ag.broadcast_thought = MagicMock()  # type: ignore[method-assign]
@@ -144,10 +143,7 @@ async def test_reflection_failure_returns_default_score():
 @pytest.mark.asyncio
 async def test_reflection_max_iterations():
     """Stops after max_iterations."""
-    results = [
-        AgentResult(success=True, action=_Output(reasoning=f"attempt-{i}"))
-        for i in range(5)
-    ]
+    results = [AgentResult(success=True, action=_Output(reasoning=f"attempt-{i}")) for i in range(5)]
     agent = _make_agent(reflection_enabled=True, threshold=0.99, execute_results=results)
 
     low_resp = MagicMock()

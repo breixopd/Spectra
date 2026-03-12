@@ -236,9 +236,7 @@ class TestPerUserLimitReject:
     async def test_rejects_when_per_user_limit_reached(self):
         manager = ConnectionManager()
         user_id = "u-limited"
-        manager._user_connections[user_id] = {
-            MagicMock() for _ in range(ConnectionManager.MAX_CONNECTIONS_PER_USER)
-        }
+        manager._user_connections[user_id] = {MagicMock() for _ in range(ConnectionManager.MAX_CONNECTIONS_PER_USER)}
 
         ws = AsyncMock()
         ws.accept = AsyncMock()

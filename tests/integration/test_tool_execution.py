@@ -113,11 +113,7 @@ class TestToolRegistry:
         registry = await initialize_registry(plugins_dir=plugins_dir, safe_mode=False)
 
         # Get discovery tools
-        discovery_tools = [
-            t
-            for t in registry.list_tools()
-            if t.config.category == ToolCategory.DISCOVERY
-        ]
+        discovery_tools = [t for t in registry.list_tools() if t.config.category == ToolCategory.DISCOVERY]
 
         # Should have at least nmap
         tool_ids = [t.config.id for t in discovery_tools]
@@ -131,11 +127,7 @@ class TestToolRegistry:
 
         # Get all tools and filter by capability
         all_tools = registry.list_tools()
-        port_scanners = [
-            t
-            for t in all_tools
-            if ToolCapability.PORT_SCAN in t.config.metadata.capabilities
-        ]
+        port_scanners = [t for t in all_tools if ToolCapability.PORT_SCAN in t.config.metadata.capabilities]
 
         assert len(port_scanners) > 0, "No port scanning tools found"
 
@@ -519,15 +511,11 @@ class TestPluginLoading:
             assert "metadata" in data, f"{plugin_file.name} missing 'metadata'"
 
             metadata = data["metadata"]
-            assert "capabilities" in metadata, (
-                f"{plugin_file.name} missing 'capabilities'"
-            )
+            assert "capabilities" in metadata, f"{plugin_file.name} missing 'capabilities'"
             assert "risk_level" in metadata, f"{plugin_file.name} missing 'risk_level'"
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        os.geteuid() != 0, reason="Tool installation requires root privileges"
-    )
+    @pytest.mark.skipif(os.geteuid() != 0, reason="Tool installation requires root privileges")
     async def test_all_tools_verification(self):
         """Test that all registered tools can be verified (installed and runnable)."""
         root_dir = Path(__file__).parent.parent.parent
@@ -562,9 +550,7 @@ class TestPluginLoading:
                 else:
                     args = shlex.split(cmd)
 
-                result = subprocess.run(
-                    args, capture_output=True, text=True, timeout=10
-                )
+                result = subprocess.run(args, capture_output=True, text=True, timeout=10)
 
                 success = result.returncode == 0
                 if not success and tool.config.installation.verification_regex:
@@ -577,15 +563,11 @@ class TestPluginLoading:
 
                 if not success:
                     # Try to install if verification fails
-                    print(
-                        f"  Verification failed for {tool.config.id}, attempting install..."
-                    )
+                    print(f"  Verification failed for {tool.config.id}, attempting install...")
                     try:
                         await registry.install_tool(tool.config.id)
                         # Verify again with same safe approach
-                        result = subprocess.run(
-                            args, capture_output=True, text=True, timeout=10
-                        )
+                        result = subprocess.run(args, capture_output=True, text=True, timeout=10)
 
                         success = result.returncode == 0
                         if not success and tool.config.installation.verification_regex:
@@ -602,9 +584,7 @@ class TestPluginLoading:
                         else:
                             print(f"  OK (after install): {tool.config.id}")
                     except Exception as e:
-                        failed_tools.append(
-                            f"{tool.config.id} (install failed): {str(e)}"
-                        )
+                        failed_tools.append(f"{tool.config.id} (install failed): {str(e)}")
                 else:
                     print(f"  OK: {tool.config.id}")
 
@@ -613,6 +593,4 @@ class TestPluginLoading:
             except Exception as e:
                 failed_tools.append(f"{tool.config.id}: {str(e)}")
 
-        assert not failed_tools, (
-            f"Tool verification failed for: {', '.join(failed_tools)}"
-        )
+        assert not failed_tools, f"Tool verification failed for: {', '.join(failed_tools)}"
