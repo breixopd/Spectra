@@ -21,7 +21,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.api.schemas import SystemSetupRequest, Token, UserResponse
-from app.api.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
+from app.api.schemas.auth import (
+    ForgotPasswordRequest,
+    MFADisableRequest,
+    MFASetupResponse,
+    MFAVerifyRequest,
+    ResetPasswordRequest,
+)
 from app.core.config import settings
 from app.core.database import get_async_session
 from app.core.events import EventType, events
@@ -32,10 +38,13 @@ from app.core.security import (
     create_password_reset_token,
     create_refresh_token,
     decode_token,
+    decrypt_mfa_secret,
+    encrypt_mfa_secret,
     get_password_hash,
     invalidate_token,
     verify_password,
     verify_password_reset_token,
+    verify_totp,
 )
 from app.core.telemetry import telemetry
 from app.models.audit_log import AuditEventType
@@ -205,6 +214,20 @@ async def login_for_access_token(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
         )
+
+    # If MFA is enabled, return a partial MFA token instead of full access
+    if user.mfa_enabled:
+        mfa_token = create_access_token(
+            data={"sub": user.username, "mfa_pending": True},
+            expires_delta=timedelta(minutes=5),
+        )
+        _reset_failures(client_ip)
+        return {
+            "access_token": mfa_token,
+            "refresh_token": None,
+            "token_type": "bearer",
+            "mfa_required": True,
+        }
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -385,6 +408,138 @@ async def logout(request: Request, response: Response):
     return {"detail": "Successfully logged out"}
 
 
+# --- MFA Endpoints ---
+
+
+@router.post("/mfa/setup", response_model=MFASetupResponse, tags=["MFA"])
+async def mfa_setup(
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Generate a TOTP secret and return provisioning URI. Does not enable MFA yet."""
+    import pyotp
+
+    if user.mfa_enabled:
+        raise HTTPException(status_code=400, detail="MFA is already enabled")
+
+    secret = pyotp.random_base32()
+    user.mfa_secret = encrypt_mfa_secret(secret)
+    await session.commit()
+
+    totp = pyotp.TOTP(secret)
+    provisioning_uri = totp.provisioning_uri(name=user.email, issuer_name="Spectra")
+
+    return MFASetupResponse(secret=secret, provisioning_uri=provisioning_uri)
+
+
+@router.post("/mfa/verify-setup", tags=["MFA"])
+async def mfa_verify_setup(
+    body: MFAVerifyRequest,
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Verify a TOTP code and enable MFA for the user."""
+    if user.mfa_enabled:
+        raise HTTPException(status_code=400, detail="MFA is already enabled")
+    if not user.mfa_secret:
+        raise HTTPException(status_code=400, detail="MFA setup not initiated. Call /mfa/setup first.")
+
+    secret = decrypt_mfa_secret(user.mfa_secret)
+    if not verify_totp(secret, body.code):
+        raise HTTPException(status_code=400, detail="Invalid TOTP code")
+
+    user.mfa_enabled = True
+    await session.commit()
+    return {"detail": "MFA enabled successfully"}
+
+
+@router.post("/mfa/verify", tags=["MFA"])
+@limiter.limit(RateLimits.LOGIN)
+async def mfa_verify_login(
+    request: Request,
+    response: Response,
+    body: MFAVerifyRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Complete MFA login by verifying TOTP code with the partial MFA token."""
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+
+    token = auth_header[7:]
+    try:
+        payload = decode_token(token)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired MFA token")
+
+    if not payload.get("mfa_pending"):
+        raise HTTPException(status_code=400, detail="Token is not an MFA pending token")
+
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    stmt = select(User).where(User.username == username)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_active or not user.mfa_enabled or not user.mfa_secret:
+        raise HTTPException(status_code=401, detail="Invalid MFA state")
+
+    secret = decrypt_mfa_secret(user.mfa_secret)
+    if not verify_totp(secret, body.code):
+        raise HTTPException(status_code=401, detail="Invalid TOTP code")
+
+    # Invalidate the partial MFA token
+    invalidate_token(token)
+
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username},
+        expires_delta=access_token_expires,
+    )
+    refresh_token = create_refresh_token(data={"sub": user.username})
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+
+@router.post("/mfa/disable", tags=["MFA"])
+async def mfa_disable(
+    body: MFADisableRequest,
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Disable MFA. Requires current password and a valid TOTP code."""
+    if not user.mfa_enabled:
+        raise HTTPException(status_code=400, detail="MFA is not enabled")
+
+    if not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    secret = decrypt_mfa_secret(user.mfa_secret)
+    if not verify_totp(secret, body.code):
+        raise HTTPException(status_code=400, detail="Invalid TOTP code")
+
+    user.mfa_enabled = False
+    user.mfa_secret = None
+    await session.commit()
+    return {"detail": "MFA disabled successfully"}
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=128)
@@ -422,6 +577,7 @@ async def get_current_profile(
         "email": user.email,
         "role": user.role,
         "is_superuser": user.is_superuser,
+        "mfa_enabled": user.mfa_enabled,
         "plan": {
             "id": plan.id,
             "name": plan.name,

@@ -37,6 +37,8 @@ async def get_current_user(
         payload = decode_token(token)
         if payload.get("type") != "access":
             raise credentials_exception
+        if payload.get("mfa_pending"):
+            raise credentials_exception
         username: str | None = payload.get("sub")
         if username is None:
             raise credentials_exception

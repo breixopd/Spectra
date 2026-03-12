@@ -128,13 +128,50 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
             if input_data.force_phase:
                 return await self._handle_phase_transition(context, input_data)
 
+            # Pre-flight safety risk assessment via SafetyAgent sub-agent
+            safety_metadata: dict[str, Any] = {}
+            try:
+                from app.services.ai.agents.safety import SafetyInput
+
+                logger.info("Spawning SafetyAgent for pre-flight risk assessment")
+                safety_input = SafetyInput(
+                    command=f"assess_scope {context.target or 'unknown'}",
+                    tool_id="mission_preflight",
+                    target=context.target or "unknown",
+                    args={"directive": input_data.directive},
+                )
+                safety_result = await self.spawn_sub_agent(
+                    AgentRole.SAFETY_SUPERVISOR, context, safety_input
+                )
+                if safety_result.success and safety_result.action:
+                    safety_action = safety_result.action
+                    safety_metadata["preflight_allowed"] = getattr(
+                        safety_action, "allowed", True
+                    )
+                    safety_metadata["preflight_risk"] = getattr(
+                        safety_action, "risk_level", "low"
+                    )
+                    safety_metadata["preflight_reason"] = getattr(
+                        safety_action, "reason", ""
+                    )
+                    logger.info(
+                        "Pre-flight safety check: allowed=%s risk=%s",
+                        safety_metadata["preflight_allowed"],
+                        safety_metadata["preflight_risk"],
+                    )
+            except Exception:
+                logger.exception("Pre-flight safety check failed (non-fatal)")
+
             # Parse directive and create mission plan
             plan = await self._create_mission_plan(context, input_data)
 
-            return AgentResult(
+            result = AgentResult(
                 success=True,
                 action=plan,
             )
+            if safety_metadata:
+                result.metadata.update(safety_metadata)
+            return result
 
         except AgentError:
             raise
