@@ -781,7 +781,7 @@ async def update_operation_progress(
 async def get_data_source_status(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
-    """Get status of all downloadable data sources (exploit DB, CVE KB, etc.)."""
+    """Get status of all managed data sources (exploit DB, CVE KB, etc.)."""
     from app.services.ai.exploit_db import get_exploit_db
 
     db = get_exploit_db()
@@ -792,9 +792,9 @@ async def get_data_source_status(
 async def download_data_sources(
     _current_user: User = Depends(get_current_superuser),
 ) -> dict[str, Any]:
-    """Download/update all exploit intelligence data sources.
+    """Update all exploit intelligence data sources.
 
-    Downloads MSF modules, CISA KEV, and writes the CVE knowledge base.
+    Refreshes MSF modules, CISA KEV, and the CVE knowledge base.
     """
     import json as _json
     from pathlib import Path as _Path

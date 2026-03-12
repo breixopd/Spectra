@@ -77,6 +77,9 @@
             <a href="#" data-section="audit" role="tab" aria-selected="false" aria-controls="section-audit" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i class="fa-solid fa-scroll mr-3 text-slate-500 w-5 text-center"></i> Audit Logs
             </a>
+            <a href="#" data-section="usage" role="tab" aria-selected="false" aria-controls="section-usage" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                <i class="fa-solid fa-coins mr-3 text-slate-500 w-5 text-center"></i> Usage
+            </a>
             <a href="#" data-section="services" role="tab" aria-selected="false" aria-controls="section-services" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i class="fa-solid fa-network-wired mr-3 text-slate-500 w-5 text-center"></i> Services
             </a>
@@ -229,6 +232,59 @@
                 </div>
             </div>
             <div id="svc-grid" class="services-grid"></div>
+        </div>
+
+        <!-- Usage -->
+        <div id="section-usage" class="section-panel space-y-5" role="tabpanel" aria-labelledby="tab-usage">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="stat-card glass-panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">LLM Calls</span>
+                        <i class="fa-solid fa-message text-violet-400"></i>
+                    </div>
+                    <p id="usage-total-calls" class="text-2xl font-bold text-white">—</p>
+                </div>
+                <div class="stat-card glass-panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Tokens</span>
+                        <i class="fa-solid fa-hashtag text-cyan-400"></i>
+                    </div>
+                    <p id="usage-total-tokens" class="text-2xl font-bold text-white">—</p>
+                </div>
+                <div class="stat-card glass-panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Est. Cost</span>
+                        <i class="fa-solid fa-dollar-sign text-amber-400"></i>
+                    </div>
+                    <p id="usage-total-cost" class="text-2xl font-bold text-white">—</p>
+                </div>
+                <div class="stat-card glass-panel rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Active Missions</span>
+                        <i class="fa-solid fa-rocket text-emerald-400"></i>
+                    </div>
+                    <p id="usage-active-missions" class="text-2xl font-bold text-white">—</p>
+                </div>
+            </div>
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="admin-table w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-white/5">
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Mission</th>
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Agent</th>
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Role</th>
+                                <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Calls</th>
+                                <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Tokens</th>
+                                <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Cost (USD)</th>
+                                <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Avg Latency</th>
+                                <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Errors</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usage-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- Audit Logs -->
@@ -608,6 +664,7 @@
         if (name === 'users') loadUsers();
         if (name === 'plans') loadPlans();
         if (name === 'audit') loadAuditLogs();
+        if (name === 'usage') loadUsage();
         if (name === 'services') loadServices();
     };
 
@@ -952,6 +1009,36 @@
     document.getElementById('audit-event-filter').addEventListener('change', () => { auditPage = 1; loadAuditLogs(); });
     document.getElementById('audit-date-from').addEventListener('change', () => { auditPage = 1; loadAuditLogs(); });
     document.getElementById('audit-date-to').addEventListener('change', () => { auditPage = 1; loadAuditLogs(); });
+
+    // ---- Usage ----
+    async function loadUsage() {
+        try {
+            const r = await fetch('/api/admin/usage');
+            if (!r.ok) throw new Error('Failed to load usage');
+            const d = await r.json();
+            document.getElementById('usage-total-calls').textContent = d.total_calls.toLocaleString();
+            document.getElementById('usage-total-tokens').textContent = d.total_tokens.toLocaleString();
+            document.getElementById('usage-total-cost').textContent = '$' + d.total_cost_usd.toFixed(4);
+            document.getElementById('usage-active-missions').textContent = d.active_missions;
+
+            const tbody = document.getElementById('usage-tbody');
+            if (!d.by_agent || !d.by_agent.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-500">No LLM usage recorded yet</td></tr>';
+            } else {
+                tbody.innerHTML = d.by_agent.map(a => `
+                    <tr class="border-b border-white/5">
+                        <td class="px-4 py-3 text-xs text-slate-400 font-mono">${escapeHtml(String(a.mission_id).substring(0, 8))}…</td>
+                        <td class="px-4 py-3 text-sm text-white">${escapeHtml(a.agent_name)}</td>
+                        <td class="px-4 py-3"><span class="badge bg-slate-700/50 text-slate-300">${escapeHtml(a.role)}</span></td>
+                        <td class="px-4 py-3 text-right text-slate-300">${a.calls}</td>
+                        <td class="px-4 py-3 text-right text-slate-300">${a.tokens.toLocaleString()}</td>
+                        <td class="px-4 py-3 text-right text-amber-300">$${a.cost_usd.toFixed(4)}</td>
+                        <td class="px-4 py-3 text-right text-slate-400">${a.avg_latency_ms.toFixed(0)} ms</td>
+                        <td class="px-4 py-3 text-right ${a.errors > 0 ? 'text-red-400' : 'text-slate-500'}">${a.errors}</td>
+                    </tr>`).join('');
+            }
+        } catch(e) { console.error(e); toast('Error loading usage data', 'error'); }
+    }
 
     // ---- Services ----
     const SERVICE_SETTINGS_MAP = {

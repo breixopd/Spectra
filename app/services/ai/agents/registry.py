@@ -78,8 +78,40 @@ class AgentRegistry:
 
 
 _instance = AgentRegistry()
+_all_imported = False
+
+
+def _ensure_all_agents_imported() -> None:
+    """Import every agent module so their @register_agent decorators fire."""
+    global _all_imported  # noqa: PLW0603
+    if _all_imported:
+        return
+    import importlib
+
+    _agent_modules = [
+        "app.services.ai.agents.scope",
+        "app.services.ai.agents.tool_selector",
+        "app.services.ai.agents.mission_controller",
+        "app.services.ai.agents.safety",
+        "app.services.ai.agents.exploit_crafter",
+        "app.services.ai.agents.exploit_verifier",
+        "app.services.ai.agents.poc_developer",
+        "app.services.ai.agents.post_exploitation",
+        "app.services.ai.agents.vector_generator",
+        "app.services.ai.agents.debrief",
+        "app.services.ai.agents.reporter",
+        "app.services.ai.agents.recon_intel",
+    ]
+    for mod_name in _agent_modules:
+        try:
+            importlib.import_module(mod_name)
+        except Exception:
+            logger.debug("Could not import agent module: %s", mod_name)
+    _all_imported = True
+    logger.debug("Agent registry: %d agents registered", len(_registry))
 
 
 def get_agent_registry() -> AgentRegistry:
-    """Return the singleton AgentRegistry."""
+    """Return the singleton AgentRegistry, ensuring all agents are loaded."""
+    _ensure_all_agents_imported()
     return _instance

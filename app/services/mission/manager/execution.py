@@ -77,6 +77,7 @@ class MissionExecutionManager:
 
         # Initialize cost tracker for the mission
         cost_tracker = CostTracker(str(mission.id))
+        cost_tracker.register()
         context.cost_tracker = cost_tracker
 
         # Attach cost tracker to agents
