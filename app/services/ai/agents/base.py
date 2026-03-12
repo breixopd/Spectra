@@ -21,6 +21,7 @@ from app.services.ai.agents.models import (
     SteeringAction,
     ToolAction,
 )
+from app.services.ai.errors import LLMParseError, LLMRateLimitError, LLMTimeoutError
 from app.services.ai.llm import LLMClient
 from app.services.ai.prompts import BASE_SYSTEM_PROMPT
 
@@ -97,26 +98,93 @@ class Agent(ABC, Generic[InputT, OutputT]):
         return ROLE_TASK_MAP.get(self.role)
 
     async def _llm_generate(self, **kwargs: Any) -> Any:
-        """Call self.llm.generate() with automatic task_type injection and cost tracking."""
+        """Call self.llm.generate() with automatic task_type injection, cost tracking, and retry."""
         kwargs.setdefault("task_type", self._task_type)
-        start = time.monotonic()
-        response = await self.llm.generate(**kwargs)
-        latency = (time.monotonic() - start) * 1000
-
-        if self._cost_tracker:
-            self._cost_tracker.record(
-                agent_name=self.name,
-                agent_role=self.role.value,
-                model=response.model,
-                usage=response.usage,
-                latency_ms=latency,
-            )
-        return response
+        return await self._llm_call_with_retry(self.llm.generate, **kwargs)
 
     async def _llm_generate_structured(self, **kwargs: Any) -> Any:
-        """Call self.llm.generate_structured() with automatic task_type injection."""
+        """Call self.llm.generate_structured() with automatic task_type injection and retry."""
         kwargs.setdefault("task_type", self._task_type)
-        return await self.llm.generate_structured(**kwargs)
+        return await self._llm_call_with_retry(self.llm.generate_structured, **kwargs)
+
+    async def _llm_call_with_retry(self, fn: Callable[..., Any], **kwargs: Any) -> Any:
+        """Execute an LLM call with exponential backoff retry on transient failures.
+
+        Handles:
+        - Timeouts → LLMTimeoutError (retryable)
+        - Rate limits (429) → LLMRateLimitError (retryable with longer backoff)
+        - Parse errors → LLMParseError (retryable once)
+        """
+        max_retries = 3
+        last_error: Exception | None = None
+
+        for attempt in range(max_retries):
+            start = time.monotonic()
+            try:
+                response = await fn(**kwargs)
+                latency = (time.monotonic() - start) * 1000
+
+                if self._cost_tracker and hasattr(response, "model"):
+                    self._cost_tracker.record(
+                        agent_name=self.name,
+                        agent_role=self.role.value,
+                        model=response.model,
+                        usage=getattr(response, "usage", {}),
+                        latency_ms=latency,
+                    )
+                return response
+
+            except TimeoutError:
+                latency = (time.monotonic() - start) * 1000
+                last_error = LLMTimeoutError(agent=self.name, timeout_seconds=latency / 1000)
+                logger.warning(
+                    "%s: LLM timeout (attempt %d/%d, %.0fms)",
+                    self.name,
+                    attempt + 1,
+                    max_retries,
+                    latency,
+                )
+            except Exception as e:
+                latency = (time.monotonic() - start) * 1000
+                err_str = str(e).lower()
+
+                if "429" in err_str or "rate" in err_str:
+                    last_error = LLMRateLimitError(agent=self.name)
+                    # Longer backoff for rate limits
+                    delay = 2 ** (attempt + 1) + 1
+                    logger.warning(
+                        "%s: Rate limited (attempt %d/%d), backing off %ds",
+                        self.name,
+                        attempt + 1,
+                        max_retries,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                elif "parse" in err_str or "json" in err_str or "validation" in err_str:
+                    last_error = LLMParseError(agent=self.name, raw_response=str(e)[:500])
+                    logger.warning(
+                        "%s: Parse error (attempt %d/%d): %s",
+                        self.name,
+                        attempt + 1,
+                        max_retries,
+                        str(e)[:200],
+                    )
+                else:
+                    last_error = e
+                    logger.warning(
+                        "%s: LLM call failed (attempt %d/%d): %s",
+                        self.name,
+                        attempt + 1,
+                        max_retries,
+                        e,
+                    )
+
+            if attempt < max_retries - 1:
+                delay = 2**attempt
+                await asyncio.sleep(delay)
+
+        raise last_error  # type: ignore[misc]
 
     def _build_system_prompt(self, context: AgentContext) -> str:
         """Build the system prompt from context."""
@@ -205,6 +273,41 @@ class Agent(ABC, Generic[InputT, OutputT]):
             )
 
         return best_result or result  # type: ignore[possibly-undefined]
+
+    async def execute_with_telemetry(
+        self,
+        context: AgentContext,
+        input_data: InputT,
+    ) -> AgentResult:
+        """Execute the agent and record performance metrics to the telemetry system."""
+        start = time.monotonic()
+        success = False
+        try:
+            result = await self.execute(context, input_data)
+            success = result.success
+            return result
+        except Exception:
+            raise
+        finally:
+            duration_ms = (time.monotonic() - start) * 1000
+            try:
+                from app.core.telemetry import record_agent_execution
+
+                tokens = 0
+                if self._cost_tracker:
+                    usage = self._cost_tracker.get_agent_usage(self.name)
+                    if usage:
+                        tokens = usage.total_tokens
+
+                await record_agent_execution(
+                    agent_name=self.name,
+                    agent_role=self.role.value,
+                    duration_ms=duration_ms,
+                    success=success,
+                    tokens=tokens,
+                )
+            except Exception as e:
+                logger.debug("Telemetry recording failed: %s", e)
 
     def _get_temperature(self, input_data: Any, attempt: int = 1) -> float:
         """

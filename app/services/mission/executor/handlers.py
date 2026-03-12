@@ -108,6 +108,7 @@ class TaskDispatcher:
             try:
                 await handler(mission, task, context)
                 duration = time.monotonic() - start
+                duration_ms = duration * 1000
                 logger.info(
                     "Task completed: mission=%s phase=%s agent=%s task=%s duration=%.1fs",
                     mission.id,
@@ -117,8 +118,21 @@ class TaskDispatcher:
                     duration,
                 )
                 mission.task_tree.update_status(task_tree_id, TaskStatus.COMPLETED)
+                # Record task-level telemetry
+                try:
+                    from app.core.telemetry import record_agent_execution
+
+                    await record_agent_execution(
+                        agent_name=task.agent_type,
+                        agent_role=task.phase.value,
+                        duration_ms=duration_ms,
+                        success=True,
+                    )
+                except Exception:
+                    pass
             except Exception:
                 duration = time.monotonic() - start
+                duration_ms = duration * 1000
                 logger.error(
                     "Task failed: mission=%s phase=%s agent=%s task=%s duration=%.1fs",
                     mission.id,
@@ -128,6 +142,17 @@ class TaskDispatcher:
                     duration,
                 )
                 mission.task_tree.update_status(task_tree_id, TaskStatus.FAILED)
+                try:
+                    from app.core.telemetry import record_agent_execution
+
+                    await record_agent_execution(
+                        agent_name=task.agent_type,
+                        agent_role=task.phase.value,
+                        duration_ms=duration_ms,
+                        success=False,
+                    )
+                except Exception:
+                    pass
                 raise
         else:
             mission.log(f"Unknown agent type: {task.agent_type}")
