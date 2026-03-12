@@ -28,6 +28,31 @@
     .dash-error p { font-size: 0.8125rem; color: #fb7185; margin-bottom: 0.5rem; }
     .dash-error button { font-size: 0.75rem; color: #94a3b8; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0.375rem 0.75rem; cursor: pointer; transition: background 0.2s; }
     .dash-error button:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+    /* Notification center */
+    .notif-bell { position: relative; }
+    .notif-badge { position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px; border-radius: 8px; background: #f43f5e; color: #fff; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 4px; line-height: 1; pointer-events: none; }
+    .notif-dropdown { position: absolute; right: 0; top: calc(100% + 8px); width: 360px; max-height: 420px; background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); z-index: 60; overflow: hidden; display: none; }
+    .notif-dropdown.open { display: block; }
+    .notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.15s; cursor: pointer; }
+    .notif-item:hover { background: rgba(255,255,255,0.03); }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+    .notif-icon.mission { background: rgba(139,92,246,0.15); color: #a78bfa; }
+    .notif-icon.finding { background: rgba(244,63,94,0.15); color: #fb7185; }
+    .notif-icon.system { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .notif-icon.success { background: rgba(16,185,129,0.15); color: #34d399; }
+
+    /* Recent activity timeline */
+    .activity-timeline { position: relative; }
+    .activity-timeline::before { content: ''; position: absolute; left: 15px; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.05); }
+    .timeline-item { position: relative; padding-left: 40px; padding-bottom: 16px; }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-dot { position: absolute; left: 10px; top: 4px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid; }
+    .timeline-dot.completed { border-color: #10b981; background: rgba(16,185,129,0.3); }
+    .timeline-dot.running { border-color: #f59e0b; background: rgba(245,158,11,0.3); animation: pulse 2s infinite; }
+    .timeline-dot.failed { border-color: #f43f5e; background: rgba(244,63,94,0.3); }
+    .timeline-dot.idle, .timeline-dot.queued { border-color: #64748b; background: rgba(100,116,139,0.3); }
 </style>
 <!-- Header / Mission Control -->
 <header class="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 animate-fade-in" role="navigation" aria-label="Mission control">
@@ -79,6 +104,22 @@
     </div>
 
     <div class="flex items-center gap-1">
+        <!-- Notification Bell -->
+        <div class="notif-bell relative" id="notif-bell">
+            <button onclick="toggleNotifications(event)" class="p-2 rounded-lg text-slate-500 hover:text-violet-400 hover:bg-white/5 transition-colors" data-tooltip="Notifications" data-tooltip-pos="bottom" aria-label="Notifications">
+                <i class="fa-solid fa-bell"></i>
+            </button>
+            <span class="notif-badge hidden" id="notif-badge">0</span>
+            <div class="notif-dropdown" id="notif-dropdown">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
+                    <span class="text-sm font-medium text-white">Notifications</span>
+                    <button onclick="clearNotifications()" class="text-[10px] text-slate-500 hover:text-slate-300 transition-colors">Clear all</button>
+                </div>
+                <div id="notif-list" class="overflow-y-auto" style="max-height: 340px;">
+                    <div class="px-4 py-8 text-center text-slate-600 text-xs">No notifications yet</div>
+                </div>
+            </div>
+        </div>
         <!-- Scan Preset Dropdown -->
         <div class="relative group">
             <button class="flex items-center gap-2 px-3 py-2 bg-slate-900/50 hover:bg-white/5 border border-white/10 rounded-lg text-xs text-slate-300 transition-colors">
@@ -307,6 +348,27 @@
     <div id="attack-paths-graph" class="bg-slate-950" style="min-height: 250px;">
         <div class="flex items-center justify-center h-full text-slate-700 py-8">
             <div class="text-center"><i class="fa-solid fa-route text-2xl mb-2"></i><p class="text-xs">Attack paths appear after exploitation</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity Section -->
+<div class="glass-panel rounded-xl mt-4 animate-fade-in-up stagger-2" id="recent-activity-section">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-white/5">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-blue-400 text-sm"></i>
+            <span class="text-sm font-medium text-white">Recent Activity</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-4 text-xs" id="activity-quick-stats">
+                <span class="text-slate-500">Loading...</span>
+            </div>
+            <a href="/history" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors">View all <i class="fa-solid fa-arrow-right ml-0.5"></i></a>
+        </div>
+    </div>
+    <div class="p-5">
+        <div id="activity-timeline" class="activity-timeline">
+            <div class="text-center py-6 text-slate-600 text-xs"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading recent missions...</div>
         </div>
     </div>
 </div>
@@ -697,10 +759,181 @@ window.onSocketMessage = function(data) {
         if (msg.type === 'task_tree') renderTaskTree(msg.data);
         if (msg.type === 'attack_paths') renderAttackPaths(msg.data);
         if (msg.type === 'task_update' && msg.data?.tasks) renderTaskTree(msg.data.tasks);
+        // Real-time notifications
+        if (msg.type === 'finding' && msg.data) {
+            const sev = (msg.data.severity || 'info').toLowerCase();
+            if (sev === 'critical' || sev === 'high') {
+                addNotification('finding', `${sev.toUpperCase()}: ${msg.data.title || 'New finding'}`, msg.data.description || '', null);
+            }
+        }
+        if (msg.type === 'mission_complete' && msg.data) {
+            addNotification('success', `Mission completed: ${msg.data.target || ''}`, `${msg.data.findings_count || 0} findings`, '/history');
+            loadRecentActivity();
+        }
     } catch {}
 };
 
-// Load metrics on page load
-document.addEventListener('DOMContentLoaded', () => { loadMetrics(); });
+// --- Notification Center ---
+let notifications = [];
+
+function toggleNotifications(e) {
+    e.stopPropagation();
+    const dd = document.getElementById('notif-dropdown');
+    dd.classList.toggle('open');
+}
+
+document.addEventListener('click', (e) => {
+    const dd = document.getElementById('notif-dropdown');
+    if (dd && !document.getElementById('notif-bell').contains(e.target)) {
+        dd.classList.remove('open');
+    }
+});
+
+function addNotification(type, title, message, link) {
+    const n = { type, title, message, link, time: new Date() };
+    notifications.unshift(n);
+    if (notifications.length > 50) notifications.pop();
+    renderNotifications();
+}
+
+function clearNotifications() {
+    notifications = [];
+    renderNotifications();
+}
+
+function renderNotifications() {
+    const list = document.getElementById('notif-list');
+    const badge = document.getElementById('notif-badge');
+    if (!list) return;
+
+    if (notifications.length === 0) {
+        list.innerHTML = '<div class="px-4 py-8 text-center text-slate-600 text-xs">No notifications yet</div>';
+        badge.classList.add('hidden');
+        return;
+    }
+
+    badge.textContent = notifications.length;
+    badge.classList.remove('hidden');
+
+    list.innerHTML = notifications.map(n => {
+        const iconCls = n.type === 'finding' ? 'finding' : n.type === 'success' ? 'success' : n.type === 'system' ? 'system' : 'mission';
+        const iconChar = n.type === 'finding' ? 'fa-triangle-exclamation' : n.type === 'success' ? 'fa-check' : n.type === 'system' ? 'fa-info-circle' : 'fa-rocket';
+        const ago = timeAgo(n.time);
+        return `<div class="notif-item" ${n.link ? `onclick="window.location.href='${escapeHtml(n.link)}'"` : ''}>
+            <div class="notif-icon ${iconCls}"><i class="fa-solid ${iconChar}"></i></div>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-medium text-slate-200 truncate">${escapeHtml(n.title)}</p>
+                <p class="text-[11px] text-slate-500 truncate">${escapeHtml(n.message)}</p>
+            </div>
+            <span class="text-[10px] text-slate-600 whitespace-nowrap shrink-0">${ago}</span>
+        </div>`;
+    }).join('');
+}
+
+function timeAgo(date) {
+    const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + 'm ago';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+    return Math.floor(s / 86400) + 'd ago';
+}
+
+// Generate notifications from mission data
+function generateNotifications(missions) {
+    notifications = [];
+    const sorted = [...missions].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    for (const m of sorted.slice(0, 20)) {
+        if (m.status === 'completed') {
+            const fc = m.findings_count || (m.findings ? m.findings.length : 0);
+            const criticals = m.findings ? m.findings.filter(f => (f.severity || '').toLowerCase() === 'critical').length : 0;
+
+            addNotification('success', `Mission completed: ${m.target}`, `${fc} findings discovered`, `/history`);
+
+            if (criticals > 0) {
+                addNotification('finding', `${criticals} critical finding${criticals > 1 ? 's' : ''} on ${m.target}`, 'Immediate attention required', `/history`);
+            }
+        } else if (m.status === 'failed') {
+            addNotification('system', `Mission failed: ${m.target}`, 'Check logs for details', `/history`);
+        } else if (m.status === 'running' || m.status === 'in_progress') {
+            addNotification('mission', `Mission in progress: ${m.target}`, m.directive || 'Running...', `/dashboard`);
+        }
+    }
+    renderNotifications();
+}
+
+// --- Recent Activity Timeline ---
+async function loadRecentActivity() {
+    const timeline = document.getElementById('activity-timeline');
+    const statsEl = document.getElementById('activity-quick-stats');
+    if (!timeline) return;
+
+    try {
+        const res = await fetch('/api/v1/missions?per_page=10');
+        if (!res.ok) throw new Error('Failed to load');
+        const data = await res.json();
+        const missions = data.items || data || [];
+
+        // Quick stats
+        const total = data.total || missions.length;
+        const running = missions.filter(m => m.status === 'running' || m.status === 'in_progress').length;
+        const completed = missions.filter(m => m.status === 'completed').length;
+        const failed = missions.filter(m => m.status === 'failed').length;
+
+        if (statsEl) {
+            statsEl.innerHTML = `
+                <span class="text-slate-400"><span class="font-mono text-white">${total}</span> total</span>
+                <span class="text-emerald-400"><span class="font-mono text-emerald-300">${completed}</span> completed</span>
+                ${running > 0 ? `<span class="text-amber-400"><span class="font-mono text-amber-300">${running}</span> active</span>` : ''}
+                ${failed > 0 ? `<span class="text-rose-400"><span class="font-mono text-rose-300">${failed}</span> failed</span>` : ''}
+            `;
+        }
+
+        if (missions.length === 0) {
+            timeline.innerHTML = '<div class="text-center py-6 text-slate-600 text-xs">No missions yet. Launch your first assessment above!</div>';
+            return;
+        }
+
+        // Generate notifications from missions
+        generateNotifications(missions);
+
+        timeline.innerHTML = missions.map(m => {
+            const status = m.status || 'idle';
+            const dotClass = status === 'completed' ? 'completed' : status === 'running' || status === 'in_progress' ? 'running' : status === 'failed' ? 'failed' : 'idle';
+            const statusColors = { completed: 'text-emerald-400', running: 'text-amber-400', in_progress: 'text-amber-400', failed: 'text-rose-400' };
+            const statusColor = statusColors[status] || 'text-slate-500';
+            const date = m.created_at ? new Date(m.created_at) : null;
+            const dateStr = date ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+            const timeStr = date ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '';
+            const findingsCount = m.findings_count || (m.findings ? m.findings.length : 0);
+
+            return `<div class="timeline-item">
+                <div class="timeline-dot ${dotClass}"></div>
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <span class="text-sm font-medium text-white truncate">${escapeHtml(m.target || 'Unknown')}</span>
+                            <span class="text-[10px] font-mono ${statusColor} uppercase">${escapeHtml(status)}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 truncate">${escapeHtml(m.directive || 'Security assessment')}</p>
+                        ${findingsCount > 0 ? `<span class="inline-flex items-center gap-1 mt-1 text-[10px] text-slate-400"><i class="fa-solid fa-bug"></i> ${findingsCount} finding${findingsCount !== 1 ? 's' : ''}</span>` : ''}
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-[11px] text-slate-500">${dateStr}</p>
+                        <p class="text-[10px] text-slate-600">${timeStr}</p>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch {
+        timeline.innerHTML = '<div class="text-center py-6 text-slate-600 text-xs">Failed to load activity</div>';
+    }
+}
+
+// Load metrics and activity on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadMetrics();
+    loadRecentActivity();
+});
 </script>
 {% endblock %}

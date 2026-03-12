@@ -110,6 +110,7 @@ class MissionResponse(BaseModel):
     tool_executions: list[dict] | None = None
     report_path: str | None = None
     attack_surface: dict | None = None
+    created_at: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

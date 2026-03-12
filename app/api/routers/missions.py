@@ -310,6 +310,7 @@ async def list_missions(
             logs=m.logs or [],
             directive=m.directive,
             findings=m.summary.get("findings", []) if m.summary else [],
+            created_at=m.created_at.isoformat() if m.created_at else None,
         )
         for m in missions
     ]
