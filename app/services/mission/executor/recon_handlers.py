@@ -93,10 +93,12 @@ class ReconHandlers:
         tool_service: ToolExecutionService,
         agents: dict[str, BaseAgent],
         broadcast_fn: Any,
+        consensus: Any | None = None,
     ):
         self.tool_service = tool_service
         self.agents = agents
         self._broadcast = broadcast_fn
+        self.consensus = consensus
 
     async def handle_tool_selector(
         self,
@@ -152,6 +154,25 @@ class ReconHandlers:
 
             if result.success and isinstance(result.action, ParallelToolAction):
                 parallel_action = result.action
+
+                # TOOL_SELECTION quality gate for parallel actions
+                if self.consensus:
+                    try:
+                        from app.services.ai.consensus_models import QualityGate
+
+                        gate_result = await self.consensus.validate_at_gate(
+                            QualityGate.TOOL_SELECTION,
+                            parallel_action,
+                            {"tools": [t.tool_name for t in parallel_action.tools], "target": context.target},
+                        )
+                        if not gate_result.final_decision:
+                            logger.warning(
+                                "Tool selection quality gate failed for parallel tools: %s",
+                                gate_result.escalation_reason,
+                            )
+                    except Exception as e:
+                        logger.debug("TOOL_SELECTION gate error (non-blocking): %s", e)
+
                 mission.log(f"Parallel execution: {[t.tool_name for t in parallel_action.tools]}")
                 results = await self._execute_parallel_tools(mission, parallel_action, context)
                 for r in results:
@@ -166,6 +187,24 @@ class ReconHandlers:
                     reason = getattr(result.action, "skip_reason", "No reason provided")
                     mission.log(f"No more tools for phase: {reason}")
                     return
+
+                # TOOL_SELECTION quality gate — soft enforcement
+                if self.consensus:
+                    try:
+                        from app.services.ai.consensus_models import QualityGate
+
+                        gate_result = await self.consensus.validate_at_gate(
+                            QualityGate.TOOL_SELECTION,
+                            action,
+                            {"tool": action.tool_name, "target": context.target, "args": action.tool_args},
+                        )
+                        if not gate_result.final_decision:
+                            logger.warning(
+                                "Tool selection quality gate failed: %s",
+                                gate_result.escalation_reason,
+                            )
+                    except Exception as e:
+                        logger.debug("TOOL_SELECTION gate error (non-blocking): %s", e)
 
                 success = await self.tool_service.execute_tool_action(mission, action, context)
 
