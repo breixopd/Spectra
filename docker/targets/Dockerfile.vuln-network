@@ -1,0 +1,66 @@
+# Spectra Test Target: Multiple Network Services
+# Vulns: exposed services with identifiable banners for port scanning
+# Size: ~20MB (Alpine + socat + lighttpd + openssl)
+FROM alpine:3.19
+
+LABEL spectra.target="vuln-network" \
+      spectra.difficulty="easy" \
+      spectra.services="ftp,http,https,mysql"
+
+RUN apk add --no-cache socat lighttpd openssl bash
+
+# Generate self-signed cert for HTTPS
+RUN mkdir -p /etc/ssl/private && \
+    openssl req -x509 -nodes -days 3650 \
+      -newkey rsa:2048 \
+      -keyout /etc/ssl/private/server.key \
+      -out /etc/ssl/private/server.crt \
+      -subj "/CN=vuln-network.local" 2>/dev/null
+
+# Simple HTTP content
+RUN mkdir -p /var/www/html && \
+    echo "<html><body><h1>vuln-network test target</h1></body></html>" \
+      > /var/www/html/index.html
+
+# lighttpd config for port 80
+COPY <<'CONF' /etc/lighttpd/lighttpd.conf
+server.document-root = "/var/www/html"
+server.port = 80
+server.bind = "0.0.0.0"
+mimetype.assign = ( ".html" => "text/html" )
+CONF
+
+# Startup script: launch multiple fake services
+COPY <<'SCRIPT' /entrypoint.sh
+#!/bin/bash
+set -e
+
+# HTTP (lighttpd on port 80)
+lighttpd -f /etc/lighttpd/lighttpd.conf
+
+# HTTPS on 443 via socat + openssl
+socat OPENSSL-LISTEN:443,cert=/etc/ssl/private/server.crt,key=/etc/ssl/private/server.key,verify=0,reuseaddr,fork \
+  SYSTEM:'echo "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<h1>HTTPS OK</h1>"' &
+
+# FTP banner on 21
+socat TCP-LISTEN:21,reuseaddr,fork \
+  SYSTEM:'echo "220 vsftpd 2.3.4 (vulnerable)"' &
+
+# Fake MySQL banner on 3306
+socat TCP-LISTEN:3306,reuseaddr,fork \
+  SYSTEM:'printf "\x4a\x00\x00\x00\x0a5.5.68-MariaDB"' &
+
+echo "All services started."
+
+# Keep container alive
+tail -f /dev/null
+SCRIPT
+
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 21 80 443 3306
+
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+  CMD nc -z localhost 80 && nc -z localhost 21 || exit 1
+
+CMD ["/entrypoint.sh"]

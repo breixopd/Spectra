@@ -1,0 +1,58 @@
+# Spectra Scaled Production Caddyfile
+# Load-balanced reverse proxy across app replicas.
+#
+# Docker Compose DNS resolves "app" to all container IPs,
+# so Caddy round-robins across replicas automatically.
+
+{
+	admin off
+}
+
+{$SPECTRA_DOMAIN:localhost} {
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org; connect-src 'self' ws: wss:; font-src 'self';"
+		-Server
+	}
+
+	# WebSocket upgrade
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+	handle @websocket {
+		reverse_proxy app:5000
+	}
+
+	# Load-balanced proxy to app replicas
+	# Caddy resolves "app" via Docker DNS to all replica IPs
+	reverse_proxy app:5000 {
+		lb_policy round_robin
+		lb_retries 3
+
+		health_uri /api/health
+		health_interval 10s
+		health_timeout 5s
+
+		transport http {
+			read_timeout 300s
+			write_timeout 300s
+			dial_timeout 10s
+		}
+
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	log {
+		output stdout
+		format json
+		level WARN
+	}
+}

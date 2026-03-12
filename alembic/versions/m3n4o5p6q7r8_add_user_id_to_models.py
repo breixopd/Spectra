@@ -9,6 +9,7 @@ Create Date: 2026-03-10
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -22,7 +23,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     # Add user_id (nullable for existing rows) + FK + index to each table
     for table in ("missions", "targets", "findings", "exploits"):
-        op.add_column(table, sa.Column("user_id", sa.String(), nullable=True))
+        op.add_column(table, sa.Column("user_id", postgresql.UUID(as_uuid=False), nullable=True))
         op.create_foreign_key(
             f"fk_{table}_user_id",
             table,

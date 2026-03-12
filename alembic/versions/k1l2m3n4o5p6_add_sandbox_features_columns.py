@@ -8,6 +8,7 @@ Create Date: 2026-03-09
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
@@ -23,7 +24,7 @@ def upgrade() -> None:
     op.add_column('sandboxes', sa.Column('resource_tier', sa.String(), nullable=True, server_default='medium'))
     op.add_column('sandboxes', sa.Column('network_id', sa.String(), nullable=True))
     op.add_column('sandboxes', sa.Column('last_heartbeat', sa.DateTime(timezone=True), nullable=True))
-    op.add_column('sandboxes', sa.Column('user_id', sa.String(), nullable=True))
+    op.add_column('sandboxes', sa.Column('user_id', postgresql.UUID(as_uuid=False), nullable=True))
     op.add_column('sandboxes', sa.Column('escalated', sa.Boolean(), nullable=False, server_default='false'))
     op.create_index('ix_sandboxes_user_id', 'sandboxes', ['user_id'])
 

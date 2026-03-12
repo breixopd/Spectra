@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, ForeignKey, Index, String, Text
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import Severity
@@ -52,7 +53,7 @@ class Finding(Base):
     __table_args__ = (Index("ix_findings_user_id_severity", "user_id", "severity"),)
 
     user_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
     )
     target_id: Mapped[str] = mapped_column(
         ForeignKey("targets.id", ondelete="CASCADE"),
