@@ -88,7 +88,7 @@ async def create_plan(
 
     await audit_log_event(
         session,
-        AuditEventType.SETTINGS_CHANGED,
+        AuditEventType.PLAN_CHANGED,
         user_id=admin.id,
         details={"action": "plan_created", "plan": plan.name},
         request=request,
@@ -148,7 +148,7 @@ async def update_plan(
 
     await audit_log_event(
         session,
-        AuditEventType.SETTINGS_CHANGED,
+        AuditEventType.PLAN_CHANGED,
         user_id=admin.id,
         details={"action": "plan_updated", "plan": plan.name},
         request=request,
@@ -190,7 +190,7 @@ async def deactivate_plan(
     plan.is_active = False
     await audit_log_event(
         session,
-        AuditEventType.SETTINGS_CHANGED,
+        AuditEventType.PLAN_CHANGED,
         user_id=admin.id,
         details={"action": "plan_deactivated", "plan": plan.name},
         request=request,
