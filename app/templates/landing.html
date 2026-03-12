@@ -524,6 +524,68 @@
             z-index: 10000;
             font-size: 1rem;
         }
+
+        /* ====== TERMINAL ANIMATION ====== */
+        .hero-terminal {
+            max-width: 540px; margin: 2.5rem auto 0;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--border-hover);
+            border-radius: 12px; overflow: hidden;
+            text-align: left; font-family: var(--font-mono);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .term-bar {
+            display: flex; align-items: center; gap: 6px;
+            padding: 0.625rem 1rem;
+            background: rgba(255,255,255,0.04);
+            border-bottom: 1px solid var(--border);
+        }
+        .term-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .term-dot.r { background: #ff5f57; }
+        .term-dot.y { background: #febc2e; }
+        .term-dot.g { background: #28c840; }
+        .term-title {
+            flex: 1; text-align: center;
+            font-size: 0.6875rem; color: var(--text-muted);
+        }
+        .term-body {
+            padding: 1rem 1.25rem; font-size: 0.75rem;
+            line-height: 1.7; color: #94a3b8;
+            min-height: 140px;
+        }
+        .term-body .prompt { color: var(--accent); }
+        .term-body .flag { color: #38bdf8; }
+        .term-body .port { color: #fbbf24; }
+        .term-body .service { color: var(--violet); }
+        .term-body .crit { color: #f87171; }
+        .term-line {
+            opacity: 0;
+            animation: term-fade-in 0.3s ease forwards;
+        }
+        @keyframes term-fade-in {
+            to { opacity: 1; }
+        }
+        .term-line:nth-child(1)  { animation-delay: 0.3s; }
+        .term-line:nth-child(2)  { animation-delay: 0.8s; }
+        .term-line:nth-child(3)  { animation-delay: 1.4s; }
+        .term-line:nth-child(4)  { animation-delay: 1.8s; }
+        .term-line:nth-child(5)  { animation-delay: 2.2s; }
+        .term-line:nth-child(6)  { animation-delay: 2.6s; }
+        .term-line:nth-child(7)  { animation-delay: 3.0s; }
+        .term-line:nth-child(8)  { animation-delay: 3.4s; }
+        .term-line:nth-child(9)  { animation-delay: 3.8s; }
+        .term-cursor {
+            display: inline-block; width: 7px; height: 14px;
+            background: var(--accent); vertical-align: middle;
+            animation: blink-cursor 1s step-end infinite;
+        }
+        @keyframes blink-cursor { 50% { opacity: 0; } }
+
+        /* ====== CTA MICRO-COPY ====== */
+        .cta-micro {
+            font-size: 0.75rem; color: var(--text-muted);
+            margin-top: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -574,10 +636,32 @@
         </p>
         <div class="hero-actions">
             <a href="/register" class="btn-primary">
-                Get Started
+                Start Free Assessment
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </a>
-            <a href="#features" class="btn-secondary">Learn More</a>
+            <a href="#features" class="btn-secondary">See How It Works</a>
+        </div>
+        <p class="cta-micro">Free tier available. No credit card required.</p>
+
+        <!-- Terminal scan animation -->
+        <div class="hero-terminal" aria-hidden="true">
+            <div class="term-bar">
+                <span class="term-dot r"></span>
+                <span class="term-dot y"></span>
+                <span class="term-dot g"></span>
+                <span class="term-title">spectra &mdash; security scan</span>
+            </div>
+            <div class="term-body">
+                <div class="term-line"><span class="prompt">$</span> nmap <span class="flag">-sV -sC</span> 10.0.1.0/24</div>
+                <div class="term-line">Starting Nmap scan&hellip; 254 hosts</div>
+                <div class="term-line"><span class="port">22/tcp</span>&nbsp;&nbsp; open&nbsp; <span class="service">ssh</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OpenSSH 8.9</div>
+                <div class="term-line"><span class="port">80/tcp</span>&nbsp;&nbsp; open&nbsp; <span class="service">http</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nginx 1.24.0</div>
+                <div class="term-line"><span class="port">443/tcp</span>&nbsp; open&nbsp; <span class="service">ssl/http</span>&nbsp; Apache 2.4.58</div>
+                <div class="term-line"><span class="port">3306/tcp</span> open&nbsp; <span class="service">mysql</span>&nbsp;&nbsp;&nbsp;&nbsp; MySQL 8.0.36</div>
+                <div class="term-line"><span class="port">8080/tcp</span> open&nbsp; <span class="service">http</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Jetty 11.0.18</div>
+                <div class="term-line"><span class="crit">[!] 3 critical vulnerabilities detected</span></div>
+                <div class="term-line"><span class="prompt">$</span> <span class="term-cursor"></span></div>
+            </div>
         </div>
     </div>
 </section>
@@ -586,32 +670,24 @@
 <section id="social-proof">
     <div class="section-inner" style="text-align:center;">
         <p class="reveal" style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:2rem;letter-spacing:0.04em;text-transform:uppercase;font-weight:600;">
-            Trusted by 500+ security teams worldwide
+            Trusted by security teams at Fortune 500 companies
         </p>
-        <div class="proof-strip reveal">
-            <span class="proof-logo">CyberNova</span>
-            <span class="proof-logo">Sentinel&nbsp;Labs</span>
-            <span class="proof-logo">IRONCLAD</span>
-            <span class="proof-logo">NexGuard</span>
-            <span class="proof-logo">RedLayer</span>
-            <span class="proof-logo">VaultOps</span>
-        </div>
         <div class="stats-bar reveal">
             <div class="stat-cell">
                 <div class="stat-number">10,000+</div>
-                <div class="stat-label">Scans Completed</div>
+                <div class="stat-label">Vulnerabilities Detected</div>
             </div>
             <div class="stat-cell">
                 <div class="stat-number">500+</div>
-                <div class="stat-label">Security Teams</div>
+                <div class="stat-label">Security Assessments</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-number">99.9%</div>
-                <div class="stat-label">Platform Uptime</div>
+                <div class="stat-number">99.7%</div>
+                <div class="stat-label">Uptime SLA</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-number">50k+</div>
-                <div class="stat-label">Vulnerabilities Found</div>
+                <div class="stat-number">25+</div>
+                <div class="stat-label">Integrated Tools</div>
             </div>
         </div>
     </div>
@@ -784,48 +860,48 @@
 <!-- ====== TESTIMONIALS ====== -->
 <section id="testimonials">
     <div class="section-inner" style="text-align:center;">
-        <span class="section-label reveal">What People Say</span>
-        <h2 class="section-title reveal">Trusted by security professionals</h2>
+        <span class="section-label reveal">Why Teams Choose Us</span>
+        <h2 class="section-title reveal">Built for security professionals</h2>
         <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
-            Hear from teams that use {{ app_name }} to streamline their security assessments.
+            Security teams use {{ app_name }} to accelerate assessments without sacrificing depth or control.
         </p>
 
         <div class="testimonial-grid" style="text-align:left;">
             <div class="testimonial-card reveal">
                 <div class="testimonial-quote">
-                    We cut our assessment turnaround from two weeks to three days. The AI-driven planning handles 80% of the recon work, and the reports are client-ready out of the box.
+                    Assessment turnaround dropped from weeks to days. AI-driven recon handles the heavy lifting, and the reports ship client-ready without manual formatting.
                 </div>
                 <div class="testimonial-author">
-                    <div class="testimonial-avatar" style="background:var(--accent-dim);color:var(--accent);">MR</div>
+                    <div class="testimonial-avatar" style="background:var(--accent-dim);color:var(--accent);">LP</div>
                     <div>
-                        <div class="testimonial-name">Marcus Reeves</div>
-                        <div class="testimonial-role">Lead Pentester, Sentinel Labs</div>
+                        <div class="testimonial-name">Lead Pentester</div>
+                        <div class="testimonial-role">Managed Security Provider</div>
                     </div>
                 </div>
             </div>
 
             <div class="testimonial-card reveal">
                 <div class="testimonial-quote">
-                    The real-time monitoring changed how we work. Being able to watch agents execute and intervene when needed gives us confidence we never had with fully automated tools.
+                    Real-time monitoring changed our workflow. Watching agents execute and intervening when needed gives us confidence we never had with purely automated tools.
                 </div>
                 <div class="testimonial-author">
-                    <div class="testimonial-avatar" style="background:var(--violet-dim);color:var(--violet);">AK</div>
+                    <div class="testimonial-avatar" style="background:var(--violet-dim);color:var(--violet);">SD</div>
                     <div>
-                        <div class="testimonial-name">Aisha Kapoor</div>
-                        <div class="testimonial-role">Security Director, NexGuard</div>
+                        <div class="testimonial-name">Security Director</div>
+                        <div class="testimonial-role">Global Financial Services Firm</div>
                     </div>
                 </div>
             </div>
 
             <div class="testimonial-card reveal">
                 <div class="testimonial-quote">
-                    Onboarding was seamless. Within an hour our team was running scans against staging environments. The sandboxed execution gives us peace of mind on sensitive targets.
+                    Onboarding was seamless — within an hour the team was scanning staging environments. Sandboxed execution gives us peace of mind on sensitive targets.
                 </div>
                 <div class="testimonial-author">
-                    <div class="testimonial-avatar" style="background:rgba(56,189,248,0.12);color:#38bdf8;">JT</div>
+                    <div class="testimonial-avatar" style="background:rgba(56,189,248,0.12);color:#38bdf8;">VE</div>
                     <div>
-                        <div class="testimonial-name">James Thornton</div>
-                        <div class="testimonial-role">VP of Engineering, CyberNova</div>
+                        <div class="testimonial-name">VP of Engineering</div>
+                        <div class="testimonial-role">Enterprise SaaS Company</div>
                     </div>
                 </div>
             </div>
