@@ -43,7 +43,7 @@ from app.core.config import settings
 from app.core.exceptions import SpectraError, get_status_code_for_exception
 from app.core.lifespan import lifespan
 from app.core.logging_config import CorrelationIdMiddleware, configure_logging
-from app.core.middleware import SecurityHeadersMiddleware
+from app.core.middleware import PlanRateLimitMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.telemetry_middleware import TelemetryMiddleware
 from app.core.websocket import manager
@@ -89,6 +89,9 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore
 app.add_middleware(SlowAPIMiddleware)
 
+# --- Plan-aware rate limit resolution (must run before SlowAPIMiddleware) ---
+app.add_middleware(PlanRateLimitMiddleware)
+
 
 # --- Spectra Exception Handler ---
 @app.exception_handler(SpectraError)
@@ -96,6 +99,22 @@ async def spectra_error_handler(request: Request, exc: SpectraError) -> JSONResp
     """Map SpectraError subclasses to appropriate HTTP responses."""
     status_code = get_status_code_for_exception(exc)
     return JSONResponse(exc.to_dict(), status_code=status_code)
+
+
+# --- Global Unhandled Exception Handler ---
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse | HTMLResponse:
+    """Catch-all for unhandled exceptions. Never leak stack traces to clients."""
+    logger.exception("Unhandled exception on %s %s: %s", request.method, request.url.path, exc)
+    if _wants_html(request):
+        try:
+            return HTMLResponse(
+                content=_error_templates.get_template("errors/500.html").render(),
+                status_code=500,
+            )
+        except Exception:
+            return HTMLResponse("<h1>Internal Server Error</h1>", status_code=500)
+    return JSONResponse({"detail": "Internal server error"}, status_code=500)
 
 
 # --- GZip Compression ---

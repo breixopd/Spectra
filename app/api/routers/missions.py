@@ -22,7 +22,7 @@ from app.api.dependencies import (
 )
 from app.api.schemas import MissionResponse, PaginatedResponse, StartMissionRequest
 from app.core.database import get_async_session
-from app.core.rate_limit import limiter
+from app.core.rate_limit import get_plan_dynamic_limit, limiter
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
@@ -153,7 +153,7 @@ async def get_attack_coverage(
     summary="Start mission",
     description="Create and start a new security assessment mission against specified targets.",
 )
-@limiter.limit("5/minute")
+@limiter.limit(get_plan_dynamic_limit)
 async def start_mission(
     request: Request,
     response: Response,
@@ -164,8 +164,28 @@ async def start_mission(
 ):
     """Start a new mission.
 
-    Rate limited to 5 missions per minute per user.
+    Rate limited per plan tier (Free: 10/min, Pro: 60/min, Enterprise: 200/min, Admin: unlimited).
     """
+    # SSRF prevention: non-admins cannot target internal network addresses
+    if not _is_admin_user(_current_user):
+        from urllib.parse import urlparse
+
+        from app.api.schemas.mission import is_internal_ip, is_internal_network
+
+        raw_target = mission_request.target
+        host = raw_target
+        if "://" in raw_target:
+            parsed = urlparse(raw_target)
+            host = parsed.hostname or ""
+        if ":" in host and not host.startswith("["):
+            host = host.rsplit(":", 1)[0]
+
+        if is_internal_ip(host) or is_internal_network(host):
+            raise HTTPException(
+                status_code=403,
+                detail="Targeting internal network addresses is not permitted",
+            )
+
     await check_mission_limit(_current_user, db)
     await check_feature_allowed(_current_user, db, "autonomous_mode")
 

@@ -358,7 +358,7 @@ async def check_setup_status(
     summary="Logout",
     description="Invalidate the current access token and clear the auth cookie.",
 )
-async def logout(request: Request, response: Response):
+async def logout(request: Request, response: Response, session: AsyncSession = Depends(get_async_session)):
     """Logout by blacklisting the current access token and clearing cookie."""
     auth_header = request.headers.get("authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -368,7 +368,7 @@ async def logout(request: Request, response: Response):
         )
     token = auth_header[7:]
     try:
-        decode_token(token)  # Validate token is still valid
+        payload = decode_token(token)  # Validate token is still valid
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -376,6 +376,16 @@ async def logout(request: Request, response: Response):
         )
     invalidate_token(token)
     response.delete_cookie(key="access_token", path="/", httponly=True, secure=True, samesite="strict")
+
+    # Audit log
+    username = payload.get("sub")
+    await audit_log_event(
+        session,
+        AuditEventType.LOGOUT,
+        details={"username": username},
+        request=request,
+    )
+
     return {"detail": "Successfully logged out"}
 
 
@@ -455,6 +465,16 @@ async def change_password(
 
     user.hashed_password = get_password_hash(body.new_password)
     await session.commit()
+
+    # Audit log
+    await audit_log_event(
+        session,
+        AuditEventType.PASSWORD_CHANGED,
+        user_id=str(user.id),
+        details={"username": user.username},
+        request=request,
+    )
+
     return {"detail": "Password changed successfully"}
 
 
@@ -514,6 +534,7 @@ class CreateApiKeyRequest(BaseModel):
 
 @router.post("/api-keys", response_model=dict, tags=["API Keys"])
 async def create_api_key(
+    request: Request,
     body: CreateApiKeyRequest = Body(CreateApiKeyRequest()),
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -554,6 +575,15 @@ async def create_api_key(
     )
     await session.commit()
 
+    # Audit log
+    await audit_log_event(
+        session,
+        AuditEventType.API_KEY_CREATED,
+        user_id=str(current_user.id),
+        details={"key_name": body.name, "key_prefix": prefix},
+        request=request,
+    )
+
     return {
         "id": api_key.id,
         "name": api_key.name,
@@ -591,6 +621,7 @@ async def list_api_keys(
 @router.delete("/api-keys/{key_id}", response_model=dict, tags=["API Keys"])
 async def revoke_api_key(
     key_id: str,
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -605,4 +636,14 @@ async def revoke_api_key(
 
     await repo.deactivate(key_id)
     await session.commit()
+
+    # Audit log
+    await audit_log_event(
+        session,
+        AuditEventType.API_KEY_REVOKED,
+        user_id=str(current_user.id),
+        details={"key_id": key_id, "key_name": api_key.name},
+        request=request,
+    )
+
     return {"message": "API key revoked"}
