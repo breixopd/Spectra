@@ -305,3 +305,97 @@ class TestGetUsageSummary:
         assert result["plan"] == "Enterprise"
         assert result["missions"]["limit"] is None
         assert result["missions"]["remaining"] is None
+
+
+# ---------------------------------------------------------------------------
+# check_scan_quota — alias for mission quota
+# ---------------------------------------------------------------------------
+
+
+class TestCheckScanQuota:
+    @pytest.mark.asyncio
+    async def test_scan_quota_delegates_to_mission_quota(self):
+        with patch.object(
+            QuotaService,
+            "check_mission_quota",
+            new_callable=AsyncMock,
+        ) as mock_check:
+            db = AsyncMock()
+            await QuotaService.check_scan_quota("user-1", db)
+
+        mock_check.assert_awaited_once_with("user-1", db)
+
+    @pytest.mark.asyncio
+    async def test_scan_quota_propagates_429(self):
+        from fastapi import HTTPException
+
+        async def _raise(*a, **kw):
+            raise HTTPException(status_code=429, detail="Mission quota exceeded")
+
+        with patch.object(QuotaService, "check_mission_quota", side_effect=_raise):
+            with pytest.raises(HTTPException) as exc_info:
+                await QuotaService.check_scan_quota("user-1", AsyncMock())
+            assert exc_info.value.status_code == 429
+
+
+# ---------------------------------------------------------------------------
+# Quota period boundaries
+# ---------------------------------------------------------------------------
+
+
+class TestQuotaPeriodReset:
+    @pytest.mark.asyncio
+    async def test_new_month_resets_mission_count(self):
+        """When no usage record exists for the current month, count is 0."""
+        plan = _mock_plan(max_missions_per_month=5)
+        db = AsyncMock()
+
+        with (
+            patch(
+                "app.services.billing.quota_enforcement._get_user_plan",
+                return_value=plan,
+            ),
+            patch(
+                "app.services.billing.quota_enforcement._get_usage",
+                return_value=None,  # no record → new period
+            ),
+        ):
+            # Should pass — effectively 0 usage
+            await QuotaService.check_mission_quota("user-1", db)
+
+    @pytest.mark.asyncio
+    async def test_new_day_resets_api_count(self):
+        """When no usage record exists for the current day, count is 0."""
+        plan = _mock_plan(max_api_requests_per_day=100)
+        db = AsyncMock()
+
+        with (
+            patch(
+                "app.services.billing.quota_enforcement._get_user_plan",
+                return_value=plan,
+            ),
+            patch(
+                "app.services.billing.quota_enforcement._get_usage",
+                return_value=None,
+            ),
+        ):
+            await QuotaService.check_api_quota("user-1", db)
+
+    @pytest.mark.asyncio
+    async def test_free_tier_hourly_limit_in_summary(self):
+        """Free tier summary includes hourly limit."""
+        db = AsyncMock()
+
+        with (
+            patch(
+                "app.services.billing.quota_enforcement._get_user_plan",
+                return_value=None,
+            ),
+            patch(
+                "app.services.billing.quota_enforcement._get_usage",
+                return_value=None,
+            ),
+        ):
+            result = await QuotaService.get_usage_summary("user-1", db)
+
+        assert result["api_calls_hourly"]["limit"] == _FREE_LIMITS["max_api_requests_per_hour"]
