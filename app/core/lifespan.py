@@ -522,8 +522,43 @@ async def _start_event_bridge() -> Any | None:
         return None
 
 
+async def _pause_active_missions() -> None:
+    """Mark running/in-progress missions as paused so they can resume after restart."""
+    try:
+        from sqlalchemy import update
+
+        from app.core.enums import MissionStatus
+        from app.models.mission import Mission
+
+        active_statuses = [
+            MissionStatus.RUNNING.value,
+            MissionStatus.SCANNING.value,
+            MissionStatus.ANALYZING.value,
+            MissionStatus.EXECUTING.value,
+            MissionStatus.EXPLOITING.value,
+            MissionStatus.PLANNING.value,
+            MissionStatus.SCOPING.value,
+            MissionStatus.INITIALIZING.value,
+        ]
+        async with async_session_maker() as session:
+            result = await session.execute(
+                update(Mission).where(Mission.status.in_(active_statuses)).values(status=MissionStatus.PAUSED.value)
+            )
+            count = result.rowcount  # type: ignore[union-attr]
+            await session.commit()
+            if count:
+                logger.info("[SHUTDOWN] Paused %d active mission(s)", count)
+    except Exception as e:
+        logger.warning("[SHUTDOWN] Failed to pause active missions: %s", e)
+
+
 async def _shutdown_services() -> None:
     """Gracefully shut down all services."""
+    logger.info("[SHUTDOWN] Shutting down Spectra...")
+
+    # Pause active missions before tearing down services
+    await _pause_active_missions()
+
     # Close storage service
     try:
         from app.services.storage import close_storage_service
@@ -532,8 +567,6 @@ async def _shutdown_services() -> None:
         logger.info("[OK] Storage service closed")
     except Exception as e:
         logger.warning("Storage service close error: %s", e)
-
-    logger.info("[SHUTDOWN] Shutting down Spectra...")
 
     # Stop server pool health loop
     try:
@@ -566,17 +599,22 @@ async def _shutdown_services() -> None:
         logger.warning("Sandbox cleanup error: %s", e)
 
     try:
-        # Cancel background tasks
+        # Cancel background tasks with grace period for completion
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         if tasks:
-            logger.info("Cancelling %d outstanding tasks...", len(tasks))
-            for task in tasks:
-                task.cancel()
-
-            try:
-                await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=5.0)
-            except TimeoutError:
-                logger.warning("Timed out waiting for tasks to cancel")
+            logger.info("Waiting for %d background task(s) to finish (10s grace)...", len(tasks))
+            # Give tasks a chance to finish naturally
+            done, pending = await asyncio.wait(tasks, timeout=10.0)
+            if done:
+                logger.info("%d task(s) completed during grace period", len(done))
+            if pending:
+                logger.info("Cancelling %d remaining task(s)...", len(pending))
+                for task in pending:
+                    task.cancel()
+                try:
+                    await asyncio.wait_for(asyncio.gather(*pending, return_exceptions=True), timeout=5.0)
+                except TimeoutError:
+                    logger.warning("Timed out waiting for tasks to cancel")
 
         # Close service registry (all gateway connections)
         from app.services.gateway.service_registry import close_service_registry
@@ -598,11 +636,37 @@ async def _shutdown_services() -> None:
     logger.info("[STOPPED] Spectra stopped.")
 
 
+def _validate_required_env_vars() -> None:
+    """Log warnings for missing or default-valued environment variables."""
+    import os
+
+    required = ["DATABASE_URL", "JWT_SECRET_KEY"]
+    for var in required:
+        val = os.environ.get(var, "")
+        if not val:
+            logger.warning("[STARTUP] Required env var %s is not set", var)
+
+
+def _log_startup_banner() -> None:
+    """Log version and configured providers on startup."""
+    from app.version import __version__
+
+    logger.info("[STARTUP] Spectra version: %s", __version__)
+    logger.info("[STARTUP] AI provider: %s, model: %s", settings.AI_PROVIDER, settings.LLM_MODEL)
+    if settings.SANDBOX_ORCHESTRATOR_URL:
+        logger.info("[STARTUP] Sandbox orchestrator: %s", settings.SANDBOX_ORCHESTRATOR_URL)
+    else:
+        logger.info("[STARTUP] Sandbox: local Docker")
+    logger.info("[STARTUP] Debug: %s, Plugin safe mode: %s", settings.DEBUG, settings.PLUGIN_SAFE_MODE)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager — delegates to focused sub-functions."""
     logger.info("[STARTUP] Starting Spectra...")
 
+    _validate_required_env_vars()
+    _log_startup_banner()
     _validate_production_secrets()
 
     try:

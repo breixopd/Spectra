@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.api.routers.health import health_check, readiness_check
+from app.api.routers.health import detailed_health_check, health_check, readiness_check
 
 
 def _mock_response():
@@ -19,12 +19,21 @@ def _mock_response():
 
 
 @pytest.mark.asyncio
-async def test_health_returns_healthy_when_db_ok():
+async def test_health_returns_alive():
+    result = await health_check()
+
+    assert result["status"] == "alive"
+    assert result["service"] == "spectra"
+    assert "version" in result
+
+
+@pytest.mark.asyncio
+async def test_detailed_health_returns_healthy_when_db_ok():
     db = AsyncMock()
     db.execute = AsyncMock()
     response = _mock_response()
 
-    result = await health_check(response=response, db=db, verbose=False)
+    result = await detailed_health_check(response=response, db=db, verbose=False)
 
     assert result["status"] == "healthy"
     assert result["service"] == "spectra"
@@ -34,12 +43,12 @@ async def test_health_returns_healthy_when_db_ok():
 
 
 @pytest.mark.asyncio
-async def test_health_returns_degraded_when_db_fails():
+async def test_detailed_health_returns_degraded_when_db_fails():
     db = AsyncMock()
     db.execute = AsyncMock(side_effect=ConnectionError("refused"))
     response = _mock_response()
 
-    result = await health_check(response=response, db=db, verbose=False)
+    result = await detailed_health_check(response=response, db=db, verbose=False)
 
     assert result["status"] == "degraded"
     assert result["components"]["database"]["status"] == "unhealthy"
@@ -48,12 +57,12 @@ async def test_health_returns_degraded_when_db_fails():
 
 
 @pytest.mark.asyncio
-async def test_health_non_verbose_excludes_extras():
+async def test_detailed_health_non_verbose_excludes_extras():
     db = AsyncMock()
     db.execute = AsyncMock()
     response = _mock_response()
 
-    result = await health_check(response=response, db=db, verbose=False)
+    result = await detailed_health_check(response=response, db=db, verbose=False)
 
     assert "embeddings" not in result["components"]
     assert "llm" not in result["components"]
@@ -67,7 +76,7 @@ async def test_health_non_verbose_excludes_extras():
 
 
 @pytest.mark.asyncio
-async def test_health_verbose_includes_embeddings():
+async def test_detailed_health_verbose_includes_embeddings():
     db = AsyncMock()
     db.execute = AsyncMock()
     response = _mock_response()
@@ -79,13 +88,13 @@ async def test_health_verbose_includes_embeddings():
         # Patch the inline import
 
         with patch.dict("sys.modules", {"app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag)}):
-            result = await health_check(response=response, db=db, verbose=True)
+            result = await detailed_health_check(response=response, db=db, verbose=True)
 
     assert "embeddings" in result["components"]
 
 
 @pytest.mark.asyncio
-async def test_health_verbose_includes_llm():
+async def test_detailed_health_verbose_includes_llm():
     db = AsyncMock()
     db.execute = AsyncMock()
     response = _mock_response()
@@ -111,14 +120,14 @@ async def test_health_verbose_includes_llm():
             "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: mock_pool),
         },
     ):
-        result = await health_check(response=response, db=db, verbose=True)
+        result = await detailed_health_check(response=response, db=db, verbose=True)
 
     assert "llm" in result["components"]
     assert "openai" in result["components"]["llm"]
 
 
 @pytest.mark.asyncio
-async def test_health_verbose_cache_healthy():
+async def test_detailed_health_verbose_cache_healthy():
     db = AsyncMock()
     db.execute = AsyncMock()
     response = _mock_response()
@@ -138,14 +147,14 @@ async def test_health_verbose_cache_healthy():
             "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: None),
         },
     ):
-        result = await health_check(response=response, db=db, verbose=True)
+        result = await detailed_health_check(response=response, db=db, verbose=True)
 
     assert result["components"]["cache"]["status"] == "healthy"
     assert result["components"]["cache"]["hit_rate_percent"] == 42
 
 
 @pytest.mark.asyncio
-async def test_health_verbose_cache_unavailable():
+async def test_detailed_health_verbose_cache_unavailable():
     db = AsyncMock()
     db.execute = AsyncMock()
     response = _mock_response()
@@ -162,13 +171,13 @@ async def test_health_verbose_cache_unavailable():
             "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=Exception)),
         },
     ):
-        result = await health_check(response=response, db=db, verbose=True)
+        result = await detailed_health_check(response=response, db=db, verbose=True)
 
     assert result["components"]["cache"]["status"] == "unavailable"
 
 
 @pytest.mark.asyncio
-async def test_health_verbose_disk_info():
+async def test_detailed_health_verbose_disk_info():
     db = AsyncMock()
     db.execute = AsyncMock()
     response = _mock_response()
@@ -191,7 +200,7 @@ async def test_health_verbose_disk_info():
         },
     ):
         with patch("app.api.routers.health.shutil.disk_usage", return_value=mock_usage):
-            result = await health_check(response=response, db=db, verbose=True)
+            result = await detailed_health_check(response=response, db=db, verbose=True)
 
     assert result["components"]["disk"]["status"] == "healthy"
     assert result["components"]["disk"]["used_percent"] == 50.0

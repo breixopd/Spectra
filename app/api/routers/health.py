@@ -25,13 +25,27 @@ DATA_DIR = "/app/data"
 
 @router.get(
     "/health",
-    summary="Health check",
-    description="Liveness and readiness probe. Returns 200 if healthy, 503 if degraded. Use ?verbose=true for component details.",
+    summary="Liveness check",
+    description="Fast liveness probe. Returns 200 immediately with no dependency checks. Use /health/ready for readiness.",
 )
-async def health_check(
+async def health_check():
+    """Liveness probe — no DB or service calls, always fast."""
+    return {
+        "status": "alive",
+        "service": "spectra",
+        "version": __version__,
+    }
+
+
+@router.get(
+    "/health/detailed",
+    summary="Detailed health check",
+    description="Comprehensive health check with component statuses. Returns 503 if degraded.",
+)
+async def detailed_health_check(
     response: Response,
     db: AsyncSession = Depends(get_async_session),
-    verbose: bool = Query(False, description="Include detailed component status"),
+    verbose: bool = Query(False, description="Include non-critical component details"),
 ):
     """
     Comprehensive health check endpoint.
