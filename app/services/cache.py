@@ -161,3 +161,20 @@ class CacheService:
     ) -> None:
         """Convenience: JSON-serialize and set in one step."""
         await CacheService.set(namespace, key, json.dumps(value), ttl_hours=ttl_hours)
+
+    @staticmethod
+    async def scan_prefix(namespace: str, key_prefix: str) -> list[str]:
+        """Return all non-expired *values* whose key starts with ``namespace:key_prefix``."""
+        try:
+            full_prefix = f"{namespace}:{key_prefix}"
+            async with async_session_maker() as session:
+                now = datetime.now(UTC)
+                stmt = select(CacheEntry.value).where(
+                    CacheEntry.key.like(f"{full_prefix}%"),
+                    (CacheEntry.expires_at.is_(None)) | (CacheEntry.expires_at > now),
+                )
+                result = await session.execute(stmt)
+                return list(result.scalars().all())
+        except Exception as e:
+            logger.debug("Cache scan_prefix failed (%s:%s): %s", namespace, key_prefix, e)
+            return []
