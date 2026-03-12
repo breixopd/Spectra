@@ -9,8 +9,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.ai.llm as llm_module
+from app.api.schemas import SystemSetupRequest
 from app.core.config import settings
-from app.core.schemas import SystemSetupRequest
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.services.ai.llm import close_global_llm_client, get_llm_client
@@ -132,19 +132,33 @@ class SystemSetupService:
         """Create or update SystemConfig entries in the database."""
         runtime_ai_config = build_runtime_ai_config_from_payload(
             provider_profiles=(
-                {name: profile.model_dump(exclude_none=True) for name, profile in setup_in.provider_profiles.items()}
+                {
+                    name: profile.model_dump(exclude_none=True)
+                    for name, profile in setup_in.provider_profiles.items()
+                }
                 if setup_in.provider_profiles
                 else None
             ),
-            provider_routing=(setup_in.provider_routing.as_dict() if setup_in.provider_routing else None),
-            provider_fallbacks=(setup_in.provider_fallbacks.as_dict() if setup_in.provider_fallbacks else None),
+            provider_routing=(
+                setup_in.provider_routing.as_dict()
+                if setup_in.provider_routing
+                else None
+            ),
+            provider_fallbacks=(
+                setup_in.provider_fallbacks.as_dict()
+                if setup_in.provider_fallbacks
+                else None
+            ),
             legacy_provider=setup_in.llm_provider,
             legacy_model=setup_in.llm_model,
             legacy_api_key=setup_in.llm_api_key,
             legacy_api_base_url=setup_in.llm_api_base,
             legacy_ollama_host=setup_in.ollama_host,
             legacy_ollama_model=setup_in.ollama_model,
-            legacy_ollama_enabled=(setup_in.provider_ollama or (setup_in.provider_api and setup_in.provider_ollama)),
+            legacy_ollama_enabled=(
+                setup_in.provider_ollama
+                or (setup_in.provider_api and setup_in.provider_ollama)
+            ),
             legacy_tier_models={
                 "LLM_TIER1_MODEL": setup_in.llm_tier1_model,
                 "LLM_TIER2_MODEL": setup_in.llm_tier2_model,
@@ -176,7 +190,9 @@ class SystemSetupService:
 
         await upsert_system_config_values(self.session, config_values)
 
-    async def _handle_infrastructure_changes(self, setup_in: SystemSetupRequest) -> None:
+    async def _handle_infrastructure_changes(
+        self, setup_in: SystemSetupRequest
+    ) -> None:
         """Handle infrastructure changes: save config and manage containers."""
         infra_updates = {}
 
@@ -231,7 +247,9 @@ class SystemSetupService:
                 )
 
             llm_module._global_llm_client = new_client
-            logger.info("LLM client reinitialized with provider: %s", setup_in.llm_provider)
+            logger.info(
+                "LLM client reinitialized with provider: %s", setup_in.llm_provider
+            )
         except Exception as e:
             logger.error("Failed to initialize LLM client: %s", e)
             # Don't fail the whole setup if LLM fails, user can fix later
@@ -286,7 +304,8 @@ class SystemSetupService:
                 for name in stdout.decode().splitlines():
                     name = name.strip()
                     if name and (
-                        name.endswith(container_name_suffix) or name.strip("/").endswith(container_name_suffix)
+                        name.endswith(container_name_suffix)
+                        or name.strip("/").endswith(container_name_suffix)
                     ):
                         logger.info("Stopping container: %s", name)
                         await asyncio.create_subprocess_exec("docker", "stop", name)

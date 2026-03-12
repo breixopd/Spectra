@@ -49,11 +49,7 @@ class UniversalParser:
         stderr: str,
         output_file: str | None,
     ) -> list[dict[str, Any]]:
-        """Parse tool output into structured findings.
-
-        Raw output is always preserved alongside parsed results
-        via the ``_raw_output`` key in each finding.
-        """
+        """Parse tool output into structured findings."""
         parsing_config = self.config.parsing
 
         # Collect all output sources
@@ -67,34 +63,11 @@ class UniversalParser:
         if not outputs:
             return []
 
-        # Save raw output for audit / debugging
-        raw_combined = "\n".join(outputs)[:50_000]
-
         # Parse each output source
         all_findings: list[dict[str, Any]] = []
         for raw_output in outputs:
-            try:
-                findings = await self._parse_single_output(raw_output, parsing_config.format)
-                all_findings.extend(findings)
-            except Exception as e:
-                logger.error(
-                    "Parsing failed for tool '%s' (format=%s, output_len=%d): %s",
-                    self.config.id,
-                    parsing_config.format,
-                    len(raw_output),
-                    e,
-                    exc_info=True,
-                )
-                # Preserve raw output as a fallback finding
-                all_findings.append({"raw_output": raw_output[:5000], "_parse_error": str(e)})
-
-        # Tag each finding with raw output reference for traceability
-        if all_findings and raw_combined:
-            # Only attach a truncated snippet to avoid bloat
-            snippet = raw_combined[:2000]
-            for finding in all_findings:
-                if "_raw_snippet" not in finding:
-                    finding["_raw_snippet"] = snippet
+            findings = await self._parse_single_output(raw_output, parsing_config.format)
+            all_findings.extend(findings)
 
         return all_findings
 
@@ -195,13 +168,7 @@ class UniversalParser:
                 return [self._apply_mapping(data)]
             return [{"value": data}]
         except json.JSONDecodeError as e:
-            logger.warning(
-                "Failed to parse JSON for tool '%s' (offset=%d): %s | first 200 chars: %s",
-                self.config.id,
-                e.pos or 0,
-                e.msg,
-                output[:200],
-            )
+            logger.warning("Failed to parse JSON: %s", e)
             return []
 
     def _parse_ndjson(self, output: str) -> list[dict[str, Any]]:
@@ -223,12 +190,7 @@ class UniversalParser:
             root = ET.fromstring(output)
             return self._xml_to_findings(root)
         except ET.ParseError as e:
-            logger.warning(
-                "Failed to parse XML for tool '%s': %s | first 200 chars: %s",
-                self.config.id,
-                e,
-                output[:200],
-            )
+            logger.warning("Failed to parse XML: %s", e)
             return []
 
     def _xml_to_findings(self, root: ET.Element) -> list[dict[str, Any]]:
@@ -310,12 +272,7 @@ class UniversalParser:
             reader = csv.DictReader(StringIO(output))
             return [self._apply_mapping(dict(row)) for row in reader]
         except csv.Error as e:
-            logger.warning(
-                "Failed to parse CSV for tool '%s': %s | first 200 chars: %s",
-                self.config.id,
-                e,
-                output[:200],
-            )
+            logger.warning("Failed to parse CSV: %s", e)
             return []
 
     def _parse_with_regex(self, output: str) -> list[dict[str, Any]]:

@@ -3,7 +3,6 @@ Rate Limiting for Spectra API.
 
 Implements token bucket rate limiting using slowapi.
 Protects sensitive endpoints from abuse.
-Supports per-plan tiered rate limits.
 """
 
 import logging
@@ -19,18 +18,6 @@ from app.core.events import EventType, events
 from app.core.security import decode_token
 
 logger = logging.getLogger("spectra.core.rate_limit")
-
-# ---------------------------------------------------------------------------
-# Per-plan rate limit tiers (requests per minute)
-# ---------------------------------------------------------------------------
-# Maps plan name (lowercased) to default API rate limit.
-# Plans not listed here fall back to PLAN_RATE_LIMIT_DEFAULT.
-PLAN_RATE_LIMITS: dict[str, str] = {
-    "free": "10/minute",
-    "pro": "60/minute",
-    "enterprise": "200/minute",
-}
-PLAN_RATE_LIMIT_DEFAULT = "10/minute"  # unauthenticated / no plan
 
 
 def get_client_identifier(request: Request) -> str:
@@ -72,38 +59,6 @@ def get_user_identifier(request: Request) -> str:
     return get_client_identifier(request)
 
 
-def _get_plan_rate_limit(request: Request) -> str:
-    """Return a dynamic rate-limit string based on the authenticated user's plan.
-
-    Admins/superusers → unlimited (very high ceiling).
-    Plan users → tier from PLAN_RATE_LIMITS.
-    Unauthenticated / no plan → PLAN_RATE_LIMIT_DEFAULT.
-    """
-    user = getattr(getattr(request, "state", None), "user", None)
-    if user is None:
-        # Try JWT decode as fallback (mirrors get_user_identifier)
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            try:
-                payload = decode_token(auth_header[7:])
-                # Stash decoded data for later — role/plan not in JWT, return default.
-                _ = payload
-            except Exception:
-                pass
-        return PLAN_RATE_LIMIT_DEFAULT
-
-    # Admin / superuser → effectively unlimited
-    if getattr(user, "is_superuser", False) or getattr(user, "role", "") == "admin":
-        return "9999/minute"
-
-    # Resolve plan name from the preloaded _plan_name_cache on request state
-    plan_name = getattr(request.state, "plan_name", None)
-    if plan_name:
-        return PLAN_RATE_LIMITS.get(plan_name.lower(), PLAN_RATE_LIMIT_DEFAULT)
-
-    return PLAN_RATE_LIMIT_DEFAULT
-
-
 # Create limiter instance
 limiter = Limiter(
     key_func=get_user_identifier,
@@ -120,25 +75,22 @@ class RateLimits:
     """Common rate limit configurations."""
 
     # Authentication endpoints - strict limits
-    LOGIN = "10/minute"
+    LOGIN = "5/minute"
     SETUP = "3/minute"
     TOKEN_REFRESH = "10/minute"
 
     # Mission operations - moderate limits
-    MISSION_START = "20/minute"
+    MISSION_START = "10/minute"
     MISSION_STEER = "30/minute"
 
     # Tool operations - relaxed for automation
     TOOL_LIST = "60/minute"
-    TOOL_EXECUTE = "30/minute"
+    TOOL_EXECUTE = "20/minute"
     TOOL_UPLOAD = "5/minute"
 
     # API general - default
     API_DEFAULT = "100/minute"
     API_HEAVY = "30/minute"
-
-    # Admin endpoints - effectively unlimited
-    ADMIN = "9999/minute"
 
     # WebSocket - connection limits
     WS_CONNECT = "10/minute"
@@ -214,19 +166,11 @@ def limit_tool(func: Callable) -> Callable:
     return limiter.limit(RateLimits.TOOL_EXECUTE)(func)
 
 
-def get_plan_dynamic_limit(request: Request) -> str:
-    """Public dynamic limit callable for use with ``@limiter.limit``."""
-    return _get_plan_rate_limit(request)
-
-
 __all__ = [
     "limiter",
     "RateLimits",
-    "PLAN_RATE_LIMITS",
-    "PLAN_RATE_LIMIT_DEFAULT",
     "get_client_identifier",
     "get_user_identifier",
-    "get_plan_dynamic_limit",
     "rate_limit_exceeded_handler",
     "limit_login",
     "limit_mission",

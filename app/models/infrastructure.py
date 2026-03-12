@@ -55,7 +55,7 @@ class SystemCache(InfrastructureBase):
 
     key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSONBType, nullable=False)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
@@ -82,7 +82,7 @@ class JobQueue(InfrastructureBase):
 
     enqueued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     timeout: Mapped[int | None] = mapped_column(Integer, nullable=True)  # in seconds
     priority: Mapped[int] = mapped_column(Integer, nullable=False, default=5, index=True)
@@ -140,5 +140,5 @@ class CacheEntry(InfrastructureBase):
 
     key: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)  # JSON serialized
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

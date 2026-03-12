@@ -11,12 +11,10 @@ from app.core.logging_config import (
     CorrelationIdMiddleware,
     HumanFormatter,
     JSONFormatter,
-    _ContextFilter,
+    _CorrelationFilter,
     configure_logging,
     correlation_id_var,
     get_correlation_id,
-    mission_id_var,
-    user_id_var,
 )
 
 
@@ -39,11 +37,11 @@ class TestCorrelationId:
         assert get_correlation_id() is None
 
 
-class TestContextFilter:
-    """Tests for the _ContextFilter log filter."""
+class TestCorrelationFilter:
+    """Tests for the _CorrelationFilter log filter."""
 
     def test_injects_correlation_id_into_record(self):
-        filt = _ContextFilter()
+        filt = _CorrelationFilter()
         record = logging.LogRecord(
             name="test",
             level=logging.INFO,
@@ -62,7 +60,7 @@ class TestContextFilter:
             correlation_id_var.reset(token)
 
     def test_empty_string_when_no_correlation_id(self):
-        filt = _ContextFilter()
+        filt = _CorrelationFilter()
         record = logging.LogRecord(
             name="test",
             level=logging.INFO,
@@ -75,27 +73,6 @@ class TestContextFilter:
         result = filt.filter(record)
         assert result is True
         assert record.correlation_id == ""  # type: ignore[attr-defined]
-
-    def test_injects_user_id_and_mission_id(self):
-        filt = _ContextFilter()
-        record = logging.LogRecord(
-            name="test",
-            level=logging.INFO,
-            pathname="",
-            lineno=0,
-            msg="hello",
-            args=(),
-            exc_info=None,
-        )
-        t1 = user_id_var.set("user-42")
-        t2 = mission_id_var.set("mission-7")
-        try:
-            filt.filter(record)
-            assert record.user_id == "user-42"  # type: ignore[attr-defined]
-            assert record.mission_id == "mission-7"  # type: ignore[attr-defined]
-        finally:
-            user_id_var.reset(t1)
-            mission_id_var.reset(t2)
 
 
 class TestJSONFormatter:
@@ -112,8 +89,6 @@ class TestJSONFormatter:
             exc_info=None,
         )
         record.correlation_id = cid  # type: ignore[attr-defined]
-        record.user_id = ""  # type: ignore[attr-defined]
-        record.mission_id = ""  # type: ignore[attr-defined]
         return record
 
     def test_output_is_valid_json(self):

@@ -15,20 +15,6 @@ from app.core.config import settings
 logger = logging.getLogger("spectra.services.registry")
 
 
-# Startup order: services listed earlier must be initialized before later ones.
-# The lifespan enforces this via sequential calls to _initialize_database,
-# _seed_default_data, and _initialize_services.
-SERVICE_INIT_ORDER: list[str] = [
-    "database",
-    "cache",
-    "storage",
-    "embeddings",
-    "tool_registry",
-    "sandbox",
-    "pool_manager",
-]
-
-
 class ServiceRegistry:
     """Central registry managing lifecycle and routing of all extractable services."""
 
@@ -91,23 +77,6 @@ class ServiceRegistry:
             except Exception as e:
                 results[name] = {"status": "error", "error": str(e)}
         self._health_cache = results
-        return results
-
-    async def check_services_health(self) -> dict[str, bool]:
-        """Check health of all registered services.
-
-        Returns a simple name → healthy boolean mapping suitable for
-        readiness probes and quick status checks.
-        """
-        results: dict[str, bool] = {}
-        for name, service in self._services.items():
-            try:
-                if hasattr(service, "health_check"):
-                    results[name] = await service.health_check()
-                else:
-                    results[name] = True  # Assume healthy if no health check
-            except Exception:
-                results[name] = False
         return results
 
     def get_service_topology(self) -> dict[str, dict]:

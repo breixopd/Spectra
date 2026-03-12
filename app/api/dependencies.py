@@ -5,11 +5,7 @@ Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
-import hashlib
-import logging
-from datetime import UTC, datetime
-
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy import func, select
@@ -17,10 +13,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
 from app.core.security import decode_token
-from app.models.plan import ApiKey
 from app.models.user import User
-
-logger = logging.getLogger("spectra.api.dependencies")
+from app.repositories.exploit import ExploitRepository
+from app.repositories.finding import FindingRepository
+from app.repositories.target import TargetRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
@@ -45,7 +41,6 @@ async def get_current_user(
         if username is None:
             raise credentials_exception
     except JWTError as exc:
-        logger.warning("JWT validation failed")
         raise credentials_exception from exc
 
     stmt = select(User).where(User.username == username)
@@ -53,9 +48,7 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if user is None:
-        logger.warning("User not found for token subject=%s", username)
         raise credentials_exception
-    logger.debug("Authenticated user=%s", user.username)
     return user
 
 
@@ -66,8 +59,9 @@ async def get_current_active_user(
     Get current user and verify they are active.
     """
     if not current_user.is_active:
-        logger.warning("Inactive user attempted access user=%s", current_user.username)
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
+        )
     return current_user
 
 
@@ -85,61 +79,48 @@ async def get_current_superuser(
     return current_user
 
 
-async def _authenticate_api_key(raw_key: str, session: AsyncSession) -> User:
-    """Validate an API key and return the associated user."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid or expired API key",
-        headers={"WWW-Authenticate": "ApiKey"},
-    )
-    prefix = raw_key[:8]
-    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-
-    stmt = select(ApiKey).where(ApiKey.key_prefix == prefix, ApiKey.is_active.is_(True))
-    result = await session.execute(stmt)
-    api_key = result.scalar_one_or_none()
-
-    if api_key is None or api_key.key_hash != key_hash:
-        raise credentials_exception
-
-    if api_key.expires_at and api_key.expires_at < datetime.now(UTC):
-        raise credentials_exception
-
-    # Update last_used_at
-    api_key.last_used_at = datetime.now(UTC)
-    await session.commit()
-
-    # Fetch the owning user
-    user_stmt = select(User).where(User.id == api_key.user_id)
-    user_result = await session.execute(user_stmt)
-    user = user_result.scalar_one_or_none()
-    if user is None or not user.is_active:
-        raise credentials_exception
-
-    return user
 
 
-async def get_current_user_from_token_or_api_key(
-    request: Request,
+async def get_target_repository(
     session: AsyncSession = Depends(get_async_session),
-) -> User:
-    """Authenticate via JWT token OR API key header."""
-    api_key = request.headers.get("X-API-Key")
-    if api_key:
-        return await _authenticate_api_key(api_key, session)
+) -> TargetRepository:
+    """Get TargetRepository instance.
 
-    # Fall back to JWT
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-        user = await get_current_user(token=token, session=session)
-        return await get_current_active_user(current_user=user)
+    Args:
+        session: Async database session.
 
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Authentication required (Bearer token or X-API-Key header)",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    Returns:
+        Configured TargetRepository.
+    """
+    return TargetRepository(session)
+
+
+async def get_finding_repository(
+    session: AsyncSession = Depends(get_async_session),
+) -> FindingRepository:
+    """Get FindingRepository instance.
+
+    Args:
+        session: Async database session.
+
+    Returns:
+        Configured FindingRepository.
+    """
+    return FindingRepository(session)
+
+
+async def get_exploit_repository(
+    session: AsyncSession = Depends(get_async_session),
+) -> ExploitRepository:
+    """Get ExploitRepository instance.
+
+    Args:
+        session: Async database session.
+
+    Returns:
+        Configured ExploitRepository.
+    """
+    return ExploitRepository(session)
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +176,11 @@ async def check_target_limit(user: User, session: AsyncSession) -> None:
         return
     from app.models.target import Target
 
-    count = (await session.execute(select(func.count(Target.id)).where(Target.user_id == str(user.id)))).scalar() or 0
+    count = (
+        await session.execute(
+            select(func.count(Target.id)).where(Target.user_id == str(user.id))
+        )
+    ).scalar() or 0
     if count >= plan.max_targets:
         raise HTTPException(
             status_code=429,
@@ -217,23 +202,6 @@ async def check_feature_allowed(user: User, session: AsyncSession, feature: str)
         )
 
 
-async def require_mission_quota(
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_async_session),
-) -> User:
-    """Dependency that checks mission quota before allowing creation.
-
-    Admin users bypass quota checks. Raises 429 if exceeded.
-    """
-    if _is_admin_user(current_user):
-        return current_user
-
-    from app.services.billing.quota_enforcement import QuotaService
-
-    await QuotaService.check_mission_quota(str(current_user.id), db)
-    return current_user
-
-
 async def enforce_api_rate_limit(
     user: User = Depends(get_current_active_user),
 ) -> User:
@@ -248,7 +216,9 @@ async def enforce_api_rate_limit(
     from app.services.billing.usage_tracker import UsageTracker
 
     tracker = UsageTracker()
-    within_limit, current, maximum = await tracker.check_rate_limit(str(user.id), "api_requests")
+    within_limit, current, maximum = await tracker.check_rate_limit(
+        str(user.id), "api_requests"
+    )
     if not within_limit and maximum > 0:
         raise HTTPException(
             status_code=429,

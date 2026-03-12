@@ -191,7 +191,7 @@ See [Plugins](plugins.md) for the plugin JSON schema.
 | GET | `/api/system/safety-stats` | Safety supervisor statistics |
 | GET | `/api/system/audit-log` | Audit log entries |
 | GET | `/api/system/data-sources` | Available data sources (CVE DBs, etc.) |
-| POST | `/api/system/data-sources/refresh` | Trigger background refresh of data sources |
+| POST | `/api/system/data-sources/download` | Download/update a data source |
 | POST | `/api/system/clear/tools` | Clear tool cache |
 | POST | `/api/system/clear/missions` | Clear all missions |
 | POST | `/api/system/clear/cache` | Clear application cache |

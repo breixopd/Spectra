@@ -6,7 +6,6 @@ from app.services.billing.payment_adapter import (
     PaymentService,
     get_payment_adapter,
 )
-from app.services.billing.quota_enforcement import QuotaService
 from app.services.billing.usage_tracker import UsageTracker
 
 __all__ = [

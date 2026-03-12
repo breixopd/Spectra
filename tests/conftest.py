@@ -47,7 +47,9 @@ async def real_mission_manager():
     def new_init(self, llm, config=None):
         if config is None:
             # Use single voter for tests to avoid timeouts and consensus issues with small models
-            config = consensus.VotingConfig(num_voters=1, k_threshold=1, min_confidence=0.5)
+            config = consensus.VotingConfig(
+                num_voters=1, k_threshold=1, min_confidence=0.5
+            )
         original_init(self, llm, config)
 
     # Apply patch
@@ -110,7 +112,6 @@ def disable_rate_limiting_for_unit_tests(request):
         yield
         return
     from app.core.rate_limit import limiter
-
     original = limiter.enabled
     limiter.enabled = False
     yield
@@ -193,78 +194,6 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
 
 
 @pytest.fixture
-def mock_llm():
-    """Provide a MockLLMClient for unit tests."""
-    from tests.mocks.llm import MockLLMClient
-
-    return MockLLMClient()
-
-
-@pytest.fixture
 def test_target_ip():
     """Return a test target IP."""
     return "192.168.1.100"
-
-
-# ---------------------------------------------------------------------------
-# Mock factories
-# ---------------------------------------------------------------------------
-
-
-def make_mock_user(
-    *,
-    username: str = "testuser",
-    email: str = "test@spectra.dev",
-    role: str = "admin",
-    is_active: bool = True,
-    is_superuser: bool = True,
-    user_id: str | None = None,
-) -> MagicMock:
-    """Create a mock User object for test fixtures.
-
-    Returns a MagicMock matching the User model interface so it can be
-    injected via dependency overrides without touching the database.
-    """
-    from uuid import uuid4
-
-    user = MagicMock()
-    user.id = user_id or str(uuid4())
-    user.username = username
-    user.email = email
-    user.role = role
-    user.is_active = is_active
-    user.is_superuser = is_superuser
-    user.plan_id = None
-    return user
-
-
-def make_mock_mission(
-    *,
-    mission_id: str | None = None,
-    target: str = "192.168.1.100",
-    directive: str = "Full security assessment",
-    status: str = "created",
-) -> MagicMock:
-    """Create a mock Mission object for test fixtures."""
-    from uuid import uuid4
-
-    m = MagicMock()
-    m.id = mission_id or str(uuid4())
-    m.target = target
-    m.directive = directive
-    m.status = status
-    m.logs = []
-    m.findings = []
-    m.tools_run = []
-    m.tool_executions = []
-    m.report_path = None
-    m.attack_surface = None
-    m.plan = None
-    m.user_id = None
-    return m
-
-
-@pytest.fixture
-def mock_user():
-    """Provide a ready-made mock admin user."""
-    return make_mock_user()

@@ -25,32 +25,13 @@ DATA_DIR = "/app/data"
 
 @router.get(
     "/health",
-    summary="Liveness check",
-    description="Fast liveness probe. Returns 200 immediately with no dependency checks. Use /health/ready for readiness.",
+    summary="Health check",
+    description="Liveness and readiness probe. Returns 200 if healthy, 503 if degraded. Use ?verbose=true for component details.",
 )
-async def health_check():
-    """Liveness probe — returns immediately with no dependency checks.
-
-    Use this endpoint for container orchestrator liveness probes (e.g. Kubernetes).
-    Returns service name and version. For readiness checks that verify database
-    and service connectivity, use ``GET /health/detailed`` instead.
-    """
-    return {
-        "status": "alive",
-        "service": "spectra",
-        "version": __version__,
-    }
-
-
-@router.get(
-    "/health/detailed",
-    summary="Detailed health check",
-    description="Comprehensive health check with component statuses. Returns 503 if degraded.",
-)
-async def detailed_health_check(
+async def health_check(
     response: Response,
     db: AsyncSession = Depends(get_async_session),
-    verbose: bool = Query(False, description="Include non-critical component details"),
+    verbose: bool = Query(False, description="Include detailed component status"),
 ):
     """
     Comprehensive health check endpoint.
@@ -165,7 +146,7 @@ async def detailed_health_check(
 @router.get(
     "/health/ready",
     summary="Readiness probe",
-    description="Check if all components (database, LLM, embeddings, registered services) are ready to serve traffic. Returns 503 if any is not ready.",
+    description="Check if all components (database, LLM, embeddings) are ready to serve traffic. Returns 503 if any is not ready.",
 )
 async def readiness_check(
     response: Response,
@@ -175,7 +156,7 @@ async def readiness_check(
     Readiness probe - checks if ALL components are ready to serve traffic.
     Returns 503 if any component is not ready.
     """
-    checks: dict[str, bool] = {"database": False, "llm": False, "embeddings": False}
+    checks = {"database": False, "llm": False, "embeddings": False}
 
     # Database
     try:
@@ -201,17 +182,6 @@ async def readiness_check(
         checks["embeddings"] = rag.is_functional
     except Exception:
         logger.debug("Health check: embeddings unavailable", exc_info=True)
-
-    # Registered services (sandbox, etc.) via service registry
-    try:
-        from app.services.gateway.service_registry import get_service_registry
-
-        registry = get_service_registry()
-        service_health = await registry.check_services_health()
-        for name, healthy in service_health.items():
-            checks[f"service:{name}"] = healthy
-    except Exception:
-        logger.debug("Health check: service registry unavailable", exc_info=True)
 
     all_ready = all(checks.values())
     result = {

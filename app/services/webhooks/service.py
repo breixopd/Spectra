@@ -66,46 +66,6 @@ class WebhookService:
         )
         return list(result.scalars().all())
 
-    async def get_by_id(self, webhook_id: str, user_id: str) -> Webhook | None:
-        """Get a single webhook by ID, scoped to a user."""
-        result = await self._session.execute(
-            select(Webhook).where(
-                Webhook.id == webhook_id,
-                Webhook.user_id == user_id,
-                Webhook.is_active.is_(True),
-            )
-        )
-        return result.scalar_one_or_none()
-
-    async def update(
-        self,
-        webhook_id: str,
-        user_id: str,
-        *,
-        url: str | None = None,
-        events: list[str] | None = None,
-        secret: str | None = None,
-        description: str | None = None,
-    ) -> Webhook | None:
-        """Update an existing webhook. Returns None if not found."""
-        wh = await self.get_by_id(webhook_id, user_id)
-        if not wh:
-            return None
-        if events is not None:
-            invalid = set(events) - SUPPORTED_EVENTS
-            if invalid:
-                raise ValueError(f"Unsupported webhook events: {invalid}")
-            wh.events = events
-        if url is not None:
-            wh.url = url
-        if secret is not None:
-            wh.secret = secret
-        if description is not None:
-            wh.description = description
-        await self._session.commit()
-        await self._session.refresh(wh)
-        return wh
-
     async def delete(self, webhook_id: str, user_id: str) -> bool:
         """Soft-delete a webhook by deactivating it."""
         result = await self._session.execute(

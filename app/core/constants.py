@@ -125,9 +125,7 @@ API_RATE_LIMIT: str = "100/minute"
 # ---------------------------------------------------------------------------
 
 #: URL for Metasploit module metadata (raw GitHub).
-MSF_METADATA_URL: str = (
-    "https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json"
-)
+MSF_METADATA_URL: str = "https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json"
 
 #: URL for CISA Known Exploited Vulnerabilities catalog.
 CISA_KEV_URL: str = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
@@ -146,7 +144,7 @@ DATA_SESSIONS_DIR: str = "data/sessions"
 DATA_CACHE_DIR: str = "data/cache"
 DATA_AUTH_DIR: str = "data/auth"
 
-#: Exploit database cache directory (deprecated — use DB-backed CacheService).
+#: Exploit database cache directory.
 EXPLOIT_DB_CACHE_DIR: str = "data/cache/exploit_db"
 
 #: Refresh interval for exploit database (7 days in seconds).
@@ -154,18 +152,3 @@ EXPLOIT_DB_REFRESH_INTERVAL: int = 604800
 
 #: Cache TTL for EPSS scores (24 hours in seconds).
 EPSS_CACHE_TTL: int = 86400
-
-# ---------------------------------------------------------------------------
-# Database-backed cache namespaces & TTLs
-# ---------------------------------------------------------------------------
-
-CACHE_NS_EXPLOIT_DB: str = "exploit_db"
-CACHE_NS_CVE_INTEL: str = "cve_intel"
-CACHE_NS_PLAYBOOK: str = "playbook"
-
-#: TTL (hours) for exploit DB index caches (7 days).
-CACHE_TTL_EXPLOIT_DB_HOURS: int = 168
-#: TTL (hours) for NVD / CVE search caches (24h).
-CACHE_TTL_CVE_HOURS: int = 24
-#: TTL (hours) for playbook exploit patterns (30 days).
-CACHE_TTL_PLAYBOOK_HOURS: int = 720

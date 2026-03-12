@@ -161,16 +161,7 @@ TOOL_SELECTION_PROMPT = """Select the best security tool for the current phase.
 7. Prefer vulnerability exploitation over brute-force. Only use hydra as last resort.
 8. Use searchsploit to find CVE-specific exploits for discovered service versions.
 
-Select ONE tool and provide appropriate configuration.
-
----
-**Few-shot example — good tool selection reasoning:**
-
-Situation: Phase=enumeration, Target=10.0.0.5 (web), nmap already run (found Apache 2.4.49 on :80, OpenSSH 8.2 on :22). nuclei not yet run.
-Reasoning: "nmap revealed Apache 2.4.49 which is vulnerable to CVE-2021-41773 (path traversal). The best next step is nuclei with apache-specific templates to confirm exploitable CVEs before attempting manual exploitation. Directory brute-force (gobuster) can wait until after vulnerability confirmation."
-Selected tool: nuclei
-Args: {{"-u": "http://10.0.0.5", "-t": "cves/2021/CVE-2021-41773.yaml,http/technologies/apache"}}
-"""
+Select ONE tool and provide appropriate configuration."""
 
 # =============================================================================
 # Exploit Crafter
@@ -226,25 +217,7 @@ Recommend:
 1. Specific exploit tool or module
 2. Payload type (reverse_tcp, bind_tcp, command_exec)
 3. Configuration needed
-4. If custom script needed: describe the approach.
-
----
-**Few-shot example — well-structured exploitation plan:**
-
-Input:
-  Target: 10.0.0.5:21
-  Vulnerability: vsftpd 2.3.4 Backdoor (CVE-2011-2523)
-  Details: vsftpd 2.3.4 contains a backdoor triggered by sending a username ending with :) on port 21, which opens a shell on port 6200.
-  Previous Failed Attempts: none
-
-Expected output:
-  tool: metasploit
-  module: exploit/unix/ftp/vsftpd_234_backdoor
-  payload: cmd/unix/interact
-  configuration: {{"RHOSTS": "10.0.0.5", "RPORT": 21}}
-  reasoning: "CVE-2011-2523 has a reliable Metasploit module. The backdoor is deterministic — no brute-force needed. The module sends the trigger username and connects to the resulting shell on port 6200."
-  fallback: "If Metasploit module fails, craft a Python script: connect to port 21, send 'USER backdoor:)\\r\\n', then connect to port 6200 for shell access."
-"""
+4. If custom script needed: describe the approach."""
 
 PAYLOAD_GENERATION_PROMPT = """Generate a custom payload for the target environment.
 
@@ -308,18 +281,7 @@ REPORTING_PROMPT = """Generate a professional penetration test report.
 
 4. **Attack Narrative**: Timeline of the assessment, what worked, what didn't.
 
-Generate the Executive Summary content.
-
----
-**Few-shot example — summarizing scan results for the Executive Summary:**
-
-Input findings:
-  [CRITICAL] SQL Injection in /api/users (sqlmap), [HIGH] Apache 2.4.25 CVE-2017-7679 (nuclei),
-  [MEDIUM] Directory listing on /backup (gobuster), [LOW] Missing X-Frame-Options (nikto)
-
-Expected Executive Summary:
-  "A security assessment of 10.0.0.5 identified 4 vulnerabilities across the web application and server infrastructure. The most critical finding is an SQL injection in the /api/users endpoint, which allows unauthenticated database access and potential data exfiltration. The web server runs Apache 2.4.25, affected by CVE-2017-7679 (buffer overflow). An exposed /backup directory may leak sensitive files. Immediate priorities: (1) fix the SQL injection with parameterized queries, (2) upgrade Apache to the latest stable release, (3) disable directory listing on all paths."
-"""
+Generate the Executive Summary content."""
 
 # =============================================================================
 # POC Developer

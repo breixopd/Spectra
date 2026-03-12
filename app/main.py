@@ -7,7 +7,6 @@ import time
 from pathlib import Path
 
 from fastapi import APIRouter, FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -26,9 +25,7 @@ from app.api.routers import (
     findings,
     health,
     manual_helpers,
-    metrics,
     missions,
-    notifications,
     observability,
     pentest_sessions,
     public,
@@ -38,14 +35,13 @@ from app.api.routers import (
     tools,
     ui,
     vpn,
-    webhooks,
     wordlists,
 )
 from app.core.config import settings
 from app.core.exceptions import SpectraError, get_status_code_for_exception
 from app.core.lifespan import lifespan
 from app.core.logging_config import CorrelationIdMiddleware, configure_logging
-from app.core.middleware import PlanRateLimitMiddleware, SecurityHeadersMiddleware
+from app.core.middleware import SecurityHeadersMiddleware
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.core.telemetry_middleware import TelemetryMiddleware
 from app.core.websocket import manager
@@ -73,18 +69,15 @@ swagger_ui_params = {
 }
 
 # --- FastAPI Application ---
-# API v1 - current version, prefix: /api/v1/
 app = FastAPI(
-    title="Spectra API",
-    description="AI-Driven Security Assessment Platform API",
+    title="Spectra Security Assessment API",
+    description="AI-driven security assessment platform with MAKER Framework.",
     version=__version__,
-    contact={"name": "Spectra Team"},
-    license_info={"name": "Proprietary"},
     lifespan=lifespan,
     swagger_ui_parameters=swagger_ui_params,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
+    docs_url="/api/docs" if settings.DEBUG else None,
+    redoc_url="/api/redoc" if settings.DEBUG else None,
+    openapi_url="/api/openapi.json" if settings.DEBUG else None,
 )
 
 
@@ -93,9 +86,6 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore
 app.add_middleware(SlowAPIMiddleware)
 
-# --- Plan-aware rate limit resolution (must run before SlowAPIMiddleware) ---
-app.add_middleware(PlanRateLimitMiddleware)
-
 
 # --- Spectra Exception Handler ---
 @app.exception_handler(SpectraError)
@@ -103,23 +93,6 @@ async def spectra_error_handler(request: Request, exc: SpectraError) -> JSONResp
     """Map SpectraError subclasses to appropriate HTTP responses."""
     status_code = get_status_code_for_exception(exc)
     return JSONResponse(exc.to_dict(), status_code=status_code)
-
-
-# --- Global Unhandled Exception Handler ---
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse | HTMLResponse:
-    """Catch-all for unhandled exceptions. Never leak stack traces to clients."""
-    logger.exception("Unhandled exception on %s %s: %s", request.method, request.url.path, exc)
-    if _wants_html(request):
-        try:
-            return HTMLResponse(
-                content=_error_templates.get_template("errors/500.html").render(),
-                status_code=500,
-            )
-        except Exception:
-            return HTMLResponse("<h1>Internal Server Error</h1>", status_code=500)
-    return JSONResponse({"detail": "Internal server error"}, status_code=500)
-
 
 # --- GZip Compression ---
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -130,7 +103,7 @@ app.add_middleware(
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "Accept", "X-API-Key"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID", "Accept"],
 )
 
 # --- Security Headers ---
@@ -174,7 +147,6 @@ async def limit_request_body_size(request: Request, call_next):
         return StarletteResponse("Request body too large", status_code=413)
     response = await call_next(request)
     return response
-
 
 # --- Static Files ---
 app.mount(
@@ -232,19 +204,6 @@ async def rate_limit_handler(request: Request, exc: Exception) -> HTMLResponse |
     return JSONResponse({"detail": "Too many requests"}, status_code=429)
 
 
-@app.exception_handler(RequestValidationError)
-async def validation_error_handler(request: Request, exc: RequestValidationError) -> HTMLResponse | JSONResponse:
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/422.html").render(),
-            status_code=422,
-        )
-    errors = [
-        {"field": ".".join(str(loc) for loc in e.get("loc", [])), "message": e.get("msg", "")} for e in exc.errors()
-    ]
-    return JSONResponse({"detail": "Validation error", "errors": errors, "status_code": 422}, status_code=422)
-
-
 @app.exception_handler(400)
 async def bad_request_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
     if _wants_html(request):
@@ -295,13 +254,12 @@ async def service_unavailable_handler(request: Request, exc: Exception) -> HTMLR
         )
     return JSONResponse({"detail": "Service unavailable"}, status_code=503)
 
-
 # --- Include Routers ---
 
 # --- API v1 (canonical versioned prefix) ---
 api_v1 = APIRouter(prefix="/api/v1")
 api_v1.include_router(health.router, tags=["Health"])
-api_v1.include_router(auth.router, prefix="/auth", tags=["Authentication"])
+api_v1.include_router(auth.router, prefix="/auth", tags=["Auth"])
 api_v1.include_router(tools.router, tags=["Tools"])
 api_v1.include_router(missions.router, tags=["Missions"])
 api_v1.include_router(targets.router, tags=["Targets"])
@@ -316,17 +274,12 @@ api_v1.include_router(pentest_sessions.router, tags=["Pentest Sessions"])
 api_v1.include_router(manual_helpers.router, tags=["Manual Helpers"])
 api_v1.include_router(shell.router, tags=["Shell"])
 api_v1.include_router(vpn.router, tags=["VPN"])
-api_v1.include_router(webhooks.router, tags=["Webhooks"])
-api_v1.include_router(notifications.router, tags=["Notifications"])
 app.include_router(api_v1)
-
-# --- Prometheus metrics endpoint (top-level for scraper compatibility) ---
-app.include_router(metrics.router, tags=["Metrics"])
 
 # --- Non-versioned routes (UI pages, public, admin) ---
 app.include_router(public.router, tags=["Public"])
 app.include_router(ui.router, tags=["UI"])
-app.include_router(admin.router, tags=["Administration"])
+app.include_router(admin.router, tags=["Admin"])
 
 
 # --- WebSocket Endpoint ---
@@ -373,13 +326,17 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
 
             # Validate message size (DoS protection)
             if len(data) > 65536:  # 64KB max message size
-                logger.warning("WebSocket message too large from %s, ignoring", user.username)
+                logger.warning(
+                    "WebSocket message too large from %s, ignoring", user.username
+                )
                 continue
 
             try:
                 message_json = json.loads(data)
                 if not isinstance(message_json, dict) or "type" not in message_json:
-                    logger.warning("Invalid WebSocket message format from %s", user.username)
+                    logger.warning(
+                        "Invalid WebSocket message format from %s", user.username
+                    )
                     continue
 
                 msg_type = message_json.get("type")
@@ -388,7 +345,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
                 else:
                     logger.debug("Received WS message type: %s", msg_type)
             except json.JSONDecodeError:
-                logger.warning("Invalid JSON in WebSocket message from %s", user.username)
+                logger.warning(
+                    "Invalid JSON in WebSocket message from %s", user.username
+                )
 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)

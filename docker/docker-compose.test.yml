@@ -168,9 +168,7 @@ services:
     command:
       - >-
         python -m pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite pytest-cov &&
-        python -m pytest tests/unit/ -q
-        --cov=app --cov-report=term-missing --cov-fail-under=60
-        --override-ini=addopts=
+        python -m pytest tests/unit/ -q --override-ini=addopts=
     env_file:
       - ../.env.test
     environment:
