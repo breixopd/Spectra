@@ -90,20 +90,6 @@ const spectraApi = (() => {
                 return { data: null, response, error: msg };
             }
 
-            if (response.status === 422) {
-                const msg = 'Invalid input — please check the form fields';
-                if (typeof _spectraToast === 'function') {
-                    _spectraToast(msg, 'warning');
-                }
-            }
-
-            if (response.status >= 500) {
-                const msg = 'Server error — please try again later';
-                if (typeof _spectraToast === 'function') {
-                    _spectraToast(msg, 'error');
-                }
-            }
-
             // Parse JSON if content-type indicates it
             const ct = response.headers.get('content-type') || '';
             let data = null;

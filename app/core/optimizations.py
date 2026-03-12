@@ -8,6 +8,7 @@ Architecture optimizations for production performance.
 5. Graceful degradation
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -17,7 +18,35 @@ from typing import Any
 logger = logging.getLogger("spectra.core.optimizations")
 
 
-# --- 1. Lazy Model Loading ---
+# --- 1. PostgreSQL Job Queue ---
+
+_pg_queue = None
+_pg_queue_lock = asyncio.Lock()
+
+
+async def get_pg_queue():
+    """Get or create a shared PostgresJobQueue instance (reused across requests)."""
+    global _pg_queue
+    if _pg_queue is not None:
+        return _pg_queue
+
+    async with _pg_queue_lock:
+        if _pg_queue is not None:
+            return _pg_queue
+
+        from app.core.queue import PostgresJobQueue
+
+        _pg_queue = PostgresJobQueue()
+        return _pg_queue
+
+
+async def close_pg_queue():
+    """Clean up job queue resources."""
+    global _pg_queue
+    _pg_queue = None
+
+
+# --- 2. Lazy Model Loading ---
 
 
 class LazyLoader:
@@ -148,3 +177,11 @@ async def check_llm_health() -> bool:
         return await client.health_check()
     except Exception:
         return False
+
+
+async def get_execution_mode() -> str:
+    """Determine current execution mode based on LLM availability."""
+    if await check_llm_health():
+        return "full"
+    else:
+        return "playbook"

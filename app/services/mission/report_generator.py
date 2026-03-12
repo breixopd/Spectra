@@ -3,8 +3,8 @@ HTML Report Generation for Spectra missions.
 
 Generates self-contained HTML reports from mission data using inline
 Jinja2 templates. Reports include dark-themed CSS, severity charts,
-findings tables, and MITRE ATT&CK mapping — all with inline assets
-for portable, self-contained output.
+findings tables, and MITRE ATT&CK mapping — all without external
+dependencies so they work offline / air-gapped.
 """
 
 import logging

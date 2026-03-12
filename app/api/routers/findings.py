@@ -12,13 +12,12 @@ import json
 import logging
 from io import StringIO
 
-from fastapi import APIRouter, Depends, Header, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
-from app.api.error_responses import bad_request, forbidden, not_found
 from app.api.schemas import FindingResponse, PaginatedResponse
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
@@ -41,7 +40,7 @@ def _check_finding_owner(finding_obj: Finding, user: User) -> None:
     if user.is_superuser:
         return
     if finding_obj.user_id and finding_obj.user_id != str(user.id):
-        raise forbidden("Not authorized to access this finding")
+        raise HTTPException(status_code=403, detail="Not authorized to access this finding")
 
 
 # --- Schemas ---
@@ -149,15 +148,9 @@ async def list_findings(
     db: AsyncSession = Depends(get_async_session),
     __current_user: User = Depends(get_current_active_user),
 ):
-    """Retrieve a paginated list of security findings.
+    """List all findings with optional filters.
 
-    Returns findings discovered during missions. Supports filtering by:
-
-    - **severity**: Filter by severity level (critical, high, medium, low, info).
-    - **status**: Filter by finding status (open, confirmed, false_positive, remediated).
-    - **page** / **per_page**: Pagination controls (max 100 items per page).
-
-    Non-admin users only see findings from their own missions.
+    Pagination: max 100 items per page.
     """
     repo = FindingRepository(db)
 
@@ -223,42 +216,10 @@ def _sanitize_csv_value(val: object) -> str:
     return s
 
 
-async def _fetch_all_findings(db: AsyncSession, user: User | None = None, mission_id: str | None = None) -> list:
+async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> list:
     repo = FindingRepository(db)
-    filters: dict = {}
     if user and not user.is_superuser:
-        filters["user_id"] = str(user.id)
-
-    if mission_id:
-        # Resolve mission target → target_ids → filter findings
-        from app.repositories.mission import MissionRepository
-
-        mission_repo = MissionRepository(db)
-        mission = await mission_repo.get_by_id(mission_id)
-        if mission:
-            from sqlalchemy import select
-
-            from app.models.target import Target
-
-            target_stmt = select(Target.id).where(Target.address == mission.target)
-            if user and not user.is_superuser:
-                target_stmt = target_stmt.where(Target.user_id == str(user.id))
-            result = await db.execute(target_stmt)
-            target_ids = [row[0] for row in result.all()]
-            if not target_ids:
-                return []
-            # Filter findings via target_ids
-            from sqlalchemy import select as sa_select
-
-            stmt = sa_select(Finding).where(Finding.target_id.in_(target_ids))
-            if "user_id" in filters:
-                stmt = stmt.where(Finding.user_id == filters["user_id"])
-            stmt = stmt.limit(10_000)
-            res = await db.execute(stmt)
-            return list(res.scalars().all())
-
-    if filters:
-        return list(await repo.find_many_by(skip=0, limit=10_000, **filters))
+        return list(await repo.find_many_by(user_id=str(user.id), skip=0, limit=10_000))
     return list(await repo.get_all(skip=0, limit=10_000))
 
 
@@ -270,14 +231,13 @@ async def _fetch_all_findings(db: AsyncSession, user: User | None = None, missio
 @limiter.limit("60/minute")
 async def export_findings_csv(
     request: Request,
-    mission_id: str | None = Query(None, description="Filter findings by mission ID"),
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):
-    """Export findings as CSV, optionally filtered by mission."""
-    findings = await _fetch_all_findings(db, _current_user, mission_id=mission_id)
+    """Export all findings as CSV."""
+    findings = await _fetch_all_findings(db, _current_user)
 
     buf = StringIO()
     writer = csv.writer(buf)
@@ -301,7 +261,7 @@ async def export_findings_csv(
 
     if encrypted:
         if not password:
-            raise bad_request("X-Export-Password header required when encrypted=true")
+            raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
 
         payload = encrypt_data_with_password(payload, password)
@@ -326,14 +286,13 @@ async def export_findings_csv(
 @limiter.limit("60/minute")
 async def export_findings_json(
     request: Request,
-    mission_id: str | None = Query(None, description="Filter findings by mission ID"),
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):
-    """Export findings as JSON, optionally filtered by mission."""
-    findings = await _fetch_all_findings(db, _current_user, mission_id=mission_id)
+    """Export all findings as JSON."""
+    findings = await _fetch_all_findings(db, _current_user)
 
     data = [
         {
@@ -354,7 +313,7 @@ async def export_findings_json(
 
     if encrypted:
         if not password:
-            raise bad_request("X-Export-Password header required when encrypted=true")
+            raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
 
         payload = encrypt_data_with_password(payload, password)
@@ -387,7 +346,10 @@ async def get_finding(
     finding = await repo.get_by_id(finding_id)
 
     if not finding:
-        raise not_found("Finding", finding_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Finding not found",
+        )
     _check_finding_owner(finding, _current_user)
 
     return FindingDetailResponse(
@@ -422,7 +384,10 @@ async def update_finding(
 
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise not_found("Finding", finding_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Finding not found",
+        )
     _check_finding_owner(existing, _current_user)
 
     # Filter out None values
@@ -431,7 +396,10 @@ async def update_finding(
     updated = await repo.update(finding_id, **update_data)
 
     if not updated:
-        raise not_found("Finding", finding_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Finding not found",
+        )
     await db.commit()
 
     return FindingDetailResponse(
@@ -465,7 +433,10 @@ async def delete_finding(
 
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise not_found("Finding", finding_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Finding not found",
+        )
     _check_finding_owner(existing, _current_user)
 
     await repo.delete(finding_id)
@@ -488,7 +459,10 @@ async def verify_finding(
 
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise not_found("Finding", finding_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Finding not found",
+        )
     _check_finding_owner(existing, _current_user)
 
     updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
@@ -525,7 +499,10 @@ async def mark_false_positive(
 
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise not_found("Finding", finding_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Finding not found",
+        )
     _check_finding_owner(existing, _current_user)
 
     updated = await repo.update(finding_id, status=FindingStatus.FALSE_POSITIVE)
@@ -582,7 +559,7 @@ async def confirm_finding(
     repo = FindingRepository(db)
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise not_found("Finding", finding_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
     _check_finding_owner(existing, _current_user)
     updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
     await db.commit()
@@ -604,7 +581,7 @@ async def dismiss_finding(
     repo = FindingRepository(db)
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise not_found("Finding", finding_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
     _check_finding_owner(existing, _current_user)
     updated = await repo.update(finding_id, status=FindingStatus.DISMISSED)
     await db.commit()
@@ -626,7 +603,7 @@ async def retest_finding(
     repo = FindingRepository(db)
     existing = await repo.get_by_id(finding_id)
     if not existing:
-        raise not_found("Finding", finding_id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
     _check_finding_owner(existing, _current_user)
     updated = await repo.update(finding_id, status=FindingStatus.RETEST_PENDING)
     await db.commit()
@@ -662,12 +639,18 @@ async def bulk_update_findings(
 ):
     """Bulk update multiple findings. Max 100 per request."""
     if len(request.finding_ids) > MAX_BULK_SIZE:
-        raise bad_request(f"Maximum {MAX_BULK_SIZE} findings per batch")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Maximum {MAX_BULK_SIZE} findings per batch",
+        )
 
     repo = FindingRepository(db)
     update_data = request.update.model_dump(exclude_unset=True)
     if not update_data:
-        raise bad_request("No fields to update")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields to update",
+        )
 
     updated_count = 0
     for fid in request.finding_ids:

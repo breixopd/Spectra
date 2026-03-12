@@ -43,7 +43,9 @@ class Settings(BaseSettings):
         return v
 
     # --- Database (PostgreSQL) ---
-    DATABASE_URL: SecretStr = SecretStr("postgresql+asyncpg://spectra:spectra@db:5432/spectra")
+    DATABASE_URL: SecretStr = SecretStr(
+        "postgresql+asyncpg://spectra:spectra@db:5432/spectra"
+    )
     DATABASE_ECHO: bool = False
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
@@ -100,36 +102,23 @@ class Settings(BaseSettings):
     MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 10 MB
 
     # --- CORS ---
-    # Set CORS_ORIGINS env var as comma-separated URLs for SaaS/multi-tenant.
-    # In production (DEBUG=False), defaults to PLATFORM_BASE_URL + localhost.
-    # In dev (DEBUG=True), allows common local dev origins.
-    CORS_ORIGINS: list[str] = [
-        "http://localhost:5000",
-        "http://127.0.0.1:5000",
-        "http://localhost:5050",
-        "http://127.0.0.1:5050",
-    ]
+    CORS_ORIGINS: list[str] = ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:5050", "http://127.0.0.1:5050"]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
         if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",") if i.strip()]
+            return [i.strip() for i in v.split(",")]
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
-
-    def model_post_init(self, __context: Any) -> None:
-        """Auto-include PLATFORM_BASE_URL in CORS origins if set."""
-        if self.PLATFORM_BASE_URL and self.PLATFORM_BASE_URL not in self.CORS_ORIGINS:
-            self.CORS_ORIGINS.append(self.PLATFORM_BASE_URL)
 
     # --- JWT Authentication ---
     JWT_SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var or generated
     JWT_ALGORITHM: str = "HS256"
     # Security
     SECRET_KEY: SecretStr = SecretStr("change-me-in-production")  # Overridden by get_settings()
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
     FULLY_AUTOMATED: bool = True  # Skip ALL human approval, fully autonomous operation
@@ -138,7 +127,6 @@ class Settings(BaseSettings):
     @classmethod
     def warn_fully_automated(cls, v: bool) -> bool:
         import os
-
         if v and os.environ.get("ENVIRONMENT", "development") == "production":
             logging.getLogger("spectra.config").warning(
                 "FULLY_AUTOMATED=true in production — human approval bypassed for all operations"
@@ -158,7 +146,6 @@ class Settings(BaseSettings):
         if not 1 <= v <= 100:
             raise ValueError("SANDBOX_MAX_CONTAINERS must be 1-100")
         return v
-
     SANDBOX_MEMORY_LIMIT: str = "2g"
     SANDBOX_CPU_SHARES: int = 512
     SANDBOX_RESOURCE_TIERS: str = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
@@ -170,7 +157,6 @@ class Settings(BaseSettings):
         if not 60 <= v <= 86400:
             raise ValueError("SANDBOX_MAX_LIFETIME must be 60-86400 seconds")
         return v
-
     SANDBOX_WORKER_POLL_DELAY: float = 0.5
     SANDBOX_NETWORK_ISOLATION: bool = True
     SANDBOX_IDLE_TIMEOUT: int = 600  # seconds — destroy sandbox if no heartbeat for this long
@@ -183,7 +169,6 @@ class Settings(BaseSettings):
         if not 1 <= v <= 50:
             raise ValueError("SANDBOX_PER_USER_LIMIT must be 1-50")
         return v
-
     SANDBOX_DEFAULT_PRIORITY: int = 5  # Default job priority (1=highest, 10=lowest)
     SANDBOX_OOM_ESCALATION_ENABLED: bool = True  # Auto-escalate resource tier on OOM (exit 137)
     SANDBOX_WARM_POOL_ENABLED: bool = False  # Disabled by default — pre-warms idle containers for instant assignment
@@ -225,13 +210,6 @@ class Settings(BaseSettings):
         if v < 1 or v > 65535:
             raise ValueError("SMTP_PORT must be between 1 and 65535")
         return v
-
-    # --- Metrics / Telemetry ---
-    METRICS_ENABLED: bool = True
-    METRICS_EXPORT_INTERVAL: int = 60  # seconds
-    METRICS_RETENTION_HOURS: int = 168  # 7 days
-    OTEL_EXPORTER_ENDPOINT: str | None = None  # Future: OTel collector URL
-    OTEL_SERVICE_NAME: str = "spectra"
 
     # Multi-provider
     OLLAMA_ENABLED: bool = False  # Whether Ollama is available as secondary provider
@@ -304,9 +282,10 @@ class Settings(BaseSettings):
 
         try:
             import tempfile
-
             settings_path.parent.mkdir(parents=True, exist_ok=True)
-            fd, tmp_path = tempfile.mkstemp(dir=str(settings_path.parent), suffix=".tmp")
+            fd, tmp_path = tempfile.mkstemp(
+                dir=str(settings_path.parent), suffix=".tmp"
+            )
             try:
                 with open(fd, "w", encoding="utf-8") as f:
                     json.dump(data, f, indent=2)
@@ -354,10 +333,16 @@ class Settings(BaseSettings):
                 "EMBEDDING_MODEL",
             }
             for key, value in data.items():
-                if hasattr(self, key) and key not in sensitive_fields and key not in db_backed_runtime_fields:
+                if (
+                    hasattr(self, key)
+                    and key not in sensitive_fields
+                    and key not in db_backed_runtime_fields
+                ):
                     setattr(self, key, value)
         except json.JSONDecodeError as e:
-            logger.warning("Runtime settings file is corrupted, renaming to .bak: %s", e)
+            logger.warning(
+                "Runtime settings file is corrupted, renaming to .bak: %s", e
+            )
             try:
                 settings_path.rename(settings_path.with_suffix(".bak"))
             except OSError as rename_err:

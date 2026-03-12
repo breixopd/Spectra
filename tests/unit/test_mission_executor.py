@@ -13,8 +13,12 @@ def mock_executor_context():
     # Use source paths for patching to reliability
     with (
         patch("app.services.tools.service.ToolExecutionService") as MockToolService,
-        patch("app.services.mission.exploitation.ExploitationManager") as MockExploitManager,
-        patch("app.services.ai.agents.tool_selector.ToolSelectorAgent") as MockToolSelector,
+        patch(
+            "app.services.mission.exploitation.ExploitationManager"
+        ) as MockExploitManager,
+        patch(
+            "app.services.ai.agents.tool_selector.ToolSelectorAgent"
+        ) as MockToolSelector,
         patch("app.services.ai.consensus.VotingSystem") as MockVoting,
     ):
         # Mocks
@@ -32,12 +36,6 @@ def mock_executor_context():
         executor.dispatcher.tool_service = mock_tool_service
         executor.dispatcher.exploitation_manager = mock_exploit_manager
         executor.dispatcher.consensus = mock_voting
-
-        # Inject mocks into sub-handlers (split from handlers.py)
-        executor.dispatcher._recon.tool_service = mock_tool_service
-        executor.dispatcher._recon.agents["tool_selector"] = mock_tool_selector
-        executor.dispatcher._exploit.tool_service = mock_tool_service
-        executor.dispatcher._exploit.exploitation_manager = mock_exploit_manager
 
         # Inject agents into dispatcher
         executor.dispatcher.agents["tool_selector"] = mock_tool_selector
@@ -67,7 +65,9 @@ async def test_execute_task_tool_selector(mock_executor_context):
         agent_type="tool_selector",
         phase=AssessmentPhase.DISCOVERY,
     )
-    context = AgentContext(mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test")
+    context = AgentContext(
+        mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test"
+    )
 
     # Mock Selection
     select_result = MagicMock()
@@ -107,7 +107,9 @@ async def test_execute_task_tool_selector_no_tool(mock_executor_context):
         agent_type="tool_selector",
         phase=AssessmentPhase.DISCOVERY,
     )
-    context = AgentContext(mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test")
+    context = AgentContext(
+        mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test"
+    )
 
     # Mock Selection - No tool selected (e.g. phase complete)
     select_result = MagicMock()
@@ -142,7 +144,9 @@ async def test_handle_exploit_crafter(mock_executor_context):
         agent_type="exploit_crafter",
         phase=AssessmentPhase.EXPLOITATION,
     )
-    context = AgentContext(mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test")
+    context = AgentContext(
+        mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test"
+    )
 
     exploit_manager.run_iterative_exploitation = AsyncMock()
 
@@ -166,7 +170,9 @@ async def test_unknown_agent_type(mock_executor_context):
         agent_type="unknown_xyz",
         phase=AssessmentPhase.DISCOVERY,
     )
-    context = AgentContext(mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test")
+    context = AgentContext(
+        mission_id="test-mission-1", session_id="1", target="127.0.0.1", mission="test"
+    )
 
     await executor.execute_task(mission, task_random, context)
     # Should log "Unknown agent type"

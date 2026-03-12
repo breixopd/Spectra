@@ -2,8 +2,7 @@
 # All test targets run inside Docker containers.
 
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
-       lint format check clean docker-build docker-up docker-down help \
-       type-check security audit format-check
+       lint format check clean docker-build docker-up docker-down help
 
 SHELL := /bin/bash
 
@@ -52,19 +51,3 @@ docker-up: ## Start Docker Compose services
 
 docker-down: ## Stop Docker Compose services
 	@docker compose -f docker/docker-compose.yml down
-
-type-check: ## Run type checks with pyright
-	@echo "Running type checks..."
-	pyright app/ --pythonversion 3.11
-
-security: ## Run security scan with bandit
-	@echo "Running security scan..."
-	bandit -r app/ -c pyproject.toml
-
-audit: ## Run dependency audit
-	@echo "Running dependency audit..."
-	pip-audit -r requirements-app.txt
-
-format-check: ## Check code formatting
-	@echo "Checking code formatting..."
-	ruff format --check app/ tests/

@@ -6,7 +6,18 @@ import logging
 from typing import TYPE_CHECKING
 
 from app.services.ai.agents.base import AgentRole
+
+# Direct imports kept as fallbacks
+from app.services.ai.agents.exploit_crafter import ExploitCrafter
+from app.services.ai.agents.exploit_verifier import ExploitVerifierAgent
+from app.services.ai.agents.post_exploitation import PostExploitationAgent
 from app.services.ai.agents.registry import get_agent_registry
+from app.services.ai.agents.reporter import ReporterAgent
+from app.services.ai.agents.scope import ScopeAgent
+
+# Agents
+from app.services.ai.agents.tool_selector import ToolSelectorAgent
+from app.services.ai.agents.vector_generator import VectorGeneratorAgent
 from app.services.ai.consensus import VotingSystem
 from app.services.mission.executor.handlers import TaskDispatcher
 from app.services.mission.exploitation import ExploitationManager
@@ -20,15 +31,15 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("spectra.mission.executor")
 
-# Maps agent dict key → AgentRole for registry lookup
-_AGENT_KEYS: dict[str, AgentRole] = {
-    "tool_selector": AgentRole.TOOL_SELECTOR,
-    "scope_agent": AgentRole.SCOPE,
-    "exploit_crafter": AgentRole.EXPLOIT_CRAFTER,
-    "exploit_verifier": AgentRole.EXPLOIT_VERIFIER,
-    "reporter": AgentRole.REPORTER,
-    "vector_generator": AgentRole.VECTOR_GENERATOR,
-    "post_exploitation": AgentRole.POST_EXPLOITATION,
+# Maps agent dict key -> (AgentRole, fallback class)
+_AGENT_ROLE_MAP: dict[str, tuple[AgentRole, type[Agent]]] = {  # type: ignore[type-arg]
+    "tool_selector": (AgentRole.TOOL_SELECTOR, ToolSelectorAgent),
+    "scope_agent": (AgentRole.SCOPE, ScopeAgent),
+    "exploit_crafter": (AgentRole.EXPLOIT_CRAFTER, ExploitCrafter),
+    "exploit_verifier": (AgentRole.EXPLOIT_VERIFIER, ExploitVerifierAgent),
+    "reporter": (AgentRole.REPORTER, ReporterAgent),
+    "vector_generator": (AgentRole.VECTOR_GENERATOR, VectorGeneratorAgent),
+    "post_exploitation": (AgentRole.POST_EXPLOITATION, PostExploitationAgent),
 }
 
 
@@ -64,21 +75,19 @@ class MissionExecutor:
         )
 
     def _init_agents_from_registry(self, llm: LLMClient) -> dict[str, Agent]:  # type: ignore[type-arg]
-        """Create all required agents from the registry."""
+        """Create agents using the registry, falling back to direct instantiation."""
         registry = get_agent_registry()
-
-        # Ensure all agent modules are imported so decorators fire
-        import app.services.ai.agents.exploit_crafter  # noqa: F401
-        import app.services.ai.agents.exploit_verifier  # noqa: F401
-        import app.services.ai.agents.post_exploitation  # noqa: F401
-        import app.services.ai.agents.reporter  # noqa: F401
-        import app.services.ai.agents.scope  # noqa: F401
-        import app.services.ai.agents.tool_selector  # noqa: F401
-        import app.services.ai.agents.vector_generator  # noqa: F401
-
         agents: dict[str, Agent] = {}  # type: ignore[type-arg]
-        for key, role in _AGENT_KEYS.items():
-            agents[key] = registry.create(role, llm)
+        for key, (role, fallback_cls) in _AGENT_ROLE_MAP.items():
+            try:
+                agents[key] = registry.create(role, llm)
+            except KeyError:
+                logger.warning(
+                    "Agent for role %s not in registry, using fallback %s",
+                    role,
+                    fallback_cls.__name__,
+                )
+                agents[key] = fallback_cls(llm)
         return agents
 
     async def execute_task(

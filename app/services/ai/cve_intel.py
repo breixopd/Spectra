@@ -4,7 +4,7 @@ CVE Intelligence Service.
 Provides up-to-date CVE awareness for agents:
 1. Live fetching from NVD API 2.0 (free, no auth required)
 2. Local JSON cache with configurable TTL (default 24h)
-3. Built-in fallback database when NVD API is unavailable
+3. Built-in fallback database for offline/air-gapped operation
 4. Version-to-CVE correlation for discovered services
 
 Agents get real CVE data instead of hallucinating IDs.
@@ -20,15 +20,19 @@ from typing import Any
 
 import httpx
 
-from app.core.constants import CACHE_NS_CVE_INTEL, CACHE_TTL_CVE_HOURS
-
 logger = logging.getLogger("spectra.ai.cve_intel")
 
 # NVD API configuration
 NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 NVD_RATE_LIMIT_DELAY = 6.5  # seconds between requests (5 req / 30s limit)
-CVE_CACHE_DIR = Path("data/cache/cve_cache")  # filesystem fallback only
+CVE_CACHE_DIR = Path("data/cache/cve_cache")
 CVE_CACHE_TTL = 86400  # 24 hours
+
+
+# =============================================================================
+# Metasploit module database — now provided by ExploitDatabase service
+# (see app/services/ai/exploit_db.py).
+# =============================================================================
 
 
 # =============================================================================
@@ -94,7 +98,7 @@ async def fetch_cves_from_nvd(
     global _last_nvd_request
 
     # Check cache first
-    cached = await _load_cache(keyword)
+    cached = _load_cache(keyword)
     if cached is not None:
         return cached
 
@@ -160,22 +164,20 @@ async def fetch_cves_from_nvd(
                             if len(parts) > 4:
                                 products.append(parts[4])
 
-            results.append(
-                {
-                    "cve": cve_id,
-                    "description": desc[:300],
-                    "severity": severity,
-                    "cvss_score": cvss_score,
-                    "products": products,
-                    "product": keyword.lower(),
-                    "type": _infer_vuln_type(desc),
-                    "source": "nvd_api",
-                    "fetched_at": datetime.now().isoformat(),
-                }
-            )
+            results.append({
+                "cve": cve_id,
+                "description": desc[:300],
+                "severity": severity,
+                "cvss_score": cvss_score,
+                "products": products,
+                "product": keyword.lower(),
+                "type": _infer_vuln_type(desc),
+                "source": "nvd_api",
+                "fetched_at": datetime.now().isoformat(),
+            })
 
         # Cache results
-        await _save_cache(keyword, results)
+        _save_cache(keyword, results)
 
         logger.info("Fetched %d CVEs from NVD for '%s'", len(results), keyword)
         return results
@@ -220,81 +222,40 @@ def _infer_vuln_type(description: str) -> str:
 # =============================================================================
 
 
-def _cache_key(keyword: str) -> str:
-    """Get cache key for a keyword."""
-    return keyword.lower().replace(" ", "_").replace("/", "_")[:50]
-
-
 def _cache_path(keyword: str) -> Path:
-    """Get filesystem cache file path for a keyword (fallback only)."""
-    return CVE_CACHE_DIR / f"{_cache_key(keyword)}.json"
+    """Get cache file path for a keyword."""
+    safe_name = keyword.lower().replace(" ", "_").replace("/", "_")[:50]
+    return CVE_CACHE_DIR / f"{safe_name}.json"
 
 
-async def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
-    """Load cached CVE results if still fresh (DB first, filesystem fallback)."""
-    key = _cache_key(keyword)
-
-    # 1. Try DB cache
-    try:
-        from app.services.cache import CacheService
-
-        raw = await CacheService.get(CACHE_NS_CVE_INTEL, key)
-        if raw is not None:
-            data = json.loads(raw)
-            return data.get("results", [])
-    except Exception:
-        pass
-
-    # 2. Filesystem fallback
+def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
+    """Load cached CVE results if still fresh."""
     path = _cache_path(keyword)
     if not path.exists():
         return None
+
     try:
         data = json.loads(path.read_text())
         cached_at = data.get("cached_at", 0)
         if time.time() - cached_at > CVE_CACHE_TTL:
             return None
-        results = data.get("results", [])
-        # Migrate to DB
-        try:
-            from app.services.cache import CacheService
-
-            await CacheService.set(
-                CACHE_NS_CVE_INTEL,
-                key,
-                json.dumps({"keyword": keyword, "cached_at": cached_at, "results": results}),
-                ttl_hours=CACHE_TTL_CVE_HOURS,
-            )
-        except Exception:
-            pass
-        return results
+        return data.get("results", [])
     except Exception:
         return None
 
 
-async def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
-    """Save CVE results to DB cache."""
-    key = _cache_key(keyword)
-    payload = json.dumps(
-        {
+def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
+    """Save CVE results to cache."""
+    CVE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    path = _cache_path(keyword)
+    try:
+        path.write_text(json.dumps({
             "keyword": keyword,
             "cached_at": time.time(),
             "results": results,
-        }
-    )
-    try:
-        from app.services.cache import CacheService
-
-        await CacheService.set(CACHE_NS_CVE_INTEL, key, payload, ttl_hours=CACHE_TTL_CVE_HOURS)
+        }, indent=2))
     except Exception as e:
-        logger.debug("Failed to cache CVEs to DB: %s", e)
-        # Fallback to filesystem
-        CVE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        path = _cache_path(keyword)
-        try:
-            path.write_text(payload)
-        except Exception as fe:
-            logger.debug("Failed to cache CVEs to filesystem: %s", fe)
+        logger.debug("Failed to cache CVEs: %s", e)
 
 
 # =============================================================================
@@ -474,7 +435,8 @@ def get_cve_context_for_services(services: list[dict[str, Any]]) -> str:
                 for c in relevant[:4]:
                     match_flag = " ← VERSION MATCH" if c.get("version_match") else ""
                     lines.append(
-                        f"  - {c['cve']} [{c['severity'].upper()}] {c['type']}: {c['description'][:120]}{match_flag}"
+                        f"  - {c['cve']} [{c['severity'].upper()}] {c['type']}: "
+                        f"{c['description'][:120]}{match_flag}"
                     )
                 parts.append("\n".join(lines))
 
@@ -498,7 +460,9 @@ async def get_cve_context_for_services_live(
         if not product and not service_name:
             continue
 
-        cves = await lookup_cves_live(product=product, version=version, service=service_name)
+        cves = await lookup_cves_live(
+            product=product, version=version, service=service_name
+        )
 
         if cves:
             relevant = cves[:5]

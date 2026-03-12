@@ -34,12 +34,6 @@ class MissionLifecycleManager:
         """Create and start a new mission."""
         mission = Mission(target, directive, requirements=requirements, vpn_config=vpn_config, user_id=user_id)
         self.active_missions[mission.id] = mission
-        logger.info(
-            "Mission created: id=%s target=%s user=%s",
-            mission.id,
-            target,
-            user_id or "anonymous",
-        )
 
         # Persist to DB
         try:
@@ -67,7 +61,6 @@ class MissionLifecycleManager:
         """Stop a running mission."""
         if mission_id in self.active_missions:
             mission = self.active_missions[mission_id]
-            logger.info("Mission stopping: id=%s target=%s", mission_id, mission.target)
             # Disconnect VPN if configured
             if getattr(mission, "vpn_config", None):
                 try:
@@ -88,7 +81,6 @@ class MissionLifecycleManager:
         """Pause a running mission."""
         if mission_id in self.active_missions:
             self.active_missions[mission_id].pause()
-            logger.info("Mission paused: id=%s", mission_id)
             await self.update_db_status(self.active_missions[mission_id])
             return True
         return False
@@ -97,7 +89,6 @@ class MissionLifecycleManager:
         """Resume a paused mission."""
         if mission_id in self.active_missions:
             self.active_missions[mission_id].resume()
-            logger.info("Mission resumed: id=%s", mission_id)
             await self.update_db_status(self.active_missions[mission_id])
             return True
         return False

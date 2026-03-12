@@ -175,7 +175,6 @@ class TestMissionStateMachine:
             MissionState.COMPLETED,
             MissionState.FAILED,
             MissionState.CANCELLED,
-            MissionState.TIMED_OUT,
         ]:
             assert VALID_TRANSITIONS[terminal] == set()
 

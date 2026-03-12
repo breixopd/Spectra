@@ -8,7 +8,7 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, Query, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,12 +18,10 @@ from app.api.dependencies import (
     check_feature_allowed,
     check_mission_limit,
     get_current_active_user,
-    require_mission_quota,
 )
-from app.api.error_responses import bad_request, conflict, forbidden, internal_error, not_found
 from app.api.schemas import MissionResponse, PaginatedResponse, StartMissionRequest
 from app.core.database import get_async_session
-from app.core.rate_limit import get_plan_dynamic_limit, limiter
+from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
@@ -45,29 +43,30 @@ def _check_mission_owner(mission_obj, user: User) -> None:
         return
     owner = getattr(mission_obj, "user_id", None)
     if owner and owner != str(user.id):
-        raise forbidden("Not authorized to access this mission")
+        raise HTTPException(status_code=403, detail="Not authorized to access this mission")
 
 
 class SteerMissionRequest(BaseModel):
     """Schema for steering a mission."""
 
-    action: str = Field(..., description="Steering action: skip_phase, prioritize_target, focus_vuln")
+    action: str = Field(
+        ..., description="Steering action: skip_phase, prioritize_target, focus_vuln"
+    )
     phase: str | None = Field(None, description="Phase to skip (for skip_phase action)")
     target: str | None = Field(None, description="Target to prioritize")
     vulnerability: str | None = Field(None, description="Vulnerability to focus on")
 
 
-@router.get("/presets", response_model=list[dict])
+@router.get("/presets")
 async def get_scan_presets(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Get available scan presets."""
     from app.services.mission.presets import SCAN_PRESETS
-
     return SCAN_PRESETS
 
 
-@router.get("/adversary-playbooks", response_model=list[dict])
+@router.get("/adversary-playbooks")
 async def get_adversary_playbooks(
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -77,7 +76,7 @@ async def get_adversary_playbooks(
     return list_adversary_playbooks()
 
 
-@router.get("/adversary-playbooks/{playbook_id}", response_model=dict)
+@router.get("/adversary-playbooks/{playbook_id}")
 async def get_adversary_playbook_detail(
     playbook_id: str,
     _current_user: User = Depends(get_current_active_user),
@@ -87,11 +86,11 @@ async def get_adversary_playbook_detail(
 
     pb = get_adversary_playbook(playbook_id)
     if not pb:
-        raise not_found("Playbook", playbook_id)
+        raise HTTPException(status_code=404, detail="Playbook not found")
     return pb.model_dump()
 
 
-@router.get("/exploit-chains", response_model=list[dict])
+@router.get("/exploit-chains")
 async def get_exploit_chains(
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -111,7 +110,7 @@ class CreateChainRequest(BaseModel):
     stages: list[dict[str, Any]] = Field(default_factory=list)
 
 
-@router.post("/exploit-chains", response_model=dict)
+@router.post("/exploit-chains")
 async def create_exploit_chain(
     chain_in: CreateChainRequest,
     _current_user: User = Depends(get_current_active_user),
@@ -128,7 +127,7 @@ async def create_exploit_chain(
     return {"chain": chain.model_dump(), "warnings": warnings}
 
 
-@router.get("/attack-summary", response_model=dict)
+@router.get("/attack-summary")
 async def get_attack_coverage(
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -142,10 +141,11 @@ async def get_attack_coverage(
         memory = get_memory()
         findings = []
         for lesson in memory.tool_lessons[-50:]:
-            findings.append({"tool_name": lesson.tool_id, "source": "tool_execution"})
+            findings.append(
+                {"tool_name": lesson.tool_id, "source": "tool_execution"}
+            )
         return get_attack_summary(findings)
     except Exception:
-        logger.warning("Failed to compute attack coverage", exc_info=True)
         return {"tactics": {}, "total_techniques": 0}
 
 
@@ -155,45 +155,18 @@ async def get_attack_coverage(
     summary="Start mission",
     description="Create and start a new security assessment mission against specified targets.",
 )
-@limiter.limit(get_plan_dynamic_limit)
+@limiter.limit("5/minute")
 async def start_mission(
     request: Request,
     response: Response,
     mission_request: StartMissionRequest,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
-    _quota_user: User = Depends(require_mission_quota),
 ):
-    """Create and launch a new security assessment mission.
+    """Start a new mission.
 
-    Initializes an automated security assessment against the specified target.
-    The mission orchestrates reconnaissance, vulnerability scanning, and
-    exploitation phases using the AI-driven MAKER framework.
-
-    - **target**: IP address, hostname, or URL to assess.
-    - **directive**: Optional high-level goal guiding the assessment strategy.
-    - **requirements**: Optional constraints (scope limits, excluded hosts).
-    - **vpn_config**: Optional VPN configuration for accessing internal targets.
-
-    Rate limited per plan tier (Free: 10/min, Pro: 60/min, Enterprise: 200/min, Admin: unlimited).
+    Rate limited to 5 missions per minute per user.
     """
-    # SSRF prevention: non-admins cannot target internal network addresses
-    if not _is_admin_user(_current_user):
-        from urllib.parse import urlparse
-
-        from app.api.schemas.mission import is_internal_ip, is_internal_network
-
-        raw_target = mission_request.target
-        host = raw_target
-        if "://" in raw_target:
-            parsed = urlparse(raw_target)
-            host = parsed.hostname or ""
-        if ":" in host and not host.startswith("["):
-            host = host.rsplit(":", 1)[0]
-
-        if is_internal_ip(host) or is_internal_network(host):
-            raise forbidden("Targeting internal network addresses is not permitted")
-
     await check_mission_limit(_current_user, db)
     await check_feature_allowed(_current_user, db, "autonomous_mode")
 
@@ -207,12 +180,7 @@ async def start_mission(
     mission = await mission_manager.get_mission(mission_id)
 
     if not mission:
-        raise internal_error("Failed to create mission")
-
-    # Record usage for quota tracking
-    from app.services.billing.usage_tracker import UsageTracker
-
-    await UsageTracker().record_mission_start(str(_current_user.id))
+        raise HTTPException(status_code=500, detail="Failed to create mission")
 
     # Audit log
     await audit_log_event(
@@ -243,7 +211,9 @@ async def start_mission(
         tools_run=mission.tools_run or [],
         tool_executions=getattr(mission, "tool_executions", []),
         report_path=getattr(mission, "report_path", None),
-        attack_surface=mission.attack_surface.get_summary() if mission.attack_surface else None,
+        attack_surface=mission.attack_surface.get_summary()
+        if mission.attack_surface
+        else None,
     )
 
 
@@ -299,14 +269,14 @@ async def list_missions(
         try:
             from_dt = dt.fromisoformat(date_from)
         except ValueError:
-            raise bad_request(f"Invalid date_from format: {date_from}. Use ISO 8601.")
+            raise HTTPException(status_code=422, detail=f"Invalid date_from format: {date_from}. Use ISO 8601.")
         base = base.where(Mission.created_at >= from_dt)
 
     if date_to:
         try:
             to_dt = dt.fromisoformat(date_to)
         except ValueError:
-            raise bad_request(f"Invalid date_to format: {date_to}. Use ISO 8601.")
+            raise HTTPException(status_code=422, detail=f"Invalid date_to format: {date_to}. Use ISO 8601.")
         base = base.where(Mission.created_at <= to_dt)
 
     if search:
@@ -338,7 +308,6 @@ async def list_missions(
             logs=m.logs or [],
             directive=m.directive,
             findings=m.summary.get("findings", []) if m.summary else [],
-            created_at=m.created_at.isoformat() if m.created_at else None,
         )
         for m in missions
     ]
@@ -359,7 +328,7 @@ async def download_pdf_report(
     repo = MissionRepository(session)
     mission = await repo.get_by_id(mission_id)
     if not mission:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found")
     _check_mission_owner(mission, _current_user)
 
     # Check plan allows PDF export
@@ -368,7 +337,7 @@ async def download_pdf_report(
         if plan and plan.features:
             allowed = plan.features.get("report_export", ["json", "pdf", "html"])
             if isinstance(allowed, list) and "pdf" not in allowed:
-                raise forbidden("PDF export not available on your plan")
+                raise HTTPException(403, "PDF export not available on your plan")
 
     mission_data = {
         "id": mission.id,
@@ -382,12 +351,14 @@ async def download_pdf_report(
 
     pdf_bytes = generate_pdf_report(mission_data)
     if not pdf_bytes:
-        raise internal_error("PDF generation failed")
+        raise HTTPException(status_code=500, detail="PDF generation failed")
 
     return FastAPIResponse(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=spectra_report_{mission_id[:8]}.pdf"},
+        headers={
+            "Content-Disposition": f"attachment; filename=spectra_report_{mission_id[:8]}.pdf"
+        },
     )
 
 
@@ -405,7 +376,7 @@ async def export_mission_json(
     repo = MissionRepository(session)
     mission = await repo.get_by_id(mission_id)
     if not mission:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found")
     _check_mission_owner(mission, _current_user)
 
     # Check plan allows JSON export
@@ -414,7 +385,7 @@ async def export_mission_json(
         if plan and plan.features:
             allowed = plan.features.get("report_export", ["json", "pdf", "html"])
             if isinstance(allowed, list) and "json" not in allowed:
-                raise forbidden("JSON export not available on your plan")
+                raise HTTPException(403, "JSON export not available on your plan")
 
     summary = mission.summary or {}
     export_data = {
@@ -435,9 +406,8 @@ async def export_mission_json(
 
     if encrypted:
         if not password:
-            raise bad_request("X-Export-Password header required when encrypted=true")
+            raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
-
         payload = encrypt_data_with_password(payload, password)
         return FastAPIResponse(
             content=payload,
@@ -452,96 +422,7 @@ async def export_mission_json(
     )
 
 
-_CSV_FINDING_COLUMNS = [
-    "id",
-    "severity",
-    "title",
-    "description",
-    "tool_source",
-    "status",
-    "created_at",
-]
-
-_CSV_INJECTION_CHARS = ("=", "+", "-", "@", "\t", "\r")
-
-
-def _sanitize_csv_value(val: object) -> str:
-    """Sanitize a value for CSV export to prevent formula injection."""
-    s = str(val) if val is not None else ""
-    if s and s[0] in _CSV_INJECTION_CHARS:
-        return "'" + s
-    return s
-
-
-@router.get("/{mission_id}/export/csv")
-async def export_mission_csv(
-    mission_id: str,
-    encrypted: bool = Query(False),
-    password: str | None = Header(None, alias="X-Export-Password"),
-    session: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_active_user),
-):
-    """Export mission findings as a CSV file."""
-    import csv
-    from io import StringIO
-
-    from fastapi.responses import Response as FastAPIResponse
-
-    repo = MissionRepository(session)
-    mission = await repo.get_by_id(mission_id)
-    if not mission:
-        raise not_found("Mission", mission_id)
-    _check_mission_owner(mission, _current_user)
-
-    if not _is_admin_user(_current_user):
-        plan = await _get_user_plan(_current_user, session)
-        if plan and plan.features:
-            allowed = plan.features.get("report_export", ["json", "pdf", "html", "csv"])
-            if isinstance(allowed, list) and "csv" not in allowed:
-                raise forbidden("CSV export not available on your plan")
-
-    raw_findings = mission.summary.get("findings", []) if mission.summary else []
-
-    buf = StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(_CSV_FINDING_COLUMNS)
-    for i, f in enumerate(raw_findings):
-        if not isinstance(f, dict):
-            continue
-        writer.writerow(
-            [
-                _sanitize_csv_value(str(i)),
-                _sanitize_csv_value(f.get("severity", "info")),
-                _sanitize_csv_value(f.get("title", "Untitled")),
-                _sanitize_csv_value(f.get("description", "")),
-                _sanitize_csv_value(f.get("tool_source", f.get("tool", ""))),
-                _sanitize_csv_value(f.get("status", "potential")),
-                _sanitize_csv_value(f.get("created_at", "")),
-            ]
-        )
-
-    payload = buf.getvalue().encode()
-
-    if encrypted:
-        if not password:
-            raise bad_request("X-Export-Password header required when encrypted=true")
-        from app.core.encryption import encrypt_data_with_password
-
-        payload = encrypt_data_with_password(payload, password)
-        return FastAPIResponse(
-            content=payload,
-            media_type="application/octet-stream",
-            headers={"Content-Disposition": f"attachment; filename=spectra_export_{mission_id[:8]}.csv.enc"},
-        )
-
-    return FastAPIResponse(
-        content=payload,
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=spectra_export_{mission_id[:8]}.csv"},
-    )
-
-
-@router.get("/{mission_id}/findings", response_model=list[dict])
+@router.get("/{mission_id}/findings")
 async def get_mission_findings(
     mission_id: str,
     db: AsyncSession = Depends(get_async_session),
@@ -551,7 +432,7 @@ async def get_mission_findings(
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
     if not mission:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found")
     _check_mission_owner(mission, _current_user)
     raw_findings = mission.summary.get("findings", []) if mission.summary else []
     return [
@@ -605,7 +486,9 @@ async def get_mission(
             tools_run=mission.tools_run or [],
             tool_executions=getattr(mission, "tool_executions", []),
             report_path=getattr(mission, "report_path", None),
-            attack_surface=mission.attack_surface.get_summary() if mission.attack_surface else None,
+            attack_surface=mission.attack_surface.get_summary()
+            if mission.attack_surface
+            else None,
         )
 
     # Try DB
@@ -613,14 +496,16 @@ async def get_mission(
     db_mission = await repo.get_by_id(mission_id)
 
     if not db_mission:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found")
     _check_mission_owner(db_mission, _current_user)
 
     return MissionResponse(
         id=db_mission.id,
         target=db_mission.target,
         status=db_mission.status,
-        current_phase=db_mission.summary.get("current_phase") if db_mission.summary else None,
+        current_phase=db_mission.summary.get("current_phase")
+        if db_mission.summary
+        else None,
         logs=db_mission.logs or [],
         directive=db_mission.directive,
         findings=db_mission.summary.get("findings", []) if db_mission.summary else [],
@@ -629,7 +514,6 @@ async def get_mission(
 
 @router.delete(
     "/{mission_id}",
-    response_model=dict,
     summary="Delete mission",
     description="Permanently delete a completed or failed mission and its associated storage data.",
 )
@@ -643,23 +527,18 @@ async def delete_mission(
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
     if not mission:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found")
     _check_mission_owner(mission, _current_user)
 
     active_statuses = {
-        "created",
-        "initializing",
-        "scoping",
-        "planning",
-        "running",
-        "scanning",
-        "analyzing",
-        "executing",
-        "exploiting",
-        "paused",
+        "created", "initializing", "scoping", "planning", "running",
+        "scanning", "analyzing", "executing", "exploiting", "paused",
     }
     if mission.status in active_statuses:
-        raise conflict("Cannot delete an active mission. Stop it first.")
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete an active mission. Stop it first.",
+        )
 
     await repo.delete(mission_id)
     await db.commit()
@@ -686,7 +565,6 @@ async def delete_mission(
 
 @router.post(
     "/{mission_id}/stop",
-    response_model=dict,
     summary="Stop mission",
     description="Stop a running mission. The mission must be in an active state.",
 )
@@ -703,13 +581,12 @@ async def stop_mission(
         _check_mission_owner(active, _current_user)
     result = await mission_manager.stop_mission(mission_id)
     if not result:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found or not active")
     return {"message": "Mission stopping"}
 
 
 @router.post(
     "/{mission_id}/pause",
-    response_model=dict,
     summary="Pause mission",
     description="Pause a running mission. It can be resumed later.",
 )
@@ -726,13 +603,12 @@ async def pause_mission(
         _check_mission_owner(active, _current_user)
     result = await mission_manager.pause_mission(mission_id)
     if not result:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found or not active")
     return {"message": "Mission paused"}
 
 
 @router.post(
     "/{mission_id}/resume",
-    response_model=dict,
     summary="Resume mission",
     description="Resume a previously paused mission from where it left off.",
 )
@@ -749,11 +625,11 @@ async def resume_mission(
         _check_mission_owner(active, _current_user)
     result = await mission_manager.resume_mission(mission_id)
     if not result:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found or not active")
     return {"message": "Mission resumed"}
 
 
-@router.get("/{mission_id}/diff/{other_mission_id}", response_model=dict)
+@router.get("/{mission_id}/diff/{other_mission_id}")
 async def diff_missions(
     mission_id: str,
     other_mission_id: str,
@@ -772,12 +648,14 @@ async def diff_missions(
 
     old_db = await repo.get_by_id(mission_id)
     if not old_db:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail=f"Mission {mission_id} not found")
     _check_mission_owner(old_db, _current_user)
 
     new_db = await repo.get_by_id(other_mission_id)
     if not new_db:
-        raise not_found("Mission", other_mission_id)
+        raise HTTPException(
+            status_code=404, detail=f"Mission {other_mission_id} not found"
+        )
     _check_mission_owner(new_db, _current_user)
 
     old_dict = {
@@ -808,7 +686,7 @@ async def diff_missions(
     }
 
 
-@router.post("/{mission_id}/steer", response_model=dict)
+@router.post("/{mission_id}/steer")
 @limiter.limit("30/minute")
 async def steer_mission(
     request: Request,
@@ -839,13 +717,13 @@ async def steer_mission(
         )
         return result
     except ValueError as e:
-        logger.error("Mission steering error: %s", e)
+        logger.error("Mission steering error: %s", e, exc_info=True)
         if "not found" in str(e):
-            raise not_found("Mission or target")
-        raise bad_request("Invalid steering request")
+            raise HTTPException(status_code=404, detail="Mission or target not found")
+        raise HTTPException(status_code=400, detail="Invalid steering request")
 
 
-@router.get("/{mission_id}/task-tree", response_model=dict)
+@router.get("/{mission_id}/task-tree")
 async def get_task_tree(
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
@@ -853,12 +731,12 @@ async def get_task_tree(
     """Get the task tree for a mission."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found")
     _check_mission_owner(mission, _current_user)
     return mission.task_tree.to_dict()
 
 
-@router.get("/{mission_id}/progress", response_model=dict)
+@router.get("/{mission_id}/progress")
 async def get_mission_progress(
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
@@ -866,6 +744,6 @@ async def get_mission_progress(
     """Get estimated mission progress."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
-        raise not_found("Mission", mission_id)
+        raise HTTPException(status_code=404, detail="Mission not found")
     _check_mission_owner(mission, _current_user)
     return mission.get_progress()

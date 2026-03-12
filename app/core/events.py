@@ -44,7 +44,6 @@ class EventType(StrEnum):
     MISSION_COMPLETED = "mission_completed"
     MISSION_FAILED = "mission_failed"
     MISSION_CANCELLED = "mission_cancelled"
-    MISSION_TIMED_OUT = "mission_timed_out"
 
     # Tool events
     TOOL_EXECUTION_STARTED = "tool_execution_started"

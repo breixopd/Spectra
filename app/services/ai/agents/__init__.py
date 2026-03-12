@@ -3,7 +3,15 @@ Agents package for the MAKER Swarm Architecture.
 """
 
 from app.services.ai.agents.base import (
+    ActionRisk,
     Agent,
+    AgentAction,
+    AgentContext,
+    AgentResult,
+    AgentRole,
+    ApprovalRequest,
+    SteeringAction,
+    ToolAction,
 )
 from app.services.ai.agents.mission_controller import (
     AssessmentPhase,
@@ -12,28 +20,6 @@ from app.services.ai.agents.mission_controller import (
     MissionPlan,
     MissionType,
     Task,
-)
-from app.services.ai.agents.models import (
-    ActionRisk,
-    AgentAction,
-    AgentContext,
-    AgentResult,
-    AgentRole,
-    ApprovalRequest,
-    ParallelToolAction,
-    SteeringAction,
-    ToolAction,
-)
-from app.services.ai.agents.parameter_tuner import (
-    ParameterTunerAgent,
-    TunerInput,
-    TunerOutput,
-)
-from app.services.ai.agents.parser import (
-    ParsedFinding,
-    ParserAgent,
-    ParserInput,
-    ParserOutput,
 )
 from app.services.ai.agents.recon_intel import (
     OsintSanitizer,
@@ -63,7 +49,6 @@ __all__ = [
     "AgentResult",
     "ActionRisk",
     "ToolAction",
-    "ParallelToolAction",
     "SteeringAction",
     "ApprovalRequest",
     # Registry
@@ -85,15 +70,6 @@ __all__ = [
     "ReconIntelInput",
     "ReconIntelOutput",
     "OsintSanitizer",
-    # Parser
-    "ParserAgent",
-    "ParserInput",
-    "ParserOutput",
-    "ParsedFinding",
-    # Parameter Tuner
-    "ParameterTunerAgent",
-    "TunerInput",
-    "TunerOutput",
     # Mission Controller
     "MissionController",
     "MissionInput",

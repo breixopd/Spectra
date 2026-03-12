@@ -10,7 +10,6 @@ class TestToolAdapterParsing:
     @pytest.fixture
     def adapter(self):
         config = MagicMock(spec=ToolConfig)
-        config.id = "test-tool"
         # Setup nested parsing config
         config.parsing = MagicMock()
         config.parsing.row_tag = "item"

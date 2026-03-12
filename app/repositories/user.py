@@ -4,7 +4,6 @@ User Repository for managing user accounts.
 Provides data access operations for user authentication and management.
 """
 
-import logging
 from collections.abc import Sequence
 
 from sqlalchemy import select
@@ -12,8 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.repositories.base import BaseRepository
-
-logger = logging.getLogger("spectra.repositories.user")
 
 
 class UserRepository(BaseRepository[User]):
@@ -42,7 +39,6 @@ class UserRepository(BaseRepository[User]):
         Returns:
             The user if found, None otherwise.
         """
-        logger.debug("Looking up user by username=%s", username)
         return await self.find_one_by(username=username)
 
     async def get_by_email(self, email: str) -> User | None:
@@ -55,7 +51,6 @@ class UserRepository(BaseRepository[User]):
         Returns:
             The user if found, None otherwise.
         """
-        logger.debug("Looking up user by email=%s", email)
         return await self.find_one_by(email=email)
 
     async def get_active_users(

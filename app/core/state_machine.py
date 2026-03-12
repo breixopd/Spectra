@@ -5,7 +5,6 @@ Formalizes mission state transitions with explicit validation.
 Ensures only valid state changes occur and provides audit trail.
 """
 
-import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -14,8 +13,6 @@ from app.core.enums import MissionStatus
 from app.core.events import EventType, events
 from app.core.exceptions import MissionStateError
 from app.core.telemetry import telemetry as _telemetry
-
-logger = logging.getLogger("spectra.core.state_machine")
 
 # Backward-compatible alias — new code should use MissionStatus directly.
 MissionState = MissionStatus
@@ -51,21 +48,18 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
         MissionStatus.PAUSED,
         MissionStatus.SCANNING,
         MissionStatus.ANALYZING,
-        MissionStatus.TIMED_OUT,
     },
     MissionStatus.SCANNING: {
         MissionStatus.EXECUTING,
         MissionStatus.ANALYZING,
         MissionStatus.FAILED,
         MissionStatus.CANCELLED,
-        MissionStatus.TIMED_OUT,
     },
     MissionStatus.ANALYZING: {
         MissionStatus.EXECUTING,
         MissionStatus.EXPLOITING,
         MissionStatus.FAILED,
         MissionStatus.CANCELLED,
-        MissionStatus.TIMED_OUT,
     },
     MissionStatus.EXPLOITING: {
         MissionStatus.REPORTING,
@@ -73,7 +67,6 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
         MissionStatus.FAILED,
         MissionStatus.CANCELLED,
         MissionStatus.PAUSED,
-        MissionStatus.TIMED_OUT,
     },
     MissionStatus.REPORTING: {
         MissionStatus.COMPLETED,
@@ -93,7 +86,6 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
         MissionStatus.CANCELLED,
         MissionStatus.STOPPING,
         MissionStatus.PAUSED,
-        MissionStatus.TIMED_OUT,
     },
     MissionStatus.STOPPING: {
         MissionStatus.CANCELLED,
@@ -103,7 +95,6 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
     MissionStatus.COMPLETED: set(),
     MissionStatus.FAILED: set(),
     MissionStatus.CANCELLED: set(),
-    MissionStatus.TIMED_OUT: set(),
 }
 
 
@@ -140,7 +131,9 @@ class MissionStateMachine:
         ...
     """
 
-    def __init__(self, mission_id: str, initial_state: MissionStatus = MissionStatus.CREATED):
+    def __init__(
+        self, mission_id: str, initial_state: MissionStatus = MissionStatus.CREATED
+    ):
         self.mission_id = mission_id
         self._state = initial_state
         self._history: list[StateTransition] = []
@@ -158,7 +151,6 @@ class MissionStateMachine:
             MissionStatus.COMPLETED,
             MissionStatus.FAILED,
             MissionStatus.CANCELLED,
-            MissionStatus.TIMED_OUT,
         }
 
     @property
@@ -206,9 +198,6 @@ class MissionStateMachine:
             MissionStateError: If transition is invalid
         """
         if not self.can_transition_to(new_state):
-            logger.warning(
-                "Invalid transition mission=%s from=%s to=%s", self.mission_id, self._state.value, new_state.value
-            )
             raise MissionStateError(
                 self.mission_id,
                 self._state.value,
@@ -225,10 +214,6 @@ class MissionStateMachine:
         old_state = self._state
         self._state = new_state
         self._history.append(transition)
-
-        logger.info(
-            "State transition mission=%s %s -> %s reason=%s", self.mission_id, old_state.value, new_state.value, reason
-        )
 
         # Emit event
         events.emit_sync(
@@ -269,8 +254,6 @@ class MissionStateMachine:
         self._state = new_state
         self._history.append(transition)
 
-        logger.warning("Forced transition mission=%s to=%s reason=%s", self.mission_id, new_state.value, reason)
-
         return transition
 
     def get_history(self) -> list[dict[str, Any]]:
@@ -290,7 +273,9 @@ class MissionStateMachine:
                 # Find when we left this state
                 if i + 1 < len(self._history):
                     next_transition = self._history[i + 1]
-                    duration = (next_transition.timestamp - transition.timestamp).total_seconds()
+                    duration = (
+                        next_transition.timestamp - transition.timestamp
+                    ).total_seconds()
                 else:
                     # Still in this state
                     duration = (datetime.now() - transition.timestamp).total_seconds()

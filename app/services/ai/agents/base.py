@@ -6,41 +6,140 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Callable
+from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Any, ClassVar, Generic, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
-from app.services.ai.agents.models import (
-    ActionRisk,
-    AgentAction,
-    AgentContext,
-    AgentResult,
-    AgentRole,
-    ApprovalRequest,
-    ParallelToolAction,
-    SteeringAction,
-    ToolAction,
-)
-from app.services.ai.errors import LLMParseError, LLMRateLimitError, LLMTimeoutError
 from app.services.ai.llm import LLMClient
 from app.services.ai.prompts import BASE_SYSTEM_PROMPT
 
 logger = logging.getLogger("spectra.ai.agents")
 
-# Backward-compatible re-exports
-__all__ = [
-    "ActionRisk",
-    "AgentAction",
-    "AgentContext",
-    "AgentResult",
-    "AgentRole",
-    "ApprovalRequest",
-    "ParallelToolAction",
-    "SteeringAction",
-    "ToolAction",
-    "Agent",
-    "ROLE_TASK_MAP",
-]
+
+# --- Enums ---
+
+
+class AgentRole(StrEnum):
+    """Defines the role/responsibility of an agent."""
+
+    SCOPE = "scope"  # Parses input to define boundaries
+    TOOL_SELECTOR = "tool_selector"  # Chooses the right tool
+    PARAMETER_TUNER = "parameter_tuner"  # Adjusts tool parameters
+    PARSER = "parser"  # Parses tool output
+    MISSION_CONTROLLER = "mission_controller"  # Orchestrates workflow
+    SAFETY_SUPERVISOR = "safety_supervisor"  # Blocks dangerous actions
+    EXPLOIT_CRAFTER = "exploit_crafter"  # Crafts exploits
+    EXPLOIT_VERIFIER = "exploit_verifier"  # Verifies exploit success
+    POC_DEVELOPER = "poc_developer"  # Writes custom exploit scripts
+    POST_EXPLOITATION = "post_exploitation"  # Plans post-exploitation activities
+    VECTOR_GENERATOR = "vector_generator"  # Generates attack vectors
+    DEBRIEF = "debrief"  # Post-mission analysis and lessons learned
+    REPORTER = "reporter"  # Generates assessment reports
+    RECON_INTEL = "recon_intel"  # OSINT / web intelligence gathering
+
+
+class ActionRisk(StrEnum):
+    """Risk level of an agent action."""
+
+    LOW = "low"  # Safe to execute automatically
+    MEDIUM = "medium"  # Requires logging
+    HIGH = "high"  # Requires voting/consensus
+    CRITICAL = "critical"  # Requires human approval
+
+
+# --- Context Models ---
+
+
+class AgentContext(BaseModel):
+    """Context passed to agents for decision making."""
+
+    mission_id: str = Field(..., description="Current mission ID")
+    session_id: str | None = Field(None, description="Current session ID (optional)")
+    target: str | None = Field(None, description="Current target (IP/domain)")
+    mission: str | None = Field(None, description="High-level mission directive")
+    phase: str = Field("discovery", description="Current assessment phase")
+
+    # State from previous actions
+    previous_findings: list[dict[str, Any]] = Field(default_factory=list)
+    previous_actions: list[dict[str, Any]] = Field(default_factory=list)
+    available_tools: list[str] = Field(default_factory=list)
+
+    # Constraints
+    stealth_mode: bool = Field(False, description="Minimize detection")
+    max_concurrency: int = Field(3, description="Max parallel operations")
+
+    # Extra context from blackboard/intelligence
+    extra_context: str = Field("", description="Additional context from blackboard")
+
+    # Cost tracking (excluded from serialization)
+    cost_tracker: Any | None = Field(None, description="CostTracker instance", exclude=True)
+
+
+# --- Action Models ---
+
+
+class AgentAction(BaseModel):
+    """Base class for agent actions/decisions."""
+
+    action_type: str = Field(..., description="Type of action to take")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score")
+    risk_level: ActionRisk = Field(ActionRisk.LOW, description="Risk assessment")
+    reasoning: str = Field(..., description="Explanation for the decision")
+
+    model_config = ConfigDict(use_enum_values=True)
+
+
+class ToolAction(AgentAction):
+    """Action to run a security tool."""
+
+    action_type: str = "run_tool"
+    tool_name: str = Field(..., description="Name of tool to run")
+    tool_args: dict[str, Any] = Field(
+        default_factory=dict, description="Tool arguments"
+    )
+    target: str = Field(..., description="Target for the tool")
+    estimated_duration: int = Field(60, description="Estimated duration in seconds")
+
+
+class ParallelToolAction(AgentAction):
+    """Action to run multiple tools in parallel."""
+
+    action_type: str = "run_tools_parallel"
+    tools: list[ToolAction] = Field(..., description="Tools to run concurrently")
+    max_concurrency: int = Field(3, description="Max parallel tool executions")
+
+
+class SteeringAction(AgentAction):
+    """Action to change assessment direction."""
+
+    action_type: str = "steer"
+    new_phase: str = Field(..., description="Phase to transition to")
+    priority_targets: list[str] = Field(default_factory=list)
+    skip_phases: list[str] = Field(default_factory=list)
+
+
+class ApprovalRequest(AgentAction):
+    """Request for human approval."""
+
+    action_type: str = "request_approval"
+    pending_action: dict[str, Any] = Field(..., description="Action awaiting approval")
+    timeout_seconds: int = Field(300, description="Time to wait for approval")
+    default_on_timeout: bool = Field(False, description="Default action if timeout")
+
+
+# --- Result Types ---
+
+
+@dataclass
+class AgentResult:
+    """Result from an agent execution."""
+
+    success: bool
+    action: AgentAction | None = None
+    error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 # --- Base Agent ---
@@ -98,93 +197,26 @@ class Agent(ABC, Generic[InputT, OutputT]):
         return ROLE_TASK_MAP.get(self.role)
 
     async def _llm_generate(self, **kwargs: Any) -> Any:
-        """Call self.llm.generate() with automatic task_type injection, cost tracking, and retry."""
+        """Call self.llm.generate() with automatic task_type injection and cost tracking."""
         kwargs.setdefault("task_type", self._task_type)
-        return await self._llm_call_with_retry(self.llm.generate, **kwargs)
+        start = time.monotonic()
+        response = await self.llm.generate(**kwargs)
+        latency = (time.monotonic() - start) * 1000
+
+        if self._cost_tracker:
+            self._cost_tracker.record(
+                agent_name=self.name,
+                agent_role=self.role.value,
+                model=response.model,
+                usage=response.usage,
+                latency_ms=latency,
+            )
+        return response
 
     async def _llm_generate_structured(self, **kwargs: Any) -> Any:
-        """Call self.llm.generate_structured() with automatic task_type injection and retry."""
+        """Call self.llm.generate_structured() with automatic task_type injection."""
         kwargs.setdefault("task_type", self._task_type)
-        return await self._llm_call_with_retry(self.llm.generate_structured, **kwargs)
-
-    async def _llm_call_with_retry(self, fn: Callable[..., Any], **kwargs: Any) -> Any:
-        """Execute an LLM call with exponential backoff retry on transient failures.
-
-        Handles:
-        - Timeouts → LLMTimeoutError (retryable)
-        - Rate limits (429) → LLMRateLimitError (retryable with longer backoff)
-        - Parse errors → LLMParseError (retryable once)
-        """
-        max_retries = 3
-        last_error: Exception | None = None
-
-        for attempt in range(max_retries):
-            start = time.monotonic()
-            try:
-                response = await fn(**kwargs)
-                latency = (time.monotonic() - start) * 1000
-
-                if self._cost_tracker and hasattr(response, "model"):
-                    self._cost_tracker.record(
-                        agent_name=self.name,
-                        agent_role=self.role.value,
-                        model=response.model,
-                        usage=getattr(response, "usage", {}),
-                        latency_ms=latency,
-                    )
-                return response
-
-            except TimeoutError:
-                latency = (time.monotonic() - start) * 1000
-                last_error = LLMTimeoutError(agent=self.name, timeout_seconds=latency / 1000)
-                logger.warning(
-                    "%s: LLM timeout (attempt %d/%d, %.0fms)",
-                    self.name,
-                    attempt + 1,
-                    max_retries,
-                    latency,
-                )
-            except Exception as e:
-                latency = (time.monotonic() - start) * 1000
-                err_str = str(e).lower()
-
-                if "429" in err_str or "rate" in err_str:
-                    last_error = LLMRateLimitError(agent=self.name)
-                    # Longer backoff for rate limits
-                    delay = 2 ** (attempt + 1) + 1
-                    logger.warning(
-                        "%s: Rate limited (attempt %d/%d), backing off %ds",
-                        self.name,
-                        attempt + 1,
-                        max_retries,
-                        delay,
-                    )
-                    await asyncio.sleep(delay)
-                    continue
-                elif "parse" in err_str or "json" in err_str or "validation" in err_str:
-                    last_error = LLMParseError(agent=self.name, raw_response=str(e)[:500])
-                    logger.warning(
-                        "%s: Parse error (attempt %d/%d): %s",
-                        self.name,
-                        attempt + 1,
-                        max_retries,
-                        str(e)[:200],
-                    )
-                else:
-                    last_error = e
-                    logger.warning(
-                        "%s: LLM call failed (attempt %d/%d): %s",
-                        self.name,
-                        attempt + 1,
-                        max_retries,
-                        e,
-                    )
-
-            if attempt < max_retries - 1:
-                delay = 2**attempt
-                await asyncio.sleep(delay)
-
-        raise last_error  # type: ignore[misc]
+        return await self.llm.generate_structured(**kwargs)
 
     def _build_system_prompt(self, context: AgentContext) -> str:
         """Build the system prompt from context."""
@@ -217,7 +249,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
             f"Action type: {action.action_type}\n"
             f"Confidence: {action.confidence}\n"
             f"Reasoning: {action.reasoning}\n\n"
-            "Rate the quality of this output on a scale of 0.0 to 1.0 and provide brief feedback.\n"
+            'Rate the quality of this output on a scale of 0.0 to 1.0 and provide brief feedback.\n'
             'Respond in JSON: {"quality": 0.85, "feedback": "..."}'
         )
         try:
@@ -228,7 +260,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
                 max_tokens=256,
             )
             content = response.content
-            data = _json.loads(content[content.find("{") : content.rfind("}") + 1])
+            data = _json.loads(content[content.find("{"):content.rfind("}") + 1])
             return float(data.get("quality", 0.8)), str(data.get("feedback", ""))
         except Exception as e:
             logger.debug("Reflection failed: %s", e)
@@ -259,7 +291,9 @@ class Agent(ABC, Generic[InputT, OutputT]):
 
             quality, feedback = await self._reflect(context, result.action)
 
-            self.broadcast_thought(f"[Reflection #{iteration + 1}] Quality: {quality:.2f} — {feedback}")
+            self.broadcast_thought(
+                f"[Reflection #{iteration + 1}] Quality: {quality:.2f} — {feedback}"
+            )
 
             if quality > best_quality:
                 best_result = result
@@ -269,45 +303,11 @@ class Agent(ABC, Generic[InputT, OutputT]):
                 return result
 
             context.extra_context += (
-                f"\n\n[Self-critique feedback]: {feedback}\nPlease improve your output based on this feedback."
+                f"\n\n[Self-critique feedback]: {feedback}\n"
+                "Please improve your output based on this feedback."
             )
 
         return best_result or result  # type: ignore[possibly-undefined]
-
-    async def execute_with_telemetry(
-        self,
-        context: AgentContext,
-        input_data: InputT,
-    ) -> AgentResult:
-        """Execute the agent and record performance metrics to the telemetry system."""
-        start = time.monotonic()
-        success = False
-        try:
-            result = await self.execute(context, input_data)
-            success = result.success
-            return result
-        except Exception:
-            raise
-        finally:
-            duration_ms = (time.monotonic() - start) * 1000
-            try:
-                from app.core.telemetry import record_agent_execution
-
-                tokens = 0
-                if self._cost_tracker:
-                    usage = self._cost_tracker.get_agent_usage(self.name)
-                    if usage:
-                        tokens = usage.total_tokens
-
-                await record_agent_execution(
-                    agent_name=self.name,
-                    agent_role=self.role.value,
-                    duration_ms=duration_ms,
-                    success=success,
-                    tokens=tokens,
-                )
-            except Exception as e:
-                logger.debug("Telemetry recording failed: %s", e)
 
     def _get_temperature(self, input_data: Any, attempt: int = 1) -> float:
         """
@@ -388,14 +388,18 @@ class Agent(ABC, Generic[InputT, OutputT]):
             RecursionError: If depth exceeds max_depth.
         """
         if depth >= max_depth:
-            raise RecursionError(f"Sub-agent spawn depth {depth} exceeds max_depth {max_depth}")
+            raise RecursionError(
+                f"Sub-agent spawn depth {depth} exceeds max_depth {max_depth}"
+            )
 
         from app.services.ai.agents.registry import get_agent_registry
 
         registry = get_agent_registry()
         sub_agent = registry.create(role, self.llm)
 
-        self.broadcast_thought(f"Spawning sub-agent {sub_agent.name} (role={role}, depth={depth + 1})")
+        self.broadcast_thought(
+            f"Spawning sub-agent {sub_agent.name} (role={role}, depth={depth + 1})"
+        )
 
         result = await sub_agent.execute(context, input_data)
 
@@ -481,7 +485,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
             except Exception as exc:
                 last_error = exc
                 if attempt < max_retries:
-                    delay = backoff_factor**attempt
+                    delay = backoff_factor ** attempt
                     logger.warning(
                         "%s retry %d/%d after error: %s (backoff %.1fs)",
                         self.name,
@@ -499,20 +503,10 @@ class Agent(ABC, Generic[InputT, OutputT]):
         input_data: InputT,
     ) -> AgentResult:
         """Allow agents to be called directly."""
-        logger.info(
-            "%s executing for mission=%s target=%s phase=%s",
-            self.name,
-            context.mission_id,
-            context.target,
-            context.phase,
-        )
+        logger.info("%s executing for mission=%s target=%s phase=%s", self.name, context.mission_id, context.target, context.phase)
         result = await self.execute(context, input_data)
         if result.error:
             logger.error("%s failed: %s", self.name, result.error)
         else:
-            logger.info(
-                "%s completed successfully (action=%s)",
-                self.name,
-                result.action.action_type if result.action else "none",
-            )
+            logger.info("%s completed successfully (action=%s)", self.name, result.action.action_type if result.action else "none")
         return result

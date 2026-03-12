@@ -16,33 +16,147 @@ Quality Gates (validation points):
 
 import asyncio
 import logging
+from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from app.services.ai.agents.base import ActionRisk, AgentAction
-from app.services.ai.consensus_models import (
-    ConsensusResult,
-    ConsensusStatus,
-    QualityGate,
-    Vote,
-    VoteDecision,
-    VoteResponse,
-    VotingConfig,
-)
 from app.services.ai.llm import LLMClient
 
 logger = logging.getLogger("spectra.ai.consensus")
 
-# Backward-compatible re-exports
-__all__ = [
-    "ConsensusResult",
-    "ConsensusStatus",
-    "QualityGate",
-    "Vote",
-    "VoteDecision",
-    "VoteResponse",
-    "VotingConfig",
-    "VotingSystem",
-]
+
+# --- Enums ---
+
+
+class VoteDecision(StrEnum):
+    """Possible vote decisions."""
+
+    APPROVE = "approve"
+    REJECT = "reject"
+    ABSTAIN = "abstain"
+    NEEDS_INFO = "needs_info"
+
+
+class ConsensusStatus(StrEnum):
+    """Status of consensus attempt."""
+
+    APPROVED = "approved"  # K-threshold met
+    REJECTED = "rejected"  # Majority rejected
+    NO_CONSENSUS = "no_consensus"  # No clear majority
+    PENDING_HUMAN = "pending_human"  # Escalated to human
+
+
+class QualityGate(StrEnum):
+    """
+    Quality gates where validation occurs.
+
+    Different gates have different validation strictness
+    to balance thoroughness with performance.
+    """
+
+    PLAN = "plan"  # Initial mission planning - thorough
+    TOOL_SELECTION = "tool"  # Tool selection - quick validation
+    PAYLOAD = "payload"  # Exploit/payload crafting - thorough
+    REPLAN = "replan"  # Replanning after errors - thorough
+    EXECUTION = "execution"  # High-risk execution - strictest
+
+
+# --- Models ---
+
+
+class Vote(BaseModel):
+    """A single vote from an LLM instance."""
+
+    voter_id: str = Field(..., description="Identifier for the voting instance")
+    decision: VoteDecision = Field(..., description="The vote decision")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in decision")
+    reasoning: str = Field(..., description="Explanation for the vote")
+    concerns: list[str] = Field(default_factory=list, description="Any concerns raised")
+
+
+class VoteResponse(BaseModel):
+    """Schema for LLM vote response (excludes voter_id)."""
+
+    decision: VoteDecision
+    confidence: float
+    reasoning: str
+    concerns: list[str] = []
+
+
+class ConsensusResult(BaseModel):
+    """Result of a consensus vote."""
+
+    status: ConsensusStatus
+    votes: list[Vote]
+    approve_count: int = 0
+    reject_count: int = 0
+    abstain_count: int = 0
+    average_confidence: float = 0.0
+    final_decision: bool = False
+    escalation_reason: str | None = None
+
+
+@dataclass
+class VotingConfig:
+    """Configuration for the voting system."""
+
+    # Number of voters (LLM instances) to use
+    num_voters: int = 3
+
+    # K-threshold: minimum votes needed to approve (K out of N)
+    k_threshold: int = 2
+
+    # Minimum average confidence to accept vote
+    min_confidence: float = 0.6
+
+    # Temperature variation for diverse opinions
+    temperature_range: tuple[float, float] = (0.3, 0.7)
+
+    # Actions at or above this risk level require voting
+    voting_risk_threshold: ActionRisk = ActionRisk.HIGH
+
+    # Actions at this risk level always require human approval
+    human_approval_risk: ActionRisk = ActionRisk.CRITICAL
+
+    # Risk-aware consensus thresholds
+    # LOW risk → skip consensus entirely
+    # MEDIUM risk → require 2/3 agreement
+    # HIGH+ risk → full 3/3 consensus
+    consensus_threshold: dict[str, tuple[int, int, float]] = field(
+        default_factory=lambda: {
+            ActionRisk.LOW.value: (0, 0, 0.0),       # Skip consensus
+            ActionRisk.MEDIUM.value: (3, 2, 0.5),     # 2 of 3, moderate confidence
+            ActionRisk.HIGH.value: (3, 3, 0.7),       # 3 of 3, high confidence
+            ActionRisk.CRITICAL.value: (3, 3, 0.8),   # 3 of 3, strict confidence
+        }
+    )
+
+    # Quality gate specific configurations
+    # Maps gate -> (num_voters, k_threshold, min_confidence)
+    gate_configs: dict[str, tuple[int, int, float]] = field(
+        default_factory=lambda: {
+            QualityGate.PLAN.value: (
+                3,
+                2,
+                0.7,
+            ),  # Thorough: 3 voters, need 2, high confidence
+            QualityGate.TOOL_SELECTION.value: (
+                2,
+                2,
+                0.5,
+            ),  # Quick: 2 voters, need both, moderate
+            QualityGate.PAYLOAD.value: (
+                3,
+                2,
+                0.7,
+            ),  # Thorough: 3 voters, need 2, high confidence
+            QualityGate.REPLAN.value: (3, 2, 0.6),  # Moderate: 3 voters, need 2
+            QualityGate.EXECUTION.value: (3, 3, 0.8),  # Strictest: 3 voters, need all 3
+        }
+    )
 
 
 # --- Voting System ---
@@ -125,7 +239,9 @@ class VotingSystem:
         votes = await self._collect_votes_with_params(action, context, num_voters)
 
         # Analyze votes with gate-specific thresholds
-        return self._analyze_votes_with_params(votes, action, k_threshold, min_confidence)
+        return self._analyze_votes_with_params(
+            votes, action, k_threshold, min_confidence
+        )
 
     async def vote_on_action(
         self,
@@ -170,7 +286,7 @@ class VotingSystem:
         Uses risk-aware consensus_threshold: LOW risk skips voting entirely.
         """
         risk = action.risk_level
-        risk_str = risk.value if hasattr(risk, "value") else str(risk)
+        risk_str = risk.value if hasattr(risk, 'value') else str(risk)
         threshold_entry = self.config.consensus_threshold.get(risk_str)
         if threshold_entry is not None:
             num_voters, _k, _conf = threshold_entry
@@ -214,7 +330,9 @@ class VotingSystem:
         context: dict[str, Any] | None,
     ) -> list[Vote]:
         """Collect votes from multiple LLM instances."""
-        return await self._collect_votes_with_params(action, context, self.config.num_voters)
+        return await self._collect_votes_with_params(
+            action, context, self.config.num_voters
+        )
 
     async def _collect_votes_with_params(
         self,
@@ -229,7 +347,10 @@ class VotingSystem:
         temperatures = [temp_min + i * temp_step for i in range(num_voters)]
 
         # Create voting tasks
-        tasks = [self._get_vote(action, context, f"voter_{i}", temp) for i, temp in enumerate(temperatures)]
+        tasks = [
+            self._get_vote(action, context, f"voter_{i}", temp)
+            for i, temp in enumerate(temperatures)
+        ]
 
         # Run in parallel
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -300,7 +421,9 @@ Vote NEEDS_INFO if more context is required."""
         """Build the prompt for voters."""
         context_str = ""
         if context:
-            context_str = "\n\nContext:\n" + "\n".join(f"- {k}: {v}" for k, v in context.items())
+            context_str = "\n\nContext:\n" + "\n".join(
+                f"- {k}: {v}" for k, v in context.items()
+            )
 
         return f"""Evaluate this proposed security assessment action.
 The user has authorized this assessment against the target.
@@ -326,7 +449,9 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
         action: AgentAction,
     ) -> ConsensusResult:
         """Analyze collected votes and determine consensus."""
-        return self._analyze_votes_with_params(votes, action, self.config.k_threshold, self.config.min_confidence)
+        return self._analyze_votes_with_params(
+            votes, action, self.config.k_threshold, self.config.min_confidence
+        )
 
     def _analyze_votes_with_params(
         self,
@@ -350,7 +475,11 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
 
         # Calculate average confidence of approvals
         approve_votes = [v for v in votes if v.decision == VoteDecision.APPROVE]
-        avg_confidence = sum(v.confidence for v in approve_votes) / len(approve_votes) if approve_votes else 0.0
+        avg_confidence = (
+            sum(v.confidence for v in approve_votes) / len(approve_votes)
+            if approve_votes
+            else 0.0
+        )
 
         # Determine status
         status: ConsensusStatus
@@ -363,19 +492,17 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
                 final_decision = True
             else:
                 status = ConsensusStatus.NO_CONSENSUS
-                escalation_reason = (
-                    f"Approval votes met but confidence too low ({avg_confidence:.2f} < {min_confidence})"
-                )
+                escalation_reason = f"Approval votes met but confidence too low ({avg_confidence:.2f} < {min_confidence})"
         elif reject_count > len(votes) // 2:
             status = ConsensusStatus.REJECTED
             # Collect rejection reasons
-            rejection_reasons = [v.reasoning for v in votes if v.decision == VoteDecision.REJECT]
+            rejection_reasons = [
+                v.reasoning for v in votes if v.decision == VoteDecision.REJECT
+            ]
             escalation_reason = "; ".join(rejection_reasons[:3])
         else:
             status = ConsensusStatus.NO_CONSENSUS
-            escalation_reason = (
-                f"No clear majority (approve: {approve_count}, reject: {reject_count}, abstain: {abstain_count})"
-            )
+            escalation_reason = f"No clear majority (approve: {approve_count}, reject: {reject_count}, abstain: {abstain_count})"
 
         # NO_CONSENSUS escalation: handle based on action risk level
         if status == ConsensusStatus.NO_CONSENSUS:
@@ -383,20 +510,14 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
             risk_str = risk.value if hasattr(risk, "value") else str(risk)
             logger.warning(
                 "NO_CONSENSUS for %s (risk=%s): approve=%d reject=%d abstain=%d conf=%.2f — %s",
-                action.action_type,
-                risk_str,
-                approve_count,
-                reject_count,
-                abstain_count,
-                avg_confidence,
+                action.action_type, risk_str,
+                approve_count, reject_count, abstain_count, avg_confidence,
                 escalation_reason,
             )
             if risk_str == ActionRisk.CRITICAL.value:
                 # Critical actions with no consensus must be reviewed by a human
                 status = ConsensusStatus.PENDING_HUMAN
-                escalation_reason = (
-                    f"CRITICAL action with no consensus — flagged for human review ({escalation_reason})"
-                )
+                escalation_reason = f"CRITICAL action with no consensus — flagged for human review ({escalation_reason})"
             elif approve_count > reject_count:
                 # Lower-risk: fall back to majority vote even if below k-threshold
                 status = ConsensusStatus.APPROVED

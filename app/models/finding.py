@@ -49,10 +49,7 @@ class Finding(Base):
     """
 
     __tablename__ = "findings"
-    __table_args__ = (
-        Index("ix_findings_user_id_severity", "user_id", "severity"),
-        Index("ix_findings_target_id_severity", "target_id", "severity"),
-    )
+    __table_args__ = (Index("ix_findings_user_id_severity", "user_id", "severity"),)
 
     user_id: Mapped[str | None] = mapped_column(
         String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True

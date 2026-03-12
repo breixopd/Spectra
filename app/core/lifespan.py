@@ -10,6 +10,7 @@ import logging
 import shutil
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -21,17 +22,6 @@ try:
 except ImportError:
     DockerException = OSError  # Fallback when docker SDK not installed
 
-from app.core.background_tasks import (
-    add_system_operation,
-    cache_cleanup_loop,
-    daily_maintenance_loop,
-    mission_timeout_loop,
-    periodic_cleanup_loop,
-    remove_system_operation,
-    resource_collection_loop,
-    sandbox_watchdog_loop,
-    set_system_status,
-)
 from app.core.cache import CacheService, set_cache
 from app.core.config import settings
 from app.core.database import async_session_maker, engine
@@ -43,22 +33,141 @@ from app.services.tools.models import ToolStatus
 
 logger = logging.getLogger("spectra.lifespan")
 
-# Backward-compatible re-exports
-__all__ = [
-    "add_system_operation",
-    "cache_cleanup_loop",
-    "daily_maintenance_loop",
-    "lifespan",
-    "mission_timeout_loop",
-    "periodic_cleanup_loop",
-    "remove_system_operation",
-    "resource_collection_loop",
-    "run_startup_checks",
-    "run_startup_tasks",
-    "sandbox_watchdog_loop",
-    "seed_default_plans",
-    "set_system_status",
-]
+# Interval for cache cleanup (seconds) — every 10 minutes
+_CACHE_CLEANUP_INTERVAL = 600
+
+
+async def cache_cleanup_loop() -> None:
+    """Periodically purge expired cache entries."""
+    from app.core.cache import get_cache
+
+    logger.info("Cache cleanup task started (interval=%ds)", _CACHE_CLEANUP_INTERVAL)
+    while True:
+        try:
+            await asyncio.sleep(_CACHE_CLEANUP_INTERVAL)
+            cache = get_cache()
+            if cache:
+                removed = await cache.purge_expired()
+                if removed:
+                    logger.info("Cache cleanup: purged %d expired entries", removed)
+        except asyncio.CancelledError:
+            logger.info("Cache cleanup task stopped")
+            break
+        except Exception as e:
+            logger.error("Cache cleanup error: %s", e)
+
+
+# Interval for system cleanup (seconds) — every hour
+_SYSTEM_CLEANUP_INTERVAL = 3600
+
+
+async def periodic_cleanup_loop() -> None:
+    """Periodically run system maintenance cleanup tasks."""
+    logger.info("System cleanup task started (interval=%ds)", _SYSTEM_CLEANUP_INTERVAL)
+    while True:
+        try:
+            await asyncio.sleep(_SYSTEM_CLEANUP_INTERVAL)
+            from app.worker.cleanup_jobs import run_all_cleanup
+            await run_all_cleanup()
+        except asyncio.CancelledError:
+            logger.info("System cleanup task stopped")
+            break
+        except Exception as e:
+            logger.error("System cleanup error: %s", e)
+
+
+async def sandbox_watchdog_loop() -> None:
+    """Periodically check sandbox heartbeats and reap stale ones."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from app.models.infrastructure import Sandbox
+    from app.services.tools.sandbox import get_sandbox_pool
+
+    logger.info("Sandbox watchdog started (idle_timeout=%ds)", settings.SANDBOX_IDLE_TIMEOUT)
+    while True:
+        try:
+            await asyncio.sleep(60)
+            pool = get_sandbox_pool()
+            if not pool or not pool.available:
+                continue
+
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(Sandbox).where(Sandbox.status == "running")
+                )
+                sandboxes = list(result.scalars().all())
+
+            now = datetime.now(UTC)
+            for sb in sandboxes:
+                age = (now - sb.created_at).total_seconds()
+                if age < settings.SANDBOX_HEARTBEAT_INTERVAL * 2:
+                    continue
+
+                if sb.last_heartbeat:
+                    idle_seconds = (now - sb.last_heartbeat).total_seconds()
+                else:
+                    idle_seconds = age
+
+                if idle_seconds > settings.SANDBOX_IDLE_TIMEOUT:
+                    logger.warning(
+                        "Watchdog: reaping stale sandbox %s (mission=%s, idle=%.0fs)",
+                        sb.container_name, sb.mission_id[:8], idle_seconds,
+                    )
+                    await pool.destroy(sb.mission_id)
+
+        except asyncio.CancelledError:
+            logger.info("Sandbox watchdog stopped")
+            break
+        except Exception as e:
+            logger.error("Sandbox watchdog error: %s", e)
+
+
+async def set_system_status(status: str, message: str) -> None:
+    """Update system status in cache for UI polling."""
+    try:
+        from app.core.cache import get_cache
+
+        cache = get_cache()
+        if cache:
+            await cache.set("spectra:system:status", {
+                "status": status,
+                "message": message,
+                "timestamp": datetime.now().isoformat(),
+            }, ttl=3600)
+    except Exception as e:
+        logger.debug("Failed to set system status: %s", e)
+
+
+async def add_system_operation(op_id: str, op_type: str, desc: str) -> None:
+    """Add an ongoing operation to the system status."""
+    try:
+        from app.core.cache import get_cache
+
+        cache = get_cache()
+        if cache:
+            op = {
+                "id": op_id,
+                "type": op_type,
+                "description": desc,
+                "started_at": datetime.now().isoformat(),
+            }
+            await cache.set(f"spectra:system:operations:{op_id}", op, ttl=3600)
+    except Exception as e:
+        logger.debug("Failed to add system operation: %s", e)
+
+
+async def remove_system_operation(op_id: str) -> None:
+    """Remove a completed operation."""
+    try:
+        from app.core.cache import get_cache
+
+        cache = get_cache()
+        if cache:
+            await cache.delete(f"spectra:system:operations:{op_id}")
+    except Exception as e:
+        logger.debug("Failed to remove system operation: %s", e)
 
 
 async def _mark_all_tools_ready() -> None:
@@ -242,7 +351,10 @@ async def run_startup_checks() -> None:
         expected_tables = {"users", "missions", "targets", "findings", "exploits"}
         async with async_session_maker() as session:
             result = await session.execute(
-                sa_text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public'")
+                sa_text(
+                    "SELECT tablename FROM pg_catalog.pg_tables "
+                    "WHERE schemaname = 'public'"
+                )
             )
             existing = {row[0] for row in result.fetchall()}
 
@@ -261,7 +373,9 @@ async def run_startup_checks() -> None:
         usage = shutil.disk_usage(str(data_dir))
         free_mb = usage.free / (1024 * 1024)
         if free_mb < 100:
-            logger.warning("[CHECK][WARN] Low disk space for data directory: %.0f MB free", free_mb)
+            logger.warning(
+                "[CHECK][WARN] Low disk space for data directory: %.0f MB free", free_mb
+            )
         else:
             logger.info("[CHECK][OK] Disk space: %.0f MB free", free_mb)
     except Exception as e:
@@ -275,7 +389,9 @@ async def run_startup_tasks() -> None:
     try:
         logger.info("Running startup tasks...")
 
-        await add_system_operation("tool_install", "install", "Installing security tools")
+        await add_system_operation(
+            "tool_install", "install", "Installing security tools"
+        )
 
         # Mark tools as ready immediately so the UI works.
         # If the tools worker (Kali container) is running, it will update
@@ -306,20 +422,11 @@ def _validate_production_secrets() -> None:
         return
 
     _insecure_defaults = {
-        "",
-        "change-me-in-production",
-        "test-key",
-        "secret",
-        "changeme",
-        "password",
-        "default",
+        "", "change-me-in-production", "test-key", "secret",
+        "changeme", "password", "default",
     }
     jwt_val = settings.JWT_SECRET_KEY.get_secret_value()
-    secret_val = (
-        settings.SECRET_KEY.get_secret_value()
-        if isinstance(settings.SECRET_KEY, SecretStr)
-        else str(settings.SECRET_KEY)
-    )
+    secret_val = settings.SECRET_KEY.get_secret_value() if isinstance(settings.SECRET_KEY, SecretStr) else str(settings.SECRET_KEY)
     if jwt_val.lower() in _insecure_defaults:
         raise RuntimeError(
             "JWT_SECRET_KEY is empty or using a default value. "
@@ -327,7 +434,8 @@ def _validate_production_secrets() -> None:
         )
     if len(jwt_val) < 32:
         logger.warning(
-            "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. Use a longer secret for production security."
+            "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. "
+            "Use a longer secret for production security."
         )
     if secret_val.lower() in _insecure_defaults:
         raise RuntimeError(
@@ -371,7 +479,6 @@ async def _seed_default_data() -> None:
     await seed_default_plans()
 
     from app.services.gateway.service_registry import get_service_registry
-
     get_service_registry()
     logger.info("[OK] Service registry initialized")
 
@@ -436,7 +543,6 @@ async def _initialize_services() -> None:
             # Initialize warm pool manager
             if settings.SANDBOX_WARM_POOL_ENABLED:
                 from app.services.tools.sandbox import WarmPoolManager, set_warm_pool_manager
-
                 warm_manager = WarmPoolManager(sandbox_pool)
                 set_warm_pool_manager(warm_manager)
 
@@ -475,7 +581,6 @@ async def _initialize_services() -> None:
     # Initialize server pool manager
     try:
         from app.services.scaling import get_pool_manager
-
         pool_mgr = get_pool_manager()
         await pool_mgr.start_health_loop()
         logger.info("[OK] Server pool manager initialized")
@@ -491,23 +596,11 @@ async def _initialize_services() -> None:
     # Start periodic system cleanup (sessions, old jobs, orphaned sandboxes)
     asyncio.create_task(periodic_cleanup_loop())
 
-    # Start mission timeout checker (every 15 min)
-    asyncio.create_task(mission_timeout_loop())
-
-    # Start daily maintenance (audit log pruning, DB stats, table sizes)
-    asyncio.create_task(daily_maintenance_loop())
-
     # Start metrics snapshot store
     from app.core.metrics_store import get_metrics_store
-
     metrics_store = get_metrics_store()
     await metrics_store.start()
     logger.info("[OK] Metrics store started")
-
-    # Start system resource collection (CPU, memory, GC every 15s)
-    if settings.METRICS_ENABLED:
-        asyncio.create_task(resource_collection_loop())
-        logger.info("[OK] Resource metrics collection started")
 
     # Emit startup event
     await events.emit(
@@ -517,21 +610,11 @@ async def _initialize_services() -> None:
         status="started",
     )
 
-    # Register notification event handlers
-    try:
-        from app.services.notification_events import register_notification_handlers
-
-        register_notification_handlers()
-        logger.info("[OK] Notification event handlers registered")
-    except Exception as e:
-        logger.warning("Notification event handler registration failed: %s", e)
-
 
 async def _start_event_bridge() -> Any | None:
     """Start the event-to-websocket bridge. Returns the bridge instance or None."""
     try:
         from app.core.bridge import EventWebSocketBridge
-
         bridge = EventWebSocketBridge()
         bridge.start()
         logger.info("[OK] Event bridge started")
@@ -541,56 +624,21 @@ async def _start_event_bridge() -> Any | None:
         return None
 
 
-async def _pause_active_missions() -> None:
-    """Mark running/in-progress missions as paused so they can resume after restart."""
-    try:
-        from sqlalchemy import update
-
-        from app.core.enums import MissionStatus
-        from app.models.mission import Mission
-
-        active_statuses = [
-            MissionStatus.RUNNING.value,
-            MissionStatus.SCANNING.value,
-            MissionStatus.ANALYZING.value,
-            MissionStatus.EXECUTING.value,
-            MissionStatus.EXPLOITING.value,
-            MissionStatus.PLANNING.value,
-            MissionStatus.SCOPING.value,
-            MissionStatus.INITIALIZING.value,
-        ]
-        async with async_session_maker() as session:
-            result = await session.execute(
-                update(Mission).where(Mission.status.in_(active_statuses)).values(status=MissionStatus.PAUSED.value)
-            )
-            count = result.rowcount  # type: ignore[union-attr]
-            await session.commit()
-            if count:
-                logger.info("[SHUTDOWN] Paused %d active mission(s)", count)
-    except Exception as e:
-        logger.warning("[SHUTDOWN] Failed to pause active missions: %s", e)
-
-
 async def _shutdown_services() -> None:
     """Gracefully shut down all services."""
-    logger.info("[SHUTDOWN] Shutting down Spectra...")
-
-    # Pause active missions before tearing down services
-    await _pause_active_missions()
-
     # Close storage service
     try:
         from app.services.storage import close_storage_service
-
         await close_storage_service()
         logger.info("[OK] Storage service closed")
     except Exception as e:
         logger.warning("Storage service close error: %s", e)
 
+    logger.info("[SHUTDOWN] Shutting down Spectra...")
+
     # Stop server pool health loop
     try:
         from app.services.scaling import get_pool_manager
-
         pool_mgr = get_pool_manager()
         await pool_mgr.stop_health_loop()
     except Exception as e:
@@ -599,7 +647,6 @@ async def _shutdown_services() -> None:
     # Clean up warm pool first
     try:
         from app.services.tools.sandbox import get_warm_pool_manager
-
         wm = get_warm_pool_manager()
         if wm:
             await wm.cleanup()
@@ -618,26 +665,22 @@ async def _shutdown_services() -> None:
         logger.warning("Sandbox cleanup error: %s", e)
 
     try:
-        # Cancel background tasks with grace period for completion
+        # Cancel background tasks
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         if tasks:
-            logger.info("Waiting for %d background task(s) to finish (10s grace)...", len(tasks))
-            # Give tasks a chance to finish naturally
-            done, pending = await asyncio.wait(tasks, timeout=10.0)
-            if done:
-                logger.info("%d task(s) completed during grace period", len(done))
-            if pending:
-                logger.info("Cancelling %d remaining task(s)...", len(pending))
-                for task in pending:
-                    task.cancel()
-                try:
-                    await asyncio.wait_for(asyncio.gather(*pending, return_exceptions=True), timeout=5.0)
-                except TimeoutError:
-                    logger.warning("Timed out waiting for tasks to cancel")
+            logger.info("Cancelling %d outstanding tasks...", len(tasks))
+            for task in tasks:
+                task.cancel()
+
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True), timeout=5.0
+                )
+            except TimeoutError:
+                logger.warning("Timed out waiting for tasks to cancel")
 
         # Close service registry (all gateway connections)
         from app.services.gateway.service_registry import close_service_registry
-
         await close_service_registry()
         logger.info("[OK] Service registry closed")
 
@@ -655,37 +698,11 @@ async def _shutdown_services() -> None:
     logger.info("[STOPPED] Spectra stopped.")
 
 
-def _validate_required_env_vars() -> None:
-    """Log warnings for missing or default-valued environment variables."""
-    import os
-
-    required = ["DATABASE_URL", "JWT_SECRET_KEY"]
-    for var in required:
-        val = os.environ.get(var, "")
-        if not val:
-            logger.warning("[STARTUP] Required env var %s is not set", var)
-
-
-def _log_startup_banner() -> None:
-    """Log version and configured providers on startup."""
-    from app.version import __version__
-
-    logger.info("[STARTUP] Spectra version: %s", __version__)
-    logger.info("[STARTUP] AI provider: %s, model: %s", settings.AI_PROVIDER, settings.LLM_MODEL)
-    if settings.SANDBOX_ORCHESTRATOR_URL:
-        logger.info("[STARTUP] Sandbox orchestrator: %s", settings.SANDBOX_ORCHESTRATOR_URL)
-    else:
-        logger.info("[STARTUP] Sandbox: local Docker")
-    logger.info("[STARTUP] Debug: %s, Plugin safe mode: %s", settings.DEBUG, settings.PLUGIN_SAFE_MODE)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager — delegates to focused sub-functions."""
     logger.info("[STARTUP] Starting Spectra...")
 
-    _validate_required_env_vars()
-    _log_startup_banner()
     _validate_production_secrets()
 
     try:
