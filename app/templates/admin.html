@@ -157,6 +157,19 @@
                     </div>
                 </div>
             </div>
+
+            <!-- System Health -->
+            <div class="glass-panel rounded-xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-semibold text-white">System Health</h3>
+                    <button onclick="loadSystemHealth()" class="text-xs text-slate-400 hover:text-violet-400 transition-colors">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh
+                    </button>
+                </div>
+                <div id="system-health-content" class="space-y-4">
+                    <p class="text-xs text-slate-500">Loading...</p>
+                </div>
+            </div>
         </div>
 
         <!-- Users -->
@@ -812,7 +825,7 @@
         const link = document.querySelector(`.admin-sidebar a[data-section="${name}"]`);
         if (link) { link.classList.add('active'); link.classList.remove('text-slate-400'); link.setAttribute('aria-selected', 'true'); }
 
-        if (name === 'dashboard') loadStats();
+        if (name === 'dashboard') { loadStats(); loadSystemHealth(); }
         if (name === 'users') loadUsers();
         if (name === 'plans') loadPlans();
         if (name === 'audit') loadAuditLogs();
@@ -852,6 +865,93 @@
             }
         } catch(e) { console.error(e); }
     }
+
+    // ---- System Health ----
+    async function loadSystemHealth() {
+        const container = document.getElementById('system-health-content');
+        try {
+            const [healthRes, svcRes] = await Promise.all([
+                fetch('/health?verbose=true'),
+                fetch('/system/services/health'),
+            ]);
+            const health = healthRes.ok ? await healthRes.json() : {};
+            const services = svcRes.ok ? await svcRes.json() : {};
+
+            let html = '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">';
+
+            // Disk usage
+            const disk = (health.components || {}).disk;
+            if (disk) {
+                const usedPct = disk.used_percent != null ? disk.used_percent : 0;
+                const barColor = usedPct > 90 ? 'bg-red-500' : usedPct > 70 ? 'bg-amber-500' : 'bg-emerald-500';
+                const totalGb = disk.total_bytes ? (disk.total_bytes / 1073741824).toFixed(1) : '?';
+                const freeGb = disk.free_bytes ? (disk.free_bytes / 1073741824).toFixed(1) : '?';
+                html += `
+                    <div class="rounded-lg bg-slate-800/50 p-3">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-hard-drive text-slate-400 text-xs"></i>
+                            <span class="text-xs font-medium text-white">Disk Usage</span>
+                            <span class="ml-auto text-xs text-slate-400">${usedPct.toFixed(1)}%</span>
+                        </div>
+                        <div class="metric-bar-container">
+                            <div class="metric-bar ${barColor}" style="width:${usedPct}%"></div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">${freeGb} GB free / ${totalGb} GB total</p>
+                    </div>`;
+            }
+
+            // DB status
+            const db = (health.components || {}).database;
+            if (db) {
+                const dbOk = db.status === 'healthy';
+                html += `
+                    <div class="rounded-lg bg-slate-800/50 p-3">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i class="fa-solid fa-database text-slate-400 text-xs"></i>
+                            <span class="text-xs font-medium text-white">Database</span>
+                            <span class="ml-auto flex items-center gap-1">
+                                <span class="health-dot health-dot-${dbOk ? 'healthy' : 'unhealthy'}"></span>
+                                <span class="text-xs ${dbOk ? 'text-emerald-400' : 'text-red-400'}">${dbOk ? 'Healthy' : db.status}</span>
+                            </span>
+                        </div>
+                        ${db.latency_ms != null ? `<p class="text-xs text-slate-500">Latency: ${db.latency_ms}ms</p>` : ''}
+                    </div>`;
+            }
+
+            // Service health summary
+            let healthyCount = 0, unhealthyCount = 0, totalSvc = 0;
+            for (const [, info] of Object.entries(services)) {
+                if (info.status === 'disabled') continue;
+                totalSvc++;
+                if (info.status === 'healthy') healthyCount++;
+                else unhealthyCount++;
+            }
+            html += `
+                <div class="rounded-lg bg-slate-800/50 p-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fa-solid fa-heart-pulse text-slate-400 text-xs"></i>
+                        <span class="text-xs font-medium text-white">Services</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="flex items-center gap-1"><span class="health-dot health-dot-healthy"></span><span class="text-xs text-emerald-400">${healthyCount} healthy</span></span>
+                        ${unhealthyCount ? `<span class="flex items-center gap-1"><span class="health-dot health-dot-unhealthy"></span><span class="text-xs text-red-400">${unhealthyCount} unhealthy</span></span>` : ''}
+                    </div>
+                    <p class="text-xs text-slate-500 mt-1">${totalSvc} active services</p>
+                </div>`;
+
+            html += '</div>';
+
+            // Last checked timestamp
+            const now = new Date().toLocaleTimeString();
+            html += `<p class="text-xs text-slate-600 mt-2">Last refreshed: ${now}</p>`;
+
+            container.innerHTML = html;
+        } catch(e) {
+            console.error(e);
+            container.innerHTML = '<p class="text-xs text-red-400">Failed to load system health</p>';
+        }
+    }
+    window.loadSystemHealth = loadSystemHealth;
 
     // ---- Users ----
     async function loadUsers() {
@@ -1768,6 +1868,7 @@
 
     // ---- Init ----
     loadStats();
+    loadSystemHealth();
     // Pre-load plans for user form plan select
     fetch('/api/admin/plans').then(r => r.ok ? r.json() : []).then(p => { allPlans = p; }).catch(() => {});
 })();
