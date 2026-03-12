@@ -9,6 +9,7 @@ import json
 import logging
 import threading
 import time
+import uuid
 from datetime import timedelta
 from pathlib import Path
 from typing import Annotated
@@ -34,7 +35,10 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
     get_password_hash,
+    get_user_sessions,
     invalidate_token,
+    register_session,
+    revoke_session,
     verify_password,
     verify_password_reset_token,
 )
@@ -230,6 +234,11 @@ async def login_for_access_token(
     )
 
     _reset_failures(client_ip)
+
+    # Track active session
+    session_id = str(uuid.uuid4())
+    user_agent = request.headers.get("user-agent", "unknown")
+    register_session(session_id, user.username, client_ip, user_agent)
 
     # Set HttpOnly cookie for browser-based auth
     response.set_cookie(
@@ -628,3 +637,41 @@ async def revoke_api_key(
     )
 
     return {"message": "API key revoked"}
+
+
+# ---------------------------------------------------------------------------
+# Session Management
+# ---------------------------------------------------------------------------
+
+
+@router.get("/sessions", response_model=list[dict], tags=["Sessions"])
+async def list_active_sessions(
+    current_user: User = Depends(get_current_active_user),
+):
+    """List all active sessions for the current user."""
+    return get_user_sessions(current_user.username)
+
+
+@router.delete("/sessions/{session_id}", response_model=dict, tags=["Sessions"])
+async def revoke_user_session(
+    session_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Revoke a specific session by ID."""
+    removed = revoke_session(session_id, current_user.username)
+    if not removed:
+        from app.api.error_responses import not_found as _not_found
+
+        raise _not_found("Session", session_id)
+
+    await audit_log_event(
+        session,
+        AuditEventType.TOKEN_REVOKED,
+        user_id=str(current_user.id),
+        details={"session_id": session_id},
+        request=request,
+    )
+
+    return {"message": "Session revoked"}
