@@ -263,7 +263,7 @@ class TaskDispatcher:
                 tags_filter=task.parameters.get("tags", []),
             )
 
-            if getattr(agent, 'enable_reflection', False):
+            if getattr(agent, 'enable_reflection', False) is True:
                 result = await agent.execute_with_reflection(context, selector_input)
             else:
                 result = await agent.execute(context, selector_input)
@@ -412,7 +412,7 @@ class TaskDispatcher:
                     connection_details=None,
                 )
 
-                if getattr(agent, 'enable_reflection', False):
+                if getattr(agent, 'enable_reflection', False) is True:
                     result = await agent.execute_with_reflection(context, verifier_input)
                 else:
                     result = await agent.execute(context, verifier_input)
@@ -455,7 +455,7 @@ class TaskDispatcher:
                 max_hosts=task.parameters.get("max_hosts", MAX_HOSTS_DEFAULT),
             )
 
-            if getattr(agent, 'enable_reflection', False):
+            if getattr(agent, 'enable_reflection', False) is True:
                 result = await agent.execute_with_reflection(context, scope_input)
             else:
                 result = await agent.execute(context, scope_input)
@@ -486,7 +486,7 @@ class TaskDispatcher:
                 target=mission.target,
             )
 
-            if getattr(agent, 'enable_reflection', False):
+            if getattr(agent, 'enable_reflection', False) is True:
                 result = await agent.execute_with_reflection(context, reporter_input)
             else:
                 result = await agent.execute(context, reporter_input)
@@ -613,7 +613,7 @@ class TaskDispatcher:
                     "vulnerabilities": mission.get_known_vulns(),
                     "target": mission.target,
                 }
-                if getattr(agent, 'enable_reflection', False):
+                if getattr(agent, 'enable_reflection', False) is True:
                     result = await agent.execute_with_reflection(context, vector_input)
                 else:
                     result = await agent.execute(context, vector_input)
