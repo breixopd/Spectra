@@ -8,8 +8,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import SettingsUpdateRequest
 from app.core.config import settings
+from app.core.schemas import SettingsUpdateRequest
 from app.services.system.runtime_settings import (
     build_runtime_ai_config_from_payload,
     get_resolved_runtime_ai_config_snapshot,
