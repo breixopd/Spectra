@@ -69,7 +69,7 @@ class TaskDispatcher:
         self.agents = agents
 
         # Initialize sub-handler groups
-        self._recon = ReconHandlers(tool_service, agents, self._broadcast_agent_state)
+        self._recon = ReconHandlers(tool_service, agents, self._broadcast_agent_state, consensus)
         self._exploit = ExploitHandlers(
             tool_service,
             exploitation_manager,
@@ -86,6 +86,7 @@ class TaskDispatcher:
     ) -> None:
         """Execute a single task with the appropriate agent."""
         # Wire blackboard context into agent context
+        context.blackboard = mission.blackboard
         bb_context = mission.blackboard.get_context_for_agent(task.agent_type)
         if bb_context:
             context.extra_context = getattr(context, "extra_context", "") + "\n" + bb_context

@@ -61,6 +61,9 @@ class AgentContext(BaseModel):
     # Extra context from blackboard/intelligence
     extra_context: str = Field("", description="Additional context from blackboard")
 
+    # Blackboard reference for direct agent writes (excluded from serialization)
+    blackboard: Any | None = Field(None, description="Mission blackboard reference", exclude=True)
+
     # Cost tracking (excluded from serialization)
     cost_tracker: Any | None = Field(None, description="CostTracker instance", exclude=True)
 

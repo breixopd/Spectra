@@ -331,6 +331,35 @@ class ToolExecutionService:
                 )
 
             if result.success:
+                # EXECUTION quality gate — soft enforcement (log, don't block)
+                try:
+                    from app.services.ai.agents.base import AgentAction
+                    from app.services.ai.consensus_models import QualityGate
+
+                    proxy = AgentAction(
+                        action_type="tool_execution",
+                        risk_level=risk_level if isinstance(risk_level, str) else "medium",
+                        confidence=1.0,
+                        reasoning=f"Completed execution of {tool_name}",
+                    )
+                    gate_result = await self.consensus.validate_at_gate(
+                        QualityGate.EXECUTION,
+                        proxy,
+                        {
+                            "tool": tool_name,
+                            "output_size": len(result.stdout),
+                            "exit_code": result.exit_code,
+                        },
+                    )
+                    if not gate_result.final_decision:
+                        logger.warning(
+                            "Execution quality gate flagged %s: %s",
+                            tool_name,
+                            gate_result.escalation_reason,
+                        )
+                except Exception as e:
+                    logger.debug("EXECUTION gate error (non-blocking): %s", e)
+
                 # Truncate raw output before it enters LLM-facing pipelines
                 result.stdout = truncate_for_llm(result.stdout, max_chars=self.MAX_STDOUT_CHARS, label="stdout")
                 result.stderr = truncate_for_llm(result.stderr, max_chars=self.MAX_STDERR_CHARS, label="stderr")
