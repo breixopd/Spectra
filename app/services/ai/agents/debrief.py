@@ -67,17 +67,55 @@ class DebriefAgent(Agent[DebriefInput, DebriefOutput]):
         ]
         logs_text = "\n".join(key_logs[-20:]) if key_logs else "No significant log entries"
 
-        base_prompt = """Analyze this completed penetration test and provide a comprehensive debrief.
+        base_prompt = """You are a **Senior Penetration Test Lead** conducting a PTES-aligned post-engagement debrief.
 
-Provide:
-1. Executive summary (2-3 sentences on overall risk posture)
-2. What worked well in this assessment
-3. What failed or could be improved
-4. What a human pentester would have done differently
-5. Prioritized remediation recommendations for each finding type
-6. Overall risk rating (critical/high/medium/low)
-7. Suggested next steps for the target owner
-8. Lessons learned for future assessments against similar targets"""
+Your role:
+- Objectively evaluate the assessment's effectiveness
+- Provide actionable remediation guidance ranked by business risk
+- Compare automated results to what an experienced human pentester would achieve
+- Identify gaps in coverage and suggest follow-up assessments
+
+**Instructions — produce each section below:**
+
+1. **executive_summary**: 2-3 sentences on overall risk posture. Include counts of critical/high/medium/low findings and the single most impactful issue.
+2. **what_worked**: List specific techniques, tools, or scan strategies that produced meaningful results.
+3. **what_failed**: List tools that returned no results, scans that timed out, or attack paths that were blocked.
+4. **human_comparison**: Describe what a seasoned human pentester would do differently — e.g., manual testing, social engineering, physical access, chained exploits the automation missed.
+5. **remediation_priorities**: For each distinct finding category, provide:
+   - `finding`: short title
+   - `priority`: "critical" | "high" | "medium" | "low"
+   - `recommendation`: specific, actionable fix (not generic advice)
+6. **risk_rating**: Overall rating — "critical" if any RCE/auth-bypass exists, "high" if multiple exploitable vulns, "medium" if only info-disclosure / misconfigs, "low" if only informational.
+7. **next_steps**: Concrete actions for the target owner (patch X, retest Y, engage red-team for Z).
+8. **lessons_learned**: What the *assessment team* should improve next time.
+
+**Output format:** JSON matching the DebriefOutput schema.
+
+---
+**Few-shot example (abbreviated):**
+
+Input:
+  Target: 10.0.0.5
+  Directive: Full external assessment
+  Tools: nmap, nuclei, nikto, sqlmap
+  Findings: [CRITICAL] SQLi in /login, [HIGH] Outdated Apache 2.4.25, [MEDIUM] Missing CSP header
+
+Expected output:
+```json
+{{
+  "executive_summary": "The target has a CRITICAL SQL injection in the login form allowing full database access, compounded by an outdated Apache with known CVEs. Immediate patching and input validation are required.",
+  "what_worked": ["nmap quickly identified open ports and service versions", "nuclei detected the outdated Apache CVE", "sqlmap confirmed exploitable blind SQLi"],
+  "what_failed": ["nikto produced mostly false-positive informational findings", "directory brute-force yielded no new endpoints"],
+  "human_comparison": "A human pentester would chain the SQLi to extract credentials, pivot to admin panel access, and attempt OS command execution — testing the full kill chain rather than stopping at database access confirmation.",
+  "remediation_priorities": [
+    {{"finding": "SQL Injection in /login", "priority": "critical", "recommendation": "Use parameterized queries / prepared statements in the login handler. Deploy a WAF rule as immediate mitigation."}},
+    {{"finding": "Apache 2.4.25 CVE-2017-7679", "priority": "high", "recommendation": "Upgrade Apache to latest 2.4.x stable release."}},
+    {{"finding": "Missing CSP Header", "priority": "medium", "recommendation": "Add Content-Security-Policy header with script-src 'self'."}}  ],
+  "risk_rating": "critical",
+  "next_steps": ["Patch SQLi immediately", "Upgrade Apache within 7 days", "Schedule retest after remediation"],
+  "lessons_learned": ["Run sqlmap earlier when login forms are discovered", "Skip nikto on modern stacks — nuclei covers it better"]
+}}
+```"""
 
         target_section = f"""**Target:** {input_data.target}
 **Directive:** {input_data.directive}
@@ -112,7 +150,7 @@ Provide:
             result = await self._llm_generate_structured(
                 prompt=prompt,
                 response_model=DebriefOutput,
-                system_prompt="You are a senior penetration tester conducting a post-engagement debrief. Be specific, actionable, and honest about both successes and failures.",
+                system_prompt="You are a senior penetration tester conducting a PTES-aligned post-engagement debrief. Be specific and actionable. Ground every statement in evidence from the findings and logs — do not speculate. Be honest about both successes and failures.",
                 temperature=0.4,
             )
             return AgentResult(success=True, action=result)
