@@ -44,6 +44,41 @@ async def get_admin_metrics(
                 return v
         return {}
 
+    # Per-endpoint breakdown from SaaS metrics
+    saas = telemetry.get_saas_metrics()
+
+    # Build per-endpoint stats: merge hit counts, errors, and latency
+    endpoint_stats: dict[str, dict] = {}
+    for key, value in counters.items():
+        if not key.startswith("http.server.requests:"):
+            continue
+        parts = dict(p.split("=", 1) for p in key.split(":", 1)[1].split(",") if "=" in p)
+        route = parts.get("route", "")
+        method = parts.get("method", "")
+        if not route:
+            continue
+        ep_key = f"{method} {route}"
+        if ep_key not in endpoint_stats:
+            endpoint_stats[ep_key] = {"method": method, "route": route, "hits": 0, "errors": 0}
+        endpoint_stats[ep_key]["hits"] += int(value)
+
+    for key, value in counters.items():
+        if not key.startswith("http.server.request.errors:"):
+            continue
+        parts = dict(p.split("=", 1) for p in key.split(":", 1)[1].split(",") if "=" in p)
+        route = parts.get("route", "")
+        method = parts.get("method", "")
+        ep_key = f"{method} {route}"
+        if ep_key in endpoint_stats:
+            endpoint_stats[ep_key]["errors"] += int(value)
+
+    # Merge latency percentiles from saas metrics
+    for route, lat in saas.get("latency_by_endpoint", {}).items():
+        for ep in endpoint_stats.values():
+            if ep["route"] == route:
+                ep["latency"] = lat
+                break
+
     return {
         "llm": {
             "total_calls": _sum_counter("llm_calls_total"),
@@ -63,12 +98,40 @@ async def get_admin_metrics(
             "avg_latency_ms": overview.get("avg_latency_ms", 0),
             "latency_percentiles": overview.get("latency_percentiles", {}),
         },
+        "endpoints": list(endpoint_stats.values()),
+        "active_users": saas.get("active_users", 0),
         "missions": {
             "total_events": _sum_counter("mission_events_total"),
+            "started": saas.get("missions", {}).get("started", 0),
+            "completed": saas.get("missions", {}).get("completed", 0),
         },
         "services": telemetry.get_service_health(),
         "history": metrics_store.get_history(minutes=60),
     }
+
+
+@router.get("/api/v1/admin/activity")
+async def get_recent_activity(
+    limit: int = Query(default=50, ge=1, le=200),
+    _user: User = require_permission(Permission.VIEW_AUDIT_LOG),
+    session: AsyncSession = Depends(get_async_session),
+) -> list[dict]:
+    """Return the most recent user actions from the audit log."""
+    from app.models.audit_log import AuditLog
+
+    stmt = select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)
+    rows = (await session.execute(stmt)).scalars().all()
+    return [
+        {
+            "id": r.id,
+            "user_id": r.user_id,
+            "event_type": r.event_type,
+            "details": r.details,
+            "ip_address": r.ip_address,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
 
 
 @router.get("/api/admin/metrics/history")

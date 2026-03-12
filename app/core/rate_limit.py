@@ -120,22 +120,25 @@ class RateLimits:
     """Common rate limit configurations."""
 
     # Authentication endpoints - strict limits
-    LOGIN = "5/minute"
+    LOGIN = "10/minute"
     SETUP = "3/minute"
     TOKEN_REFRESH = "10/minute"
 
     # Mission operations - moderate limits
-    MISSION_START = "10/minute"
+    MISSION_START = "20/minute"
     MISSION_STEER = "30/minute"
 
     # Tool operations - relaxed for automation
     TOOL_LIST = "60/minute"
-    TOOL_EXECUTE = "20/minute"
+    TOOL_EXECUTE = "30/minute"
     TOOL_UPLOAD = "5/minute"
 
     # API general - default
     API_DEFAULT = "100/minute"
     API_HEAVY = "30/minute"
+
+    # Admin endpoints - effectively unlimited
+    ADMIN = "9999/minute"
 
     # WebSocket - connection limits
     WS_CONNECT = "10/minute"

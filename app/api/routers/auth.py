@@ -158,7 +158,7 @@ async def login_for_access_token(
     included in subsequent requests via the `Authorization: Bearer <token>` header.
 
     - Accounts are locked after repeated failures (configurable threshold).
-    - Rate limited to 5 attempts per minute per IP address.
+    - Rate limited to 10 attempts per minute per IP address.
     """
     client_ip = request.client.host if request.client else "unknown"
 
