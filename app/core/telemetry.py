@@ -553,6 +553,30 @@ async def record_mission_event(
     telemetry.increment_counter("mission_events_total", 1, labels)
 
 
+async def record_agent_execution(
+    agent_name: str,
+    agent_role: str,
+    duration_ms: float,
+    success: bool,
+    tokens: int = 0,
+    iterations: int = 1,
+) -> None:
+    """Record agent execution metrics for performance tracking."""
+    labels = {"agent": agent_name, "role": agent_role}
+
+    telemetry.increment_counter("agent_executions_total", 1, labels)
+    telemetry.observe_histogram("agent_duration_ms", duration_ms, labels)
+
+    if tokens > 0:
+        telemetry.increment_counter("agent_tokens_total", tokens, labels)
+
+    if iterations > 1:
+        telemetry.observe_histogram("agent_iterations", float(iterations), labels)
+
+    if not success:
+        telemetry.increment_counter("agent_errors_total", 1, labels)
+
+
 __all__ = [
     "SpanData",
     "MetricData",
@@ -564,4 +588,5 @@ __all__ = [
     "record_llm_call",
     "record_tool_execution",
     "record_mission_event",
+    "record_agent_execution",
 ]
