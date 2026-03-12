@@ -233,6 +233,7 @@ class MissionExecutionManager:
     async def _run_scope_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run scope definition phase."""
         mission.log("Defining scope...")
+        logger.info("Mission %s: scope phase started (target=%s)", mission.id, mission.target)
         self._broadcast_state("scope_agent", "running")
 
         if not self.scope_agent:
@@ -269,10 +270,12 @@ class MissionExecutionManager:
 
         target_count = len(scope_result.action.targets)  # type: ignore
         mission.log(f"Scope defined: {target_count} targets")
+        logger.info("Mission %s: scope phase completed (%d targets)", mission.id, target_count)
 
     async def _run_planning_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run mission planning phase with quality gate validation."""
         mission.log("Generating mission plan...")
+        logger.info("Mission %s: planning phase started", mission.id)
 
         if not self.mission_controller:
             raise RuntimeError("Mission controller not initialized")
@@ -330,6 +333,7 @@ class MissionExecutionManager:
 
         task_count = len(mission.plan.tasks)
         mission.log(f"Plan created: {task_count} tasks")
+        logger.info("Mission %s: plan approved with %d tasks", mission.id, task_count)
         self._broadcast_state("mission_controller", "running", plan=f"{task_count} tasks planned")
 
     async def _execute_mission_tasks(self, mission: Mission, context: AgentContext) -> None:
