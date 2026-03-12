@@ -11,10 +11,16 @@ from app.core.database import async_session_maker
 from app.core.events import events
 from app.repositories.mission import MissionRepository
 from app.services.ai.agents.base import AgentContext
+from app.services.billing.quota_enforcer import QuotaEnforcer
 from app.services.mission.mission import Mission
+from app.services.mission.state_store import MissionStateStore
 from app.utils.geoip import resolve_ip
 
 logger = logging.getLogger("spectra.mission.manager.lifecycle")
+
+
+class MissionQuotaExceeded(Exception):
+    """Raised when a user exceeds their plan's mission quota."""
 
 
 class MissionLifecycleManager:
@@ -22,6 +28,8 @@ class MissionLifecycleManager:
 
     def __init__(self, active_missions: dict[str, Mission]):
         self.active_missions = active_missions
+        self.state_store = MissionStateStore()
+        self.quota_enforcer = QuotaEnforcer()
 
     async def start_mission(
         self,
@@ -32,8 +40,24 @@ class MissionLifecycleManager:
         user_id: str | None = None,
     ) -> Mission:
         """Create and start a new mission."""
+        # Enforce mission quota if user is known
+        if user_id:
+            allowed, reason = await self.quota_enforcer.check_mission_quota(user_id)
+            if not allowed:
+                raise MissionQuotaExceeded(reason)
+
         mission = Mission(target, directive, requirements=requirements, vpn_config=vpn_config, user_id=user_id)
         self.active_missions[mission.id] = mission
+
+        # Persist to distributed state store
+        await self.state_store.register(mission.id, {
+            "id": mission.id,
+            "target": target,
+            "directive": directive,
+            "status": "created",
+            "user_id": user_id,
+            "started_at": mission.start_time.isoformat(),
+        })
 
         # Persist to DB
         try:
@@ -74,6 +98,8 @@ class MissionLifecycleManager:
             mission.stop()
             # Update DB status immediately
             await self.update_db_status(mission)
+            # Remove from distributed state
+            await self.state_store.unregister(mission_id)
             return True
         return False
 
@@ -118,6 +144,19 @@ class MissionLifecycleManager:
             logger.error("Failed to update mission DB (DB error): %s", e)
         except Exception as e:
             logger.error("Failed to update mission DB (Unexpected): %s", e)
+
+        # Sync to distributed state store
+        try:
+            await self.state_store.update_state(mission.id, {
+                "id": mission.id,
+                "target": mission.target,
+                "directive": mission.directive,
+                "status": mission.status,
+                "user_id": mission.user_id,
+                "started_at": mission.start_time.isoformat(),
+            })
+        except Exception as e:
+            logger.warning("Failed to sync mission state to store: %s", e)
 
     async def save_checkpoint(self, mission: Mission) -> None:
         """Save mission checkpoint state to DB."""

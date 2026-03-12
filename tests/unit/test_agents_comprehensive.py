@@ -233,7 +233,7 @@ class TestExploitCrafter:
 
         assert isinstance(action, ExploitAction)
         assert action.exploit_name == "fallback_exploit"
-        assert action.payload_type == "linux/x64/shell_reverse_tcp"
+        assert action.payload_type == "linux/x64/meterpreter/reverse_tcp"
         assert action.configuration["RHOST"] == "10.0.0.1"
         assert action.configuration["RPORT"] == 80
         assert action.attempt_number == 1

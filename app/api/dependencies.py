@@ -209,24 +209,26 @@ async def enforce_api_rate_limit(
 ) -> User:
     """Check and record API usage against the user's plan quota.
 
-    Raises 429 if the hourly API request limit is exceeded.
+    Raises 429 with Retry-After header if the hourly API request limit is exceeded.
     Returns the authenticated user on success.
     """
     if _is_admin_user(user):
         return user
 
+    from app.services.billing.quota_enforcer import QuotaEnforcer
     from app.services.billing.usage_tracker import UsageTracker
 
-    tracker = UsageTracker()
-    within_limit, current, maximum = await tracker.check_rate_limit(
-        str(user.id), "api_requests"
-    )
-    if not within_limit and maximum > 0:
+    enforcer = QuotaEnforcer()
+    allowed, reason = await enforcer.check_api_quota(str(user.id))
+    if not allowed:
+        retry_after = await enforcer.seconds_until_api_reset()
         raise HTTPException(
             status_code=429,
-            detail=f"Plan API rate limit exceeded: {current}/{maximum} requests this hour",
+            detail=reason,
+            headers={"Retry-After": str(retry_after)},
         )
 
+    tracker = UsageTracker()
     await tracker.record_api_request(str(user.id))
     return user
 

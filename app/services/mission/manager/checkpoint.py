@@ -71,34 +71,30 @@ async def index_to_rag(mission: Mission) -> None:
         from app.models.attack_surface import VectorStatus
         from app.services.ai.knowledge import get_rag_service
         from app.services.ai.rag import Document
+        from app.services.rag.service import get_rag_facade
 
         rag = await get_rag_service()
         if not rag.is_functional:
             return
 
+        facade = get_rag_facade()
         mission_id = str(mission.id)
         indexed = 0
 
-        # Index findings (max 20)
-        for i, finding in enumerate(mission.findings[:20]):
-            doc = Document(
-                id=f"finding-{mission_id}-{i}",
-                content=(
-                    f"Found {finding.get('name', 'unknown')} on "
-                    f"{finding.get('host', mission.target)} using "
-                    f"{finding.get('tool', 'unknown')}. "
-                    f"{finding.get('description', '')}"
-                ),
-                doc_type="finding",
-                severity=finding.get("severity"),
+        # Index findings via facade (max 20)
+        for finding in mission.findings[:20]:
+            finding_with_host = {**finding, "host": finding.get("host", mission.target)}
+            if await facade.index_finding(finding_with_host, mission_id=mission_id):
+                indexed += 1
+
+        # Index tool outputs via facade (max 10 tools)
+        for tool_name in (mission.tools_run or [])[:10]:
+            await facade.index_tool_output(
+                mission_id=mission_id,
+                tool_name=tool_name,
+                output=f"Tool {tool_name} executed against {mission.target}",
                 target=mission.target,
-                session_id=mission_id,
-                metadata={
-                    "tool": finding.get("tool"),
-                    "template_id": finding.get("template-id"),
-                },
             )
-            await rag.index_document(doc)
             indexed += 1
 
         # Index successful exploit vectors (max 10)
