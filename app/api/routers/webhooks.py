@@ -66,6 +66,16 @@ async def create_webhook(
     db: AsyncSession = Depends(get_async_session),
     user: User = Depends(get_current_active_user),
 ):
+    """Register a new webhook for event notifications.
+
+    Subscribes the provided URL to receive HTTP POST callbacks when
+    selected events occur (e.g. mission completed, finding created).
+
+    - **url**: The HTTPS endpoint that will receive webhook payloads.
+    - **events**: List of event types to subscribe to.
+    - **secret**: Optional shared secret used to sign payloads (HMAC-SHA256).
+    - **description**: Optional human-readable label for this webhook.
+    """
     svc = WebhookService(db)
     try:
         wh = await svc.register(

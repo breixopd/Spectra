@@ -29,7 +29,12 @@ DATA_DIR = "/app/data"
     description="Fast liveness probe. Returns 200 immediately with no dependency checks. Use /health/ready for readiness.",
 )
 async def health_check():
-    """Liveness probe — no DB or service calls, always fast."""
+    """Liveness probe — returns immediately with no dependency checks.
+
+    Use this endpoint for container orchestrator liveness probes (e.g. Kubernetes).
+    Returns service name and version. For readiness checks that verify database
+    and service connectivity, use ``GET /health/detailed`` instead.
+    """
     return {
         "status": "alive",
         "service": "spectra",

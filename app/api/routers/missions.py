@@ -164,7 +164,16 @@ async def start_mission(
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
     _quota_user: User = Depends(require_mission_quota),
 ):
-    """Start a new mission.
+    """Create and launch a new security assessment mission.
+
+    Initializes an automated security assessment against the specified target.
+    The mission orchestrates reconnaissance, vulnerability scanning, and
+    exploitation phases using the AI-driven MAKER framework.
+
+    - **target**: IP address, hostname, or URL to assess.
+    - **directive**: Optional high-level goal guiding the assessment strategy.
+    - **requirements**: Optional constraints (scope limits, excluded hosts).
+    - **vpn_config**: Optional VPN configuration for accessing internal targets.
 
     Rate limited per plan tier (Free: 10/min, Pro: 60/min, Enterprise: 200/min, Admin: unlimited).
     """
