@@ -223,10 +223,42 @@ def _sanitize_csv_value(val: object) -> str:
     return s
 
 
-async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> list:
+async def _fetch_all_findings(db: AsyncSession, user: User | None = None, mission_id: str | None = None) -> list:
     repo = FindingRepository(db)
+    filters: dict = {}
     if user and not user.is_superuser:
-        return list(await repo.find_many_by(user_id=str(user.id), skip=0, limit=10_000))
+        filters["user_id"] = str(user.id)
+
+    if mission_id:
+        # Resolve mission target → target_ids → filter findings
+        from app.repositories.mission import MissionRepository
+
+        mission_repo = MissionRepository(db)
+        mission = await mission_repo.get_by_id(mission_id)
+        if mission:
+            from sqlalchemy import select
+
+            from app.models.target import Target
+
+            target_stmt = select(Target.id).where(Target.address == mission.target)
+            if user and not user.is_superuser:
+                target_stmt = target_stmt.where(Target.user_id == str(user.id))
+            result = await db.execute(target_stmt)
+            target_ids = [row[0] for row in result.all()]
+            if not target_ids:
+                return []
+            # Filter findings via target_ids
+            from sqlalchemy import select as sa_select
+
+            stmt = sa_select(Finding).where(Finding.target_id.in_(target_ids))
+            if "user_id" in filters:
+                stmt = stmt.where(Finding.user_id == filters["user_id"])
+            stmt = stmt.limit(10_000)
+            res = await db.execute(stmt)
+            return list(res.scalars().all())
+
+    if filters:
+        return list(await repo.find_many_by(skip=0, limit=10_000, **filters))
     return list(await repo.get_all(skip=0, limit=10_000))
 
 
@@ -238,13 +270,14 @@ async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> lis
 @limiter.limit("60/minute")
 async def export_findings_csv(
     request: Request,
+    mission_id: str | None = Query(None, description="Filter findings by mission ID"),
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):
-    """Export all findings as CSV."""
-    findings = await _fetch_all_findings(db, _current_user)
+    """Export findings as CSV, optionally filtered by mission."""
+    findings = await _fetch_all_findings(db, _current_user, mission_id=mission_id)
 
     buf = StringIO()
     writer = csv.writer(buf)
@@ -293,13 +326,14 @@ async def export_findings_csv(
 @limiter.limit("60/minute")
 async def export_findings_json(
     request: Request,
+    mission_id: str | None = Query(None, description="Filter findings by mission ID"),
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):
-    """Export all findings as JSON."""
-    findings = await _fetch_all_findings(db, _current_user)
+    """Export findings as JSON, optionally filtered by mission."""
+    findings = await _fetch_all_findings(db, _current_user, mission_id=mission_id)
 
     data = [
         {

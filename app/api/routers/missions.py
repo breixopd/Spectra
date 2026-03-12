@@ -452,6 +452,95 @@ async def export_mission_json(
     )
 
 
+_CSV_FINDING_COLUMNS = [
+    "id",
+    "severity",
+    "title",
+    "description",
+    "tool_source",
+    "status",
+    "created_at",
+]
+
+_CSV_INJECTION_CHARS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _sanitize_csv_value(val: object) -> str:
+    """Sanitize a value for CSV export to prevent formula injection."""
+    s = str(val) if val is not None else ""
+    if s and s[0] in _CSV_INJECTION_CHARS:
+        return "'" + s
+    return s
+
+
+@router.get("/{mission_id}/export/csv")
+async def export_mission_csv(
+    mission_id: str,
+    encrypted: bool = Query(False),
+    password: str | None = Header(None, alias="X-Export-Password"),
+    session: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Export mission findings as a CSV file."""
+    import csv
+    from io import StringIO
+
+    from fastapi.responses import Response as FastAPIResponse
+
+    repo = MissionRepository(session)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise not_found("Mission", mission_id)
+    _check_mission_owner(mission, _current_user)
+
+    if not _is_admin_user(_current_user):
+        plan = await _get_user_plan(_current_user, session)
+        if plan and plan.features:
+            allowed = plan.features.get("report_export", ["json", "pdf", "html", "csv"])
+            if isinstance(allowed, list) and "csv" not in allowed:
+                raise forbidden("CSV export not available on your plan")
+
+    raw_findings = mission.summary.get("findings", []) if mission.summary else []
+
+    buf = StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(_CSV_FINDING_COLUMNS)
+    for i, f in enumerate(raw_findings):
+        if not isinstance(f, dict):
+            continue
+        writer.writerow(
+            [
+                _sanitize_csv_value(str(i)),
+                _sanitize_csv_value(f.get("severity", "info")),
+                _sanitize_csv_value(f.get("title", "Untitled")),
+                _sanitize_csv_value(f.get("description", "")),
+                _sanitize_csv_value(f.get("tool_source", f.get("tool", ""))),
+                _sanitize_csv_value(f.get("status", "potential")),
+                _sanitize_csv_value(f.get("created_at", "")),
+            ]
+        )
+
+    payload = buf.getvalue().encode()
+
+    if encrypted:
+        if not password:
+            raise bad_request("X-Export-Password header required when encrypted=true")
+        from app.core.encryption import encrypt_data_with_password
+
+        payload = encrypt_data_with_password(payload, password)
+        return FastAPIResponse(
+            content=payload,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f"attachment; filename=spectra_export_{mission_id[:8]}.csv.enc"},
+        )
+
+    return FastAPIResponse(
+        content=payload,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=spectra_export_{mission_id[:8]}.csv"},
+    )
+
+
 @router.get("/{mission_id}/findings", response_model=list[dict])
 async def get_mission_findings(
     mission_id: str,
