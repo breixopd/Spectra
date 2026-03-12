@@ -1,4 +1,11 @@
 # Test environment — Metasploitable2 + DVWA vulnerable targets
+#
+# Live LLM tests: pass .env.live for real AI provider credentials:
+#   docker compose -f docker/docker-compose.test.yml --env-file .env.live \
+#     run --rm test-runner sh -c "pytest tests/integration/ -v"
+#
+# Vulnerable scan targets: use --profile targets to start lightweight targets:
+#   docker compose -f docker/docker-compose.test.yml --profile targets up -d
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -205,6 +212,84 @@ services:
         condition: service_started
       db:
         condition: service_healthy
+    networks:
+      - spectra_test
+
+  # ── Vulnerable Test Targets (--profile targets) ─────────────
+  # Lightweight purpose-built containers for live scan testing.
+  # Start with: docker compose -f docker/docker-compose.test.yml --profile targets up -d
+  vuln-web:
+    build:
+      context: targets
+      dockerfile: Dockerfile.vuln-web
+    container_name: spectra-vuln-web
+    profiles: ["targets"]
+    labels:
+      spectra.role: test-target
+      spectra.target: vuln-web
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:80/')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+    networks:
+      - spectra_test
+
+  vuln-ssh:
+    build:
+      context: targets
+      dockerfile: Dockerfile.vuln-ssh
+    container_name: spectra-vuln-ssh
+    profiles: ["targets"]
+    labels:
+      spectra.role: test-target
+      spectra.target: vuln-ssh
+    expose:
+      - "22"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "22"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 32M
+    networks:
+      - spectra_test
+
+  vuln-network:
+    build:
+      context: targets
+      dockerfile: Dockerfile.vuln-network
+    container_name: spectra-vuln-network
+    profiles: ["targets"]
+    labels:
+      spectra.role: test-target
+      spectra.target: vuln-network
+    expose:
+      - "21"
+      - "80"
+      - "443"
+      - "3306"
+    healthcheck:
+      test: ["CMD-SHELL", "echo | nc -w 1 localhost 80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 32M
     networks:
       - spectra_test
 

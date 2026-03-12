@@ -13,6 +13,7 @@ Split into submodules for maintainability:
 from fastapi import APIRouter
 
 from .audit import router as audit_router
+from .content import router as content_router
 from .plans import router as plans_router
 from .servers import router as servers_router
 from .users import router as users_router
@@ -22,3 +23,4 @@ router.include_router(users_router)
 router.include_router(plans_router)
 router.include_router(servers_router)
 router.include_router(audit_router)
+router.include_router(content_router)

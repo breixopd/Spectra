@@ -92,8 +92,12 @@ Browser-based tests via Playwright:
 Custom vulnerable containers for live testing:
 
 ```bash
+# Standalone targets (difficulty-based)
 cd docker/targets
 docker compose -f docker-compose.targets.yml up -d
+
+# Or use the test compose with --profile targets (vuln-web, vuln-ssh, vuln-network)
+docker compose -f docker/docker-compose.test.yml --profile targets up -d
 ```
 
 | Target | Difficulty | Services | Key Vulns |

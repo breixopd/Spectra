@@ -248,16 +248,9 @@ def get_llm_client(
     normalized_provider = _normalize_provider_name(provider)
 
     if normalized_provider == "mock":
-        try:
-            from tests.mocks.llm import PentestMockLLMClient
-        except ImportError:
-            raise ValueError(
-                "Mock provider requires test dependencies. Set AI_PROVIDER to 'litellm' for production use."
-            ) from None
-        return PentestMockLLMClient(
-            responses=kwargs.get("responses"),
-            structured_responses=kwargs.get("structured_responses"),
-        )
+        from app.services.ai.mock_client import MockLLMClient
+
+        return MockLLMClient()
 
     # Everything else goes through LiteLLM
     model = kwargs.get("model", "")

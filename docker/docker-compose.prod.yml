@@ -1,4 +1,16 @@
 # Spectra — Production Compose
+#
+# Staging: Use this same file with a different .env file:
+#   docker compose -f docker/docker-compose.prod.yml --env-file .env.staging up -d
+#
+# Scaling notes (tuned PostgreSQL, background worker):
+#   - To tune PostgreSQL for higher concurrency, add command overrides:
+#       command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=512MB"]
+#   - To run a dedicated background worker, duplicate the app service with:
+#       command: ["python", "-m", "app.worker"]
+#       environment: IS_WORKER=true, QUEUE_NAME=background
+#   - Caddy automatically load-balances across app replicas via Docker DNS.
+#   - Scale at runtime: docker compose up -d --scale app=3 --scale tools=2
 services:
   # ── MinIO Object Storage (S3-compatible) ────────────────────
   minio:

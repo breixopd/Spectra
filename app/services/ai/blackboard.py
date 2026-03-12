@@ -1,5 +1,7 @@
 """Mission-scoped shared blackboard for inter-agent communication."""
 
+from __future__ import annotations
+
 import json
 import logging
 import sys
@@ -69,6 +71,72 @@ class MissionBlackboard:
     def get_history(self) -> list[dict[str, Any]]:
         """Return the history of writes."""
         return list(self._history)
+
+    async def persist_to_db(self, mission_id: str | None = None):
+        """Persist current blackboard state to PostgreSQL for cross-mission learning."""
+        from app.core.database import async_session_maker
+        from sqlalchemy import text
+
+        mid = mission_id or self.mission_id
+        key = f"blackboard:{mid}"
+        data = json.dumps({
+            "data": {k: v for k, v in self._data.items()},
+            "history": self._history,
+        })
+        async with async_session_maker() as session:
+            await session.execute(
+                text("""
+                    INSERT INTO system_cache (key, value, expires_at)
+                    VALUES (:key, :value, now() + interval '30 days')
+                    ON CONFLICT (key) DO UPDATE SET value = :value, expires_at = now() + interval '30 days'
+                """),
+                {"key": key, "value": data}
+            )
+            await session.commit()
+
+    async def restore_from_db(self, mission_id: str | None = None) -> bool:
+        """Restore blackboard state from a previous mission."""
+        from app.core.database import async_session_maker
+        from sqlalchemy import text
+
+        mid = mission_id or self.mission_id
+        async with async_session_maker() as session:
+            result = await session.execute(
+                text("SELECT value FROM system_cache WHERE key = :key AND (expires_at IS NULL OR expires_at > now())"),
+                {"key": f"blackboard:{mid}"}
+            )
+            row = result.fetchone()
+            if row:
+                data = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+                self._data.update(data.get("data", {}))
+                self._history.extend(data.get("history", []))
+                return True
+        return False
+
+    async def get_cross_mission_findings(self, target_address: str) -> list[dict]:
+        """Retrieve findings from previous missions against the same target."""
+        from app.core.database import async_session_maker
+        from sqlalchemy import text
+
+        async with async_session_maker() as session:
+            result = await session.execute(
+                text("""
+                    SELECT key, value FROM system_cache 
+                    WHERE key LIKE 'blackboard:%' 
+                    AND value::text LIKE :target_pattern
+                    AND (expires_at IS NULL OR expires_at > now())
+                    ORDER BY key DESC LIMIT 5
+                """),
+                {"target_pattern": f"%{target_address}%"}
+            )
+            findings: list[dict] = []
+            for row in result.fetchall():
+                data = json.loads(row[1]) if isinstance(row[1], str) else row[1]
+                entries = data.get("data", {})
+                for k, v in entries.items():
+                    if "finding" in k.lower() or "vuln" in k.lower():
+                        findings.append(v)
+            return findings
 
 
 # Module-level registry of blackboards per mission

@@ -84,7 +84,7 @@ _LITELLM_PROVIDER_PREFIXES = {
     "openrouter",
     "vertex_ai",
 }
-_CLOUD_PROVIDER_ALIASES = {"api", "openai", "litellm", "ollama"}
+_CLOUD_PROVIDER_ALIASES = {"api", "openai", "litellm", "ollama", "qwen", "z.ai", "anthropic", "groq"}
 
 
 @dataclass(slots=True)
@@ -231,10 +231,12 @@ def _build_legacy_profiles(rows: dict[str, str]) -> RuntimeAIConfig:
             "provider": "litellm",
             "model": rows.get("LLM_MODEL") or settings.LLM_MODEL,
         }
-        if rows.get("LLM_API_BASE_URL"):
-            default_profile["base_url"] = rows["LLM_API_BASE_URL"]
-        if rows.get("LLM_API_KEY"):
-            default_profile["api_key"] = rows["LLM_API_KEY"]
+        base_url = rows.get("LLM_API_BASE_URL") or settings.LLM_API_BASE_URL
+        if base_url:
+            default_profile["base_url"] = base_url
+        api_key = rows.get("LLM_API_KEY") or settings.LLM_API_KEY.get_secret_value()
+        if api_key:
+            default_profile["api_key"] = api_key
     else:
         default_profile = {
             "provider": "mock",

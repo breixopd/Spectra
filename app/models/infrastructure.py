@@ -1,8 +1,8 @@
 import json
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, TypeDecorator
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, TypeDecorator, text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import String as SAString
 
@@ -142,3 +142,18 @@ class CacheEntry(InfrastructureBase):
     value: Mapped[str] = mapped_column(Text, nullable=False)  # JSON serialized
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class SystemContent(InfrastructureBase):
+    """Admin-managed content (reviews, changelog, legal, etc.)."""
+
+    __tablename__ = "system_content"
+
+    id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, server_default=text("gen_random_uuid()"))
+    content_type: Mapped[str] = mapped_column(String, index=True)
+    title: Mapped[str | None] = mapped_column(String, nullable=True)
+    content: Mapped[dict] = mapped_column(JSONBType, default=dict)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), onupdate=lambda: datetime.now(UTC))

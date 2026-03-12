@@ -14,8 +14,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_BASE="docker/docker-compose.test.yml"
-COMPOSE_LIVE="docker/docker-compose.live.yml"
-COMPOSE_TARGETS="docker/docker-compose.targets.yml"
 ENV_LIVE="$PROJECT_DIR/.env.live"
 
 cd "$PROJECT_DIR"
@@ -25,14 +23,12 @@ if [ "${1:-}" = "--targets" ]; then
     TARGETS_ONLY=true
 fi
 
-# ── Ensure spectra-network exists ─────────────────────────────
-docker network create spectra-network 2>/dev/null || true
-
 # ── Compose commands ──────────────────────────────────────────
-COMPOSE_TARGETS_CMD="docker compose -f $COMPOSE_TARGETS"
+# Targets are in the test compose behind --profile targets
+COMPOSE_TARGETS="docker compose -f $COMPOSE_BASE --profile targets"
 
 if [ "$TARGETS_ONLY" = true ]; then
-    COMPOSE="docker compose -f $COMPOSE_BASE"
+    COMPOSE="docker compose -f $COMPOSE_BASE --profile targets"
 else
     # Full mode — check .env.live
     if [ ! -f "$ENV_LIVE" ]; then
@@ -47,42 +43,32 @@ else
         echo "SKIP: LLM_API_KEY is not configured in .env.live."
         exit 0
     fi
-    COMPOSE="docker compose -f $COMPOSE_BASE -f $COMPOSE_LIVE"
+    COMPOSE="docker compose -f $COMPOSE_BASE --profile targets --env-file .env.live"
 fi
 
 echo "=== Spectra Live Integration Tests ==="
 echo "  Mode:     $([ "$TARGETS_ONLY" = true ] && echo 'targets-only' || echo 'full (LLM)')"
-echo "  Targets:  $COMPOSE_TARGETS"
 echo ""
 
 cleanup() {
     echo ""
     echo "=== Collecting logs ==="
     $COMPOSE logs --tail=40 app 2>/dev/null || true
-    $COMPOSE_TARGETS_CMD logs --tail=20 2>/dev/null || true
     echo ""
     echo "Tearing down services..."
-    $COMPOSE_TARGETS_CMD down -v --remove-orphans 2>/dev/null || true
     $COMPOSE down -v --remove-orphans 2>/dev/null || true
 }
 trap cleanup EXIT
 
-# ── Step 1: Build and start vulnerable targets ───────────────
-echo "Building vulnerable test targets..."
-$COMPOSE_TARGETS_CMD build
-
-echo "Starting vulnerable targets..."
-$COMPOSE_TARGETS_CMD up -d
-
-# ── Step 2: Start Spectra infrastructure ─────────────────────
-echo "Starting Spectra services..."
+# ── Step 1: Start all services (including targets via profile) ─
+echo "Starting Spectra services and vulnerable targets..."
 if [ "$TARGETS_ONLY" = true ]; then
-    $COMPOSE up -d db app tools
+    $COMPOSE up -d --build db app tools vuln-web vuln-ssh vuln-network
 else
-    $COMPOSE up -d db tools metasploitable dvwa app
+    $COMPOSE up -d --build db tools metasploitable dvwa app vuln-web vuln-ssh vuln-network
 fi
 
-# ── Step 3: Wait for health checks ──────────────────────────
+# ── Step 2: Wait for health checks ──────────────────────────
 echo "Waiting for app to be ready..."
 for i in $(seq 1 90); do
     if curl -sf http://localhost:5000/api/health > /dev/null 2>&1; then
@@ -109,7 +95,7 @@ for target in spectra-vuln-web spectra-vuln-ssh spectra-vuln-network; do
     done
 done
 
-# ── Step 4: Run integration tests ───────────────────────────
+# ── Step 3: Run integration tests ───────────────────────────
 echo ""
 echo "Running live integration tests..."
 
@@ -125,6 +111,6 @@ else
          python3 -m pytest tests/integration/test_live_targets.py tests/integration/test_live_scan.py -v --timeout=600 --tb=short"
 fi
 
-# ── Step 5: Collect results ──────────────────────────────────
+# ── Step 4: Collect results ──────────────────────────────────
 echo ""
 echo "=== Live tests complete ==="

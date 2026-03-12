@@ -84,6 +84,10 @@
     <h1>Cookie Policy</h1>
     <p class="legal-meta">Last updated: March 10, 2026</p>
 
+    {% if content_override %}
+    {{ content_override | safe }}
+    {% else %}
+
     <h2>1. What Are Cookies?</h2>
     <p>Cookies are small text files stored on your device when you visit a website. They help websites remember your preferences and improve your browsing experience.</p>
 
@@ -147,6 +151,8 @@
     <h2>8. Contact</h2>
     <p>Questions about our use of cookies? Contact us at <span class="placeholder">[Contact Email]</span>.</p>
     <p>For more information about how we handle your data, see our <a href="/legal/privacy">Privacy Policy</a>.</p>
+
+    {% endif %}
 </div>
 
 <footer>&copy; 2026 {{ app_name }}. All rights reserved.</footer>

@@ -126,6 +126,13 @@
             text-align: center;
             overflow: hidden;
         }
+        .hero::after {
+            content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+            height: 200px;
+            background: linear-gradient(transparent, var(--bg));
+            pointer-events: none;
+            z-index: 1;
+        }
         .hero-bg {
             position: absolute; inset: 0; z-index: 0;
             background:
@@ -285,13 +292,14 @@
         #pricing { background: linear-gradient(180deg, var(--bg) 0%, rgba(0,255,136,0.02) 50%, var(--bg) 100%); }
         .pricing-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem; align-items: start;
+            gap: 1.5rem; align-items: stretch;
         }
         .plan-card {
             position: relative; padding: 2.5rem 2rem;
             background: var(--bg-card); border: 1px solid var(--border);
             border-radius: 20px;
             transition: transform 0.25s, border-color 0.25s;
+            display: flex; flex-direction: column; height: 100%;
         }
         .plan-card:hover { transform: translateY(-4px); border-color: var(--border-hover); box-shadow: 0 16px 48px rgba(0,0,0,0.25); }
         .plan-card.popular {
@@ -307,7 +315,7 @@
         }
         .plan-name { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
         .plan-desc { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; }
-        .plan-features { list-style: none; margin-bottom: 2rem; }
+        .plan-features { list-style: none; margin-bottom: 2rem; flex: 1; }
         .plan-features li {
             display: flex; align-items: flex-start; gap: 0.625rem;
             font-size: 0.8125rem; color: var(--text-muted); padding: 0.375rem 0;
@@ -624,7 +632,6 @@
     <div class="hero-bg"></div>
     <div class="hero-grid"></div>
     <div class="hero-content">
-        <div class="hero-badge"><span class="dot"></span> AI-Powered Security</div>
         <h1>
             Autonomous<br>
             <span class="gradient">Security Assessment</span><br>
@@ -643,24 +650,25 @@
         </div>
         <p class="cta-micro">Free tier available. No credit card required.</p>
 
-        <!-- Terminal scan animation -->
+        <!-- Platform dashboard animation -->
         <div class="hero-terminal" aria-hidden="true">
             <div class="term-bar">
                 <span class="term-dot r"></span>
                 <span class="term-dot y"></span>
                 <span class="term-dot g"></span>
-                <span class="term-title">spectra &mdash; security scan</span>
+                <span class="term-title">{{ app_name }} &mdash; Mission Dashboard</span>
             </div>
-            <div class="term-body">
-                <div class="term-line"><span class="prompt">$</span> nmap <span class="flag">-sV -sC</span> 10.0.1.0/24</div>
-                <div class="term-line">Starting Nmap scan&hellip; 254 hosts</div>
-                <div class="term-line"><span class="port">22/tcp</span>&nbsp;&nbsp; open&nbsp; <span class="service">ssh</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OpenSSH 8.9</div>
-                <div class="term-line"><span class="port">80/tcp</span>&nbsp;&nbsp; open&nbsp; <span class="service">http</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; nginx 1.24.0</div>
-                <div class="term-line"><span class="port">443/tcp</span>&nbsp; open&nbsp; <span class="service">ssl/http</span>&nbsp; Apache 2.4.58</div>
-                <div class="term-line"><span class="port">3306/tcp</span> open&nbsp; <span class="service">mysql</span>&nbsp;&nbsp;&nbsp;&nbsp; MySQL 8.0.36</div>
-                <div class="term-line"><span class="port">8080/tcp</span> open&nbsp; <span class="service">http</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Jetty 11.0.18</div>
-                <div class="term-line"><span class="crit">[!] 3 critical vulnerabilities detected</span></div>
-                <div class="term-line"><span class="prompt">$</span> <span class="term-cursor"></span></div>
+            <div class="term-body" style="font-size: 0.7rem; line-height: 1.8;">
+                <div class="term-line"><span class="prompt">[Mission]</span> Web Application Assessment &mdash; <span class="service">RUNNING</span></div>
+                <div class="term-line"><span class="flag">▸ Phase 2/6:</span> Vulnerability Scanning</div>
+                <div class="term-line">&nbsp;</div>
+                <div class="term-line"><span class="port">◉ Agent:</span> ReconIntel &mdash; Discovered 12 services, 3 web apps</div>
+                <div class="term-line"><span class="port">◉ Agent:</span> VulnScanner &mdash; Running nuclei against 3 endpoints</div>
+                <div class="term-line"><span class="port">◉ Agent:</span> ToolSelector &mdash; Queuing sqlmap for form inputs</div>
+                <div class="term-line">&nbsp;</div>
+                <div class="term-line"><span class="crit">⚠ Finding:</span> SQL Injection in /api/search (CVSS 9.1)</div>
+                <div class="term-line"><span class="crit">⚠ Finding:</span> Exposed admin panel at /admin (CVSS 7.5)</div>
+                <div class="term-line"><span class="prompt">⏱</span> 47 findings &middot; 3 critical &middot; 8m elapsed <span class="term-cursor"></span></div>
             </div>
         </div>
     </div>
@@ -670,23 +678,23 @@
 <section id="social-proof">
     <div class="section-inner" style="text-align:center;">
         <p class="reveal" style="font-size:0.8125rem;color:var(--text-muted);margin-bottom:2rem;letter-spacing:0.04em;text-transform:uppercase;font-weight:600;">
-            Trusted by security teams at Fortune 500 companies
+            Built for security teams worldwide
         </p>
         <div class="stats-bar reveal">
             <div class="stat-cell">
-                <div class="stat-number">10,000+</div>
-                <div class="stat-label">Vulnerabilities Detected</div>
+                <div class="stat-number" id="stat-findings-count">{{ stats.total_findings or '0' }}</div>
+                <div class="stat-label">Findings Detected</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-number">500+</div>
-                <div class="stat-label">Security Assessments</div>
+                <div class="stat-number" id="stat-missions-count">{{ stats.total_missions or '0' }}</div>
+                <div class="stat-label">Assessments Completed</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-number">99.7%</div>
-                <div class="stat-label">Uptime SLA</div>
+                <div class="stat-number" id="stat-uptime">{{ stats.uptime or '99.9%' }}</div>
+                <div class="stat-label">Platform Uptime</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-number">25+</div>
+                <div class="stat-number" id="stat-tools-count">{{ stats.total_tools or '0' }}</div>
                 <div class="stat-label">Integrated Tools</div>
             </div>
         </div>
@@ -839,6 +847,11 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         <span>{{ feat_key | replace('_', ' ') | title }}</span>
                     </li>
+                    {% else %}
+                    <li style="opacity:0.35;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color: #f87171;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <span>{{ feat_key | replace('_', ' ') | title }}</span>
+                    </li>
                     {% endif %}
                     {% endfor %}
                     {% endif %}
@@ -866,46 +879,24 @@
             Security teams use {{ app_name }} to accelerate assessments without sacrificing depth or control.
         </p>
 
+        {% if reviews %}
         <div class="testimonial-grid" style="text-align:left;">
-            <div class="testimonial-card reveal">
-                <div class="testimonial-quote">
-                    Assessment turnaround dropped from weeks to days. AI-driven recon handles the heavy lifting, and the reports ship client-ready without manual formatting.
-                </div>
+            {% for review in reviews %}
+            <div class="testimonial-card reveal" {% if loop.index == 2 %}style="transform:translateY(12px);"{% endif %}>
+                <div class="testimonial-quote">{{ review.quote }}</div>
                 <div class="testimonial-author">
-                    <div class="testimonial-avatar" style="background:var(--accent-dim);color:var(--accent);">LP</div>
+                    <div class="testimonial-avatar" style="background:{% if loop.index == 1 %}var(--accent-dim);color:var(--accent){% elif loop.index == 2 %}var(--violet-dim);color:var(--violet){% else %}rgba(56,189,248,0.12);color:#38bdf8{% endif %};">{{ review.initials }}</div>
                     <div>
-                        <div class="testimonial-name">Lead Pentester</div>
-                        <div class="testimonial-role">Managed Security Provider</div>
+                        <div class="testimonial-name">{{ review.author_name }}</div>
+                        <div class="testimonial-role">{{ review.author_role }}</div>
                     </div>
                 </div>
             </div>
-
-            <div class="testimonial-card reveal">
-                <div class="testimonial-quote">
-                    Real-time monitoring changed our workflow. Watching agents execute and intervening when needed gives us confidence we never had with purely automated tools.
-                </div>
-                <div class="testimonial-author">
-                    <div class="testimonial-avatar" style="background:var(--violet-dim);color:var(--violet);">SD</div>
-                    <div>
-                        <div class="testimonial-name">Security Director</div>
-                        <div class="testimonial-role">Global Financial Services Firm</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="testimonial-card reveal">
-                <div class="testimonial-quote">
-                    Onboarding was seamless — within an hour the team was scanning staging environments. Sandboxed execution gives us peace of mind on sensitive targets.
-                </div>
-                <div class="testimonial-author">
-                    <div class="testimonial-avatar" style="background:rgba(56,189,248,0.12);color:#38bdf8;">VE</div>
-                    <div>
-                        <div class="testimonial-name">VP of Engineering</div>
-                        <div class="testimonial-role">Enterprise SaaS Company</div>
-                    </div>
-                </div>
-            </div>
+            {% endfor %}
         </div>
+        {% else %}
+        <p class="text-sm text-slate-500">No reviews yet.</p>
+        {% endif %}
     </div>
 </section>
 
@@ -1006,8 +997,7 @@
         <div class="footer-col">
             <h4>Resources</h4>
             <ul>
-                <li><a href="/api/docs">API Docs</a></li>
-                <li><a href="/api/redoc">API Reference</a></li>
+
                 <li><a href="#faq">FAQ</a></li>
                 <li><a href="/help">Help Center</a></li>
             </ul>

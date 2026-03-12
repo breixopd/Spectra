@@ -11,7 +11,7 @@ from typing import Any
 import asyncssh
 
 from app.core.config import settings
-from app.services.provisioning.recipes import PROVISIONING_RECIPES
+from app.services.provisioning.recipes import CONTAINER_NAMES, PROVISIONING_RECIPES
 
 logger = logging.getLogger("spectra.provisioning")
 
@@ -197,9 +197,10 @@ class ServerProvisioner:
         try:
             async with asyncssh.connect(**conn_kwargs) as conn:  # type: ignore[arg-type]
                 result.logs.append("Connected, stopping Spectra services...")
+                container = CONTAINER_NAMES.get(config.service_type, "spectra-sandbox-worker")
                 stop_cmd = (
-                    "docker stop spectra-sandbox-worker 2>/dev/null; "
-                    "docker rm spectra-sandbox-worker 2>/dev/null; "
+                    f"docker stop {container} 2>/dev/null; "
+                    f"docker rm {container} 2>/dev/null; "
                     "docker network rm spectra-remote 2>/dev/null; "
                     "echo 'cleanup_done'"
                 )

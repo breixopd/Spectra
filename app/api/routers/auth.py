@@ -231,7 +231,7 @@ async def login_for_access_token(
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username},
+        data={"sub": user.username, "role": user.role, "is_superuser": user.is_superuser},
         expires_delta=access_token_expires,
     )
 
@@ -321,7 +321,7 @@ async def refresh_token(
     # Create new access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username},
+        data={"sub": user.username, "role": user.role, "is_superuser": user.is_superuser},
         expires_delta=access_token_expires,
     )
 
@@ -495,7 +495,7 @@ async def mfa_verify_login(
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username},
+        data={"sub": user.username, "role": user.role, "is_superuser": user.is_superuser},
         expires_delta=access_token_expires,
     )
     refresh_token = create_refresh_token(data={"sub": user.username})

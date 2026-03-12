@@ -25,6 +25,7 @@ from app.core.security import get_password_hash
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
+from app.version import __version__
 
 logger = logging.getLogger("spectra.admin")
 
@@ -33,6 +34,7 @@ router = APIRouter()
 APP_DIR = Path(__file__).resolve().parent.parent.parent.parent
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 templates.env.globals["app_name"] = settings.APP_NAME
+templates.env.globals["version"] = __version__
 
 
 def _get_ui_user(request: Request) -> dict | None:
@@ -59,7 +61,7 @@ async def admin_page(request: Request):
         from fastapi.responses import RedirectResponse
 
         return RedirectResponse(url="/login", status_code=303)
-    if user.get("role") != "admin":
+    if user.get("role") != "admin" and not user.get("is_superuser"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return templates.TemplateResponse(
         "admin.html",
