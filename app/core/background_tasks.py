@@ -9,6 +9,12 @@ from app.core.telemetry import telemetry
 
 logger = logging.getLogger("spectra.lifespan")
 
+# Mission timeout check interval — every 15 minutes
+_MISSION_TIMEOUT_INTERVAL = 900
+
+# Daily maintenance interval — every 24 hours
+_DAILY_MAINTENANCE_INTERVAL = 86400
+
 # Interval for cache cleanup (seconds) — every 10 minutes
 _CACHE_CLEANUP_INTERVAL = 600
 
@@ -167,3 +173,35 @@ async def remove_system_operation(op_id: str) -> None:
             await cache.delete(f"spectra:system:operations:{op_id}")
     except Exception as e:
         logger.debug("Failed to remove system operation: %s", e)
+
+
+async def mission_timeout_loop() -> None:
+    """Periodically check for and time out long-running missions."""
+    logger.info("Mission timeout checker started (interval=%ds)", _MISSION_TIMEOUT_INTERVAL)
+    while True:
+        try:
+            await asyncio.sleep(_MISSION_TIMEOUT_INTERVAL)
+            from app.worker.cleanup_jobs import run_mission_timeout_check
+
+            await run_mission_timeout_check()
+        except asyncio.CancelledError:
+            logger.info("Mission timeout checker stopped")
+            break
+        except Exception as e:
+            logger.error("Mission timeout check error: %s", e)
+
+
+async def daily_maintenance_loop() -> None:
+    """Run heavy maintenance tasks once per day (audit log pruning, DB health)."""
+    logger.info("Daily maintenance task started (interval=%ds)", _DAILY_MAINTENANCE_INTERVAL)
+    while True:
+        try:
+            await asyncio.sleep(_DAILY_MAINTENANCE_INTERVAL)
+            from app.worker.cleanup_jobs import run_daily_maintenance
+
+            await run_daily_maintenance()
+        except asyncio.CancelledError:
+            logger.info("Daily maintenance task stopped")
+            break
+        except Exception as e:
+            logger.error("Daily maintenance error: %s", e)

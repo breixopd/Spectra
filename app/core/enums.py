@@ -61,6 +61,7 @@ class MissionStatus(StrEnum):
     CANCELLED = "cancelled"
     STOPPING = "stopping"
     PAUSED = "paused"
+    TIMED_OUT = "timed_out"
 
 
 class Severity(StrEnum):
