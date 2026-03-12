@@ -165,6 +165,23 @@ async def check_feature_allowed(user: User, session: AsyncSession, feature: str)
         )
 
 
+async def require_mission_quota(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_async_session),
+) -> User:
+    """Dependency that checks mission quota before allowing creation.
+
+    Admin users bypass quota checks. Raises 429 if exceeded.
+    """
+    if _is_admin_user(current_user):
+        return current_user
+
+    from app.services.billing.quota_enforcement import QuotaService
+
+    await QuotaService.check_mission_quota(str(current_user.id), db)
+    return current_user
+
+
 async def enforce_api_rate_limit(
     user: User = Depends(get_current_active_user),
 ) -> User:
