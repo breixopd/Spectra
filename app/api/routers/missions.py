@@ -18,6 +18,7 @@ from app.api.dependencies import (
     check_feature_allowed,
     check_mission_limit,
     get_current_active_user,
+    require_mission_quota,
 )
 from app.api.schemas import MissionResponse, PaginatedResponse, StartMissionRequest
 from app.core.database import get_async_session
@@ -162,6 +163,7 @@ async def start_mission(
     mission_request: StartMissionRequest,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
+    _quota_user: User = Depends(require_mission_quota),
 ):
     """Start a new mission.
 
@@ -181,6 +183,11 @@ async def start_mission(
 
     if not mission:
         raise HTTPException(status_code=500, detail="Failed to create mission")
+
+    # Record usage for quota tracking
+    from app.services.billing.usage_tracker import UsageTracker
+
+    await UsageTracker().record_mission_start(str(_current_user.id))
 
     # Audit log
     await audit_log_event(

@@ -434,6 +434,17 @@ async def get_current_profile(
     }
 
 
+@router.get("/me/usage", tags=["Auth"])
+async def get_usage_summary(
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Get current user's usage stats vs plan limits."""
+    from app.services.billing.quota_enforcement import QuotaService
+
+    return await QuotaService.get_usage_summary(str(user.id), session)
+
+
 @router.post("/change-password", tags=["Auth"])
 @limiter.limit("5/minute")
 async def change_password(
