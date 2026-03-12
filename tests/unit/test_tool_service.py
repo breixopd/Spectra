@@ -6,6 +6,7 @@ import pytest
 
 from app.services.ai.agents.base import ToolAction
 from app.services.tools.models import ToolExecutionResult
+from app.services.tools.output import create_error_result, normalize_tool_name, validate_tool_name
 from app.services.tools.service import StandaloneMissionAdapter, ToolExecutionService
 
 
@@ -59,22 +60,22 @@ class TestToolExecutionServiceInit:
 
 
 class TestToolServiceNormalization:
-    def test_normalize_tool_name(self, tool_service):
-        assert tool_service._normalize_tool_name("Nmap") == "nmap"
-        assert tool_service._normalize_tool_name("NUCLEI") == "nuclei"
-        assert tool_service._normalize_tool_name("sqlmap") == "sqlmap"
+    def test_normalize_tool_name(self):
+        assert normalize_tool_name("Nmap") == "nmap"
+        assert normalize_tool_name("NUCLEI") == "nuclei"
+        assert normalize_tool_name("sqlmap") == "sqlmap"
 
 
 class TestToolServiceValidation:
-    def test_validate_tool_name_valid(self, tool_service):
-        assert tool_service._validate_tool_name("nmap")
-        assert tool_service._validate_tool_name("nuclei-scanner")
+    def test_validate_tool_name_valid(self):
+        assert validate_tool_name("nmap")
+        assert validate_tool_name("nuclei-scanner")
 
-    def test_validate_tool_name_invalid(self, tool_service):
-        assert not tool_service._validate_tool_name("")
-        assert not tool_service._validate_tool_name("rm -rf /")
-        assert not tool_service._validate_tool_name("tool; cat /etc/passwd")
-        assert not tool_service._validate_tool_name("A")  # uppercase
+    def test_validate_tool_name_invalid(self):
+        assert not validate_tool_name("")
+        assert not validate_tool_name("rm -rf /")
+        assert not validate_tool_name("tool; cat /etc/passwd")
+        assert not validate_tool_name("A")  # uppercase
 
 
 class TestToolServiceExecution:
@@ -180,8 +181,8 @@ class TestToolServiceExecution:
 
 
 class TestToolServiceErrorResult:
-    def test_create_error_result(self, tool_service):
-        result = tool_service._create_error_result("nmap", "10.0.0.1", "some error")
+    def test_create_error_result(self):
+        result = create_error_result("nmap", "10.0.0.1", "some error")
         assert isinstance(result, ToolExecutionResult)
         assert not result.success
         assert "some error" in result.stderr

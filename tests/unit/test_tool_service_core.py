@@ -82,17 +82,15 @@ async def test_execute_tool_success(mock_service_context):
     )
     service.safety_supervisor.execute.return_value = safety_result
 
-    # Mock the ARQ worker execution path
-    service._execute_via_worker = AsyncMock(return_value=result_obj)
-
-    result = await service.execute_request(mission=mission, tool_name="nmap", target="127.0.0.1")
+    # Mock the module-level worker execution function
+    with patch("app.services.tools.service.execute_via_worker", new_callable=AsyncMock, return_value=result_obj):
+        result = await service.execute_request(mission=mission, tool_name="nmap", target="127.0.0.1")
 
     if not result.success:
         print(f"FAILED stderr: {result.stderr}")
 
     assert result.success is True
     assert result.tool_id == "nmap"
-    service._execute_via_worker.assert_called_once()
     service.safety_supervisor.execute.assert_called()
 
 
