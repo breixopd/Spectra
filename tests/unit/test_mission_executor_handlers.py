@@ -133,7 +133,7 @@ async def test_handle_tool_selector_success(dispatcher, mock_mission, mock_conte
     agent = dispatcher.agents["tool_selector"]
     action = ToolAction(
         tool_name="nmap",
-        args={"-p": "80"},
+        tool_args={"-p": "80"},
         target="192.168.1.1",
         confidence=0.9,
         reasoning="Test reasoning",
@@ -142,10 +142,10 @@ async def test_handle_tool_selector_success(dispatcher, mock_mission, mock_conte
 
     dispatcher.tool_service.execute_tool_action.return_value = True
 
-    await dispatcher._handle_tool_selector(mock_mission, task, mock_context)
+    await dispatcher._recon.handle_tool_selector(mock_mission, task, mock_context)
 
     agent.execute.assert_called_once()
-    dispatcher.tool_service.execute_tool_action.assert_called_once_with(
+    dispatcher._recon.tool_service.execute_tool_action.assert_called_once_with(
         mock_mission, action, mock_context
     )
 
@@ -168,10 +168,10 @@ async def test_handle_tool_selector_no_tool(dispatcher, mock_mission, mock_conte
 
     agent.execute.return_value = AgentResult(success=True, action=action)
 
-    await dispatcher._handle_tool_selector(mock_mission, task, mock_context)
+    await dispatcher._recon.handle_tool_selector(mock_mission, task, mock_context)
 
     agent.execute.assert_called_once()
-    dispatcher.tool_service.execute_tool_action.assert_not_called()
+    dispatcher._recon.tool_service.execute_tool_action.assert_not_called()
     mock_mission.log.assert_called()
 
 
@@ -217,7 +217,7 @@ async def test_scope_handler(dispatcher, mock_mission, mock_context):
         success=True, action=MagicMock(targets=["1.1.1.1"])
     )
 
-    await dispatcher._handle_scope(mock_mission, task, mock_context)
+    await dispatcher._recon.handle_scope(mock_mission, task, mock_context)
 
     agent.execute.assert_called_once()
 
@@ -235,6 +235,6 @@ async def test_reporter_handler(dispatcher, mock_mission, mock_context):
     agent = dispatcher.agents["reporter"]
     agent.execute.return_value = AgentResult(success=True)
 
-    await dispatcher._handle_reporter(mock_mission, task, mock_context)
+    await dispatcher._recon.handle_reporter(mock_mission, task, mock_context)
 
     agent.execute.assert_called_once()
