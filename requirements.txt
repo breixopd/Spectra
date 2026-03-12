@@ -64,6 +64,7 @@ bcrypt==4.2.1
 passlib[bcrypt]>=1.7.4
 python-jose[cryptography]>=3.3.0
 cryptography>=42.0.0,<44.0.0
+pyotp>=2.9.0,<3.0.0
 
 # -----------------------------------------------------------------------------
 # Testing
