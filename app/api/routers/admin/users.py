@@ -174,6 +174,7 @@ async def create_user(
         request=request,
     )
     await session.commit()
+    logger.info("Admin '%s' created user '%s' (role=%s)", admin.username, user.username, user.role)
 
     return UserAdminResponse(
         id=user.id,
@@ -224,6 +225,7 @@ async def update_user(
     )
     await session.commit()
     await session.refresh(row)
+    logger.info("Admin '%s' updated user '%s'", admin.username, row.username)
 
     return UserAdminResponse(
         id=row.id,
@@ -260,6 +262,7 @@ async def deactivate_user(
         request=request,
     )
     await session.commit()
+    logger.info("Admin '%s' deactivated user '%s'", admin.username, row.username)
     return {"detail": "User deactivated"}
 
 

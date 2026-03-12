@@ -19,8 +19,10 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-# ContextVar for correlation ID — accessible from any async context
+# ContextVars — accessible from any async context
 correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)
+user_id_var: ContextVar[str | None] = ContextVar("user_id", default=None)
+mission_id_var: ContextVar[str | None] = ContextVar("mission_id", default=None)
 
 
 def get_correlation_id() -> str | None:
@@ -50,11 +52,13 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
             correlation_id_var.reset(token)
 
 
-class _CorrelationFilter(logging.Filter):
-    """Injects correlation_id into every log record."""
+class _ContextFilter(logging.Filter):
+    """Injects correlation_id, user_id, and mission_id into every log record."""
 
     def filter(self, record: logging.LogRecord) -> bool:
         record.correlation_id = correlation_id_var.get() or ""  # type: ignore[attr-defined]
+        record.user_id = user_id_var.get() or ""  # type: ignore[attr-defined]
+        record.mission_id = mission_id_var.get() or ""  # type: ignore[attr-defined]
         return True
 
 
@@ -77,6 +81,14 @@ class SensitiveFieldFilter(logging.Filter):
         return True
 
 
+# Standard LogRecord attributes to exclude when capturing extra fields
+_STANDARD_ATTRS = frozenset(logging.LogRecord("", 0, "", 0, "", (), None).__dict__) | {
+    "correlation_id",
+    "user_id",
+    "mission_id",
+}
+
+
 class JSONFormatter(logging.Formatter):
     """Outputs log records as single-line JSON objects."""
 
@@ -90,14 +102,15 @@ class JSONFormatter(logging.Formatter):
             "function": record.funcName,
             "line": record.lineno,
             "correlation_id": getattr(record, "correlation_id", ""),
+            "user_id": getattr(record, "user_id", ""),
+            "mission_id": getattr(record, "mission_id", ""),
         }
         if record.exc_info and record.exc_info[1] is not None:
             log_entry["exception"] = self.formatException(record.exc_info)
-        # Merge any extra fields passed via `logging.info("msg", extra={...})`
-        for key in ("extra",):
-            val = getattr(record, key, None)
-            if isinstance(val, dict):
-                log_entry.update(val)
+        # Merge caller-supplied extra fields (anything not in standard attrs)
+        for key, val in record.__dict__.items():
+            if key not in _STANDARD_ATTRS and key not in log_entry:
+                log_entry[key] = val
         return json.dumps(log_entry, default=str)
 
 
@@ -134,7 +147,7 @@ def configure_logging(log_format: str = "", log_level: str = "") -> None:
     level_name = (log_level or os.environ.get("LOG_LEVEL", "INFO")).upper()
 
     handler = logging.StreamHandler(sys.stdout)
-    handler.addFilter(_CorrelationFilter())
+    handler.addFilter(_ContextFilter())
     handler.addFilter(SensitiveFieldFilter())
 
     if fmt == "json":

@@ -234,6 +234,7 @@ async def login_for_access_token(
     )
 
     _reset_failures(client_ip)
+    logger.info("User '%s' logged in from %s", user.username, client_ip)
 
     # Track active session
     session_id = str(uuid.uuid4())
@@ -378,6 +379,7 @@ async def logout(request: Request, response: Response, session: AsyncSession = D
         raise unauthorized("Invalid token")
     invalidate_token(token)
     response.delete_cookie(key="access_token", path="/", httponly=True, secure=True, samesite="strict")
+    logger.info("User '%s' logged out", payload.get("sub"))
 
     # Audit log
     username = payload.get("sub")
@@ -467,6 +469,7 @@ async def change_password(
 
     user.hashed_password = get_password_hash(body.new_password)
     await session.commit()
+    logger.info("Password changed for user '%s'", user.username)
 
     # Audit log
     await audit_log_event(
@@ -573,6 +576,7 @@ async def create_api_key(
         expires_at=expires_at,
     )
     await session.commit()
+    logger.info("API key '%s' created for user '%s' (prefix=%s)", body.name, current_user.username, prefix)
 
     # Audit log
     await audit_log_event(
@@ -637,6 +641,7 @@ async def revoke_api_key(
 
     await repo.deactivate(key_id)
     await session.commit()
+    logger.info("API key '%s' revoked by user '%s'", api_key.name, current_user.username)
 
     # Audit log
     await audit_log_event(

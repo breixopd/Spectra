@@ -124,6 +124,12 @@ class CommandToolAdapter(ToolAdapter):
 
         cmd = self.build_command(request, output_dir)
         timeout = self.calculate_timeout(request)
+        logger.info(
+            "Tool execution started: tool=%s target=%s timeout=%ds",
+            request.tool_id,
+            request.target,
+            timeout,
+        )
 
         start_time = time.time()
 
@@ -168,6 +174,15 @@ class CommandToolAdapter(ToolAdapter):
                 success=success,
             )
 
+            logger.info(
+                "Tool execution completed: tool=%s target=%s success=%s duration=%.1fs findings=%d",
+                request.tool_id,
+                request.target,
+                success,
+                duration,
+                len(parsed),
+            )
+
             return ToolExecutionResult(
                 tool_id=request.tool_id,
                 target=request.target,
@@ -185,6 +200,12 @@ class CommandToolAdapter(ToolAdapter):
             except Exception as e:
                 logger.debug("Failed to kill process group: %s", e)
             timeout_duration = time.time() - start_time
+            logger.warning(
+                "Tool execution timed out: tool=%s target=%s timeout=%ds",
+                request.tool_id,
+                request.target,
+                timeout,
+            )
             await record_tool_execution(
                 tool_id=request.tool_id,
                 duration_ms=timeout_duration * 1000,

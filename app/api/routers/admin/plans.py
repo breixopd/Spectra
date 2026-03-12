@@ -94,6 +94,7 @@ async def create_plan(
         request=request,
     )
     await session.commit()
+    logger.info("Admin created plan '%s'", plan.name)
 
     return PlanResponse(
         id=plan.id,
@@ -155,6 +156,7 @@ async def update_plan(
     )
     await session.commit()
     await session.refresh(plan)
+    logger.info("Admin updated plan '%s'", plan.name)
 
     return PlanResponse(
         id=plan.id,
@@ -196,4 +198,5 @@ async def deactivate_plan(
         request=request,
     )
     await session.commit()
+    logger.info("Admin deactivated plan '%s'", plan.name)
     return {"detail": "Plan deactivated"}

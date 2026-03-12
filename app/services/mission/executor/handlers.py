@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
@@ -103,10 +104,29 @@ class TaskDispatcher:
 
         handler = self._get_task_handler(task.agent_type)
         if handler:
+            start = time.monotonic()
             try:
                 await handler(mission, task, context)
+                duration = time.monotonic() - start
+                logger.info(
+                    "Task completed: mission=%s phase=%s agent=%s task=%s duration=%.1fs",
+                    mission.id,
+                    task.phase.value,
+                    task.agent_type,
+                    task.task_id,
+                    duration,
+                )
                 mission.task_tree.update_status(task_tree_id, TaskStatus.COMPLETED)
             except Exception:
+                duration = time.monotonic() - start
+                logger.error(
+                    "Task failed: mission=%s phase=%s agent=%s task=%s duration=%.1fs",
+                    mission.id,
+                    task.phase.value,
+                    task.agent_type,
+                    task.task_id,
+                    duration,
+                )
                 mission.task_tree.update_status(task_tree_id, TaskStatus.FAILED)
                 raise
         else:
