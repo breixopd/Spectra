@@ -517,6 +517,15 @@ async def _initialize_services() -> None:
         status="started",
     )
 
+    # Register notification event handlers
+    try:
+        from app.services.notification_events import register_notification_handlers
+
+        register_notification_handlers()
+        logger.info("[OK] Notification event handlers registered")
+    except Exception as e:
+        logger.warning("Notification event handler registration failed: %s", e)
+
 
 async def _start_event_bridge() -> Any | None:
     """Start the event-to-websocket bridge. Returns the bridge instance or None."""

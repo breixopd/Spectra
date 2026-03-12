@@ -27,6 +27,7 @@ from app.api.routers import (
     manual_helpers,
     metrics,
     missions,
+    notifications,
     observability,
     pentest_sessions,
     public,
@@ -302,6 +303,7 @@ api_v1.include_router(manual_helpers.router, tags=["Manual Helpers"])
 api_v1.include_router(shell.router, tags=["Shell"])
 api_v1.include_router(vpn.router, tags=["VPN"])
 api_v1.include_router(webhooks.router, tags=["Webhooks"])
+api_v1.include_router(notifications.router, tags=["Notifications"])
 app.include_router(api_v1)
 
 # --- Prometheus metrics endpoint (top-level for scraper compatibility) ---
