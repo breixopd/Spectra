@@ -36,6 +36,7 @@ from app.api.routers import (
     tools,
     ui,
     vpn,
+    webhooks,
     wordlists,
 )
 from app.core.config import settings
@@ -279,6 +280,7 @@ api_v1.include_router(pentest_sessions.router, tags=["Pentest Sessions"])
 api_v1.include_router(manual_helpers.router, tags=["Manual Helpers"])
 api_v1.include_router(shell.router, tags=["Shell"])
 api_v1.include_router(vpn.router, tags=["VPN"])
+api_v1.include_router(webhooks.router, tags=["Webhooks"])
 app.include_router(api_v1)
 
 # --- Prometheus metrics endpoint (top-level for scraper compatibility) ---
