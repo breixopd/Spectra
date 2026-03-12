@@ -121,7 +121,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     # Security
     SECRET_KEY: SecretStr = SecretStr("change-me-in-production")  # Overridden by get_settings()
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # 30 minutes
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
     FULLY_AUTOMATED: bool = True  # Skip ALL human approval, fully autonomous operation

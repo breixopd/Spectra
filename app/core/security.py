@@ -30,6 +30,10 @@ __all__ = [
     "invalidate_token",
     "is_token_blacklisted",
     "invalidate_all_user_tokens",
+    "register_session",
+    "get_user_sessions",
+    "revoke_session",
+    "cleanup_expired_sessions",
     "JWTError",
 ]
 
@@ -410,3 +414,95 @@ def get_password_hash(password: str) -> str:
     salt = bcrypt.gensalt(rounds=12)  # Increased from default 10 for better security
     hashed = bcrypt.hashpw(password_bytes, salt)
     return hashed.decode("utf-8")
+
+
+# --- Session Tracking ---
+
+_active_sessions: dict[str, dict[str, Any]] = {}  # session_id -> session info
+_sessions_lock = threading.Lock()
+
+
+def register_session(
+    session_id: str,
+    username: str,
+    ip_address: str,
+    user_agent: str,
+) -> None:
+    """Register a new active session on login."""
+    with _sessions_lock:
+        _active_sessions[session_id] = {
+            "id": session_id,
+            "username": username,
+            "ip_address": ip_address,
+            "user_agent": user_agent,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+    _persist_sessions()
+
+
+def get_user_sessions(username: str) -> list[dict[str, Any]]:
+    """Return all active sessions for a user."""
+    with _sessions_lock:
+        return [s for s in _active_sessions.values() if s["username"] == username]
+
+
+def revoke_session(session_id: str, username: str) -> bool:
+    """Revoke a specific session. Returns True if found and removed."""
+    with _sessions_lock:
+        session = _active_sessions.get(session_id)
+        if session and session["username"] == username:
+            del _active_sessions[session_id]
+            _persist_sessions()
+            return True
+    return False
+
+
+def cleanup_expired_sessions() -> int:
+    """Remove sessions older than 7 days (refresh token lifetime). Returns count removed."""
+    cutoff = datetime.now(UTC) - timedelta(days=7)
+    removed = 0
+    with _sessions_lock:
+        expired = [sid for sid, s in _active_sessions.items() if datetime.fromisoformat(s["created_at"]) < cutoff]
+        for sid in expired:
+            del _active_sessions[sid]
+            removed += 1
+    if removed:
+        _persist_sessions()
+    return removed
+
+
+def _persist_sessions() -> None:
+    """Persist active sessions to DB via cache_entries table."""
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_persist_sessions_to_db())
+    except RuntimeError:
+        pass
+
+
+async def _persist_sessions_to_db() -> None:
+    """Save sessions state to database."""
+    try:
+        from sqlalchemy import text
+
+        from app.core.database import async_session_maker
+
+        async with async_session_maker() as session:
+            # Store each session individually for easy querying
+            for session_id, data in _active_sessions.items():
+                await session.execute(
+                    text(
+                        "INSERT INTO cache_entries (key, value, expires_at, created_at) "
+                        "VALUES (:key, :value, :expires_at, :created_at) "
+                        "ON CONFLICT (key) DO UPDATE SET value = :value, expires_at = :expires_at"
+                    ),
+                    {
+                        "key": f"session:{session_id}",
+                        "value": json.dumps(data),
+                        "expires_at": datetime.now(UTC) + timedelta(days=7),
+                        "created_at": datetime.now(UTC),
+                    },
+                )
+            await session.commit()
+    except Exception as e:
+        _logger.warning("Failed to persist sessions to DB: %s", e)
