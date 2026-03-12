@@ -180,7 +180,28 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
+      url: https://${{ secrets.DEPLOY_HOST }}
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Pre-deploy database backup
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            BACKUP_DIR=~/spectra/data/backups
+            mkdir -p "$BACKUP_DIR"
+            BACKUP_FILE="$BACKUP_DIR/spectra_pre_deploy_$(date -u '+%Y%m%d_%H%M%S').sql.gz"
+            if docker ps -q -f "name=spectra-db" | grep -q .; then
+              docker exec spectra-db pg_dump -U spectra -d spectra | gzip > "$BACKUP_FILE"
+              echo "Backup saved: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+            else
+              echo "WARN: DB container not running — skipping backup"
+            fi
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -199,15 +220,79 @@ jobs:
             # Deploy
             docker compose -f docker/docker-compose.prod.yml up -d --remove-orphans
 
-            # Health check (wait up to 60s)
+      - name: Post-deploy health check
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
             HEALTH_PORT="${HEALTH_PORT:-80}"
-            echo "Waiting for health check on port ${HEALTH_PORT}..."
-            for i in $(seq 1 12); do
-              if curl -sf "http://localhost:${HEALTH_PORT}/api/health" > /dev/null 2>&1; then
-                echo "Deployed ${VERSION} successfully."
+            WAIT=2
+            for i in 1 2 3 4 5; do
+              if curl -sf --max-time 10 "http://localhost:${HEALTH_PORT}/api/health" > /dev/null 2>&1; then
+                echo "Health check passed (attempt $i)"
                 exit 0
               fi
-              sleep 5
+              echo "Health check failed (attempt $i/5), retrying in ${WAIT}s..."
+              sleep "$WAIT"
+              WAIT=$((WAIT * 2))
             done
-            echo "Health check failed after deploy."
+            echo "Health check FAILED after 5 attempts"
             exit 1
+
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/spectra
+            echo "Deploy failed — rolling back..."
+
+            BACKUP_FILE=$(find ~/spectra/data/backups -name "spectra_pre_deploy_*.sql.gz" -type f | sort | tail -n 1)
+
+            # Restart previous containers
+            docker compose -f docker/docker-compose.prod.yml down --timeout 30 || true
+            docker compose -f docker/docker-compose.prod.yml up -d
+
+            # Restore DB if backup exists
+            if [ -n "$BACKUP_FILE" ] && [ -f "$BACKUP_FILE" ]; then
+              sleep 15  # Wait for DB to be ready
+              gunzip -c "$BACKUP_FILE" | docker exec -i spectra-db psql -U spectra -d spectra || true
+              echo "Database restored from $BACKUP_FILE"
+            fi
+
+            # Verify rollback
+            sleep 10
+            if curl -sf "http://localhost:${HEALTH_PORT:-80}/api/health" > /dev/null 2>&1; then
+              echo "Rollback successful"
+            else
+              echo "CRITICAL: Rollback health check failed — manual intervention required"
+              exit 1
+            fi
+
+      - name: Deploy notification
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          VERSION="${{ needs.release.outputs.version }}"
+          WEBHOOK_URL="${{ secrets.DEPLOY_WEBHOOK_URL }}"
+
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "No DEPLOY_WEBHOOK_URL configured — skipping notification"
+            exit 0
+          fi
+
+          if [ "$STATUS" = "success" ]; then
+            MSG="Spectra v${VERSION} deployed to production successfully"
+          else
+            MSG="Spectra v${VERSION} deploy FAILED (status: ${STATUS})"
+          fi
+
+          curl -sf --max-time 10 -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"$MSG\"}" "$WEBHOOK_URL" || true
