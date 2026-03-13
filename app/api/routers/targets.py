@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import check_target_limit, get_current_active_user
+from app.api.dependencies import check_resource_owner, check_target_limit, get_current_active_user
 from app.api.schemas import FindingResponse, PaginatedResponse, TargetCreate, TargetResponse, TargetUpdate
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
@@ -27,14 +27,6 @@ from app.repositories.target import TargetRepository
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/targets", tags=["Targets"])
-
-
-def _check_target_owner(target_obj: Target, user: User) -> None:
-    """Raise 403 if user doesn't own the target (superusers bypass)."""
-    if user.is_superuser:
-        return
-    if target_obj.user_id and target_obj.user_id != str(user.id):
-        raise HTTPException(status_code=403, detail="Not authorized to access this target")
 
 
 # --- Endpoints ---
@@ -154,7 +146,7 @@ async def get_target(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Target not found",
         )
-    _check_target_owner(target, _current_user)
+    check_resource_owner(target, _current_user, "target")
 
     return TargetResponse(
         id=target.id,
@@ -185,7 +177,7 @@ async def delete_target(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Target not found",
         )
-    _check_target_owner(target, _current_user)
+    check_resource_owner(target, _current_user, "target")
     await repo.delete(target_id)
     await db.commit()
 
@@ -212,7 +204,7 @@ async def update_target(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Target not found",
         )
-    _check_target_owner(existing, _current_user)
+    check_resource_owner(existing, _current_user, "target")
 
     # Filter out None values
     update_data = target_in.model_dump(exclude_unset=True)
@@ -256,7 +248,7 @@ async def get_target_findings(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Target not found",
         )
-    _check_target_owner(target, _current_user)
+    check_resource_owner(target, _current_user, "target")
 
     finding_repo = FindingRepository(db)
     findings = await finding_repo.find_many_by(target_id=target_id)
@@ -369,7 +361,7 @@ async def bulk_delete_targets(
         target = await repo.get_by_id(tid)
         if not target:
             continue
-        _check_target_owner(target, _current_user)
+        check_resource_owner(target, _current_user, "target")
         if await repo.delete(tid):
             deleted_count += 1
     await db.commit()

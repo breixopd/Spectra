@@ -11,7 +11,6 @@ from app.core.exceptions import (
     CircuitBreakerOpenError,
     LLMConnectionError,
     LLMError,
-    LLMTimeoutError,
     MissionStateError,
     SpectraError,
     ToolExecutionError,
@@ -41,14 +40,7 @@ class TestExceptionHierarchy:
     def test_llm_error_inheritance(self):
         """Test LLM errors inherit from SpectraError."""
         assert issubclass(LLMError, SpectraError)
-        assert issubclass(LLMTimeoutError, LLMError)
         assert issubclass(LLMConnectionError, LLMError)
-
-    def test_llm_timeout_error(self):
-        """Test LLMTimeoutError with timeout details."""
-        err = LLMTimeoutError(timeout=30)
-        assert err.details["timeout_seconds"] == 30
-        assert err.code == "LLM_TIMEOUT"
 
     def test_tool_execution_error(self):
         """Test ToolExecutionError with context."""

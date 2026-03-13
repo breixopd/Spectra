@@ -17,7 +17,6 @@ from app.core.exceptions import (
     ConfigurationError,
     ExternalServiceError,
     LLMConnectionError,
-    LLMTimeoutError,
     MissionNotFoundError,
     NotFoundError,
     RateLimitExceededError,
@@ -87,9 +86,6 @@ class TestGetStatusCodeForException:
 
     def test_external_service_error(self):
         assert get_status_code_for_exception(ExternalServiceError("llm")) == 502
-
-    def test_llm_timeout(self):
-        assert get_status_code_for_exception(LLMTimeoutError()) == 504
 
     def test_llm_connection(self):
         assert get_status_code_for_exception(LLMConnectionError()) == 502

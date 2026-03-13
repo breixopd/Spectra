@@ -49,15 +49,6 @@ class LLMError(SpectraError):
     code = "LLM_ERROR"
 
 
-class LLMTimeoutError(LLMError):
-    """LLM request timed out."""
-
-    code = "LLM_TIMEOUT"
-
-    def __init__(self, message: str = "LLM request timed out", timeout: int | None = None):
-        super().__init__(message, details={"timeout_seconds": timeout})
-
-
 class LLMConnectionError(LLMError):
     """Failed to connect to LLM service."""
 
@@ -74,21 +65,6 @@ class LLMResponseError(LLMError):
 
     def __init__(self, message: str, status_code: int | None = None):
         super().__init__(message, details={"status_code": status_code})
-
-
-class LLMParseError(LLMError):
-    """Failed to parse LLM response."""
-
-    code = "LLM_PARSE_ERROR"
-
-    def __init__(
-        self,
-        message: str = "Failed to parse LLM response",
-        raw_content: str | None = None,
-    ):
-        # Truncate raw content for safety
-        truncated = raw_content[:500] + "..." if raw_content and len(raw_content) > 500 else raw_content
-        super().__init__(message, details={"raw_content": truncated})
 
 
 # --- Tool Errors ---
@@ -374,7 +350,6 @@ EXCEPTION_STATUS_MAP: dict[type[SpectraError], int] = {
     ExternalServiceError: 502,
     ServiceUnavailableError: 503,
     CircuitBreakerOpenError: 503,
-    LLMTimeoutError: 504,
     LLMConnectionError: 502,
     ToolTimeoutError: 504,
     ToolExecutionError: 500,

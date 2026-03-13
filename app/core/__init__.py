@@ -43,7 +43,6 @@ from app.core.exceptions import (
     AuthError,
     LLMConnectionError,
     LLMError,
-    LLMTimeoutError,
     MissionError,
     MissionNotFoundError,
     MissionStateError,
@@ -103,7 +102,6 @@ __all__ = [
     # Exceptions
     "SpectraError",
     "LLMError",
-    "LLMTimeoutError",
     "LLMConnectionError",
     "ToolError",
     "ToolExecutionError",

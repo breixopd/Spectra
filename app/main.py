@@ -217,95 +217,33 @@ def _wants_html(request: Request) -> bool:
     return "text/html" in accept and not request.url.path.startswith("/api/")
 
 
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/404.html").render(),
-            status_code=404,
-        )
-    return JSONResponse({"detail": "Not found"}, status_code=404)
+def _make_error_handler(status_code: int, default_detail: str, template: str, log: bool = False):
+    async def handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+        if log:
+            logger.exception("Internal server error: %s", exc)
+        if _wants_html(request):
+            return HTMLResponse(
+                content=_error_templates.get_template(template).render(),
+                status_code=status_code,
+            )
+        return JSONResponse({"detail": default_detail}, status_code=status_code)
+    return handler
 
 
-@app.exception_handler(403)
-async def forbidden_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/403.html").render(),
-            status_code=403,
-        )
-    return JSONResponse({"detail": "Forbidden"}, status_code=403)
+_ERROR_HANDLERS: list[tuple] = [
+    (400, "Bad request", "errors/400.html"),
+    (401, "Unauthorized", "errors/401.html"),
+    (403, "Forbidden", "errors/403.html"),
+    (404, "Not found", "errors/404.html"),
+    (405, "Method not allowed", "errors/405.html"),
+    (429, "Too many requests", "errors/429.html"),
+    (500, "Internal server error", "errors/500.html", True),
+    (502, "Bad gateway", "errors/502.html"),
+    (503, "Service unavailable", "errors/503.html"),
+]
 
-
-@app.exception_handler(401)
-async def unauthorized_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/401.html").render(),
-            status_code=401,
-        )
-    return JSONResponse({"detail": "Unauthorized"}, status_code=401)
-
-
-@app.exception_handler(429)
-async def rate_limit_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/429.html").render(),
-            status_code=429,
-        )
-    return JSONResponse({"detail": "Too many requests"}, status_code=429)
-
-
-@app.exception_handler(400)
-async def bad_request_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/400.html").render(),
-            status_code=400,
-        )
-    return JSONResponse({"detail": "Bad request"}, status_code=400)
-
-
-@app.exception_handler(405)
-async def method_not_allowed_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/405.html").render(),
-            status_code=405,
-        )
-    return JSONResponse({"detail": "Method not allowed"}, status_code=405)
-
-
-@app.exception_handler(500)
-async def server_error_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
-    logger.exception("Internal server error: %s", exc)
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/500.html").render(),
-            status_code=500,
-        )
-    return JSONResponse({"detail": "Internal server error"}, status_code=500)
-
-
-@app.exception_handler(502)
-async def bad_gateway_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/502.html").render(),
-            status_code=502,
-        )
-    return JSONResponse({"detail": "Bad gateway"}, status_code=502)
-
-
-@app.exception_handler(503)
-async def service_unavailable_handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
-    if _wants_html(request):
-        return HTMLResponse(
-            content=_error_templates.get_template("errors/503.html").render(),
-            status_code=503,
-        )
-    return JSONResponse({"detail": "Service unavailable"}, status_code=503)
+for _entry in _ERROR_HANDLERS:
+    app.exception_handler(_entry[0])(_make_error_handler(*_entry))
 
 # --- Include Routers ---
 
