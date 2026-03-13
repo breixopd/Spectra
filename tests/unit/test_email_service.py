@@ -49,7 +49,7 @@ async def test_console_provider_send_prefers_text_body(caplog):
 
 
 def test_templates_dict_contains_expected_keys():
-    expected = {"welcome", "password_reset", "mission_complete", "alert"}
+    expected = {"welcome", "password_reset", "mission_complete", "alert", "subscription"}
     assert expected == set(TEMPLATES.keys())
 
 
