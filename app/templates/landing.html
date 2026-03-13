@@ -98,33 +98,82 @@
         </div>
         <p class="cta-micro">Free tier available. No credit card required.</p>
 
-        <!-- Dashboard preview -->
+        <!-- Dashboard preview — miniature of the real UI -->
         <div class="hero-preview" aria-hidden="true">
             <div class="preview-bar">
                 <span class="preview-dot r"></span>
                 <span class="preview-dot y"></span>
                 <span class="preview-dot g"></span>
-                <span class="preview-title">{{ app_name }} &mdash; Mission Dashboard</span>
+                <span class="preview-title">{{ app_name }}</span>
             </div>
-            <div class="preview-body">
-                <div class="preview-header">
-                    <span class="preview-mission-title">Web Application Assessment</span>
-                    <span class="preview-badge running"><span class="pulse"></span> Running</span>
+            <div class="preview-body" style="display:flex;gap:0;padding:0;">
+                <!-- Mini sidebar -->
+                <div style="width:140px;background:rgba(2,6,23,0.95);border-right:1px solid rgba(255,255,255,0.05);padding:0.625rem 0.5rem;flex-shrink:0;">
+                    <div style="display:flex;align-items:center;gap:0.375rem;padding:0.25rem 0.375rem;margin-bottom:0.625rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <span style="font-size:0.5625rem;font-weight:700;color:#fff;letter-spacing:0.08em;text-transform:uppercase;">Spectra</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:2px;">
+                        <div class="mini-nav active"><span class="mini-dot" style="background:#a78bfa;"></span> Dashboard</div>
+                        <div class="mini-nav"><span class="mini-dot" style="background:#60a5fa;"></span> History</div>
+                        <div class="mini-nav"><span class="mini-dot" style="background:#34d399;"></span> Targets</div>
+                        <div class="mini-nav"><span class="mini-dot" style="background:#fbbf24;"></span> Reports</div>
+                        <div class="mini-nav"><span class="mini-dot" style="background:#22d3ee;"></span> Agents</div>
+                        <div class="mini-nav"><span class="mini-dot" style="background:#fb7185;"></span> Toolbox</div>
+                        <div class="mini-nav"><span class="mini-dot" style="background:#fb923c;"></span> Manual</div>
+                        <div class="mini-nav"><span class="mini-dot" style="background:#2dd4bf;"></span> Observability</div>
+                    </div>
                 </div>
-                <div class="preview-phase">&#x25B8; Phase 2/6: Vulnerability Scanning</div>
-                <div class="preview-agents">
-                    <div class="preview-agent"><span class="dot green"></span> <strong>ReconIntel</strong> &mdash; Discovered 12 services, 3 web apps</div>
-                    <div class="preview-agent"><span class="dot yellow"></span> <strong>VulnScanner</strong> &mdash; Running Nuclei against 3 endpoints</div>
-                    <div class="preview-agent"><span class="dot blue"></span> <strong>ToolSelector</strong> &mdash; Queuing SQLMap for form inputs</div>
-                </div>
-                <div class="preview-findings">
-                    <div class="preview-finding"><span class="severity critical">CRITICAL</span> <span class="desc">SQL Injection in /api/search (CVSS 9.1)</span></div>
-                    <div class="preview-finding"><span class="severity high">HIGH</span> <span class="desc">Exposed admin panel at /admin (CVSS 7.5)</span></div>
-                </div>
-                <div class="preview-footer">
-                    <span class="preview-stat"><span class="num">47</span> findings</span>
-                    <span class="preview-stat"><span class="num">3</span> critical</span>
-                    <span class="preview-stat">8m elapsed</span>
+                <!-- Mini main area -->
+                <div style="flex:1;padding:0.625rem;min-width:0;background:#020617;">
+                    <!-- Top bar -->
+                    <div style="display:flex;gap:0.375rem;margin-bottom:0.5rem;align-items:center;">
+                        <div style="flex:0 0 100px;height:22px;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:4px;display:flex;align-items:center;padding:0 0.375rem;">
+                            <span style="font-size:0.5rem;color:#64748b;font-family:var(--font-mono);">10.0.0.1</span>
+                        </div>
+                        <div style="flex:1;height:22px;background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:4px;display:flex;align-items:center;padding:0 0.375rem;">
+                            <span style="font-size:0.5rem;color:#64748b;">Full security assessment</span>
+                        </div>
+                        <div style="height:22px;padding:0 0.625rem;background:#7c3aed;border-radius:4px;display:flex;align-items:center;gap:0.25rem;">
+                            <span style="font-size:0.5rem;color:#fff;font-weight:600;">Launch</span>
+                        </div>
+                    </div>
+                    <!-- Progress bar -->
+                    <div style="height:3px;background:rgba(255,255,255,0.05);border-radius:2px;margin-bottom:0.5rem;overflow:hidden;">
+                        <div style="width:65%;height:100%;background:linear-gradient(90deg,#8b5cf6,#a78bfa);border-radius:2px;"></div>
+                    </div>
+                    <!-- Content grid -->
+                    <div style="display:grid;grid-template-columns:1fr 1.2fr 0.8fr;gap:0.375rem;font-size:0.5rem;">
+                        <!-- Left: findings -->
+                        <div style="display:flex;flex-direction:column;gap:0.25rem;">
+                            <div style="height:60px;background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+                                <span style="font-size:0.5rem;color:#334155;">Map</span>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem;">
+                                <div class="mini-finding" style="border-color:rgba(248,113,113,0.2);"><span style="color:#f87171;font-weight:700;">3</span><span style="color:#64748b;">Critical</span></div>
+                                <div class="mini-finding" style="border-color:rgba(251,191,36,0.2);"><span style="color:#fbbf24;font-weight:700;">8</span><span style="color:#64748b;">High</span></div>
+                                <div class="mini-finding" style="border-color:rgba(251,146,60,0.2);"><span style="color:#fb923c;font-weight:700;">15</span><span style="color:#64748b;">Medium</span></div>
+                                <div class="mini-finding" style="border-color:rgba(96,165,250,0.2);"><span style="color:#60a5fa;font-weight:700;">22</span><span style="color:#64748b;">Low</span></div>
+                            </div>
+                        </div>
+                        <!-- Center: activity log -->
+                        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.375rem;display:flex;flex-direction:column;gap:2px;overflow:hidden;">
+                            <div style="font-size:0.4375rem;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;font-weight:600;">Activity Log</div>
+                            <div class="mini-log"><span class="log-time">14:32:01</span> <span style="color:#34d399;">ReconIntel</span> — Discovered 12 services</div>
+                            <div class="mini-log"><span class="log-time">14:32:18</span> <span style="color:#fbbf24;">VulnScanner</span> — Running Nuclei templates</div>
+                            <div class="mini-log"><span class="log-time">14:32:45</span> <span style="color:#22d3ee;">ToolSelector</span> — Queuing SQLMap</div>
+                            <div class="mini-log"><span class="log-time">14:33:02</span> <span style="color:#f87171;">CRITICAL</span> — SQL Injection in /api/search</div>
+                            <div class="mini-log"><span class="log-time">14:33:19</span> <span style="color:#34d399;">ReconIntel</span> — Port scan complete</div>
+                        </div>
+                        <!-- Right: agents -->
+                        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.375rem;display:flex;flex-direction:column;gap:3px;">
+                            <div style="font-size:0.4375rem;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;font-weight:600;">Agents</div>
+                            <div class="mini-agent"><span class="mini-dot" style="background:#34d399;"></span> ReconIntel <span class="agent-status" style="color:#34d399;">Active</span></div>
+                            <div class="mini-agent"><span class="mini-dot" style="background:#fbbf24;"></span> VulnScanner <span class="agent-status" style="color:#fbbf24;">Scanning</span></div>
+                            <div class="mini-agent"><span class="mini-dot" style="background:#22d3ee;"></span> ToolSelector <span class="agent-status" style="color:#22d3ee;">Queuing</span></div>
+                            <div class="mini-agent"><span class="mini-dot" style="background:#64748b;"></span> ExploitCraft <span class="agent-status" style="color:#64748b;">Idle</span></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
