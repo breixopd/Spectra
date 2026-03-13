@@ -47,6 +47,8 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     "FULLY_AUTOMATED": ("FULLY_AUTOMATED", "bool"),
     "NOTIFICATION_WEBHOOK": ("NOTIFICATION_WEBHOOK", "nullable_str"),
     "EMBEDDING_MODEL": ("EMBEDDING_MODEL", "str"),
+    "EMBEDDING_API_KEY": ("EMBEDDING_API_KEY", "secret"),
+    "EMBEDDING_API_BASE_URL": ("EMBEDDING_API_BASE_URL", "str"),
     "PLATFORM_DOMAIN": ("PLATFORM_DOMAIN", "str"),
     "PLATFORM_BASE_URL": ("PLATFORM_BASE_URL", "str"),
     "PLATFORM_EXPOSED": ("PLATFORM_EXPOSED", "bool"),
@@ -70,6 +72,8 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     # LLM gateway fields removed
     "SANDBOX_ORCHESTRATOR_URL": ("SANDBOX_ORCHESTRATOR_URL", "nullable_str"),
     "SANDBOX_ORCHESTRATOR_TIMEOUT": ("SANDBOX_ORCHESTRATOR_TIMEOUT", "int"),
+    # Shell Routing
+    "SHELL_ROUTING_MODE": ("SHELL_ROUTING_MODE", "str"),
 }
 _LITELLM_PROVIDER_PREFIXES = {
     "anthropic",
@@ -685,11 +689,20 @@ async def _persist_normalized_runtime_ai_config(
 
 async def reset_runtime_ai_caches(preload: bool = False) -> None:
     """Reset cached AI router and LLM singletons after runtime config changes."""
+    from app.services.ai.embeddings import EmbeddingService
     from app.services.ai.llm import close_global_llm_client, get_global_llm_client
     from app.services.ai.router import close_smart_router
 
     await close_global_llm_client()
     await close_smart_router()
+
+    # Reset the embedding service so it picks up new credentials
+    try:
+        svc = EmbeddingService()
+        svc._api_ready = False
+        svc._litellm_kwargs = {}
+    except Exception:
+        pass
 
     if preload:
         await get_global_llm_client()

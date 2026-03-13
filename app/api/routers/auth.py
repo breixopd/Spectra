@@ -16,7 +16,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
@@ -28,6 +28,7 @@ from app.api.schemas.auth import (
     MFAVerifyRequest,
     ResetPasswordRequest,
 )
+from app.api.schemas.system import DeleteAccountRequest
 from app.core.config import settings
 from app.core.database import get_async_session
 from app.core.events import EventType, events
@@ -571,6 +572,14 @@ async def get_current_profile(
         result = await session.execute(select(Plan).where(Plan.id == user.plan_id))
         plan = result.scalar_one_or_none()
 
+    # Check if user has preferences configured
+    from app.models.user_preferences import UserPreferences
+
+    prefs_result = await session.execute(
+        select(UserPreferences.id).where(UserPreferences.user_id == str(user.id))
+    )
+    has_preferences = prefs_result.scalar_one_or_none() is not None
+
     return {
         "id": user.id,
         "username": user.username,
@@ -578,16 +587,46 @@ async def get_current_profile(
         "role": user.role,
         "is_superuser": user.is_superuser,
         "mfa_enabled": user.mfa_enabled,
+        "has_preferences": has_preferences,
+        "preferences_url": "/api/v1/user/settings",
         "plan": {
             "id": plan.id,
             "name": plan.name,
             "display_name": plan.display_name,
             "features": plan.features,
             "max_concurrent_missions": plan.max_concurrent_missions,
+            "max_missions_per_month": plan.max_missions_per_month,
             "max_targets": plan.max_targets,
+            "max_storage_mb": plan.max_storage_mb,
+            "max_api_requests_per_hour": plan.max_api_requests_per_hour,
         } if plan else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
+
+
+class UpdateProfileRequest(BaseModel):
+    email: str | None = None
+
+
+@router.put("/me", tags=["Auth"])
+async def update_profile(
+    body: UpdateProfileRequest,
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Update current user's profile."""
+    if body.email is not None:
+        import re
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', body.email):
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        existing = await session.execute(
+            select(User).where(User.email == body.email, User.id != user.id)
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Email already in use")
+        user.email = body.email
+    await session.commit()
+    return {"detail": "Profile updated"}
 
 
 @router.post("/change-password", tags=["Auth"])
@@ -605,6 +644,49 @@ async def change_password(
     user.hashed_password = get_password_hash(body.new_password)
     await session.commit()
     return {"detail": "Password changed successfully"}
+
+
+@router.delete("/account", tags=["Auth"])
+@limiter.limit("2/hour")
+async def delete_account(
+    request: Request,
+    body: DeleteAccountRequest,
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Permanently delete user account and all associated data.
+
+    Requires password confirmation. This action is irreversible.
+    Audit logs are preserved with user_id set to NULL.
+    """
+    if not verify_password(body.password, user.hashed_password):
+        raise HTTPException(400, "Password is incorrect")
+
+    if user.is_superuser:
+        stmt = select(func.count()).select_from(User).where(
+            User.is_superuser.is_(True), User.is_active.is_(True)
+        )
+        result = await session.execute(stmt)
+        if result.scalar_one() <= 1:
+            raise HTTPException(400, "Cannot delete the last superuser account")
+
+    user_id = str(user.id)
+    username = user.username
+
+    # Nullify audit log references before cascade
+    from sqlalchemy import text
+
+    await session.execute(
+        text("UPDATE audit_logs SET user_id = NULL WHERE user_id = :uid"),
+        {"uid": user_id},
+    )
+
+    await session.delete(user)
+    await session.commit()
+
+    logger.info("Account deleted: user_id=%s username=%s", user_id, username)
+
+    return {"detail": "Account and all associated data have been permanently deleted"}
 
 
 @router.post("/forgot-password", status_code=204)

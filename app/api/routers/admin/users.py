@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import (
@@ -286,3 +286,30 @@ async def reset_password(
     )
     await session.commit()
     return {"detail": "Password reset", "temporary_password": temp_password}
+
+
+@router.delete("/api/admin/users/{user_id}/purge")
+async def purge_user(
+    user_id: str,
+    admin: User = require_permission(Permission.MANAGE_USERS),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Hard delete a user and all their data. Admin only."""
+    stmt = select(User).where(User.id == user_id)
+    result = await session.execute(stmt)
+    target_user = result.scalar_one_or_none()
+    if not target_user:
+        raise HTTPException(404, "User not found")
+
+    if target_user.is_superuser and str(target_user.id) == str(admin.id):
+        raise HTTPException(400, "Cannot purge your own superuser account")
+
+    # Nullify audit log references
+    await session.execute(
+        text("UPDATE audit_logs SET user_id = NULL WHERE user_id = :uid"),
+        {"uid": user_id},
+    )
+
+    await session.delete(target_user)
+    await session.commit()
+    return {"status": "purged", "user_id": user_id}

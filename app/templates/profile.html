@@ -45,6 +45,9 @@
                 <a href="#" data-section="activity" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                     <i class="fa-solid fa-clock-rotate-left mr-2 text-slate-500 w-4 text-center"></i> Activity
                 </a>
+                <a href="#" data-section="settings" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                    <i class="fa-solid fa-sliders mr-2 text-slate-500 w-4 text-center"></i> Settings
+                </a>
                 <a href="#" data-section="plan" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                     <i class="fa-solid fa-credit-card mr-2 text-slate-500 w-4 text-center"></i> Plan
                 </a>
@@ -77,6 +80,14 @@
                             Save Changes
                         </button>
                     </div>
+                </div>
+                <!-- Danger Zone -->
+                <div class="glass-panel rounded-xl p-6 mt-4 border border-rose-500/20">
+                    <h2 class="text-lg font-semibold text-rose-400 mb-1">Danger Zone</h2>
+                    <p class="text-sm text-slate-400 mb-4">Permanently delete your account and all associated data. This cannot be undone.</p>
+                    <button onclick="deleteAccount()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium rounded-lg transition-colors">
+                        Delete My Account
+                    </button>
                 </div>
             </div>
 
@@ -185,6 +196,121 @@
                     <div id="activity-log">
                         <div class="text-sm text-slate-500 text-center py-6">Loading activity...</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Settings Section -->
+            <div class="profile-section" id="section-settings">
+                <div class="glass-panel rounded-xl p-6 mb-4">
+                    <h2 class="text-lg font-semibold text-white mb-1">BYOK — Bring Your Own Key</h2>
+                    <p class="text-sm text-slate-400 mb-4">Use your own AI provider credentials for missions.</p>
+                    <div id="byok-gate" class="hidden">
+                        <div class="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-4">
+                            <i class="fa-solid fa-lock text-amber-400"></i>
+                            <div>
+                                <div class="text-sm font-medium text-amber-300">Feature locked</div>
+                                <div class="text-xs text-amber-400/70">BYOK is available on the <strong>Enterprise</strong> plan. <a href="#pricing" class="underline hover:text-white">Upgrade</a></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="byok-fields" class="space-y-4">
+                        <div>
+                            <label class="form-label">LLM API Key</label>
+                            <input type="password" id="settings-llm-key" class="form-input" placeholder="sk-..." autocomplete="off">
+                            <p class="text-xs text-slate-500 mt-1">Leave empty to use the system default.</p>
+                        </div>
+                        <div>
+                            <label class="form-label">LLM Base URL</label>
+                            <input type="text" id="settings-llm-url" class="form-input" placeholder="https://api.openai.com/v1">
+                        </div>
+                        <div>
+                            <label class="form-label">LLM Model</label>
+                            <input type="text" id="settings-llm-model" class="form-input" placeholder="gpt-4o">
+                        </div>
+                        <div class="border-t border-white/5 pt-4 mt-4">
+                            <label class="form-label">Embedding API Key</label>
+                            <input type="password" id="settings-emb-key" class="form-input" placeholder="sk-..." autocomplete="off">
+                        </div>
+                        <div>
+                            <label class="form-label">Embedding Base URL</label>
+                            <input type="text" id="settings-emb-url" class="form-input" placeholder="https://api.openai.com/v1">
+                        </div>
+                        <div>
+                            <label class="form-label">Embedding Model</label>
+                            <input type="text" id="settings-emb-model" class="form-input" placeholder="text-embedding-3-small">
+                        </div>
+                        <div class="flex gap-2 mt-4">
+                            <button onclick="saveByok()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">Save BYOK</button>
+                            <button onclick="clearByok()" class="px-4 py-2 text-rose-400 hover:bg-rose-500/10 text-sm rounded-lg border border-rose-500/20 transition-colors">Clear BYOK</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-6 mb-4">
+                    <h2 class="text-lg font-semibold text-white mb-1">Notifications</h2>
+                    <p class="text-sm text-slate-400 mb-4">Control how and when you receive notifications.</p>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="settings-email-notif" checked class="accent-violet-500 w-4 h-4 rounded">
+                            <span class="text-sm text-slate-300">Email notifications</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="settings-notif-complete" checked class="accent-violet-500 w-4 h-4 rounded">
+                            <span class="text-sm text-slate-300">Notify on mission completion</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="settings-notif-critical" checked class="accent-violet-500 w-4 h-4 rounded">
+                            <span class="text-sm text-slate-300">Notify on critical findings</span>
+                        </label>
+                        <div class="mt-3">
+                            <label class="form-label">Webhook URL (optional)</label>
+                            <input type="url" id="settings-webhook-url" class="form-input" placeholder="https://hooks.slack.com/...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-6 mb-4">
+                    <h2 class="text-lg font-semibold text-white mb-1">Mission Defaults</h2>
+                    <p class="text-sm text-slate-400 mb-4">Default settings applied to new missions.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Default Scan Mode</label>
+                            <select id="settings-scan-mode" class="form-input">
+                                <option value="autonomous">Autonomous</option>
+                                <option value="manual">Manual</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Default Report Format</label>
+                            <select id="settings-report-format" class="form-input">
+                                <option value="pdf">PDF</option>
+                                <option value="html">HTML</option>
+                                <option value="json">JSON</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-6">
+                    <h2 class="text-lg font-semibold text-white mb-1">Regional</h2>
+                    <p class="text-sm text-slate-400 mb-4">Display and locale preferences.</p>
+                    <div>
+                        <label class="form-label">Timezone</label>
+                        <select id="settings-timezone" class="form-input">
+                            <option value="UTC">UTC</option>
+                            <option value="America/New_York">US Eastern</option>
+                            <option value="America/Chicago">US Central</option>
+                            <option value="America/Denver">US Mountain</option>
+                            <option value="America/Los_Angeles">US Pacific</option>
+                            <option value="Europe/London">UK</option>
+                            <option value="Europe/Berlin">Central Europe</option>
+                            <option value="Europe/Madrid">Spain</option>
+                            <option value="Asia/Tokyo">Japan</option>
+                            <option value="Asia/Shanghai">China</option>
+                            <option value="Australia/Sydney">Australia Eastern</option>
+                        </select>
+                    </div>
+                    <button onclick="saveSettings()" class="mt-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">Save Settings</button>
                 </div>
             </div>
 
@@ -370,6 +496,17 @@
             if (!res.ok) return;
             const user = await res.json();
             const planName = user.plan_name || user.plan?.display_name || 'Default';
+            const plan = user.plan || {};
+            const features = plan.features || {};
+            const featureHtml = Object.entries(features)
+                .filter(([k, v]) => v && v !== false)
+                .map(([k]) => {
+                    const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                        .replace(/\bApi\b/, 'API').replace(/\bVpn\b/, 'VPN')
+                        .replace(/\bCve\b/, 'CVE').replace(/\bByok\b/, 'BYOK')
+                        .replace(/\bSso\b/, 'SSO').replace(/\bSla\b/, 'SLA');
+                    return `<span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${escapeHtml(label)}</span>`;
+                }).join(' ');
             container.innerHTML = `
                 <div class="glass-panel rounded-lg p-4 border border-white/5">
                     <div class="flex items-center justify-between mb-3">
@@ -382,24 +519,109 @@
                     <div class="grid grid-cols-2 gap-3 mt-4">
                         <div class="bg-slate-900/50 rounded p-3">
                             <div class="text-xs text-slate-500">Missions / month</div>
-                            <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(user.max_missions_per_month || 'Unlimited'))}</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(plan.max_missions_per_month || user.max_missions_per_month || 'Unlimited'))}</div>
                         </div>
                         <div class="bg-slate-900/50 rounded p-3">
                             <div class="text-xs text-slate-500">Max targets</div>
-                            <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(user.max_targets || 'Unlimited'))}</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(plan.max_targets || user.max_targets || 'Unlimited'))}</div>
                         </div>
                         <div class="bg-slate-900/50 rounded p-3">
                             <div class="text-xs text-slate-500">API req / hour</div>
-                            <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(user.max_api_requests_per_hour || '—'))}</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(plan.max_api_requests_per_hour || user.max_api_requests_per_hour || '—'))}</div>
                         </div>
                         <div class="bg-slate-900/50 rounded p-3">
                             <div class="text-xs text-slate-500">Storage</div>
-                            <div class="text-sm font-medium text-white mt-0.5">${user.max_storage_mb ? escapeHtml(String(user.max_storage_mb)) + ' MB' : '—'}</div>
+                            <div class="text-sm font-medium text-white mt-0.5">${(plan.max_storage_mb || user.max_storage_mb) ? escapeHtml(String(plan.max_storage_mb || user.max_storage_mb)) + ' MB' : '—'}</div>
                         </div>
                     </div>
+                    ${featureHtml ? `<div class="flex flex-wrap gap-1.5 mt-4 pt-3 border-t border-white/5">${featureHtml}</div>` : ''}
                 </div>
             `;
         } catch (e) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Could not load plan info</p>'; }
+    }
+
+    // ---- User Settings ----
+    let userPlanFeatures = {};
+
+    async function loadUserSettings() {
+        try {
+            // Load plan features first
+            const meRes = await fetch('/api/v1/auth/me', { headers });
+            if (meRes.ok) {
+                const me = await meRes.json();
+                userPlanFeatures = me.plan?.features || {};
+                // Gate BYOK
+                const byokAllowed = userPlanFeatures.byok === true;
+                document.getElementById('byok-gate').classList.toggle('hidden', byokAllowed);
+                document.getElementById('byok-fields').style.opacity = byokAllowed ? '1' : '0.4';
+                document.getElementById('byok-fields').style.pointerEvents = byokAllowed ? 'auto' : 'none';
+            }
+
+            // Load current settings
+            const res = await fetch('/api/v1/user/settings', { headers });
+            if (!res.ok) return;
+            const s = await res.json();
+            if (s.llm_api_key_configured) document.getElementById('settings-llm-key').placeholder = '••••••••  (configured)';
+            document.getElementById('settings-llm-url').value = s.llm_api_base_url || '';
+            document.getElementById('settings-llm-model').value = s.llm_model || '';
+            if (s.embedding_api_key_configured) document.getElementById('settings-emb-key').placeholder = '••••••••  (configured)';
+            document.getElementById('settings-emb-url').value = s.embedding_api_base_url || '';
+            document.getElementById('settings-emb-model').value = s.embedding_model || '';
+            document.getElementById('settings-email-notif').checked = s.email_notifications !== false;
+            document.getElementById('settings-notif-complete').checked = s.notify_on_mission_complete !== false;
+            document.getElementById('settings-notif-critical').checked = s.notify_on_critical_finding !== false;
+            document.getElementById('settings-webhook-url').value = s.webhook_url || '';
+            document.getElementById('settings-scan-mode').value = s.default_scan_mode || 'autonomous';
+            document.getElementById('settings-report-format').value = s.default_report_format || 'pdf';
+            document.getElementById('settings-timezone').value = s.timezone || 'UTC';
+        } catch (e) { console.error('Failed to load settings', e); }
+    }
+
+    async function saveByok() {
+        const body = {};
+        const key = document.getElementById('settings-llm-key').value;
+        if (key) body.llm_api_key = key;
+        const url = document.getElementById('settings-llm-url').value;
+        if (url) body.llm_api_base_url = url;
+        const model = document.getElementById('settings-llm-model').value;
+        if (model) body.llm_model = model;
+        const ek = document.getElementById('settings-emb-key').value;
+        if (ek) body.embedding_api_key = ek;
+        const eu = document.getElementById('settings-emb-url').value;
+        if (eu) body.embedding_api_base_url = eu;
+        const em = document.getElementById('settings-emb-model').value;
+        if (em) body.embedding_model = em;
+        try {
+            const res = await fetch('/api/v1/user/settings', { method: 'PUT', headers, body: JSON.stringify(body) });
+            if (res.ok) { showToast('BYOK settings saved'); loadUserSettings(); }
+            else { const d = await res.json().catch(() => ({})); showToast(d.detail || 'Failed to save BYOK', 'error'); }
+        } catch (e) { showToast('Network error', 'error'); }
+    }
+
+    async function clearByok() {
+        if (!confirm('Clear all BYOK settings? Missions will use system defaults.')) return;
+        try {
+            const res = await fetch('/api/v1/user/settings/byok', { method: 'DELETE', headers });
+            if (res.ok) { showToast('BYOK settings cleared'); loadUserSettings(); }
+            else showToast('Failed to clear BYOK', 'error');
+        } catch (e) { showToast('Network error', 'error'); }
+    }
+
+    async function saveSettings() {
+        const body = {
+            email_notifications: document.getElementById('settings-email-notif').checked,
+            notify_on_mission_complete: document.getElementById('settings-notif-complete').checked,
+            notify_on_critical_finding: document.getElementById('settings-notif-critical').checked,
+            webhook_url: document.getElementById('settings-webhook-url').value || null,
+            default_scan_mode: document.getElementById('settings-scan-mode').value,
+            default_report_format: document.getElementById('settings-report-format').value,
+            timezone: document.getElementById('settings-timezone').value,
+        };
+        try {
+            const res = await fetch('/api/v1/user/settings', { method: 'PUT', headers, body: JSON.stringify(body) });
+            if (res.ok) showToast('Settings saved');
+            else { const d = await res.json().catch(() => ({})); showToast(d.detail || 'Failed to save settings', 'error'); }
+        } catch (e) { showToast('Network error', 'error'); }
     }
 
     // Initialize
@@ -408,6 +630,27 @@
     loadActivity();
     loadPlan();
     loadMfaStatus();
+    loadUserSettings();
+
+    async function deleteAccount() {
+        const pw = prompt('Type your password to confirm account deletion:');
+        if (!pw) return;
+        if (!confirm('Are you absolutely sure? This will permanently delete your account and ALL data.')) return;
+        try {
+            const res = await fetch('/api/v1/auth/account', {
+                method: 'DELETE',
+                headers,
+                body: JSON.stringify({ password: pw })
+            });
+            if (res.ok) {
+                localStorage.removeItem('token');
+                window.location.href = '/login?msg=account_deleted';
+            } else {
+                const d = await res.json().catch(() => ({}));
+                showToast(d.detail || 'Failed to delete account', 'error');
+            }
+        } catch (e) { showToast('Network error', 'error'); }
+    }
 
     // MFA functions
     async function loadMfaStatus() {

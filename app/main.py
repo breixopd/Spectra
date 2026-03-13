@@ -34,6 +34,7 @@ from app.api.routers import (
     targets,
     tools,
     ui,
+    user_settings,
     vpn,
     wordlists,
 )
@@ -274,6 +275,7 @@ api_v1.include_router(pentest_sessions.router, tags=["Pentest Sessions"])
 api_v1.include_router(manual_helpers.router, tags=["Manual Helpers"])
 api_v1.include_router(shell.router, tags=["Shell"])
 api_v1.include_router(vpn.router, tags=["VPN"])
+api_v1.include_router(user_settings.router, tags=["User Settings"])
 app.include_router(api_v1)
 
 # Non-versioned health endpoint for Docker/LB probes
@@ -309,7 +311,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
     logger.debug("WebSocket connected for user: %s", user.username)
 
     # Rate limiting state
-    MAX_MESSAGES_PER_SECOND = 10
+    from app.core.constants import WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
+
     message_count = 0
     last_reset = time.time()
 
@@ -323,12 +326,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
                 message_count = 0
                 last_reset = now
             message_count += 1
-            if message_count > MAX_MESSAGES_PER_SECOND:
+            if message_count > WS_MAX_MESSAGES_PER_SECOND:
                 await websocket.send_json({"type": "error", "message": "Rate limit exceeded"})
                 continue
 
             # Validate message size (DoS protection)
-            if len(data) > 65536:  # 64KB max message size
+            if len(data) > WS_MAX_MESSAGE_SIZE:
                 logger.warning(
                     "WebSocket message too large from %s, ignoring", user.username
                 )

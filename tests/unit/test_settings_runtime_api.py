@@ -51,6 +51,8 @@ def _make_settings_stub() -> SimpleNamespace:
         LLM_TIER2_MODEL="",
         LLM_TIER3_MODEL="",
         EMBEDDING_MODEL="all-MiniLM-L6-v2",
+        EMBEDDING_API_KEY=SimpleNamespace(get_secret_value=lambda: ""),
+        EMBEDDING_API_BASE_URL="",
         PLATFORM_DOMAIN="",
         PLATFORM_BASE_URL="",
         PLATFORM_EXPOSED=False,
@@ -74,7 +76,6 @@ def _make_settings_stub() -> SimpleNamespace:
         SANDBOX_ORCHESTRATOR_TIMEOUT=30,
         S3_ENDPOINT_URL="",
         S3_REGION="us-east-1",
-        save_runtime_settings=MagicMock(),
     )
 
 
@@ -135,7 +136,6 @@ async def test_update_settings_merges_partial_runtime_ai_payload(test_app):
     assert routing == {"default": "default", "tier1": "tier1"}
     assert fallbacks == {"default": ["tier1", "tier2"]}
     mock_hydrate.assert_awaited_once()
-    settings_stub.save_runtime_settings.assert_called_once()
 
 
 @pytest.mark.asyncio

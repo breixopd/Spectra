@@ -39,6 +39,10 @@ templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 templates.env.globals["app_name"] = settings.APP_NAME
 templates.env.globals["version"] = __version__
 
+from app.core.constants import format_feature_label
+
+templates.env.filters["feature_label"] = format_feature_label
+
 
 # ---------------------------------------------------------------------------
 # Helpers

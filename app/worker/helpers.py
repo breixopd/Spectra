@@ -12,10 +12,12 @@ from functools import wraps
 from pathlib import Path
 from typing import Any
 
+from app.core.constants import HTTP_CLIENT_MAX_RETRIES
+
 logger = logging.getLogger("spectra.worker")
 
 
-def with_retry(max_retries: int = 3, backoff_base: float = 2.0, max_backoff: float = 60.0):
+def with_retry(max_retries: int = HTTP_CLIENT_MAX_RETRIES, backoff_base: float = 2.0, max_backoff: float = 60.0):
     """Decorator adding exponential backoff retry to async worker jobs."""
 
     def decorator(func):

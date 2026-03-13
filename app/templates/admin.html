@@ -381,6 +381,16 @@
                             <input id="llm-embedding" class="form-input" placeholder="text-embedding-3-small">
                         </div>
                     </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Embedding API Base URL</label>
+                            <input id="embedding-api-base-url" class="form-input" placeholder="https://api.openai.com/v1 (falls back to LLM Base URL)">
+                        </div>
+                        <div>
+                            <label class="form-label">Embedding API Key</label>
+                            <input id="embedding-api-key" type="password" class="form-input" placeholder="(falls back to LLM API Key)">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex justify-end gap-3">
@@ -1752,6 +1762,7 @@
             if (data.llm_api_base_url) document.getElementById('llm-base-url').value = data.llm_api_base_url;
             if (data.llm_timeout) document.getElementById('llm-timeout').value = data.llm_timeout;
             if (data.embedding_model) document.getElementById('llm-embedding').value = data.embedding_model;
+            if (data.embedding_api_base_url) document.getElementById('embedding-api-base-url').value = data.embedding_api_base_url;
             if (data.llm_tier1_model) document.getElementById('llm-tier1').value = data.llm_tier1_model;
             if (data.llm_tier2_model) document.getElementById('llm-tier2').value = data.llm_tier2_model;
             if (data.llm_tier3_model) document.getElementById('llm-tier3').value = data.llm_tier3_model;
@@ -1767,6 +1778,8 @@
             llm_api_key: document.getElementById('llm-api-key').value || undefined,
             llm_timeout: parseFloat(document.getElementById('llm-timeout').value),
             embedding_model: document.getElementById('llm-embedding').value,
+            embedding_api_key: document.getElementById('embedding-api-key').value || undefined,
+            embedding_api_base_url: document.getElementById('embedding-api-base-url').value,
             llm_tier1_model: document.getElementById('llm-tier1').value,
             llm_tier2_model: document.getElementById('llm-tier2').value,
             llm_tier3_model: document.getElementById('llm-tier3').value,

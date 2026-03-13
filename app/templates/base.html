@@ -282,6 +282,25 @@
                     if (adminLink) adminLink.classList.remove('hidden');
                 }
             }).catch(() => {});
+
+            // Plan-gate nav items
+            fetch('/api/v1/auth/me', { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(r => r.ok ? r.json() : null)
+                .then(user => {
+                    if (!user || !user.plan) return;
+                    const features = user.plan.features || {};
+                    document.querySelectorAll('[data-feature]').forEach(el => {
+                        const feat = el.dataset.feature;
+                        const allowed = features[feat] === true || features[feat] === undefined;
+                        if (!allowed) {
+                            el.classList.add('pointer-events-none', 'opacity-40');
+                            el.removeAttribute('href');
+                            el.setAttribute('title', `Requires a plan with ${feat.replace(/_/g, ' ')} — available on Professional and Enterprise plans`);
+                            el.style.cursor = 'not-allowed';
+                        }
+                    });
+                })
+                .catch(() => {});
         }
     </script>
     <!-- Centralized API client -->
@@ -361,7 +380,7 @@
                         <i class="fa-solid fa-toolbox text-lg mr-3 {% if request.path == '/toolbox' %}text-rose-400{% else %}group-hover:text-rose-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Toolbox</span>
                     </a>
-                    <a href="/manual" data-tooltip="Run tools manually" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/manual' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    <a href="/manual" data-feature="manual_mode" data-tooltip="Run tools manually" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/manual' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-terminal text-lg mr-3 {% if request.path == '/manual' %}text-orange-400{% else %}group-hover:text-orange-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Manual Mode</span>
                     </a>

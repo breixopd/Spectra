@@ -8,9 +8,11 @@ from typing import Any
 
 import aiohttp
 
+from app.core.constants import HTTP_CLIENT_MAX_RETRIES
+
 logger = logging.getLogger("spectra.gateway")
 
-MAX_RETRIES = 3
+MAX_RETRIES = HTTP_CLIENT_MAX_RETRIES
 RETRY_BACKOFF_BASE = 0.5  # seconds
 
 
