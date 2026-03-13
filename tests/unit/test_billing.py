@@ -23,7 +23,7 @@ class TestGetPaymentAdapter:
 
     def test_unknown_adapter_raises(self):
         with pytest.raises(ValueError, match="Unknown payment provider"):
-            get_payment_adapter("stripe")
+            get_payment_adapter("nonexistent_provider")
 
     def test_default_is_noop(self):
         adapter = get_payment_adapter()

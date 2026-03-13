@@ -238,6 +238,12 @@ class Settings(BaseSettings):
     S3_BUCKET_KNOWLEDGE: str = "spectra-knowledge"
     S3_BUCKET_BACKUPS: str = "spectra-backups"
 
+    # --- Billing / Stripe ---
+    PAYMENT_PROVIDER: str = Field(default="noop", description="Payment provider: noop or stripe")
+    STRIPE_SECRET_KEY: SecretStr = Field(default=SecretStr(""), description="Stripe API secret key")
+    STRIPE_WEBHOOK_SECRET: SecretStr = Field(default=SecretStr(""), description="Stripe webhook signing secret")
+    STRIPE_PUBLISHABLE_KEY: str = Field(default="", description="Stripe publishable key for frontend")
+
     # --- Validators ---
 
     @field_validator("LOG_LEVEL")

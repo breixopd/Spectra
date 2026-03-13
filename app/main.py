@@ -19,6 +19,7 @@ from starlette.responses import Response as StarletteResponse
 from app.api.routers import (
     admin,
     auth,
+    billing,
     cve,
     exploits,
     export,
@@ -276,6 +277,7 @@ api_v1.include_router(manual_helpers.router, tags=["Manual Helpers"])
 api_v1.include_router(shell.router, tags=["Shell"])
 api_v1.include_router(vpn.router, tags=["VPN"])
 api_v1.include_router(user_settings.router, tags=["User Settings"])
+api_v1.include_router(billing.router, tags=["Billing"])
 app.include_router(api_v1)
 
 # Non-versioned health endpoint for Docker/LB probes

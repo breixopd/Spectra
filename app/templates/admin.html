@@ -238,6 +238,38 @@
                 </div>
             </div>
             <div id="svc-grid" class="services-grid"></div>
+
+            <!-- Billing Configuration -->
+            <div class="glass-panel rounded-xl p-5 space-y-4 mt-6">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-credit-card text-emerald-400"></i> Billing
+                </h3>
+                <p class="text-xs text-slate-500">Configure payment provider for self-service plan upgrades.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Payment Provider</label>
+                        <select id="billing-provider" class="form-input form-select">
+                            <option value="noop">Disabled (Self-hosted)</option>
+                            <option value="stripe">Stripe</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Stripe Publishable Key</label>
+                        <input id="billing-stripe-pk" class="form-input" placeholder="pk_live_...">
+                    </div>
+                    <div>
+                        <label class="form-label">Stripe Secret Key</label>
+                        <input id="billing-stripe-sk" type="password" class="form-input" placeholder="sk_live_...">
+                    </div>
+                    <div>
+                        <label class="form-label">Stripe Webhook Secret</label>
+                        <input id="billing-stripe-whs" type="password" class="form-input" placeholder="whsec_...">
+                    </div>
+                </div>
+                <button onclick="saveBillingSettings()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors">
+                    <i class="fa-solid fa-floppy-disk mr-1"></i> Save Billing Settings
+                </button>
+            </div>
         </div>
 
         <!-- Usage -->
@@ -1291,7 +1323,37 @@
             if (settingsRes.ok) svcSettings = await settingsRes.json();
             renderServiceCards();
         } catch(e) { console.error(e); toast('Error loading services', 'error'); grid.innerHTML = ''; }
+        // Populate billing fields from settings
+        loadBillingFields();
     }
+
+    function loadBillingFields() {
+        const prov = document.getElementById('billing-provider');
+        const pk = document.getElementById('billing-stripe-pk');
+        const sk = document.getElementById('billing-stripe-sk');
+        const whs = document.getElementById('billing-stripe-whs');
+        if (prov) prov.value = svcSettings.payment_provider || 'noop';
+        if (pk) pk.value = svcSettings.stripe_publishable_key || '';
+        // Secret fields show placeholder only
+        if (sk) sk.value = '';
+        if (whs) whs.value = '';
+    }
+
+    window.saveBillingSettings = async function() {
+        const body = { payment_provider: document.getElementById('billing-provider').value };
+        const pk = document.getElementById('billing-stripe-pk').value;
+        if (pk) body.stripe_publishable_key = pk;
+        const sk = document.getElementById('billing-stripe-sk').value;
+        if (sk) body.stripe_secret_key = sk;
+        const whs = document.getElementById('billing-stripe-whs').value;
+        if (whs) body.stripe_webhook_secret = whs;
+        try {
+            const r = await fetch('/api/settings', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.detail || 'Failed to save'); }
+            toast('Billing settings saved', 'success');
+            loadServices();
+        } catch(e) { toast(e.message, 'error'); }
+    };
 
     function renderServiceCards() {
         const grid = document.getElementById('svc-grid');

@@ -74,6 +74,11 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     "SANDBOX_ORCHESTRATOR_TIMEOUT": ("SANDBOX_ORCHESTRATOR_TIMEOUT", "int"),
     # Shell Routing
     "SHELL_ROUTING_MODE": ("SHELL_ROUTING_MODE", "str"),
+    # Billing / Stripe
+    "PAYMENT_PROVIDER": ("PAYMENT_PROVIDER", "str"),
+    "STRIPE_PUBLISHABLE_KEY": ("STRIPE_PUBLISHABLE_KEY", "str"),
+    "STRIPE_SECRET_KEY": ("STRIPE_SECRET_KEY", "secret"),
+    "STRIPE_WEBHOOK_SECRET": ("STRIPE_WEBHOOK_SECRET", "secret"),
 }
 _LITELLM_PROVIDER_PREFIXES = {
     "anthropic",
