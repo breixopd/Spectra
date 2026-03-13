@@ -1,8 +1,7 @@
-"""
-Embedding Service — API-only via LiteLLM.
+"""Embedding Service — local (fastembed) or API (LiteLLM).
 
-Requires a configured LLM_API_KEY. If no key is available, the service
-reports as non-functional and raises a clear error on use.
+By default uses fastembed for free local embeddings.  Falls back to
+LiteLLM when an API-backed model is configured.
 """
 
 from __future__ import annotations
@@ -16,15 +15,13 @@ logger = logging.getLogger("spectra.ai.embeddings")
 
 
 class EmbeddingService:
-    """Embedding service using LiteLLM API backend.
-
-    Requires LLM_API_KEY to be configured. If unavailable, ``is_functional``
-    returns False and ``embed``/``embed_batch`` raise RuntimeError.
-    """
+    """Embedding service: local fastembed or LiteLLM API backend."""
 
     def __init__(self, model_name: str = ""):
         self.model_name = model_name or settings.EMBEDDING_MODEL
         self._api_ready = False
+        self._use_local = False
+        self._local_embedder: object | None = None
         self._init_lock: asyncio.Lock | None = None
         self._litellm_model: str = ""
         self._litellm_kwargs: dict = {}
@@ -56,9 +53,28 @@ class EmbeddingService:
                 logger.info("AI_PROVIDER=mock — embedding service disabled")
                 return
 
-            # Use embedding-specific credentials, fall back to LLM credentials
+            # Check if using local embedding model
+            model_lower = self.model_name.lower()
             emb_key = settings.EMBEDDING_API_KEY.get_secret_value()
             api_key = emb_key if emb_key else settings.LLM_API_KEY.get_secret_value()
+
+            if model_lower.startswith("local/") or (not api_key):
+                try:
+                    from fastembed import TextEmbedding
+
+                    local_model = self.model_name.removeprefix("local/") if model_lower.startswith("local/") else "BAAI/bge-small-en-v1.5"
+                    self._local_embedder = TextEmbedding(model_name=local_model)
+                    self._use_local = True
+                    self._api_ready = True
+                    test = list(self._local_embedder.embed(["test"]))[0]  # type: ignore[union-attr]
+                    self._embedding_dim = len(test)
+                    logger.info("Local embedding service ready: model=%s dim=%d", local_model, self._embedding_dim)
+                    return
+                except Exception as e:
+                    logger.warning("Local embedding init failed: %s", e)
+                    if not api_key:
+                        return
+
             if not api_key:
                 logger.warning("Embedding service requires an API key. Configure EMBEDDING_API_KEY or LLM_API_KEY.")
                 return
@@ -83,7 +99,11 @@ class EmbeddingService:
         await self._load_model()
 
         if not self._api_ready:
-            raise RuntimeError("Embedding service requires an API key. Configure EMBEDDING_API_KEY or LLM_API_KEY.")
+            raise RuntimeError("Embedding service not configured. Set LLM_API_KEY or use a local model (EMBEDDING_MODEL=local/BAAI/bge-small-en-v1.5).")
+
+        if self._use_local:
+            embeddings = await asyncio.to_thread(lambda: list(self._local_embedder.embed([text])))  # type: ignore[union-attr]
+            return embeddings[0].tolist()
 
         import litellm
 
@@ -108,10 +128,14 @@ class EmbeddingService:
         await self._load_model()
 
         if not self._api_ready:
-            raise RuntimeError("Embedding service requires an API key. Configure EMBEDDING_API_KEY or LLM_API_KEY.")
+            raise RuntimeError("Embedding service not configured.")
 
         if not texts:
             return []
+
+        if self._use_local:
+            embeddings = await asyncio.to_thread(lambda: list(self._local_embedder.embed(texts)))  # type: ignore[union-attr]
+            return [e.tolist() for e in embeddings]
 
         import litellm
 
