@@ -215,10 +215,10 @@ jobs:
             export VERSION=${{ needs.release.outputs.version }}
 
             # Pull latest images
-            docker compose -f docker/docker-compose.prod.yml pull
+            docker compose -f docker/docker-compose.yml pull
 
             # Deploy
-            docker compose -f docker/docker-compose.prod.yml up -d --remove-orphans
+            docker compose -f docker/docker-compose.yml up -d --remove-orphans
 
       - name: Post-deploy health check
         uses: appleboy/ssh-action@v1
@@ -257,8 +257,8 @@ jobs:
             BACKUP_FILE=$(find ~/spectra/data/backups -name "spectra_pre_deploy_*.sql.gz" -type f | sort | tail -n 1)
 
             # Restart previous containers
-            docker compose -f docker/docker-compose.prod.yml down --timeout 30 || true
-            docker compose -f docker/docker-compose.prod.yml up -d
+            docker compose -f docker/docker-compose.yml down --timeout 30 || true
+            docker compose -f docker/docker-compose.yml up -d
 
             # Restore DB if backup exists
             if [ -n "$BACKUP_FILE" ] && [ -f "$BACKUP_FILE" ]; then

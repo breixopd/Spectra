@@ -411,7 +411,7 @@ curl https://pypi.yourdomain.com/simple/
 
 ## 4. Pulling Spectra Images from the Private Registry
 
-Update `docker/docker-compose.prod.yml` image references:
+Update `docker/docker-compose.yml` image references:
 
 ```yaml
 # Before

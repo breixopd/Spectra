@@ -44,7 +44,7 @@ cp .env.example .env
 cd docker && docker compose up -d
 
 # Microservices mode:
-cd docker && docker compose -f docker-compose.yml -f docker-compose.services.yml up -d
+cd docker && docker compose up -d
 ```
 
 - **Dev UI:** http://localhost:5000
@@ -94,8 +94,8 @@ Triggered by **manual dispatch** or pushing a tag matching `v*`.
 ```bash
 cd /opt/spectra
 export VERSION=2026.03.06
-docker compose -f docker/docker-compose.prod.yml pull
-docker compose -f docker/docker-compose.prod.yml up -d
+docker compose -f docker/docker-compose.yml pull
+docker compose -f docker/docker-compose.yml up -d
 curl -f https://spectra.example.com/api/health
 ```
 
