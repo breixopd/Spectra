@@ -71,7 +71,7 @@ class TestCveExploits:
     async def test_get_exploits_for_cve(self, client):
         modules = [{"name": "exploit/multi/handler", "rank": "excellent"}]
         with patch("app.api.routers.cve.get_metasploit_modules", return_value=modules):
-            resp = await client.get("/api/v1/cve/cve/CVE-2026-0001/exploits")
+            resp = await client.get("/api/v1/cve/CVE-2026-0001/exploits")
         assert resp.status_code == 200
         data = resp.json()
         assert data["cve_id"] == "CVE-2026-0001"
@@ -80,12 +80,12 @@ class TestCveExploits:
 
     async def test_no_exploits_for_cve(self, client):
         with patch("app.api.routers.cve.get_metasploit_modules", return_value=[]):
-            resp = await client.get("/api/v1/cve/cve/CVE-2026-9999/exploits")
+            resp = await client.get("/api/v1/cve/CVE-2026-9999/exploits")
         assert resp.status_code == 200
         assert resp.json()["exploit_available"] is False
 
     async def test_invalid_cve_id(self, client):
-        resp = await client.get("/api/v1/cve/cve/INVALID/exploits")
+        resp = await client.get("/api/v1/cve/INVALID/exploits")
         assert resp.status_code == 422
 
 
@@ -96,7 +96,7 @@ class TestCveEnriched:
         mock_db = MagicMock()
         mock_db.enrich = AsyncMock(return_value=enriched)
         with patch("app.services.ai.exploit_db.get_exploit_db", return_value=mock_db):
-            resp = await client.get("/api/v1/cve/cve/CVE-2026-0001/enriched")
+            resp = await client.get("/api/v1/cve/CVE-2026-0001/enriched")
         assert resp.status_code == 200
         assert resp.json()["cve_id"] == "CVE-2026-0001"
 

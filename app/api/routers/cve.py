@@ -60,7 +60,7 @@ async def cve_lookup(
     }
 
 
-@router.get("/cve/{cve_id}/exploits", response_model=CVEExploitsResponse)
+@router.get("/{cve_id}/exploits", response_model=CVEExploitsResponse)
 async def get_cve_exploits(
     cve_id: str = Path(..., pattern=r"^CVE-\d{4}-\d{4,}$"),
     _current_user: User = Depends(get_current_active_user),
@@ -75,7 +75,7 @@ async def get_cve_exploits(
     }
 
 
-@router.get("/cve/{cve_id}/enriched", response_model=CVEEnrichedResponse)
+@router.get("/{cve_id}/enriched", response_model=CVEEnrichedResponse)
 async def get_cve_enriched(
     cve_id: str = Path(..., pattern=r"^CVE-\d{4}-\d{4,}$"),
     _current_user: User = Depends(get_current_active_user),

@@ -82,6 +82,7 @@ async def landing_page(request: Request):
             missions_result = await session.execute(text("SELECT COUNT(*) FROM missions WHERE status = 'completed'"))
             total_missions = missions_result.scalar() or 0
         except Exception:
+            logger.debug("Failed to load landing stats", exc_info=True)
             total_findings = 0
             total_missions = 0
 
@@ -105,6 +106,7 @@ async def landing_page(request: Request):
                 for r in reviews_result.fetchall()
             ]
         except Exception:
+            logger.debug("Failed to load reviews", exc_info=True)
             reviews = []
 
     return templates.TemplateResponse(
@@ -138,7 +140,7 @@ async def legal_terms(request: Request):
             if row:
                 content_override = row[0]
     except Exception:
-        pass
+        logger.debug("Failed to load legal terms", exc_info=True)
     return templates.TemplateResponse("legal/terms.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
 
 
@@ -154,7 +156,7 @@ async def legal_privacy(request: Request):
             if row:
                 content_override = row[0]
     except Exception:
-        pass
+        logger.debug("Failed to load legal privacy", exc_info=True)
     return templates.TemplateResponse("legal/privacy.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
 
 
@@ -170,7 +172,7 @@ async def legal_cookies(request: Request):
             if row:
                 content_override = row[0]
     except Exception:
-        pass
+        logger.debug("Failed to load legal cookies", exc_info=True)
     return templates.TemplateResponse("legal/cookie.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
 
 
@@ -209,7 +211,7 @@ async def changelog_page(request: Request):
                 for r in result.fetchall()
             ]
     except Exception:
-        pass
+        logger.debug("Failed to load changelog", exc_info=True)
     return templates.TemplateResponse(
         "changelog.html",
         {"request": request, "app_name": settings.APP_NAME, "changelogs": changelogs, "version": __version__},
