@@ -28,7 +28,7 @@ class UpdateTemplateRequest(BaseModel):
 async def send_test_email(
     body: TestEmailRequest,
     current_user: User = Depends(get_current_active_user),
-    _perm: None = Depends(require_permission(Permission.MANAGE_SETTINGS)),
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Send a test email to verify SMTP configuration."""
     from app.services.email import EmailService
@@ -52,7 +52,7 @@ async def send_test_email(
 @router.get("/api/admin/email/templates")
 async def get_email_templates(
     current_user: User = Depends(get_current_active_user),
-    _perm: None = Depends(require_permission(Permission.MANAGE_SETTINGS)),
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Return all email templates."""
     from app.services.email.templates import TEMPLATES
@@ -65,7 +65,7 @@ async def update_email_template(
     name: str,
     body: UpdateTemplateRequest,
     current_user: User = Depends(get_current_active_user),
-    _perm: None = Depends(require_permission(Permission.MANAGE_SETTINGS)),
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Update an email template by name."""
     from app.services.email.templates import TEMPLATES
