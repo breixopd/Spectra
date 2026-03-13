@@ -109,9 +109,8 @@ class TestCreateContent:
         # refresh needs to be a no-op
         mock_session.refresh = AsyncMock()
         # After add + commit + refresh, the item gets an id
-        created_item = _fake_content_item()
+        _fake_content_item()
 
-        original_add = mock_session.add
 
         def _capture_add(item):
             item.id = "c-new"
