@@ -71,7 +71,7 @@ COPY --chown=spectra:spectra plugins/ ./plugins/
 COPY --chown=spectra:spectra keys/ ./keys/
 COPY --chown=spectra:spectra scripts/ ./scripts/
 
-RUN mkdir -p /app/data /app/logs
+RUN mkdir -p /app/data /app/data/backups /app/logs
 
 EXPOSE 5000
 

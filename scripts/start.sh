@@ -25,13 +25,17 @@ while ! nc -z db 5432 2>/dev/null; do
 done
 echo "Database is ready!"
 
-# Run migrations as spectra user
-echo "Running database migrations..."
-if ! gosu spectra alembic upgrade head 2>&1; then
-    echo "ERROR: Database migration failed. Check the error above."
-    exit 1
+# Run migrations as spectra user (skip for non-app microservices)
+if [ "${SKIP_MIGRATIONS:-false}" = "true" ]; then
+    echo "Skipping migrations (SKIP_MIGRATIONS=true)"
+else
+    echo "Running database migrations..."
+    if ! gosu spectra alembic upgrade head 2>&1; then
+        echo "ERROR: Database migration failed. Check the error above."
+        exit 1
+    fi
+    echo "Migrations applied."
 fi
-echo "Migrations applied."
 
 # Drop privileges and start application as spectra user
 echo "Starting application..."
