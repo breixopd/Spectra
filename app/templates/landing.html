@@ -413,8 +413,6 @@
                  "All tools run in isolated, sandboxed containers with configurable scope limits and rules of engagement. The platform enforces target boundaries and supports human-in-the-loop approval for high-risk actions. We recommend testing against staging environments first."),
                 ("What AI models does the platform use?",
                  app_name ~ " is model-agnostic and supports multiple LLM providers including OpenAI, Anthropic, and local models via Ollama. You can configure your preferred provider during setup or switch at any time from the settings panel."),
-                ("Can I self-host " ~ app_name ~ "?",
-                 "Yes. " ~ app_name ~ " is designed for self-hosted deployment via Docker Compose. You maintain full control over your data, assessment results, and infrastructure. No data ever leaves your environment unless you configure external AI providers."),
                 ("How are assessment reports generated?",
                  "Reports are auto-generated as PDF documents with CVSS-scored findings, evidence screenshots, remediation guidance, and executive summaries. Each finding includes detailed reproduction steps and is mapped to relevant CVE identifiers when applicable."),
                 ("What security tools are included?",
