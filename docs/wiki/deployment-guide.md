@@ -89,8 +89,8 @@ See [Configuration](configuration.md) for all available settings.
 ### 3. Deploy (All Services)
 
 ```bash
-# Microservices mode — recommended for production
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml up -d
+# All services (microservices mode by default)
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 This starts all services as separate containers with health checks:
@@ -101,12 +101,6 @@ This starts all services as separate containers with health checks:
 - `spectra-db` — PostgreSQL
 - `spectra-caddy` — Reverse proxy
 
-Alternatively, for a simpler monolith deployment (all-in-one app process):
-
-```bash
-docker compose -f docker/docker-compose.yml up -d
-```
-
 ### 4. Setup Wizard
 
 Open `http://your-server:5000` (or `https://spectra.example.com` if Caddy + domain configured).
@@ -116,13 +110,13 @@ First visit redirects to `/setup` → create the admin account.
 
 ```bash
 # Check all containers are healthy
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml ps
+docker compose -f docker/docker-compose.yml ps
 
 # Health check
 curl -f http://localhost:5000/api/health
 
 # Tail logs
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml logs -f app
+docker compose -f docker/docker-compose.yml logs -f app
 ```
 
 ---
@@ -220,15 +214,16 @@ Caddy automatically provisions a Let's Encrypt certificate. Cloudflare proxies t
 
 ## Production: Docker Compose
 
-The production Compose file (`docker/docker-compose.prod.yml`) is pre-configured with:
-- Required env vars validated (will fail to start if missing)
+The main Compose file (`docker/docker-compose.yml`) is pre-configured with:
 - Resource limits on all containers
 - MinIO for S3 storage (internal only, no exposed ports)
-- Caddy with automatic TLS
+- Caddy reverse proxy
 - All volumes persisted
 
+For production, create a `.env.prod` with required secrets and use:
+
 ```bash
-docker compose -f docker/docker-compose.prod.yml up -d
+docker compose -f docker/docker-compose.yml --env-file .env.prod up -d
 ```
 
 ### Required Environment Variables
@@ -389,7 +384,7 @@ In the Portainer UI: **Environments → Add environment → Docker (Agent)** →
 ### Deploy Spectra as a Portainer Stack
 
 1. In Portainer, go to **Stacks → Add stack**
-2. Paste the contents of `docker/docker-compose.prod.yml` (or the swarm file for multi-host)
+2. Paste the contents of `docker/docker-compose.yml` (or the swarm file for multi-host)
 3. Under **Environment variables**, add `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`, `SERVICE_AUTH_SECRET`, `SPECTRA_DOMAIN`, etc.
 4. Click **Deploy the stack**
 

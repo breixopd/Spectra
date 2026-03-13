@@ -25,15 +25,15 @@ Supporting infrastructure:
 | **Caddy** | `caddy:2-alpine` | Reverse proxy, TLS termination, security headers |
 | **MinIO** | `minio/minio` | S3-compatible object storage (optional) |
 
-### Running in Microservices Mode
+### Running
+
+All services run as microservices by default:
 
 ```bash
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
-The services overlay (`docker-compose.services.yml`) overrides the monolith `app` service and adds `ai-svc`, `scheduler`, and `worker` as separate containers.
-
-**Rollback:** Remove the services overlay and restart with just `docker-compose.yml` — the monolith still includes all functionality.
+The main compose file includes `app`, `ai-svc`, `scheduler`, and `worker` as separate containers.
 
 ---
 
@@ -212,11 +212,8 @@ Docker Compose health checks poll these endpoints to determine container readine
 ### Single Server (Docker Compose)
 
 ```bash
-# Monolith (all-in-one):
+# All services (microservices by default):
 docker compose -f docker/docker-compose.yml up -d
-
-# Microservices:
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml up -d
 ```
 
 ### Multi-Server (Docker Swarm)

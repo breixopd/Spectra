@@ -159,7 +159,7 @@ app/
 
 docker/
 ├── docker-compose.yml       # Dev stack (app, db, tools)
-├── docker-compose.prod.yml  # Prod stack (+ Caddy reverse proxy)
+├── docker-compose.swarm.yml # Multi-host production (Docker Swarm)
 ├── docker-compose.test.yml  # Test runner
 ├── Caddyfile.prod           # Production Caddy config
 ├── targets/                 # Vulnerable test containers
