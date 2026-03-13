@@ -17,6 +17,7 @@ from app.api.dependencies import (
     _is_admin_user,
     check_feature_allowed,
     check_mission_limit,
+    check_resource_owner,
     get_current_active_user,
 )
 from app.api.schemas import MissionResponse, PaginatedResponse, StartMissionRequest
@@ -35,15 +36,6 @@ from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 
 router = APIRouter(prefix="/missions", tags=["Missions"])
-
-
-def _check_mission_owner(mission_obj, user: User) -> None:
-    """Raise 403 if user doesn't own the mission (superusers bypass)."""
-    if user.is_superuser:
-        return
-    owner = getattr(mission_obj, "user_id", None)
-    if owner and owner != str(user.id):
-        raise HTTPException(status_code=403, detail="Not authorized to access this mission")
 
 
 class SteerMissionRequest(BaseModel):
@@ -330,7 +322,7 @@ async def download_pdf_report(
     mission = await repo.get_by_id(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
-    _check_mission_owner(mission, _current_user)
+    check_resource_owner(mission, _current_user, "mission")
 
     # Check plan allows PDF export
     if not _is_admin_user(_current_user):
@@ -378,7 +370,7 @@ async def export_mission_json(
     mission = await repo.get_by_id(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
-    _check_mission_owner(mission, _current_user)
+    check_resource_owner(mission, _current_user, "mission")
 
     # Check plan allows JSON export
     if not _is_admin_user(_current_user):
@@ -434,7 +426,7 @@ async def get_mission_findings(
     mission = await repo.get_by_id(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
-    _check_mission_owner(mission, _current_user)
+    check_resource_owner(mission, _current_user, "mission")
     raw_findings = mission.summary.get("findings", []) if mission.summary else []
     return [
         {
@@ -467,7 +459,7 @@ async def get_mission(
     mission = await mission_manager.get_mission(mission_id)
 
     if mission:
-        _check_mission_owner(mission, _current_user)
+        check_resource_owner(mission, _current_user, "mission")
         current_phase = None
         if mission.plan and hasattr(mission.plan, "current_phase"):
             current_phase = (
@@ -498,7 +490,7 @@ async def get_mission(
 
     if not db_mission:
         raise HTTPException(status_code=404, detail="Mission not found")
-    _check_mission_owner(db_mission, _current_user)
+    check_resource_owner(db_mission, _current_user, "mission")
 
     return MissionResponse(
         id=db_mission.id,
@@ -529,7 +521,7 @@ async def delete_mission(
     mission = await repo.get_by_id(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
-    _check_mission_owner(mission, _current_user)
+    check_resource_owner(mission, _current_user, "mission")
 
     active_statuses = {
         "created", "initializing", "scoping", "planning", "running",
@@ -579,7 +571,7 @@ async def stop_mission(
     """Stop a running mission. Requires superuser privileges."""
     active = await mission_manager.get_mission(mission_id)
     if active:
-        _check_mission_owner(active, _current_user)
+        check_resource_owner(active, _current_user, "mission")
     result = await mission_manager.stop_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
@@ -601,7 +593,7 @@ async def pause_mission(
     """Pause a running mission."""
     active = await mission_manager.get_mission(mission_id)
     if active:
-        _check_mission_owner(active, _current_user)
+        check_resource_owner(active, _current_user, "mission")
     result = await mission_manager.pause_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
@@ -623,7 +615,7 @@ async def resume_mission(
     """Resume a paused mission."""
     active = await mission_manager.get_mission(mission_id)
     if active:
-        _check_mission_owner(active, _current_user)
+        check_resource_owner(active, _current_user, "mission")
     result = await mission_manager.resume_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
@@ -650,14 +642,14 @@ async def diff_missions(
     old_db = await repo.get_by_id(mission_id)
     if not old_db:
         raise HTTPException(status_code=404, detail=f"Mission {mission_id} not found")
-    _check_mission_owner(old_db, _current_user)
+    check_resource_owner(old_db, _current_user, "mission")
 
     new_db = await repo.get_by_id(other_mission_id)
     if not new_db:
         raise HTTPException(
             status_code=404, detail=f"Mission {other_mission_id} not found"
         )
-    _check_mission_owner(new_db, _current_user)
+    check_resource_owner(new_db, _current_user, "mission")
 
     old_dict = {
         "id": old_db.id,
@@ -708,7 +700,7 @@ async def steer_mission(
     try:
         active = await mission_manager.get_mission(mission_id)
         if active:
-            _check_mission_owner(active, _current_user)
+            check_resource_owner(active, _current_user, "mission")
         result = await mission_manager.steer_mission(
             mission_id=mission_id,
             action=steer_request.action,
@@ -733,7 +725,7 @@ async def get_task_tree(
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
-    _check_mission_owner(mission, _current_user)
+    check_resource_owner(mission, _current_user, "mission")
     return mission.task_tree.to_dict()
 
 
@@ -746,7 +738,7 @@ async def get_mission_progress(
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
-    _check_mission_owner(mission, _current_user)
+    check_resource_owner(mission, _current_user, "mission")
     return mission.get_progress()
 
 
@@ -767,7 +759,7 @@ async def approve_action(
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
-    _check_mission_owner(mission, _current_user)
+    check_resource_owner(mission, _current_user, "mission")
 
     if not getattr(mission, "requires_approval", False):
         raise HTTPException(status_code=400, detail="Mission does not require approval")

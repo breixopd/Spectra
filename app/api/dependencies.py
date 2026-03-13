@@ -81,6 +81,16 @@ async def get_current_superuser(
     return current_user
 
 
+def check_resource_owner(resource, user, resource_name: str = "resource") -> None:
+    """Raise 403 if *user* does not own *resource* (superusers bypass)."""
+    if user.is_superuser:
+        return
+    if isinstance(resource, dict):
+        owner_id = resource.get("owner_id") or resource.get("user_id")
+    else:
+        owner_id = getattr(resource, "user_id", None)
+    if owner_id and owner_id != str(user.id):
+        raise HTTPException(status_code=403, detail=f"Not authorized to access this {resource_name}")
 
 
 async def get_target_repository(

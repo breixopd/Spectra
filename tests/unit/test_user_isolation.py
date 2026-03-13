@@ -54,37 +54,37 @@ class TestMissionOwnerCheck:
     """_check_mission_owner enforces user isolation."""
 
     async def test_owner_can_access(self):
-        from app.api.routers.missions import _check_mission_owner
+        from app.api.dependencies import check_resource_owner
 
         mission = MagicMock(user_id="user-1")
         user = _make_user("user-1")
         # Should not raise
-        _check_mission_owner(mission, user)
+        check_resource_owner(mission, user, "mission")
 
     async def test_non_owner_blocked(self):
-        from app.api.routers.missions import _check_mission_owner
+        from app.api.dependencies import check_resource_owner
 
         mission = MagicMock(user_id="user-1")
         user = _make_user("user-2")
         with pytest.raises(HTTPException) as exc_info:
-            _check_mission_owner(mission, user)
+            check_resource_owner(mission, user, "mission")
         assert exc_info.value.status_code == 403
 
     async def test_superuser_bypasses_check(self):
-        from app.api.routers.missions import _check_mission_owner
+        from app.api.dependencies import check_resource_owner
 
         mission = MagicMock(user_id="user-1")
         admin = _make_user("admin-1", is_superuser=True)
         # Should not raise
-        _check_mission_owner(mission, admin)
+        check_resource_owner(mission, admin, "mission")
 
     async def test_mission_without_user_id_accessible(self):
-        from app.api.routers.missions import _check_mission_owner
+        from app.api.dependencies import check_resource_owner
 
         mission = MagicMock(user_id=None)
         user = _make_user("user-1")
         # Legacy missions without user_id should not block
-        _check_mission_owner(mission, user)
+        check_resource_owner(mission, user, "mission")
 
 
 # ---------------------------------------------------------------------------
@@ -97,34 +97,34 @@ class TestTargetOwnerCheck:
     """_check_target_owner enforces user isolation."""
 
     async def test_owner_can_access(self):
-        from app.api.routers.targets import _check_target_owner
+        from app.api.dependencies import check_resource_owner
 
         target = MagicMock(user_id="user-1")
         user = _make_user("user-1")
-        _check_target_owner(target, user)
+        check_resource_owner(target, user, "target")
 
     async def test_non_owner_blocked(self):
-        from app.api.routers.targets import _check_target_owner
+        from app.api.dependencies import check_resource_owner
 
         target = MagicMock(user_id="user-1")
         user = _make_user("user-2")
         with pytest.raises(HTTPException) as exc_info:
-            _check_target_owner(target, user)
+            check_resource_owner(target, user, "target")
         assert exc_info.value.status_code == 403
 
     async def test_superuser_bypasses_check(self):
-        from app.api.routers.targets import _check_target_owner
+        from app.api.dependencies import check_resource_owner
 
         target = MagicMock(user_id="user-1")
         admin = _make_user("admin-1", is_superuser=True)
-        _check_target_owner(target, admin)
+        check_resource_owner(target, admin, "target")
 
     async def test_target_without_user_id_accessible(self):
-        from app.api.routers.targets import _check_target_owner
+        from app.api.dependencies import check_resource_owner
 
         target = MagicMock(user_id=None)
         user = _make_user("user-1")
-        _check_target_owner(target, user)
+        check_resource_owner(target, user, "target")
 
 
 # ---------------------------------------------------------------------------

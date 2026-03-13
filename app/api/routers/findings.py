@@ -17,7 +17,7 @@ from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import check_resource_owner, get_current_active_user
 from app.api.schemas import FindingResponse, PaginatedResponse
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
@@ -33,14 +33,6 @@ logger = logging.getLogger(__name__)
 MAX_BULK_SIZE = 100
 
 router = APIRouter(prefix="/findings", tags=["Findings"])
-
-
-def _check_finding_owner(finding_obj: Finding, user: User) -> None:
-    """Raise 403 if user doesn't own the finding (superusers bypass)."""
-    if user.is_superuser:
-        return
-    if finding_obj.user_id and finding_obj.user_id != str(user.id):
-        raise HTTPException(status_code=403, detail="Not authorized to access this finding")
 
 
 # --- Schemas ---
@@ -350,7 +342,7 @@ async def get_finding(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Finding not found",
         )
-    _check_finding_owner(finding, _current_user)
+    check_resource_owner(finding, _current_user, "finding")
 
     return FindingDetailResponse(
         id=finding.id,
@@ -388,7 +380,7 @@ async def update_finding(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Finding not found",
         )
-    _check_finding_owner(existing, _current_user)
+    check_resource_owner(existing, _current_user, "finding")
 
     # Filter out None values
     update_data = finding_in.model_dump(exclude_unset=True)
@@ -437,7 +429,7 @@ async def delete_finding(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Finding not found",
         )
-    _check_finding_owner(existing, _current_user)
+    check_resource_owner(existing, _current_user, "finding")
 
     await repo.delete(finding_id)
     await db.commit()
@@ -463,7 +455,7 @@ async def verify_finding(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Finding not found",
         )
-    _check_finding_owner(existing, _current_user)
+    check_resource_owner(existing, _current_user, "finding")
 
     updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
     await db.commit()
@@ -503,7 +495,7 @@ async def mark_false_positive(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Finding not found",
         )
-    _check_finding_owner(existing, _current_user)
+    check_resource_owner(existing, _current_user, "finding")
 
     updated = await repo.update(finding_id, status=FindingStatus.FALSE_POSITIVE)
     await db.commit()
@@ -560,7 +552,7 @@ async def confirm_finding(
     existing = await repo.get_by_id(finding_id)
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
-    _check_finding_owner(existing, _current_user)
+    check_resource_owner(existing, _current_user, "finding")
     updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
     await db.commit()
     return _finding_to_response(updated)
@@ -582,7 +574,7 @@ async def dismiss_finding(
     existing = await repo.get_by_id(finding_id)
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
-    _check_finding_owner(existing, _current_user)
+    check_resource_owner(existing, _current_user, "finding")
     updated = await repo.update(finding_id, status=FindingStatus.DISMISSED)
     await db.commit()
     return _finding_to_response(updated)
@@ -604,7 +596,7 @@ async def retest_finding(
     existing = await repo.get_by_id(finding_id)
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
-    _check_finding_owner(existing, _current_user)
+    check_resource_owner(existing, _current_user, "finding")
     updated = await repo.update(finding_id, status=FindingStatus.RETEST_PENDING)
     await db.commit()
     return _finding_to_response(updated)
@@ -657,7 +649,7 @@ async def bulk_update_findings(
         existing = await repo.get_by_id(fid)
         if not existing:
             continue
-        _check_finding_owner(existing, _current_user)
+        check_resource_owner(existing, _current_user, "finding")
         result = await repo.update(fid, **update_data)
         if result:
             updated_count += 1

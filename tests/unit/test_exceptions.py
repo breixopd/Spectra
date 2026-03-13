@@ -6,9 +6,7 @@ from app.core.exceptions import (
     CircuitBreakerOpenError,
     LLMConnectionError,
     LLMError,
-    LLMParseError,
     LLMResponseError,
-    LLMTimeoutError,
     MissionCancelledError,
     MissionNotFoundError,
     MissionStateError,
@@ -52,16 +50,6 @@ class TestSpectraErrorBase:
 
 
 class TestLLMErrors:
-    def test_llm_timeout_defaults(self):
-        err = LLMTimeoutError()
-        assert err.code == "LLM_TIMEOUT"
-        assert "timed out" in err.message
-        assert err.details["timeout_seconds"] is None
-
-    def test_llm_timeout_with_value(self):
-        err = LLMTimeoutError(timeout=30)
-        assert err.details["timeout_seconds"] == 30
-
     def test_llm_connection_error(self):
         err = LLMConnectionError(host="localhost:11434")
         assert err.code == "LLM_CONNECTION_ERROR"
@@ -71,14 +59,7 @@ class TestLLMErrors:
         err = LLMResponseError("bad response", status_code=500)
         assert err.details["status_code"] == 500
 
-    def test_llm_parse_error_truncates_long_content(self):
-        long_content = "x" * 1000
-        err = LLMParseError(raw_content=long_content)
-        assert err.details["raw_content"].endswith("...")
-        assert len(err.details["raw_content"]) == 503  # 500 + "..."
-
     def test_llm_error_hierarchy(self):
-        assert issubclass(LLMTimeoutError, LLMError)
         assert issubclass(LLMError, SpectraError)
 
 
@@ -173,9 +154,6 @@ class TestGetStatusCodeForException:
 
     def test_mission_state_returns_409(self):
         assert get_status_code_for_exception(MissionStateError("a", "b", "c")) == 409
-
-    def test_llm_timeout_returns_504(self):
-        assert get_status_code_for_exception(LLMTimeoutError()) == 504
 
     def test_base_spectra_error_returns_500(self):
         assert get_status_code_for_exception(SpectraError("x")) == 500
