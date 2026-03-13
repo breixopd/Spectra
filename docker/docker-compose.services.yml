@@ -1,0 +1,82 @@
+# Spectra Microservices Mode
+# Usage: docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml up
+#
+# This splits the monolith app into:
+#   spectra-api     — Core API (port 5000)
+#   spectra-ai-svc  — AI/LLM service (port 5010, internal)
+#   spectra-scheduler — Background tasks (no port)
+#   spectra-worker  — Tool execution (already separate)
+
+services:
+  # Override: app becomes API-only
+  app:
+    environment:
+      - SERVICE_MODE=api
+      - AI_SERVICE_URL=http://ai-svc:5010
+    depends_on:
+      db:
+        condition: service_healthy
+      ai-svc:
+        condition: service_healthy
+
+  # AI Service
+  ai-svc:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    container_name: spectra-ai-svc
+    expose:
+      - "5010"
+    command: ["python", "-m", "uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
+      - SERVICE_MODE=ai
+    volumes:
+      - ../app:/app/app
+      - spectra_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    networks:
+      - spectra-network
+
+  # Scheduler Service
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    container_name: spectra-scheduler
+    command: ["python", "-m", "app.scheduler_service"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
+      - SERVICE_MODE=scheduler
+    volumes:
+      - ../app:/app/app
+      - spectra_data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    networks:
+      - spectra-network

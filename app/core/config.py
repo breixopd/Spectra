@@ -179,9 +179,15 @@ class Settings(BaseSettings):
     SANDBOX_IMAGE_SCAN_ENABLED: bool = True  # Scan golden image after each build for CVEs
     SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL: bool = False  # Block deployment if critical CVEs found
 
+    # --- Service Mode ---
+    SERVICE_MODE: str = Field(default="monolith", description="Service mode: monolith, api, ai, scheduler, worker")
+
     # --- External Service Gateways ---
     # When set, the service uses an HTTP client to the external URL.
     # When empty/None, the service runs in-process (default monolith mode).
+
+    # AI microservice — LLM, embeddings, RAG (for split mode)
+    AI_SERVICE_URL: str = Field(default="", description="URL for AI microservice (empty = use in-process)")
 
     # LLM gateway settings removed; use LLM_API_BASE_URL for OpenAI-compatible endpoints
 

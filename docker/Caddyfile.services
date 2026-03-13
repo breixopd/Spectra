@@ -1,0 +1,30 @@
+# Spectra — Caddy reverse proxy for microservices mode
+#
+# Routes AI API calls to the dedicated AI service,
+# everything else to the core API.
+
+:80 {
+	# AI service — internal API
+	handle /api/v1/ai/* {
+		reverse_proxy ai-svc:5010
+	}
+
+	# Everything else to API
+	handle {
+		reverse_proxy app:5000
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	log {
+		output file /data/access.log {
+			roll_size 100mb
+			roll_keep 5
+		}
+	}
+}

@@ -1,4 +1,8 @@
-"""Spectra Security Assessment Platform - Main FastAPI Application."""
+"""Spectra Security Assessment Platform - Main FastAPI Application.
+
+In monolith mode (default), this runs all services in one process.
+In split mode, use ai_service.py or scheduler_service.py for separate services.
+"""
 
 import asyncio
 import json
