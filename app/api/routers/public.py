@@ -328,6 +328,22 @@ async def register_user(request: Request, body: RegisterRequest):
 
         await session.commit()
 
+    # Send welcome email (fire-and-forget — don't block registration)
+    try:
+        from app.services.email import EmailService
+
+        email_svc = EmailService()
+        base_url = settings.PLATFORM_BASE_URL or "http://localhost:5000"
+        await email_svc.send_template(
+            to=body.email,
+            template_name="welcome",
+            subject="Welcome to Spectra",
+            username=body.username,
+            login_url=f"{base_url}/login",
+        )
+    except Exception:
+        logger.exception("Failed to send welcome email to %s", body.username)
+
     return {"detail": "Account created successfully. You can now sign in."}
 
 
@@ -341,12 +357,25 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest):
 
     # Always return success to prevent user enumeration
     if user:
-        create_access_token(
+        token = create_access_token(
             data={"sub": user.username, "type": "password_reset"},
             expires_delta=timedelta(minutes=30),
         )
-        # In production: send email with reset link containing this token
-        logger.info("Password reset token generated for user %s", user.username)
+        # Send password reset email (fire-and-forget)
+        try:
+            from app.services.email import EmailService
+
+            email_svc = EmailService()
+            base_url = settings.PLATFORM_BASE_URL or "http://localhost:5000"
+            await email_svc.send_template(
+                to=user.email,
+                template_name="password_reset",
+                subject="Spectra \u2014 Password Reset",
+                username=user.username,
+                reset_url=f"{base_url}/reset-password?token={token}",
+            )
+        except Exception:
+            logger.exception("Failed to send password reset email for %s", user.username)
 
     return {"detail": "If an account with that email exists, a reset link has been sent."}
 

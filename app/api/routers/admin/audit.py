@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import PaginatedResponse
+from app.core.config import settings
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
 from app.core.telemetry import telemetry
@@ -113,6 +114,7 @@ async def admin_stats(
         "total_audit_events": total_audit_events,
         "role_counts": role_counts,
         "service_topology": topology,
+        "smtp_host": settings.SMTP_HOST or "",
     }
 
 
