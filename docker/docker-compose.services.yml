@@ -2,10 +2,13 @@
 # Usage: docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml up
 #
 # This splits the monolith app into:
-#   spectra-api     — Core API (port 5000)
-#   spectra-ai-svc  — AI/LLM service (port 5010, internal)
-#   spectra-scheduler — Background tasks (no port)
-#   spectra-worker  — Tool execution (already separate)
+#   spectra-api       — Core API (port 5000)
+#   spectra-ai-svc    — AI/LLM service (port 5010, internal)
+#   spectra-scheduler  — Background tasks (port 5011, internal)
+#   spectra-worker    — Tool execution (port 5012, internal)
+#
+# Inter-service auth: set SERVICE_AUTH_SECRET to the same value on all services.
+# DB read replica: set DATABASE_REPLICA_URL for read-heavy services (ai-svc, scheduler).
 
 services:
   # Override: app becomes API-only
@@ -13,11 +16,17 @@ services:
     environment:
       - SERVICE_MODE=api
       - AI_SERVICE_URL=http://ai-svc:5010
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
       ai-svc:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # AI Service
   ai-svc:
@@ -36,6 +45,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - SERVICE_MODE=ai
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
+      # - DATABASE_REPLICA_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db-replica:5432/spectra
     volumes:
       - ../app:/app/app
       - spectra_data:/app/data
@@ -59,7 +70,9 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.app
     container_name: spectra-scheduler
-    command: ["python", "-m", "app.scheduler_service"]
+    expose:
+      - "5011"
+    command: ["python", "-m", "uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "5011"]
     depends_on:
       db:
         condition: service_healthy
@@ -68,15 +81,57 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - SERVICE_MODE=scheduler
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
     volumes:
       - ../app:/app/app
       - spectra_data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     deploy:
       resources:
         limits:
           cpus: '0.5'
           memory: 256M
+    networks:
+      - spectra-network
+
+  # Worker Service — tool execution from PG job queue
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    container_name: spectra-worker
+    expose:
+      - "5012"
+    command: ["python", "-m", "uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "5012"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
+      - SERVICE_MODE=worker
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
+    volumes:
+      - ../app:/app/app
+      - spectra_data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
     networks:
       - spectra-network

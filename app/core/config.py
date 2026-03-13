@@ -187,6 +187,9 @@ class Settings(BaseSettings):
     SANDBOX_IMAGE_SCAN_ENABLED: bool = True  # Scan golden image after each build for CVEs
     SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL: bool = False  # Block deployment if critical CVEs found
 
+    # --- Inter-Service Auth ---
+    SERVICE_AUTH_SECRET: SecretStr = Field(default=SecretStr(""), description="Shared secret for inter-service authentication. Set same value on all services.")
+
     # --- Service Mode ---
     SERVICE_MODE: str = Field(default="monolith", description="Service mode: monolith, api, ai, scheduler, worker")
 
