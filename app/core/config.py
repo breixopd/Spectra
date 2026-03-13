@@ -315,11 +315,12 @@ def get_settings() -> Settings:
     """Get cached settings instance."""
     settings_instance = Settings()
 
-    # Generate random secret key if not set
-    if not settings_instance.JWT_SECRET_KEY.get_secret_value():
+    # Auto-generate JWT secret if empty or using placeholder
+    jwt_val = settings_instance.JWT_SECRET_KEY.get_secret_value()
+    if not jwt_val or jwt_val.startswith("change-me"):
         if not settings_instance.DEBUG:
             logger.warning(
-                "JWT_SECRET_KEY not set in production. Generating random key (sessions will invalid on restart)."
+                "JWT_SECRET_KEY not set in production. Generating random key (sessions will invalidate on restart)."
             )
 
         import secrets
