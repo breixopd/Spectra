@@ -35,6 +35,11 @@ class ServerNode(Base):
     last_health_check: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
+    # SSH deployment fields
+    ssh_user: Mapped[str] = mapped_column(String(100), default="root", server_default="root", nullable=False)
+    ssh_port: Mapped[int] = mapped_column(Integer, default=22, server_default="22", nullable=False)
+    ssh_key_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    deployed_services: Mapped[dict | None] = mapped_column("deployed_services", JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)  # type: ignore[assignment]
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
@@ -55,6 +60,10 @@ class ServerNode(Base):
             "last_health_check": self.last_health_check.isoformat() if self.last_health_check else None,
             "last_error": self.last_error,
             "metadata": self.metadata_,
+            "ssh_user": self.ssh_user,
+            "ssh_port": self.ssh_port,
+            "ssh_key_path": self.ssh_key_path,
+            "deployed_services": self.deployed_services,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
