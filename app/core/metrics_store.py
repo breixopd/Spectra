@@ -62,6 +62,10 @@ class MetricsStore:
         }
         self._history.append(snapshot)
 
+    async def collect(self) -> None:
+        """Take a metrics snapshot on demand (used by scheduler service)."""
+        self._take_snapshot()
+
     def get_history(self, minutes: int = 60) -> list[dict[str, Any]]:
         cutoff = time.time() - (minutes * 60)
         return [s for s in self._history if s.get("_timestamp", 0) >= cutoff]

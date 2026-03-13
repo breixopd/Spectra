@@ -425,7 +425,12 @@
                             </p>
                         </div>
                     </div>
-                    <a href="/changelog" class="text-xs text-slate-500 hover:text-violet-400 transition-colors cursor-pointer" title="View changelog">v{{ version }}</a>
+                    <div class="flex items-center gap-2">
+                        <a href="/changelog" class="text-xs text-slate-500 hover:text-violet-400 transition-colors cursor-pointer" title="View changelog">v{{ version }}</a>
+                        <button onclick="document.cookie='access_token=; Path=/; Max-Age=0'; fetch('/api/auth/logout',{method:'POST',headers:{'Authorization':'Bearer '+document.cookie.match(/access_token=([^;]+)/)?.[1]}}).finally(()=>window.location.href='/login')" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out">
+                            <i class="fa-solid fa-right-from-bracket text-[10px]"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </aside>
