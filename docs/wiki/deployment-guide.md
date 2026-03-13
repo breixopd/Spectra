@@ -4,29 +4,44 @@
 
 ---
 
-Complete guide for deploying Spectra in production — from single-server Docker Compose to multi-host orchestration with Portainer, Docker Swarm, or Kamal.
-
-## Choosing a Deployment Method
-
-| Method | Best For | Complexity | Multi-Host |
-|--------|----------|------------|------------|
-| **Docker Compose** | Single server, dev/staging | Low | No |
-| **Portainer** | Visual management, 1–5 hosts | Low | Yes (via agent) |
-| **Docker Swarm** | Built-in clustering, 2–10 hosts | Medium | Yes |
-| **Kamal** | Zero-downtime SSH deploys | Medium | Yes |
-| **Kubernetes** | >10 nodes, auto-scaling, multi-cloud | High | Yes |
-
-Most Spectra deployments run well on a single server with Docker Compose. Graduate to Portainer or Swarm when you need multi-host or a web UI for operations.
+Complete guide for deploying Spectra in production — from single-server Docker Compose to multi-host Docker Swarm with Cloudflare and Caddy.
 
 ## Prerequisites
 
-- Docker Engine 24.0+ and Docker Compose v2.20+
-- A server with at least 4 CPU cores, 8 GB RAM, 50 GB disk
-- A domain name pointed at the server (for automatic TLS via Let's Encrypt)
+- Linux server(s) with Docker Engine 24.0+ and Docker Compose v2.20+
+- At least 4 CPU cores, 8 GB RAM, 50 GB disk
+- Domain name (optional but recommended)
+- Cloudflare account (free tier, recommended)
+
+## Architecture
+
+Spectra runs as microservices, all deployed via Docker:
+
+| Service | Container | Port | Purpose | Replicas |
+|---------|-----------|------|---------|----------|
+| **app** | `spectra-app` | 5000 | Web UI + REST API | 1–3 |
+| **ai-service** | `spectra-ai-svc` | 5010 | LLM routing, embeddings, RAG | 1 |
+| **scheduler** | `spectra-scheduler` | 5011 | Background jobs, backups, metrics, sandbox watchdog | 1 |
+| **worker** | `spectra-worker` | 5012 | Tool execution (manages ephemeral sandbox containers) | 1–3 |
+| **db** | `spectra-db` | 5432 | PostgreSQL + pgvector (data, cache, job queue, pub/sub) | 1 |
+| **caddy** | `spectra-caddy` | 80/443 | Reverse proxy — TLS, security headers | 1 |
+| **minio** | `spectra-minio` | 9000 | S3-compatible object storage (optional) | 1 |
+
+### Inter-Service Communication
+
+All services communicate using:
+
+- **PostgreSQL** for persistent state, job queue (`SELECT ... FOR UPDATE SKIP LOCKED`), and pub/sub (`NOTIFY`/`LISTEN`)
+- **HTTP + shared secret** (`X-Service-Auth` header) for direct service-to-service API calls
+- **No Redis, no external message broker** — PostgreSQL handles everything
+
+### Sandbox Containers
+
+Each mission gets one ephemeral sandbox container (Kali Linux) for tool execution. The worker service manages these containers via Docker socket. Sandboxes are auto-cleaned after mission completion — no need for additional tools containers.
 
 ---
 
-## Docker Compose Production Setup
+## Quick Start (Single Server)
 
 ### 1. Prepare the Server
 
@@ -35,24 +50,19 @@ curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 sudo mkdir -p /opt/spectra && sudo chown $USER:$USER /opt/spectra
 cd /opt/spectra
+git clone <repo-url> .
 ```
 
-### 2. Get Compose Files
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/breixopd14/spectra/main/docker/docker-compose.prod.yml \
-  -o docker/docker-compose.prod.yml
-curl -fsSL https://raw.githubusercontent.com/breixopd14/spectra/main/docker/Caddyfile.prod \
-  -o docker/Caddyfile.prod
-```
-
-### 3. Configure Environment
+### 2. Configure Environment
 
 ```bash
 cat > .env <<'EOF'
-# --- REQUIRED ---
-POSTGRES_PASSWORD=$(openssl rand -hex 16)
-JWT_SECRET_KEY=$(openssl rand -hex 32)
+# --- Required ---
+POSTGRES_PASSWORD=<generate with: openssl rand -hex 16>
+JWT_SECRET_KEY=<generate with: openssl rand -hex 32>
+SERVICE_AUTH_SECRET=<generate with: openssl rand -hex 32>
+
+# --- Domain (for Caddy TLS) ---
 SPECTRA_DOMAIN=spectra.example.com
 
 # --- AI Provider ---
@@ -65,61 +75,173 @@ LLM_MODEL=gpt-4o-mini
 FULLY_AUTOMATED=false
 PLUGIN_SAFE_MODE=true
 
-# --- Storage (optional, for MinIO) ---
-MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)
-S3_ENDPOINT_URL=http://minio:9000
-S3_ACCESS_KEY=spectra
-S3_SECRET_KEY=$(openssl rand -hex 16)
+# --- S3/MinIO (optional) ---
+# MINIO_ROOT_USER=spectra
+# MINIO_ROOT_PASSWORD=<generate with: openssl rand -hex 16>
+# S3_ENDPOINT_URL=http://minio:9000
+# S3_ACCESS_KEY=spectra
+# S3_SECRET_KEY=<same as MINIO_ROOT_PASSWORD>
 EOF
 ```
 
-### Required Environment Variables
+See [Configuration](configuration.md) for all available settings.
 
-| Variable | Why Required | Notes |
-|----------|-------------|-------|
-| `POSTGRES_PASSWORD` | Database authentication | Must match between `db` and `app` services |
-| `JWT_SECRET_KEY` | Token signing | If unset, sessions invalidate on every restart |
-| `SPECTRA_DOMAIN` | TLS certificate provisioning | Set to your real domain for Let's Encrypt |
-
-### 4. Deploy
+### 3. Deploy (All Services)
 
 ```bash
-docker compose -f docker/docker-compose.prod.yml pull
-docker compose -f docker/docker-compose.prod.yml up -d
+# Microservices mode — recommended for production
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml up -d
 ```
+
+This starts all services as separate containers with health checks:
+- `spectra-app` — Core API + Web UI
+- `spectra-ai-svc` — AI/LLM service
+- `spectra-scheduler` — Background tasks
+- `spectra-worker` — Tool execution
+- `spectra-db` — PostgreSQL
+- `spectra-caddy` — Reverse proxy
+
+Alternatively, for a simpler monolith deployment (all-in-one app process):
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+```
+
+### 4. Setup Wizard
+
+Open `http://your-server:5000` (or `https://spectra.example.com` if Caddy + domain configured).
+First visit redirects to `/setup` → create the admin account.
 
 ### 5. Verify
 
 ```bash
-curl -f https://spectra.example.com/api/health
-docker compose -f docker/docker-compose.prod.yml ps
-docker compose -f docker/docker-compose.prod.yml logs --tail=50
-```
+# Check all containers are healthy
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml ps
 
-### 6. Initial Setup
+# Health check
+curl -f http://localhost:5000/api/health
 
-Navigate to `https://spectra.example.com/setup` to create the admin account. This endpoint is only available once (when no users exist).
-
----
-
-## FULLY_AUTOMATED Production Warning
-
-> **Never set `FULLY_AUTOMATED=true` in production.** This mode bypasses all human approval gates — missions execute without operator confirmation. Use only in isolated lab/testing environments.
-
-In production, always set:
-
-```env
-FULLY_AUTOMATED=false
-REQUIRE_APPROVAL=true   # Optional: require explicit approval for high-risk actions
+# Tail logs
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml logs -f app
 ```
 
 ---
 
-## SSL/TLS with Caddy
+## Cloudflare Setup (Free Tier)
 
-Production deployments use Caddy as a reverse proxy with automatic TLS.
+Cloudflare provides DDoS protection, a WAF, global CDN for static assets, SSL, and analytics — all on the free tier.
 
-### What Caddy Provides
+### 1. Add Your Site
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → **Add Site** → enter your domain
+2. Select **Free** plan
+3. Cloudflare scans existing DNS records
+
+### 2. Update Nameservers
+
+Set your domain's NS records to the Cloudflare nameservers shown in the dashboard. This varies by registrar — update via your registrar's DNS settings panel.
+
+### 3. DNS Records
+
+In Cloudflare DNS settings, create:
+
+| Type | Name | Content | Proxy |
+|------|------|---------|-------|
+| A | `spectra` | `<your-server-IP>` | **Proxied** (orange cloud) |
+
+The orange cloud means traffic routes through Cloudflare's network (DDoS protection, CDN, WAF).
+
+### 4. SSL/TLS Mode
+
+Go to **SSL/TLS** → **Overview**:
+
+| Mode | When to Use |
+|------|-------------|
+| **Full (Strict)** | Recommended. Caddy auto-provisions a valid Let's Encrypt cert on your origin. Cloudflare verifies it. |
+| **Full** | If Caddy generates a self-signed cert. Cloudflare encrypts origin traffic but doesn't verify the cert. |
+| **Flexible** | Not recommended — origin traffic is unencrypted. Only use if you cannot run HTTPS on origin. |
+
+### 5. Security Rules (Free)
+
+- **WAF → Managed Rules**: Enable the free managed ruleset (basic protection against common attacks)
+- **Security → Settings → Bot Fight Mode**: Enable to challenge automated threats
+- **Under Attack Mode**: Available on-demand for active DDoS attacks (adds a JS challenge page)
+
+### 6. Caching Rules
+
+Go to **Caching → Cache Rules** (or **Rules → Page Rules** on older plans):
+
+| Rule | Match | Action |
+|------|-------|--------|
+| API bypass | `spectra.example.com/api/*` | **Bypass Cache** |
+| Static cache | `spectra.example.com/static/*` | **Cache Everything**, Edge TTL: 1 month |
+| WebSocket bypass | `spectra.example.com/ws/*` | **Bypass Cache** |
+
+### 7. Caddy Origin Config
+
+With Cloudflare in **Full (Strict)** mode, Caddy handles origin TLS:
+
+```caddyfile
+# docker/Caddyfile.prod
+spectra.yourdomain.com {
+    reverse_proxy spectra-app:5000 {
+        health_uri /api/health
+        health_interval 15s
+        health_timeout 5s
+        transport http {
+            read_timeout 300s
+            write_timeout 300s
+        }
+    }
+
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        -Server
+    }
+}
+```
+
+Caddy automatically provisions a Let's Encrypt certificate. Cloudflare proxies to it over HTTPS.
+
+### What You Get (Free Tier)
+
+| Feature | Details |
+|---------|---------|
+| DDoS protection | Automatic L3/L4/L7 mitigation |
+| WAF | Basic managed rules, bot fight mode |
+| CDN | Static assets cached at 300+ edge locations |
+| SSL | End-to-end encryption (Cloudflare ↔ origin) |
+| Analytics | Request volume, bandwidth, threat metrics |
+| Always Online | Serves cached pages if origin is down |
+
+---
+
+## Production: Docker Compose
+
+The production Compose file (`docker/docker-compose.prod.yml`) is pre-configured with:
+- Required env vars validated (will fail to start if missing)
+- Resource limits on all containers
+- MinIO for S3 storage (internal only, no exposed ports)
+- Caddy with automatic TLS
+- All volumes persisted
+
+```bash
+docker compose -f docker/docker-compose.prod.yml up -d
+```
+
+### Required Environment Variables
+
+| Variable | Why Required |
+|----------|-------------|
+| `POSTGRES_PASSWORD` | Database authentication |
+| `JWT_SECRET_KEY` | Token signing — sessions invalidate on restart if unset |
+| `SERVICE_AUTH_SECRET` | Inter-service authentication (microservices mode) |
+| `SPECTRA_DOMAIN` | TLS certificate provisioning via Let's Encrypt |
+| `MINIO_ROOT_PASSWORD` | S3 storage authentication (if MinIO is used) |
+
+### SSL/TLS with Caddy
 
 | Feature | Details |
 |---------|---------|
@@ -128,16 +250,6 @@ Production deployments use Caddy as a reverse proxy with automatic TLS.
 | **WebSocket proxy** | Automatic upgrade detection and proxying |
 | **Health checks** | Polls `/api/health` every 15s |
 | **Timeouts** | 300s read/write for long-running operations |
-
-### Port Layout
-
-| Port | Context | Service |
-|------|---------|---------|
-| 443 | Production (default) | Caddy → app |
-| 80 | Production | HTTP → HTTPS redirect |
-| 5000 | Internal only | App container (not exposed) |
-
-### Configuration
 
 Set `SPECTRA_DOMAIN` in `.env`:
 
@@ -149,134 +261,103 @@ When using `localhost`, Caddy serves on port 443 with a self-signed certificate.
 
 ---
 
-## Scaling Considerations
+## Production: Docker Swarm (Multi-Server)
 
-### Single-Instance Constraints
+Docker Swarm is built into Docker Engine — no extra software to install. Use it when you need multiple hosts, rolling updates, or secret management.
 
-Several subsystems use in-memory state and do not support horizontal scaling without modification:
+A pre-built Swarm stack is at `docker/docker-compose.swarm.yml`.
 
-| Subsystem | State | Impact |
-|-----------|-------|--------|
-| **WebSocket connections** | In-memory connection set | Clients only receive events from their app instance |
-| **Rate limiter** | In-memory counters | Per-process limits, not global |
-| **Mission state** | In-memory `active_missions` dict | A mission must stay on the instance that started it |
-| **Blackboard** | In-memory LRU cache | Agent context not shared across instances |
-| **Account lockout** | File-based + in-memory | Lockout state per instance |
-
-### Scaling Strategies
-
-- **Vertical scaling** (recommended first): Increase CPU/RAM on the single host
-- **Database**: PostgreSQL handles connection pooling natively; consider read replicas for heavy query loads
-- **Storage**: Use S3/MinIO for mission data to decouple from local filesystem
-- **Workers**: Deploy additional tools containers for parallel tool execution (see [Scaling](scaling.md))
-- **Rate limiting**: Switch to Redis-backed storage for shared rate limit state
-- **WebSocket**: Use a message bus (Redis pub/sub) to broadcast events across instances
-
----
-
-## Backup Strategy
-
-### PostgreSQL
+### 1. Initialize Swarm
 
 ```bash
-# Full database dump
-docker compose -f docker/docker-compose.prod.yml exec db \
-  pg_dump -U spectra spectra > backup_$(date +%F).sql
+# On the manager node:
+docker swarm init --advertise-addr <MANAGER_IP>
 
-# Restore from backup
-cat backup_2026-03-11.sql | docker compose -f docker/docker-compose.prod.yml exec -T db \
-  psql -U spectra spectra
+# Save the join token from the output, then on each worker node:
+docker swarm join --token <TOKEN> <MANAGER_IP>:2377
 ```
 
-Schedule daily automated backups:
+### 2. Label Nodes
+
+Assign roles so services land on the right hardware:
 
 ```bash
-# crontab -e
-0 2 * * * cd /opt/spectra && docker compose -f docker/docker-compose.prod.yml exec -T db \
-  pg_dump -U spectra spectra | gzip > /opt/backups/spectra_$(date +\%F).sql.gz
+docker node update --label-add role=app <APP_NODE_HOSTNAME>
+docker node update --label-add role=db <DB_NODE_HOSTNAME>
+docker node update --label-add role=worker <WORKER_NODE_HOSTNAME>
+docker node update --label-add role=ai <GPU_NODE_HOSTNAME>    # Optional: GPU node for local LLM
 ```
 
-### File Storage
+### 3. Create Secrets
 
-If using local filesystem storage:
+Swarm secrets are encrypted at rest and only available to services that reference them:
 
 ```bash
-# Back up mission data, reports, and auth state
-tar czf spectra-data_$(date +%F).tar.gz data/ reports/ keys/
+echo "$(openssl rand -hex 16)" | docker secret create db_password -
+echo "$(openssl rand -hex 32)" | docker secret create service_auth -
+echo "$(openssl rand -hex 32)" | docker secret create jwt_secret -
 ```
 
-If using S3/MinIO:
+### 4. Create Configs
 
 ```bash
-# MinIO volume is persisted in Docker volume `minio_data`
-docker run --rm -v spectra_minio_data:/data -v $(pwd):/backup alpine \
-  tar czf /backup/minio_$(date +%F).tar.gz /data
+docker config create caddyfile docker/Caddyfile.prod
 ```
 
-### What to Back Up
-
-| Data | Location | Frequency |
-|------|----------|-----------|
-| Database | PostgreSQL container | Daily |
-| Mission data | `data/missions/` or S3 | Daily |
-| Auth state | `data/auth/` | Daily |
-| Plugin signing keys | `keys/` | On change |
-| Configuration | `.env` | On change |
-| TLS certificates | Caddy volume `caddy_data` | Weekly |
-
----
-
-## Maintenance
-
-### Database Migrations
-
-Migrations run automatically on app startup via `scripts/start.sh`. For manual control:
+### 5. Deploy the Stack
 
 ```bash
-# Check current migration
-docker compose -f docker/docker-compose.prod.yml exec app alembic current
-
-# Apply pending migrations
-docker compose -f docker/docker-compose.prod.yml exec app alembic upgrade head
-
-# Rollback one migration
-docker compose -f docker/docker-compose.prod.yml exec app alembic downgrade -1
+docker stack deploy -c docker/docker-compose.swarm.yml spectra
 ```
 
-### Viewing Logs
+### 6. Verify
 
 ```bash
-docker compose -f docker/docker-compose.prod.yml logs -f app
-docker compose -f docker/docker-compose.prod.yml logs -f tools
-docker compose -f docker/docker-compose.prod.yml logs -f caddy
+# List all services and their replica status
+docker service ls
+
+# Check a specific service
+docker service ps spectra_app
+
+# Follow logs
+docker service logs spectra_app --follow
+
+# Health check
+curl -f http://<MANAGER_IP>:5000/api/health
 ```
 
-### Updating
+### Swarm Service Layout
+
+The `docker-compose.swarm.yml` defines these services with placement constraints:
+
+| Service | Placement | Replicas | Secrets |
+|---------|-----------|----------|---------|
+| `db` | `node.labels.role == db` | 1 | `db_password` |
+| `app` | `node.labels.role == app` | 2 | `db_password`, `service_auth`, `jwt_secret` |
+| `ai-service` | `node.labels.role == ai` | 1 | `service_auth` |
+| `scheduler` | `node.labels.role == app` | 1 | `service_auth` |
+| `worker` | `node.labels.role == worker` | 2 | `service_auth` |
+| `caddy` | `node.labels.role == app` | 1 | — (uses config) |
+
+The overlay network (`spectra-net`) spans all Swarm nodes automatically.
+
+### Rolling Updates
+
+Swarm performs zero-downtime updates by default:
 
 ```bash
-docker compose -f docker/docker-compose.prod.yml pull
-docker compose -f docker/docker-compose.prod.yml up -d
+# Update the app image across all replicas
+docker service update --image spectra-app:v2 spectra_app
+
+# The swarm.yml configures: parallelism=1, delay=10s, order=start-first
+# So one replica updates while the other continues serving traffic.
 ```
 
 ---
 
-## Troubleshooting
+## Portainer (Optional Management UI)
 
-| Issue | Solution |
-|-------|----------|
-| Port 80/443 in use | Change port mapping in Caddy service or stop conflicting service |
-| Database connection fails | Verify `POSTGRES_PASSWORD` matches between `.env` and compose |
-| Migrations fail | Check `docker logs spectra-app` for migration errors |
-| Setup page not loading | Ensure all services are healthy: `docker compose ps` |
-| PDF export fails | Install `libcairo2-dev`, `pkg-config`, `python3-dev` in the app image |
-| Caddy TLS errors | Ensure `SPECTRA_DOMAIN` is set and DNS points to this server |
-| WebSocket disconnects | Check Caddy logs for proxy errors; verify firewall allows upgrades |
-
----
-
-## Recommended: Portainer
-
-Portainer Community Edition is a free web UI for managing Docker containers, images, volumes, and networks across one or many hosts. It requires zero YAML knowledge for day-to-day operations.
+Portainer Community Edition is a free web UI for managing Docker containers, images, volumes, and networks across one or many hosts.
 
 ### Install Portainer (Manager Node)
 
@@ -307,10 +388,10 @@ In the Portainer UI: **Environments → Add environment → Docker (Agent)** →
 
 ### Deploy Spectra as a Portainer Stack
 
-1. In Portainer, go to **Stacks → Add stack**.
-2. Paste the contents of `docker/docker-compose.prod.yml`.
-3. Under **Environment variables**, add `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`, `SPECTRA_DOMAIN`, etc.
-4. Click **Deploy the stack**.
+1. In Portainer, go to **Stacks → Add stack**
+2. Paste the contents of `docker/docker-compose.prod.yml` (or the swarm file for multi-host)
+3. Under **Environment variables**, add `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`, `SERVICE_AUTH_SECRET`, `SPECTRA_DOMAIN`, etc.
+4. Click **Deploy the stack**
 
 Portainer provides:
 
@@ -323,330 +404,233 @@ Portainer provides:
 | **Image management** | Pull, tag, and push images from the UI |
 | **Multi-host** | Manage all Docker hosts from a single dashboard |
 
-### Portainer Stack Template for Spectra
-
-Save a reusable template in Portainer's **App Templates**:
-
-```yaml
-# Spectra stack template — paste into Portainer
-version: "3.8"
-
-services:
-  db:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_USER: spectra
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: spectra
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U spectra"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  app:
-    image: registry.yourdomain.com/spectra/app:${VERSION:-latest}
-    expose: ["5000"]
-    depends_on:
-      db: { condition: service_healthy }
-    environment:
-      DATABASE_URL: postgresql+asyncpg://spectra:${POSTGRES_PASSWORD}@db:5432/spectra
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      SPECTRA_DOMAIN: ${SPECTRA_DOMAIN}
-      AI_PROVIDER: ${AI_PROVIDER:-litellm}
-      LLM_API_KEY: ${LLM_API_KEY}
-      FULLY_AUTOMATED: "false"
-    volumes:
-      - spectra_data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-
-  caddy:
-    image: caddy:2-alpine
-    ports: ["443:443", "80:80"]
-    volumes:
-      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-    depends_on:
-      app: { condition: service_healthy }
-
-  tools:
-    image: registry.yourdomain.com/spectra/tools:${VERSION:-latest}
-    depends_on:
-      db: { condition: service_healthy }
-    environment:
-      DATABASE_URL: postgresql+asyncpg://spectra:${POSTGRES_PASSWORD}@db:5432/spectra
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      IS_TOOLS_CONTAINER: "true"
-      PLUGIN_SAFE_MODE: "true"
-    volumes:
-      - spectra_data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    cap_add: [NET_ADMIN, NET_RAW]
-
-volumes:
-  postgres_data:
-  spectra_data:
-  caddy_data:
-```
-
 ---
 
-## Alternative: Docker Swarm
+## Scaling
 
-Docker Swarm is built into Docker Engine — no extra installation needed. It gives you replicas, rolling updates, health-check-based restart, and load balancing.
-
-### Initialize Swarm
+### App Replicas
 
 ```bash
-# On the manager node
-docker swarm init --advertise-addr <MANAGER_IP>
+# Docker Compose:
+docker compose up -d --scale app=3
 
-# Output gives you a join token. On each worker node:
-docker swarm join --token SWMTKN-1-xxxx <MANAGER_IP>:2377
-```
-
-### Deploy Spectra as a Swarm Stack
-
-```bash
-# From the manager node, in the Spectra repo
-docker stack deploy -c docker/docker-compose.prod.yml spectra
-```
-
-### Scale Services
-
-```bash
-# Scale the app to 3 replicas (Swarm load-balances automatically)
+# Docker Swarm:
 docker service scale spectra_app=3
-
-# Scale tool workers for more parallel scans
-docker service scale spectra_tools=5
-
-# Check service status
-docker service ls
-docker service ps spectra_app
 ```
 
-### Rolling Updates
+Rate limiting and WebSocket events are coordinated via PostgreSQL — no external state store needed. Each app instance uses the shared database for rate limit state.
+
+### Worker Replicas
 
 ```bash
-# Update the app image with zero downtime
-docker service update \
-  --image registry.yourdomain.com/spectra/app:v2.1.0 \
-  --update-parallelism 1 \
-  --update-delay 30s \
-  spectra_app
+# Docker Swarm:
+docker service scale spectra_worker=4
 ```
 
-### Why Swarm Over Kubernetes
+Each worker pulls jobs from the PostgreSQL queue using `SELECT ... FOR UPDATE SKIP LOCKED` — no coordination needed. Multiple workers can process jobs in parallel without conflicts.
 
-| Swarm | Kubernetes |
-|-------|------------|
-| Built into Docker — `docker swarm init` and you're running | Requires installing a distribution (k3s, k8s, EKS, etc.) |
-| Same compose YAML you already have | Needs Deployments, Services, Ingress, ConfigMaps, Secrets |
-| 5 minutes to set up | Hours to days for production readiness |
-| Replicas + failover + rolling updates | Same, plus auto-scaling, service mesh, CRDs |
-| Works for 2–10 node clusters | Designed for 10–1000+ nodes |
+### Database Read Replicas
 
-For Spectra's typical deployment (1–5 nodes), Swarm provides everything needed without the operational overhead of Kubernetes.
-
-### Swarm Networking
-
-Swarm creates an overlay network automatically. Services communicate by name:
+For read-heavy deployments, add PostgreSQL streaming replicas:
 
 ```bash
-# Inside any container in the stack:
-curl http://spectra_app:5000/api/health
-curl http://spectra_db:5432
+# On the replica node, create a base backup from the primary:
+pg_basebackup -h <PRIMARY_HOST> -U replicator -D /var/lib/postgresql/data -Fp -Xs -R
 ```
 
-### Health Checks and Auto-Restart
-
-Swarm uses the `healthcheck` from compose to detect unhealthy containers and automatically restarts them. The health checks in `docker-compose.prod.yml` are already configured correctly.
-
----
-
-## Alternative: Kamal
-
-[Kamal](https://kamal-deploy.org/) (by 37signals / Basecamp) deploys Docker containers to any server over SSH. No cluster manager, no orchestrator daemon — just SSH + Docker.
-
-### Install
+Configure the app to use read replicas:
 
 ```bash
-gem install kamal
+# In .env:
+DATABASE_REPLICA_URL=postgresql+asyncpg://spectra:pass@replica-host:5432/spectra
 ```
 
-### Configure
-
-Create `config/deploy.yml` in the Spectra repo:
-
-```yaml
-service: spectra
-image: registry.yourdomain.com/spectra/app
-
-servers:
-  web:
-    hosts:
-      - 203.0.113.10
-      - 203.0.113.11
-    labels:
-      traefik.http.routers.spectra.rule: Host(`spectra.example.com`)
-  worker:
-    hosts:
-      - 203.0.113.12
-    cmd: python -m app.worker
-
-registry:
-  server: registry.yourdomain.com
-  username: spectra
-  password:
-    - KAMAL_REGISTRY_PASSWORD
-
-env:
-  clear:
-    DATABASE_URL: postgresql+asyncpg://spectra:PASSWORD@db-host:5432/spectra
-    AI_PROVIDER: litellm
-    FULLY_AUTOMATED: "false"
-  secret:
-    - JWT_SECRET_KEY
-    - LLM_API_KEY
-    - POSTGRES_PASSWORD
-
-accessories:
-  db:
-    image: pgvector/pgvector:pg16
-    host: 203.0.113.10
-    port: 5432
-    env:
-      clear:
-        POSTGRES_USER: spectra
-        POSTGRES_DB: spectra
-      secret:
-        - POSTGRES_PASSWORD
-    directories:
-      - data:/var/lib/postgresql/data
-
-healthcheck:
-  path: /api/health
-  port: 5000
-```
-
-### Deploy
+Or register replicas via the admin API:
 
 ```bash
-# First-time setup (installs Docker on all servers)
-kamal setup
-
-# Subsequent deployments
-kamal deploy
-
-# Rollback
-kamal rollback
+curl -X POST /api/admin/servers \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "service_type": "db",
+    "name": "db-replica-1",
+    "url": "postgresql+asyncpg://spectra:pass@replica-host:5432/spectra",
+    "is_primary": false,
+    "weight": 1
+  }'
 ```
 
-### Why Kamal
-
-- Zero-downtime deploys out of the box.
-- Great migration path: start with 1 server, add more by listing hosts.
-- Uses Traefik for load balancing (auto-configured).
-- Same Docker images, no cluster infrastructure.
-
----
-
-## When to Graduate to Kubernetes
-
-Kubernetes adds significant operational complexity. For Spectra, consider Kubernetes only when you need:
-
-| Requirement | Why Kubernetes Helps |
-|-------------|---------------------|
-| Auto-scaling across >10 nodes | HPA + Cluster Autoscaler |
-| Complex service mesh (mTLS, traffic splitting) | Istio / Linkerd |
-| Multi-cloud / hybrid deployment | Federation, cloud-agnostic abstractions |
-| Fine-grained RBAC for infrastructure teams | Kubernetes RBAC, namespaces |
-| GPU scheduling for local LLM inference | Node selectors, device plugins |
-
-For most Spectra deployments (single team, 1–5 servers, <100 concurrent users), Portainer or Docker Swarm covers the need. See the [Microservices Split](microservices-split.md) document for the full Kubernetes manifest examples planned for later phases.
-
-### Lightweight K8s: k3s
-
-If you do need Kubernetes, start with [k3s](https://k3s.io/) — a single-binary distribution:
+For managed databases with built-in replication (AWS RDS, Supabase, Neon), point `DATABASE_URL` at the managed instance:
 
 ```bash
-# Install k3s on the server (includes kubectl, containerd, Traefik)
-curl -sfL https://get.k3s.io | sh -
-
-# Deploy Spectra
-kubectl apply -f k8s/
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/spectra?sslmode=require
 ```
 
 ---
 
-## Spectra-Specific Deployment Notes
+## Backups
 
-### Service Architecture
+### Built-in Automated Backups
 
-Spectra consists of these core services:
-
-| Service | Image | Required | Purpose |
-|---------|-------|----------|---------|
-| **db** | `pgvector/pgvector:pg16` | Yes | PostgreSQL + pgvector for RAG |
-| **app** | `spectra-app` | Yes | FastAPI API + Web UI on port 5000 |
-| **caddy** | `caddy:2-alpine` | Production | TLS termination, reverse proxy |
-| **tools** | `spectra-tools` | For scans | Kali Linux worker for security tools |
-| **minio** | `minio/minio` | Optional | S3-compatible object storage |
-
-### Microservices Mode
-
-For higher-scale deployments, Spectra supports splitting the monolith into separate services using `docker/docker-compose.services.yml`:
+The scheduler service handles automated backups:
 
 ```bash
-# Start in microservices mode (API + AI + Scheduler as separate containers)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml up -d
+# Enable in .env:
+BACKUP_ENABLED=true
+BACKUP_SCHEDULE_HOURS=24
+BACKUP_RETENTION_COUNT=10
+BACKUP_S3_BUCKET=spectra-backups    # Optional: upload to S3/MinIO
 ```
 
-This splits the app into:
-- **spectra-api** — Core API (port 5000)
-- **spectra-ai-svc** — AI/LLM service (port 5010, internal)
-- **spectra-scheduler** — Background tasks (no port)
-- **spectra-worker** — Tool execution (already separate)
-
-See [Microservices Split](microservices-split.md) for full details.
-
-### Environment Variable Reference
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `POSTGRES_PASSWORD` | Yes | — | Database password |
-| `JWT_SECRET_KEY` | Yes | — | JWT signing key |
-| `SPECTRA_DOMAIN` | Production | `localhost` | Domain for TLS |
-| `AI_PROVIDER` | No | `litellm` | LLM provider backend |
-| `LLM_API_KEY` | If using API LLM | — | API key for LLM provider |
-| `FULLY_AUTOMATED` | No | `false` | Bypass human approval (lab only) |
-| `PLUGIN_SAFE_MODE` | No | `true` | Restrict plugin capabilities |
-| `SANDBOX_ORCHESTRATOR_URL` | No | — | Remote sandbox service URL |
-| `LLM_GATEWAY_URL` | No | — | Remote LLM gateway URL |
-
-### Deploy with Each Method — Summary
+### Manual Backup via Admin API
 
 ```bash
-# === Docker Compose (single server) ===
-docker compose -f docker/docker-compose.prod.yml up -d
+# Trigger a backup
+curl -X POST http://localhost:5000/api/admin/backups \
+  -H "Authorization: Bearer <TOKEN>"
 
-# === Portainer ===
-# 1. Install Portainer, 2. Add stack via UI with docker-compose.prod.yml
-
-# === Docker Swarm ===
-docker swarm init
-docker stack deploy -c docker/docker-compose.prod.yml spectra
-docker service scale spectra_app=3
-
-# === Kamal ===
-kamal setup   # first time
-kamal deploy  # subsequent
+# Restore from a backup
+curl -X POST http://localhost:5000/api/admin/backups/restore \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"backup_path": "/app/data/backups/backup_20260313_120000.dump"}'
 ```
+
+### Manual PostgreSQL Backup
+
+```bash
+# Full database dump
+docker compose exec db pg_dump -U spectra spectra > backup_$(date +%F).sql
+
+# Restore
+cat backup.sql | docker compose exec -T db psql -U spectra spectra
+```
+
+### What to Back Up
+
+| Data | Location | Frequency |
+|------|----------|-----------|
+| Database | PostgreSQL container | Daily (automated via scheduler) |
+| Mission data | `data/missions/` or S3 | Daily |
+| Auth state | `data/auth/` | Daily |
+| Plugin signing keys | `keys/` | On change |
+| Configuration | `.env` | On change |
+| TLS certificates | Caddy volume `caddy_data` | Weekly |
+
+---
+
+## Storage
+
+Mission data storage is configurable:
+
+| Method | Config | Best For |
+|--------|--------|----------|
+| **Local** (default) | `data/missions/` directory | Single-server deployments |
+| **S3/MinIO** | `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Multi-server, durability |
+
+S3/MinIO support is **built-in** — set the environment variables and it works. Compatible with any S3 provider: AWS S3, Cloudflare R2, DigitalOcean Spaces, MinIO, etc.
+
+For multi-server deployments, use S3/MinIO so all nodes access the same data:
+
+```bash
+# Self-hosted MinIO (included in docker-compose.yml):
+S3_ENDPOINT_URL=http://minio:9000
+S3_ACCESS_KEY=spectra
+S3_SECRET_KEY=your-minio-password
+
+# Cloud S3:
+S3_ENDPOINT_URL=https://s3.amazonaws.com
+S3_ACCESS_KEY=AKIAIOSFODNN7EXAMPLE
+S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+S3_REGION=us-east-1
+```
+
+---
+
+## Monitoring
+
+### Health Endpoints
+
+All services expose health endpoints:
+
+| Service | Endpoint | Details |
+|---------|----------|---------|
+| App | `GET /api/health` | Includes DB, cache, worker status |
+| AI Service | `GET /health` | LLM provider connectivity |
+| Scheduler | `GET /health` | Background task status |
+| Worker | `GET /health` | Job processing status |
+
+### Observability
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/observability/stats` | Overall system metrics |
+| `GET /api/observability/metrics` | Prometheus-compatible metrics |
+| `GET /api/observability/services/health` | Per-service health |
+| `GET /system/services/topology` | Service topology — local vs remote |
+
+### Admin Dashboard
+
+The admin panel (Settings → Services) shows real-time service status with health dot indicators. The `ServerPoolManager` periodically health-checks all registered nodes (every 30 seconds by default) and excludes unhealthy nodes from load balancing.
+
+---
+
+## FULLY_AUTOMATED Warning
+
+> **Never set `FULLY_AUTOMATED=true` in production.** This mode bypasses all human approval gates — missions execute without operator confirmation. Use only in isolated lab/testing environments.
+
+```bash
+FULLY_AUTOMATED=false
+```
+
+---
+
+## Maintenance
+
+### Database Migrations
+
+Migrations run automatically on app startup via `scripts/start.sh`. For manual control:
+
+```bash
+# Check current migration
+docker compose exec app alembic current
+
+# Apply pending migrations
+docker compose exec app alembic upgrade head
+
+# Rollback one migration
+docker compose exec app alembic downgrade -1
+```
+
+### Updating
+
+```bash
+# Pull latest images and restart
+docker compose pull
+docker compose up -d
+
+# Or in Swarm:
+docker service update --image spectra-app:v2 spectra_app
+```
+
+### Versioning
+
+Spectra uses **CalVer** (date-based): `YYYY.MM.DD[.patch]`
+
+```bash
+python version.py                # 2026.03.13
+python version.py --patch 1      # 2026.03.13.1
+```
+
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Port 80/443 in use | Change port mapping in Caddy service or stop conflicting service |
+| Database connection fails | Verify `POSTGRES_PASSWORD` matches between `.env` and compose |
+| Migrations fail | Check `docker logs spectra-app` for migration errors |
+| Setup page not loading | Ensure all services are healthy: `docker compose ps` |
+| Caddy TLS errors | Ensure `SPECTRA_DOMAIN` is set and DNS points to this server |
+| WebSocket disconnects | Check Caddy logs; verify firewall allows WebSocket upgrades |
+| Services can't communicate | Ensure `SERVICE_AUTH_SECRET` is the same across all services |
+| Worker not processing jobs | Check `docker logs spectra-worker`; verify DB connectivity |
