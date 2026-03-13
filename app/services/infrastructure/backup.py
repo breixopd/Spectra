@@ -89,7 +89,7 @@ class BackupService:
             logger.info("Backup created: %s (%.1f MB)", backup_id, size_bytes / 1024 / 1024)
             return result
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("Backup timed out after 600s")
             return {"status": "failed", "error": "Backup timed out"}
         except Exception as e:

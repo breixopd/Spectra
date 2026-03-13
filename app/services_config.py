@@ -5,10 +5,10 @@ In monolith mode (default), all services run in one process.
 In split mode, each service runs its own FastAPI instance.
 """
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ServiceMode(str, Enum):
+class ServiceMode(StrEnum):
     MONOLITH = "monolith"  # All services in one process
     API = "api"  # Core API + auth + pages
     AI = "ai"  # LLM + embeddings + RAG

@@ -162,8 +162,8 @@ async def lifespan(fastapi_app: FastAPI):
 
 app = FastAPI(title="Spectra Scheduler", version="1.0.0", lifespan=lifespan)
 
-from app.core.service_auth import ServiceAuthMiddleware
 from app.core.config import get_settings
+from app.core.service_auth import ServiceAuthMiddleware
 
 _settings = get_settings()
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()

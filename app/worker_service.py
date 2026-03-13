@@ -31,8 +31,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Spectra Worker", version="1.0.0", lifespan=lifespan)
 
 # Service auth middleware (applied after app creation)
-from app.core.service_auth import ServiceAuthMiddleware
 from app.core.config import get_settings
+from app.core.service_auth import ServiceAuthMiddleware
 
 _settings = get_settings()
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
@@ -47,9 +47,9 @@ async def health():
 
 async def work_loop():
     """Pull and execute tool jobs from the PG queue using the existing worker infrastructure."""
-    from app.worker import _WORKER_FUNCTIONS
-    from app.worker.lifecycle import startup, shutdown
     from app.core.queue import worker_loop
+    from app.worker import _WORKER_FUNCTIONS
+    from app.worker.lifecycle import shutdown, startup
 
     queue_name = os.environ.get("QUEUE_NAME", "default")
 

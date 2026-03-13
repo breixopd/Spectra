@@ -4,10 +4,8 @@ Application configuration using Pydantic Settings.
 Loads configuration from environment variables and .env files.
 """
 
-import json
 import logging
 from functools import lru_cache
-from pathlib import Path
 from typing import Any
 
 from pydantic import Field, SecretStr, field_validator
