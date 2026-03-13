@@ -1,6 +1,32 @@
-# Microservices Decomposition Plan
+# Microservices Decomposition
 
 [← Wiki Home](home.md) | [Sandboxes](sandboxes.md) | [Scaling](scaling.md)
+
+---
+
+## Current Status
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **Phase 0** | Gateway-ready interfaces (`ServiceRegistry`, `GatewayClient`) | **Done** |
+| **Phase 1** | Entry point split — AI Service, Scheduler Service | **Done** |
+| **Phase 2** | Extract Billing & Reporting as standalone services | Planned |
+| **Phase 3** | Extract Sandbox Orchestrator | Planned (gateway pattern already in place) |
+| **Phase 4** | Split Auth from Core API | Planned |
+
+### What's Implemented
+
+- **AI Service** — [`app/ai_service.py`](../../app/ai_service.py) runs as a standalone FastAPI app exposing `/api/v1/ai/chat`, `/api/v1/ai/embed`, and `/health`.
+- **Scheduler Service** — [`app/scheduler_service.py`](../../app/scheduler_service.py) runs as a headless process handling sandbox watchdog, quota resets, metrics collection, and health reporting.
+- **Services Compose overlay** — [`docker/docker-compose.services.yml`](../../docker/docker-compose.services.yml) defines the split: `spectra-api` (core), `spectra-ai-svc` (port 5010), and `spectra-scheduler` (no port).
+- **Sandbox Orchestrator gateway** — `SandboxOrchestratorClient` in `app/services/gateway/sandbox_orchestrator.py` routes to a remote orchestrator when `SANDBOX_ORCHESTRATOR_URL` is set.
+- **LLM gateway** — `LLMGatewayClient` routes to a remote LLM service when `LLM_GATEWAY_URL` is set.
+
+To run in microservices mode:
+
+```bash
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml up -d
+```
 
 ---
 
@@ -386,53 +412,67 @@ class BillingService(Protocol):
     async def get_plan(self, user_id: str) -> dict: ...
 ```
 
-### Phase 1 — Extract Billing & Reporting (Lowest Risk)
+### Phase 1 — Entry Point Split (Done)
+
+The monolith's AI and scheduler concerns have been extracted into separate entry points that run as independent containers while sharing the same codebase.
+
+| Step | Action | Status |
+|---|---|---|
+| 1a | Create `app/ai_service.py` — standalone FastAPI app for LLM routing, embeddings, RAG | **Done** |
+| 1b | Create `app/scheduler_service.py` — headless service for background tasks (sandbox watchdog, quota reset, metrics) | **Done** |
+| 1c | Create `docker/docker-compose.services.yml` — overlay that splits `app` into `api`, `ai-svc`, and `scheduler` | **Done** |
+| 1d | AI service exposes `/api/v1/ai/chat`, `/api/v1/ai/embed`, `/health` on port 5010 | **Done** |
+| 1e | Core API routes AI requests to `AI_SERVICE_URL` when set | **Done** |
+
+**Rollback:** Remove the services overlay and restart with only `docker-compose.yml` — the monolith still includes all functionality.
+
+### Phase 2 — Extract Billing & Reporting (Next)
 
 **Risk:** Low — these domains have the fewest inbound dependencies.
 
 | Step | Action |
 |---|---|
-| 1a | Create `services/billing/` FastAPI app with its own `Dockerfile` |
-| 1b | Move `plans`, `subscriptions`, `api_keys`, `usage_records` tables to `billing` schema |
-| 1c | Wire `BillingGatewayClient` (extends `GatewayClient`) into `ServiceRegistry` |
-| 1d | Deploy both billing service and monolith; monolith calls billing via HTTP when `BILLING_SERVICE_URL` is set |
-| 1e | Repeat for Reporting (minimal data ownership — mostly reads + S3 writes) |
+| 2a | Create `services/billing/` FastAPI app with its own `Dockerfile` |
+| 2b | Move `plans`, `subscriptions`, `api_keys`, `usage_records` tables to `billing` schema |
+| 2c | Wire `BillingGatewayClient` (extends `GatewayClient`) into `ServiceRegistry` |
+| 2d | Deploy both billing service and monolith; monolith calls billing via HTTP when `BILLING_SERVICE_URL` is set |
+| 2e | Repeat for Reporting (minimal data ownership — mostly reads + S3 writes) |
 
 **Rollback:** Unset `BILLING_SERVICE_URL` → monolith falls back to in-process code.
 
-### Phase 2 — Extract AI Service
+### Phase 3 — Full AI Service Extraction
 
-**Risk:** Medium — high traffic, latency-sensitive.
+**Risk:** Medium — high traffic, latency-sensitive. Phase 1 already split the entry point; this phase completes the extraction with its own database pool and independent deployment.
 
 | Step | Action |
 |---|---|
-| 2a | Package `app/services/ai/` as standalone FastAPI app |
-| 2b | Expose `/v1/generate`, `/v1/embed`, `/v1/rag/search`, `/v1/agents/invoke` |
-| 2c | RAG vectors stay in the shared PostgreSQL (pgvector); AI service gets a dedicated connection pool |
-| 2d | Wire `AIGatewayClient` into `ServiceRegistry` gated by `AI_SERVICE_URL` |
-| 2e | Deploy on GPU nodes separate from the API tier |
+| 3a | Give `app/ai_service.py` its own dedicated database connection pool and Dockerfile |
+| 3b | Add remaining endpoints: `/v1/rag/search`, `/v1/agents/invoke` |
+| 3c | RAG vectors stay in the shared PostgreSQL (pgvector); AI service gets a dedicated connection pool |
+| 3d | Wire `AIGatewayClient` into `ServiceRegistry` gated by `AI_SERVICE_URL` (partially done) |
+| 3e | Deploy on GPU nodes separate from the API tier |
 
-### Phase 3 — Extract Sandbox Orchestrator
+### Phase 4 — Extract Sandbox Orchestrator
 
 **Risk:** Low — already has the gateway pattern (`SANDBOX_ORCHESTRATOR_URL`).
 
 | Step | Action |
 |---|---|
-| 3a | Promote in-process `SandboxPool` into a standalone FastAPI service |
-| 3b | The existing `SandboxOrchestratorClient` contract (`POST /v1/sandboxes`, `DELETE /v1/sandboxes/{id}`) becomes the real API |
-| 3c | Move Docker socket mount from `spectra-app` to `spectra-orchestrator` only |
-| 3d | Orchestrator manages warm pool, heartbeat, OOM escalation, golden image builds |
+| 4a | Promote in-process `SandboxPool` into a standalone FastAPI service |
+| 4b | The existing `SandboxOrchestratorClient` contract (`POST /v1/sandboxes`, `DELETE /v1/sandboxes/{id}`) becomes the real API |
+| 4c | Move Docker socket mount from `spectra-app` to `spectra-orchestrator` only |
+| 4d | Orchestrator manages warm pool, heartbeat, OOM escalation, golden image builds |
 
-### Phase 4 — Split Auth from Core API
+### Phase 5 — Split Auth from Core API
 
 **Risk:** Highest — auth is on the critical path for every request.
 
 | Step | Action |
 |---|---|
-| 4a | Extract JWT issuance/validation into `spectra-auth` |
-| 4b | Gateway validates tokens by calling auth service (or verifying with a shared public key for RS256) |
-| 4c | Migrate from HS256 to RS256 so the gateway can validate tokens without calling auth — reduces latency |
-| 4d | `users` table moves to `auth` schema; other services get read-only access via API or read replica |
+| 5a | Extract JWT issuance/validation into `spectra-auth` |
+| 5b | Gateway validates tokens by calling auth service (or verifying with a shared public key for RS256) |
+| 5c | Migrate from HS256 to RS256 so the gateway can validate tokens without calling auth — reduces latency |
+| 5d | `users` table moves to `auth` schema; other services get read-only access via API or read replica |
 
 **Migration timeline (suggested):**
 
@@ -442,21 +482,32 @@ gantt
     dateFormat YYYY-MM
     axisFormat %b %Y
 
-    section Phase 0
-    Interface protocols & repositories :p0, 2026-04, 2026-05
-
-    section Phase 1
-    Extract Billing Service   :p1a, 2026-05, 2026-06
-    Extract Reporting Service  :p1b, 2026-06, 2026-07
+    section Phase 0–1 (Done)
+    Interface protocols & repositories :done, p0, 2025-10, 2025-12
+    Entry point split (AI, Scheduler)  :done, p1, 2025-12, 2026-02
 
     section Phase 2
-    Extract AI Service         :p2, 2026-07, 2026-09
+    Extract Billing Service   :p2a, 2026-04, 2026-05
+    Extract Reporting Service  :p2b, 2026-05, 2026-06
 
     section Phase 3
-    Extract Sandbox Orchestrator :p3, 2026-09, 2026-10
+    Full AI Service extraction :p3, 2026-06, 2026-08
 
     section Phase 4
-    Split Auth from Core API   :p4, 2026-10, 2026-12
+    Extract Sandbox Orchestrator :p4, 2026-08, 2026-09
+
+    section Phase 5
+    Split Auth from Core API   :p5, 2026-09, 2026-11
+```
+
+    section Phase 3
+    Full AI Service extraction :p3, 2026-06, 2026-08
+
+    section Phase 4
+    Extract Sandbox Orchestrator :p4, 2026-08, 2026-09
+
+    section Phase 5
+    Split Auth from Core API   :p5, 2026-09, 2026-11
 ```
 
 ---
