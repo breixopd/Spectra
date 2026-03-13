@@ -17,6 +17,7 @@ from .content import router as content_router
 from .email import router as email_router
 from .plans import router as plans_router
 from .servers import router as servers_router
+from .settings import router as settings_router
 from .users import router as users_router
 
 router = APIRouter()
@@ -26,3 +27,4 @@ router.include_router(servers_router)
 router.include_router(audit_router)
 router.include_router(content_router)
 router.include_router(email_router)
+router.include_router(settings_router)

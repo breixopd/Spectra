@@ -98,6 +98,10 @@ class Settings(BaseSettings):
     PLATFORM_BASE_URL: str = ""  # Full base URL (e.g., "https://spectra.example.com")
     PLATFORM_EXPOSED: bool = False  # Whether platform is accessible from internet
 
+    # --- Maintenance ---
+    MAINTENANCE_MODE: bool = False
+    MAINTENANCE_MESSAGE: str = "We're performing scheduled maintenance. Please check back shortly."
+
     # --- Request Limits ---
     MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 10 MB
 
