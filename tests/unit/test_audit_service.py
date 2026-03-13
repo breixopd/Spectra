@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.audit_log import AuditEventType
 from app.services.system.audit import log_event
@@ -109,7 +110,7 @@ class TestLogEvent:
     async def test_handles_db_error_gracefully(self, mock_session):
         with patch("app.services.system.audit.AuditLogRepository") as MockRepo:
             repo_inst = MockRepo.return_value
-            repo_inst.create = AsyncMock(side_effect=Exception("DB error"))
+            repo_inst.create = AsyncMock(side_effect=SQLAlchemyError("DB error"))
 
             # Should not raise
             await log_event(mock_session, AuditEventType.LOGIN, user_id="u1")

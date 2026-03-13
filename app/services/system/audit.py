@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from fastapi import Request
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditEventType
@@ -37,6 +38,6 @@ async def log_event(
             user_agent=user_agent,
         )
         await session.commit()
-    except Exception as e:
+    except SQLAlchemyError as e:
         logger.error("Failed to write audit log: %s", e)
         await session.rollback()

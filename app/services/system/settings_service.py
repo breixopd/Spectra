@@ -41,7 +41,7 @@ def get_sandbox_status() -> dict:
         if pool and pool.available:
             return {"available": True, "message": "Docker connected"}
         return {"available": False, "message": "Docker not accessible"}
-    except Exception:
+    except (ImportError, RuntimeError):
         return {"available": False, "message": "Sandbox pool not initialized"}
 
 
@@ -326,7 +326,7 @@ async def test_llm_connection(
         if response:
             return {"success": True}
         return {"success": False, "error": "No response from LLM"}
-    except Exception:
+    except (ConnectionError, TimeoutError, ValueError, RuntimeError, OSError):
         return {"success": False, "error": "Failed to communicate with LLM provider"}
 
 

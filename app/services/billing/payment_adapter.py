@@ -437,3 +437,44 @@ class PaymentService:
             success_url=f"{base_url}/profile?section=plan&status=success",
             cancel_url=f"{base_url}/profile?section=plan&status=cancelled",
         )
+
+    async def handle_checkout_completed(
+        self,
+        user_id: str,
+        plan_id: str,
+        customer_id: str | None,
+        subscription_id: str | None,
+    ) -> bool:
+        """Process a completed checkout event. Returns True if a new subscription was created."""
+        from app.models.user import User as UserModel
+
+        async with async_session_maker() as session:
+            # Idempotency check — don't create duplicate subscriptions
+            if subscription_id:
+                existing = (
+                    await session.execute(
+                        select(Subscription).where(
+                            Subscription.external_subscription_id == subscription_id
+                        )
+                    )
+                ).scalar_one_or_none()
+                if existing:
+                    return False
+
+            user = (
+                await session.execute(select(UserModel).where(UserModel.id == user_id))
+            ).scalar_one_or_none()
+            if user:
+                user.plan_id = plan_id
+
+            sub = Subscription(
+                user_id=user_id,
+                plan_id=plan_id,
+                status="active",
+                external_subscription_id=subscription_id or "",
+                external_customer_id=customer_id or "",
+                payment_provider="stripe",
+            )
+            session.add(sub)
+            await session.commit()
+            return True

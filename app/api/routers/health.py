@@ -8,6 +8,7 @@ Unauthenticated for load balancer/orchestrator use.
 import logging
 import shutil
 import time
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import text
@@ -32,7 +33,7 @@ async def health_check(
     response: Response,
     db: AsyncSession = Depends(get_async_session),
     verbose: bool = Query(False, description="Include detailed component status"),
-):
+) -> dict[str, Any]:
     """
     Comprehensive health check endpoint.
 
@@ -151,7 +152,7 @@ async def health_check(
 async def readiness_check(
     response: Response,
     db: AsyncSession = Depends(get_async_session),
-):
+) -> dict[str, Any]:
     """
     Readiness probe - checks if ALL components are ready to serve traffic.
     Returns 503 if any component is not ready.

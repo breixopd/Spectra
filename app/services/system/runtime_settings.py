@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import SecretStr
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -141,7 +142,7 @@ async def get_runtime_setting_value(key: str) -> str | int | bool | None:
             if field_type == "int":
                 return int(row)
             return row
-    except Exception:
+    except (SQLAlchemyError, OSError):
         return getattr(settings, key, None)
 
 
