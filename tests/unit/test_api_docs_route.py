@@ -24,7 +24,7 @@ class TestApiDocsRoute:
         mock_route.dependant = MagicMock(path_params=[], query_params=[])
         mock_app.routes = [mock_route]
 
-        with patch("app.api.routers.ui._get_ui_user", return_value={"id": 1, "username": "admin"}):
+        with patch("app.api.routers.ui._get_ui_user", return_value={"id": 1, "username": "admin", "role": "admin"}):
             with patch("app.api.routers.ui.templates") as mock_templates:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
@@ -78,17 +78,18 @@ class TestApiDocsRoute:
         mock_app.routes = [mock_route1, mock_route2]
 
         with patch("app.api.routers.ui._get_ui_user", return_value={"id": 1}):
-            with patch("app.api.routers.ui.templates") as mock_templates:
-                mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
+            with patch("app.api.routers.ui._check_user_feature", return_value=True):
+                with patch("app.api.routers.ui.templates") as mock_templates:
+                    mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
 
-                with patch("app.main.app", mock_app):
-                    await api_docs_page(mock_request)
+                    with patch("app.main.app", mock_app):
+                        await api_docs_page(mock_request)
 
-                call_args = mock_templates.TemplateResponse.call_args
-                context = call_args[0][1]
-                groups = context["route_groups"]
-                assert "v1" in groups
-                assert "admin" in groups
+                    call_args = mock_templates.TemplateResponse.call_args
+                    context = call_args[0][1]
+                    groups = context["route_groups"]
+                    assert "v1" in groups
+                    assert "admin" in groups
 
 
 class TestHelpRoute:
