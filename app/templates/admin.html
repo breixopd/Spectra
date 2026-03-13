@@ -5,6 +5,29 @@
 {% endblock %}
 
 {% block content %}
+<!-- Maintenance Mode Banner -->
+<div id="maintenance-banner" class="mb-5 p-4 rounded-xl border transition-all duration-300 animate-fade-in-up {{ 'bg-amber-500/10 border-amber-500/30' if maintenance_active else 'bg-slate-800/50 border-white/5' }}">
+    <div class="flex items-center justify-between flex-wrap gap-3">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center {{ 'bg-amber-500/20 text-amber-400' if maintenance_active else 'bg-slate-700 text-slate-400' }}">
+                <i class="fa-solid fa-wrench text-lg"></i>
+            </div>
+            <div>
+                <h3 class="text-sm font-semibold text-white">Maintenance Mode</h3>
+                <p class="text-xs {{ 'text-amber-300' if maintenance_active else 'text-slate-500' }}">{{ 'Active — users see maintenance page' if maintenance_active else 'Inactive — platform operating normally' }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <input type="text" id="maintenance-msg-input" placeholder="Custom message (optional)" class="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs w-64 focus:border-violet-500 focus:outline-none">
+            <button onclick="toggleMaintenance()" id="maintenance-toggle-btn"
+                data-active="{{ 'true' if maintenance_active else 'false' }}"
+                class="px-4 py-2 rounded-lg text-xs font-semibold transition-colors {{ 'bg-emerald-600 hover:bg-emerald-500 text-white' if maintenance_active else 'bg-amber-600 hover:bg-amber-500 text-white' }}">
+                {{ 'Disable Maintenance' if maintenance_active else 'Enable Maintenance' }}
+            </button>
+        </div>
+    </div>
+</div>
+
 <div class="flex items-center justify-between mb-5 animate-fade-in-up">
     <h1 class="text-2xl font-semibold text-white tracking-tight">Admin Panel</h1>
 </div>
@@ -922,6 +945,25 @@
 </div>
 
 <script nonce="{{ request.state.csp_nonce }}">
+// ---- Maintenance Mode Toggle (global scope) ----
+async function toggleMaintenance() {
+    const btn = document.getElementById('maintenance-toggle-btn');
+    const msg = document.getElementById('maintenance-msg-input').value.trim();
+    const currentlyActive = btn.dataset.active === 'true';
+    const newState = !currentlyActive;
+    try {
+        const r = await fetch('/api/admin/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ MAINTENANCE_MODE: newState, ...(msg ? { MAINTENANCE_MESSAGE: msg } : {}) })
+        });
+        if (!r.ok) throw new Error('Request failed');
+        location.reload();
+    } catch (e) {
+        alert('Failed to toggle maintenance mode: ' + e.message);
+    }
+}
+
 (function() {
     // ---- State ----
     let usersPage = 1, usersPerPage = 20;

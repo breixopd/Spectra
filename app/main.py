@@ -121,6 +121,53 @@ app.add_middleware(CorrelationIdMiddleware)
 # --- HTTP Telemetry ---
 app.add_middleware(TelemetryMiddleware)
 
+
+# --- Maintenance Mode ---
+@app.middleware("http")
+async def maintenance_mode_check(request: Request, call_next):
+    """Return 503 for all authenticated pages when maintenance mode is on."""
+    from app.services.system.runtime_settings import get_runtime_setting_value
+
+    path = request.url.path
+    exempt = (
+        path == "/"
+        or path.startswith("/static")
+        or path.startswith("/api/health")
+        or path.startswith("/api/admin")
+        or path == "/admin"
+        or path == "/login"
+        or path.startswith("/api/auth")
+        or path.startswith("/api/v1/auth")
+        or path.startswith("/legal/")
+    )
+    if not exempt:
+        try:
+            is_maintenance = await get_runtime_setting_value("MAINTENANCE_MODE")
+            if is_maintenance:
+                if path.startswith("/api/"):
+                    msg = await get_runtime_setting_value("MAINTENANCE_MESSAGE") or "Maintenance in progress"
+                    return JSONResponse({"detail": msg}, status_code=503)
+                else:
+                    msg = await get_runtime_setting_value("MAINTENANCE_MESSAGE") or "We're performing scheduled maintenance. Please check back shortly."
+                    return HTMLResponse(
+                        '<!DOCTYPE html>'
+                        '<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+                        '<title>Maintenance \u2014 Spectra</title>'
+                        '<link rel="stylesheet" href="/static/css/base.css">'
+                        '<style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#0a0a0f;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;text-align:center}'
+                        '.maint{max-width:480px;padding:3rem 2rem}.maint svg{margin:0 auto 1.5rem;opacity:0.6}'
+                        '.maint h1{font-size:1.5rem;font-weight:700;margin:0 0 1rem}.maint p{color:#94a3b8;line-height:1.6;margin:0 0 2rem}'
+                        '.maint a{color:#a78bfa;text-decoration:none}.maint a:hover{text-decoration:underline}</style></head>'
+                        '<body><div class="maint">'
+                        '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+                        f'<h1>Under Maintenance</h1><p>{msg}</p>'
+                        '<a href="/">\u2190 Back to Home</a></div></body></html>',
+                        status_code=503,
+                    )
+        except Exception:
+            pass  # If DB is down, don't block requests
+    return await call_next(request)
+
 # --- Paths exempt from request timeout (long-running by design) ---
 _TIMEOUT_EXEMPT_PREFIXES = ("/api/v1/export", "/ws")
 

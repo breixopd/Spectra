@@ -63,9 +63,18 @@ async def admin_page(request: Request):
         return RedirectResponse(url="/login", status_code=303)
     if user.get("role") != "admin" and not user.get("is_superuser"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+
+    maintenance_active = False
+    try:
+        from app.services.system.runtime_settings import get_runtime_setting_value
+
+        maintenance_active = bool(await get_runtime_setting_value("MAINTENANCE_MODE"))
+    except Exception:
+        pass
+
     return templates.TemplateResponse(
         "admin.html",
-        {"request": request, "title": f"{settings.APP_NAME} | Admin"},
+        {"request": request, "title": f"{settings.APP_NAME} | Admin", "maintenance_active": maintenance_active},
     )
 
 

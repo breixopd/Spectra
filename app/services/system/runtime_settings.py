@@ -87,6 +87,9 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     "BACKUP_SCHEDULE_HOURS": ("BACKUP_SCHEDULE_HOURS", "int"),
     "BACKUP_RETENTION_COUNT": ("BACKUP_RETENTION_COUNT", "int"),
     "BACKUP_S3_BUCKET": ("BACKUP_S3_BUCKET", "str"),
+    # Maintenance
+    "MAINTENANCE_MODE": ("MAINTENANCE_MODE", "bool"),
+    "MAINTENANCE_MESSAGE": ("MAINTENANCE_MESSAGE", "str"),
 }
 _LITELLM_PROVIDER_PREFIXES = {
     "anthropic",
@@ -117,6 +120,29 @@ def _as_bool(value: str | bool | None) -> bool:
     if value is None:
         return False
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+async def get_runtime_setting_value(key: str) -> Any:
+    """Get a single runtime setting value from DB."""
+    field_info = GENERAL_RUNTIME_FIELD_MAP.get(key)
+    if not field_info:
+        return getattr(settings, key, None)
+    _, field_type = field_info
+    try:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(SystemConfig.value).where(SystemConfig.key == key)
+            )
+            row = result.scalar_one_or_none()
+            if row is None:
+                return getattr(settings, key, None)
+            if field_type == "bool":
+                return _as_bool(row)
+            if field_type == "int":
+                return int(row)
+            return row
+    except Exception:
+        return getattr(settings, key, None)
 
 
 def _load_json_dict(value: str | None) -> dict[str, Any]:
