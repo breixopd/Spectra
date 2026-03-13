@@ -88,8 +88,8 @@ class Settings(BaseSettings):
     AI_PROVIDER_ROUTING: dict[str, str] = Field(default_factory=dict)
     AI_PROVIDER_FALLBACKS: dict[str, list[str]] = Field(default_factory=dict)
 
-    # Embedding model (must be supported by LLM_API_BASE_URL provider)
-    EMBEDDING_MODEL: str = "text-embedding-3-small"
+    # Embedding model (local/ prefix uses fastembed; API model uses LLM provider)
+    EMBEDDING_MODEL: str = "local/BAAI/bge-small-en-v1.5"
     EMBEDDING_API_KEY: SecretStr = Field(default=SecretStr(""), description="API key for embedding provider (falls back to LLM_API_KEY)")
     EMBEDDING_API_BASE_URL: str = Field(default="", description="Base URL for embedding API (falls back to LLM_API_BASE_URL)")
 

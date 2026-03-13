@@ -139,7 +139,7 @@ class TestModelLoading:
             mock_settings.AI_PROVIDER = "litellm"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-            with pytest.raises(RuntimeError, match="requires an API key"):
+            with pytest.raises(RuntimeError, match="not configured"):
                 await service.embed("test")
 
     @pytest.mark.asyncio
@@ -149,7 +149,7 @@ class TestModelLoading:
             mock_settings.AI_PROVIDER = "litellm"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-            with pytest.raises(RuntimeError, match="requires an API key"):
+            with pytest.raises(RuntimeError, match="not configured"):
                 await service.embed_batch(["test"])
 
     @pytest.mark.asyncio
