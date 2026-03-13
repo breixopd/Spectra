@@ -129,7 +129,7 @@
 </div>
 
 <!-- Getting Started Card - shown when no missions exist -->
-<div id="getting-started" class="hidden glass-panel rounded-xl p-6 mb-6 border border-violet-500/20 animate-fade-in-up">
+<div id="getting-started" class="glass-panel rounded-xl p-6 mb-6 border border-violet-500/20 animate-fade-in-up">
     <div class="flex items-start gap-4">
         <div class="w-12 h-12 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0">
             <i class="fa-solid fa-rocket text-violet-400 text-lg"></i>
@@ -432,14 +432,15 @@ async function loadMetrics() {
     const cutoff = days > 0 ? new Date(Date.now() - days * 86400000) : null;
     if (cutoff) missions = missions.filter(m => new Date(m.created_at) >= cutoff);
 
-    // Show getting started card when no missions exist
+    // Toggle getting started card based on mission existence
     const gettingStarted = document.getElementById('getting-started');
     if (gettingStarted) {
-        if (missions.length === 0) {
-            gettingStarted.classList.remove('hidden');
-        } else {
-            gettingStarted.classList.add('hidden');
-        }
+        gettingStarted.classList.toggle('hidden', missions.length > 0);
+    }
+
+    // Show empty state for findings when none exist
+    if (findingsLoading && findingsData && missions.length === 0) {
+        findingsLoading.innerHTML = '<div class="col-span-4 dash-empty" style="padding:1rem 0.5rem;min-height:auto;"><i class="fa-solid fa-shield-halved block" style="font-size:1.25rem;"></i><p style="font-size:0.75rem;">No findings yet</p></div>';
     }
 
     // Gather all findings
@@ -454,11 +455,20 @@ async function loadMetrics() {
     if (findingsLoading) findingsLoading.classList.add('hidden');
     if (findingsData) findingsData.classList.remove('hidden');
 
-    renderFindingsOverTime(allFindings, days);
-    renderMissionsPerWeek(missions);
-    renderSeverityBreakdown(allFindings);
-    renderTopVulns(allFindings);
-    renderTopTargets(allFindings, missions);
+    // Show empty state for metrics when no data
+    const metricsSection = document.getElementById('metrics-section');
+    if (metricsSection && missions.length === 0 && allFindings.length === 0) {
+        const metricsBody = metricsSection.querySelector('.p-5');
+        if (metricsBody) {
+            metricsBody.innerHTML = '<div class="dash-empty" style="padding:3rem 1rem;"><i class="fa-solid fa-chart-bar block"></i><h3>No data yet</h3><p>Complete your first assessment to see trends and metrics here.</p></div>';
+        }
+    } else {
+        renderFindingsOverTime(allFindings, days);
+        renderMissionsPerWeek(missions);
+        renderSeverityBreakdown(allFindings);
+        renderTopVulns(allFindings);
+        renderTopTargets(allFindings, missions);
+    }
 }
 
 function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }

@@ -27,8 +27,17 @@ const observer = new IntersectionObserver((entries) => {
             observer.unobserve(entry.target);
         }
     });
-}, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+}, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' });
 reveals.forEach(el => observer.observe(el));
+
+// Trigger reveals for elements already in viewport on load
+reveals.forEach(el => {
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+        el.classList.add('visible');
+        observer.unobserve(el);
+    }
+});
 
 // FAQ toggle — using event delegation (CSP-safe, no inline onclick)
 document.querySelectorAll('.faq-question').forEach(btn => {
