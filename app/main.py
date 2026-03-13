@@ -287,6 +287,9 @@ app.include_router(api_v1)
 # Non-versioned health endpoint for Docker/LB probes
 app.include_router(health.router, prefix="/api", tags=["Health"], include_in_schema=False)
 
+# Backward-compatible auth routes at /api/auth/* (canonical: /api/v1/auth/*)
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"], include_in_schema=False)
+
 # --- Non-versioned routes (UI pages, public, admin) ---
 app.include_router(public.router, tags=["Public"])
 app.include_router(ui.router, tags=["UI"])
