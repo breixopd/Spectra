@@ -9,6 +9,8 @@ import pytest
 from playwright.sync_api import Page, expect
 
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
+ADMIN_USERNAME = os.environ.get("APP_ADMIN_USER", "admin")
+ADMIN_PASSWORD = os.environ.get("APP_ADMIN_PASSWORD", "Spectra2026")
 ALLOWED_APP_URL_SCHEMES = {"http", "https"}
 
 
@@ -32,8 +34,8 @@ def auth_token(app_url: str):
     parsed_url = urllib.parse.urlsplit(app_url)
     payload = urllib.parse.urlencode(
         {
-            "username": "admin",
-            "password": "TestPassword123!",
+            "username": ADMIN_USERNAME,
+            "password": ADMIN_PASSWORD,
         }
     ).encode()
 
@@ -88,4 +90,18 @@ def authenticated_page(page: Page, app_url: str, auth_token: str):
     )
     page.goto(f"{app_url}/dashboard")
     expect(page.locator("#mission-target")).to_be_visible(timeout=30000)
+    return page
+
+
+@pytest.fixture
+def logged_in_page(page: Page, app_url: str):
+    """Log in interactively via the login form and return the authenticated page."""
+    page.goto(f"{app_url}/login", wait_until="networkidle")
+
+    page.locator("#username").fill(ADMIN_USERNAME)
+    page.locator("#password").fill(ADMIN_PASSWORD)
+    page.locator("#login-form button[type='submit']").click()
+
+    page.wait_for_url("**/dashboard", timeout=10_000)
+    expect(page).to_have_url(f"{app_url}/dashboard")
     return page
