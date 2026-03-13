@@ -21,9 +21,12 @@ import re
 import xml.etree.ElementTree as ET
 from io import StringIO
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.services.tools.models import OutputFormat, ToolConfig
+
+if TYPE_CHECKING:
+    from app.services.ai.llm import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +42,7 @@ class UniversalParser:
     - llm_extraction: Use LLM for complex parsing
     """
 
-    def __init__(self, config: ToolConfig, llm_client: Any = None):
+    def __init__(self, config: ToolConfig, llm_client: LLMClient | None = None):
         self.config = config
         self.llm_client = llm_client
 

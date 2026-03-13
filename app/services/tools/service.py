@@ -36,6 +36,7 @@ from app.services.tools.safety_checks import (
 )
 
 if TYPE_CHECKING:
+    from app.services.ai.llm import LLMClient
     from app.services.mission.mission import Mission
 
 logger = logging.getLogger(__name__)
@@ -106,7 +107,7 @@ class ToolExecutionService:
         from app.services.tools.sandbox.models import SandboxInfo
         return SandboxInfo.make_queue_name(mission_id)
 
-    def __init__(self, llm_client: Any):
+    def __init__(self, llm_client: LLMClient):
         """Initialize with LLM client for safety/consensus agents."""
         self.llm = llm_client
         self.safety_supervisor = SafetySupervisorAgent(llm_client)

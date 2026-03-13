@@ -8,7 +8,6 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
@@ -54,8 +53,7 @@ class UpdateServerNodeRequest(BaseModel):
 @router.post("/api/admin/servers/verify")
 async def verify_server_connection(
     body: ServerConnectionRequest,
-    current_user: User = Depends(get_current_active_user),
-    _perm=require_permission(Permission.MANAGE_SETTINGS),
+    _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Test SSH connectivity to a remote server without making changes."""
     from app.services.provisioning import ServerProvisioner
@@ -78,8 +76,7 @@ async def verify_server_connection(
 async def provision_server(
     body: ProvisionRequest,
     request: Request,
-    current_user: User = Depends(get_current_active_user),
-    _perm=require_permission(Permission.MANAGE_SETTINGS),
+    current_user: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ):
     """Auto-install and configure a Spectra service on a remote server."""
@@ -131,8 +128,7 @@ async def provision_server(
 async def deprovision_server(
     body: DeprovisionRequest,
     request: Request,
-    current_user: User = Depends(get_current_active_user),
-    _perm=require_permission(Permission.MANAGE_SETTINGS),
+    current_user: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ):
     """Remove a Spectra service from a remote server."""
@@ -267,8 +263,7 @@ async def check_all_server_health(
 
 @router.post("/api/admin/backups")
 async def create_backup(
-    current_user: User = Depends(get_current_active_user),
-    _perm=require_permission(Permission.MANAGE_SETTINGS),
+    _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Create a database backup."""
     from app.services.infrastructure.backup import BackupService
@@ -279,8 +274,7 @@ async def create_backup(
 
 @router.get("/api/admin/backups")
 async def list_backups(
-    current_user: User = Depends(get_current_active_user),
-    _perm=require_permission(Permission.MANAGE_SETTINGS),
+    _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """List all available backups."""
     from app.services.infrastructure.backup import BackupService
@@ -296,8 +290,7 @@ class RestoreRequest(BaseModel):
 @router.post("/api/admin/backups/restore")
 async def restore_backup(
     body: RestoreRequest,
-    current_user: User = Depends(get_current_active_user),
-    _perm=require_permission(Permission.MANAGE_SETTINGS),
+    _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Restore database from a backup file."""
     from app.services.infrastructure.backup import BackupService
@@ -368,8 +361,7 @@ async def deploy_to_node(
     request: Request,
     services: list[str] | None = Body(None),
     harden: bool = Body(True),
-    current_user: User = Depends(get_current_active_user),
-    _perm=require_permission(Permission.MANAGE_SETTINGS),
+    current_user: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
 ):
     """Deploy Spectra services to a remote server node."""

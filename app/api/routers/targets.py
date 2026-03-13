@@ -19,7 +19,6 @@ from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
-from app.models.target import Target
 from app.models.user import User
 from app.repositories.finding import FindingRepository
 from app.repositories.target import TargetRepository
