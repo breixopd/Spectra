@@ -56,22 +56,19 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 RUN useradd --create-home --shell /bin/bash spectra && \
     groupadd -f docker && usermod -aG docker spectra && \
+    mkdir -p /app/data /app/data/backups /app/logs && \
     chown -R spectra:spectra /app
 # NOTE: We do NOT set USER here — start.sh runs as root to fix Docker socket GID,
 # then drops to spectra via gosu before launching the app.
 
-COPY --chown=spectra:spectra scripts/start.sh /app/scripts/start.sh
-RUN chmod +x /app/scripts/start.sh
-
 # Copy application code (overridden by volume mounts in dev)
+COPY --chown=spectra:spectra scripts/ ./scripts/
 COPY --chown=spectra:spectra app/ ./app/
 COPY --chown=spectra:spectra alembic/ ./alembic/
 COPY --chown=spectra:spectra alembic.ini ./alembic.ini
 COPY --chown=spectra:spectra plugins/ ./plugins/
 COPY --chown=spectra:spectra keys/ ./keys/
-COPY --chown=spectra:spectra scripts/ ./scripts/
-
-RUN mkdir -p /app/data /app/data/backups /app/logs
+RUN chmod +x /app/scripts/start.sh
 
 EXPOSE 5000
 
