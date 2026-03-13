@@ -54,6 +54,28 @@ def _get_ui_user(request: Request) -> dict | None:
     return None
 
 
+async def _check_user_feature(user_id: str | None, feature: str) -> bool:
+    """Check if a user's subscription plan has a specific feature enabled."""
+    if not user_id:
+        return False
+    try:
+        from app.models.plan import Plan, Subscription
+
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Plan.features)
+                .join(Subscription, Subscription.plan_id == Plan.id)
+                .where(Subscription.user_id == user_id, Subscription.status == "active")
+                .limit(1)
+            )
+            features = result.scalar_one_or_none()
+            if features and isinstance(features, dict):
+                return bool(features.get(feature))
+    except Exception:
+        pass
+    return False
+
+
 @router.get("/profile", response_class=HTMLResponse)
 async def profile_page(request: Request):
     """Serve the user profile and account management page."""
@@ -219,9 +241,20 @@ async def settings_page(request: Request):
 
 @router.get("/docs/api", response_class=HTMLResponse)
 async def api_docs_page(request: Request):
-    """Customer-facing API documentation."""
-    if not _get_ui_user(request):
+    """Customer-facing API documentation — requires api_access plan feature."""
+    user = _get_ui_user(request)
+    if not user:
         return RedirectResponse(url="/login", status_code=303)
+
+    # Admins always have access; otherwise check plan features
+    if user.get("role") != "admin":
+        has_api_access = await _check_user_feature(user.get("sub"), "api_access")
+        if not has_api_access:
+            return templates.TemplateResponse(
+                "errors/403.html",
+                {"request": request, "message": "API documentation requires a Professional or Enterprise plan."},
+                status_code=403,
+            )
 
     from app.main import app as fastapi_app
 

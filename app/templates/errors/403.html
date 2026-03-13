@@ -17,9 +17,7 @@
         <div class="error-code">403</div>
         <h1 class="error-title">Access Denied</h1>
         <p class="error-desc">
-            You don't have permission to access this resource. This area requires
-            elevated privileges. If you believe this is an error, contact your
-            administrator.
+            {{ message or "You don't have permission to access this resource. This area requires elevated privileges. If you believe this is an error, contact your administrator." }}
         </p>
         <div class="error-actions">
             <a href="/dashboard" class="btn-primary">
