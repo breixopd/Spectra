@@ -46,6 +46,6 @@ class SMTPProvider(AbstractEmailProvider):
             )
             logger.info("Email sent to %s: %s", to, subject)
             return True
-        except Exception:
-            logger.exception("Failed to send email to %s", to)
+        except (OSError, ConnectionError) as exc:
+            logger.exception("Failed to send email to %s: %s", to, exc)
             return False

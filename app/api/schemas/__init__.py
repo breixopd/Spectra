@@ -4,6 +4,12 @@ Pydantic schemas for API requests and responses.
 Provides input validation and serialization for all API endpoints.
 All schemas are split into domain modules but re-exported here
 for backward compatibility.
+
+Convention:
+- Domain schemas live in their own module (finding.py, mission.py, cve.py, etc.).
+- Cross-cutting / shared types go in common.py.
+- System, admin, health, and configuration schemas (settings, plans, server
+  provisioning, AI provider profiles) are grouped in system.py.
 """
 
 from app.api.schemas.auth import (

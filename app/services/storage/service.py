@@ -76,8 +76,8 @@ class StorageService:
                     await s3.create_bucket(Bucket=bucket)
                     logger.info("Created S3 bucket: %s", bucket)
             self._buckets_ensured.add(bucket)
-        except Exception:
-            logger.exception("Failed to ensure bucket %s", bucket)
+        except (OSError, ConnectionError) as exc:
+            logger.exception("Failed to ensure bucket %s: %s", bucket, exc)
 
     def _local_path(self, bucket: str, key: str) -> Path:
         """Map bucket/key to local filesystem path with traversal protection."""
@@ -168,7 +168,7 @@ class StorageService:
                     await asyncio.to_thread(shutil.rmtree, str(path))
                 logger.debug("Local delete: %s", path)
             return True
-        except Exception:
+        except (OSError, ConnectionError):
             logger.exception("Delete failed: %s/%s", bucket, key)
             return False
 
@@ -222,8 +222,8 @@ class StorageService:
                     ExpiresIn=expires,
                 )
             return url
-        except Exception:
-            logger.exception("Presigned URL failed: %s/%s", bucket, key)
+        except (OSError, ConnectionError) as exc:
+            logger.exception("Presigned URL failed: %s/%s: %s", bucket, key, exc)
             return None
 
     async def copy(self, src_bucket: str, src_key: str, dst_bucket: str, dst_key: str) -> bool:
@@ -243,7 +243,7 @@ class StorageService:
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 await asyncio.to_thread(shutil.copy2, str(src), str(dst))
             return True
-        except Exception:
+        except (OSError, ConnectionError):
             logger.exception("Copy failed: %s/%s → %s/%s", src_bucket, src_key, dst_bucket, dst_key)
             return False
 

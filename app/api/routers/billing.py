@@ -104,36 +104,11 @@ async def stripe_webhook(request: Request):
         subscription_id = data.get("subscription")
 
         if user_id and plan_id:
-            from app.core.database import async_session_maker
-            from app.models.plan import Subscription
-
-            async with async_session_maker() as session:
-                # Idempotency check — don't create duplicate subscriptions
-                existing = (await session.execute(
-                    select(Subscription).where(
-                        Subscription.external_subscription_id == subscription_id
-                    )
-                )).scalar_one_or_none()
-                if existing:
-                    return {"received": True}
-
-                from app.models.user import User as UserModel
-
-                user = (
-                    await session.execute(select(UserModel).where(UserModel.id == user_id))
-                ).scalar_one_or_none()
-                if user:
-                    user.plan_id = plan_id
-
-                sub = Subscription(
-                    user_id=user_id,
-                    plan_id=plan_id,
-                    status="active",
-                    external_subscription_id=subscription_id or "",
-                    external_customer_id=customer_id or "",
-                    payment_provider="stripe",
-                )
-                session.add(sub)
-                await session.commit()
+            await svc.handle_checkout_completed(
+                user_id=user_id,
+                plan_id=plan_id,
+                customer_id=customer_id,
+                subscription_id=subscription_id,
+            )
 
     return {"received": True}
