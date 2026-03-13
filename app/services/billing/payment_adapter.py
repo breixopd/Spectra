@@ -50,6 +50,11 @@ class PaymentAdapter(ABC):
     @abstractmethod
     async def handle_webhook(self, payload: bytes, signature: str) -> dict: ...
 
+    @abstractmethod
+    async def get_customer_portal_url(self, user_id: str) -> str:
+        """Returns a portal URL for managing billing."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # Noop adapter (self-hosted / free deployments)
@@ -81,13 +86,117 @@ class NoopPaymentAdapter(PaymentAdapter):
     async def handle_webhook(self, payload: bytes, signature: str) -> dict:
         return {}
 
+    async def get_customer_portal_url(self, user_id: str) -> str:
+        return ""
+
 
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Stripe adapter (optional — requires `stripe` package)
+# ---------------------------------------------------------------------------
+
+
+class StripePaymentAdapter(PaymentAdapter):
+    """Stripe Checkout-based payment adapter. No card data ever touches our servers."""
+
+    def __init__(self) -> None:
+        try:
+            import stripe as _stripe
+        except ImportError as exc:
+            raise ImportError(
+                "The 'stripe' package is required for Stripe payments. "
+                "Install it with: pip install stripe"
+            ) from exc
+        from app.core.config import get_settings
+
+        _settings = get_settings()
+        self._stripe = _stripe
+        self._stripe.api_key = (
+            _settings.STRIPE_SECRET_KEY.get_secret_value()
+            if _settings.STRIPE_SECRET_KEY
+            else ""
+        )
+        self._webhook_secret = (
+            _settings.STRIPE_WEBHOOK_SECRET.get_secret_value()
+            if _settings.STRIPE_WEBHOOK_SECRET
+            else ""
+        )
+
+    @property
+    def provider_name(self) -> str:
+        return "stripe"
+
+    async def create_customer(self, user_id: str, email: str, name: str) -> str:
+        customer = self._stripe.Customer.create(email=email, name=name, metadata={"user_id": user_id})
+        return customer["id"]
+
+    async def create_subscription(self, customer_id: str, plan_external_id: str) -> dict:
+        sub = self._stripe.Subscription.create(customer=customer_id, items=[{"price": plan_external_id}])
+        return dict(sub)
+
+    async def cancel_subscription(self, subscription_id: str) -> bool:
+        self._stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
+        return True
+
+    async def get_subscription_status(self, subscription_id: str) -> str:
+        sub = self._stripe.Subscription.retrieve(subscription_id)
+        return sub.get("status", "unknown")
+
+    async def create_checkout_session(
+        self, user_id: str, plan_id: str, success_url: str, cancel_url: str
+    ) -> str:
+        """Create a Stripe Checkout session URL — user is redirected to Stripe."""
+        async with async_session_maker() as session:
+            plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
+            if not plan or not plan.stripe_price_id:
+                raise ValueError("Plan has no Stripe price configured")
+
+        checkout = self._stripe.checkout.Session.create(
+            mode="subscription",
+            line_items=[{"price": plan.stripe_price_id, "quantity": 1}],
+            success_url=success_url,
+            cancel_url=cancel_url,
+            client_reference_id=user_id,
+            metadata={"plan_id": plan_id, "user_id": user_id},
+        )
+        return checkout.url
+
+    async def handle_webhook(self, payload: bytes, signature: str) -> dict:
+        """Verify and parse a Stripe webhook event."""
+        event = self._stripe.Webhook.construct_event(payload, signature, self._webhook_secret)
+        return {"type": event["type"], "data": event["data"]["object"]}
+
+    async def get_customer_portal_url(self, user_id: str) -> str:
+        """Get Stripe Customer Portal URL for managing billing."""
+        async with async_session_maker() as session:
+            sub = (
+                await session.execute(
+                    select(Subscription).where(
+                        Subscription.user_id == user_id,
+                        Subscription.status == "active",
+                    )
+                )
+            ).scalar_one_or_none()
+
+        if not sub or not sub.external_customer_id:
+            raise ValueError("No active subscription with billing info found")
+
+        from app.core.config import get_settings
+
+        base_url = get_settings().PLATFORM_BASE_URL or "http://localhost:5000"
+        portal = self._stripe.billing_portal.Session.create(
+            customer=sub.external_customer_id,
+            return_url=f"{base_url}/profile?section=plan",
+        )
+        return portal.url
+
+
 _ADAPTERS: dict[str, type[PaymentAdapter]] = {
     "noop": NoopPaymentAdapter,
+    "stripe": StripePaymentAdapter,
 }
 
 
@@ -107,8 +216,15 @@ def get_payment_adapter(provider: str = "noop") -> PaymentAdapter:
 class PaymentService:
     """Orchestrates subscription lifecycle through a pluggable payment adapter."""
 
-    def __init__(self, adapter: PaymentAdapter) -> None:
-        self._adapter = adapter
+    def __init__(self, adapter: PaymentAdapter | None = None) -> None:
+        if adapter is not None:
+            self._adapter = adapter
+        else:
+            from app.core.config import get_settings
+
+            provider = get_settings().PAYMENT_PROVIDER
+            adapter_cls = _ADAPTERS.get(provider, NoopPaymentAdapter)
+            self._adapter = adapter_cls()
 
     async def subscribe_user(self, user_id: str, plan_id: str) -> Subscription:
         """Create or update a user's subscription to the given plan."""
@@ -180,3 +296,19 @@ class PaymentService:
 
         tracker = UsageTracker()
         return await tracker.check_rate_limit(user_id, metric)
+
+    async def get_portal_url(self, user_id: str) -> str:
+        """Get billing portal URL for the user."""
+        return await self._adapter.get_customer_portal_url(user_id)
+
+    async def create_checkout(self, user_id: str, plan_id: str) -> str:
+        """Create a checkout session and return the URL."""
+        from app.core.config import get_settings
+
+        base_url = get_settings().PLATFORM_BASE_URL or "http://localhost:5000"
+        return await self._adapter.create_checkout_session(
+            user_id,
+            plan_id,
+            success_url=f"{base_url}/profile?section=plan&status=success",
+            cancel_url=f"{base_url}/profile?section=plan&status=cancelled",
+        )

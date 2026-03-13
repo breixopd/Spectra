@@ -33,6 +33,7 @@ class Plan(Base):
     )
     sandbox_max_containers: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     max_storage_mb: Mapped[int] = mapped_column(Integer, default=500, nullable=False)
+    stripe_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     features: Mapped[dict | None] = mapped_column(JSONBType, nullable=True)
 
     def __repr__(self) -> str:
