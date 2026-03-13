@@ -174,7 +174,7 @@ async def deprovision_server(
 async def list_server_nodes(
     service_type: str | None = None,
     session: AsyncSession = Depends(get_async_session),
-    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """List all registered server nodes."""
     from app.services.scaling import get_pool_manager
@@ -193,7 +193,7 @@ async def add_server_node(
     weight: int = Body(1, ge=1, le=100),
     max_capacity: int = Body(10, ge=1, le=1000),
     session: AsyncSession = Depends(get_async_session),
-    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Register a new server node in the pool."""
     from app.services.scaling import get_pool_manager
@@ -218,7 +218,7 @@ async def add_server_node(
 async def remove_server_node(
     node_id: int,
     session: AsyncSession = Depends(get_async_session),
-    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Remove a server node from the pool."""
     from app.services.scaling import get_pool_manager
@@ -236,7 +236,7 @@ async def update_server_node(
     node_id: int,
     body: UpdateServerNodeRequest,
     session: AsyncSession = Depends(get_async_session),
-    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Update a server node's configuration."""
     from app.services.scaling import get_pool_manager
@@ -252,7 +252,7 @@ async def update_server_node(
 
 @router.post("/api/admin/servers/health-check")
 async def check_all_server_health(
-    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Run health checks on all active server nodes."""
     from app.services.scaling import get_pool_manager
@@ -311,7 +311,7 @@ async def restore_backup(
 
 @router.get("/api/admin/services")
 async def list_services(
-    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """List all registered services and their health status."""
     import httpx
@@ -349,7 +349,7 @@ async def list_services(
 @router.get("/api/admin/services/nodes")
 async def list_service_nodes(
     session: AsyncSession = Depends(get_async_session),
-    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """List all server nodes and their deployment status."""
     from sqlalchemy import select as sa_select
@@ -422,7 +422,7 @@ async def deploy_to_node(
 @router.get("/api/admin/services/nodes/{node_id}/logs")
 async def get_node_deployment_logs(
     node_id: int,
-    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Get deployment logs for a server node."""
     from app.services.infrastructure.deploy import ServerDeployer
