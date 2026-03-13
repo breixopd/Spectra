@@ -58,6 +58,8 @@ def _collect_general_db_settings(
         ("fully_automated", "FULLY_AUTOMATED", "bool", False),
         ("notification_webhook", "NOTIFICATION_WEBHOOK", "nullable", False),
         ("embedding_model", "EMBEDDING_MODEL", "nullable", False),
+        ("embedding_api_key", "EMBEDDING_API_KEY", "str", True),
+        ("embedding_api_base_url", "EMBEDDING_API_BASE_URL", "nullable", False),
         ("platform_domain", "PLATFORM_DOMAIN", "nullable", False),
         ("platform_base_url", "PLATFORM_BASE_URL", "nullable", False),
         ("platform_exposed", "PLATFORM_EXPOSED", "bool", False),
@@ -194,7 +196,6 @@ async def apply_settings_update(
         await upsert_system_config_values(db, db_settings)
         await db.commit()
         await hydrate_runtime_settings_from_db(db, persist_normalized=True, commit=True)
-        settings.save_runtime_settings()
 
     return {"status": "updated", "message": "Settings updated and saved"}
 
@@ -251,6 +252,7 @@ def get_current_settings() -> dict[str, Any]:
         "s3_region": settings.S3_REGION,
         "s3_configured": bool(settings.S3_ENDPOINT_URL),
         "embedding_model": settings.EMBEDDING_MODEL,
+        "embedding_api_base_url": settings.EMBEDDING_API_BASE_URL,
         "provider_profiles": resolved_ai["profiles"],
         "provider_routing": resolved_ai["routing"],
         "provider_fallbacks": resolved_ai["fallbacks"],
@@ -331,7 +333,6 @@ async def test_llm_connection(
 async def load_settings_from_db() -> None:
     """Load settings from DB SystemConfig table, overriding in-memory values.
 
-    Should be called AFTER load_runtime_settings() during app startup
-    so that DB values take precedence over JSON file values.
+    Should be called during app startup so that DB values take precedence.
     """
     await hydrate_runtime_settings_from_db(persist_normalized=True, reset_caches=False)

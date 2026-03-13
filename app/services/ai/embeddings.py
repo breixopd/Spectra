@@ -56,14 +56,17 @@ class EmbeddingService:
                 logger.info("AI_PROVIDER=mock — embedding service disabled")
                 return
 
-            api_key = settings.LLM_API_KEY.get_secret_value()
+            # Use embedding-specific credentials, fall back to LLM credentials
+            emb_key = settings.EMBEDDING_API_KEY.get_secret_value()
+            api_key = emb_key if emb_key else settings.LLM_API_KEY.get_secret_value()
             if not api_key:
-                logger.warning("Embedding service requires an AI API key. Configure LLM_API_KEY.")
+                logger.warning("Embedding service requires an API key. Configure EMBEDDING_API_KEY or LLM_API_KEY.")
                 return
 
             import litellm  # noqa: F401
 
-            base_url = settings.LLM_API_BASE_URL
+            emb_base = settings.EMBEDDING_API_BASE_URL
+            base_url = emb_base if emb_base else settings.LLM_API_BASE_URL
 
             if base_url:
                 self._litellm_model = f"openai/{self.model_name}"
@@ -80,7 +83,7 @@ class EmbeddingService:
         await self._load_model()
 
         if not self._api_ready:
-            raise RuntimeError("Embedding service requires an AI API key. Configure LLM_API_KEY.")
+            raise RuntimeError("Embedding service requires an API key. Configure EMBEDDING_API_KEY or LLM_API_KEY.")
 
         import litellm
 
@@ -105,7 +108,7 @@ class EmbeddingService:
         await self._load_model()
 
         if not self._api_ready:
-            raise RuntimeError("Embedding service requires an AI API key. Configure LLM_API_KEY.")
+            raise RuntimeError("Embedding service requires an API key. Configure EMBEDDING_API_KEY or LLM_API_KEY.")
 
         if not texts:
             return []

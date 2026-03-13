@@ -67,6 +67,12 @@ WORKER_HEALTH_CHECK_INTERVAL: int = 30
 #: TCP receive-buffer size for shell session sockets (bytes).
 SHELL_SOCKET_RECV_BYTES: int = 4096
 
+#: Default callback port for reverse shells.
+SHELL_CALLBACK_PORT_START: int = 4444
+
+#: End of callback port range for reverse shells.
+SHELL_CALLBACK_PORT_END: int = 4500
+
 # ---------------------------------------------------------------------------
 # Script compilation / execution
 # ---------------------------------------------------------------------------
@@ -143,6 +149,56 @@ DATA_MISSIONS_DIR: str = "data/missions"
 DATA_SESSIONS_DIR: str = "data/sessions"
 DATA_CACHE_DIR: str = "data/cache"
 DATA_AUTH_DIR: str = "data/auth"
+
+# ---------------------------------------------------------------------------
+# WebSocket
+# ---------------------------------------------------------------------------
+
+#: Maximum messages per second from a single WebSocket connection.
+WS_MAX_MESSAGES_PER_SECOND: int = 10
+
+#: Maximum WebSocket message size in bytes (64 KB).
+WS_MAX_MESSAGE_SIZE: int = 65536
+
+# ---------------------------------------------------------------------------
+# HTTP client
+# ---------------------------------------------------------------------------
+
+#: Default retry count for HTTP gateway clients.
+HTTP_CLIENT_MAX_RETRIES: int = 3
+
+#: Default HTTP client timeout in seconds.
+HTTP_CLIENT_TIMEOUT: int = 30
+
+#: Webhook delivery max retries.
+WEBHOOK_MAX_RETRIES: int = 3
+
+# ---------------------------------------------------------------------------
+# Feature labels — human-readable names for plan feature keys
+# ---------------------------------------------------------------------------
+
+FEATURE_LABELS: dict[str, str] = {
+    "api_access": "API Access",
+    "byok": "BYOK (Bring Your Own Key)",
+    "vpn": "VPN Support",
+    "vpn_support": "VPN Support",
+    "cve_browser": "CVE Browser",
+    "shell_access": "Shell Access",
+    "custom_plugins": "Custom Plugins",
+    "priority_support": "Priority Support",
+    "advanced_reporting": "Advanced Reporting",
+    "team_collaboration": "Team Collaboration",
+    "manual_mode": "Manual Mode",
+    "sso": "SSO Integration",
+    "sla": "SLA Guarantee",
+    "dedicated_support": "Dedicated Support",
+}
+
+
+def format_feature_label(key: str) -> str:
+    """Format a feature key into a human-readable label with proper capitalisation."""
+    return FEATURE_LABELS.get(key, key.replace("_", " ").title())
+
 
 #: Exploit database cache directory.
 EXPLOIT_DB_CACHE_DIR: str = "data/cache/exploit_db"

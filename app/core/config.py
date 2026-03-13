@@ -92,6 +92,8 @@ class Settings(BaseSettings):
 
     # Embedding model (must be supported by LLM_API_BASE_URL provider)
     EMBEDDING_MODEL: str = "text-embedding-3-small"
+    EMBEDDING_API_KEY: SecretStr = Field(default=SecretStr(""), description="API key for embedding provider (falls back to LLM_API_KEY)")
+    EMBEDDING_API_BASE_URL: str = Field(default="", description="Base URL for embedding API (falls back to LLM_API_BASE_URL)")
 
     # --- Platform Settings ---
     PLATFORM_DOMAIN: str = ""  # Public domain (e.g., "spectra.example.com")
@@ -188,6 +190,18 @@ class Settings(BaseSettings):
     SANDBOX_ORCHESTRATOR_TIMEOUT: int = 30
     SANDBOX_ORCHESTRATOR_API_KEY: SecretStr = SecretStr("")
 
+    # --- Shell Routing ---
+    SHELL_ROUTING_MODE: str = Field(default="direct", description="Shell routing: direct, sandbox, or proxy")
+    SHELL_PROXY_NODES: list[str] = Field(default_factory=list, description="List of proxy node URLs for shell routing")
+
+    @field_validator("SHELL_ROUTING_MODE")
+    @classmethod
+    def validate_shell_routing_mode(cls, v: str) -> str:
+        allowed = {"direct", "sandbox", "proxy"}
+        if v not in allowed:
+            raise ValueError(f"SHELL_ROUTING_MODE must be one of {allowed}")
+        return v
+
     # VPN
     VPN_CONFIG_DIR: str = "/app/vpn_configs"
     VPN_ENABLED: bool = True
@@ -260,107 +274,11 @@ class Settings(BaseSettings):
             logger.warning("Token expiry is very long (%d minutes)", v)
         return v
 
-    def save_runtime_settings(self):
-        """Save current settings to a runtime JSON file for persistence.
-
-        Runtime AI settings are intentionally excluded because SystemConfig is
-        the authoritative source for provider, routing, fallback, and embedding
-        configuration.
-        """
-        # We use the reports directory as it is mounted read-write
-        settings_path = Path("data/config/runtime_settings.json")
-
-        # Only save non-sensitive, non-AI compatibility settings.
-        data = {
-            "LOG_LEVEL": self.LOG_LEVEL,
-            "PLUGIN_SAFE_MODE": self.PLUGIN_SAFE_MODE,
-            "CONNECT_BACK_HOST": self.CONNECT_BACK_HOST,
-            "REQUIRE_APPROVAL": self.REQUIRE_APPROVAL,
-            "FULLY_AUTOMATED": self.FULLY_AUTOMATED,
-            "NOTIFICATION_WEBHOOK": self.NOTIFICATION_WEBHOOK,
-            "PLATFORM_DOMAIN": self.PLATFORM_DOMAIN,
-            "PLATFORM_BASE_URL": self.PLATFORM_BASE_URL,
-            "PLATFORM_EXPOSED": self.PLATFORM_EXPOSED,
-        }
-
-        try:
-            import tempfile
-            settings_path.parent.mkdir(parents=True, exist_ok=True)
-            fd, tmp_path = tempfile.mkstemp(
-                dir=str(settings_path.parent), suffix=".tmp"
-            )
-            try:
-                with open(fd, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2)
-                Path(tmp_path).replace(settings_path)
-            except BaseException:
-                Path(tmp_path).unlink(missing_ok=True)
-                raise
-        except Exception as e:
-            logger.error("Failed to save runtime settings: %s", e)
-
-    def load_runtime_settings(self):
-        """Load settings from runtime JSON file if it exists.
-
-        Runtime AI settings are intentionally ignored here because SystemConfig
-        is authoritative for those values.
-        """
-        settings_path = Path("data/config/runtime_settings.json")
-        if not settings_path.exists():
-            return
-
-        try:
-            with open(settings_path, encoding="utf-8") as f:
-                data = json.load(f)
-
-            # Update fields if they exist in the file
-            # Sensitive fields and DB-backed runtime AI settings are explicitly excluded.
-            sensitive_fields = {
-                "LLM_API_KEY",
-                "JWT_SECRET_KEY",
-                "DATABASE_URL",
-            }
-            db_backed_runtime_fields = {
-                "AI_PROVIDER",
-                "AI_PROVIDER_PROFILES",
-                "AI_PROVIDER_ROUTING",
-                "AI_PROVIDER_FALLBACKS",
-                "OLLAMA_HOST",
-                "OLLAMA_MODEL",
-                "OLLAMA_ENABLED",
-                "LLM_API_BASE_URL",
-                "LLM_MODEL",
-                "LLM_TIER1_MODEL",
-                "LLM_TIER2_MODEL",
-                "LLM_TIER3_MODEL",
-                "EMBEDDING_MODEL",
-            }
-            for key, value in data.items():
-                if (
-                    hasattr(self, key)
-                    and key not in sensitive_fields
-                    and key not in db_backed_runtime_fields
-                ):
-                    setattr(self, key, value)
-        except json.JSONDecodeError as e:
-            logger.warning(
-                "Runtime settings file is corrupted, renaming to .bak: %s", e
-            )
-            try:
-                settings_path.rename(settings_path.with_suffix(".bak"))
-            except OSError as rename_err:
-                logger.error("Failed to rename corrupted settings file: %s", rename_err)
-        except Exception as e:
-            logger.error("Failed to load runtime settings: %s", e)
-
 
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
     settings_instance = Settings()
-
-    # Load runtime settings (overrides env vars for non-sensitive fields)
-    settings_instance.load_runtime_settings()
 
     # Generate random secret key if not set
     if not settings_instance.JWT_SECRET_KEY.get_secret_value():

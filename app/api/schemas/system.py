@@ -6,6 +6,15 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.api.schemas.auth import UserCreate
 
+# --- Account Deletion ---
+
+
+class DeleteAccountRequest(BaseModel):
+    """Schema for account deletion confirmation."""
+
+    password: str = Field(..., min_length=1, description="Current password for confirmation")
+
+
 # --- Health Schemas ---
 
 
@@ -174,6 +183,8 @@ class SettingsUpdateRequest(BaseModel):
     llm_tier2_model: str | None = None
     llm_tier3_model: str | None = None
     embedding_model: str | None = None
+    embedding_api_key: str | None = None
+    embedding_api_base_url: str | None = None
     platform_domain: str | None = None
     platform_base_url: str | None = None
     platform_exposed: bool | None = None
@@ -201,6 +212,9 @@ class SettingsUpdateRequest(BaseModel):
     # External Service Endpoints
     sandbox_orchestrator_url: str | None = None
     sandbox_orchestrator_timeout: int | None = Field(None, ge=5, le=300)
+
+    # Shell Routing
+    shell_routing_mode: str | None = Field(None, pattern="^(direct|sandbox|proxy)$")
 
     # Object Storage (S3/MinIO)
     s3_endpoint_url: str | None = None

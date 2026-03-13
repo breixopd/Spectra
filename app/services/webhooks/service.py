@@ -12,6 +12,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import WEBHOOK_MAX_RETRIES
 from app.services.webhooks.models import Webhook
 
 logger = logging.getLogger("spectra.webhooks")
@@ -25,7 +26,7 @@ SUPPORTED_EVENTS = frozenset(
     }
 )
 
-MAX_RETRIES = 3
+MAX_RETRIES = WEBHOOK_MAX_RETRIES
 RETRY_DELAYS = [1, 5, 15]  # seconds
 
 

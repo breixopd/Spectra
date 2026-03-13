@@ -87,6 +87,7 @@ class TestModelLoading:
         """_load_model does not set _api_ready when AI_PROVIDER=mock."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "mock"
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
             await service._load_model()
         assert service._api_ready is False
@@ -96,6 +97,7 @@ class TestModelLoading:
         """_load_model does not set _api_ready when no API key."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
             await service._load_model()
         assert service._api_ready is False
@@ -105,7 +107,9 @@ class TestModelLoading:
         """_load_model sets up litellm params with custom base URL."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
+            mock_settings.EMBEDDING_API_BASE_URL = ""
             mock_settings.LLM_API_BASE_URL = "https://api.example.com/v1"
             await service._load_model()
         assert service._api_ready is True
@@ -133,8 +137,9 @@ class TestModelLoading:
         """embed() raises RuntimeError when no API key configured."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-            with pytest.raises(RuntimeError, match="requires an AI API key"):
+            with pytest.raises(RuntimeError, match="requires an API key"):
                 await service.embed("test")
 
     @pytest.mark.asyncio
@@ -142,8 +147,9 @@ class TestModelLoading:
         """embed_batch() raises RuntimeError when no API key configured."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-            with pytest.raises(RuntimeError, match="requires an AI API key"):
+            with pytest.raises(RuntimeError, match="requires an API key"):
                 await service.embed_batch(["test"])
 
     @pytest.mark.asyncio
@@ -156,7 +162,9 @@ class TestModelLoading:
         """is_functional returns True after successful API init."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
+            mock_settings.EMBEDDING_API_BASE_URL = ""
             mock_settings.LLM_API_BASE_URL = None
             await service._load_model()
         assert service.is_functional is True
@@ -166,7 +174,9 @@ class TestModelLoading:
         """_load_model uses model name directly when no base URL."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
+            mock_settings.EMBEDDING_API_BASE_URL = ""
             mock_settings.LLM_API_BASE_URL = None
             await service._load_model()
         assert service._api_ready is True

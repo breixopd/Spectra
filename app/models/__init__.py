@@ -12,6 +12,7 @@ from .pentest_session import PentestSession
 from .plan import ApiKey, Plan, Subscription, UsageRecord
 from .target import Target, TargetStatus
 from .user import User
+from .user_preferences import UserPreferences
 
 __all__ = [
     "AuditEventType",
@@ -23,6 +24,7 @@ __all__ = [
     "Severity",
     "FindingStatus",
     "User",
+    "UserPreferences",
     "Plan",
     "Subscription",
     "ApiKey",

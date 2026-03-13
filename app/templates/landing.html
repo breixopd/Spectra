@@ -6,6 +6,7 @@
     <title>{{ app_name }} — Autonomous Security Assessment Platform</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="manifest" href="/static/manifest.json">
+    <link rel="stylesheet" href="/static/css/landing.css">
     <meta name="theme-color" content="#8b5cf6">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -46,555 +47,6 @@
         }
     }
     </script>
-    <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-        :root {
-            --bg: #0a0a0f;
-            --bg-card: rgba(255,255,255,0.03);
-            --bg-card-hover: rgba(255,255,255,0.06);
-            --accent: #00ff88;
-            --accent-dim: rgba(0,255,136,0.15);
-            --accent-glow: rgba(0,255,136,0.25);
-            --violet: #8b5cf6;
-            --violet-dim: rgba(139,92,246,0.15);
-            --text: #e2e8f0;
-            --text-muted: #64748b;
-            --border: rgba(255,255,255,0.06);
-            --border-hover: rgba(255,255,255,0.12);
-            --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
-        }
-
-        html { scroll-behavior: smooth; }
-
-        body {
-            font-family: var(--font-sans);
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.6;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        /* ====== NAV ====== */
-        nav {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-            padding: 0 2rem;
-            height: 64px;
-            display: flex; align-items: center; justify-content: space-between;
-            background: rgba(10,10,15,0.8);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-            transition: background 0.3s;
-        }
-        nav.scrolled { background: rgba(10,10,15,0.95); }
-        .nav-logo {
-            font-size: 1.25rem; font-weight: 700; color: #fff;
-            text-decoration: none; display: flex; align-items: center; gap: 0.5rem;
-            letter-spacing: -0.025em;
-        }
-        .nav-logo svg { width: 28px; height: 28px; }
-        .nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
-        .nav-links a {
-            color: var(--text-muted); text-decoration: none; font-size: 0.875rem;
-            font-weight: 500; transition: color 0.2s;
-        }
-        .nav-links a:hover { color: #fff; }
-        .nav-cta {
-            display: inline-flex; align-items: center; padding: 0.5rem 1.25rem;
-            background: var(--accent); color: #0a0a0f; font-weight: 600;
-            font-size: 0.8125rem; border-radius: 8px; text-decoration: none;
-            transition: transform 0.15s, box-shadow 0.2s;
-        }
-        .nav-cta:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 20px var(--accent-glow);
-        }
-        .mobile-toggle {
-            display: none; background: none; border: none; color: #fff;
-            cursor: pointer; padding: 0.5rem;
-        }
-        .mobile-toggle svg { width: 24px; height: 24px; }
-
-        /* ====== HERO ====== */
-        .hero {
-            position: relative;
-            min-height: 100vh;
-            display: flex; align-items: center; justify-content: center;
-            padding: 8rem 2rem 6rem;
-            text-align: center;
-            overflow: hidden;
-        }
-        .hero::after {
-            content: ''; position: absolute; bottom: 0; left: 0; right: 0;
-            height: 200px;
-            background: linear-gradient(transparent, var(--bg));
-            pointer-events: none;
-            z-index: 1;
-        }
-        .hero-bg {
-            position: absolute; inset: 0; z-index: 0;
-            background:
-                radial-gradient(ellipse 80% 50% at 50% -20%, var(--accent-dim), transparent),
-                radial-gradient(ellipse 60% 40% at 80% 80%, var(--violet-dim), transparent);
-        }
-        .hero-grid {
-            position: absolute; inset: 0; z-index: 0; opacity: 0.04;
-            background-image:
-                linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px);
-            background-size: 60px 60px;
-            mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 70%);
-            -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 70%);
-        }
-        .hero-content { position: relative; z-index: 1; max-width: 740px; }
-        .hero-badge {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            padding: 0.375rem 1rem;
-            border: 1px solid var(--accent-dim);
-            border-radius: 9999px; margin-bottom: 2rem;
-            font-size: 0.75rem; font-weight: 600;
-            color: var(--accent);
-            background: rgba(0,255,136,0.05);
-            letter-spacing: 0.03em; text-transform: uppercase;
-        }
-        .hero-badge .dot {
-            width: 6px; height: 6px; border-radius: 50%;
-            background: var(--accent);
-            animation: pulse-dot 2s ease-in-out infinite;
-        }
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--accent-glow); }
-            50% { opacity: 0.6; box-shadow: 0 0 0 6px transparent; }
-        }
-        .hero h1 {
-            font-size: clamp(2.5rem, 6vw, 4rem);
-            font-weight: 800;
-            line-height: 1.1;
-            letter-spacing: -0.03em;
-            margin-bottom: 1.5rem;
-        }
-        .hero h1 .gradient {
-            background: linear-gradient(135deg, var(--accent) 0%, #00d4ff 100%);
-            -webkit-background-clip: text; background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .hero p {
-            font-size: 1.125rem; color: var(--text-muted);
-            max-width: 560px; margin: 0 auto 2.5rem; line-height: 1.7;
-        }
-        .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-        .btn-primary {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            padding: 0.875rem 2rem; background: var(--accent); color: #0a0a0f;
-            font-weight: 700; font-size: 0.9375rem; border-radius: 12px;
-            text-decoration: none; transition: transform 0.15s, box-shadow 0.25s;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px var(--accent-glow);
-        }
-        .btn-secondary {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            padding: 0.875rem 2rem; background: transparent;
-            border: 1px solid var(--border-hover); color: var(--text);
-            font-weight: 600; font-size: 0.9375rem; border-radius: 12px;
-            text-decoration: none; transition: background 0.2s, border-color 0.2s;
-        }
-        .btn-secondary:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,0.2); }
-
-        /* ====== SECTIONS (shared) ====== */
-        section { padding: 6rem 2rem; }
-        .section-inner { max-width: 1120px; margin: 0 auto; }
-        .section-label {
-            display: inline-block; font-size: 0.75rem; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.1em;
-            color: var(--accent); margin-bottom: 1rem;
-        }
-        .section-title {
-            font-size: clamp(1.75rem, 3.5vw, 2.5rem);
-            font-weight: 800; letter-spacing: -0.02em;
-            margin-bottom: 1rem; line-height: 1.2;
-        }
-        .section-desc {
-            font-size: 1rem; color: var(--text-muted); max-width: 540px;
-            margin-bottom: 3.5rem; line-height: 1.7;
-        }
-
-        /* ====== FEATURES ====== */
-        .features-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-        }
-        .feature-card {
-            padding: 2rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            transition: background 0.25s, border-color 0.25s, transform 0.2s;
-        }
-        .feature-card:hover {
-            background: var(--bg-card-hover);
-            border-color: var(--border-hover);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px rgba(0,0,0,0.3), 0 0 0 1px var(--border-hover);
-        }
-        .feature-card:hover .feature-icon.green { box-shadow: 0 0 20px var(--accent-dim); }
-        .feature-card:hover .feature-icon.violet { box-shadow: 0 0 20px var(--violet-dim); }
-        .feature-card:hover .feature-icon.blue { box-shadow: 0 0 20px rgba(56,189,248,0.15); }
-        .feature-card:hover .feature-icon.amber { box-shadow: 0 0 20px rgba(251,191,36,0.15); }
-        .feature-icon {
-            width: 48px; height: 48px; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 1.25rem;
-            transition: box-shadow 0.3s ease, transform 0.3s ease;
-        }
-        .feature-icon svg { width: 24px; height: 24px; }
-        .feature-icon.green  { background: var(--accent-dim); color: var(--accent); }
-        .feature-icon.violet { background: var(--violet-dim); color: var(--violet); }
-        .feature-icon.blue   { background: rgba(56,189,248,0.12); color: #38bdf8; }
-        .feature-icon.amber  { background: rgba(251,191,36,0.12); color: #fbbf24; }
-        .feature-card h3 {
-            font-size: 1.0625rem; font-weight: 700; margin-bottom: 0.5rem;
-        }
-        .feature-card p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
-
-        /* ====== HOW IT WORKS ====== */
-        #how-it-works { background: linear-gradient(180deg, var(--bg) 0%, rgba(139,92,246,0.03) 50%, var(--bg) 100%); }
-        .steps {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 2rem; counter-reset: step;
-        }
-        .step { position: relative; text-align: center; padding: 2rem 1.5rem; }
-        .step-number {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 52px; height: 52px; border-radius: 50%;
-            font-size: 1.25rem; font-weight: 800;
-            background: var(--accent-dim); color: var(--accent);
-            border: 2px solid rgba(0,255,136,0.2);
-            margin-bottom: 1.5rem;
-        }
-        .step h3 { font-size: 1.125rem; font-weight: 700; margin-bottom: 0.75rem; }
-        .step p { font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; }
-        .step-connector {
-            display: none; position: absolute;
-            top: 3.25rem; right: -1rem;
-            width: 2rem; height: 2px;
-            background: linear-gradient(90deg, var(--accent-dim), transparent);
-        }
-        @media(min-width: 768px) {
-            .step-connector { display: block; }
-            .step:last-child .step-connector { display: none; }
-        }
-
-        /* ====== PRICING ====== */
-        #pricing { background: linear-gradient(180deg, var(--bg) 0%, rgba(0,255,136,0.02) 50%, var(--bg) 100%); }
-        .pricing-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem; align-items: stretch;
-        }
-        .plan-card {
-            position: relative; padding: 2.5rem 2rem;
-            background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: 20px;
-            transition: transform 0.25s, border-color 0.25s;
-            display: flex; flex-direction: column; height: 100%;
-        }
-        .plan-card:hover { transform: translateY(-4px); border-color: var(--border-hover); box-shadow: 0 16px 48px rgba(0,0,0,0.25); }
-        .plan-card.popular {
-            border-color: var(--accent);
-            box-shadow: 0 0 40px rgba(0,255,136,0.08);
-        }
-        .plan-badge {
-            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-            padding: 0.25rem 1rem; border-radius: 9999px;
-            font-size: 0.6875rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.06em;
-            background: var(--accent); color: #0a0a0f;
-        }
-        .plan-name { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .plan-desc { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5; }
-        .plan-features { list-style: none; margin-bottom: 2rem; flex: 1; }
-        .plan-features li {
-            display: flex; align-items: flex-start; gap: 0.625rem;
-            font-size: 0.8125rem; color: var(--text-muted); padding: 0.375rem 0;
-        }
-        .plan-features li svg {
-            flex-shrink: 0; width: 16px; height: 16px; color: var(--accent); margin-top: 2px;
-        }
-        .plan-cta {
-            display: block; width: 100%; padding: 0.75rem; text-align: center;
-            border-radius: 10px; font-weight: 600; font-size: 0.875rem;
-            text-decoration: none; transition: background 0.2s, transform 0.15s;
-        }
-        .plan-cta.primary { background: var(--accent); color: #0a0a0f; }
-        .plan-cta.primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 20px var(--accent-glow);
-        }
-        .plan-cta.secondary {
-            background: var(--bg-card-hover); color: var(--text);
-            border: 1px solid var(--border-hover);
-        }
-        .plan-cta.secondary:hover { background: rgba(255,255,255,0.08); }
-
-        .pricing-contact {
-            text-align: center; padding: 4rem 2rem;
-            background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: 20px;
-        }
-        .pricing-contact h3 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; }
-        .pricing-contact p { color: var(--text-muted); margin-bottom: 2rem; max-width: 420px; margin-left: auto; margin-right: auto; }
-
-        /* (footer styles are in the improved footer section below) */
-
-        /* ====== SOCIAL PROOF ====== */
-        #social-proof { background: linear-gradient(180deg, var(--bg) 0%, rgba(139,92,246,0.02) 50%, var(--bg) 100%); }
-        .proof-strip {
-            display: flex; align-items: center; justify-content: center;
-            flex-wrap: wrap; gap: 2.5rem;
-        }
-        .proof-logo {
-            font-size: 1.125rem; font-weight: 700; letter-spacing: 0.06em;
-            text-transform: uppercase; color: rgba(255,255,255,0.12);
-            transition: color 0.3s, transform 0.3s;
-            user-select: none;
-        }
-        .proof-logo:hover { color: rgba(255,255,255,0.3); transform: scale(1.05); }
-
-        /* ====== STATS ====== */
-        .stats-bar {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 1px; background: var(--border); border-radius: 16px; overflow: hidden;
-            margin: 2.5rem 0 0;
-        }
-        .stat-cell {
-            background: var(--bg-card); padding: 2rem 1.5rem; text-align: center;
-            transition: background 0.3s;
-        }
-        .stat-cell:hover { background: var(--bg-card-hover); }
-        .stat-number {
-            font-size: 2rem; font-weight: 800; letter-spacing: -0.02em;
-            background: linear-gradient(135deg, var(--accent), var(--violet));
-            -webkit-background-clip: text; background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .stat-label { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.25rem; }
-
-        /* ====== TESTIMONIALS ====== */
-        #testimonials {
-            background: linear-gradient(180deg, var(--bg) 0%, rgba(0,255,136,0.02) 40%, rgba(139,92,246,0.02) 60%, var(--bg) 100%);
-        }
-        .testimonial-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        .testimonial-card {
-            padding: 2rem; background: var(--bg-card);
-            border: 1px solid var(--border); border-radius: 16px;
-            transition: transform 0.25s, border-color 0.25s;
-            position: relative;
-        }
-        .testimonial-card:hover { transform: translateY(-3px); border-color: var(--border-hover); box-shadow: 0 12px 36px rgba(0,0,0,0.2); }
-        .testimonial-card:nth-child(2) { transform: translateY(12px); }
-        .testimonial-card:nth-child(2):hover { transform: translateY(9px); }
-        .testimonial-quote {
-            font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7;
-            margin-bottom: 1.5rem; font-style: italic;
-        }
-        .testimonial-quote::before {
-            content: '\201C'; font-size: 3rem; line-height: 1; font-style: normal;
-            color: rgba(0,255,136,0.2); display: block; margin-bottom: -0.75rem;
-        }
-        .testimonial-author { display: flex; align-items: center; gap: 0.75rem; }
-        .testimonial-avatar {
-            width: 40px; height: 40px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 0.875rem;
-        }
-        .testimonial-name { font-size: 0.875rem; font-weight: 600; color: #fff; }
-        .testimonial-role { font-size: 0.75rem; color: var(--text-muted); }
-
-        /* ====== FAQ ====== */
-        #faq { background: linear-gradient(180deg, var(--bg) 0%, rgba(139,92,246,0.03) 50%, var(--bg) 100%); }
-        .faq-list { max-width: 720px; margin: 0 auto; }
-        .faq-item {
-            border-bottom: 1px solid var(--border);
-        }
-        .faq-question {
-            width: 100%; background: none; border: none; color: #fff;
-            font-size: 1rem; font-weight: 600; text-align: left;
-            padding: 1.25rem 0; cursor: pointer; display: flex;
-            align-items: center; justify-content: space-between; gap: 1rem;
-            font-family: var(--font-sans);
-            transition: color 0.2s;
-        }
-        .faq-question:hover { color: var(--accent); }
-        .faq-question:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-        .faq-icon {
-            width: 20px; height: 20px; flex-shrink: 0;
-            transition: transform 0.25s;
-        }
-        .faq-item.open .faq-icon { transform: rotate(45deg); }
-        .faq-answer {
-            max-height: 0; overflow: hidden;
-            transition: max-height 0.3s ease, padding 0.3s ease;
-        }
-        .faq-item.open .faq-answer { max-height: 300px; }
-        .faq-answer p {
-            font-size: 0.9375rem; color: var(--text-muted); line-height: 1.7;
-            padding-bottom: 1.25rem;
-        }
-
-        /* ====== IMPROVED FOOTER ====== */
-        .footer-full { border-top: 1px solid var(--border); padding: 4rem 2rem 2rem; }
-        .footer-grid {
-            max-width: 1120px; margin: 0 auto;
-            display: grid; grid-template-columns: 2fr repeat(4, 1fr);
-            gap: 2rem;
-        }
-        .footer-brand p { font-size: 0.8125rem; color: var(--text-muted); line-height: 1.6; margin-top: 0.75rem; max-width: 260px; }
-        .footer-col h4 {
-            font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.08em; color: #fff; margin-bottom: 1rem;
-        }
-        .footer-col ul { list-style: none; }
-        .footer-col li { margin-bottom: 0.5rem; }
-        .footer-col a {
-            color: var(--text-muted); text-decoration: none; font-size: 0.8125rem;
-            transition: color 0.2s;
-        }
-        .footer-col a:hover { color: #fff; }
-        .footer-bottom {
-            max-width: 1120px; margin: 2rem auto 0; padding-top: 2rem;
-            border-top: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-            flex-wrap: wrap; gap: 1rem;
-        }
-        .footer-bottom-copy { font-size: 0.75rem; color: var(--text-muted); }
-        .footer-bottom-links { display: flex; gap: 1.5rem; list-style: none; }
-        .footer-bottom-links a { color: var(--text-muted); text-decoration: none; font-size: 0.75rem; }
-        .footer-bottom-links a:hover { color: #fff; }
-        @media (max-width: 768px) {
-            .footer-grid { grid-template-columns: 1fr 1fr; }
-            .footer-brand { grid-column: 1 / -1; }
-            .testimonial-card:nth-child(2) { transform: none; }
-            .testimonial-card:nth-child(2):hover { transform: translateY(-3px); }
-        }
-        @media (max-width: 480px) {
-            .footer-grid { grid-template-columns: 1fr; }
-            .proof-strip { gap: 1.5rem; }
-        }
-
-        /* ====== SCROLL REVEAL ====== */
-        .reveal {
-            opacity: 0; transform: translateY(24px);
-            transition: opacity 0.6s ease, transform 0.6s ease;
-        }
-        .reveal.visible { opacity: 1; transform: translateY(0); }
-
-        /* ====== MOBILE ====== */
-        @media (max-width: 768px) {
-            nav { padding: 0 1rem; }
-            .nav-links { display: none; }
-            .nav-links.open {
-                display: flex; flex-direction: column;
-                position: absolute; top: 64px; left: 0; right: 0;
-                background: rgba(10,10,15,0.98);
-                backdrop-filter: blur(20px);
-                padding: 1.5rem 2rem;
-                border-bottom: 1px solid var(--border);
-                gap: 1.25rem;
-            }
-            .mobile-toggle { display: block; }
-            section { padding: 4rem 1.25rem; }
-            .hero { padding: 7rem 1.25rem 4rem; min-height: auto; }
-            .hero h1 { font-size: 2rem; }
-        }
-        .skip-link {
-            position: absolute;
-            left: -9999px;
-            top: auto;
-            width: 1px;
-            height: 1px;
-            overflow: hidden;
-        }
-        .skip-link:focus {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: auto;
-            height: auto;
-            padding: 1rem;
-            background: #1a1a2e;
-            color: #fff;
-            z-index: 10000;
-            font-size: 1rem;
-        }
-
-        /* ====== TERMINAL ANIMATION ====== */
-        .hero-terminal {
-            max-width: 540px; margin: 2.5rem auto 0;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid var(--border-hover);
-            border-radius: 12px; overflow: hidden;
-            text-align: left; font-family: var(--font-mono);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        }
-        .term-bar {
-            display: flex; align-items: center; gap: 6px;
-            padding: 0.625rem 1rem;
-            background: rgba(255,255,255,0.04);
-            border-bottom: 1px solid var(--border);
-        }
-        .term-dot { width: 10px; height: 10px; border-radius: 50%; }
-        .term-dot.r { background: #ff5f57; }
-        .term-dot.y { background: #febc2e; }
-        .term-dot.g { background: #28c840; }
-        .term-title {
-            flex: 1; text-align: center;
-            font-size: 0.6875rem; color: var(--text-muted);
-        }
-        .term-body {
-            padding: 1rem 1.25rem; font-size: 0.75rem;
-            line-height: 1.7; color: #94a3b8;
-            min-height: 140px;
-        }
-        .term-body .prompt { color: var(--accent); }
-        .term-body .flag { color: #38bdf8; }
-        .term-body .port { color: #fbbf24; }
-        .term-body .service { color: var(--violet); }
-        .term-body .crit { color: #f87171; }
-        .term-line {
-            opacity: 0;
-            animation: term-fade-in 0.3s ease forwards;
-        }
-        @keyframes term-fade-in {
-            to { opacity: 1; }
-        }
-        .term-line:nth-child(1)  { animation-delay: 0.3s; }
-        .term-line:nth-child(2)  { animation-delay: 0.8s; }
-        .term-line:nth-child(3)  { animation-delay: 1.4s; }
-        .term-line:nth-child(4)  { animation-delay: 1.8s; }
-        .term-line:nth-child(5)  { animation-delay: 2.2s; }
-        .term-line:nth-child(6)  { animation-delay: 2.6s; }
-        .term-line:nth-child(7)  { animation-delay: 3.0s; }
-        .term-line:nth-child(8)  { animation-delay: 3.4s; }
-        .term-line:nth-child(9)  { animation-delay: 3.8s; }
-        .term-cursor {
-            display: inline-block; width: 7px; height: 14px;
-            background: var(--accent); vertical-align: middle;
-            animation: blink-cursor 1s step-end infinite;
-        }
-        @keyframes blink-cursor { 50% { opacity: 0; } }
-
-        /* ====== CTA MICRO-COPY ====== */
-        .cta-micro {
-            font-size: 0.75rem; color: var(--text-muted);
-            margin-top: 0.75rem;
-        }
-    </style>
 </head>
 <body>
 
@@ -608,7 +60,6 @@
         </svg>
         {{ app_name }}
     </a>
-
     <ul class="nav-links" id="navLinks">
         <li><a href="#features">Features</a></li>
         <li><a href="#how-it-works">How It Works</a></li>
@@ -617,12 +68,9 @@
         <li><a href="/login">Sign In</a></li>
         <li><a href="/register" class="nav-cta">Get Started</a></li>
     </ul>
-
     <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <line x1="3" y1="12" x2="21" y2="12"/>
-            <line x1="3" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
     </button>
 </nav>
@@ -650,25 +98,34 @@
         </div>
         <p class="cta-micro">Free tier available. No credit card required.</p>
 
-        <!-- Platform dashboard animation -->
-        <div class="hero-terminal" aria-hidden="true">
-            <div class="term-bar">
-                <span class="term-dot r"></span>
-                <span class="term-dot y"></span>
-                <span class="term-dot g"></span>
-                <span class="term-title">{{ app_name }} &mdash; Mission Dashboard</span>
+        <!-- Dashboard preview -->
+        <div class="hero-preview" aria-hidden="true">
+            <div class="preview-bar">
+                <span class="preview-dot r"></span>
+                <span class="preview-dot y"></span>
+                <span class="preview-dot g"></span>
+                <span class="preview-title">{{ app_name }} &mdash; Mission Dashboard</span>
             </div>
-            <div class="term-body" style="font-size: 0.7rem; line-height: 1.8;">
-                <div class="term-line"><span class="prompt">[Mission]</span> Web Application Assessment &mdash; <span class="service">RUNNING</span></div>
-                <div class="term-line"><span class="flag">▸ Phase 2/6:</span> Vulnerability Scanning</div>
-                <div class="term-line">&nbsp;</div>
-                <div class="term-line"><span class="port">◉ Agent:</span> ReconIntel &mdash; Discovered 12 services, 3 web apps</div>
-                <div class="term-line"><span class="port">◉ Agent:</span> VulnScanner &mdash; Running nuclei against 3 endpoints</div>
-                <div class="term-line"><span class="port">◉ Agent:</span> ToolSelector &mdash; Queuing sqlmap for form inputs</div>
-                <div class="term-line">&nbsp;</div>
-                <div class="term-line"><span class="crit">⚠ Finding:</span> SQL Injection in /api/search (CVSS 9.1)</div>
-                <div class="term-line"><span class="crit">⚠ Finding:</span> Exposed admin panel at /admin (CVSS 7.5)</div>
-                <div class="term-line"><span class="prompt">⏱</span> 47 findings &middot; 3 critical &middot; 8m elapsed <span class="term-cursor"></span></div>
+            <div class="preview-body">
+                <div class="preview-header">
+                    <span class="preview-mission-title">Web Application Assessment</span>
+                    <span class="preview-badge running"><span class="pulse"></span> Running</span>
+                </div>
+                <div class="preview-phase">&#x25B8; Phase 2/6: Vulnerability Scanning</div>
+                <div class="preview-agents">
+                    <div class="preview-agent"><span class="dot green"></span> <strong>ReconIntel</strong> &mdash; Discovered 12 services, 3 web apps</div>
+                    <div class="preview-agent"><span class="dot yellow"></span> <strong>VulnScanner</strong> &mdash; Running Nuclei against 3 endpoints</div>
+                    <div class="preview-agent"><span class="dot blue"></span> <strong>ToolSelector</strong> &mdash; Queuing SQLMap for form inputs</div>
+                </div>
+                <div class="preview-findings">
+                    <div class="preview-finding"><span class="severity critical">CRITICAL</span> <span class="desc">SQL Injection in /api/search (CVSS 9.1)</span></div>
+                    <div class="preview-finding"><span class="severity high">HIGH</span> <span class="desc">Exposed admin panel at /admin (CVSS 7.5)</span></div>
+                </div>
+                <div class="preview-footer">
+                    <span class="preview-stat"><span class="num">47</span> findings</span>
+                    <span class="preview-stat"><span class="num">3</span> critical</span>
+                    <span class="preview-stat">8m elapsed</span>
+                </div>
             </div>
         </div>
     </div>
@@ -682,19 +139,19 @@
         </p>
         <div class="stats-bar reveal">
             <div class="stat-cell">
-                <div class="stat-number" id="stat-findings-count">{{ stats.total_findings or '0' }}</div>
+                <div class="stat-number">{{ stats.total_findings or '0' }}</div>
                 <div class="stat-label">Findings Detected</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-number" id="stat-missions-count">{{ stats.total_missions or '0' }}</div>
+                <div class="stat-number">{{ stats.total_missions or '0' }}</div>
                 <div class="stat-label">Assessments Completed</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-number" id="stat-uptime">{{ stats.uptime or '99.9%' }}</div>
+                <div class="stat-number">{{ stats.uptime or '99.9%' }}</div>
                 <div class="stat-label">Platform Uptime</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-number" id="stat-tools-count">{{ stats.total_tools or '0' }}</div>
+                <div class="stat-number">{{ stats.total_tools or '0' }}</div>
                 <div class="stat-label">Integrated Tools</div>
             </div>
         </div>
@@ -710,7 +167,6 @@
             A multi-agent system that combines AI planning, automated tool execution,
             and real-time analysis into a single cohesive workflow.
         </p>
-
         <div class="features-grid">
             <div class="feature-card reveal">
                 <div class="feature-icon green">
@@ -722,7 +178,6 @@
                 <h3>Multi-Agent AI System</h3>
                 <p>Coordinated AI agents handle planning, reconnaissance, exploitation, and reporting — each specialised for its task.</p>
             </div>
-
             <div class="feature-card reveal">
                 <div class="feature-icon violet">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -732,7 +187,6 @@
                 <h3>Automated Exploitation</h3>
                 <p>Safely executes attacks in sandboxed containers with full rollback capability, using real penetration testing tools.</p>
             </div>
-
             <div class="feature-card reveal">
                 <div class="feature-icon blue">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -742,7 +196,6 @@
                 <h3>Real-Time Monitoring</h3>
                 <p>Watch every step of the assessment live — WebSocket-powered dashboards show tool output, findings, and agent decisions as they happen.</p>
             </div>
-
             <div class="feature-card reveal">
                 <div class="feature-icon amber">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -764,7 +217,6 @@
         <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
             From target configuration to a finished report — the platform handles the entire workflow autonomously.
         </p>
-
         <div class="steps">
             <div class="step reveal">
                 <div class="step-number">1</div>
@@ -797,68 +249,116 @@
         </p>
 
         {% if plans %}
-        <div class="pricing-grid">
-            {% for plan in plans %}
-            <div class="plan-card reveal {% if loop.index == 2 and plans|length > 1 %}popular{% endif %}">
-                {% if loop.index == 2 and plans|length > 1 %}
-                <div class="plan-badge">Most Popular</div>
-                {% endif %}
-                <div class="plan-name">{{ plan.display_name }}</div>
-                <div class="plan-desc">{{ plan.description or '' }}</div>
-                <ul class="plan-features">
-                    <li>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>{{ plan.max_concurrent_missions }} concurrent mission{{ 's' if plan.max_concurrent_missions != 1 else '' }}</span>
-                    </li>
-                    {% if plan.max_missions_per_month %}
-                    <li>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>{{ plan.max_missions_per_month }} missions / month</span>
-                    </li>
-                    {% else %}
-                    <li>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>Unlimited missions</span>
-                    </li>
+        {# Build a unified feature key list across all plans for the comparison table #}
+        {% set ns = namespace(all_feat_keys=[]) %}
+        {% for plan in plans %}
+            {% if plan.features %}
+                {% for k in plan.features.keys() %}
+                    {% if k not in ns.all_feat_keys %}
+                        {% set ns.all_feat_keys = ns.all_feat_keys + [k] %}
                     {% endif %}
-                    {% if plan.max_targets %}
-                    <li>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>Up to {{ plan.max_targets }} targets</span>
-                    </li>
-                    {% else %}
-                    <li>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>Unlimited targets</span>
-                    </li>
-                    {% endif %}
-                    <li>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>{{ plan.max_api_requests_per_hour }} API req/hr</span>
-                    </li>
-                    <li>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>{{ plan.max_storage_mb }} MB storage</span>
-                    </li>
-                    {% if plan.features %}
-                    {% for feat_key, feat_val in plan.features.items() %}
-                    {% if feat_val %}
-                    <li>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                        <span>{{ feat_key | replace('_', ' ') | title }}</span>
-                    </li>
-                    {% else %}
-                    <li style="opacity:0.35;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color: #f87171;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        <span>{{ feat_key | replace('_', ' ') | title }}</span>
-                    </li>
-                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+
+        <div class="pricing-table-wrap reveal">
+            <table class="pricing-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        {% for plan in plans %}
+                        <th {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            {{ plan.display_name }}
+                            {% if loop.index == 2 and plans|length > 1 %}
+                            <div class="plan-badge-inline">Most Popular</div>
+                            {% endif %}
+                            {% if plan.description %}
+                            <div class="plan-desc-cell">{{ plan.description }}</div>
+                            {% endif %}
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Limits section -->
+                    <tr class="section-row"><td colspan="{{ plans|length + 1 }}">Limits</td></tr>
+                    <tr>
+                        <td class="row-label">Concurrent Missions</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{{ plan.max_concurrent_missions }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="row-label">Missions / Month</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{{ plan.max_missions_per_month if plan.max_missions_per_month else 'Unlimited' }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="row-label">Targets</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{{ ('Up to ' ~ plan.max_targets) if plan.max_targets else 'Unlimited' }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="row-label">API Requests / Hour</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{{ plan.max_api_requests_per_hour }}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td class="row-label">Storage</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            <span class="val">{% if plan.max_storage_mb >= 1024 %}{{ (plan.max_storage_mb / 1024)|round(0)|int }} GB{% else %}{{ plan.max_storage_mb }} MB{% endif %}</span>
+                        </td>
+                        {% endfor %}
+                    </tr>
+
+                    <!-- Features section -->
+                    {% if ns.all_feat_keys %}
+                    <tr class="section-row"><td colspan="{{ plans|length + 1 }}">Features</td></tr>
+                    {% for feat_key in ns.all_feat_keys %}
+                    <tr>
+                        <td class="row-label">{{ feat_key | feature_label }}</td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            {% if plan.features and plan.features.get(feat_key) %}
+                            <span class="check">&#x2713;</span>
+                            {% else %}
+                            <span class="cross">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
                     {% endfor %}
                     {% endif %}
-                </ul>
-                <a href="/register" class="plan-cta {% if loop.index == 2 and plans|length > 1 %}primary{% else %}secondary{% endif %}">Get Started</a>
-            </div>
-            {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td></td>
+                        {% for plan in plans %}
+                        <td {% if loop.index == 2 and plans|length > 1 %}class="popular-col"{% endif %}>
+                            {% if plan.name == 'enterprise' %}
+                            <a href="mailto:contact@spectra.security" class="plan-cta-cell enterprise">Contact Us</a>
+                            {% elif loop.index == 2 and plans|length > 1 %}
+                            <a href="/register" class="plan-cta-cell primary">Get Started</a>
+                            {% else %}
+                            <a href="/register" class="plan-cta-cell secondary">Get Started</a>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                </tfoot>
+            </table>
         </div>
         {% else %}
         <div class="pricing-contact reveal">
@@ -878,14 +378,13 @@
         <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
             Security teams use {{ app_name }} to accelerate assessments without sacrificing depth or control.
         </p>
-
         {% if reviews %}
         <div class="testimonial-grid" style="text-align:left;">
             {% for review in reviews %}
-            <div class="testimonial-card reveal" {% if loop.index == 2 %}style="transform:translateY(12px);"{% endif %}>
+            <div class="testimonial-card reveal">
                 <div class="testimonial-quote">{{ review.quote }}</div>
                 <div class="testimonial-author">
-                    <div class="testimonial-avatar" style="background:{% if loop.index == 1 %}var(--accent-dim);color:var(--accent){% elif loop.index == 2 %}var(--violet-dim);color:var(--violet){% else %}rgba(56,189,248,0.12);color:#38bdf8{% endif %};">{{ review.initials }}</div>
+                    <div class="testimonial-avatar" style="background:{% if loop.index % 3 == 1 %}var(--accent-dim);color:var(--accent){% elif loop.index % 3 == 2 %}var(--violet-dim);color:var(--violet){% else %}rgba(56,189,248,0.12);color:#38bdf8{% endif %};">{{ review.initials }}</div>
                     <div>
                         <div class="testimonial-name">{{ review.author_name }}</div>
                         <div class="testimonial-role">{{ review.author_role }}</div>
@@ -894,8 +393,6 @@
             </div>
             {% endfor %}
         </div>
-        {% else %}
-        <p class="text-sm text-slate-500">No reviews yet.</p>
         {% endif %}
     </div>
 </section>
@@ -908,67 +405,32 @@
         <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
             Everything you need to know about getting started with {{ app_name }}.
         </p>
-
         <div class="faq-list" style="text-align:left;" role="list">
+            {% set faqs = [
+                ("What types of security assessments can " ~ app_name ~ " perform?",
+                 app_name ~ " supports full-scope penetration testing including network reconnaissance, vulnerability scanning, web application testing, service enumeration, and automated exploitation — all orchestrated by AI agents within sandboxed containers."),
+                ("Is it safe to run automated exploits against production systems?",
+                 "All tools run in isolated, sandboxed containers with configurable scope limits and rules of engagement. The platform enforces target boundaries and supports human-in-the-loop approval for high-risk actions. We recommend testing against staging environments first."),
+                ("What AI models does the platform use?",
+                 app_name ~ " is model-agnostic and supports multiple LLM providers including OpenAI, Anthropic, and local models via Ollama. You can configure your preferred provider during setup or switch at any time from the settings panel."),
+                ("Can I self-host " ~ app_name ~ "?",
+                 "Yes. " ~ app_name ~ " is designed for self-hosted deployment via Docker Compose. You maintain full control over your data, assessment results, and infrastructure. No data ever leaves your environment unless you configure external AI providers."),
+                ("How are assessment reports generated?",
+                 "Reports are auto-generated as PDF documents with CVSS-scored findings, evidence screenshots, remediation guidance, and executive summaries. Each finding includes detailed reproduction steps and is mapped to relevant CVE identifiers when applicable."),
+                ("What security tools are included?",
+                 "The platform ships with 25+ pre-configured tools including Nmap, Nuclei, Nikto, SQLMap, Feroxbuster, Hydra, and more. New tools can be added by dropping a JSON plugin file into the plugins directory — no code changes required.")
+            ] %}
+            {% for question, answer in faqs %}
             <div class="faq-item reveal" role="listitem">
-                <button class="faq-question" aria-expanded="false" aria-controls="faq-a1" onclick="toggleFaq(this)">
-                    What types of security assessments can {{ app_name }} perform?
+                <button class="faq-question" aria-expanded="false" aria-controls="faq-a{{ loop.index }}">
+                    {{ question }}
                     <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </button>
-                <div class="faq-answer" id="faq-a1" role="region">
-                    <p>{{ app_name }} supports full-scope penetration testing including network reconnaissance, vulnerability scanning, web application testing, service enumeration, and automated exploitation — all orchestrated by AI agents within sandboxed containers.</p>
+                <div class="faq-answer" id="faq-a{{ loop.index }}" role="region">
+                    <p>{{ answer }}</p>
                 </div>
             </div>
-
-            <div class="faq-item reveal" role="listitem">
-                <button class="faq-question" aria-expanded="false" aria-controls="faq-a2" onclick="toggleFaq(this)">
-                    Is it safe to run automated exploits against production systems?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <div class="faq-answer" id="faq-a2" role="region">
-                    <p>All tools run in isolated, sandboxed containers with configurable scope limits and rules of engagement. The platform enforces target boundaries and supports human-in-the-loop approval for high-risk actions. We recommend testing against staging environments first.</p>
-                </div>
-            </div>
-
-            <div class="faq-item reveal" role="listitem">
-                <button class="faq-question" aria-expanded="false" aria-controls="faq-a3" onclick="toggleFaq(this)">
-                    What AI models does the platform use?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <div class="faq-answer" id="faq-a3" role="region">
-                    <p>{{ app_name }} is model-agnostic and supports multiple LLM providers including OpenAI, Anthropic, and local models via Ollama. You can configure your preferred provider during setup or switch at any time from the settings panel.</p>
-                </div>
-            </div>
-
-            <div class="faq-item reveal" role="listitem">
-                <button class="faq-question" aria-expanded="false" aria-controls="faq-a4" onclick="toggleFaq(this)">
-                    Can I self-host {{ app_name }}?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <div class="faq-answer" id="faq-a4" role="region">
-                    <p>Yes. {{ app_name }} is designed for self-hosted deployment via Docker Compose. You maintain full control over your data, assessment results, and infrastructure. No data ever leaves your environment unless you configure external AI providers.</p>
-                </div>
-            </div>
-
-            <div class="faq-item reveal" role="listitem">
-                <button class="faq-question" aria-expanded="false" aria-controls="faq-a5" onclick="toggleFaq(this)">
-                    How are assessment reports generated?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <div class="faq-answer" id="faq-a5" role="region">
-                    <p>Reports are auto-generated as PDF documents with CVSS-scored findings, evidence screenshots, remediation guidance, and executive summaries. Each finding includes detailed reproduction steps and is mapped to relevant CVE identifiers when applicable.</p>
-                </div>
-            </div>
-
-            <div class="faq-item reveal" role="listitem">
-                <button class="faq-question" aria-expanded="false" aria-controls="faq-a6" onclick="toggleFaq(this)">
-                    What security tools are included?
-                    <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-                <div class="faq-answer" id="faq-a6" role="region">
-                    <p>The platform ships with 25+ pre-configured tools including Nmap, Nuclei, Nikto, SQLMap, Feroxbuster, Hydra, and more. New tools can be added by dropping a JSON plugin file into the plugins directory — no code changes required.</p>
-                </div>
-            </div>
+            {% endfor %}
         </div>
     </div>
 </section>
@@ -997,7 +459,6 @@
         <div class="footer-col">
             <h4>Resources</h4>
             <ul>
-
                 <li><a href="#faq">FAQ</a></li>
                 <li><a href="/help">Help Center</a></li>
             </ul>
@@ -1029,47 +490,6 @@
     </div>
 </footer>
 
-<!-- ====== SCRIPTS ====== -->
-<script nonce="{{ request.state.csp_nonce }}">
-    // Navbar scroll effect
-    const nav = document.getElementById('nav');
-    window.addEventListener('scroll', () => {
-        nav.classList.toggle('scrolled', window.scrollY > 40);
-    }, { passive: true });
-
-    // Mobile menu toggle
-    document.getElementById('mobileToggle').addEventListener('click', () => {
-        document.getElementById('navLinks').classList.toggle('open');
-    });
-
-    // Close mobile menu on link click
-    document.querySelectorAll('.nav-links a').forEach(a => {
-        a.addEventListener('click', () => {
-            document.getElementById('navLinks').classList.remove('open');
-        });
-    });
-
-    // Scroll reveal
-    const reveals = document.querySelectorAll('.reveal');
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry, i) => {
-            if (entry.isIntersecting) {
-                // Stagger children slightly
-                setTimeout(() => entry.target.classList.add('visible'), i * 60);
-                observer.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-
-    reveals.forEach(el => observer.observe(el));
-
-    // Accessible FAQ toggle
-    function toggleFaq(btn) {
-        const item = btn.parentElement;
-        const expanded = btn.getAttribute('aria-expanded') === 'true';
-        btn.setAttribute('aria-expanded', String(!expanded));
-        item.classList.toggle('open');
-    }
-</script>
+<script nonce="{{ request.state.csp_nonce }}" src="/static/js/landing.js"></script>
 </body>
 </html>
