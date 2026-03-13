@@ -39,6 +39,8 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 ### RAG Knowledge Base
 - Contextual retrieval from CVE databases and tool documentation
 - Past assessment knowledge reuse via pgvector embeddings
+- **Free local embeddings** by default — fastembed with BAAI/bge-small-en-v1.5, no API key needed
+- Lazy model download: embedding model is only fetched on first use, zero disk overhead when using an API provider
 - Exploit database integration with searchable indices
 
 ### Per-Mission Sandboxes
@@ -177,10 +179,10 @@ Spectra is configured via environment variables in `.env`. Key settings:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://spectra:spectra_dev@db:5432/spectra` |
-| `AI_PROVIDER` | LLM provider (`openai`, `anthropic`, `ollama`, `openrouter`) | `openai` |
-| `AI_MODEL` | Model name | `gpt-4o` |
+| `AI_PROVIDER` | LLM provider (`litellm`, `ollama`, `mock`) | `litellm` |
+| `LLM_MODEL` | Default LLM model | `openrouter/arcee-ai/trinity-large-preview:free` |
 | `FULLY_AUTOMATED` | Skip human approval for all actions | `false` |
-| `JWT_SECRET_KEY` | Secret key for JWT tokens | (generated on setup) |
+| `JWT_SECRET_KEY` | Secret key for JWT tokens | (auto-generated) |
 | `PLUGIN_SAFE_MODE` | Require signed plugins | `true` |
 | `LLM_GATEWAY_URL` | Remote LLM gateway URL | — |
 | `SANDBOX_ORCHESTRATOR_URL` | Remote sandbox orchestrator URL | — |

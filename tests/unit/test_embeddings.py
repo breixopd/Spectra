@@ -93,14 +93,16 @@ class TestModelLoading:
         assert service._api_ready is False
 
     @pytest.mark.asyncio
-    async def test_load_model_no_op_when_no_api_key(self, service):
-        """_load_model does not set _api_ready when no API key."""
+    async def test_load_model_uses_local_when_no_api_key(self, service):
+        """_load_model configures local fastembed when no API key is available."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "litellm"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
             await service._load_model()
-        assert service._api_ready is False
+        assert service._api_ready is True
+        assert service._use_local is True
+        assert service._local_model_name == "BAAI/bge-small-en-v1.5"
 
     @pytest.mark.asyncio
     async def test_load_model_configures_api_with_base_url(self, service):
@@ -133,24 +135,26 @@ class TestModelLoading:
         assert service.embedding_dim == 384
 
     @pytest.mark.asyncio
-    async def test_embed_raises_when_no_api_key(self, service):
-        """embed() raises RuntimeError when no API key configured."""
+    async def test_embed_uses_local_fallback_when_no_api_key(self, service):
+        """embed() falls back to local embeddings when no API key configured."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "litellm"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-            with pytest.raises(RuntimeError, match="not configured"):
-                await service.embed("test")
+            await service._load_model()
+        assert service._use_local is True
+        assert service._api_ready is True
 
     @pytest.mark.asyncio
-    async def test_embed_batch_raises_when_no_api_key(self, service):
-        """embed_batch() raises RuntimeError when no API key configured."""
+    async def test_embed_batch_uses_local_fallback_when_no_api_key(self, service):
+        """embed_batch() falls back to local embeddings when no API key configured."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
             mock_settings.AI_PROVIDER = "litellm"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-            with pytest.raises(RuntimeError, match="not configured"):
-                await service.embed_batch(["test"])
+            await service._load_model()
+        assert service._use_local is True
+        assert service._api_ready is True
 
     @pytest.mark.asyncio
     async def test_is_functional_false_without_api_key(self, service):

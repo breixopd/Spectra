@@ -25,7 +25,7 @@ AI provider, model, API keys, and routing settings are configured through the **
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `JWT_SECRET_KEY` | SecretStr | `""` | **Required.** Secret key for JWT tokens. Auto-generated if empty (sessions invalidate on restart) |
+| `JWT_SECRET_KEY` | SecretStr | `""` | Secret key for JWT tokens. Auto-generated if empty or placeholder. Set for stable sessions across restarts |
 | `JWT_ALGORITHM` | str | `"HS256"` | JWT signing algorithm |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | int | `1440` | Token lifetime in minutes (default: 24 hours) |
 
@@ -61,7 +61,30 @@ Override the default model for specific task complexity tiers. Leave empty to us
 | `AI_PROVIDER_PROFILES` | dict | `{}` | Named provider profiles with model/endpoint configs |
 | `AI_PROVIDER_ROUTING` | dict | `{}` | Task-to-profile routing rules |
 | `AI_PROVIDER_FALLBACKS` | dict | `{}` | Fallback chains per profile |
-| `EMBEDDING_MODEL` | str | `"text-embedding-3-small"` | Model for RAG embeddings |
+| `EMBEDDING_MODEL` | str | `"local/BAAI/bge-small-en-v1.5"` | Model for RAG embeddings (see [Embeddings](#embeddings) below) |
+
+---
+
+### Embeddings
+
+Spectra supports two embedding backends:
+
+| Mode | `EMBEDDING_MODEL` value | Requirements |
+|------|------------------------|--------------|
+| **Local (default)** | `local/BAAI/bge-small-en-v1.5` | None — fastembed downloads the model on first use |
+| **API** | Any model name (e.g. `text-embedding-3-small`) | `LLM_API_KEY` or `EMBEDDING_API_KEY` |
+
+**Local embeddings** use [fastembed](https://github.com/qdrant/fastembed) with ONNX-optimized models.
+The model is **lazy-loaded** — it is only downloaded on the first `embed()` call. If you
+configure an API-backed model instead, the local model is never fetched and uses zero disk space.
+
+Any model supported by fastembed can be used with the `local/` prefix, e.g. `local/BAAI/bge-base-en-v1.5`.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `EMBEDDING_MODEL` | str | `"local/BAAI/bge-small-en-v1.5"` | Embedding model (prefix `local/` for fastembed) |
+| `EMBEDDING_API_KEY` | SecretStr | `""` | API key for embedding provider (falls back to `LLM_API_KEY`) |
+| `EMBEDDING_API_BASE_URL` | str | `""` | Base URL for embedding API (falls back to `LLM_API_BASE_URL`) |
 
 ---
 

@@ -22,6 +22,7 @@ class EmbeddingService:
         self._api_ready = False
         self._use_local = False
         self._local_embedder: object | None = None
+        self._local_model_name: str = ""
         self._init_lock: asyncio.Lock | None = None
         self._litellm_model: str = ""
         self._litellm_kwargs: dict = {}
@@ -36,6 +37,21 @@ class EmbeddingService:
     def embedding_dim(self) -> int | None:
         """Return the embedding dimension if known."""
         return self._embedding_dim
+
+    async def _ensure_local_loaded(self) -> None:
+        """Lazy-load the local fastembed model on first use."""
+        if self._local_embedder is not None:
+            return
+        try:
+            from fastembed import TextEmbedding
+
+            self._local_embedder = await asyncio.to_thread(TextEmbedding, model_name=self._local_model_name)
+            test = await asyncio.to_thread(lambda: list(self._local_embedder.embed(["dim_probe"])))  # type: ignore[union-attr]
+            self._embedding_dim = len(test[0])
+            logger.info("Local embedding model loaded: %s dim=%d", self._local_model_name, self._embedding_dim)
+        except Exception as e:
+            self._api_ready = False
+            raise RuntimeError(f"Failed to load local embedding model '{self._local_model_name}': {e}") from e
 
     async def _load_model(self) -> None:
         """Configure API backend via LiteLLM."""
@@ -59,21 +75,12 @@ class EmbeddingService:
             api_key = emb_key if emb_key else settings.LLM_API_KEY.get_secret_value()
 
             if model_lower.startswith("local/") or (not api_key):
-                try:
-                    from fastembed import TextEmbedding
-
-                    local_model = self.model_name.removeprefix("local/") if model_lower.startswith("local/") else "BAAI/bge-small-en-v1.5"
-                    self._local_embedder = TextEmbedding(model_name=local_model)
-                    self._use_local = True
-                    self._api_ready = True
-                    test = list(self._local_embedder.embed(["test"]))[0]  # type: ignore[union-attr]
-                    self._embedding_dim = len(test)
-                    logger.info("Local embedding service ready: model=%s dim=%d", local_model, self._embedding_dim)
-                    return
-                except Exception as e:
-                    logger.warning("Local embedding init failed: %s", e)
-                    if not api_key:
-                        return
+                # Mark as local — actual model download is deferred to first embed() call
+                self._local_model_name = self.model_name.removeprefix("local/") if model_lower.startswith("local/") else "BAAI/bge-small-en-v1.5"
+                self._use_local = True
+                self._api_ready = True
+                logger.info("Local embedding configured (lazy): model=%s (downloaded on first use)", self._local_model_name)
+                return
 
             if not api_key:
                 logger.warning("Embedding service requires an API key. Configure EMBEDDING_API_KEY or LLM_API_KEY.")
@@ -102,6 +109,7 @@ class EmbeddingService:
             raise RuntimeError("Embedding service not configured. Set LLM_API_KEY or use a local model (EMBEDDING_MODEL=local/BAAI/bge-small-en-v1.5).")
 
         if self._use_local:
+            await self._ensure_local_loaded()
             embeddings = await asyncio.to_thread(lambda: list(self._local_embedder.embed([text])))  # type: ignore[union-attr]
             return embeddings[0].tolist()
 
@@ -134,6 +142,7 @@ class EmbeddingService:
             return []
 
         if self._use_local:
+            await self._ensure_local_loaded()
             embeddings = await asyncio.to_thread(lambda: list(self._local_embedder.embed(texts)))  # type: ignore[union-attr]
             return [e.tolist() for e in embeddings]
 
