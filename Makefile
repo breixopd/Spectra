@@ -3,7 +3,7 @@
 
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
        lint format check clean docker-build docker-up docker-down \
-       deploy rollback deploy-check help
+       deploy rollback deploy-check services-up services-down services-logs help
 
 SHELL := /bin/bash
 
@@ -58,6 +58,16 @@ deploy: ## Deploy to production (usage: make deploy VERSION=2026.03.12)
 
 rollback: ## Rollback to previous version (usage: make rollback VERSION=2026.03.11)
 	@./scripts/rollback.sh $(VERSION)
+
+# --- Microservices Mode ---
+services-up: ## Start in microservices mode (split services)
+	@docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml up -d --build
+
+services-down: ## Stop microservices mode
+	@docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml down
+
+services-logs: ## Tail logs for all microservices
+	@docker compose -f docker/docker-compose.yml -f docker/docker-compose.services.yml logs -f
 
 deploy-check: ## Run pre-deploy checks without deploying
 	@echo "Running pre-deploy checks..."
