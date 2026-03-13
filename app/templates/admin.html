@@ -89,6 +89,9 @@
             <a href="#" data-section="llm" role="tab" aria-selected="false" aria-controls="section-llm" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i class="fa-solid fa-brain mr-3 text-slate-500 w-5 text-center"></i> LLM Config
             </a>
+            <a href="#" data-section="backups" role="tab" aria-selected="false" aria-controls="section-backups" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                <i class="fa-solid fa-box-archive mr-3 text-slate-500 w-5 text-center"></i> Backups
+            </a>
             <a href="/settings" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium hover:bg-white/5">
                 <i class="fa-solid fa-gear mr-3 text-slate-500 w-5 text-center"></i> System Settings
             </a>
@@ -493,6 +496,36 @@
             </form>
             
             <div id="llm-test-result" class="hidden mt-3 p-3 rounded-lg text-sm"></div>
+        </div>
+
+        <!-- Backups -->
+        <div id="section-backups" class="section-panel space-y-4" role="tabpanel" aria-labelledby="tab-backups">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Database Backups</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Create and restore PostgreSQL backups</p>
+                </div>
+                <button onclick="createBackup()" id="backup-create-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">
+                    <i class="fa-solid fa-plus mr-1.5"></i> Create Backup
+                </button>
+            </div>
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="admin-table w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-white/5">
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Filename</th>
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Size</th>
+                                <th scope="col" class="text-left px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Created</th>
+                                <th scope="col" class="text-right px-4 py-3 text-xs text-slate-500 uppercase tracking-wider font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="backups-tbody">
+                            <tr><td colspan="4" class="px-4 py-8 text-center text-slate-600 text-sm">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- Audit Logs -->
@@ -971,6 +1004,7 @@
         if (name === 'services') loadServices();
         if (name === 'content') loadContent();
         if (name === 'llm') loadLLMConfig();
+        if (name === 'backups') loadBackups();
     };
 
     document.querySelectorAll('.admin-sidebar a[data-section]').forEach(a => {
@@ -2031,6 +2065,54 @@
             result.className = 'mt-3 p-3 rounded-lg text-sm bg-red-600/10 text-red-300 border border-red-500/30';
             result.textContent = '\u2717 Error: ' + e.message;
         }
+    };
+
+    // ---- Backups ----
+    async function loadBackups() {
+        const tbody = document.getElementById('backups-tbody');
+        try {
+            const r = await fetch('/api/admin/backups');
+            if (!r.ok) throw new Error('Failed');
+            const data = await r.json();
+            const backups = data.backups || data || [];
+            if (!backups.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-slate-600 text-sm">No backups yet. Click "Create Backup" to start.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = backups.map(b => `
+                <tr class="border-b border-white/5 hover:bg-white/[0.02]">
+                    <td class="px-4 py-3 font-mono text-xs text-slate-300">${b.filename || b.path?.split('/').pop() || '—'}</td>
+                    <td class="px-4 py-3 text-xs text-slate-400">${b.size ? formatBytes(b.size) : '—'}</td>
+                    <td class="px-4 py-3 text-xs text-slate-400">${b.created_at ? new Date(b.created_at).toLocaleString() : '—'}</td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="restoreBackup('${b.path || b.filename}')" class="px-2.5 py-1 rounded bg-amber-600/20 text-amber-300 text-xs hover:bg-amber-600/30 transition-colors">
+                            <i class="fa-solid fa-rotate-left mr-1"></i>Restore
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch(e) { tbody.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-red-400 text-sm">Failed to load backups</td></tr>'; }
+    }
+    function formatBytes(b) { if(!b) return '0 B'; const k=1024,s=['B','KB','MB','GB']; const i=Math.floor(Math.log(b)/Math.log(k)); return (b/Math.pow(k,i)).toFixed(1)+' '+s[i]; }
+    async function createBackup() {
+        const btn = document.getElementById('backup-create-btn');
+        btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Creating...';
+        try {
+            const r = await fetch('/api/admin/backups', {method:'POST'});
+            if (!r.ok) { const d = await r.json().catch(()=>({})); throw new Error(d.detail || 'Backup failed'); }
+            showConfirm('Backup created successfully', null, {title:'Success', icon:'check', confirmText:'OK', hideCancel:true});
+            loadBackups();
+        } catch(e) { showConfirm(e.message, null, {title:'Backup Error', icon:'triangle-exclamation', confirmText:'OK', hideCancel:true}); }
+        finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i> Create Backup'; }
+    }
+    window.restoreBackup = function(path) {
+        showConfirm('Are you sure you want to restore from this backup? This will overwrite the current database.', async () => {
+            try {
+                const r = await fetch('/api/admin/backups/restore', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({backup_path:path})});
+                if (!r.ok) { const d=await r.json().catch(()=>({})); throw new Error(d.detail||'Restore failed'); }
+                showConfirm('Database restored. The app will restart.', ()=>window.location.reload(), {title:'Restored', icon:'check', confirmText:'OK', hideCancel:true});
+            } catch(e) { showConfirm(e.message, null, {title:'Restore Error', icon:'triangle-exclamation', confirmText:'OK', hideCancel:true}); }
+        }, {title:'Restore Backup', icon:'triangle-exclamation'});
     };
 
     // ---- Init ----
