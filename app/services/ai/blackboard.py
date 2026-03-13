@@ -74,8 +74,9 @@ class MissionBlackboard:
 
     async def persist_to_db(self, mission_id: str | None = None):
         """Persist current blackboard state to PostgreSQL for cross-mission learning."""
-        from app.core.database import async_session_maker
         from sqlalchemy import text
+
+        from app.core.database import async_session_maker
 
         mid = mission_id or self.mission_id
         key = f"blackboard:{mid}"
@@ -96,8 +97,9 @@ class MissionBlackboard:
 
     async def restore_from_db(self, mission_id: str | None = None) -> bool:
         """Restore blackboard state from a previous mission."""
-        from app.core.database import async_session_maker
         from sqlalchemy import text
+
+        from app.core.database import async_session_maker
 
         mid = mission_id or self.mission_id
         async with async_session_maker() as session:
@@ -115,14 +117,15 @@ class MissionBlackboard:
 
     async def get_cross_mission_findings(self, target_address: str) -> list[dict]:
         """Retrieve findings from previous missions against the same target."""
-        from app.core.database import async_session_maker
         from sqlalchemy import text
+
+        from app.core.database import async_session_maker
 
         async with async_session_maker() as session:
             result = await session.execute(
                 text("""
-                    SELECT key, value FROM system_cache 
-                    WHERE key LIKE 'blackboard:%' 
+                    SELECT key, value FROM system_cache
+                    WHERE key LIKE 'blackboard:%'
                     AND value::text LIKE :target_pattern
                     AND (expires_at IS NULL OR expires_at > now())
                     ORDER BY key DESC LIMIT 5

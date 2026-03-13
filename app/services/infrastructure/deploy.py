@@ -14,12 +14,12 @@ import asyncio
 import logging
 import shlex
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 logger = logging.getLogger("spectra.deploy")
 
 
-class DeploymentStatus(str, Enum):
+class DeploymentStatus(StrEnum):
     PENDING = "pending"
     CONNECTING = "connecting"
     HARDENING = "hardening"
