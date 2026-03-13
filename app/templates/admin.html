@@ -37,6 +37,9 @@
             <a href="#" data-section="llm" role="tab" aria-selected="false" aria-controls="section-llm" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i class="fa-solid fa-brain mr-3 text-slate-500 w-5 text-center"></i> LLM Config
             </a>
+            <a href="#" data-section="email" role="tab" aria-selected="false" aria-controls="section-email" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                <i class="fa-solid fa-envelope mr-3 text-slate-500 w-5 text-center"></i> Email
+            </a>
             <a href="#" data-section="backups" role="tab" aria-selected="false" aria-controls="section-backups" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i class="fa-solid fa-box-archive mr-3 text-slate-500 w-5 text-center"></i> Backups
             </a>
@@ -444,6 +447,51 @@
             </form>
             
             <div id="llm-test-result" class="hidden mt-3 p-3 rounded-lg text-sm"></div>
+        </div>
+
+        <!-- Email -->
+        <div id="section-email" class="section-panel space-y-4" role="tabpanel" aria-labelledby="tab-email">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Email Configuration</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">SMTP settings, test email, and template management</p>
+                </div>
+            </div>
+
+            <!-- SMTP Status -->
+            <div class="glass-panel rounded-xl p-5">
+                <h3 class="text-sm font-semibold text-white mb-3">SMTP Status</h3>
+                <div id="email-smtp-status" class="text-sm text-slate-400">Loading...</div>
+            </div>
+
+            <!-- Test Email -->
+            <div class="glass-panel rounded-xl p-5">
+                <h3 class="text-sm font-semibold text-white mb-3">Send Test Email</h3>
+                <form id="test-email-form" class="flex items-end gap-3" onsubmit="sendTestEmail(event)">
+                    <div class="flex-1">
+                        <label for="test-email-to" class="block text-xs text-slate-500 mb-1">Recipient</label>
+                        <input type="email" id="test-email-to" required placeholder="test@example.com" class="form-input w-full">
+                    </div>
+                    <button type="submit" id="test-email-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">
+                        <i class="fa-solid fa-paper-plane mr-1.5"></i> Send Test
+                    </button>
+                </form>
+                <div id="test-email-result" class="hidden mt-3 p-3 rounded-lg text-sm"></div>
+            </div>
+
+            <!-- Templates -->
+            <div class="glass-panel rounded-xl p-5">
+                <h3 class="text-sm font-semibold text-white mb-3">Email Templates</h3>
+                <div class="flex flex-wrap gap-2 mb-3" id="email-template-tabs"></div>
+                <div>
+                    <textarea id="email-template-editor" rows="12" class="form-input w-full font-mono text-xs" placeholder="Select a template..."></textarea>
+                </div>
+                <div class="flex justify-end mt-3">
+                    <button onclick="saveEmailTemplate()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">
+                        Save Template
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Backups -->
@@ -952,6 +1000,7 @@
         if (name === 'services') loadServices();
         if (name === 'content') loadContent();
         if (name === 'llm') loadLLMConfig();
+        if (name === 'email') loadEmailConfig();
         if (name === 'backups') loadBackups();
     };
 
@@ -2062,6 +2111,95 @@
             } catch(e) { showConfirm(e.message, null, {title:'Restore Error', icon:'triangle-exclamation', confirmText:'OK', hideCancel:true}); }
         }, {title:'Restore Backup', icon:'triangle-exclamation'});
     };
+
+    // ---- Email ----
+    let _emailTemplates = {};
+    let _emailActiveTemplate = '';
+
+    async function loadEmailConfig() {
+        const statusEl = document.getElementById('email-smtp-status');
+        try {
+            const r = await fetch('/api/admin/stats');
+            const d = r.ok ? await r.json() : {};
+            const smtpHost = d.smtp_host || '';
+            statusEl.innerHTML = smtpHost
+                ? `<span class="text-emerald-400"><i class="fa-solid fa-circle-check mr-1"></i> SMTP configured: ${smtpHost}</span>`
+                : '<span class="text-amber-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> SMTP not configured — using console fallback</span>';
+        } catch { statusEl.textContent = 'Unable to load status'; }
+
+        try {
+            const r = await fetch('/api/admin/email/templates');
+            if (!r.ok) throw new Error();
+            _emailTemplates = await r.json();
+            const tabs = document.getElementById('email-template-tabs');
+            tabs.innerHTML = '';
+            for (const name of Object.keys(_emailTemplates)) {
+                const btn = document.createElement('button');
+                btn.className = 'px-3 py-1 rounded-lg text-xs font-medium transition-colors ' +
+                    (name === _emailActiveTemplate ? 'bg-violet-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10');
+                btn.textContent = name;
+                btn.onclick = () => selectEmailTemplate(name);
+                tabs.appendChild(btn);
+            }
+            if (!_emailActiveTemplate && Object.keys(_emailTemplates).length) {
+                selectEmailTemplate(Object.keys(_emailTemplates)[0]);
+            } else if (_emailActiveTemplate) {
+                document.getElementById('email-template-editor').value = _emailTemplates[_emailActiveTemplate] || '';
+            }
+        } catch { /* ignore */ }
+    }
+
+    function selectEmailTemplate(name) {
+        _emailActiveTemplate = name;
+        document.getElementById('email-template-editor').value = _emailTemplates[name] || '';
+        document.querySelectorAll('#email-template-tabs button').forEach(b => {
+            b.className = b.textContent === name
+                ? 'px-3 py-1 rounded-lg text-xs font-medium transition-colors bg-violet-600 text-white'
+                : 'px-3 py-1 rounded-lg text-xs font-medium transition-colors bg-white/5 text-slate-400 hover:bg-white/10';
+        });
+    }
+
+    async function saveEmailTemplate() {
+        if (!_emailActiveTemplate) return;
+        const content = document.getElementById('email-template-editor').value;
+        try {
+            const r = await fetch(`/api/admin/email/templates/${_emailActiveTemplate}`, {
+                method: 'PUT', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({content})
+            });
+            if (!r.ok) throw new Error((await r.json()).detail || 'Save failed');
+            _emailTemplates[_emailActiveTemplate] = content;
+            showConfirm('Template saved.', null, {title:'Saved', icon:'check', confirmText:'OK', hideCancel:true});
+        } catch(e) { showConfirm(e.message, null, {title:'Error', icon:'triangle-exclamation', confirmText:'OK', hideCancel:true}); }
+    }
+    window.saveEmailTemplate = saveEmailTemplate;
+
+    async function sendTestEmail(e) {
+        e.preventDefault();
+        const to = document.getElementById('test-email-to').value;
+        const btn = document.getElementById('test-email-btn');
+        const result = document.getElementById('test-email-result');
+        btn.disabled = true; btn.textContent = 'Sending...';
+        try {
+            const r = await fetch('/api/admin/email/test', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({to})
+            });
+            const d = await r.json();
+            result.className = r.ok
+                ? 'mt-3 p-3 rounded-lg text-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                : 'mt-3 p-3 rounded-lg text-sm bg-red-500/10 text-red-400 border border-red-500/20';
+            result.textContent = r.ok ? `Test email sent to ${d.to}` : (d.detail || 'Failed');
+            result.classList.remove('hidden');
+        } catch(err) {
+            result.className = 'mt-3 p-3 rounded-lg text-sm bg-red-500/10 text-red-400 border border-red-500/20';
+            result.textContent = err.message;
+            result.classList.remove('hidden');
+        } finally {
+            btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1.5"></i> Send Test';
+        }
+    }
+    window.sendTestEmail = sendTestEmail;
 
     // ---- Init ----
     loadStats();

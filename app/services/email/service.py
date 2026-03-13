@@ -6,7 +6,7 @@ import logging
 
 from app.core.config import settings
 from app.services.email.providers import AbstractEmailProvider
-from app.services.email.templates import TEMPLATES
+from app.services.email.templates import TEMPLATES, wrap_email
 
 logger = logging.getLogger("spectra.email.service")
 
@@ -50,5 +50,6 @@ class EmailService:
         if template is None:
             logger.error("Unknown email template: %s", template_name)
             return False
-        html = template.format(**kwargs)
+        content = template.format(**kwargs)
+        html = wrap_email(content)
         return await self._provider.send(to, subject, html)

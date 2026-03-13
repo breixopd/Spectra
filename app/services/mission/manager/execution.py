@@ -190,6 +190,38 @@ class MissionExecutionManager:
             except Exception as e:
                 logger.warning("Failed to send mission completion notification: %s", e)
 
+            # Send completion email to mission owner
+            try:
+                if mission.user_id:
+                    from sqlalchemy import select
+
+                    from app.core.config import get_settings
+                    from app.core.database import async_session_maker
+                    from app.models.user import User
+                    from app.services.email import EmailService
+
+                    async with async_session_maker() as db_session:
+                        result = await db_session.execute(
+                            select(User).where(User.id == mission.user_id)
+                        )
+                        owner = result.scalar_one_or_none()
+                    if owner:
+                        _settings = get_settings()
+                        base_url = _settings.PLATFORM_BASE_URL or "http://localhost:5000"
+                        email_svc = EmailService()
+                        await email_svc.send_template(
+                            to=owner.email,
+                            template_name="mission_complete",
+                            subject=f"Spectra \u2014 Mission Complete: {mission.target}",
+                            username=owner.username,
+                            target=mission.target,
+                            status="Completed",
+                            finding_count=str(len(mission.findings)),
+                            report_url=f"{base_url}/reports/{mission.id}",
+                        )
+            except Exception as e:
+                logger.warning("Failed to send mission completion email: %s", e)
+
             # Update DB
             await self.lifecycle.update_db_status(mission)
 
