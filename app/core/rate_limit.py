@@ -60,11 +60,17 @@ def get_user_identifier(request: Request) -> str:
 
 
 # Create limiter instance
+# Storage is configurable via RATE_LIMIT_STORAGE setting.
+# Default "memory://" is fine for single-instance deployments.
+# For multi-instance behind a load balancer, set RATE_LIMIT_STORAGE to
+# "redis://host:6379" or use Caddy's rate_limit module at the reverse proxy.
+from app.core.config import settings as _rl_settings
+
 limiter = Limiter(
     key_func=get_user_identifier,
     default_limits=["100/minute"],  # Default: 100 requests per minute
     headers_enabled=True,  # Add rate limit headers to responses
-    storage_uri="memory://",
+    storage_uri=_rl_settings.RATE_LIMIT_STORAGE,
 )
 
 

@@ -67,6 +67,10 @@ class StartMissionRequest(BaseModel):
         default=False,
         description="Record a video walkthrough of the exploit workflow if exploitation succeeds",
     )
+    requires_approval: bool = Field(
+        default=False,
+        description="Require human approval for high-risk actions (default: fully autonomous)",
+    )
     vpn_config: str | None = Field(
         default=None,
         max_length=64,

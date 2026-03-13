@@ -40,13 +40,14 @@ class Mission:
     - Coordinate agents (see MissionManager)
     """
 
-    def __init__(self, target: str, directive: str, requirements: str | None = None, vpn_config: str | None = None, user_id: str | None = None):
+    def __init__(self, target: str, directive: str, requirements: str | None = None, vpn_config: str | None = None, user_id: str | None = None, requires_approval: bool = False):
         self.id = str(uuid.uuid4())
         self.target = target
         self.directive = directive
         self.requirements = requirements
         self.vpn_config = vpn_config
         self.user_id = user_id
+        self.requires_approval = requires_approval
         self.status = "created"
         self.start_time = datetime.now()
         self.plan: MissionPlan | None = None

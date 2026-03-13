@@ -6,7 +6,7 @@ Tracks security assessment missions, their status, logs, and results.
 
 from __future__ import annotations
 
-from sqlalchemy import JSON, ForeignKey, Index, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -46,6 +46,9 @@ class Mission(Base):
     checkpoint_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     resume: Mapped[bool] = mapped_column(default=False, nullable=False)
     vpn_config: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
+    requires_approval: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
 
     def __repr__(self) -> str:
         """String representation of the mission."""

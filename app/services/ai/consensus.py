@@ -184,9 +184,11 @@ class VotingSystem:
         self,
         llm: LLMClient,
         config: VotingConfig | None = None,
+        mission: Any | None = None,
     ):
         self.llm = llm
         self.config = config or VotingConfig()
+        self.mission = mission
 
     async def validate_at_gate(
         self,
@@ -306,13 +308,18 @@ class VotingSystem:
     def requires_human_approval(self, action: AgentAction) -> bool:
         """Check if an action always requires human approval.
 
-        Returns False if FULLY_AUTOMATED mode is enabled in settings.
+        Checks the per-mission requires_approval flag first.
+        Falls back to global FULLY_AUTOMATED setting for backward compatibility.
         """
-        from app.core.config import settings
-
-        # In fully automated mode, never require human approval
-        if settings.FULLY_AUTOMATED:
-            return False
+        # Per-mission setting takes priority
+        if self.mission and getattr(self.mission, 'requires_approval', None) is not None:
+            if not self.mission.requires_approval:
+                return False  # Mission is fully autonomous
+        else:
+            # Backward compat: fall back to global config
+            from app.core.config import settings
+            if settings.FULLY_AUTOMATED:
+                return False
 
         risk_levels = [
             ActionRisk.LOW,

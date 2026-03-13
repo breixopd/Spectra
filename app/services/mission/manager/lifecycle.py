@@ -38,6 +38,7 @@ class MissionLifecycleManager:
         requirements: str | None = None,
         vpn_config: str | None = None,
         user_id: str | None = None,
+        requires_approval: bool = False,
     ) -> Mission:
         """Create and start a new mission."""
         # Enforce mission quota if user is known
@@ -46,7 +47,7 @@ class MissionLifecycleManager:
             if not allowed:
                 raise MissionQuotaExceeded(reason)
 
-        mission = Mission(target, directive, requirements=requirements, vpn_config=vpn_config, user_id=user_id)
+        mission = Mission(target, directive, requirements=requirements, vpn_config=vpn_config, user_id=user_id, requires_approval=requires_approval)
         self.active_missions[mission.id] = mission
 
         # Persist to distributed state store
@@ -73,6 +74,7 @@ class MissionLifecycleManager:
                         summary={},
                         vpn_config=vpn_config,
                         user_id=user_id,
+                        requires_approval=requires_approval,
                     )
         except SQLAlchemyError as e:
             logger.error("Failed to persist mission start (DB error): %s", e)

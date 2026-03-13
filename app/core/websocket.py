@@ -3,9 +3,11 @@ WebSocket Connection Manager.
 
 Handles real-time communication with the frontend.
 Provides thread-safe connection management and reliable message broadcasting.
+Supports cross-instance delivery via PostgreSQL NOTIFY/LISTEN.
 """
 
 import asyncio
+import json as _json
 import logging
 from typing import Any
 
@@ -273,6 +275,79 @@ class ConnectionManager:
             Number of currently connected clients.
         """
         return len(self._connections)
+
+    # --- Cross-instance PG NOTIFY/LISTEN ---
+
+    async def _pg_notify(self, channel: str, data: dict[str, Any]) -> None:
+        """Publish a message via PostgreSQL NOTIFY for cross-instance delivery."""
+        try:
+            from app.core.database import engine
+
+            if not engine:
+                return
+            from sqlalchemy import text
+
+            async with engine.connect() as conn:
+                # PG NOTIFY payload limit is 8000 bytes
+                payload = _json.dumps({"channel": channel, "data": data})[:7999]
+                await conn.execute(text("SELECT pg_notify('spectra_ws', :payload)"), {"payload": payload})
+                await conn.commit()
+        except Exception as e:
+            logger.debug("PG NOTIFY broadcast failed (non-critical): %s", e)
+
+    async def broadcast_to_room_cross_instance(self, room_id: str, data: dict[str, Any]) -> None:
+        """Broadcast JSON to a room with cross-instance PG NOTIFY delivery."""
+        await self.broadcast_to_room_json(room_id, data)
+        await self._pg_notify(room_id, data)
+
+    async def start_pg_listener(self) -> None:
+        """Start listening for PG NOTIFY events and relay to local WebSocket connections.
+
+        Should be started as a background task during app lifespan.
+        Silently exits if asyncpg is unavailable or database is not PostgreSQL.
+        """
+        try:
+            import asyncpg  # noqa: F811
+
+            from app.core.database import engine
+
+            if not engine:
+                return
+            dsn = str(engine.url).replace("+asyncpg", "").replace("postgresql://", "postgresql://")
+            # Ensure we have a raw postgresql:// URI
+            if not dsn.startswith("postgresql://"):
+                logger.debug("PG LISTEN skipped: not a PostgreSQL database")
+                return
+            conn = await asyncpg.connect(dsn)
+            await conn.add_listener("spectra_ws", self._on_pg_notification)
+            logger.info("WebSocket PG LISTEN started on channel 'spectra_ws'")
+            try:
+                while True:
+                    await asyncio.sleep(60)
+            finally:
+                await conn.remove_listener("spectra_ws", self._on_pg_notification)
+                await conn.close()
+        except ImportError:
+            logger.debug("asyncpg not available — PG LISTEN disabled")
+        except Exception as e:
+            logger.warning("PG LISTEN for WebSocket relay failed: %s", e)
+
+    def _on_pg_notification(self, connection: Any, pid: int, channel: str, payload: str) -> None:
+        """Handle incoming PG NOTIFY — forward to local WebSocket connections."""
+        try:
+            msg = _json.loads(payload)
+            ws_channel = msg.get("channel", "")
+            data = msg.get("data", {})
+            if ws_channel:
+                # Forward to local connections only (don't re-broadcast to PG)
+                asyncio.create_task(self._local_room_broadcast(ws_channel, data))
+        except Exception as e:
+            logger.debug("PG notification parse error: %s", e)
+
+    async def _local_room_broadcast(self, room_id: str, data: dict[str, Any]) -> None:
+        """Deliver to local WebSocket room connections only (no PG re-broadcast)."""
+        message = _json.dumps(data) if not isinstance(data, str) else data
+        await self.broadcast_to_room(room_id, message)
 
 
 # Global singleton instance
