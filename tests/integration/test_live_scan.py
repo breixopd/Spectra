@@ -111,7 +111,7 @@ class TestWebScan:
     def test_xss_detection_on_vuln_web(self, client, auth_headers):
         """Check that XSS-vulnerable search endpoint reflects input."""
         # Direct probe — the search endpoint reflects input unsanitised
-        probe = client.get(
+        client.get(
             f"{SPECTRA_URL.rstrip('/')}/".replace(SPECTRA_URL, "")
             + "api/tools/execute",
             headers=auth_headers,

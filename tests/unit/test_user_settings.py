@@ -161,7 +161,7 @@ class TestUpdateUserSettings:
         session.add = lambda obj: added.append(obj)
 
         # After commit + refresh, simulate the prefs having been created
-        created_prefs = _make_prefs(timezone="Asia/Tokyo")
+        _make_prefs(timezone="Asia/Tokyo")
         session.refresh = AsyncMock(side_effect=lambda obj: setattr(obj, "timezone", "Asia/Tokyo") or None)
 
         body = UserSettingsUpdate(timezone="Asia/Tokyo")
@@ -189,7 +189,7 @@ class TestUpdateUserSettings:
 
         body = UserSettingsUpdate(timezone="US/Pacific")
         with patch("app.api.routers.user_settings.audit_log_event", new_callable=AsyncMock):
-            resp = await update_user_settings(body=body, request=request, user=user, session=session)
+            await update_user_settings(body=body, request=request, user=user, session=session)
         assert prefs.timezone == "US/Pacific"
 
     async def test_empty_body_returns_422(self):
@@ -242,7 +242,7 @@ class TestUpdateUserSettings:
         with patch("app.api.routers.user_settings.check_feature_allowed", new_callable=AsyncMock):
             with patch("app.api.routers.user_settings.audit_log_event", new_callable=AsyncMock):
                 with patch("app.api.routers.user_settings.encrypt_byok_key", side_effect=lambda k: f"enc:{k}"):
-                    resp = await update_user_settings(body=body, request=request, user=user, session=session)
+                    await update_user_settings(body=body, request=request, user=user, session=session)
         # Key should be encrypted now
         assert prefs.llm_api_key == "enc:sk-allowed-key"
         assert prefs.llm_model == "gpt-4o"

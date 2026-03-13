@@ -1,6 +1,5 @@
 """Tests for app.services.ai.event_bus.AgentEventBus."""
 
-import asyncio
 
 import pytest
 

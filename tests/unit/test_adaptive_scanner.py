@@ -1,6 +1,5 @@
 """Tests for app.services.ai.adaptive.AdaptiveScanner."""
 
-import pytest
 
 from app.services.ai.adaptive import AdaptiveScanner, ScanOutcome
 

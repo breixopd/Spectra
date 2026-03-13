@@ -1,6 +1,5 @@
 """Tests for app.services.ai.calibration.ConfidenceCalibrator."""
 
-import pytest
 
 from app.services.ai.calibration import ConfidenceCalibrator
 
