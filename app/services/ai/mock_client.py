@@ -4,7 +4,7 @@ import logging
 
 from app.services.ai.llm import LLMClient, LLMResponse
 
-logger = logging.getLogger("spectra.services.ai.mock_client")
+logger = logging.getLogger(__name__)
 
 
 class MockLLMClient(LLMClient):

@@ -4,7 +4,7 @@ import logging
 import re
 import unicodedata
 
-logger = logging.getLogger("spectra.ai.sanitizer")
+logger = logging.getLogger(__name__)
 
 # Patterns that could manipulate the LLM's behavior
 INJECTION_PATTERNS = [

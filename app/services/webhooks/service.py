@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.constants import WEBHOOK_MAX_RETRIES
 from app.services.webhooks.models import Webhook
 
-logger = logging.getLogger("spectra.webhooks")
+logger = logging.getLogger(__name__)
 
 SUPPORTED_EVENTS = frozenset(
     {

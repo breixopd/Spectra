@@ -30,7 +30,7 @@ from app.models.plan import Plan, Subscription
 from app.models.user import User
 from app.version import __version__
 
-logger = logging.getLogger("spectra.api.public")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

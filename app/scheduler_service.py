@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
 
-logger = logging.getLogger("spectra.scheduler")
+logger = logging.getLogger(__name__)
 
 
 class SchedulerService:

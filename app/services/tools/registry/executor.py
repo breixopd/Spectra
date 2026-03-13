@@ -18,7 +18,7 @@ from app.services.tools.registry.constants import MAX_OUTPUT_SIZE
 if TYPE_CHECKING:
     from asyncio import StreamReader
 
-logger = logging.getLogger("spectra.tools.registry.executor")
+logger = logging.getLogger(__name__)
 
 
 async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, str]:

@@ -11,55 +11,6 @@ from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
-class Broadcastable(Protocol):
-    """Interface for components that can broadcast messages."""
-
-    def _broadcast(self, msg_type: str, data: Any) -> None:
-        """Broadcast a message to connected clients."""
-        ...
-
-
-@runtime_checkable
-class Loggable(Protocol):
-    """Interface for components with logging capability."""
-
-    def log(self, message: str) -> None:
-        """Log a message."""
-        ...
-
-
-@runtime_checkable
-class Serializable(Protocol):
-    """Interface for components that can be serialized to dict."""
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize to dictionary."""
-        ...
-
-
-@runtime_checkable
-class Executable(Protocol):
-    """Interface for executable agents/services."""
-
-    async def execute(self, context: Any, input_data: Any) -> Any:
-        """Execute the component."""
-        ...
-
-
-@runtime_checkable
-class Configurable(Protocol):
-    """Interface for configurable components."""
-
-    def get_config(self) -> dict[str, Any]:
-        """Get current configuration."""
-        ...
-
-    def set_config(self, config: dict[str, Any]) -> None:
-        """Update configuration."""
-        ...
-
-
-@runtime_checkable
 class HealthCheckable(Protocol):
     """Interface for components with health check capability."""
 

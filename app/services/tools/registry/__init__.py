@@ -49,7 +49,7 @@ __all__ = [
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-logger = logging.getLogger("spectra.tools.registry")
+logger = logging.getLogger(__name__)
 
 
 class ToolRegistry:

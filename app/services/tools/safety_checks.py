@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from app.services.mission.mission import Mission
     from app.services.tools.adapter import CommandToolAdapter
 
-logger = logging.getLogger("spectra.tools.safety_checks")
+logger = logging.getLogger(__name__)
 
 
 async def perform_safety_check(

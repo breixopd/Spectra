@@ -14,7 +14,7 @@ from typing import Any
 
 from app.services.ai.rag import RAGService
 
-logger = logging.getLogger("spectra.ai.knowledge")
+logger = logging.getLogger(__name__)
 
 
 # --- Singleton RAG Connection ---

@@ -52,7 +52,7 @@ from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
 
-logger = logging.getLogger("spectra.api.auth")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

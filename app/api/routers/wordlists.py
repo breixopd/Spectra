@@ -20,7 +20,7 @@ from app.api.dependencies import check_feature_allowed, get_current_active_user
 from app.core.database import get_async_session
 from app.models.user import User
 
-logger = logging.getLogger("spectra.api.wordlists")
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/wordlists", tags=["Wordlists"])
 

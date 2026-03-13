@@ -15,7 +15,7 @@ from app.core.config import settings
 from app.core.database import async_session_maker
 from app.models.config import SystemConfig
 
-logger = logging.getLogger("spectra.services.system.runtime_settings")
+logger = logging.getLogger(__name__)
 
 NEW_AI_CONFIG_KEYS = (
     "AI_PROVIDER_PROFILES",

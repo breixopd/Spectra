@@ -14,7 +14,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-logger = logging.getLogger("spectra.core.encryption")
+logger = logging.getLogger(__name__)
 
 #: Field name substrings that indicate sensitive data.
 SENSITIVE_KEYS = ("password", "secret", "token", "credential", "api_key")

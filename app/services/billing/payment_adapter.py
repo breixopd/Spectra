@@ -12,7 +12,7 @@ from sqlalchemy import select
 from app.core.database import async_session_maker
 from app.models.plan import Plan, Subscription
 
-logger = logging.getLogger("spectra.billing.payment")
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------

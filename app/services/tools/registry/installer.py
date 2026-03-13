@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     from app.services.tools.models import RegisteredTool
 
-logger = logging.getLogger("spectra.tools.registry.installer")
+logger = logging.getLogger(__name__)
 
 
 class PluginInstaller:

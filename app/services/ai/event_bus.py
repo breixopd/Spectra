@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-logger = logging.getLogger("spectra.ai.event_bus")
+logger = logging.getLogger(__name__)
 
 
 @dataclass

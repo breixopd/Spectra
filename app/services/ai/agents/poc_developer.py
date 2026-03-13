@@ -22,7 +22,7 @@ from app.services.ai.context import ContextManager, ContextSection, Priority
 from app.services.ai.prompts import POC_DEVELOPER_PROMPT
 from app.services.poc.models import POCRequest
 
-logger = logging.getLogger("spectra.ai.agents.poc_developer")
+logger = logging.getLogger(__name__)
 
 
 class POCDeveloperInput(BaseModel):

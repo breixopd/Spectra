@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     from app.services.mission.mission import Mission
     from app.services.tools.service import ToolExecutionService
 
-logger = logging.getLogger("spectra.mission.executor.handlers")
+logger = logging.getLogger(__name__)
 
 
 def _get_known_tools() -> set[str]:

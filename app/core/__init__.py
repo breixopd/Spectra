@@ -54,11 +54,7 @@ from app.core.exceptions import (
     ValidationError,
 )
 from app.core.protocols import (
-    Broadcastable,
-    Executable,
     HealthCheckable,
-    Loggable,
-    Serializable,
 )
 from app.core.rate_limit import RateLimits, limiter
 from app.core.security import (
@@ -133,9 +129,5 @@ __all__ = [
     "MissionState",
     "MissionStateMachine",
     # Protocols
-    "Broadcastable",
-    "Loggable",
-    "Serializable",
-    "Executable",
     "HealthCheckable",
 ]

@@ -16,7 +16,7 @@ from app.services.mission.mission import Mission
 from app.services.mission.state_store import MissionStateStore
 from app.utils.geoip import resolve_ip
 
-logger = logging.getLogger("spectra.mission.manager.lifecycle")
+logger = logging.getLogger(__name__)
 
 
 class MissionQuotaExceeded(Exception):

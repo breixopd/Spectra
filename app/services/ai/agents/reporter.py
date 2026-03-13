@@ -25,7 +25,7 @@ from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 from app.services.ai.prompts import REPORTING_PROMPT
 
-logger = logging.getLogger("spectra.ai.agents.reporter")
+logger = logging.getLogger(__name__)
 
 
 # --- Input/Output Models ---

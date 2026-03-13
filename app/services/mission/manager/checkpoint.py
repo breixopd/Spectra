@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.services.mission.mission import Mission
 
-logger = logging.getLogger("spectra.mission.manager.checkpoint")
+logger = logging.getLogger(__name__)
 
 
 def record_mission_lessons(mission: Mission) -> None:

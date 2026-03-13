@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 from app.services.ai.agents.base import ActionRisk, AgentAction
 from app.services.ai.llm import LLMClient
 
-logger = logging.getLogger("spectra.ai.consensus")
+logger = logging.getLogger(__name__)
 
 
 # --- Enums ---

@@ -22,7 +22,7 @@ from app.services.mission.credentials import CredentialStore
 from app.services.mission.task_tree import PentestTaskTree, TaskStatus
 from app.utils.geoip import GeoLocation
 
-logger = logging.getLogger("spectra.mission")
+logger = logging.getLogger(__name__)
 
 
 class Mission:

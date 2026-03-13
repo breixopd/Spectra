@@ -10,7 +10,7 @@ from app.services.tools.models import (
 )
 from app.services.tools.registry.validator import PluginValidator
 
-logger = logging.getLogger("spectra.tools.registry.loader")
+logger = logging.getLogger(__name__)
 
 
 class PluginLoader:

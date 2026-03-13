@@ -6,7 +6,7 @@ import logging
 
 from sqlalchemy import select
 
-logger = logging.getLogger("spectra.worker.notifications")
+logger = logging.getLogger(__name__)
 
 
 async def send_webhook_notification(payload: dict, webhook_url: str) -> bool:

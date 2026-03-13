@@ -27,7 +27,7 @@ from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
 from app.version import __version__
 
-logger = logging.getLogger("spectra.admin")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

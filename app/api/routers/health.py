@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_async_session
 from app.version import __version__
 
-logger = logging.getLogger("spectra.health")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

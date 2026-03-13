@@ -30,7 +30,7 @@ from app.repositories.mission import MissionRepository
 from app.services.mission import mission_manager
 from app.services.system.audit import log_event as audit_log_event
 
-logger = logging.getLogger("spectra.api.missions")
+logger = logging.getLogger(__name__)
 
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE

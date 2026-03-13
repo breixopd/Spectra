@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-logger = logging.getLogger("spectra.mission.credentials")
+logger = logging.getLogger(__name__)
 
 MAX_CREDENTIALS_PER_MISSION = 100
 

@@ -11,7 +11,7 @@ from typing import Any
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-logger = logging.getLogger("spectra.core.config")
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -140,7 +140,7 @@ class Settings(BaseSettings):
     def warn_fully_automated(cls, v: bool) -> bool:
         import os
         if v and os.environ.get("ENVIRONMENT", "development") == "production":
-            logging.getLogger("spectra.config").warning(
+            logging.getLogger(__name__).warning(
                 "FULLY_AUTOMATED=true in production — human approval bypassed for all operations"
             )
         return v

@@ -18,7 +18,7 @@ from app.core.database import get_async_session
 from app.models.user import User
 from app.services.tools.vpn import VPNManager
 
-logger = logging.getLogger("spectra.api.vpn")
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/vpn", tags=["VPN"])
 

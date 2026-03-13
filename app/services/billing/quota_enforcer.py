@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from app.core.database import async_session_maker
 from app.models.plan import Plan, Subscription, UsageRecord
 
-logger = logging.getLogger("spectra.billing.quota")
+logger = logging.getLogger(__name__)
 
 
 def _period_start_hourly() -> datetime:

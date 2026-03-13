@@ -11,7 +11,7 @@ import logging
 from app.core.events import Event, EventType, events
 from app.core.websocket import manager as ws_manager
 
-logger = logging.getLogger("spectra.bridge")
+logger = logging.getLogger(__name__)
 
 
 class EventWebSocketBridge:

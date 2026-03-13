@@ -23,7 +23,7 @@ from .schemas import (
     _get_cache,
 )
 
-logger = logging.getLogger("spectra.api.system")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

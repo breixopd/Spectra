@@ -6,7 +6,7 @@ import logging
 
 from app.services.email.providers import AbstractEmailProvider
 
-logger = logging.getLogger("spectra.email.console")
+logger = logging.getLogger(__name__)
 
 
 class ConsoleProvider(AbstractEmailProvider):

@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-logger = logging.getLogger("spectra.ai.cost")
+logger = logging.getLogger(__name__)
 
 # Global registry of active cost trackers keyed by mission_id
 _cost_trackers: dict[str, CostTracker] = {}

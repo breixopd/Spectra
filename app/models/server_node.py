@@ -11,7 +11,7 @@ from sqlalchemy.sql import func
 
 from app.models.base import Base
 
-logger = logging.getLogger("spectra.models.server_node")
+logger = logging.getLogger(__name__)
 
 
 class ServerNode(Base):

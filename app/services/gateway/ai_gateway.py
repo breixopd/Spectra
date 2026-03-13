@@ -11,7 +11,7 @@ import logging
 from app.core.config import settings
 from app.services.gateway.http_client import GatewayClient
 
-logger = logging.getLogger("spectra.ai_gateway")
+logger = logging.getLogger(__name__)
 
 
 class AIGateway:

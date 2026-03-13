@@ -27,7 +27,7 @@ from .schemas import (
     get_tool_registry,
 )
 
-logger = logging.getLogger("spectra.api.system")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

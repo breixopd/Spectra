@@ -21,7 +21,7 @@ from app.services.system.runtime_settings import (
     upsert_system_config_values,
 )
 
-logger = logging.getLogger("spectra.services.system")
+logger = logging.getLogger(__name__)
 
 
 class SystemSetupService:

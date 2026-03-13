@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger("spectra.billing")
+logger = logging.getLogger(__name__)
 
 
 async def seed_default_plans() -> None:

@@ -11,7 +11,7 @@ from sqlalchemy import delete, select
 from app.core.database import async_session_maker
 from app.models.infrastructure import SystemCache
 
-logger = logging.getLogger("spectra.mission.state_store")
+logger = logging.getLogger(__name__)
 
 # Key patterns
 _KEY_PREFIX = "mission_state:"

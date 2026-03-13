@@ -15,7 +15,7 @@ from app.services.tools.registry.exceptions import (
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger("spectra.tools.registry.validator")
+logger = logging.getLogger(__name__)
 
 try:
     from cryptography.hazmat.primitives.asymmetric import ed25519 as crypto_ed25519_mod

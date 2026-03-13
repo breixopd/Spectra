@@ -9,7 +9,7 @@ from sqlalchemy import delete
 
 from app.models.infrastructure import CacheEntry, JobQueue, SystemCache
 
-logger = logging.getLogger("spectra.worker.cleanup")
+logger = logging.getLogger(__name__)
 
 
 async def cleanup_expired_cache(session) -> int:

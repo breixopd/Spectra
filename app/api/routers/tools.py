@@ -50,7 +50,7 @@ from app.services.tools.registry import (
     get_registry,
 )
 
-logger = logging.getLogger("spectra.api.tools")
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tools", tags=["Tools"])
 
@@ -557,7 +557,7 @@ async def test_tool(
     args: dict | None = Body(None, embed=True),
     timeout: int | None = Body(None, embed=True),
     registry: ToolRegistry = Depends(get_tool_registry),
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.USE_TOOLS),
 ):
     """
     Test a tool execution and return detailed output.

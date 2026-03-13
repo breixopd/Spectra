@@ -25,7 +25,7 @@ from typing import Any
 
 from app.services.tools.models import OutputFormat, ToolConfig
 
-logger = logging.getLogger("spectra.tools.adapter.parser")
+logger = logging.getLogger(__name__)
 
 
 class UniversalParser:

@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-logger = logging.getLogger("spectra.ai_service")
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

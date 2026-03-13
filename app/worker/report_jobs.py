@@ -6,7 +6,7 @@ import logging
 
 from sqlalchemy import select
 
-logger = logging.getLogger("spectra.worker.reports")
+logger = logging.getLogger(__name__)
 
 
 async def generate_mission_report(mission_id: str, report_format: str = "pdf") -> str:

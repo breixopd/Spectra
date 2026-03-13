@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-logger = logging.getLogger("spectra.ai.calibration")
+logger = logging.getLogger(__name__)
 
 
 @dataclass

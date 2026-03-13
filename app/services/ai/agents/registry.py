@@ -11,7 +11,7 @@ from app.services.ai.agents.base import Agent, AgentRole
 if TYPE_CHECKING:
     from app.services.ai.llm import LLMClient
 
-logger = logging.getLogger("spectra.ai.agents.registry")
+logger = logging.getLogger(__name__)
 
 _registry: dict[AgentRole, type[Agent[Any, Any]]] = {}
 

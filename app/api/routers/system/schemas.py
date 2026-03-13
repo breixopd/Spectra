@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from app.core.cache import CacheService, get_cache
 from app.services.tools.registry import ToolRegistry, get_registry
 
-logger = logging.getLogger("spectra.api.system")
+logger = logging.getLogger(__name__)
 
 
 # --- Cache Key Constants ---

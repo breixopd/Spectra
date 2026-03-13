@@ -55,7 +55,7 @@ from app.version import __version__
 
 # --- Logging Setup ---
 configure_logging(log_format=settings.LOG_FORMAT, log_level=settings.LOG_LEVEL)
-logger = logging.getLogger("spectra")
+logger = logging.getLogger(__name__)
 
 # --- Path Configuration ---
 APP_DIR = Path(__file__).resolve().parent

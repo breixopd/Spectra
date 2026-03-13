@@ -11,7 +11,7 @@ from typing import TypedDict
 
 import aiohttp
 
-logger = logging.getLogger("spectra.geoip")
+logger = logging.getLogger(__name__)
 
 # API configuration
 GEOIP_API_URL = "https://ipwho.is"

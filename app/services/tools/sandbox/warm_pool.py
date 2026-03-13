@@ -15,7 +15,7 @@ from app.core.database import async_session_maker
 from app.models.infrastructure import Sandbox
 from app.services.tools.sandbox.models import SandboxInfo
 
-logger = logging.getLogger("spectra.sandbox.warm_pool")
+logger = logging.getLogger(__name__)
 
 
 class WarmPoolManager:

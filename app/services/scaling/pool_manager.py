@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_maker
 
-logger = logging.getLogger("spectra.scaling")
+logger = logging.getLogger(__name__)
 
 _pool_manager: ServerPoolManager | None = None
 

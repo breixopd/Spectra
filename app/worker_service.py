@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-logger = logging.getLogger("spectra.worker_service")
+logger = logging.getLogger(__name__)
 
 _worker_task: asyncio.Task | None = None
 

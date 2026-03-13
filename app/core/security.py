@@ -41,7 +41,7 @@ __all__ = [
     "JWTError",
 ]
 
-_logger = logging.getLogger("spectra.core.security")
+_logger = logging.getLogger(__name__)
 
 # --- Persistent Token Blacklist ---
 

@@ -10,7 +10,7 @@ import aiohttp
 
 from app.core.constants import HTTP_CLIENT_MAX_RETRIES
 
-logger = logging.getLogger("spectra.gateway")
+logger = logging.getLogger(__name__)
 
 MAX_RETRIES = HTTP_CLIENT_MAX_RETRIES
 RETRY_BACKOFF_BASE = 0.5  # seconds

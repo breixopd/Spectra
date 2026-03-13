@@ -15,7 +15,7 @@ import logging
 import time
 from typing import Any
 
-logger = logging.getLogger("spectra.core.optimizations")
+logger = logging.getLogger(__name__)
 
 
 # --- 1. PostgreSQL Job Queue ---

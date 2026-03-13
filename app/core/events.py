@@ -28,7 +28,7 @@ from typing import Any
 
 from blinker import Signal
 
-logger = logging.getLogger("spectra.events")
+logger = logging.getLogger(__name__)
 
 
 class EventType(StrEnum):

@@ -27,7 +27,7 @@ from app.services.system.settings_service import (
 from app.version import __version__
 
 router = APIRouter()
-logger = logging.getLogger("spectra.ui")
+logger = logging.getLogger(__name__)
 
 # Templates directory
 APP_DIR = Path(__file__).resolve().parent.parent.parent

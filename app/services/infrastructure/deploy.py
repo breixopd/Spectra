@@ -16,7 +16,7 @@ import shlex
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-logger = logging.getLogger("spectra.deploy")
+logger = logging.getLogger(__name__)
 
 
 class DeploymentStatus(StrEnum):
