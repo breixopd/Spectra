@@ -97,7 +97,7 @@ Rate limiting uses `slowapi` with in-memory storage. Limits are applied per-user
 
 Rate limit headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`) are included in responses.
 
-> **Scaling note**: The in-memory rate limiter is per-process. In multi-instance deployments, configure `storage_uri` to use Redis for shared state.
+> **Scaling note**: The default in-memory rate limiter is per-process. In multi-instance deployments, rate limit state is shared across instances via the PostgreSQL database — no external store needed.
 
 ---
 
