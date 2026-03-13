@@ -176,6 +176,7 @@ async def start_mission(
         requirements=mission_request.requirements,
         vpn_config=mission_request.vpn_config,
         user_id=str(_current_user.id),
+        requires_approval=mission_request.requires_approval,
     )
     mission = await mission_manager.get_mission(mission_id)
 
@@ -747,3 +748,35 @@ async def get_mission_progress(
         raise HTTPException(status_code=404, detail="Mission not found")
     _check_mission_owner(mission, _current_user)
     return mission.get_progress()
+
+
+class ApproveActionRequest(BaseModel):
+    """Schema for approving/rejecting a pending mission action."""
+
+    action_id: str = Field(..., description="ID of the action to approve or reject")
+    approved: bool = Field(default=True, description="Whether to approve the action")
+
+
+@router.post("/{mission_id}/approve")
+async def approve_action(
+    mission_id: str,
+    body: ApproveActionRequest,
+    _current_user: User = Depends(get_current_active_user),
+):
+    """Approve or reject a pending action in a mission that requires approval."""
+    mission = await mission_manager.get_mission(mission_id)
+    if not mission:
+        raise HTTPException(status_code=404, detail="Mission not found")
+    _check_mission_owner(mission, _current_user)
+
+    if not getattr(mission, "requires_approval", False):
+        raise HTTPException(status_code=400, detail="Mission does not require approval")
+
+    from app.core.websocket import manager
+
+    await manager.broadcast_to_room_json(f"mission:{mission_id}", {
+        "type": "action_approval",
+        "action_id": body.action_id,
+        "approved": body.approved,
+    })
+    return {"status": "approval_sent", "action_id": body.action_id, "approved": body.approved}

@@ -123,7 +123,15 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
-    FULLY_AUTOMATED: bool = True  # Skip ALL human approval, fully autonomous operation
+    # DEPRECATED: FULLY_AUTOMATED is now a per-mission setting (Mission.requires_approval).
+    # Kept for backward compatibility with tests that monkeypatch it.
+    # New missions use requires_approval=False (fully autonomous) by default.
+    FULLY_AUTOMATED: bool = True  # Global fallback: skip ALL human approval
+
+    # Rate limiting storage backend.
+    # "memory://" for single-instance deployments (default).
+    # For multi-instance, use "redis://host:6379" or Caddy's rate_limit module.
+    RATE_LIMIT_STORAGE: str = "memory://"
 
     @field_validator("FULLY_AUTOMATED")
     @classmethod

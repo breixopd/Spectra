@@ -61,6 +61,7 @@ class MissionManager:
     async def start_mission(
         self, target: str, directive: str, requirements: str | None = None,
         vpn_config: str | None = None, user_id: str | None = None,
+        requires_approval: bool = False,
     ) -> str:
         """
         Start a new security assessment mission.
@@ -77,7 +78,7 @@ class MissionManager:
         """
         await self._ensure_agents()
 
-        mission = await self.lifecycle.start_mission(target, directive, requirements, vpn_config=vpn_config, user_id=user_id)
+        mission = await self.lifecycle.start_mission(target, directive, requirements, vpn_config=vpn_config, user_id=user_id, requires_approval=requires_approval)
 
         # Create per-mission LLM semaphore (max 1 concurrent LLM call)
         self._mission_llm_semaphores[mission.id] = asyncio.Semaphore(1)
