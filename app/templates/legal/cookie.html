@@ -6,75 +6,12 @@
     <title>Cookie Policy — {{ app_name }}</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <meta name="robots" content="noindex, follow">
-    <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --bg: #0a0a0f; --bg-card: rgba(255,255,255,0.03);
-            --accent: #00ff88; --accent-dim: rgba(0,255,136,0.15);
-            --violet: #8b5cf6; --violet-dim: rgba(139,92,246,0.15);
-            --text: #e2e8f0; --text-muted: #64748b;
-            --border: rgba(255,255,255,0.06);
-            --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        }
-        html { scroll-behavior: smooth; }
-        body {
-            font-family: var(--font-sans); background: var(--bg); color: var(--text);
-            line-height: 1.7; -webkit-font-smoothing: antialiased;
-        }
-        nav {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-            padding: 0 2rem; height: 64px;
-            display: flex; align-items: center; justify-content: space-between;
-            background: rgba(10,10,15,0.95); backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--border);
-        }
-        .nav-logo {
-            font-size: 1.25rem; font-weight: 700; color: #fff;
-            text-decoration: none; display: flex; align-items: center; gap: 0.5rem;
-        }
-        .nav-logo svg { width: 28px; height: 28px; }
-        .nav-back {
-            color: var(--text-muted); text-decoration: none; font-size: 0.875rem;
-            font-weight: 500; transition: color 0.2s;
-        }
-        .nav-back:hover { color: #fff; }
-        .legal-container {
-            max-width: 780px; margin: 0 auto; padding: 7rem 2rem 4rem;
-        }
-        .legal-container h1 {
-            font-size: 2.25rem; font-weight: 800; margin-bottom: 0.5rem;
-            letter-spacing: -0.02em;
-        }
-        .legal-meta {
-            font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 3rem;
-            padding-bottom: 2rem; border-bottom: 1px solid var(--border);
-        }
-        .legal-container h2 {
-            font-size: 1.25rem; font-weight: 700; margin: 2.5rem 0 1rem; color: #fff;
-        }
-        .legal-container p { margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9375rem; }
-        .legal-container ul {
-            margin: 0.75rem 0 1.25rem 1.5rem; color: var(--text-muted); font-size: 0.9375rem;
-        }
-        .legal-container li { margin-bottom: 0.5rem; }
-        .legal-container a { color: var(--accent); text-decoration: none; }
-        .legal-container a:hover { text-decoration: underline; }
-        .legal-container table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.875rem; }
-        .legal-container th { text-align: left; padding: 0.75rem; border-bottom: 1px solid var(--border); color: #fff; font-weight: 600; }
-        .legal-container td { padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-muted); }
-        .placeholder { color: var(--violet); font-weight: 600; }
-        footer {
-            border-top: 1px solid var(--border); padding: 2rem;
-            text-align: center; font-size: 0.75rem; color: var(--text-muted);
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/legal.css">
 </head>
 <body>
 <nav>
     <a href="/" class="nav-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(0,255,136,0.1)" stroke="var(--accent)"/>
-        </svg>
+        {% include 'partials/shield_svg.html' %}
         {{ app_name }}
     </a>
     <a href="/" class="nav-back">&larr; Back to Home</a>

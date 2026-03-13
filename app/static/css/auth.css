@@ -1,0 +1,64 @@
+/* auth.css — Shared styles for register, forgot_password, reset_password */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+    --bg: #0a0a0f; --accent: #00ff88; --accent-dim: rgba(0,255,136,0.12);
+    --violet: #8b5cf6; --violet-dim: rgba(139,92,246,0.15);
+    --text: #e2e8f0; --text-muted: #64748b;
+    --border: rgba(255,255,255,0.06); --border-hover: rgba(255,255,255,0.12);
+    --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+body {
+    font-family: var(--font-sans); background: var(--bg); color: var(--text);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 2rem;
+    background-image:
+        radial-gradient(ellipse 60% 40% at 50% 0%, var(--violet-dim), transparent),
+        radial-gradient(ellipse 50% 30% at 80% 100%, var(--accent-dim), transparent);
+}
+.card {
+    width: 100%; max-width: 420px; padding: 2.5rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 20px; backdrop-filter: blur(12px);
+}
+.logo { text-align: center; margin-bottom: 2rem; }
+.logo a {
+    color: #fff; text-decoration: none; font-size: 1.25rem; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 0.5rem;
+}
+.logo svg { width: 24px; height: 24px; }
+h1 { text-align: center; font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+.subtitle { text-align: center; color: var(--text-muted); font-size: 0.875rem; margin-bottom: 2rem; }
+label { display: block; font-size: 0.8125rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.375rem; }
+input {
+    width: 100%; padding: 0.625rem 0.875rem; font-size: 0.875rem;
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); outline: none;
+    transition: border-color 0.2s;
+}
+input:focus { border-color: var(--violet); }
+.field { margin-bottom: 1.25rem; }
+.btn {
+    width: 100%; padding: 0.75rem; font-size: 0.9375rem; font-weight: 700;
+    background: var(--accent); color: #0a0a0f; border: none; border-radius: 10px;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,255,136,0.25); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+.msg { margin-top: 1rem; text-align: center; font-size: 0.8125rem; padding: 0.75rem; border-radius: 10px; display: none; }
+.msg.error { display: block; color: #fb7185; background: rgba(251,113,133,0.08); border: 1px solid rgba(251,113,133,0.15); }
+.msg.success { display: block; color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(0,255,136,0.15); }
+.links { text-align: center; margin-top: 1.5rem; font-size: 0.8125rem; color: var(--text-muted); }
+.links a { color: var(--violet); text-decoration: none; font-weight: 600; }
+.links a:hover { text-decoration: underline; }
+.invalid-token { text-align: center; }
+.invalid-token p { color: var(--text-muted); margin-bottom: 1.5rem; }
+
+/* Password strength indicator */
+.pw-strength { margin-top: 0.375rem; font-size: 0.75rem; height: 1.125rem; }
+.pw-strength-bar { height: 3px; border-radius: 2px; background: rgba(255,255,255,0.06); margin-bottom: 0.25rem; overflow: hidden; }
+.pw-strength-fill { height: 100%; width: 0; border-radius: 2px; transition: width 0.25s, background 0.25s; }
+.pw-strength-fill.weak { width: 33%; background: #fb7185; }
+.pw-strength-fill.fair { width: 66%; background: #fbbf24; }
+.pw-strength-fill.strong { width: 100%; background: #34d399; }
+.pw-strength-text { color: var(--text-muted); }
