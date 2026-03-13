@@ -609,7 +609,9 @@ class UpdateProfileRequest(BaseModel):
 
 
 @router.put("/me", tags=["Auth"])
+@limiter.limit("5/minute")
 async def update_profile(
+    request: Request,
     body: UpdateProfileRequest,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -623,9 +625,24 @@ async def update_profile(
             select(User).where(User.email == body.email, User.id != user.id)
         )
         if existing.scalar_one_or_none():
-            raise HTTPException(status_code=409, detail="Email already in use")
+            # Don't reveal whether an email exists — return success silently
+            logger.warning("Email change conflict for user=%s target=%s", user.id, body.email)
+            return {"detail": "Profile updated"}
+        old_email = user.email
         user.email = body.email
-    await session.commit()
+        await session.commit()
+
+        try:
+            await audit_log_event(
+                session, AuditEventType.SETTINGS_CHANGED,
+                user_id=str(user.id),
+                details={"action": "email_changed", "old_email": old_email, "new_email": body.email},
+                request=request,
+            )
+        except Exception:
+            pass
+    else:
+        await session.commit()
     return {"detail": "Profile updated"}
 
 

@@ -1,5 +1,7 @@
 """Self-service billing — plan upgrade/downgrade via Stripe Checkout."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +11,8 @@ from app.core.database import get_async_session
 from app.models.plan import Plan
 from app.models.user import User
 from app.services.billing import PaymentService
+
+logger = logging.getLogger("spectra.billing")
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
 
@@ -53,8 +57,9 @@ async def create_checkout(
         return {"checkout_url": checkout_url}
     except ValueError as e:
         raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(502, f"Payment provider error: {e}")
+    except Exception:
+        logger.exception("Payment checkout error")
+        raise HTTPException(502, "Payment provider error")
 
 
 @router.get("/portal")
@@ -85,8 +90,9 @@ async def stripe_webhook(request: Request):
     svc = PaymentService()
     try:
         event = await svc._adapter.handle_webhook(payload, sig)
-    except Exception as e:
-        raise HTTPException(400, f"Webhook verification failed: {e}")
+    except Exception:
+        logger.exception("Webhook verification failed")
+        raise HTTPException(400, "Webhook verification failed")
 
     event_type = event.get("type", "")
     data = event.get("data", {})
@@ -102,6 +108,15 @@ async def stripe_webhook(request: Request):
             from app.models.plan import Subscription
 
             async with async_session_maker() as session:
+                # Idempotency check — don't create duplicate subscriptions
+                existing = (await session.execute(
+                    select(Subscription).where(
+                        Subscription.external_subscription_id == subscription_id
+                    )
+                )).scalar_one_or_none()
+                if existing:
+                    return {"received": True}
+
                 from app.models.user import User as UserModel
 
                 user = (

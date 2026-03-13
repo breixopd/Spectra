@@ -20,6 +20,15 @@ def _make_user(user_id="user-1", is_superuser=False, role="operator", plan_id=No
     return u
 
 
+def _make_request():
+    """Return a mock Request with client info."""
+    req = MagicMock()
+    req.client = MagicMock()
+    req.client.host = "127.0.0.1"
+    req.headers = {"user-agent": "test"}
+    return req
+
+
 def _make_prefs(**overrides):
     """Return a mock UserPreferences row."""
     defaults = dict(
@@ -141,6 +150,7 @@ class TestUpdateUserSettings:
         from app.api.routers.user_settings import update_user_settings
 
         user = _make_user()
+        request = _make_request()
         session = AsyncMock()
         # First execute: _get_prefs returns None
         result_mock = MagicMock()
@@ -160,7 +170,8 @@ class TestUpdateUserSettings:
             with patch("app.api.routers.user_settings.UserPreferences") as MockUP:
                 instance = _make_prefs(timezone="Asia/Tokyo")
                 MockUP.return_value = instance
-                resp = await update_user_settings(body=body, user=user, session=session)
+                with patch("app.api.routers.user_settings.audit_log_event", new_callable=AsyncMock):
+                    resp = await update_user_settings(body=body, request=request, user=user, session=session)
         assert resp.timezone == "Asia/Tokyo"
 
     async def test_updates_existing_prefs(self):
@@ -168,6 +179,7 @@ class TestUpdateUserSettings:
         from app.api.routers.user_settings import update_user_settings
 
         user = _make_user()
+        request = _make_request()
         prefs = _make_prefs(timezone="UTC")
         session = AsyncMock()
         result_mock = MagicMock()
@@ -176,7 +188,8 @@ class TestUpdateUserSettings:
         session.refresh = AsyncMock()
 
         body = UserSettingsUpdate(timezone="US/Pacific")
-        resp = await update_user_settings(body=body, user=user, session=session)
+        with patch("app.api.routers.user_settings.audit_log_event", new_callable=AsyncMock):
+            resp = await update_user_settings(body=body, request=request, user=user, session=session)
         assert prefs.timezone == "US/Pacific"
 
     async def test_empty_body_returns_422(self):
@@ -184,11 +197,12 @@ class TestUpdateUserSettings:
         from app.api.routers.user_settings import update_user_settings
 
         user = _make_user()
+        request = _make_request()
         session = AsyncMock()
 
         body = UserSettingsUpdate()
         with pytest.raises(HTTPException) as exc_info:
-            await update_user_settings(body=body, user=user, session=session)
+            await update_user_settings(body=body, request=request, user=user, session=session)
         assert exc_info.value.status_code == 422
 
     async def test_byok_rejected_when_plan_disallows(self):
@@ -196,6 +210,7 @@ class TestUpdateUserSettings:
         from app.api.routers.user_settings import update_user_settings
 
         user = _make_user(plan_id="plan-1")
+        request = _make_request()
         session = AsyncMock()
 
         async def mock_check(u, s, feature):
@@ -205,7 +220,7 @@ class TestUpdateUserSettings:
 
         with patch("app.api.routers.user_settings.check_feature_allowed", side_effect=mock_check):
             with pytest.raises(HTTPException) as exc_info:
-                await update_user_settings(body=body, user=user, session=session)
+                await update_user_settings(body=body, request=request, user=user, session=session)
             assert exc_info.value.status_code == 403
             assert "byok" in exc_info.value.detail
 
@@ -214,6 +229,7 @@ class TestUpdateUserSettings:
         from app.api.routers.user_settings import update_user_settings
 
         user = _make_user(plan_id="plan-pro")
+        request = _make_request()
         prefs = _make_prefs()
         session = AsyncMock()
         result_mock = MagicMock()
@@ -224,8 +240,11 @@ class TestUpdateUserSettings:
         body = UserSettingsUpdate(llm_api_key="sk-allowed-key", llm_model="gpt-4o")
 
         with patch("app.api.routers.user_settings.check_feature_allowed", new_callable=AsyncMock):
-            resp = await update_user_settings(body=body, user=user, session=session)
-        assert prefs.llm_api_key == "sk-allowed-key"
+            with patch("app.api.routers.user_settings.audit_log_event", new_callable=AsyncMock):
+                with patch("app.api.routers.user_settings.encrypt_byok_key", side_effect=lambda k: f"enc:{k}"):
+                    resp = await update_user_settings(body=body, request=request, user=user, session=session)
+        # Key should be encrypted now
+        assert prefs.llm_api_key == "enc:sk-allowed-key"
         assert prefs.llm_model == "gpt-4o"
 
     async def test_non_byok_fields_dont_trigger_check(self):
@@ -233,6 +252,7 @@ class TestUpdateUserSettings:
         from app.api.routers.user_settings import update_user_settings
 
         user = _make_user(plan_id="plan-1")
+        request = _make_request()
         prefs = _make_prefs()
         session = AsyncMock()
         result_mock = MagicMock()
@@ -244,7 +264,8 @@ class TestUpdateUserSettings:
         body = UserSettingsUpdate(timezone="Europe/London")
 
         with patch("app.api.routers.user_settings.check_feature_allowed", check_mock):
-            await update_user_settings(body=body, user=user, session=session)
+            with patch("app.api.routers.user_settings.audit_log_event", new_callable=AsyncMock):
+                await update_user_settings(body=body, request=request, user=user, session=session)
         check_mock.assert_not_called()
 
 
@@ -258,6 +279,7 @@ class TestClearByok:
         from app.api.routers.user_settings import clear_byok, BYOK_FIELDS
 
         user = _make_user()
+        request = _make_request()
         prefs = _make_prefs(
             llm_api_key="sk-x", llm_api_base_url="https://api.openai.com",
             llm_model="gpt-4", embedding_api_key="sk-e",
@@ -269,7 +291,8 @@ class TestClearByok:
         result_mock.scalar_one_or_none.return_value = prefs
         session.execute = AsyncMock(return_value=result_mock)
 
-        resp = await clear_byok(user=user, session=session)
+        with patch("app.api.routers.user_settings.audit_log_event", new_callable=AsyncMock):
+            resp = await clear_byok(request=request, user=user, session=session)
         for field in BYOK_FIELDS:
             assert getattr(prefs, field) is None
         assert resp["detail"] == "BYOK configuration cleared"
@@ -278,12 +301,13 @@ class TestClearByok:
         from app.api.routers.user_settings import clear_byok
 
         user = _make_user()
+        request = _make_request()
         session = AsyncMock()
         result_mock = MagicMock()
         result_mock.scalar_one_or_none.return_value = None
         session.execute = AsyncMock(return_value=result_mock)
 
-        resp = await clear_byok(user=user, session=session)
+        resp = await clear_byok(request=request, user=user, session=session)
         assert "No BYOK" in resp["detail"]
 
 

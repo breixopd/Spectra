@@ -40,7 +40,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Internal service, not exposed publicly
+    allow_origins=["http://spectra-app:5000", "http://app:5000", "http://localhost:5000"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -101,8 +101,9 @@ async def ai_chat(req: ChatRequest):
             model=result.model,
             usage=result.usage,
         )
-    except Exception as e:
-        raise HTTPException(500, f"AI service error: {e}")
+    except Exception:
+        logger.exception("AI chat error")
+        raise HTTPException(500, "Internal service error")
 
 
 # --- Embeddings ---
@@ -132,8 +133,9 @@ async def generate_embeddings(req: EmbeddingRequest):
             model=svc.model_name or "unknown",
             dimensions=len(embeddings[0]) if embeddings else 0,
         )
-    except Exception as e:
-        raise HTTPException(500, f"Embedding error: {e}")
+    except Exception:
+        logger.exception("Embedding error")
+        raise HTTPException(500, "Internal service error")
 
 
 # --- RAG Query ---
@@ -165,5 +167,6 @@ async def rag_query(req: RAGRequest):
             results=[{"content": r.content, "score": r.score, "metadata": r.metadata} for r in results],
             query=req.query,
         )
-    except Exception as e:
-        raise HTTPException(500, f"RAG error: {e}")
+    except Exception:
+        logger.exception("RAG query error")
+        raise HTTPException(500, "Internal service error")

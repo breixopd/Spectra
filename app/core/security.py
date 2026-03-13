@@ -35,6 +35,8 @@ __all__ = [
     "invalidate_all_user_tokens",
     "encrypt_mfa_secret",
     "decrypt_mfa_secret",
+    "encrypt_byok_key",
+    "decrypt_byok_key",
     "verify_totp",
     "JWTError",
 ]
@@ -440,6 +442,19 @@ def decrypt_mfa_secret(encrypted: str) -> str:
         return _get_fernet().decrypt(encrypted.encode("utf-8")).decode("utf-8")
     except InvalidToken:
         raise ValueError("Failed to decrypt MFA secret")
+
+
+def encrypt_byok_key(key: str) -> str:
+    """Encrypt a BYOK API key for storage."""
+    return _get_fernet().encrypt(key.encode("utf-8")).decode("utf-8")
+
+
+def decrypt_byok_key(encrypted: str) -> str:
+    """Decrypt a stored BYOK API key."""
+    try:
+        return _get_fernet().decrypt(encrypted.encode("utf-8")).decode("utf-8")
+    except InvalidToken:
+        raise ValueError("Failed to decrypt BYOK key")
 
 
 def verify_totp(secret: str, code: str) -> bool:
