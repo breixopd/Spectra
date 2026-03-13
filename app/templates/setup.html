@@ -37,6 +37,41 @@
                 </div>
             </div>
 
+            <div class="space-y-4 border-b border-white/10 pb-6">
+                <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-globe"></i> Platform Configuration
+                </h2>
+                <p class="text-xs text-gray-400">Configure how users access your Spectra instance.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Platform Domain / URL</label>
+                        <input type="url" name="platform_base_url" placeholder="https://spectra.example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <p class="text-xs text-gray-500 mt-1">Used for email links, callbacks, and report URLs</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Platform Name</label>
+                        <input type="text" name="app_name" value="Spectra" maxlength="50" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <p class="text-xs text-gray-500 mt-1">Displayed in emails and reports</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Contact Email</label>
+                        <input type="email" name="contact_email" placeholder="security@example.com" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none transition-colors">
+                        <p class="text-xs text-gray-500 mt-1">For system notifications and password resets</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Public Registration</label>
+                        <div class="flex items-center gap-3 mt-2">
+                            <label class="inline-flex items-center gap-2">
+                                <input type="checkbox" name="allow_registration" checked class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
+                                <span class="text-sm text-gray-300">Allow new users to register</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="space-y-5 border-b border-white/10 pb-6">
                 <div class="flex items-start justify-between gap-4">
                     <div>
@@ -69,7 +104,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-400 mb-1">Model / Route</label>
-                                <input type="text" name="default_model" id="default_model" value="qwen2.5:3b" required aria-required="true" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                                <input type="text" name="default_model" id="default_model" value="openrouter/auto" required aria-required="true" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
                             </div>
                         </div>
                         <div class="profile-api-fields space-y-4 hidden" data-profile="default">
@@ -183,7 +218,7 @@
                     </button>
                 </div>
 
-
+                <div id="infra-settings" class="space-y-4 hidden">
                     <!-- LLM Gateway -->
                     <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
                         <div class="flex items-center justify-between">
@@ -284,7 +319,7 @@
     const topologySettings = document.getElementById('topology-settings');
 
     function defaultModelFor(provider) {
-        if (provider === 'litellm') return 'gpt-4o-mini';
+        if (provider === 'litellm') return 'openrouter/auto';
         return 'qwen2.5:3b';
     }
 
@@ -541,6 +576,10 @@
                 database_url: setupForm.database_url.value.trim() || null,
                 sandbox_orchestrator_url: document.getElementById('use-external-sandbox').checked ? document.getElementById('sandbox_orchestrator_url').value.trim() || null : null,
                 sandbox_orchestrator_api_key: document.getElementById('use-external-sandbox').checked ? document.getElementById('sandbox_orchestrator_api_key').value.trim() || null : null,
+                platform_base_url: setupForm.platform_base_url?.value.trim() || null,
+                app_name: setupForm.app_name?.value.trim() || 'Spectra',
+                contact_email: setupForm.contact_email?.value.trim() || null,
+                allow_registration: setupForm.allow_registration?.checked ?? true,
             };
 
             const setupResponse = await fetch('/api/v1/auth/setup', {
