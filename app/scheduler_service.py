@@ -1,6 +1,6 @@
 """Spectra Scheduler Service — background maintenance loops.
 
-Runs without an HTTP server. Handles:
+Runs as a FastAPI microservice with a /health endpoint. Handles:
 - Sandbox watchdog (cleanup stale containers)
 - Warm pool maintenance
 - Quota reset (daily counters)
@@ -10,7 +10,10 @@ Runs without an HTTP server. Handles:
 import asyncio
 import logging
 import signal
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+
+from fastapi import FastAPI
 
 logger = logging.getLogger("spectra.scheduler")
 
@@ -136,6 +139,42 @@ async def main():
         loop.add_signal_handler(sig, lambda: asyncio.create_task(scheduler.stop()))
 
     await scheduler.start()
+
+
+# --- FastAPI wrapper for health checks and service auth ---
+
+_scheduler_instance: SchedulerService | None = None
+
+
+@asynccontextmanager
+async def lifespan(fastapi_app: FastAPI):
+    global _scheduler_instance
+    _scheduler_instance = SchedulerService()
+    task = asyncio.create_task(_scheduler_instance.start())
+    yield
+    await _scheduler_instance.stop()
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title="Spectra Scheduler", version="1.0.0", lifespan=lifespan)
+
+from app.core.service_auth import ServiceAuthMiddleware
+from app.core.config import get_settings
+
+_settings = get_settings()
+_secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
+if _secret:
+    app.add_middleware(ServiceAuthMiddleware, secret=_secret)
+
+
+@app.get("/health")
+async def health():
+    running = _scheduler_instance is not None and _scheduler_instance.running
+    return {"status": "healthy" if running else "starting", "service": "scheduler"}
 
 
 if __name__ == "__main__":

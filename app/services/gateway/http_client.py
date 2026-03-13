@@ -19,10 +19,11 @@ RETRY_BACKOFF_BASE = 0.5  # seconds
 class GatewayClient:
     """Base HTTP client for communicating with external Spectra services."""
 
-    def __init__(self, base_url: str, *, timeout: int = 30, api_key: str = ""):
+    def __init__(self, base_url: str, *, timeout: int = 30, api_key: str = "", service_auth: str = ""):
         self.base_url = base_url.rstrip("/")
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.api_key = api_key
+        self.service_auth = service_auth
         self._session: aiohttp.ClientSession | None = None
         self._connector: aiohttp.TCPConnector | None = None
 
@@ -31,6 +32,8 @@ class GatewayClient:
             headers: dict[str, str] = {"Content-Type": "application/json"}
             if self.api_key:
                 headers["Authorization"] = f"Bearer {self.api_key}"
+            if self.service_auth:
+                headers["X-Service-Auth"] = self.service_auth
             self._connector = aiohttp.TCPConnector(
                 limit=50,
                 limit_per_host=10,

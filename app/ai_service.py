@@ -45,6 +45,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Service auth middleware
+from app.core.service_auth import ServiceAuthMiddleware
+from app.core.config import get_settings
+
+_settings = get_settings()
+_secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
+if _secret:
+    app.add_middleware(ServiceAuthMiddleware, secret=_secret)
+
 
 # --- Health ---
 @app.get("/health")

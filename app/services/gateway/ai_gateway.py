@@ -20,7 +20,8 @@ class AIGateway:
     def __init__(self):
         self.remote_url = settings.AI_SERVICE_URL
         if self.remote_url:
-            self.client = GatewayClient(self.remote_url, timeout=120)
+            service_secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+            self.client = GatewayClient(self.remote_url, timeout=120, service_auth=service_secret)
             logger.info("AI Gateway: routing to %s", self.remote_url)
         else:
             self.client = None
