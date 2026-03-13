@@ -77,12 +77,13 @@ services:
 
   # Spectra API (FastAPI)
   app:
+    image: spectra-app:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
     container_name: spectra-app
-    expose:
-      - "5000"
+    ports:
+      - "5000:5000"
     depends_on:
       db:
         condition: service_healthy
@@ -134,6 +135,7 @@ services:
 
   # AI Service (LLM + RAG + Embeddings)
   ai-svc:
+    image: spectra-app:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
@@ -149,6 +151,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
+      - SKIP_MIGRATIONS=true
     volumes:
       - ../app:/app/app
       - spectra_data:/app/data
@@ -168,6 +171,7 @@ services:
 
   # Scheduler (Backups, Metrics, Cleanup)
   scheduler:
+    image: spectra-app:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
@@ -184,6 +188,7 @@ services:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
       - BACKUP_ENABLED=${BACKUP_ENABLED:-false}
+      - SKIP_MIGRATIONS=true
     volumes:
       - ../app:/app/app
       - spectra_data:/app/data
@@ -204,6 +209,7 @@ services:
 
   # Worker (Tool Execution via Ephemeral Sandbox Containers)
   worker:
+    image: spectra-app:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
@@ -219,6 +225,7 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
+      - SKIP_MIGRATIONS=true
     volumes:
       - ../app:/app/app
       - spectra_data:/app/data

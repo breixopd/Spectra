@@ -76,6 +76,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
+      SKIP_MIGRATIONS: "true"
     networks:
       - spectra-net
     healthcheck:
@@ -100,6 +101,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       BACKUP_ENABLED: "true"
+      SKIP_MIGRATIONS: "true"
     networks:
       - spectra-net
     healthcheck:
@@ -123,6 +125,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
+      SKIP_MIGRATIONS: "true"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
