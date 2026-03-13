@@ -212,9 +212,116 @@ class StripePaymentAdapter(PaymentAdapter):
         return portal.url
 
 
+class CryptoPaymentAdapter(PaymentAdapter):
+    """Cryptocurrency payment adapter.
+
+    Supports payment via BTCPay Server, Coinbase Commerce, or similar.
+    Admin configures the provider URL and API key in settings.
+    """
+
+    def __init__(self) -> None:
+        from app.core.config import get_settings
+
+        _settings = get_settings()
+        self._provider_url = _settings.CRYPTO_PAYMENT_URL
+        self._api_key = (
+            _settings.CRYPTO_PAYMENT_API_KEY.get_secret_value()
+            if _settings.CRYPTO_PAYMENT_API_KEY
+            else ""
+        )
+
+    @property
+    def provider_name(self) -> str:
+        return "crypto"
+
+    async def create_customer(self, user_id: str, email: str, name: str) -> str:
+        return ""  # Crypto doesn't have persistent customers
+
+    async def create_subscription(self, customer_id: str, plan_external_id: str) -> dict:
+        return {}  # No recurring billing in crypto
+
+    async def create_checkout_session(
+        self, user_id: str, plan_id: str, success_url: str, cancel_url: str
+    ) -> str:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{self._provider_url}/api/v1/invoices",
+                headers={"Authorization": f"token {self._api_key}"},
+                json={
+                    "metadata": {"user_id": user_id, "plan_id": plan_id},
+                    "checkout": {"redirectURL": success_url},
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("checkoutLink", data.get("url", ""))
+
+    async def handle_webhook(self, payload: bytes, signature: str) -> dict:
+        import hashlib
+        import hmac
+        import json
+
+        expected = hmac.new(
+            self._api_key.encode(), payload, hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(expected, signature):
+            raise ValueError("Invalid webhook signature")
+        data = json.loads(payload)
+        return {"type": data.get("type", ""), "data": data}
+
+    async def get_customer_portal_url(self, user_id: str) -> str:
+        return ""  # Crypto doesn't have customer portals
+
+    async def cancel_subscription(self, subscription_id: str) -> bool:
+        return True  # No recurring billing in crypto
+
+    async def get_subscription_status(self, subscription_id: str) -> str:
+        return "active"  # Admin manages manually
+
+
+class ManualPaymentAdapter(PaymentAdapter):
+    """Manual billing — admin assigns plans directly. No payment processing.
+
+    Useful for: bank transfers, invoices, enterprise contracts,
+    or any custom billing arrangement.
+    """
+
+    @property
+    def provider_name(self) -> str:
+        return "manual"
+
+    async def create_customer(self, user_id: str, email: str, name: str) -> str:
+        return ""
+
+    async def create_subscription(self, customer_id: str, plan_external_id: str) -> dict:
+        return {}
+
+    async def create_checkout_session(
+        self, user_id: str, plan_id: str, success_url: str, cancel_url: str
+    ) -> str:
+        # No checkout — admin assigns plan directly via admin panel
+        return ""
+
+    async def handle_webhook(self, payload: bytes, signature: str) -> dict:
+        return {}
+
+    async def get_customer_portal_url(self, user_id: str) -> str:
+        return ""
+
+    async def cancel_subscription(self, subscription_id: str) -> bool:
+        return True
+
+    async def get_subscription_status(self, subscription_id: str) -> str:
+        return "active"
+
+
 _ADAPTERS: dict[str, type[PaymentAdapter]] = {
     "noop": NoopPaymentAdapter,
     "stripe": StripePaymentAdapter,
+    "crypto": CryptoPaymentAdapter,
+    "manual": ManualPaymentAdapter,
 }
 
 
