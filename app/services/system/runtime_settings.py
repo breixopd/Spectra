@@ -122,7 +122,7 @@ def _as_bool(value: str | bool | None) -> bool:
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
-async def get_runtime_setting_value(key: str) -> Any:
+async def get_runtime_setting_value(key: str) -> str | int | bool | None:
     """Get a single runtime setting value from DB."""
     field_info = GENERAL_RUNTIME_FIELD_MAP.get(key)
     if not field_info:
@@ -156,7 +156,7 @@ def _load_json_dict(value: str | None) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def _get_secret_value(secret: Any) -> str:
+def _get_secret_value(secret: SecretStr | str | None) -> str:
     if secret is None:
         return ""
     getter = getattr(secret, "get_secret_value", None)
@@ -172,7 +172,7 @@ def _find_first_profile(profiles: dict[str, dict[str, Any]], providers: tuple[st
     return None
 
 
-def _normalize_provider_name(provider: Any) -> str:
+def _normalize_provider_name(provider: str | None) -> str:
     normalized = str(provider or "mock").strip().lower() or "mock"
     if normalized in _CLOUD_PROVIDER_ALIASES:
         return "litellm"

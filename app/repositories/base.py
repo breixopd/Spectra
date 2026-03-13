@@ -6,7 +6,7 @@ All entity-specific repositories should inherit from this.
 """
 
 from collections.abc import Sequence
-from typing import Generic, TypeVar
+from typing import Any, Generic, TypeVar
 from uuid import UUID
 
 from sqlalchemy import delete, inspect, select, update
@@ -50,7 +50,7 @@ class BaseRepository(Generic[ModelType]):
             if key not in self._allowed_filters:
                 raise ValueError(f"Invalid filter field: {key}")
 
-    async def create(self, **kwargs) -> ModelType:
+    async def create(self, **kwargs: Any) -> ModelType:
         """
         Create a new entity.
 
@@ -118,7 +118,7 @@ class BaseRepository(Generic[ModelType]):
         self,
         skip: int = 0,
         limit: int = 100,
-        **kwargs,
+        **kwargs: Any,
     ) -> Sequence[ModelType]:
         """
         Find multiple entities by field values.
@@ -139,7 +139,7 @@ class BaseRepository(Generic[ModelType]):
     async def update(
         self,
         entity_id: str | UUID,
-        **kwargs,
+        **kwargs: Any,
     ) -> ModelType | None:
         """
         Update an entity by ID.

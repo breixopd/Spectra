@@ -86,7 +86,7 @@ async def create_finding(
     finding_in: FindingCreate,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
-):
+) -> FindingDetailResponse:
     """Create a new finding."""
     repo = FindingRepository(db)
 
@@ -139,7 +139,7 @@ async def list_findings(
     status_filter: FindingStatus | None = Query(None, alias="status"),
     db: AsyncSession = Depends(get_async_session),
     __current_user: User = Depends(get_current_active_user),
-):
+) -> PaginatedResponse:
     """List all findings with optional filters.
 
     Pagination: max 100 items per page.
@@ -227,7 +227,7 @@ async def export_findings_csv(
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> FastAPIResponse:
     """Export all findings as CSV."""
     findings = await _fetch_all_findings(db, _current_user)
 
@@ -282,7 +282,7 @@ async def export_findings_json(
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> FastAPIResponse:
     """Export all findings as JSON."""
     findings = await _fetch_all_findings(db, _current_user)
 
@@ -332,7 +332,7 @@ async def get_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> FindingDetailResponse:
     """Get a finding by ID."""
     repo = FindingRepository(db)
     finding = await repo.get_by_id(finding_id)
@@ -370,7 +370,7 @@ async def update_finding(
     finding_in: FindingUpdate,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> FindingDetailResponse:
     """Update a finding."""
     repo = FindingRepository(db)
 
@@ -419,7 +419,7 @@ async def delete_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
-):
+) -> None:
     """Delete a finding."""
     repo = FindingRepository(db)
 
@@ -445,7 +445,7 @@ async def verify_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> FindingDetailResponse:
     """Mark a finding as verified."""
     repo = FindingRepository(db)
 
@@ -485,7 +485,7 @@ async def mark_false_positive(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> FindingDetailResponse:
     """Mark a finding as a false positive."""
     repo = FindingRepository(db)
 
@@ -546,7 +546,7 @@ async def confirm_finding(
     finding_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> FindingDetailResponse:
     """Mark a finding as confirmed/verified."""
     repo = FindingRepository(db)
     existing = await repo.get_by_id(finding_id)

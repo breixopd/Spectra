@@ -43,7 +43,7 @@ async def create_target(
     target_in: TargetCreate,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
-):
+) -> TargetResponse:
     """Create a new target."""
     await check_target_limit(_current_user, db)
 
@@ -92,7 +92,7 @@ async def list_targets(
     ),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> PaginatedResponse:
     """List all targets.
 
     Pagination: max 100 items per page.
@@ -136,7 +136,7 @@ async def get_target(
     target_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> TargetResponse:
     """Get a target by ID."""
     repo = TargetRepository(db)
     target = await repo.get_by_id(target_id)
@@ -168,7 +168,7 @@ async def delete_target(
     target_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
-):
+) -> None:
     """Delete a target."""
     repo = TargetRepository(db)
     target = await repo.get_by_id(target_id)
@@ -193,7 +193,7 @@ async def update_target(
     target_in: TargetUpdate,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> TargetResponse:
     """Update a target."""
     repo = TargetRepository(db)
 
@@ -238,7 +238,7 @@ async def get_target_findings(
     target_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> list[FindingResponse]:
     """Get all findings for a specific target."""
     # Verify target exists and user owns it
     target_repo = TargetRepository(db)
@@ -298,7 +298,7 @@ async def bulk_import_targets(
     request: BulkImportRequest,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
-):
+) -> BulkImportResponse:
     """Import multiple targets at once."""
     repo = TargetRepository(db)
     imported = 0
@@ -347,7 +347,7 @@ async def bulk_delete_targets(
     request: BulkDeleteRequest,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
-):
+) -> BulkDeleteResponse:
     """Bulk delete targets."""
     if len(request.target_ids) > 100:
         raise HTTPException(
