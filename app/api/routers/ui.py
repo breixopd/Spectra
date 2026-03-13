@@ -269,15 +269,19 @@ async def api_docs_page(request: Request):
             ):
                 params = []
                 if hasattr(route, "dependant"):
+                    def _type_name(fi):
+                        ann = getattr(fi, "annotation", None)
+                        if ann is None:
+                            return "string"
+                        return getattr(ann, "__name__", str(ann))
+
                     for param in getattr(route.dependant, "path_params", []):
                         params.append(
                             {
                                 "name": param.name,
                                 "in": "path",
                                 "required": True,
-                                "type": getattr(param.field_info, "annotation", str).__name__
-                                if hasattr(param.field_info, "annotation")
-                                else "string",
+                                "type": _type_name(param.field_info),
                             }
                         )
                     for param in getattr(route.dependant, "query_params", []):
@@ -285,10 +289,8 @@ async def api_docs_page(request: Request):
                             {
                                 "name": param.name,
                                 "in": "query",
-                                "required": param.required,
-                                "type": getattr(param.field_info, "annotation", str).__name__
-                                if hasattr(param.field_info, "annotation")
-                                else "string",
+                                "required": getattr(param, "required", False),
+                                "type": _type_name(param.field_info),
                             }
                         )
                 routes.append(
