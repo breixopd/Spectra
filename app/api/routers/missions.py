@@ -52,7 +52,7 @@ class SteerMissionRequest(BaseModel):
 @router.get("/presets")
 async def get_scan_presets(
     _current_user: User = Depends(get_current_active_user),
-):
+) -> list[dict[str, Any]]:
     """Get available scan presets."""
     from app.services.mission.presets import SCAN_PRESETS
     return SCAN_PRESETS
@@ -61,7 +61,7 @@ async def get_scan_presets(
 @router.get("/adversary-playbooks")
 async def get_adversary_playbooks(
     _current_user: User = Depends(get_current_active_user),
-):
+) -> list[dict[str, Any]]:
     """List available adversary simulation playbooks."""
     from app.services.ai.adversary_playbooks import list_adversary_playbooks
 
@@ -72,7 +72,7 @@ async def get_adversary_playbooks(
 async def get_adversary_playbook_detail(
     playbook_id: str,
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, Any]:
     """Get full details of an adversary playbook."""
     from app.services.ai.adversary_playbooks import get_adversary_playbook
 
@@ -85,7 +85,7 @@ async def get_adversary_playbook_detail(
 @router.get("/exploit-chains")
 async def get_exploit_chains(
     _current_user: User = Depends(get_current_active_user),
-):
+) -> list[dict[str, Any]]:
     """List available exploit chains (builtin + custom)."""
     from app.services.mission.chain_builder import get_builtin_chains, load_custom_chains
 
@@ -106,7 +106,7 @@ class CreateChainRequest(BaseModel):
 async def create_exploit_chain(
     chain_in: CreateChainRequest,
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, Any]:
     """Create a custom exploit chain."""
     from app.services.mission.chain_builder import ChainBuilder, save_custom_chain
 
@@ -122,7 +122,7 @@ async def create_exploit_chain(
 @router.get("/attack-summary")
 async def get_attack_coverage(
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, Any]:
     """Get MITRE ATT&CK technique coverage from all recent missions."""
     from app.services.ai.mitre_attack import get_attack_summary
 
@@ -154,7 +154,7 @@ async def start_mission(
     mission_request: StartMissionRequest,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
-):
+) -> MissionResponse:
     """Start a new mission.
 
     Rate limited to 5 missions per minute per user.
@@ -232,7 +232,7 @@ async def list_missions(
     sort_by: str | None = Query(None, pattern="^(created_at|status|target)$", description="Sort field"),
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> PaginatedResponse:
     """List all missions (active and historical).
 
     Supports filtering by status, target, date range, and free-text search.
@@ -312,7 +312,7 @@ async def download_pdf_report(
     mission_id: str,
     session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> Response:
     """Download mission report as PDF."""
     from fastapi.responses import Response as FastAPIResponse
 
@@ -362,7 +362,7 @@ async def export_mission_json(
     password: str | None = Header(None, alias="X-Export-Password"),
     session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> Response:
     """Export mission + findings as a JSON file."""
     from fastapi.responses import Response as FastAPIResponse
 
@@ -420,7 +420,7 @@ async def get_mission_findings(
     mission_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> list[dict[str, str]]:
     """Get all findings for a specific mission."""
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
@@ -453,7 +453,7 @@ async def get_mission(
     mission_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> MissionResponse:
     """Get mission status."""
     # Try active missions first
     mission = await mission_manager.get_mission(mission_id)
@@ -515,7 +515,7 @@ async def delete_mission(
     request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
-):
+) -> dict[str, str]:
     """Delete a mission and clean up associated filesystem data."""
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
@@ -567,7 +567,7 @@ async def stop_mission(
     response: Response,
     mission_id: str,
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
-):
+) -> dict[str, str]:
     """Stop a running mission. Requires superuser privileges."""
     active = await mission_manager.get_mission(mission_id)
     if active:
@@ -589,7 +589,7 @@ async def pause_mission(
     response: Response,
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, str]:
     """Pause a running mission."""
     active = await mission_manager.get_mission(mission_id)
     if active:
@@ -611,7 +611,7 @@ async def resume_mission(
     response: Response,
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, str]:
     """Resume a paused mission."""
     active = await mission_manager.get_mission(mission_id)
     if active:
@@ -628,7 +628,7 @@ async def diff_missions(
     other_mission_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, Any]:
     """Compare two missions and return a structured diff.
 
     Returns changed services, findings, and vulnerabilities between
@@ -687,7 +687,7 @@ async def steer_mission(
     mission_id: str,
     steer_request: SteerMissionRequest,
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, Any]:
     """
     Steer a running mission.
 
@@ -720,7 +720,7 @@ async def steer_mission(
 async def get_task_tree(
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, Any]:
     """Get the task tree for a mission."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
@@ -733,7 +733,7 @@ async def get_task_tree(
 async def get_mission_progress(
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, Any]:
     """Get estimated mission progress."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
@@ -754,7 +754,7 @@ async def approve_action(
     mission_id: str,
     body: ApproveActionRequest,
     _current_user: User = Depends(get_current_active_user),
-):
+) -> dict[str, str | bool]:
     """Approve or reject a pending action in a mission that requires approval."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:

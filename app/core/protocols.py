@@ -7,7 +7,7 @@ These protocols enable type checking without requiring inheritance.
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -45,11 +45,11 @@ class AgentOutput(Protocol):
 class CacheBackend(Protocol):
     """Interface for cache backends."""
 
-    async def get(self, key: str) -> Any | None:
+    async def get(self, key: str) -> str | bytes | None:
         """Get a value from cache."""
         ...
 
-    async def set(self, key: str, value: Any, ttl: int) -> bool:
+    async def set(self, key: str, value: str | bytes, ttl: int) -> bool:
         """Set a value in cache."""
         ...
 
@@ -62,7 +62,7 @@ class CacheBackend(Protocol):
 class EventHandler(Protocol):
     """Interface for event handlers."""
 
-    async def handle(self, event: Any) -> None:
+    async def handle(self, event: dict[str, object]) -> None:
         """Handle an event."""
         ...
 
@@ -71,11 +71,11 @@ class EventHandler(Protocol):
 class ToolAdapter(Protocol):
     """Interface for tool adapters."""
 
-    async def execute(self, request: Any, output_dir: str | None = None) -> Any:
+    async def execute(self, request: dict[str, object], output_dir: str | None = None) -> dict[str, object]:
         """Execute the tool."""
         ...
 
-    def build_command(self, request: Any, output_dir: str | None = None) -> str:
+    def build_command(self, request: dict[str, object], output_dir: str | None = None) -> str:
         """Build the command string."""
         ...
 
@@ -98,11 +98,11 @@ class LLMServiceProtocol(Protocol):
         temperature: float = 0.7,
         max_tokens: int | None = None,
         system_prompt: str | None = None,
-    ) -> dict: ...
+    ) -> dict[str, object]: ...
 
-    async def generate_structured(self, prompt: str, schema: dict, **kwargs: Any) -> dict: ...
+    async def generate_structured(self, prompt: str, schema: dict[str, object], **kwargs: object) -> dict[str, object]: ...
 
-    async def health_check(self) -> dict: ...
+    async def health_check(self) -> dict[str, object]: ...
 
     @property
     def provider_name(self) -> str: ...
@@ -133,9 +133,9 @@ class RAGServiceProtocol(Protocol):
         *,
         top_k: int = 5,
         min_score: float = 0.5,
-    ) -> list[dict]: ...
+    ) -> list[dict[str, object]]: ...
 
-    async def index_document(self, content: str, metadata: dict) -> str: ...
+    async def index_document(self, content: str, metadata: dict[str, str]) -> str: ...
 
     async def delete_document(self, doc_id: str) -> bool: ...
 
@@ -153,13 +153,13 @@ class SandboxServiceProtocol(Protocol):
         *,
         resource_tier: str = "medium",
         user_id: str | None = None,
-    ) -> dict: ...
+    ) -> dict[str, object]: ...
 
     async def destroy(self, mission_id: str) -> None: ...
 
-    async def get(self, mission_id: str) -> dict | None: ...
+    async def get(self, mission_id: str) -> dict[str, object] | None: ...
 
-    async def health_check(self) -> dict: ...
+    async def health_check(self) -> dict[str, object]: ...
 
     @property
     def available(self) -> bool: ...
@@ -182,7 +182,7 @@ class NotificationServiceProtocol(Protocol):
         self,
         recipient: str,
         template_name: str,
-        context: dict,
+        context: dict[str, object],
     ) -> bool: ...
 
 
