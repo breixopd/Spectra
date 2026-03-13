@@ -408,15 +408,15 @@
         <div class="faq-list" style="text-align:left;" role="list">
             {% set faqs = [
                 ("What types of security assessments can " ~ app_name ~ " perform?",
-                 app_name ~ " supports full-scope penetration testing including network reconnaissance, vulnerability scanning, web application testing, service enumeration, and automated exploitation — all orchestrated by AI agents within sandboxed containers."),
-                ("Is it safe to run automated exploits against production systems?",
-                 "All tools run in isolated, sandboxed containers with configurable scope limits and rules of engagement. The platform enforces target boundaries and supports human-in-the-loop approval for high-risk actions. We recommend testing against staging environments first."),
-                ("What AI models does the platform use?",
-                 app_name ~ " is model-agnostic and supports multiple LLM providers including OpenAI, Anthropic, and local models via Ollama. You can configure your preferred provider during setup or switch at any time from the settings panel."),
+                 app_name ~ " covers full-scope penetration testing — network reconnaissance, vulnerability scanning, web application testing, service enumeration, and automated exploitation. AI agents orchestrate everything in secure sandboxed environments while you maintain control over scope and rules of engagement."),
+                ("Is it safe to run automated exploits?",
+                 "Absolutely. All tools execute in isolated, sandboxed containers with strict target boundaries and scope limits. You can enable human-in-the-loop approval for high-risk actions, or use fully autonomous mode if your plan supports it. We recommend testing against staging environments first."),
+                ("Can I bring my own API key?",
+                 "Yes — Professional and Enterprise plans include BYOK (Bring Your Own Key) support. Connect your own OpenAI, Anthropic, or other LLM provider API keys for maximum flexibility and control over AI model selection."),
                 ("How are assessment reports generated?",
-                 "Reports are auto-generated as PDF documents with CVSS-scored findings, evidence screenshots, remediation guidance, and executive summaries. Each finding includes detailed reproduction steps and is mapped to relevant CVE identifiers when applicable."),
-                ("What security tools are included?",
-                 "The platform ships with 25+ pre-configured tools including Nmap, Nuclei, Nikto, SQLMap, Feroxbuster, Hydra, and more. New tools can be added by dropping a JSON plugin file into the plugins directory — no code changes required.")
+                 "Reports are automatically generated with CVSS-scored findings, evidence screenshots, remediation guidance, and executive summaries. Each finding includes detailed reproduction steps and is mapped to relevant CVE identifiers when applicable. Export in PDF, JSON, or Markdown."),
+                ("What security tools are available?",
+                 "The platform includes 25+ industry-standard tools — Nmap, Nuclei, Nikto, SQLMap, Feroxbuster, Hydra, and many more. New tools are regularly added by the " ~ app_name ~ " team. Enterprise plans can request custom tool integrations.")
             ] %}
             {% for question, answer in faqs %}
             <div class="faq-item reveal" role="listitem">

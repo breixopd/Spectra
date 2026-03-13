@@ -11,7 +11,9 @@ __pycache__/**
 .venv
 keys/plugin_signing.pem
 .coverage
-logs/test.db
+.pytest_cache/
+logs/
+reports/
 test.db
 
 # Runtime data (container-managed, never on host)
