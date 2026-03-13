@@ -1,4 +1,4 @@
-"""Base Agent class for the MAKER Swarm Architecture."""
+from __future__ import annotations
 
 import asyncio
 import json as _json
@@ -12,6 +12,7 @@ from typing import Any, ClassVar, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.services.ai.cost_tracker import CostTracker
 from app.services.ai.llm import LLMClient
 from app.services.ai.prompts import BASE_SYSTEM_PROMPT
 
@@ -55,6 +56,8 @@ class ActionRisk(StrEnum):
 class AgentContext(BaseModel):
     """Context passed to agents for decision making."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     mission_id: str = Field(..., description="Current mission ID")
     session_id: str | None = Field(None, description="Current session ID (optional)")
     target: str | None = Field(None, description="Current target (IP/domain)")
@@ -74,7 +77,7 @@ class AgentContext(BaseModel):
     extra_context: str = Field("", description="Additional context from blackboard")
 
     # Cost tracking (excluded from serialization)
-    cost_tracker: Any | None = Field(None, description="CostTracker instance", exclude=True)
+    cost_tracker: CostTracker | None = Field(None, description="CostTracker instance", exclude=True)
 
 
 # --- Action Models ---
@@ -189,7 +192,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
             llm: The LLM client to use for generation.
         """
         self.llm = llm
-        self._cost_tracker: Any | None = None
+        self._cost_tracker: CostTracker | None = None
 
     @property
     def _task_type(self) -> str | None:
@@ -309,7 +312,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
 
         return best_result or result  # type: ignore[possibly-undefined]
 
-    def _get_temperature(self, input_data: Any, attempt: int = 1) -> float:
+    def _get_temperature(self, input_data: InputT, attempt: int = 1) -> float:
         """
         Determine the temperature for LLM generation based on task complexity.
 

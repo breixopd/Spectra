@@ -24,7 +24,7 @@ from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
-from app.models.finding import Finding, FindingStatus, Severity
+from app.models.finding import FindingStatus, Severity
 from app.models.user import User
 from app.repositories.finding import FindingRepository
 

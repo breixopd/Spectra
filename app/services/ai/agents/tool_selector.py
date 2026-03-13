@@ -23,7 +23,7 @@ from app.services.ai.agents.base import (
 )
 from app.services.ai.agents.registry import register_agent
 from app.services.ai.prompts import TOOL_SELECTION_PROMPT
-from app.services.tools.models import RiskLevel, ToolCapability, ToolCategory
+from app.services.tools.models import RegisteredTool, RiskLevel, ToolCapability, ToolCategory
 from app.services.tools.registry import get_registry
 
 logger = logging.getLogger(__name__)
@@ -652,7 +652,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
 
     def _apply_stealth_settings(
         self,
-        tool: Any,  # RegisteredTool
+        tool: RegisteredTool,
         args: dict[str, Any],
     ) -> dict[str, Any]:
         """Apply stealth settings from tool config or fallback defaults."""
@@ -693,7 +693,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
 
         return stealth_args
 
-    def _validate_tool_args(self, tool: Any, args: dict[str, Any]) -> None:
+    def _validate_tool_args(self, tool: RegisteredTool, args: dict[str, Any]) -> None:
         """Sanity check generated arguments."""
         # First pass: sanitize malformed values
         keys_to_remove = []

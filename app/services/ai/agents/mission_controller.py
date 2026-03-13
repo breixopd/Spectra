@@ -9,9 +9,11 @@ Responsible for:
 - Managing phase transitions
 """
 
+from __future__ import annotations
+
 import logging
 from enum import StrEnum
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -30,6 +32,9 @@ from app.services.ai.errors import AgentError, LLMParseError, LLMTimeoutError
 from app.services.ai.prompts import (
     MISSION_PLAN_PROMPT,
 )
+
+if TYPE_CHECKING:
+    from app.services.ai.llm import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +113,7 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
     role: ClassVar[AgentRole] = AgentRole.MISSION_CONTROLLER
     name: ClassVar[str] = "MissionController"
 
-    def __init__(self, llm: Any):
+    def __init__(self, llm: LLMClient):
         super().__init__(llm)
         # Import here to avoid circular dependency
         from app.services.ai.consensus import VotingSystem

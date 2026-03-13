@@ -14,16 +14,21 @@ Quality Gates (validation points):
 - EXECUTION: High-risk tool execution
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from app.services.ai.agents.base import ActionRisk, AgentAction
 from app.services.ai.llm import LLMClient
+
+if TYPE_CHECKING:
+    from app.models.mission import Mission
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +189,7 @@ class VotingSystem:
         self,
         llm: LLMClient,
         config: VotingConfig | None = None,
-        mission: Any | None = None,
+        mission: Mission | None = None,
     ):
         self.llm = llm
         self.config = config or VotingConfig()
