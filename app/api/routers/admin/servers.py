@@ -260,3 +260,129 @@ async def check_all_server_health(
     pool = get_pool_manager()
     results = await pool.health_check_all()
     return results
+
+
+# --- Service Monitoring & Deployment ---
+
+
+@router.get("/api/admin/services")
+async def list_services(
+    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+):
+    """List all registered services and their health status."""
+    import httpx
+
+    services = [
+        {"name": "api", "type": "core", "port": 5000},
+        {"name": "ai-svc", "type": "ai", "port": 5010},
+        {"name": "scheduler", "type": "background", "port": None},
+        {"name": "worker", "type": "tools", "port": None},
+    ]
+
+    results = []
+    for svc in services:
+        health_status = "unknown"
+        if svc["port"]:
+            for base in [f"http://{svc['name']}:{svc['port']}", f"http://localhost:{svc['port']}"]:
+                try:
+                    async with httpx.AsyncClient(timeout=5.0) as client:
+                        resp = await client.get(f"{base}/health")
+                        health_status = "healthy" if resp.status_code == 200 else "unhealthy"
+                        break
+                except Exception:
+                    health_status = "unreachable"
+
+        results.append({
+            "name": svc["name"],
+            "type": svc["type"],
+            "port": svc["port"],
+            "status": health_status,
+        })
+
+    return {"services": results}
+
+
+@router.get("/api/admin/services/nodes")
+async def list_service_nodes(
+    session: AsyncSession = Depends(get_async_session),
+    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+):
+    """List all server nodes and their deployment status."""
+    from sqlalchemy import select as sa_select
+
+    from app.models.server_node import ServerNode
+
+    nodes = (await session.execute(
+        sa_select(ServerNode).order_by(ServerNode.created_at.desc())
+    )).scalars().all()
+    return {"nodes": [n.to_dict() for n in nodes]}
+
+
+@router.post("/api/admin/services/nodes/{node_id}/deploy")
+async def deploy_to_node(
+    node_id: int,
+    request: Request,
+    services: list[str] | None = Body(None),
+    harden: bool = Body(True),
+    current_user: User = Depends(get_current_active_user),
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Deploy Spectra services to a remote server node."""
+    from sqlalchemy import select as sa_select
+
+    from app.models.server_node import ServerNode
+    from app.services.infrastructure.deploy import ServerDeployer
+
+    node = (await session.execute(
+        sa_select(ServerNode).where(ServerNode.id == node_id)
+    )).scalar_one_or_none()
+    if not node:
+        raise HTTPException(404, "Node not found")
+
+    deployer = ServerDeployer()
+    result = await deployer.deploy_to_server(
+        server_id=str(node.id),
+        hostname=node.url.split("://")[-1].split(":")[0].split("/")[0] if node.url else node.name,
+        ssh_user=node.ssh_user,
+        ssh_port=node.ssh_port,
+        ssh_key=node.ssh_key_path,
+        services=services,
+        harden=harden,
+    )
+
+    # Update node status
+    node.health_status = "healthy" if result.status.value == "complete" else "error"
+    node.deployed_services = services or ["app", "ai-svc", "scheduler", "tools"]
+    await session.commit()
+
+    await audit_log_event(
+        session,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=current_user.id,
+        details={
+            "action": "node_deployed" if result.status.value == "complete" else "node_deploy_failed",
+            "node_id": node.id,
+            "node_name": node.name,
+        },
+        request=request,
+    )
+
+    return {
+        "status": result.status.value,
+        "message": result.message,
+        "logs": result.logs,
+    }
+
+
+@router.get("/api/admin/services/nodes/{node_id}/logs")
+async def get_node_deployment_logs(
+    node_id: int,
+    _admin: User = require_permission("admin"),  # type: ignore[assignment]
+):
+    """Get deployment logs for a server node."""
+    from app.services.infrastructure.deploy import ServerDeployer
+
+    deployer = ServerDeployer()
+    logs = deployer.get_deployment_logs(str(node_id))
+    return {"logs": logs}

@@ -239,6 +239,61 @@
             </div>
             <div id="svc-grid" class="services-grid"></div>
 
+            <!-- Services Health Monitor -->
+            <div class="glass-panel rounded-xl p-5 space-y-4 mt-6">
+                <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-heartbeat text-emerald-400"></i> Microservices Health
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="microservices-health-grid">
+                    <div class="glass-panel p-4 rounded-lg text-center">
+                        <div class="health-dot health-dot-unknown mx-auto" id="svc-api-dot"></div>
+                        <div class="text-sm font-medium text-white mt-2">API</div>
+                        <div class="text-xs text-slate-500">:5000</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-lg text-center">
+                        <div class="health-dot health-dot-unknown mx-auto" id="svc-ai-dot"></div>
+                        <div class="text-sm font-medium text-white mt-2">AI Service</div>
+                        <div class="text-xs text-slate-500">:5010</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-lg text-center">
+                        <div class="health-dot health-dot-unknown mx-auto" id="svc-scheduler-dot"></div>
+                        <div class="text-sm font-medium text-white mt-2">Scheduler</div>
+                        <div class="text-xs text-slate-500">background</div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-lg text-center">
+                        <div class="health-dot health-dot-unknown mx-auto" id="svc-worker-dot"></div>
+                        <div class="text-sm font-medium text-white mt-2">Worker</div>
+                        <div class="text-xs text-slate-500">tools</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Server Nodes & Deployment -->
+            <div class="glass-panel rounded-xl p-5 space-y-4 mt-6">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-network-wired text-violet-400"></i> Server Nodes
+                    </h3>
+                    <button onclick="refreshNodesList()" class="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh
+                    </button>
+                </div>
+                <div id="nodes-list" class="space-y-2">
+                    <p class="text-xs text-slate-500">Loading nodes...</p>
+                </div>
+            </div>
+
+            <!-- Deploy Logs Modal -->
+            <div class="modal-backdrop" id="deploy-logs-modal">
+                <div class="modal-content" style="max-width:640px" role="dialog" aria-modal="true">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-white">Deployment Logs</h3>
+                        <button onclick="closeModal('deploy-logs-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <pre id="deploy-logs-content" class="bg-slate-900/50 border border-white/5 rounded-lg p-3 text-xs text-slate-300 font-mono max-h-96 overflow-y-auto whitespace-pre-wrap"></pre>
+                </div>
+            </div>
+
             <!-- Billing Configuration -->
             <div class="glass-panel rounded-xl p-5 space-y-4 mt-6">
                 <h3 class="text-sm font-semibold text-white flex items-center gap-2">
@@ -1690,6 +1745,103 @@
                 }
             } catch(e) { toast('Deprovision request failed', 'error'); }
         });
+    };
+
+    // ---- Microservices Health Monitor ----
+    let svcHealthTimer = null;
+
+    async function pollMicroservicesHealth() {
+        try {
+            const r = await fetch('/api/admin/services');
+            if (!r.ok) return;
+            const data = await r.json();
+            const dotMap = { 'api': 'svc-api-dot', 'ai-svc': 'svc-ai-dot', 'scheduler': 'svc-scheduler-dot', 'worker': 'svc-worker-dot' };
+            for (const svc of data.services || []) {
+                const dot = document.getElementById(dotMap[svc.name]);
+                if (!dot) continue;
+                dot.className = 'health-dot health-dot-' + (svc.status === 'healthy' ? 'healthy' : svc.status === 'unhealthy' ? 'unhealthy' : 'unknown') + ' mx-auto';
+            }
+        } catch(e) { console.error('Microservices health poll error', e); }
+    }
+
+    function startSvcHealthPoll() {
+        pollMicroservicesHealth();
+        if (svcHealthTimer) clearInterval(svcHealthTimer);
+        svcHealthTimer = setInterval(pollMicroservicesHealth, 15000);
+    }
+
+    // Start polling when services tab active
+    const origShowSection = window.showSection;
+    window.showSection = function(name) {
+        if (typeof origShowSection === 'function') origShowSection(name);
+        if (name === 'services') { startSvcHealthPoll(); refreshNodesList(); }
+        else if (svcHealthTimer) { clearInterval(svcHealthTimer); svcHealthTimer = null; }
+    };
+
+    // ---- Server Nodes Management ----
+    window.refreshNodesList = async function() {
+        const container = document.getElementById('nodes-list');
+        container.innerHTML = '<p class="text-xs text-slate-500">Loading...</p>';
+        try {
+            const r = await fetch('/api/admin/services/nodes');
+            if (!r.ok) throw new Error('Failed to load nodes');
+            const data = await r.json();
+            if (!data.nodes || data.nodes.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500">No server nodes registered. Use "Add Remote Server" above.</p>';
+                return;
+            }
+            container.innerHTML = data.nodes.map(n => `
+                <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-white/5">
+                    <div class="flex items-center gap-3">
+                        <span class="health-dot health-dot-${n.health_status || 'unknown'}"></span>
+                        <div>
+                            <div class="text-sm font-medium text-white">${escapeHtml(n.name)}</div>
+                            <div class="text-xs text-slate-500">${escapeHtml(n.url)} · ${escapeHtml(n.service_type)} · SSH ${escapeHtml(n.ssh_user || 'root')}:${n.ssh_port || 22}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${n.deployed_services ? `<span class="text-xs text-emerald-400">${(n.deployed_services.length || 0)} services</span>` : ''}
+                        <button onclick="deployToNode(${n.id}, '${escapeHtml(n.name)}')" class="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs transition-colors">
+                            <i class="fa-solid fa-rocket mr-1"></i>Deploy
+                        </button>
+                        <button onclick="viewNodeLogs(${n.id})" class="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors">
+                            <i class="fa-solid fa-file-lines mr-1"></i>Logs
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } catch(e) { container.innerHTML = '<p class="text-xs text-red-400">Error loading nodes</p>'; }
+    };
+
+    window.deployToNode = async function(nodeId, nodeName) {
+        if (!confirm(`Deploy Spectra services to ${nodeName}? This may take several minutes.`)) return;
+        toast('Starting deployment to ' + nodeName + '...', 'success');
+        try {
+            const r = await fetch(`/api/admin/services/nodes/${nodeId}/deploy`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ services: null, harden: true }),
+            });
+            const data = await r.json();
+            if (data.status === 'complete') {
+                toast('Deployment successful!', 'success');
+            } else {
+                toast('Deployment failed: ' + (data.message || 'unknown'), 'error');
+            }
+            // Show logs
+            document.getElementById('deploy-logs-content').textContent = (data.logs || []).join('\n');
+            openModal('deploy-logs-modal');
+            refreshNodesList();
+        } catch(e) { toast('Deployment request failed', 'error'); }
+    };
+
+    window.viewNodeLogs = async function(nodeId) {
+        try {
+            const r = await fetch(`/api/admin/services/nodes/${nodeId}/logs`);
+            const data = await r.json();
+            document.getElementById('deploy-logs-content').textContent = (data.logs || []).join('\n') || 'No logs available.';
+            openModal('deploy-logs-modal');
+        } catch(e) { toast('Failed to load logs', 'error'); }
     };
 
     // ---- Content Management ----
