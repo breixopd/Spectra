@@ -525,6 +525,18 @@
                             <i class="fa-solid fa-credit-card mr-1"></i> Manage Billing
                         </button>
                     </div>`;
+            } else if (paymentProvider === 'crypto') {
+                actionsHtml = `
+                    <div class="flex gap-2 mt-4 pt-3 border-t border-white/5">
+                        <button onclick="showAvailablePlans()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg transition-colors">
+                            <i class="fa-brands fa-bitcoin mr-1"></i> Pay with Crypto
+                        </button>
+                    </div>`;
+            } else if (paymentProvider === 'manual') {
+                actionsHtml = `
+                    <div class="mt-4 pt-3 border-t border-white/5">
+                        <p class="text-xs text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i> Your plan is managed by your administrator.</p>
+                    </div>`;
             } else {
                 actionsHtml = `
                     <div class="mt-4 pt-3 border-t border-white/5">

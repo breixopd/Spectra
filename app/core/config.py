@@ -252,11 +252,21 @@ class Settings(BaseSettings):
     S3_BUCKET_KNOWLEDGE: str = "spectra-knowledge"
     S3_BUCKET_BACKUPS: str = "spectra-backups"
 
+    # --- Backup ---
+    BACKUP_ENABLED: bool = Field(default=False, description="Enable automated backups")
+    BACKUP_SCHEDULE_HOURS: int = Field(default=24, description="Backup interval in hours")
+    BACKUP_RETENTION_COUNT: int = Field(default=10, description="Number of backups to retain")
+    BACKUP_S3_BUCKET: str = Field(default="spectra-backups", description="S3 bucket for backups")
+
     # --- Billing / Stripe ---
-    PAYMENT_PROVIDER: str = Field(default="noop", description="Payment provider: noop or stripe")
+    PAYMENT_PROVIDER: str = Field(default="noop", description="Payment provider: noop, stripe, crypto, or manual")
     STRIPE_SECRET_KEY: SecretStr = Field(default=SecretStr(""), description="Stripe API secret key")
     STRIPE_WEBHOOK_SECRET: SecretStr = Field(default=SecretStr(""), description="Stripe webhook signing secret")
     STRIPE_PUBLISHABLE_KEY: str = Field(default="", description="Stripe publishable key for frontend")
+
+    # --- Crypto Payments ---
+    CRYPTO_PAYMENT_URL: str = Field(default="", description="Crypto payment provider URL (e.g., BTCPay Server)")
+    CRYPTO_PAYMENT_API_KEY: SecretStr = Field(default=SecretStr(""), description="Crypto payment provider API key")
 
     # --- Validators ---
 

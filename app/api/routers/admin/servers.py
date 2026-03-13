@@ -262,6 +262,50 @@ async def check_all_server_health(
     return results
 
 
+# --- Backups ---
+
+
+@router.post("/api/admin/backups")
+async def create_backup(
+    current_user: User = Depends(get_current_active_user),
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Create a database backup."""
+    from app.services.infrastructure.backup import BackupService
+
+    svc = BackupService()
+    return await svc.create_backup()
+
+
+@router.get("/api/admin/backups")
+async def list_backups(
+    current_user: User = Depends(get_current_active_user),
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """List all available backups."""
+    from app.services.infrastructure.backup import BackupService
+
+    svc = BackupService()
+    return await svc.list_backups()
+
+
+class RestoreRequest(BaseModel):
+    backup_path: str
+
+
+@router.post("/api/admin/backups/restore")
+async def restore_backup(
+    body: RestoreRequest,
+    current_user: User = Depends(get_current_active_user),
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Restore database from a backup file."""
+    from app.services.infrastructure.backup import BackupService
+
+    svc = BackupService()
+    return await svc.restore_backup(body.backup_path)
+
+
 # --- Service Monitoring & Deployment ---
 
 

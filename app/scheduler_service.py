@@ -32,6 +32,7 @@ class SchedulerService:
             asyncio.create_task(self._quota_reset()),
             asyncio.create_task(self._metrics_collector()),
             asyncio.create_task(self._health_reporter()),
+            asyncio.create_task(self._backup_scheduler()),
         ]
 
         logger.info("Scheduler running with %d tasks", len(self.tasks))
@@ -103,6 +104,28 @@ class SchedulerService:
             except Exception:
                 pass
             await asyncio.sleep(15)
+
+
+    async def _backup_scheduler(self):
+        """Run automated backups on the configured schedule."""
+        from app.core.config import get_settings
+
+        while self.running:
+            settings = get_settings()
+            if not settings.BACKUP_ENABLED:
+                await asyncio.sleep(3600)  # Check every hour if enabled
+                continue
+
+            try:
+                from app.services.infrastructure.backup import BackupService
+
+                svc = BackupService()
+                result = await svc.create_backup()
+                logger.info("Scheduled backup: %s", result.get("status"))
+            except Exception as e:
+                logger.error("Scheduled backup failed: %s", e)
+
+            await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
 
 
 async def main():
