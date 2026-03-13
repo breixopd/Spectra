@@ -11,7 +11,7 @@ from app.core.database import async_session_maker
 from app.core.telemetry import telemetry
 from app.models.plan import Plan, Subscription, UsageRecord
 
-logger = logging.getLogger("spectra.billing.usage")
+logger = logging.getLogger(__name__)
 
 # Maps metric names to (UsageRecord column, Plan limit column, period_type)
 _METRIC_MAP: dict[str, tuple[str, str, str]] = {

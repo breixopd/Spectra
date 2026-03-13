@@ -8,7 +8,7 @@ from typing import Any
 from app.services.tools.models import ToolExecutionResult
 from app.services.tools.output import create_error_result
 
-logger = logging.getLogger("spectra.tools.execution")
+logger = logging.getLogger(__name__)
 
 
 async def execute_via_worker(

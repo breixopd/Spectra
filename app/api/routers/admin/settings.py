@@ -14,7 +14,7 @@ from app.models.config import SystemConfig
 from app.models.user import User
 from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
 
-logger = logging.getLogger("spectra.admin.settings")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

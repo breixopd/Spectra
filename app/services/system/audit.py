@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.audit_log import AuditEventType
 from app.repositories.audit_log import AuditLogRepository
 
-logger = logging.getLogger("spectra.audit")
+logger = logging.getLogger(__name__)
 
 
 async def log_event(

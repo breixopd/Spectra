@@ -28,7 +28,7 @@ from app.models.mission import Mission
 from app.models.target import Target
 from app.models.user import User
 
-logger = logging.getLogger("spectra.api.export")
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/export", tags=["Export"])
 

@@ -13,7 +13,7 @@ import asyncssh
 from app.core.config import settings
 from app.services.provisioning.recipes import CONTAINER_NAMES, PROVISIONING_RECIPES
 
-logger = logging.getLogger("spectra.provisioning")
+logger = logging.getLogger(__name__)
 
 
 @dataclass

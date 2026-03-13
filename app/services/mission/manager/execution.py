@@ -33,7 +33,7 @@ from app.services.mission.manager.steering import MissionSteeringManager
 from app.services.mission.mission import Mission
 from app.services.shell.session_manager import shell_manager
 
-logger = logging.getLogger("spectra.mission.manager.execution")
+logger = logging.getLogger(__name__)
 
 
 class MissionExecutionManager:

@@ -14,7 +14,7 @@ from typing import Any
 from app.core.config import settings
 from app.core.queue import PostgresJobQueue
 
-logger = logging.getLogger("spectra.services.tools.vpn")
+logger = logging.getLogger(__name__)
 
 # Strict name pattern: alphanumeric + hyphens, 1-64 chars
 _CONFIG_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,63}$")

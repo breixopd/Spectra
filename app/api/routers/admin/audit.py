@@ -21,7 +21,7 @@ from app.models.plan import Plan
 from app.models.user import User
 from app.services.ai.cost_tracker import get_cost_trackers
 
-logger = logging.getLogger("spectra.admin")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

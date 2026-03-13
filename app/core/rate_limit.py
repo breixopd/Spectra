@@ -17,7 +17,7 @@ from starlette.responses import JSONResponse
 from app.core.events import EventType, events
 from app.core.security import decode_token
 
-logger = logging.getLogger("spectra.core.rate_limit")
+logger = logging.getLogger(__name__)
 
 
 def get_client_identifier(request: Request) -> str:

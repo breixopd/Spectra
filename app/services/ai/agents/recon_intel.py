@@ -26,7 +26,7 @@ from app.services.ai.agents.base import (
 )
 from app.services.ai.agents.registry import register_agent
 
-logger = logging.getLogger("spectra.ai.agents.recon_intel")
+logger = logging.getLogger(__name__)
 
 _CACHE_DIR = Path("data/cache")
 _KEV_CACHE_PATH = _CACHE_DIR / "cisa_kev.json"

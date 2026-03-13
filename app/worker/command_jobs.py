@@ -13,7 +13,7 @@ from app.core.constants import GO_COMPILE_TIMEOUT
 
 from .helpers import _run_command
 
-logger = logging.getLogger("spectra.worker")
+logger = logging.getLogger(__name__)
 
 
 async def run_command_job(

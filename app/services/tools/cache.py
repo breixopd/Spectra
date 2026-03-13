@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import timedelta
 
-logger = logging.getLogger("spectra.tools.cache")
+logger = logging.getLogger(__name__)
 
 
 class ToolResultCache:

@@ -16,7 +16,7 @@ from app.core.rbac import Permission, require_permission
 from app.core.telemetry import telemetry
 from app.models.user import User
 
-logger = logging.getLogger("spectra.api.observability")
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/observability", tags=["Observability"])
 

@@ -25,7 +25,7 @@ from app.services.ai.agents.base import (
 from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 
-logger = logging.getLogger("spectra.ai.agents.vector_generator")
+logger = logging.getLogger(__name__)
 
 
 class VectorGeneratorInput(BaseModel):

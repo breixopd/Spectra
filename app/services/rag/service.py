@@ -12,7 +12,7 @@ from typing import Any
 from app.services.ai.knowledge import get_rag_service
 from app.services.ai.rag import Document, SearchResult
 
-logger = logging.getLogger("spectra.rag.service")
+logger = logging.getLogger(__name__)
 
 
 class RAGFacade:

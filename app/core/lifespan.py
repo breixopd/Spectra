@@ -31,7 +31,7 @@ from app.services.ai.llm import close_global_llm_client
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
 from app.services.tools.models import ToolStatus
 
-logger = logging.getLogger("spectra.lifespan")
+logger = logging.getLogger(__name__)
 
 # Interval for cache cleanup (seconds) — every 10 minutes
 _CACHE_CLEANUP_INTERVAL = 600

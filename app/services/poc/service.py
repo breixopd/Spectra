@@ -15,7 +15,7 @@ from app.services.poc.models import POCMetadata, POCRequest, POCResult
 from app.services.shell.session_manager import shell_manager
 from app.services.tools.service import ToolExecutionService
 
-logger = logging.getLogger("spectra.services.poc")
+logger = logging.getLogger(__name__)
 
 
 class POCService:

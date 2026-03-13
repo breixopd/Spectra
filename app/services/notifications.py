@@ -14,7 +14,7 @@ import httpx
 
 from app.core.config import settings
 
-logger = logging.getLogger("spectra.notifications")
+logger = logging.getLogger(__name__)
 
 
 def _is_safe_url(url: str) -> bool:

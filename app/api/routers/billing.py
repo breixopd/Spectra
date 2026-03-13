@@ -12,7 +12,7 @@ from app.models.plan import Plan
 from app.models.user import User
 from app.services.billing import PaymentService
 
-logger = logging.getLogger("spectra.billing")
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
 

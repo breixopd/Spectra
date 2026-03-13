@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.services.ai.llm import LLMClient
 from app.services.ai.prompts import BASE_SYSTEM_PROMPT
 
-logger = logging.getLogger("spectra.ai.agents")
+logger = logging.getLogger(__name__)
 
 
 # --- Enums ---

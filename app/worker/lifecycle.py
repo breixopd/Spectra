@@ -10,7 +10,7 @@ from app.services.tools.models import ToolStatus
 
 from .helpers import _is_tool_installed, _sync_tool_status
 
-logger = logging.getLogger("spectra.worker")
+logger = logging.getLogger(__name__)
 
 
 async def startup() -> None:

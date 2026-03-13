@@ -24,7 +24,7 @@ from app.core.config import settings
 from app.core.telemetry import record_llm_call
 from app.services.ai.llm import LLMClient, LLMResponse
 
-logger = logging.getLogger("spectra.ai.router")
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 

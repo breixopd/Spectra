@@ -5,7 +5,7 @@ from pathlib import Path
 
 from app.services.tools.registry import get_registry
 
-logger = logging.getLogger("spectra.tools.installer")
+logger = logging.getLogger(__name__)
 
 
 class ToolInstaller:

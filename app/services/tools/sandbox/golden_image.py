@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger("spectra.sandbox.golden_image")
+logger = logging.getLogger(__name__)
 
 # Base image for the golden build (same as Dockerfile.tools)
 BASE_IMAGE = "kalilinux/kali-rolling:latest"

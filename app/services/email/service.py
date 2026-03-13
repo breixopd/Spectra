@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.services.email.providers import AbstractEmailProvider
 from app.services.email.templates import TEMPLATES, wrap_email
 
-logger = logging.getLogger("spectra.email.service")
+logger = logging.getLogger(__name__)
 
 
 def _get_provider() -> AbstractEmailProvider:

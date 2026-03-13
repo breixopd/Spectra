@@ -15,7 +15,7 @@ from fastapi import WebSocket
 from jose import JWTError
 from starlette.websockets import WebSocketState
 
-logger = logging.getLogger("spectra.websocket")
+logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:

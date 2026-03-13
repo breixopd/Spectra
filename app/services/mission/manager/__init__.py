@@ -13,7 +13,7 @@ from .execution import MissionExecutionManager
 from .lifecycle import MissionLifecycleManager
 from .steering import MissionSteeringManager
 
-logger = logging.getLogger("spectra.mission.manager")
+logger = logging.getLogger(__name__)
 
 
 class MissionManager:

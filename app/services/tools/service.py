@@ -38,7 +38,7 @@ from app.services.tools.safety_checks import (
 if TYPE_CHECKING:
     from app.services.mission.mission import Mission
 
-logger = logging.getLogger("spectra.tools.service")
+logger = logging.getLogger(__name__)
 
 try:
     import jsonschema

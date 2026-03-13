@@ -19,7 +19,7 @@ from typing import Any, ParamSpec, TypeVar
 from app.core.events import EventType, events
 from app.core.exceptions import CircuitBreakerOpenError
 
-logger = logging.getLogger("spectra.core.circuit_breaker")
+logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 T = TypeVar("T")

@@ -20,7 +20,7 @@ from typing import Any
 
 import httpx
 
-logger = logging.getLogger("spectra.ai.cve_intel")
+logger = logging.getLogger(__name__)
 
 # NVD API configuration
 NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"

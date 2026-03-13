@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-logger = logging.getLogger("spectra.mission.target_diff")
+logger = logging.getLogger(__name__)
 
 
 def _service_key(svc: dict[str, Any]) -> str:

@@ -8,7 +8,7 @@ from typing import Any
 
 from .helpers import _run_command
 
-logger = logging.getLogger("spectra.worker")
+logger = logging.getLogger(__name__)
 
 
 async def vpn_connect_job(config_path: str, vpn_type: str) -> dict[str, Any]:

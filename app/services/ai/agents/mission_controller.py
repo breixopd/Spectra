@@ -31,7 +31,7 @@ from app.services.ai.prompts import (
     MISSION_PLAN_PROMPT,
 )
 
-logger = logging.getLogger("spectra.ai.agents.mission")
+logger = logging.getLogger(__name__)
 
 
 # --- Enums ---

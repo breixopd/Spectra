@@ -17,7 +17,7 @@ from app.services.ai.agents.base import Agent, AgentAction, AgentContext, AgentR
 from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 
-logger = logging.getLogger("spectra.ai.agents.debrief")
+logger = logging.getLogger(__name__)
 
 
 class DebriefInput(BaseModel):

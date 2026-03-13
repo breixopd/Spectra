@@ -12,7 +12,7 @@ import time
 from app.core.config import settings
 from app.services.storage import get_storage_service
 
-logger = logging.getLogger("spectra.mission.demo_recorder")
+logger = logging.getLogger(__name__)
 
 
 class DemoRecorder:

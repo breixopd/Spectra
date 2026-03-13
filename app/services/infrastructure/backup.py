@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-logger = logging.getLogger("spectra.backup")
+logger = logging.getLogger(__name__)
 
 
 class BackupService:

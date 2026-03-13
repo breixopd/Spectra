@@ -9,7 +9,7 @@ import shutil
 from datetime import UTC, datetime
 from typing import Any
 
-logger = logging.getLogger("spectra.sandbox.image_scanner")
+logger = logging.getLogger(__name__)
 
 
 class ScanResult:

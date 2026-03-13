@@ -12,7 +12,7 @@ from typing import Any
 
 from app.core.config import settings
 
-logger = logging.getLogger("spectra.services.registry")
+logger = logging.getLogger(__name__)
 
 
 class ServiceRegistry:

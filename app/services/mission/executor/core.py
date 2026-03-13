@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from app.services.ai.llm import LLMClient
     from app.services.mission.mission import Mission
 
-logger = logging.getLogger("spectra.mission.executor")
+logger = logging.getLogger(__name__)
 
 # Agent dict keys mapped to their AgentRole enum values
 _REQUIRED_AGENTS: dict[str, AgentRole] = {

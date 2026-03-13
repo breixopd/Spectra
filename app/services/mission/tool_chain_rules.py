@@ -10,7 +10,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-logger = logging.getLogger("spectra.mission.tool_chain")
+logger = logging.getLogger(__name__)
 
 
 @dataclass

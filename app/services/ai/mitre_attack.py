@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-logger = logging.getLogger("spectra.ai.mitre_attack")
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # ATT&CK Tactic metadata (ID → display name)

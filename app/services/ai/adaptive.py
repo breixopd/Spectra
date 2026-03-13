@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-logger = logging.getLogger("spectra.ai.adaptive")
+logger = logging.getLogger(__name__)
 
 
 @dataclass

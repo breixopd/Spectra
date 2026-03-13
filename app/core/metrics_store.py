@@ -6,7 +6,7 @@ import time
 from collections import deque
 from typing import Any
 
-logger = logging.getLogger("spectra.metrics_store")
+logger = logging.getLogger(__name__)
 
 
 class MetricsStore:

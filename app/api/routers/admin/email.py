@@ -11,7 +11,7 @@ from app.api.dependencies import get_current_active_user
 from app.core.rbac import Permission, require_permission
 from app.models.user import User
 
-logger = logging.getLogger("spectra.admin.email")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

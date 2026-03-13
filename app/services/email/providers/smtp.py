@@ -8,7 +8,7 @@ from email.message import EmailMessage
 from app.core.config import settings
 from app.services.email.providers import AbstractEmailProvider
 
-logger = logging.getLogger("spectra.email.smtp")
+logger = logging.getLogger(__name__)
 
 
 class SMTPProvider(AbstractEmailProvider):

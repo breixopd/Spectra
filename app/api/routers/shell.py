@@ -23,7 +23,7 @@ from app.services.shell.session_manager import shell_manager
 from app.services.system.audit import log_event as audit_log_event
 
 router = APIRouter(prefix="/shell", tags=["Shell"])
-logger = logging.getLogger("spectra.api.shell")
+logger = logging.getLogger(__name__)
 
 KEEPALIVE_INTERVAL = 30  # seconds
 

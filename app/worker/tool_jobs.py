@@ -26,7 +26,7 @@ from .helpers import (
     with_retry,
 )
 
-logger = logging.getLogger("spectra.worker")
+logger = logging.getLogger(__name__)
 
 
 @with_retry()

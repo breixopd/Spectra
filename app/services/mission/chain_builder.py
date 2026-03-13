@@ -19,7 +19,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger("spectra.mission.chain_builder")
+logger = logging.getLogger(__name__)
 
 
 class ChainStage(BaseModel):

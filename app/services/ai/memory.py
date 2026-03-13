@@ -28,7 +28,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger("spectra.ai.memory")
+logger = logging.getLogger(__name__)
 
 MEMORY_DIR = Path("data/cache")
 

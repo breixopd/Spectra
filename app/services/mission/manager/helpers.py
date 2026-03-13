@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from app.services.mission.manager.steering import MissionSteeringManager
     from app.services.mission.mission import Mission
 
-logger = logging.getLogger("spectra.mission.manager.helpers")
+logger = logging.getLogger(__name__)
 
 
 async def run_debrief(

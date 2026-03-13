@@ -23,7 +23,7 @@ from app.services.system.report_templates import (
     list_report_templates,
 )
 
-logger = logging.getLogger("spectra.api.manual_helpers")
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Manual Helpers"])
 

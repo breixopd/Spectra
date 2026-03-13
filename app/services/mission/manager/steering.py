@@ -9,7 +9,7 @@ from app.models.attack_surface import AttackVector, VectorPriority
 from app.services.ai.agents.base import SteeringAction
 from app.services.mission.mission import Mission
 
-logger = logging.getLogger("spectra.mission.manager.steering")
+logger = logging.getLogger(__name__)
 
 
 class MissionSteeringManager:

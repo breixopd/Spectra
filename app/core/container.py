@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_maker
 
-logger = logging.getLogger("spectra.container")
+logger = logging.getLogger(__name__)
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

@@ -19,7 +19,7 @@ from app.services.system.runtime_settings import (
     upsert_system_config_values,
 )
 
-logger = logging.getLogger("spectra.services.system.settings_service")
+logger = logging.getLogger(__name__)
 
 _SETTINGS_LOCK = asyncio.Lock()
 

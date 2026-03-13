@@ -10,7 +10,7 @@ from app.core.config import get_settings
 from app.core.database import async_session_maker
 from app.models.infrastructure import Sandbox
 
-logger = logging.getLogger("spectra.sandbox.escalation")
+logger = logging.getLogger(__name__)
 
 # Tier escalation path — each tier escalates to the next
 TIER_ESCALATION_PATH = {

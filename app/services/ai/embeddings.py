@@ -11,7 +11,7 @@ import logging
 
 from app.core.config import settings
 
-logger = logging.getLogger("spectra.ai.embeddings")
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:

@@ -17,7 +17,7 @@ from app.core.config import settings
 from app.core.database import async_session_maker
 from app.services.ai.embeddings import EmbeddingService
 
-logger = logging.getLogger("spectra.ai.rag_postgres")
+logger = logging.getLogger(__name__)
 
 # --- Models ---
 

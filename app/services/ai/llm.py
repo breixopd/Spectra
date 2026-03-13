@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from app.core.config import settings
 
-logger = logging.getLogger("spectra.services.ai.llm")
+logger = logging.getLogger(__name__)
 
 
 # --- Response Types ---

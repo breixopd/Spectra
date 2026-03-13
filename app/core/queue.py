@@ -10,7 +10,7 @@ from sqlalchemy import select, update
 from app.core.database import async_session_maker
 from app.models.infrastructure import JobQueue
 
-logger = logging.getLogger("spectra.core.queue")
+logger = logging.getLogger(__name__)
 
 
 class PostgresJobQueue:

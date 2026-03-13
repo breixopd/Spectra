@@ -14,9 +14,9 @@ from app.core.rbac import Permission, require_permission
 from app.models.infrastructure import SystemContent
 from app.models.user import User
 
-logger = logging.getLogger("spectra.api.admin.content")
+logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/admin/content", tags=["Admin - Content"])
+router = APIRouter(tags=["Admin - Content"])
 
 
 class ContentCreate(BaseModel):
@@ -34,7 +34,7 @@ class ContentUpdate(BaseModel):
     sort_order: int | None = None
 
 
-@router.get("")
+@router.get("/api/admin/content")
 async def list_content(
     content_type: str | None = None,
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
@@ -60,7 +60,7 @@ async def list_content(
     ]
 
 
-@router.post("", status_code=201)
+@router.post("/api/admin/content", status_code=201)
 async def create_content(
     body: ContentCreate,
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
@@ -79,7 +79,7 @@ async def create_content(
     return {"id": item.id, "status": "created"}
 
 
-@router.put("/{content_id}")
+@router.put("/api/admin/content/{content_id}")
 async def update_content(
     content_id: str,
     body: ContentUpdate,
@@ -102,7 +102,7 @@ async def update_content(
     return {"id": item.id, "status": "updated"}
 
 
-@router.delete("/{content_id}")
+@router.delete("/api/admin/content/{content_id}")
 async def delete_content(
     content_id: str,
     _user: User = require_permission(Permission.MANAGE_SETTINGS),

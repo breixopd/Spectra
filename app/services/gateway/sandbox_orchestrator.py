@@ -7,7 +7,7 @@ from typing import Any
 
 from app.services.gateway.http_client import GatewayClient
 
-logger = logging.getLogger("spectra.gateway.sandbox")
+logger = logging.getLogger(__name__)
 
 
 class SandboxOrchestratorClient:

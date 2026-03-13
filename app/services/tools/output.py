@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from app.services.mission.mission import Mission
     from app.services.tools.models import ToolExecutionResult
 
-logger = logging.getLogger("spectra.tools.output")
+logger = logging.getLogger(__name__)
 
 # --- Tool name helpers -------------------------------------------------------
 

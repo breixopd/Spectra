@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends
 from app.api.dependencies import get_current_active_user, get_current_superuser
 from app.models.user import User
 
-logger = logging.getLogger("spectra.api.system")
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 

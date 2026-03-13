@@ -8,7 +8,7 @@ from starlette.status import HTTP_403_FORBIDDEN
 
 from app.core.config import settings
 
-logger = logging.getLogger("spectra.middleware")
+logger = logging.getLogger(__name__)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

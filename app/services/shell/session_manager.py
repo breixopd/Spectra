@@ -20,7 +20,7 @@ from fastapi import WebSocket
 
 from app.core.constants import SHELL_SOCKET_RECV_BYTES
 
-logger = logging.getLogger("spectra.shell.manager")
+logger = logging.getLogger(__name__)
 
 ROUTING_DIRECT = "direct"
 ROUTING_SANDBOX = "sandbox"

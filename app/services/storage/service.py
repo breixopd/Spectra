@@ -13,7 +13,7 @@ from app.core.config import settings
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger("spectra.storage")
+logger = logging.getLogger(__name__)
 
 _storage_service: StorageService | None = None
 
@@ -183,7 +183,10 @@ class StorageService:
                 return self._local_path(bucket, key).exists()
         except self._client_error:
             return False
+        except (FileNotFoundError, OSError):
+            return False
         except Exception:
+            logger.warning("Unexpected error checking existence: %s/%s", bucket, key, exc_info=True)
             return False
 
     async def list_objects(self, bucket: str, prefix: str = "") -> list[str]:

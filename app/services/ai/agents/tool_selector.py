@@ -26,7 +26,7 @@ from app.services.ai.prompts import TOOL_SELECTION_PROMPT
 from app.services.tools.models import RiskLevel, ToolCapability, ToolCategory
 from app.services.tools.registry import get_registry
 
-logger = logging.getLogger("spectra.ai.agents.tool_selector")
+logger = logging.getLogger(__name__)
 
 
 # --- Input/Output Models ---

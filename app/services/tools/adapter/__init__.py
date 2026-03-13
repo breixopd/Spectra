@@ -28,7 +28,7 @@ from app.services.tools.models import (
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger("spectra.tools.adapter")
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "CommandToolAdapter",

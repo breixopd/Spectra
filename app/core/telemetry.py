@@ -19,7 +19,7 @@ from datetime import datetime
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
-logger = logging.getLogger("spectra.telemetry")
+logger = logging.getLogger(__name__)
 
 P = ParamSpec("P")
 T = TypeVar("T")

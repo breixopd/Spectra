@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.core.encryption import _derive_fernet_key, _get_default_secret
 from app.services.storage import get_storage_service
 
-logger = logging.getLogger("spectra.mission.report")
+logger = logging.getLogger(__name__)
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 SEVERITY_COLORS = {
