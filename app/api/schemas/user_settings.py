@@ -1,6 +1,10 @@
 """Schemas for user settings / preferences API."""
 
-from pydantic import BaseModel
+import ipaddress
+from typing import Literal
+from urllib.parse import urlparse
+
+from pydantic import BaseModel, field_validator
 
 
 class UserSettingsResponse(BaseModel):
@@ -41,7 +45,29 @@ class UserSettingsUpdate(BaseModel):
     notify_on_mission_complete: bool | None = None
     notify_on_critical_finding: bool | None = None
     # Mission defaults
-    default_scan_mode: str | None = None
-    default_report_format: str | None = None
+    default_scan_mode: Literal["autonomous", "guided", "manual"] | None = None
+    default_report_format: Literal["pdf", "html", "json"] | None = None
     # UI
     timezone: str | None = None
+
+    @field_validator("llm_api_base_url", "embedding_api_base_url", "webhook_url", mode="before")
+    @classmethod
+    def validate_url_not_internal(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return v
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL must use http or https scheme")
+        hostname = parsed.hostname or ""
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                raise ValueError("URL must not point to internal/private IP addresses")
+        except ValueError as e:
+            if "internal" in str(e) or "private" in str(e):
+                raise
+            # Not an IP — it's a hostname, check for obvious internal names
+            blocked_hosts = {"localhost", "127.0.0.1", "0.0.0.0", "metadata.google.internal", "169.254.169.254"}
+            if hostname.lower() in blocked_hosts:
+                raise ValueError("URL must not point to internal services")
+        return v

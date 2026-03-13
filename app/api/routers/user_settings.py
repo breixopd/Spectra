@@ -2,15 +2,18 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user
 from app.api.schemas.user_settings import UserSettingsResponse, UserSettingsUpdate
 from app.core.database import get_async_session
+from app.core.security import encrypt_byok_key
+from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.models.user_preferences import UserPreferences
+from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +22,13 @@ router = APIRouter(prefix="/user/settings", tags=["User Settings"])
 BYOK_FIELDS = frozenset({
     "llm_api_key", "llm_api_base_url", "llm_model",
     "embedding_api_key", "embedding_api_base_url", "embedding_model",
+})
+
+ALLOWED_SETTINGS_FIELDS = frozenset({
+    "llm_api_key", "llm_api_base_url", "llm_model",
+    "embedding_api_key", "embedding_api_base_url", "embedding_model",
+    "email_notifications", "notify_on_mission_complete", "notify_on_critical_finding",
+    "webhook_url", "default_scan_mode", "default_report_format", "timezone",
 })
 
 
@@ -63,6 +73,7 @@ async def get_user_settings(
 @router.put("", response_model=UserSettingsResponse)
 async def update_user_settings(
     body: UserSettingsUpdate,
+    request: Request,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -84,16 +95,35 @@ async def update_user_settings(
         prefs = UserPreferences(user_id=str(user.id))
         session.add(prefs)
 
+    # Encrypt BYOK API keys before storing
+    if "llm_api_key" in updates and updates["llm_api_key"]:
+        updates["llm_api_key"] = encrypt_byok_key(updates["llm_api_key"])
+    if "embedding_api_key" in updates and updates["embedding_api_key"]:
+        updates["embedding_api_key"] = encrypt_byok_key(updates["embedding_api_key"])
+
     for key, value in updates.items():
-        setattr(prefs, key, value)
+        if key in ALLOWED_SETTINGS_FIELDS:
+            setattr(prefs, key, value)
 
     await session.commit()
     await session.refresh(prefs)
+
+    try:
+        await audit_log_event(
+            session, AuditEventType.SETTINGS_CHANGED,
+            user_id=str(user.id),
+            details={"action": "settings_updated", "fields": list(updates.keys())},
+            request=request,
+        )
+    except Exception:
+        pass  # Audit failure shouldn't block the operation
+
     return _prefs_to_response(prefs)
 
 
 @router.delete("/byok", status_code=200)
 async def clear_byok(
+    request: Request,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -106,4 +136,15 @@ async def clear_byok(
         setattr(prefs, field, None)
 
     await session.commit()
+
+    try:
+        await audit_log_event(
+            session, AuditEventType.SETTINGS_CHANGED,
+            user_id=str(user.id),
+            details={"action": "byok_cleared"},
+            request=request,
+        )
+    except Exception:
+        pass
+
     return {"detail": "BYOK configuration cleared"}

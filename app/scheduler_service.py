@@ -10,7 +10,7 @@ Runs without an HTTP server. Handles:
 import asyncio
 import logging
 import signal
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 logger = logging.getLogger("spectra.scheduler")
 
@@ -57,7 +57,7 @@ class SchedulerService:
     async def _quota_reset(self):
         """Reset daily API usage counters. Runs checking every hour, resets at midnight UTC."""
         while self.running:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
             sleep_seconds = (tomorrow - now).total_seconds()
             await asyncio.sleep(min(sleep_seconds, 3600))
