@@ -64,3 +64,56 @@ class InstallToolResponse(BaseModel):
     tool_id: str
     status: str
     message: str
+
+
+class ToolStatsResponse(BaseModel):
+    """Execution statistics for a tool."""
+
+    tool_id: str
+    total_count: int = 0
+    success_count: int = 0
+    fail_count: int = 0
+    last_run: str | None = None
+    last_duration: float | None = None
+    error: str | None = None
+
+
+class ToolMetadataResponse(BaseModel):
+    ai_description: str = ""
+    capabilities: list[str] = []
+    risk_level: str = "low"
+    tags: list[str] = []
+    supported_targets: list[str] = []
+    use_cases: list[str] = []
+    limitations: list[str] = []
+
+
+class ToolStealthResponse(BaseModel):
+    rate_limit: int | None = None
+    delay_ms: int | None = None
+    extra_args: dict[str, str] = {}
+
+
+class ToolUIResponse(BaseModel):
+    icon: str = ""
+    color: str = ""
+
+
+class ToolExecConfigResponse(BaseModel):
+    """Full execution configuration for a tool."""
+
+    id: str
+    name: str
+    version: str
+    category: str
+    description: str
+    status: str
+    command: str
+    args_template: str
+    timeout: int
+    placeholders: list[str]
+    arg_modifiers: dict[str, str] = {}
+    metadata: ToolMetadataResponse
+    stealth: ToolStealthResponse
+    parsing_format: str = ""
+    ui: ToolUIResponse

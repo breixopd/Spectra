@@ -60,8 +60,13 @@ from app.api.schemas.tool import (
     InstallToolResponse,
     PluginUploadResponse,
     ToolDetailResponse,
+    ToolExecConfigResponse,
     ToolListResponse,
+    ToolMetadataResponse,
+    ToolStatsResponse,
+    ToolStealthResponse,
     ToolSummary,
+    ToolUIResponse,
 )
 
 __all__ = [
@@ -106,6 +111,11 @@ __all__ = [
     "InstallToolResponse",
     "PluginUploadResponse",
     "ToolDetailResponse",
+    "ToolExecConfigResponse",
     "ToolListResponse",
+    "ToolMetadataResponse",
+    "ToolStatsResponse",
+    "ToolStealthResponse",
     "ToolSummary",
+    "ToolUIResponse",
 ]
