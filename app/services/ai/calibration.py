@@ -140,8 +140,8 @@ class ConfidenceCalibrator:
                             task_type=d["task"],
                             timestamp=datetime.fromisoformat(d["ts"]),
                         ))
-        except Exception:
-            pass
+        except (OSError, ValueError) as exc:
+            logger.debug("Failed to persist calibration data: %s", exc)
 
 
 # Singleton

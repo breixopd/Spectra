@@ -18,7 +18,7 @@ from app.services.ai.agents.safety import SafetySupervisorAgent
 from app.services.ai.consensus import VotingSystem
 from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.execution import ensure_tool_installed, execute_via_worker
-from app.services.tools.models import ToolExecutionRequest, ToolExecutionResult
+from app.services.tools.models import RegisteredTool, ToolExecutionRequest, ToolExecutionResult
 from app.services.tools.output import (
     create_error_result,
     log_success,
@@ -245,7 +245,7 @@ class ToolExecutionService:
         tool_name: str,
         target: str,
         args: dict[str, Any] | None,
-    ) -> tuple[Any, ToolExecutionResult | None]:
+    ) -> tuple[RegisteredTool | None, ToolExecutionResult | None]:
         """Validate tool name, resolve from registry, auto-install if needed."""
         if not validate_tool_name(tool_name):
             mission.log(f"Invalid tool name format: {tool_name}")
@@ -293,7 +293,7 @@ class ToolExecutionService:
     def _build_execution_request(
         self,
         mission: Mission,
-        tool: Any,
+        tool: RegisteredTool,
         tool_name: str,
         target: str,
         args: dict[str, Any] | None,
@@ -379,7 +379,7 @@ class ToolExecutionService:
     async def _dispatch_and_process_result(
         self,
         mission: Mission,
-        tool: Any,
+        tool: RegisteredTool,
         tool_name: str,
         target: str,
         args: dict[str, Any] | None,
