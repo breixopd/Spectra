@@ -31,8 +31,13 @@ from app.api.schemas import (
     InstallToolResponse,
     PluginUploadResponse,
     ToolDetailResponse,
+    ToolExecConfigResponse,
     ToolListResponse,
+    ToolMetadataResponse,
+    ToolStatsResponse,
+    ToolStealthResponse,
     ToolSummary,
+    ToolUIResponse,
 )
 from app.core.config import settings
 from app.core.rate_limit import limiter
@@ -332,35 +337,35 @@ async def get_tool_execution_config(
     system_placeholders = {"output_file"}
     user_placeholders = [p for p in placeholders if p not in system_placeholders]
 
-    return {
-        "id": config.id,
-        "name": config.name,
-        "version": config.version,
-        "category": config.category,
-        "description": config.description,
-        "status": tool.status,
-        "command": config.execution.command,
-        "args_template": config.execution.args_template,
-        "timeout": config.execution.timeout,
-        "placeholders": user_placeholders,
-        "arg_modifiers": config.execution.arg_modifiers,
-        "metadata": {
-            "ai_description": config.metadata.ai_description,
-            "capabilities": [c for c in config.metadata.capabilities],
-            "risk_level": config.metadata.risk_level,
-            "tags": config.metadata.tags,
-            "supported_targets": [t for t in config.metadata.supported_targets],
-            "use_cases": config.metadata.use_cases,
-            "limitations": config.metadata.limitations,
-        },
-        "stealth": {
-            "rate_limit": config.stealth.rate_limit if config.stealth else None,
-            "delay_ms": config.stealth.delay_ms if config.stealth else None,
-            "extra_args": config.stealth.extra_args if config.stealth else {},
-        },
-        "parsing_format": config.parsing.format,
-        "ui": {"icon": config.ui.icon, "color": config.ui.color},
-    }
+    return ToolExecConfigResponse(
+        id=config.id,
+        name=config.name,
+        version=config.version,
+        category=config.category,
+        description=config.description,
+        status=tool.status,
+        command=config.execution.command,
+        args_template=config.execution.args_template,
+        timeout=config.execution.timeout,
+        placeholders=user_placeholders,
+        arg_modifiers=config.execution.arg_modifiers,
+        metadata=ToolMetadataResponse(
+            ai_description=config.metadata.ai_description,
+            capabilities=list(config.metadata.capabilities),
+            risk_level=config.metadata.risk_level,
+            tags=config.metadata.tags,
+            supported_targets=list(config.metadata.supported_targets),
+            use_cases=config.metadata.use_cases,
+            limitations=config.metadata.limitations,
+        ),
+        stealth=ToolStealthResponse(
+            rate_limit=config.stealth.rate_limit if config.stealth else None,
+            delay_ms=config.stealth.delay_ms if config.stealth else None,
+            extra_args=config.stealth.extra_args if config.stealth else {},
+        ),
+        parsing_format=config.parsing.format,
+        ui=ToolUIResponse(icon=config.ui.icon, color=config.ui.color),
+    )
 
 
 @router.post("/upload", response_model=PluginUploadResponse)
@@ -631,41 +636,23 @@ async def get_tool_stats(
 
     cache = get_cache()
     if not cache:
-        return {
-            "tool_id": tool_id,
-            "total_count": 0,
-            "success_count": 0,
-            "fail_count": 0,
-            "last_run": None,
-            "last_duration": None,
-            "error": "Cache not available",
-        }
+        return ToolStatsResponse(tool_id=tool_id, error="Cache not available")
 
     try:
         key = f"spectra:tool_stats:{tool_id}"
         stats = await cache.get(key)
 
         if not stats or not isinstance(stats, dict):
-            return {
-                "tool_id": tool_id,
-                "total_count": 0,
-                "success_count": 0,
-                "fail_count": 0,
-                "last_run": None,
-                "last_duration": None,
-            }
+            return ToolStatsResponse(tool_id=tool_id)
 
-        return {
-            "tool_id": tool_id,
-            "total_count": int(stats.get("total_count", 0)),
-            "success_count": int(stats.get("success_count", 0)),
-            "fail_count": int(stats.get("fail_count", 0)),
-            "last_run": stats.get("last_run"),
-            "last_duration": float(stats["last_duration"]) if stats.get("last_duration") else None,
-        }
+        return ToolStatsResponse(
+            tool_id=tool_id,
+            total_count=int(stats.get("total_count", 0)),
+            success_count=int(stats.get("success_count", 0)),
+            fail_count=int(stats.get("fail_count", 0)),
+            last_run=stats.get("last_run"),
+            last_duration=float(stats["last_duration"]) if stats.get("last_duration") else None,
+        )
     except Exception as e:
         logger.error("Failed to get stats for %s: %s", tool_id, e)
-        return {
-            "tool_id": tool_id,
-            "error": "Failed to retrieve statistics due to an internal error.",
-        }
+        return ToolStatsResponse(tool_id=tool_id, error="Failed to retrieve statistics due to an internal error.")

@@ -12,6 +12,7 @@ from app.services.tools.models import ToolExecutionRequest
 if TYPE_CHECKING:
     from app.services.ai.agents.safety import SafetySupervisorAgent
     from app.services.ai.consensus import VotingSystem
+    from app.services.ai.llm import LLMClient
     from app.services.mission.mission import Mission
     from app.services.tools.adapter import CommandToolAdapter
 
@@ -70,7 +71,7 @@ async def perform_safety_check_with_retry(
     builder: CommandToolAdapter,
     output_dir,
     safety_supervisor: SafetySupervisorAgent,
-    llm_client: Any,
+    llm_client: LLMClient,
     max_retries: int = 2,
 ) -> tuple[bool, str, dict[str, Any] | None]:
     """Run safety check with automatic command fixing on failure."""
@@ -119,7 +120,7 @@ async def _try_fix_command(
     target: str,
     args: dict[str, Any] | None,
     error_reason: str,
-    llm_client: Any,
+    llm_client: LLMClient,
 ) -> dict[str, Any] | None:
     """Use LLM to try to fix a blocked command."""
     try:
