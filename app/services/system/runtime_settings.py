@@ -266,8 +266,8 @@ async def reset_runtime_ai_caches(preload: bool = False) -> None:
         svc = EmbeddingService()
         svc._api_ready = False
         svc._litellm_kwargs = {}
-    except Exception:
-        pass
+    except (ImportError, AttributeError) as exc:
+        logger.debug("Embedding service reset skipped: %s", exc)
 
     if preload:
         await get_global_llm_client()

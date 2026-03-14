@@ -50,6 +50,7 @@ from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
 from app.models.user import User
 from app.services.tools.models import (
+    RegisteredTool,
     ToolCategory,
     ToolConfig,
     ToolStatus,
@@ -72,6 +73,20 @@ router = APIRouter(prefix="/tools", tags=["Tools"])
 def get_tool_registry() -> ToolRegistry:
     """Dependency to get the tool registry."""
     return get_registry()
+
+
+def _to_summary(t: RegisteredTool) -> ToolSummary:
+    """Convert a RegisteredTool to a ToolSummary."""
+    return ToolSummary(
+        id=t.config.id,
+        name=t.config.name,
+        version=t.config.version,
+        category=t.config.category,
+        description=t.config.description,
+        status=t.status,
+        icon=t.config.ui.icon,
+        color=t.config.ui.color,
+    )
 
 
 # --- Endpoints ---
@@ -254,19 +269,7 @@ async def list_tools(
     if status:
         tools = [t for t in tools if t.status == status]
 
-    summaries = [
-        ToolSummary(
-            id=t.config.id,
-            name=t.config.name,
-            version=t.config.version,
-            category=t.config.category,
-            description=t.config.description,
-            status=t.status,
-            icon=t.config.ui.icon,
-            color=t.config.ui.color,
-        )
-        for t in tools
-    ]
+    summaries = [_to_summary(t) for t in tools]
 
     return ToolListResponse(tools=summaries, total=len(summaries))
 
@@ -279,19 +282,7 @@ async def list_available_tools(
     """List only tools that are ready to use."""
     tools = registry.get_available_tools()
 
-    summaries = [
-        ToolSummary(
-            id=t.config.id,
-            name=t.config.name,
-            version=t.config.version,
-            category=t.config.category,
-            description=t.config.description,
-            status=t.status,
-            icon=t.config.ui.icon,
-            color=t.config.ui.color,
-        )
-        for t in tools
-    ]
+    summaries = [_to_summary(t) for t in tools]
 
     return ToolListResponse(tools=summaries, total=len(summaries))
 

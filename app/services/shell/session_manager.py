@@ -302,8 +302,8 @@ class ShellSessionManager:
                 self.listeners.pop(port, None)
                 try:
                     raw_sock.close()
-                except Exception:
-                    pass
+                except OSError:
+                    pass  # Socket already closed
             except Exception as e:
                 logger.error("Sandbox listener error for session %s: %s", session_id, e)
                 self.listeners.pop(port, None)
@@ -358,8 +358,8 @@ class ShellSessionManager:
             if session._exec_handle:
                 try:
                     session._exec_handle.output.close()
-                except Exception:
-                    pass
+                except OSError:
+                    pass  # Handle already closed
             session.active = False
             del self.sessions[session_id]
 
@@ -383,8 +383,8 @@ class ShellSessionManager:
                     if session._exec_handle:
                         try:
                             session._exec_handle.output.close()
-                        except Exception:
-                            pass
+                        except OSError:
+                            pass  # Handle already closed
 
 
 shell_manager = ShellSessionManager()

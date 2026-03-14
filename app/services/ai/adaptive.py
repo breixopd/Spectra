@@ -102,6 +102,7 @@ class AdaptiveScanner:
         import json
 
         from sqlalchemy import text
+        from sqlalchemy.exc import SQLAlchemyError
 
         from app.core.database import async_session_maker
 
@@ -125,14 +126,15 @@ class AdaptiveScanner:
                     {"value": json.dumps(data)}
                 )
                 await session.commit()
-        except Exception:
-            pass
+        except (OSError, SQLAlchemyError) as exc:
+            logger.debug("Failed to persist adaptive scan data: %s", exc)
 
     async def restore(self):
         """Restore scan history from DB."""
         import json
 
         from sqlalchemy import text
+        from sqlalchemy.exc import SQLAlchemyError
 
         from app.core.database import async_session_maker
 
@@ -152,8 +154,8 @@ class AdaptiveScanner:
                             scan_duration_seconds=d.get("duration", 0),
                             timestamp=datetime.fromisoformat(d["ts"]),
                         ))
-        except Exception:
-            pass
+        except (OSError, SQLAlchemyError, json.JSONDecodeError) as exc:
+            logger.debug("Failed to restore adaptive scan data: %s", exc)
 
 
 # Singleton
