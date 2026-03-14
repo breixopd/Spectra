@@ -639,8 +639,8 @@ async def update_profile(
                 details={"action": "email_changed", "old_email": old_email, "new_email": body.email},
                 request=request,
             )
-        except Exception:
-            pass
+        except (OSError, RuntimeError) as exc:
+            logger.warning("Failed to log audit event for email change: %s", exc)
     else:
         await session.commit()
     return {"detail": "Profile updated"}

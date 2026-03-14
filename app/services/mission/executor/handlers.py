@@ -64,7 +64,7 @@ def _get_known_tools() -> set[str]:
         registry = get_registry()
         if registry:
             return {t.config.id.lower() for t in registry.list_tools()}
-    except (ImportError, OSError, RuntimeError) as e:
+    except (ImportError, OSError, RuntimeError, AttributeError) as e:
         logger.debug("Failed to get tool registry: %s", e)
     # Fallback if registry not available
     return {
@@ -850,7 +850,7 @@ class TaskDispatcher:
                         mission, context, "webapp", app.model_dump()
                     )
 
-        except (OSError, RuntimeError, ValueError) as e:
+        except (OSError, RuntimeError, ValueError, KeyError, TypeError, AttributeError) as e:
             logger.warning("Failed to update attack surface: %s", e)
 
     async def _generate_dynamic_vectors(
@@ -885,5 +885,5 @@ class TaskDispatcher:
                     # Executor used _broadcast("vector_update").
                     pass
 
-        except (OSError, RuntimeError, ValueError) as e:
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
             logger.error("Dynamic vector generation failed: %s", e)
