@@ -234,24 +234,26 @@ class ToolRegistry:
             try:
                 key = f"spectra:tool_status:{tool_id}"
                 status_data = await cache.get(key)
-
-                if status_data and isinstance(status_data, dict):
-                    status_str = status_data.get("status")
-                    if status_str:
-                        try:
-                            new_status = ToolStatus(status_str)
-                            if tool.status != new_status:
-                                tool.status = new_status
-                                updated += 1
-                                logger.debug(
-                                    "Updated %s status to %s", tool_id, new_status
-                                )
-                        except ValueError:
-                            logger.warning(
-                                "Unknown status for %s: %s", tool_id, status_str
-                            )
             except Exception as e:
                 logger.debug("Failed to get status for %s: %s", tool_id, e)
+                continue
+
+            if not status_data or not isinstance(status_data, dict):
+                continue
+            status_str = status_data.get("status")
+            if not status_str:
+                continue
+
+            try:
+                new_status = ToolStatus(status_str)
+            except ValueError:
+                logger.warning("Unknown status for %s: %s", tool_id, status_str)
+                continue
+
+            if tool.status != new_status:
+                tool.status = new_status
+                updated += 1
+                logger.debug("Updated %s status to %s", tool_id, new_status)
 
         return updated
 

@@ -299,21 +299,25 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 )
                 if quick:
                     # Find the first quick-select tool that exists in candidates
+                    matched = None
                     for tool_id in quick:
                         matched = next((t for t in candidates if t.config.id == tool_id), None)
                         if matched:
-                            logger.info("Quick-select: %s for %s/%s", tool_id, primary_svc, input_data.current_phase)
-                            action = ToolSelectorOutput(
-                                tool_name=matched.config.id,
-                                target=input_data.target,
-                                tool_args={},
-                                confidence=0.85,
-                                risk_level=self._map_risk_level(matched.config.metadata.risk_level),
-                                reasoning=f"Deterministic selection for {primary_svc}/{input_data.current_phase}",
-                                alternatives=quick[1:],
-                                estimated_duration=matched.config.execution.timeout,
-                            )
-                            return AgentResult(success=True, action=action)
+                            break
+
+                    if matched:
+                        logger.info("Quick-select: %s for %s/%s", matched.config.id, primary_svc, input_data.current_phase)
+                        action = ToolSelectorOutput(
+                            tool_name=matched.config.id,
+                            target=input_data.target,
+                            tool_args={},
+                            confidence=0.85,
+                            risk_level=self._map_risk_level(matched.config.metadata.risk_level),
+                            reasoning=f"Deterministic selection for {primary_svc}/{input_data.current_phase}",
+                            alternatives=quick[1:],
+                            estimated_duration=matched.config.execution.timeout,
+                        )
+                        return AgentResult(success=True, action=action)
 
             # Use LLM to select the best tool with rich metadata
             # We no longer hardcode phase filters - we let the LLM decide based on tool descriptions
