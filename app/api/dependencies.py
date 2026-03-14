@@ -5,7 +5,7 @@ Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy import func, select
@@ -18,7 +18,27 @@ from app.repositories.exploit import ExploitRepository
 from app.repositories.finding import FindingRepository
 from app.repositories.target import TargetRepository
 
+logger = __import__("logging").getLogger(__name__)
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
+
+
+def get_ui_user(request: Request) -> dict | None:
+    """Extract and validate user from cookie. Returns None if not authenticated."""
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        from app.core.security import is_token_blacklisted
+
+        if is_token_blacklisted(token):
+            return None
+        payload = decode_token(token)
+        if payload and payload.get("sub"):
+            return payload
+    except Exception:
+        logger.debug("UI token decode failed", exc_info=True)
+    return None
 
 
 async def get_current_user(

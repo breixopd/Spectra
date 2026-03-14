@@ -103,11 +103,12 @@ class MissionManager:
     async def resume_mission_from_checkpoint(self, mission_id: str) -> str | None:
         """Resume a mission from its DB checkpoint.
 
-        Returns the mission ID on success, None on failure.
+        Returns the mission ID on success, None if no checkpoint exists.
         """
         await self._ensure_agents()
-        mission = await self.lifecycle.resume_mission_from_db(mission_id)
-        if not mission:
+        try:
+            mission = await self.lifecycle.resume_mission_from_db(mission_id)
+        except ValueError:
             return None
 
         import asyncio

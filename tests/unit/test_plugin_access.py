@@ -53,7 +53,7 @@ class TestToolboxPageAccess:
         request.cookies = {"access_token": "valid-token"}
 
         with (
-            patch("app.api.routers.ui._get_ui_user", return_value={"sub": "admin"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "admin"}),
             patch("app.api.routers.ui.async_session_maker") as mock_sm,
             patch("app.api.routers.ui._is_admin_user", return_value=True),
             patch("app.api.routers.ui.templates") as mock_templates,
@@ -86,7 +86,7 @@ class TestToolboxPageAccess:
         request.cookies = {"access_token": "valid-token"}
 
         with (
-            patch("app.api.routers.ui._get_ui_user", return_value={"sub": "operator"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "operator"}),
             patch("app.api.routers.ui.async_session_maker") as mock_sm,
             patch("app.api.routers.ui._is_admin_user", return_value=False),
             patch("app.api.routers.ui.templates") as mock_templates,
@@ -127,7 +127,7 @@ class TestPluginCreatorAccess:
         request = MagicMock()
 
         with (
-            patch("app.api.routers.ui._get_ui_user", return_value={"sub": "operator"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "operator"}),
             patch("app.api.routers.ui.async_session_maker") as mock_sm,
             patch("app.api.routers.ui._is_admin_user", return_value=False),
         ):
@@ -154,7 +154,7 @@ class TestPluginCreatorAccess:
         request = MagicMock()
 
         with (
-            patch("app.api.routers.ui._get_ui_user", return_value={"sub": "admin"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "admin"}),
             patch("app.api.routers.ui.async_session_maker") as mock_sm,
             patch("app.api.routers.ui._is_admin_user", return_value=True),
             patch("app.api.routers.ui.templates") as mock_templates,
@@ -185,7 +185,7 @@ class TestPluginCreatorAccess:
 
         request = MagicMock()
 
-        with patch("app.api.routers.ui._get_ui_user", return_value=None):
+        with patch("app.api.routers.ui.get_ui_user", return_value=None):
             resp = await plugin_creator_page(request)
 
             assert isinstance(resp, RedirectResponse)

@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies import get_ui_user
 from app.api.schemas import (
     PaginatedResponse,
     UserAdminResponse,
@@ -37,26 +38,10 @@ templates.env.globals["app_name"] = settings.APP_NAME
 templates.env.globals["version"] = __version__
 
 
-def _get_ui_user(request: Request) -> dict | None:
-    token = request.cookies.get("access_token")
-    if not token:
-        return None
-    try:
-        from app.core.security import decode_token, is_token_blacklisted
-
-        if is_token_blacklisted(token):
-            return None
-        payload = decode_token(token)
-        if payload and payload.get("sub"):
-            return payload
-    except Exception:
-        return None
-
-
 @router.get("/admin", response_class=HTMLResponse, include_in_schema=False)
 async def admin_page(request: Request):
     """Serve the admin panel UI."""
-    user = _get_ui_user(request)
+    user = get_ui_user(request)
     if not user:
         from fastapi.responses import RedirectResponse
 
