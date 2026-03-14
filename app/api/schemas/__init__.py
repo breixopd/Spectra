@@ -56,17 +56,23 @@ from app.api.schemas.system import (
     UserUpdateRequest,
 )
 from app.api.schemas.tool import (
+    CommandInfoResponse,
     InstallToolRequest,
     InstallToolResponse,
+    PluginSaveResponse,
     PluginUploadResponse,
+    TestExecutionResponse,
     ToolDetailResponse,
     ToolExecConfigResponse,
     ToolListResponse,
     ToolMetadataResponse,
+    ToolQueueResponse,
+    ToolRemoveResponse,
     ToolStatsResponse,
     ToolStealthResponse,
     ToolSummary,
     ToolUIResponse,
+    ValidationResponse,
 )
 
 __all__ = [

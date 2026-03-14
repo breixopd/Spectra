@@ -206,165 +206,27 @@ class ToolExecutionService:
         try:
             tool_name = normalize_tool_name(tool_name)
 
-            if not validate_tool_name(tool_name):
-                mission.log(f"Invalid tool name format: {tool_name}")
-                return create_error_result(tool_name, target, "Invalid tool name")
+            tool, error = await self._validate_and_resolve_tool(
+                mission, tool_name, target, args,
+            )
+            if error is not None:
+                return error
 
-            registry = get_registry()
-            await registry.sync_status_from_cache()
-            tool = registry.get_tool(tool_name)
-
-            if not tool:
-                mission.log(f"Tool {tool_name} not found in registry")
-                return create_error_result(tool_name, target, "Tool not available")
-
-            # Auto-install tool if not ready
-            if not tool.is_available:
-                mission.log(f"Tool {tool_name} not installed, installing...")
-                install_success = await ensure_tool_installed(
-                    tool_name, self.INSTALL_TIMEOUT
-                )
-                if not install_success:
-                    mission.log(f"Failed to install {tool_name}")
-                    return create_error_result(
-                        tool_name, target, "Tool installation failed"
-                    )
-                mission.log(f"Tool {tool_name} installed successfully")
-                tool = registry.get_tool(tool_name)
-
-            # Validate args against schema if available
-            if tool.config.execution.args_schema:
-                if HAS_JSONSCHEMA:
-                    try:
-                        jsonschema.validate(
-                            instance=args or {}, schema=tool.config.execution.args_schema
-                        )
-                    except jsonschema.ValidationError as e:
-                        return create_error_result(
-                            tool_name, target, f"Invalid arguments: {e}"
-                        )
-                else:
-                    logger.warning(
-                        "Skipping argument validation for %s — jsonschema not installed",
-                        tool_name,
-                    )
-
-            # Preparation
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            run_id = f"{tool_name}_{timestamp}_{uuid.uuid4().hex[:4]}"
-            output_dir = prepare_output_directory(mission.id, run_id)
-
-            adapter = CommandToolAdapter(tool.config)
-
-            request = ToolExecutionRequest(
-                tool_id=tool_name,
-                target=target,
-                args=args or {},
-                timeout=timeout,
+            request, adapter, full_command, output_dir = self._build_execution_request(
+                mission, tool, tool_name, target, args, timeout,
             )
 
-            full_command = adapter.builder.build_command(
-                request, output_dir=str(output_dir)
+            full_command, blocked = await self._apply_safety_and_consensus(
+                mission, tool_name, target, args, risk_level,
+                adapter, output_dir, request, full_command,
             )
+            if blocked is not None:
+                return blocked
 
-            args_str = (
-                ", ".join(f"{k}={v}" for k, v in (args or {}).items())
-                if args
-                else "default"
+            result = await self._dispatch_and_process_result(
+                mission, tool, tool_name, target, args,
+                request, adapter, full_command, output_dir,
             )
-            mission.log(
-                f"[EXEC] Executing: {tool_name} | Target: {target} | Args: {args_str}"
-            )
-            mission.log(
-                f"[CMD] Command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}"
-            )
-
-            # Safety check with auto-fix retry
-            is_safe, reason, fixed_args = await self._perform_safety_check_with_retry(
-                mission, full_command, tool_name, target, args, adapter, output_dir
-            )
-            if not is_safe:
-                mission.record_tool_run(
-                    tool_name,
-                    args=args,
-                    command=full_command,
-                    success=False,
-                    error=f"Safety blocked: {reason}",
-                )
-                return create_error_result(
-                    tool_name, target, f"Blocked by Safety Supervisor: {reason}"
-                )
-
-            if fixed_args is not None:
-                request.args = fixed_args
-                full_command = adapter.build_command(
-                    request, output_dir=str(output_dir)
-                )
-                mission.log(
-                    f"[CMD] Fixed command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}"
-                )
-
-            # Consensus Check (High Risk)
-            if risk_level in ("high", "critical"):
-                is_approved = await self._perform_consensus_check(
-                    mission, tool_name, risk_level
-                )
-                if not is_approved:
-                    return create_error_result(
-                        tool_name, target, "Blocked by Consensus"
-                    )
-
-            # Stealth delay
-            stealth = tool.config.stealth
-            if stealth and isinstance(getattr(stealth, 'delay_ms', None), (int, float)) and stealth.delay_ms:
-                delay_s = stealth.delay_ms / 1000.0
-                mission.log(f"[STEALTH] Applying {stealth.delay_ms}ms delay before execution")
-                await asyncio.sleep(delay_s)
-
-            if stealth and getattr(stealth, 'extra_args', None):
-                full_command = adapter.builder.apply_stealth_args(full_command, stealth)
-
-            # Execute via worker
-            async with self._semaphore:
-                queue_name = (
-                    self._get_queue_name(mission.id) if mission.id else "default"
-                )
-                result = await execute_via_worker(
-                    tool_id=request.tool_id,
-                    target=request.target,
-                    args=request.args,
-                    timeout=request.timeout,
-                    output_dir=str(output_dir),
-                    mission_id=mission.id,
-                    queue_name=queue_name,
-                    default_timeout=self.DEFAULT_TIMEOUT,
-                    buffer_timeout=self.JOB_BUFFER_TIMEOUT,
-                )
-
-            if result.success:
-                result.stdout = truncate_for_llm(
-                    result.stdout, max_chars=self.MAX_STDOUT_CHARS, label="stdout"
-                )
-                result.stderr = truncate_for_llm(
-                    result.stderr, max_chars=self.MAX_STDERR_CHARS, label="stderr"
-                )
-                log_success(mission, tool_name, result)
-                for finding in result.parsed_findings:
-                    mission.add_finding(finding)
-                    update_attack_surface_from_finding(mission, finding)
-                mission.record_tool_run(
-                    tool_name, args=args, command=full_command, success=True,
-                )
-            else:
-                last_error = (
-                    result.stderr[:self.MAX_STDERR_CHARS]
-                    if result.stderr
-                    else "No error message"
-                )
-                mission.log(f"[ERROR] {tool_name} failed: {last_error[:200]}")
-                mission.record_tool_run(
-                    tool_name, args=args, success=False, error=last_error,
-                )
 
             record_to_memory(mission, tool_name, target, args, result)
             return result
@@ -374,6 +236,210 @@ class ToolExecutionService:
             mission.log(msg)
             logger.error(msg, exc_info=True)
             return create_error_result(tool_name, target, str(e))
+
+    # --- execute_request sub-methods ------------------------------------------
+
+    async def _validate_and_resolve_tool(
+        self,
+        mission: Mission,
+        tool_name: str,
+        target: str,
+        args: dict[str, Any] | None,
+    ) -> tuple[Any, ToolExecutionResult | None]:
+        """Validate tool name, resolve from registry, auto-install if needed."""
+        if not validate_tool_name(tool_name):
+            mission.log(f"Invalid tool name format: {tool_name}")
+            return None, create_error_result(tool_name, target, "Invalid tool name")
+
+        registry = get_registry()
+        await registry.sync_status_from_cache()
+        tool = registry.get_tool(tool_name)
+
+        if not tool:
+            mission.log(f"Tool {tool_name} not found in registry")
+            return None, create_error_result(tool_name, target, "Tool not available")
+
+        if not tool.is_available:
+            mission.log(f"Tool {tool_name} not installed, installing...")
+            install_success = await ensure_tool_installed(
+                tool_name, self.INSTALL_TIMEOUT
+            )
+            if not install_success:
+                mission.log(f"Failed to install {tool_name}")
+                return None, create_error_result(
+                    tool_name, target, "Tool installation failed"
+                )
+            mission.log(f"Tool {tool_name} installed successfully")
+            tool = registry.get_tool(tool_name)
+
+        if tool.config.execution.args_schema:
+            if HAS_JSONSCHEMA:
+                try:
+                    jsonschema.validate(
+                        instance=args or {}, schema=tool.config.execution.args_schema
+                    )
+                except jsonschema.ValidationError as e:
+                    return None, create_error_result(
+                        tool_name, target, f"Invalid arguments: {e}"
+                    )
+            else:
+                logger.warning(
+                    "Skipping argument validation for %s — jsonschema not installed",
+                    tool_name,
+                )
+
+        return tool, None
+
+    def _build_execution_request(
+        self,
+        mission: Mission,
+        tool: Any,
+        tool_name: str,
+        target: str,
+        args: dict[str, Any] | None,
+        timeout: int | None,
+    ) -> tuple[ToolExecutionRequest, CommandToolAdapter, str, str]:
+        """Construct the execution request, adapter, command, and output dir."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_id = f"{tool_name}_{timestamp}_{uuid.uuid4().hex[:4]}"
+        output_dir = prepare_output_directory(mission.id, run_id)
+
+        adapter = CommandToolAdapter(tool.config)
+        request = ToolExecutionRequest(
+            tool_id=tool_name,
+            target=target,
+            args=args or {},
+            timeout=timeout,
+        )
+        full_command = adapter.builder.build_command(
+            request, output_dir=str(output_dir)
+        )
+
+        args_str = (
+            ", ".join(f"{k}={v}" for k, v in (args or {}).items())
+            if args
+            else "default"
+        )
+        mission.log(
+            f"[EXEC] Executing: {tool_name} | Target: {target} | Args: {args_str}"
+        )
+        mission.log(
+            f"[CMD] Command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}"
+        )
+        return request, adapter, full_command, str(output_dir)
+
+    async def _apply_safety_and_consensus(
+        self,
+        mission: Mission,
+        tool_name: str,
+        target: str,
+        args: dict[str, Any] | None,
+        risk_level: str,
+        adapter: CommandToolAdapter,
+        output_dir: str,
+        request: ToolExecutionRequest,
+        full_command: str,
+    ) -> tuple[str, ToolExecutionResult | None]:
+        """Run safety check with retry and consensus check. Returns updated command and optional block result."""
+        is_safe, reason, fixed_args = await self._perform_safety_check_with_retry(
+            mission, full_command, tool_name, target, args, adapter, output_dir
+        )
+        if not is_safe:
+            mission.record_tool_run(
+                tool_name,
+                args=args,
+                command=full_command,
+                success=False,
+                error=f"Safety blocked: {reason}",
+            )
+            return full_command, create_error_result(
+                tool_name, target, f"Blocked by Safety Supervisor: {reason}"
+            )
+
+        if fixed_args is not None:
+            request.args = fixed_args
+            full_command = adapter.build_command(
+                request, output_dir=output_dir
+            )
+            mission.log(
+                f"[CMD] Fixed command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}"
+            )
+
+        if risk_level in ("high", "critical"):
+            is_approved = await self._perform_consensus_check(
+                mission, tool_name, risk_level
+            )
+            if not is_approved:
+                return full_command, create_error_result(
+                    tool_name, target, "Blocked by Consensus"
+                )
+
+        return full_command, None
+
+    async def _dispatch_and_process_result(
+        self,
+        mission: Mission,
+        tool: Any,
+        tool_name: str,
+        target: str,
+        args: dict[str, Any] | None,
+        request: ToolExecutionRequest,
+        adapter: CommandToolAdapter,
+        full_command: str,
+        output_dir: str,
+    ) -> ToolExecutionResult:
+        """Apply stealth settings, dispatch to worker, and process the result."""
+        stealth = tool.config.stealth
+        if stealth and isinstance(getattr(stealth, 'delay_ms', None), (int, float)) and stealth.delay_ms:
+            delay_s = stealth.delay_ms / 1000.0
+            mission.log(f"[STEALTH] Applying {stealth.delay_ms}ms delay before execution")
+            await asyncio.sleep(delay_s)
+
+        if stealth and getattr(stealth, 'extra_args', None):
+            full_command = adapter.builder.apply_stealth_args(full_command, stealth)
+
+        async with self._semaphore:
+            queue_name = (
+                self._get_queue_name(mission.id) if mission.id else "default"
+            )
+            result = await execute_via_worker(
+                tool_id=request.tool_id,
+                target=request.target,
+                args=request.args,
+                timeout=request.timeout,
+                output_dir=output_dir,
+                mission_id=mission.id,
+                queue_name=queue_name,
+                default_timeout=self.DEFAULT_TIMEOUT,
+                buffer_timeout=self.JOB_BUFFER_TIMEOUT,
+            )
+
+        if result.success:
+            result.stdout = truncate_for_llm(
+                result.stdout, max_chars=self.MAX_STDOUT_CHARS, label="stdout"
+            )
+            result.stderr = truncate_for_llm(
+                result.stderr, max_chars=self.MAX_STDERR_CHARS, label="stderr"
+            )
+            log_success(mission, tool_name, result)
+            for finding in result.parsed_findings:
+                mission.add_finding(finding)
+                update_attack_surface_from_finding(mission, finding)
+            mission.record_tool_run(
+                tool_name, args=args, command=full_command, success=True,
+            )
+        else:
+            last_error = (
+                result.stderr[:self.MAX_STDERR_CHARS]
+                if result.stderr
+                else "No error message"
+            )
+            mission.log(f"[ERROR] {tool_name} failed: {last_error[:200]}")
+            mission.record_tool_run(
+                tool_name, args=args, success=False, error=last_error,
+            )
+
+        return result
 
     # --- Safety / Consensus (delegated) ----------------------------------------
 

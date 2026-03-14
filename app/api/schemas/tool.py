@@ -117,3 +117,56 @@ class ToolExecConfigResponse(BaseModel):
     stealth: ToolStealthResponse
     parsing_format: str = ""
     ui: ToolUIResponse
+
+
+class ValidationResponse(BaseModel):
+    """Response for plugin validation."""
+
+    valid: bool
+    message: str
+
+
+class PluginSaveResponse(BaseModel):
+    """Response after saving an unsigned plugin."""
+
+    status: str
+    tool_id: str
+    message: str
+
+
+class ToolQueueResponse(BaseModel):
+    """Response for tool installation/queue operations."""
+
+    success: bool
+    message: str
+
+
+class ToolRemoveResponse(BaseModel):
+    """Response after removing a tool plugin."""
+
+    success: bool
+    message: str
+
+
+class CommandInfoResponse(BaseModel):
+    """Command details in a test execution response."""
+
+    base_command: str
+    args_template: str
+    timeout_used: int
+
+
+class TestExecutionResponse(BaseModel):
+    """Response for a test tool execution."""
+
+    tool_id: str
+    target: str
+    success: bool
+    exit_code: int = -1
+    duration_seconds: float = 0
+    stdout: str = ""
+    stderr: str = ""
+    output_file: str | None = None
+    parsed_findings_count: int = 0
+    parsed_findings: list[dict] = []
+    command_info: CommandInfoResponse

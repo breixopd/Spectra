@@ -28,16 +28,22 @@ from fastapi import (
 
 from app.api.dependencies import get_current_active_user, get_current_superuser
 from app.api.schemas import (
+    CommandInfoResponse,
     InstallToolResponse,
+    PluginSaveResponse,
     PluginUploadResponse,
+    TestExecutionResponse,
     ToolDetailResponse,
     ToolExecConfigResponse,
     ToolListResponse,
     ToolMetadataResponse,
+    ToolQueueResponse,
+    ToolRemoveResponse,
     ToolStatsResponse,
     ToolStealthResponse,
     ToolSummary,
     ToolUIResponse,
+    ValidationResponse,
 )
 from app.core.config import settings
 from app.core.rate_limit import limiter
@@ -71,7 +77,7 @@ def get_tool_registry() -> ToolRegistry:
 # --- Endpoints ---
 
 
-@router.post("/validate")
+@router.post("/validate", response_model=ValidationResponse)
 async def validate_plugin_config(
     config: dict = Body(...),
     registry: ToolRegistry = Depends(get_tool_registry),
@@ -89,7 +95,7 @@ async def validate_plugin_config(
         tool_config = ToolConfig.model_validate(config)
         registry.validator._validate_commands(tool_config)
 
-        return {"valid": True, "message": "Plugin configuration is valid"}
+        return ValidationResponse(valid=True, message="Plugin configuration is valid")
     except ValueError as e:
         # Pydantic validation errors are safe to expose
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -169,7 +175,7 @@ async def sign_plugin_config(
         raise HTTPException(status_code=500, detail="Signing failed - check server logs") from e
 
 
-@router.post("/save-unsigned")
+@router.post("/save-unsigned", response_model=PluginSaveResponse)
 async def save_plugin_unsigned(
     config: dict = Body(...),
     _current_user: User = Depends(get_current_superuser),
@@ -205,11 +211,11 @@ async def save_plugin_unsigned(
         # Reload into registry
         await registry.load_plugins()
 
-        return {
-            "status": "saved",
-            "tool_id": tool_config.id,
-            "message": "Plugin saved without signature (safe_mode disabled)",
-        }
+        return PluginSaveResponse(
+            status="saved",
+            tool_id=tool_config.id,
+            message="Plugin saved without signature (safe_mode disabled)",
+        )
     except (ValueError, TypeError, OSError) as e:
         logger.error("Failed to save unsigned plugin: %s", e)
         raise HTTPException(
@@ -429,7 +435,7 @@ async def upload_plugin(
         raise HTTPException(status_code=400, detail=f"Plugin validation failed: {e}") from e
 
 
-@router.post("/install-all")
+@router.post("/install-all", response_model=ToolQueueResponse)
 @limiter.limit("2/minute")
 async def install_all_tools(
     request: Request,
@@ -456,10 +462,10 @@ async def install_all_tools(
 
     background_tasks.add_task(_install)
 
-    return {
-        "success": True,
-        "message": "Tool installation queued. Check /api/system/status for progress.",
-    }
+    return ToolQueueResponse(
+        success=True,
+        message="Tool installation queued. Check /api/system/status for progress.",
+    )
 
 
 @router.post("/{tool_id}/install", response_model=InstallToolResponse)
@@ -520,7 +526,7 @@ async def install_tool(
     )
 
 
-@router.delete("/{tool_id}")
+@router.delete("/{tool_id}", response_model=ToolRemoveResponse)
 @limiter.limit("5/minute")
 async def remove_tool(
     request: Request,
@@ -535,7 +541,7 @@ async def remove_tool(
     if not success:
         raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
 
-    return {"success": True, "message": f"Tool '{tool_id}' removed"}
+    return ToolRemoveResponse(success=True, message=f"Tool '{tool_id}' removed")
 
 
 @router.get("/for-ai", response_model=list[dict])
@@ -551,7 +557,7 @@ async def get_tools_for_ai(
     return registry.list_tools_for_ai()
 
 
-@router.post("/{tool_id}/test")
+@router.post("/{tool_id}/test", response_model=TestExecutionResponse)
 @limiter.limit("10/minute")
 async def test_tool(
     request: Request,
@@ -593,23 +599,23 @@ async def test_tool(
         result = await job.result(timeout=timeout or 300)
 
         # Return detailed result for debugging
-        return {
-            "tool_id": tool_id,
-            "target": target,
-            "success": result.get("success", False),
-            "exit_code": result.get("exit_code", -1),
-            "duration_seconds": result.get("duration_seconds", 0),
-            "stdout": result.get("stdout", "")[:5000],  # Limit output size
-            "stderr": result.get("stderr", "")[:2000],
-            "output_file": result.get("output_file"),
-            "parsed_findings_count": len(result.get("parsed_findings", [])),
-            "parsed_findings": result.get("parsed_findings", [])[:20],  # Limit findings
-            "command_info": {
-                "base_command": tool.config.execution.command,
-                "args_template": tool.config.execution.args_template,
-                "timeout_used": timeout or tool.config.execution.timeout,
-            },
-        }
+        return TestExecutionResponse(
+            tool_id=tool_id,
+            target=target,
+            success=result.get("success", False),
+            exit_code=result.get("exit_code", -1),
+            duration_seconds=result.get("duration_seconds", 0),
+            stdout=result.get("stdout", "")[:5000],
+            stderr=result.get("stderr", "")[:2000],
+            output_file=result.get("output_file"),
+            parsed_findings_count=len(result.get("parsed_findings", [])),
+            parsed_findings=result.get("parsed_findings", [])[:20],
+            command_info=CommandInfoResponse(
+                base_command=tool.config.execution.command,
+                args_template=tool.config.execution.args_template,
+                timeout_used=timeout or tool.config.execution.timeout,
+            ),
+        )
 
     except (OSError, RuntimeError, TimeoutError, ValueError) as e:
         logger.error("Tool test failed for %s: %s", tool_id, e)

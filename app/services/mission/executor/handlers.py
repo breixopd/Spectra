@@ -218,105 +218,126 @@ class TaskDispatcher:
         agent = self.agents["tool_selector"]
 
         try:
-            # Detect target type from format
-            target_type = detect_target_type(mission.target)
-
-            # Build comprehensive input from mission state
-            from app.services.ai.agents.tool_selector import ToolSelectorInput
-
-            # Try to extract tool hint from task parameters or description
-            tool_hint = task.parameters.get("tool_hint") or task.parameters.get("tool")
-            if not tool_hint:
-                # Fallback: try to extract tool name from task description
-                tool_hint = self._extract_tool_hint_from_description(task.description)
-
-            # Enrich known_services/vulns with blackboard intelligence
-            known_services = mission.get_known_services()
-            known_vulns = mission.get_known_vulns()
-
-            # Read discovered intelligence from blackboard
-            if mission.blackboard:
-                bb_creds = mission.blackboard.read("credentials")
-                bb_ports = mission.blackboard.read("open_ports")
-                mission.blackboard.read("vulnerabilities")
-                # Factor blackboard creds into context for tool selection
-                if bb_creds and isinstance(bb_creds, list):
-                    context.extra_context = (
-                        getattr(context, "extra_context", "")
-                        + f"\nDiscovered credentials: {bb_creds[:5]}"
-                    )
-                if bb_ports and isinstance(bb_ports, list):
-                    context.extra_context = (
-                        getattr(context, "extra_context", "")
-                        + f"\nDiscovered open ports: {bb_ports[:20]}"
-                    )
-
-            selector_input = ToolSelectorInput(
-                current_phase=task.phase.value,
-                target=mission.target,
-                target_type=target_type,
-                known_services=known_services,
-                known_vulns=known_vulns,
-                tools_already_run=mission.tools_run.copy(),
-                user_preference=tool_hint,
-                required_capability=task.parameters.get("required_capability"),
-                tags_filter=task.parameters.get("tags", []),
-            )
-
+            selector_input = self._build_selector_input(mission, task, context)
             result = await agent.execute(context, selector_input)
 
             if result.success and isinstance(result.action, ParallelToolAction):
-                # --- Parallel tool execution ---
-                parallel_action = result.action
-                mission.log(
-                    f"Parallel execution: {[t.tool_name for t in parallel_action.tools]}"
+                await self._execute_parallel_selection(
+                    mission, result.action, context
                 )
-                results = await self._execute_parallel_tools(
-                    mission, parallel_action, context
-                )
-                # Run chain rules for each completed tool
-                for r in results:
-                    tool_name = r.get("tool")
-                    if tool_name:
-                        await self._process_tool_chain(mission, tool_name, context)
-
             elif result.success and isinstance(result.action, ToolAction):
-                action = result.action
-
-                # Skip if no tool selected (phase complete)
-                if not action.tool_name:
-                    reason = getattr(result.action, "skip_reason", "No reason provided")
-                    mission.log(f"No more tools for phase: {reason}")
-                    return
-
-                # Delegate execution to Tool Service
-                success = await self.tool_service.execute_tool_action(
-                    mission, action, context
+                await self._execute_single_selection(
+                    mission, task, result.action, context
                 )
-
-                # Write findings to blackboard for downstream agents
-                if success and mission.findings:
-                    mission.blackboard.write(
-                        task.agent_type,
-                        f"tools_run_{action.tool_name}",
-                        {"tool": action.tool_name, "findings_count": len(mission.findings)},
-                    )
-
-                if not success:
-                    mission.log(
-                        f"Tool {action.tool_name} execution failed or was blocked."
-                    )
-
-                # --- Tool chain: auto-queue follow-up tools ---
-                if success:
-                    await self._process_tool_chain(
-                        mission, action.tool_name, context
-                    )
             else:
                 mission.log(f"Tool selection failed: {result.error}")
 
         finally:
             self._broadcast_agent_state("tool_selector", "idle")
+
+    def _build_selector_input(
+        self,
+        mission: Mission,
+        task: Task,
+        context: AgentContext,
+    ) -> "ToolSelectorInput":
+        """Build tool selector input from mission state and blackboard."""
+        from app.services.ai.agents.tool_selector import ToolSelectorInput
+
+        target_type = detect_target_type(mission.target)
+
+        tool_hint = task.parameters.get("tool_hint") or task.parameters.get("tool")
+        if not tool_hint:
+            tool_hint = self._extract_tool_hint_from_description(task.description)
+
+        known_services = mission.get_known_services()
+        known_vulns = mission.get_known_vulns()
+
+        if mission.blackboard:
+            self._enrich_context_from_blackboard(mission, context)
+
+        return ToolSelectorInput(
+            current_phase=task.phase.value,
+            target=mission.target,
+            target_type=target_type,
+            known_services=known_services,
+            known_vulns=known_vulns,
+            tools_already_run=mission.tools_run.copy(),
+            user_preference=tool_hint,
+            required_capability=task.parameters.get("required_capability"),
+            tags_filter=task.parameters.get("tags", []),
+        )
+
+    def _enrich_context_from_blackboard(
+        self, mission: Mission, context: AgentContext
+    ) -> None:
+        """Add blackboard intelligence (creds, ports) to agent context."""
+        bb_creds = mission.blackboard.read("credentials")
+        bb_ports = mission.blackboard.read("open_ports")
+        mission.blackboard.read("vulnerabilities")
+
+        if bb_creds and isinstance(bb_creds, list):
+            context.extra_context = (
+                getattr(context, "extra_context", "")
+                + f"\nDiscovered credentials: {bb_creds[:5]}"
+            )
+        if bb_ports and isinstance(bb_ports, list):
+            context.extra_context = (
+                getattr(context, "extra_context", "")
+                + f"\nDiscovered open ports: {bb_ports[:20]}"
+            )
+
+    async def _execute_parallel_selection(
+        self,
+        mission: Mission,
+        parallel_action: ParallelToolAction,
+        context: AgentContext,
+    ) -> None:
+        """Execute parallel tool selection results."""
+        mission.log(
+            f"Parallel execution: {[t.tool_name for t in parallel_action.tools]}"
+        )
+        results = await self._execute_parallel_tools(
+            mission, parallel_action, context
+        )
+        for r in results:
+            tool_name = r.get("tool")
+            if tool_name:
+                await self._process_tool_chain(mission, tool_name, context)
+
+    async def _execute_single_selection(
+        self,
+        mission: Mission,
+        task: Task,
+        action: ToolAction,
+        context: AgentContext,
+    ) -> None:
+        """Execute a single tool selection result."""
+        if not action.tool_name:
+            reason = getattr(action, "skip_reason", "No reason provided")
+            mission.log(f"No more tools for phase: {reason}")
+            return
+
+        success = await self.tool_service.execute_tool_action(
+            mission, action, context
+        )
+
+        if success and mission.findings:
+            mission.blackboard.write(
+                task.agent_type,
+                f"tools_run_{action.tool_name}",
+                {"tool": action.tool_name, "findings_count": len(mission.findings)},
+            )
+
+        if not success:
+            mission.log(
+                f"Tool {action.tool_name} execution failed or was blocked."
+            )
+
+        if success:
+            await self._process_tool_chain(
+                mission, action.tool_name, context
+            )
 
     async def _handle_exploit_crafter(
         self,
