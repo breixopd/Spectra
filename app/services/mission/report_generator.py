@@ -290,37 +290,37 @@ async def save_report(mission_id: str, html_content: str) -> str:
     return location
 
 
-def generate_pdf_report(mission_data: dict) -> bytes | None:
+def generate_pdf_report(mission_data: dict) -> bytes:
     """Generate a PDF report from mission data.
 
     Uses xhtml2pdf to convert the HTML report to PDF.
-    Returns PDF bytes or None on failure.
+    Returns PDF bytes.
+
+    Raises:
+        ImportError: If xhtml2pdf is not installed.
+        RuntimeError: If PDF rendering fails.
     """
-    try:
-        from io import BytesIO
+    from io import BytesIO
 
-        from xhtml2pdf import pisa
+    from xhtml2pdf import pisa
 
-        html = generate_html_report(mission_data)
-        pdf_buffer = BytesIO()
+    html = generate_html_report(mission_data)
+    pdf_buffer = BytesIO()
 
-        pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+    pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
 
-        if pisa_status.err:
-            logger.error("PDF generation failed: %d errors", pisa_status.err)
-            return None
+    if pisa_status.err:
+        raise RuntimeError(f"PDF generation failed: {pisa_status.err} errors")
 
-        return pdf_buffer.getvalue()
-    except ImportError:
-        logger.warning("xhtml2pdf not installed, PDF export unavailable")
-        return None
-    except Exception as e:
-        logger.error("PDF generation error: %s", e)
-        return None
+    return pdf_buffer.getvalue()
 
 
-async def save_pdf_report(mission_id: str, pdf_bytes: bytes) -> str | None:
-    """Save PDF report to storage (encrypted at rest)."""
+async def save_pdf_report(mission_id: str, pdf_bytes: bytes) -> str:
+    """Save PDF report to storage (encrypted at rest).
+
+    Raises:
+        RuntimeError: If upload fails.
+    """
     try:
         secret = _get_default_secret()
         f = Fernet(_derive_fernet_key(secret))
@@ -332,5 +332,4 @@ async def save_pdf_report(mission_id: str, pdf_bytes: bytes) -> str | None:
         location = await storage.upload(settings.S3_BUCKET_MISSIONS, key, encrypted)
         return location
     except Exception as e:
-        logger.error("Failed to save PDF: %s", e)
-        return None
+        raise RuntimeError(f"Failed to save PDF report for {mission_id}: {e}") from e

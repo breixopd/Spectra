@@ -11,7 +11,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import _is_admin_user, get_current_active_user
+from app.api.dependencies import _is_admin_user, get_current_active_user, get_ui_user
 from app.api.schemas import LLMTestRequest, SettingsUpdateRequest
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
@@ -34,24 +34,6 @@ APP_DIR = Path(__file__).resolve().parent.parent.parent
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 templates.env.globals["app_name"] = settings.APP_NAME
 templates.env.globals["version"] = __version__
-
-
-def _get_ui_user(request: Request) -> dict | None:
-    """Extract and validate user from cookie. Returns None if not authenticated."""
-    token = request.cookies.get("access_token")
-    if not token:
-        return None
-    try:
-        from app.core.security import decode_token, is_token_blacklisted
-
-        if is_token_blacklisted(token):
-            return None
-        payload = decode_token(token)
-        if payload and payload.get("sub"):
-            return payload
-    except Exception:
-        logger.debug("UI token decode failed", exc_info=True)
-    return None
 
 
 async def _check_user_feature(user_id: str | None, feature: str) -> bool:
@@ -79,7 +61,7 @@ async def _check_user_feature(user_id: str | None, feature: str) -> bool:
 @router.get("/profile", response_class=HTMLResponse)
 async def profile_page(request: Request):
     """Serve the user profile and account management page."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         "profile.html",
@@ -123,7 +105,7 @@ async def dashboard(request: Request):
         if not result.scalar_one_or_none():
             return RedirectResponse(url="/setup")
 
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login")
 
     return templates.TemplateResponse(
@@ -135,7 +117,7 @@ async def dashboard(request: Request):
 @router.get("/targets", response_class=HTMLResponse)
 async def targets_page(request: Request):
     """Serve the targets management page."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         "targets.html",
@@ -146,7 +128,7 @@ async def targets_page(request: Request):
 @router.get("/history", response_class=HTMLResponse)
 async def history_page(request: Request):
     """Serve the mission history page."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         "history.html",
@@ -157,7 +139,7 @@ async def history_page(request: Request):
 @router.get("/reports", response_class=HTMLResponse)
 async def reports_page(request: Request):
     """Serve the reports page."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         "reports.html",
@@ -168,7 +150,7 @@ async def reports_page(request: Request):
 @router.get("/overseer", response_class=HTMLResponse)
 async def overseer_page(request: Request):
     """Serve the agent overseer page."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         "overseer.html",
@@ -179,7 +161,7 @@ async def overseer_page(request: Request):
 @router.get("/toolbox", response_class=HTMLResponse)
 async def toolbox_page(request: Request):
     """Serve the toolbox page."""
-    user_payload = _get_ui_user(request)
+    user_payload = get_ui_user(request)
     if not user_payload:
         return RedirectResponse(url="/login", status_code=303)
     is_admin = False
@@ -199,7 +181,7 @@ async def toolbox_page(request: Request):
 @router.get("/manual", response_class=HTMLResponse)
 async def manual_tools_page(request: Request):
     """Serve the manual tools execution page."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         "manual_tools.html",
@@ -210,7 +192,7 @@ async def manual_tools_page(request: Request):
 @router.get("/toolbox/create", response_class=HTMLResponse)
 async def plugin_creator_page(request: Request):
     """Serve the plugin creator page (admin only)."""
-    user_payload = _get_ui_user(request)
+    user_payload = get_ui_user(request)
     if not user_payload:
         return RedirectResponse(url="/login", status_code=303)
     username = user_payload.get("sub")
@@ -231,7 +213,7 @@ async def plugin_creator_page(request: Request):
 @router.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request):
     """Serve the settings page."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         "settings.html",
@@ -242,7 +224,7 @@ async def settings_page(request: Request):
 @router.get("/docs/api", response_class=HTMLResponse)
 async def api_docs_page(request: Request):
     """Customer-facing API documentation — requires api_access plan feature."""
-    user = _get_ui_user(request)
+    user = get_ui_user(request)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
@@ -323,7 +305,7 @@ async def api_docs_page(request: Request):
 @router.get("/help", response_class=HTMLResponse)
 async def help_page(request: Request):
     """Help center with guides and documentation."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         "help.html",
@@ -334,7 +316,7 @@ async def help_page(request: Request):
 @router.get("/observability", response_class=HTMLResponse)
 async def observability_page(request: Request):
     """Serve the observability/monitoring page."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     return templates.TemplateResponse(
         "observability.html",
@@ -345,7 +327,7 @@ async def observability_page(request: Request):
 @router.get("/shell/{session_id}", response_class=HTMLResponse)
 async def shell_page(request: Request, session_id: str):
     """Serve the interactive shell page."""
-    if not _get_ui_user(request):
+    if not get_ui_user(request):
         return RedirectResponse(url="/login", status_code=303)
     session = await shell_manager.get_session(session_id)
     if not session:

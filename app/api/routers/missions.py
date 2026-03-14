@@ -342,9 +342,12 @@ async def download_pdf_report(
         "attack_surface": mission.attack_surface or {},
     }
 
-    pdf_bytes = generate_pdf_report(mission_data)
-    if not pdf_bytes:
-        raise HTTPException(status_code=500, detail="PDF generation failed")
+    try:
+        pdf_bytes = generate_pdf_report(mission_data)
+    except ImportError:
+        raise HTTPException(status_code=501, detail="PDF export requires xhtml2pdf")
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     return FastAPIResponse(
         content=pdf_bytes,

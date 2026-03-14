@@ -176,24 +176,29 @@ class MissionLifecycleManager:
         except Exception as e:
             logger.error("Failed to save checkpoint for mission %s: %s", mission.id, e)
 
-    async def resume_mission_from_db(self, mission_id: str) -> Mission | None:
-        """Reconstruct a mission from checkpoint data stored in DB."""
+    async def resume_mission_from_db(self, mission_id: str) -> Mission:
+        """Reconstruct a mission from checkpoint data stored in DB.
+
+        Raises:
+            ValueError: If no checkpoint data exists for the mission.
+            RuntimeError: If checkpoint deserialization fails.
+        """
         try:
             async with async_session_maker() as session:
                 async with session.begin():
                     repo = MissionRepository(session)
                     db_mission = await repo.get(mission_id)
                     if not db_mission or not db_mission.checkpoint_data:
-                        logger.warning("No checkpoint data for mission %s", mission_id)
-                        return None
+                        raise ValueError(f"No checkpoint data for mission {mission_id}")
 
                     mission = Mission.from_checkpoint(db_mission.checkpoint_data)
                     self.active_missions[mission.id] = mission
                     mission.log("[RESUME] Mission resumed from checkpoint")
                     return mission
+        except ValueError:
+            raise
         except Exception as e:
-            logger.error("Failed to resume mission %s: %s", mission_id, e)
-            return None
+            raise RuntimeError(f"Failed to resume mission {mission_id}: {e}") from e
 
     async def initialize_mission(self, mission: Mission) -> AgentContext | None:
         """Initialize mission and return context."""

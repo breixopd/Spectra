@@ -24,7 +24,7 @@ class TestApiDocsRoute:
         mock_route.dependant = MagicMock(path_params=[], query_params=[])
         mock_app.routes = [mock_route]
 
-        with patch("app.api.routers.ui._get_ui_user", return_value={"id": 1, "username": "admin", "role": "admin"}):
+        with patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "username": "admin", "role": "admin"}):
             with patch("app.api.routers.ui.templates") as mock_templates:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
@@ -47,7 +47,7 @@ class TestApiDocsRoute:
 
         mock_request = MagicMock()
 
-        with patch("app.api.routers.ui._get_ui_user", return_value=None):
+        with patch("app.api.routers.ui.get_ui_user", return_value=None):
             result = await api_docs_page(mock_request)
             assert result.status_code == 303
             assert "/login" in str(result.headers.get("location", ""))
@@ -77,7 +77,7 @@ class TestApiDocsRoute:
         mock_app = MagicMock()
         mock_app.routes = [mock_route1, mock_route2]
 
-        with patch("app.api.routers.ui._get_ui_user", return_value={"id": 1}):
+        with patch("app.api.routers.ui.get_ui_user", return_value={"id": 1}):
             with patch("app.api.routers.ui._check_user_feature", return_value=True):
                 with patch("app.api.routers.ui.templates") as mock_templates:
                     mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
@@ -101,7 +101,7 @@ class TestHelpRoute:
 
         mock_request = MagicMock()
 
-        with patch("app.api.routers.ui._get_ui_user", return_value={"id": 1, "username": "admin"}):
+        with patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "username": "admin"}):
             with patch("app.api.routers.ui.templates") as mock_templates:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
@@ -120,6 +120,6 @@ class TestHelpRoute:
 
         mock_request = MagicMock()
 
-        with patch("app.api.routers.ui._get_ui_user", return_value=None):
+        with patch("app.api.routers.ui.get_ui_user", return_value=None):
             result = await help_page(mock_request)
             assert result.status_code == 303
