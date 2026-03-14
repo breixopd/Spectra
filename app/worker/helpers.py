@@ -117,7 +117,7 @@ async def _run_command(
                 env=env,
                 start_new_session=True,
             )
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error("Failed to start process: %s", e)
         return (-1, "", str(e))
 
@@ -167,7 +167,7 @@ async def _track_tool_stats(
         stats["last_run"] = datetime.now().isoformat()
         stats["last_duration"] = str(duration)
         await cache.set(stats_key, stats, ttl=604800)  # 7 days
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError, ValueError) as e:
         logger.warning("Failed to track tool stats for %s: %s", tool_id, e)
 
 
