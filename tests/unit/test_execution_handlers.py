@@ -50,7 +50,7 @@ class TestGetKnownTools:
         original = reg_mod._registry_instance
         try:
             reg_mod._registry_instance = None
-            with patch.object(reg_mod, "ToolRegistry", side_effect=Exception("no")):
+            with patch.object(reg_mod, "ToolRegistry", side_effect=RuntimeError("no")):
                 tools = _get_known_tools()
                 assert len(tools) >= 10
                 assert "nmap" in tools

@@ -93,8 +93,7 @@ async def validate_plugin_config(
     except ValueError as e:
         # Pydantic validation errors are safe to expose
         raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        # Log full error but return generic message
+    except (TypeError, KeyError, AttributeError) as e:
         logger.warning("Plugin validation failed: %s", e)
         raise HTTPException(status_code=400, detail="Invalid plugin configuration") from e
 
@@ -127,7 +126,7 @@ async def sign_plugin_config(
                 private_key = loaded_key
             except HTTPException:
                 raise
-            except Exception as e:
+            except (ValueError, TypeError, OSError) as e:
                 logger.warning("Private key parsing failed: %s", e)
                 raise HTTPException(status_code=400, detail="Invalid private key format") from e
         else:
@@ -165,7 +164,7 @@ async def sign_plugin_config(
         raise HTTPException(status_code=500, detail="Cryptography package not available") from e
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, TypeError, OSError) as e:
         logger.error("Plugin signing failed: %s", e)
         raise HTTPException(status_code=500, detail="Signing failed - check server logs") from e
 
@@ -211,7 +210,7 @@ async def save_plugin_unsigned(
             "tool_id": tool_config.id,
             "message": "Plugin saved without signature (safe_mode disabled)",
         }
-    except Exception as e:
+    except (ValueError, TypeError, OSError) as e:
         logger.error("Failed to save unsigned plugin: %s", e)
         raise HTTPException(
             status_code=400, detail="Failed to save unsigned plugin due to validation or server error."
@@ -238,7 +237,7 @@ async def list_tools(
     # Sync tool status from cache (set by tools container worker)
     try:
         await registry.sync_status_from_cache()
-    except Exception as e:
+    except (OSError, ConnectionError, RuntimeError) as e:
         logger.debug("Tool status sync failed: %s", e)
 
     tools = registry.list_tools()
@@ -414,7 +413,7 @@ async def upload_plugin(
                 queue = PostgresJobQueue()
                 await queue.enqueue_job("install_tool_job", tool_id=tool.config.id)
                 logger.info("Queued background install for %s", tool.config.id)
-            except Exception as e:
+            except (OSError, RuntimeError, ConnectionError) as e:
                 logger.error("Failed to queue install for %s: %s", tool.config.id, e)
 
         background_tasks.add_task(_trigger_install)
@@ -452,7 +451,7 @@ async def install_all_tools(
             queue = PostgresJobQueue()
             await queue.enqueue_job("install_all_tools_job", force=force)
             logger.info("Queued install_all_tools job")
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError) as e:
             logger.error("Failed to queue install_all_tools: %s", e)
 
     background_tasks.add_task(_install)
@@ -508,7 +507,7 @@ async def install_tool(
             queue = PostgresJobQueue()
             await queue.enqueue_job("install_tool_job", tool_id=tool_id)
             logger.info("Queued install job for %s", tool_id)
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError) as e:
             logger.error("Failed to queue install for %s: %s", tool_id, e)
 
     background_tasks.add_task(_install)
@@ -612,7 +611,7 @@ async def test_tool(
             },
         }
 
-    except Exception as e:
+    except (OSError, RuntimeError, TimeoutError, ValueError) as e:
         logger.error("Tool test failed for %s: %s", tool_id, e)
         raise HTTPException(status_code=500, detail="Test execution failed due to an internal error.")
 
@@ -653,6 +652,6 @@ async def get_tool_stats(
             last_run=stats.get("last_run"),
             last_duration=float(stats["last_duration"]) if stats.get("last_duration") else None,
         )
-    except Exception as e:
+    except (OSError, RuntimeError, KeyError, ValueError) as e:
         logger.error("Failed to get stats for %s: %s", tool_id, e)
         return ToolStatsResponse(tool_id=tool_id, error="Failed to retrieve statistics due to an internal error.")

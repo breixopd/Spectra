@@ -98,7 +98,7 @@ class MissionExecutionManager:
             recorder.start()
             mission.log("[RECORD] Demo recording started")
             return recorder
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError) as e:
             logger.debug("Demo recorder init failed: %s", e)
             return None
 
@@ -127,7 +127,7 @@ class MissionExecutionManager:
             from app.services.notifications import notify_mission_started
 
             await notify_mission_started(mission.target, mission.directive)
-        except Exception as e:
+        except (ImportError, OSError, ConnectionError, RuntimeError) as e:
             logger.warning("Failed to send mission start notification: %s", e)
 
         try:
@@ -151,7 +151,7 @@ class MissionExecutionManager:
                 return sandbox_info
             else:
                 mission.log("[WARN] Sandbox pool unavailable — tools will use default queue")
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError, ConnectionError) as e:
             logger.error("Failed to create sandbox for mission %s: %s", mission.id, e)
             mission.log(f"[ERROR] Sandbox creation failed: {e}")
         return None
@@ -214,7 +214,7 @@ class MissionExecutionManager:
             await notify_mission_completed(
                 mission.target, len(mission.findings), critical
             )
-        except Exception as e:
+        except (ImportError, OSError, ConnectionError, RuntimeError) as e:
             logger.warning("Failed to send mission completion notification: %s", e)
 
         try:
@@ -245,7 +245,7 @@ class MissionExecutionManager:
                         finding_count=str(len(mission.findings)),
                         report_url=f"{base_url}/reports/{mission.id}",
                     )
-        except Exception as e:
+        except (ImportError, OSError, ConnectionError, RuntimeError, AttributeError) as e:
             logger.warning("Failed to send mission completion email: %s", e)
 
     async def _cleanup_mission(self, mission: Mission) -> None:
@@ -257,7 +257,7 @@ class MissionExecutionManager:
             if pool and pool.available:
                 await pool.destroy(mission.id)
                 mission.log("[SANDBOX] Sandbox destroyed")
-        except Exception as e:
+        except (ImportError, OSError, RuntimeError) as e:
             logger.warning("Sandbox destroy failed for mission %s: %s", mission.id, e)
 
         if getattr(mission, "vpn_config", None):
@@ -266,12 +266,12 @@ class MissionExecutionManager:
                 vpn_mgr = VPNManager()
                 await vpn_mgr.disconnect(mission.vpn_config)
                 mission.log(f"[VPN] Disconnected '{mission.vpn_config}'")
-            except Exception as vpn_err:
+            except (ImportError, OSError, RuntimeError, TypeError) as vpn_err:
                 logger.error("VPN disconnect failed for mission %s: %s", mission.id, vpn_err)
 
         try:
             shell_manager.notify_mission_complete(str(mission.id))
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error(
                 f"Failed to notify shell manager of mission completion: {e}"
             )
