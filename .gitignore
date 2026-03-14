@@ -12,22 +12,17 @@ __pycache__/**
 keys/plugin_signing.pem
 .coverage
 .pytest_cache/
-logs/
-reports/
 test.db
 
-# Runtime data (container-managed, never on host)
-data/config/
-data/missions/
-data/sessions/
-data/cache/
-data/auth/
-!data/.gitkeep
-!data/*/.gitkeep
-
-docs/plan/
+# Runtime data — all managed by Docker volumes, never on host
+data/
+logs/
+reports/
 screenshots/
 docker/data/
+docker/logs/
+
+docs/plan/
 .desloppify/
 .github/copilot-instructions.md
 scorecard.png

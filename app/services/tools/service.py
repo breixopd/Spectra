@@ -271,6 +271,10 @@ class ToolExecutionService:
                 )
             mission.log(f"Tool {tool_name} installed successfully")
             tool = registry.get_tool(tool_name)
+            if not tool:
+                return None, create_error_result(
+                    tool_name, target, "Tool not found after install"
+                )
 
         if tool.config.execution.args_schema:
             if HAS_JSONSCHEMA:

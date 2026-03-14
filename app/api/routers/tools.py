@@ -176,6 +176,8 @@ async def sign_plugin_config(
         canonical_json = json.dumps(config, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
         # Sign
+        if private_key is None:
+            raise HTTPException(status_code=500, detail="Signing key not resolved")
         signature = private_key.sign(canonical_json)
         config["signature"] = signature.hex()
 
