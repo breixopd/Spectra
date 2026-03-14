@@ -169,7 +169,7 @@ class TestToolServiceExecution:
 
         tool_service._perform_safety_check = AsyncMock(return_value=(True, "Safe"))
 
-        with patch("app.core.queue.PostgresJobQueue", side_effect=Exception("queue fail")):
+        with patch("app.core.queue.PostgresJobQueue", side_effect=RuntimeError("queue fail")):
             result = await tool_service.execute_custom_script(
                 mission=mission,
                 script_content="code",

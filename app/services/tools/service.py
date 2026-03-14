@@ -189,7 +189,7 @@ class ToolExecutionService:
                 duration_seconds=0.0,
             )
 
-        except Exception as e:
+        except (OSError, TimeoutError, ValueError, RuntimeError) as e:
             logger.error("Failed to execute custom script: %s", e)
             return create_error_result("custom_script", target, str(e))
 
@@ -231,7 +231,7 @@ class ToolExecutionService:
             record_to_memory(mission, tool_name, target, args, result)
             return result
 
-        except Exception as e:
+        except (OSError, TimeoutError, ValueError, KeyError, RuntimeError) as e:
             msg = f"Critical error executing {tool_name}: {e}"
             mission.log(msg)
             logger.error(msg, exc_info=True)

@@ -352,7 +352,7 @@ Extract all findings (services, vulnerabilities, credentials, etc.) as structure
 
             return [f.model_dump(exclude_none=True) for f in result.findings]
 
-        except Exception as e:
+        except (ValueError, TypeError, TimeoutError, RuntimeError) as e:
             logger.warning("LLM extraction failed: %s", e)
             return []
 
