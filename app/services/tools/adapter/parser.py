@@ -88,17 +88,17 @@ class UniversalParser:
                     content = self._safe_read_file(f)
                     if content:
                         outputs.append(content)
-            elif output_path.exists():
-                if output_path.is_dir():
-                    for f in output_path.rglob("*"):
-                        if f.is_file():
-                            content = self._safe_read_file(f)
-                            if content:
-                                outputs.append(content)
-                else:
-                    content = self._safe_read_file(output_path)
+            elif output_path.exists() and output_path.is_dir():
+                for f in output_path.rglob("*"):
+                    if not f.is_file():
+                        continue
+                    content = self._safe_read_file(f)
                     if content:
                         outputs.append(content)
+            elif output_path.exists():
+                content = self._safe_read_file(output_path)
+                if content:
+                    outputs.append(content)
 
         # Add stdout if no file output or combining is enabled
         if not outputs or parsing_config.combine_outputs:

@@ -159,10 +159,9 @@ async def fetch_cves_from_nvd(
                 for node in config.get("nodes", []):
                     for match in node.get("cpeMatch", []):
                         cpe = match.get("criteria", "")
-                        if cpe:
-                            parts = cpe.split(":")
-                            if len(parts) > 4:
-                                products.append(parts[4])
+                        parts = cpe.split(":") if cpe else []
+                        if len(parts) > 4:
+                            products.append(parts[4])
 
             results.append({
                 "cve": cve_id,
