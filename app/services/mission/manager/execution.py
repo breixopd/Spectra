@@ -61,28 +61,55 @@ class MissionExecutionManager:
 
     async def run_mission_loop(self, mission: Mission) -> None:
         """Main execution loop for a mission."""
-        # Initialize demo recorder if requested
-        recorder = None
-        if getattr(mission, "record_demo", False):
-            try:
-                from app.services.mission.demo_recorder import DemoRecorder
-
-                recorder = DemoRecorder(mission.id, mission.target)
-                recorder.start()
-                mission.log("[RECORD] Demo recording started")
-            except Exception as e:
-                logger.debug("Demo recorder init failed: %s", e)
+        recorder = self._init_demo_recorder(mission)
 
         context = await self.lifecycle.initialize_mission(mission)
         if context is None:
             return
 
-        # Initialize cost tracker for the mission
+        cost_tracker = self._setup_cost_tracking(mission, context)
+        await self._create_sandbox(mission)
+
+        try:
+            await self._run_mission_phases(mission, context, cost_tracker, recorder)
+        except asyncio.CancelledError:
+            mission.set_status("cancelled")
+            mission.log("Mission cancelled")
+            logger.info("Mission %s cancelled", mission.id)
+            self._broadcast_state("mission_controller", "cancelled")
+            await self.lifecycle.update_db_status(mission)
+        except Exception as e:
+            mission.set_status("failed")
+            mission.log(f"Mission failed: {e}")
+            logger.error("Mission %s failed: %s", mission.id, e, exc_info=True)
+            self._broadcast_state("mission_controller", "failed")
+            await self.lifecycle.update_db_status(mission)
+        finally:
+            await self._cleanup_mission(mission)
+
+    def _init_demo_recorder(self, mission: Mission) -> Any:
+        """Initialize demo recorder if requested."""
+        if not getattr(mission, "record_demo", False):
+            return None
+        try:
+            from app.services.mission.demo_recorder import DemoRecorder
+
+            recorder = DemoRecorder(mission.id, mission.target)
+            recorder.start()
+            mission.log("[RECORD] Demo recording started")
+            return recorder
+        except Exception as e:
+            logger.debug("Demo recorder init failed: %s", e)
+            return None
+
+    def _setup_cost_tracking(
+        self, mission: Mission, context: AgentContext,
+    ) -> CostTracker:
+        """Initialize and attach cost tracker to all agents."""
         cost_tracker = CostTracker(str(mission.id))
         cost_tracker.register()
         context.cost_tracker = cost_tracker
 
-        # Attach cost tracker to agents
         for agent in (self.scope_agent, self.mission_controller):
             if agent:
                 agent._cost_tracker = cost_tracker
@@ -90,11 +117,12 @@ class MissionExecutionManager:
             for agent in self.executor.agents.values():
                 agent._cost_tracker = cost_tracker
 
-        # Track mission start time for timeout
         mission_start_time = time.time()
         mission._start_wall_time = mission_start_time  # type: ignore[attr-defined]
+        return cost_tracker
 
-        # Send start notification
+    async def _create_sandbox(self, mission: Mission) -> Any:
+        """Create per-mission sandbox container and send start notification."""
         try:
             from app.services.notifications import notify_mission_started
 
@@ -102,8 +130,6 @@ class MissionExecutionManager:
         except Exception as e:
             logger.warning("Failed to send mission start notification: %s", e)
 
-        # Create per-mission sandbox container
-        sandbox_info = None
         try:
             from app.services.tools.sandbox import get_sandbox_pool
 
@@ -122,150 +148,133 @@ class MissionExecutionManager:
 
                 sandbox_info = await pool.create(mission.id, vpn_config_path=vpn_path)
                 mission.log(f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})")
+                return sandbox_info
             else:
                 mission.log("[WARN] Sandbox pool unavailable — tools will use default queue")
         except Exception as e:
             logger.error("Failed to create sandbox for mission %s: %s", mission.id, e)
             mission.log(f"[ERROR] Sandbox creation failed: {e}")
+        return None
+
+    async def _run_mission_phases(
+        self,
+        mission: Mission,
+        context: AgentContext,
+        cost_tracker: CostTracker,
+        recorder: Any,
+    ) -> None:
+        """Execute all mission phases: scope, plan, execute, debrief, report."""
+        await self._run_scope_phase(mission, context)
+        await self._run_planning_phase(mission, context)
+
+        if mission.plan is None:
+            raise RuntimeError("No plan created")
+
+        if recorder:
+            mission._demo_recorder = recorder
+        await self._execute_mission_tasks(mission, context)
+
+        record_mission_lessons(mission)
+        await index_to_rag(mission)
+        await run_debrief(mission, context, self.mission_controller)
+        await generate_html_report(mission)
+
+        mission.set_status("completed")
+        mission.log("Mission completed successfully")
+        self._broadcast_state("mission_controller", "idle", plan="Mission Complete")
+
+        summary = cost_tracker.get_summary()
+        mission.log(
+            f"[COST] Total: ${summary['total_cost_usd']:.4f} | "
+            f"Tokens: {summary['total_tokens']} | "
+            f"Calls: {summary['total_calls']} | "
+            f"Duration: {summary['duration_seconds']}s"
+        )
+        logger.info("Mission %s cost summary: %s", mission.id, summary)
+
+        if recorder:
+            recorder.stop()
+            path = await recorder.save()
+            if path:
+                mission.log(f"[RECORD] Demo saved: {path}")
+
+        await self._send_completion_notifications(mission)
+        await self.lifecycle.update_db_status(mission)
+
+    async def _send_completion_notifications(self, mission: Mission) -> None:
+        """Send webhook and email notifications on mission completion."""
+        try:
+            from app.services.notifications import notify_mission_completed
+
+            critical = sum(
+                1
+                for f in mission.findings
+                if str(f.get("severity", "")).lower() == "critical"
+            )
+            await notify_mission_completed(
+                mission.target, len(mission.findings), critical
+            )
+        except Exception as e:
+            logger.warning("Failed to send mission completion notification: %s", e)
 
         try:
-            # 1. Define Scope
-            await self._run_scope_phase(mission, context)
+            if mission.user_id:
+                from sqlalchemy import select
 
-            # 2. Create and validate plan
-            await self._run_planning_phase(mission, context)
+                from app.core.config import get_settings
+                from app.core.database import async_session_maker
+                from app.models.user import User
+                from app.services.email import EmailService
 
-            if mission.plan is None:
-                raise RuntimeError("No plan created")
-
-            # 3. Execute tasks (with demo recording)
-            if recorder:
-                mission._demo_recorder = recorder
-            await self._execute_mission_tasks(mission, context)
-
-            # 4. Post-mission learning
-            record_mission_lessons(mission)
-            await index_to_rag(mission)
-
-            # 5. Run AI debrief
-            await run_debrief(mission, context, self.mission_controller)
-
-            # 6. Generate HTML report
-            await generate_html_report(mission)
-
-            # 7. Complete
-            mission.set_status("completed")
-            mission.log("Mission completed successfully")
-            self._broadcast_state("mission_controller", "idle", plan="Mission Complete")
-
-            # Log cost summary
-            summary = cost_tracker.get_summary()
-            mission.log(
-                f"[COST] Total: ${summary['total_cost_usd']:.4f} | "
-                f"Tokens: {summary['total_tokens']} | "
-                f"Calls: {summary['total_calls']} | "
-                f"Duration: {summary['duration_seconds']}s"
-            )
-            logger.info("Mission %s cost summary: %s", mission.id, summary)
-
-            # Save demo recording
-            if recorder:
-                recorder.stop()
-                path = await recorder.save()
-                if path:
-                    mission.log(f"[RECORD] Demo saved: {path}")
-
-            # Send completion notification
-            try:
-                from app.services.notifications import notify_mission_completed
-
-                critical = sum(
-                    1
-                    for f in mission.findings
-                    if str(f.get("severity", "")).lower() == "critical"
-                )
-                await notify_mission_completed(
-                    mission.target, len(mission.findings), critical
-                )
-            except Exception as e:
-                logger.warning("Failed to send mission completion notification: %s", e)
-
-            # Send completion email to mission owner
-            try:
-                if mission.user_id:
-                    from sqlalchemy import select
-
-                    from app.core.config import get_settings
-                    from app.core.database import async_session_maker
-                    from app.models.user import User
-                    from app.services.email import EmailService
-
-                    async with async_session_maker() as db_session:
-                        result = await db_session.execute(
-                            select(User).where(User.id == mission.user_id)
-                        )
-                        owner = result.scalar_one_or_none()
-                    if owner:
-                        _settings = get_settings()
-                        base_url = _settings.PLATFORM_BASE_URL or "http://localhost:5000"
-                        email_svc = EmailService()
-                        await email_svc.send_template(
-                            to=owner.email,
-                            template_name="mission_complete",
-                            subject=f"Spectra \u2014 Mission Complete: {mission.target}",
-                            username=owner.username,
-                            target=mission.target,
-                            status="Completed",
-                            finding_count=str(len(mission.findings)),
-                            report_url=f"{base_url}/reports/{mission.id}",
-                        )
-            except Exception as e:
-                logger.warning("Failed to send mission completion email: %s", e)
-
-            # Update DB
-            await self.lifecycle.update_db_status(mission)
-
-        except asyncio.CancelledError:
-            mission.set_status("cancelled")
-            mission.log("Mission cancelled")
-            logger.info("Mission %s cancelled", mission.id)
-            self._broadcast_state("mission_controller", "cancelled")
-            await self.lifecycle.update_db_status(mission)
+                async with async_session_maker() as db_session:
+                    result = await db_session.execute(
+                        select(User).where(User.id == mission.user_id)
+                    )
+                    owner = result.scalar_one_or_none()
+                if owner:
+                    _settings = get_settings()
+                    base_url = _settings.PLATFORM_BASE_URL or "http://localhost:5000"
+                    email_svc = EmailService()
+                    await email_svc.send_template(
+                        to=owner.email,
+                        template_name="mission_complete",
+                        subject=f"Spectra \u2014 Mission Complete: {mission.target}",
+                        username=owner.username,
+                        target=mission.target,
+                        status="Completed",
+                        finding_count=str(len(mission.findings)),
+                        report_url=f"{base_url}/reports/{mission.id}",
+                    )
         except Exception as e:
-            mission.set_status("failed")
-            mission.log(f"Mission failed: {e}")
-            logger.error("Mission %s failed: %s", mission.id, e, exc_info=True)
-            self._broadcast_state("mission_controller", "failed")
-            await self.lifecycle.update_db_status(mission)
-        finally:
-            # Destroy per-mission sandbox container
+            logger.warning("Failed to send mission completion email: %s", e)
+
+    async def _cleanup_mission(self, mission: Mission) -> None:
+        """Destroy sandbox, disconnect VPN, and notify shell manager."""
+        try:
+            from app.services.tools.sandbox import get_sandbox_pool
+
+            pool = get_sandbox_pool()
+            if pool and pool.available:
+                await pool.destroy(mission.id)
+                mission.log("[SANDBOX] Sandbox destroyed")
+        except Exception as e:
+            logger.warning("Sandbox destroy failed for mission %s: %s", mission.id, e)
+
+        if getattr(mission, "vpn_config", None):
             try:
-                from app.services.tools.sandbox import get_sandbox_pool
+                from app.services.tools.vpn import VPNManager
+                vpn_mgr = VPNManager()
+                await vpn_mgr.disconnect(mission.vpn_config)
+                mission.log(f"[VPN] Disconnected '{mission.vpn_config}'")
+            except Exception as vpn_err:
+                logger.error("VPN disconnect failed for mission %s: %s", mission.id, vpn_err)
 
-                pool = get_sandbox_pool()
-                if pool and pool.available:
-                    await pool.destroy(mission.id)
-                    mission.log("[SANDBOX] Sandbox destroyed")
-            except Exception as e:
-                logger.warning("Sandbox destroy failed for mission %s: %s", mission.id, e)
-
-            # Disconnect per-mission VPN if one was connected
-            if getattr(mission, "vpn_config", None):
-                try:
-                    from app.services.tools.vpn import VPNManager
-                    vpn_mgr = VPNManager()
-                    await vpn_mgr.disconnect(mission.vpn_config)
-                    mission.log(f"[VPN] Disconnected '{mission.vpn_config}'")
-                except Exception as vpn_err:
-                    logger.error("VPN disconnect failed for mission %s: %s", mission.id, vpn_err)
-
-            # Notify shell manager to update TTLs for active shells from other missions
-            try:
-                shell_manager.notify_mission_complete(str(mission.id))
-            except Exception as e:
-                logger.error(
-                    f"Failed to notify shell manager of mission completion: {e}"
-                )
+        try:
+            shell_manager.notify_mission_complete(str(mission.id))
+        except Exception as e:
+            logger.error(
+                f"Failed to notify shell manager of mission completion: {e}"
+            )
 
     async def _run_scope_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run scope definition phase."""
