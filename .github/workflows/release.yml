@@ -17,12 +17,28 @@ permissions:
 env:
   REGISTRY: ghcr.io
   APP_IMAGE: ghcr.io/breixopd14/spectra-app
-  TOOLS_IMAGE: ghcr.io/breixopd14/spectra-tools
+  AI_IMAGE: ghcr.io/breixopd14/spectra-ai-svc
+  SCHEDULER_IMAGE: ghcr.io/breixopd14/spectra-scheduler
+  WORKER_IMAGE: ghcr.io/breixopd14/spectra-worker
 
 jobs:
   release:
     name: Build, Push & Release
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: spectra
+          POSTGRES_PASSWORD: spectra_test
+          POSTGRES_DB: spectra_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U spectra -d spectra_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     concurrency:
       group: release
       cancel-in-progress: false
@@ -76,7 +92,7 @@ jobs:
             --cov-fail-under=60
         env:
           AI_PROVIDER: mock
-          DATABASE_URL: "sqlite+aiosqlite:///test.db"
+          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
           FULLY_AUTOMATED: "true"
@@ -97,7 +113,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push spectra-app
+      - name: Build & push app-stack images
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -106,6 +122,10 @@ jobs:
           tags: |
             ${{ env.APP_IMAGE }}:latest
             ${{ env.APP_IMAGE }}:${{ steps.version.outputs.version }}
+            ${{ env.AI_IMAGE }}:latest
+            ${{ env.AI_IMAGE }}:${{ steps.version.outputs.version }}
+            ${{ env.SCHEDULER_IMAGE }}:latest
+            ${{ env.SCHEDULER_IMAGE }}:${{ steps.version.outputs.version }}
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
@@ -114,15 +134,15 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build & push spectra-tools
+      - name: Build & push worker image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile.tools
           push: true
           tags: |
-            ${{ env.TOOLS_IMAGE }}:latest
-            ${{ env.TOOLS_IMAGE }}:${{ steps.version.outputs.version }}
+            ${{ env.WORKER_IMAGE }}:latest
+            ${{ env.WORKER_IMAGE }}:${{ steps.version.outputs.version }}
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
@@ -178,9 +198,7 @@ jobs:
     name: Deploy to production
     needs: release
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://${{ secrets.DEPLOY_HOST }}
+    environment: production
     steps:
       - uses: actions/checkout@v4
 

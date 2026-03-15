@@ -31,6 +31,7 @@ from app.services.mission.manager.helpers import (
 from app.services.mission.manager.lifecycle import MissionLifecycleManager
 from app.services.mission.manager.steering import MissionSteeringManager
 from app.services.mission.mission import Mission
+from app.services.tools.output import cleanup_mission_workspace
 from app.services.shell.session_manager import shell_manager
 
 logger = logging.getLogger(__name__)
@@ -275,6 +276,8 @@ class MissionExecutionManager:
             logger.error(
                 f"Failed to notify shell manager of mission completion: {e}"
             )
+
+        cleanup_mission_workspace(mission.id)
 
     async def _run_scope_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run scope definition phase."""

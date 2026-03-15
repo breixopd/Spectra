@@ -55,6 +55,44 @@ class SandboxPool:
         except (DockerException, OSError) as exc:
             logger.warning("SandboxPool: Docker not available (%s). Sandbox features disabled.", exc)
 
+    def _resolve_shared_network_name(self, preferred_name: str) -> str:
+        """Resolve compose-prefixed network names for ad hoc sandbox containers."""
+        if not self.available:
+            return preferred_name
+        try:
+            self._client.networks.get(preferred_name)
+            return preferred_name
+        except (APIError, NotFound):
+            pass
+
+        try:
+            for network in self._client.networks.list():
+                name = getattr(network, "name", "")
+                if name == preferred_name or name.endswith(f"_{preferred_name}"):
+                    return name
+        except (APIError, DockerException):
+            logger.debug("Failed to enumerate docker networks when resolving %s", preferred_name)
+        return preferred_name
+
+    def _resolve_volume_name(self, preferred_name: str) -> str:
+        """Resolve compose-prefixed named volumes for ad hoc sandbox containers."""
+        if not self.available:
+            return preferred_name
+        try:
+            self._client.volumes.get(preferred_name)
+            return preferred_name
+        except (APIError, NotFound):
+            pass
+
+        try:
+            for volume in self._client.volumes.list():
+                name = getattr(volume, "name", "")
+                if name == preferred_name or name.endswith(f"_{preferred_name}"):
+                    return name
+        except (APIError, DockerException):
+            logger.debug("Failed to enumerate docker volumes when resolving %s", preferred_name)
+        return preferred_name
+
     @staticmethod
     def get_tier_limits(tier_name: str) -> tuple[str, int]:
         """Parse SANDBOX_RESOURCE_TIERS and return (memory_limit, cpu_shares) for the given tier."""
@@ -146,9 +184,13 @@ class SandboxPool:
 
         mounts = [
             # Shared data volume (named Docker volume)
-            docker.types.Mount(target="/app/data", source="spectra_data", type="volume"),
+            docker.types.Mount(target="/app/data", source=self._resolve_volume_name("spectra_data"), type="volume"),
             # Tools data volume (named Docker volume — shared tool binaries)
-            docker.types.Mount(target="/opt/spectra_tools", source="spectra_tools_data", type="volume"),
+            docker.types.Mount(
+                target="/opt/spectra_tools",
+                source=self._resolve_volume_name("spectra_tools_data"),
+                type="volume",
+            ),
         ]
 
         # Mount plugins: prefer named volume (works in DinD), fall back to bind mount (host dev)
@@ -159,7 +201,12 @@ class SandboxPool:
         plugins_dir = app_root / "plugins"
         if plugins_volume:
             mounts.append(
-                docker.types.Mount(target="/app/plugins", source=plugins_volume, type="volume", read_only=True)
+                docker.types.Mount(
+                    target="/app/plugins",
+                    source=self._resolve_volume_name(plugins_volume),
+                    type="volume",
+                    read_only=True,
+                )
             )
         elif plugins_dir.is_dir():
             mounts.append(
@@ -176,7 +223,8 @@ class SandboxPool:
 
         # Create isolated network if enabled
         sandbox_network_id: str | None = None
-        container_network = settings.SANDBOX_NETWORK
+        shared_network_name = self._resolve_shared_network_name(settings.SANDBOX_NETWORK)
+        container_network = shared_network_name
 
         if settings.SANDBOX_NETWORK_ISOLATION:
             net_name = f"spectra-sandbox-{mission_id[:8]}"
@@ -223,9 +271,9 @@ class SandboxPool:
             # Connect to shared network for DB access if using isolated network
             if settings.SANDBOX_NETWORK_ISOLATION and sandbox_network_id:
                 try:
-                    shared_net = self._client.networks.get(settings.SANDBOX_NETWORK)
+                    shared_net = self._client.networks.get(shared_network_name)
                     await asyncio.to_thread(shared_net.connect, container)
-                    logger.debug("Connected sandbox %s to shared network %s", container_name, settings.SANDBOX_NETWORK)
+                    logger.debug("Connected sandbox %s to shared network %s", container_name, shared_network_name)
                 except (APIError, NotFound) as exc:
                     logger.warning("Failed to connect sandbox to shared network: %s", exc)
 

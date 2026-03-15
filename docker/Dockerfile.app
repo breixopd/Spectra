@@ -6,7 +6,7 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /build
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     libcairo2-dev \
@@ -34,7 +34,7 @@ LABEL org.opencontainers.image.version="${BUILD_VERSION}"
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libpq5 \
     libcairo2 \
     curl \
@@ -61,7 +61,7 @@ RUN useradd --create-home --shell /bin/bash spectra && \
 # NOTE: We do NOT set USER here — start.sh runs as root to fix Docker socket GID,
 # then drops to spectra via gosu before launching the app.
 
-# Copy application code (overridden by volume mounts in dev)
+# Copy application code
 COPY --chown=spectra:spectra scripts/ ./scripts/
 COPY --chown=spectra:spectra app/ ./app/
 COPY --chown=spectra:spectra alembic/ ./alembic/

@@ -1,6 +1,6 @@
 # Spectra Documentation Wiki
 
-[Architecture](architecture.md) | [Configuration](configuration.md) | [Deployment](deployment.md) | [Scaling](scaling.md) | [API Reference](api-reference.md)
+[Architecture](architecture.md) | [Configuration](configuration.md) | [Deployment](deployment.md) | [Scaling](scaling.md) | [API Reference](api-reference.md) | [Development](development.md)
 
 ---
 
@@ -24,6 +24,11 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 | [Authentication](authentication.md) | JWT tokens, password reset, rate limiting, RBAC roles, API keys |
 | [Worker System](worker-system.md) | Background jobs, dead-letter queue, cleanup, notifications, reports |
 | [Development](development.md) | Local setup, testing, code structure, contributing |
+| [Access Control](access-control.md) | Roles, permissions, admin boundaries, approval flows |
+| [Authentication](authentication.md) | JWT tokens, password reset, API keys, anti-enumeration controls |
+| [Private Registry Setup](private-registry-setup.md) | GHCR/private registry authentication and deployment setup |
+| [Shell Sessions](shell-sessions.md) | Interactive shell session handling and audit trail |
+| [Plan Tiers](plan-tiers.md) | Subscription plan limits, quotas, and feature gating |
 | [Roadmap](roadmap.md) | Future improvements and completed milestones |
 
 ## Quick Links
