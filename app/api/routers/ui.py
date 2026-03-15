@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import _is_admin_user, get_current_active_user, get_ui_user
-from app.api.schemas import LLMTestRequest, SettingsUpdateRequest
+from app.api.schemas import LLMTestRequest, SettingsUpdate
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
 from app.core.rbac import Permission, require_permission
@@ -349,7 +349,7 @@ async def shell_page(request: Request, session_id: str):
 
 @router.post("/api/settings")
 async def update_settings(
-    data: SettingsUpdateRequest,
+    data: SettingsUpdate,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ):

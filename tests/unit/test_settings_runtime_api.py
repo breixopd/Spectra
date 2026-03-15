@@ -214,7 +214,7 @@ async def test_ai_status_exposes_resolved_runtime_routes(test_app):
 
 
 def test_settings_update_request_normalizes_legacy_api_provider_to_litellm():
-    payload = ui.SettingsUpdateRequest(ai_provider="api")
+    payload = ui.SettingsUpdate(ai_provider="api")
 
     assert payload.ai_provider == "litellm"
 

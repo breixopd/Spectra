@@ -16,8 +16,8 @@ from app.api.dependencies import get_ui_user
 from app.api.schemas import (
     PaginatedResponse,
     UserAdminResponse,
-    UserCreateRequest,
-    UserUpdateRequest,
+    AdminUserCreate,
+    AdminUserUpdate,
 )
 from app.core.config import settings
 from app.core.database import get_async_session
@@ -136,7 +136,7 @@ async def get_user(
 
 @router.post("/api/admin/users", status_code=status.HTTP_201_CREATED)
 async def create_user(
-    body: UserCreateRequest,
+    body: AdminUserCreate,
     request: Request,
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
@@ -186,7 +186,7 @@ async def create_user(
 @router.put("/api/admin/users/{user_id}")
 async def update_user(
     user_id: str,
-    body: UserUpdateRequest,
+    body: AdminUserUpdate,
     request: Request,
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
