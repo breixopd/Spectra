@@ -6,20 +6,23 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from app.services.ai.context import truncate_for_llm
 from app.services.tools.adapter import CommandToolAdapter
 from app.services.tools.execution import execute_via_worker
 from app.services.tools.models import RegisteredTool, ToolExecutionRequest, ToolExecutionResult
 from app.services.tools.output import (
+    cleanup_output_directory,
     log_success,
+    persist_output_directory,
     prepare_output_directory,
     update_attack_surface_from_finding,
 )
 
 if TYPE_CHECKING:
     from app.services.mission.mission import Mission
+    from app.services.mission.types import FindingDict
 
 logger = logging.getLogger(__name__)
 
@@ -83,51 +86,59 @@ async def dispatch_and_process_result(
     max_stderr_chars: int,
 ) -> ToolExecutionResult:
     """Apply stealth settings, dispatch to worker, and process the result."""
-    stealth = tool.config.stealth
-    if stealth and isinstance(getattr(stealth, 'delay_ms', None), (int, float)) and stealth.delay_ms:
-        delay_s = stealth.delay_ms / 1000.0
-        mission.log(f"[STEALTH] Applying {stealth.delay_ms}ms delay before execution")
-        await asyncio.sleep(delay_s)
+    try:
+        stealth = tool.config.stealth
+        if stealth and isinstance(getattr(stealth, 'delay_ms', None), (int, float)) and stealth.delay_ms:
+            delay_s = stealth.delay_ms / 1000.0
+            mission.log(f"[STEALTH] Applying {stealth.delay_ms}ms delay before execution")
+            await asyncio.sleep(delay_s)
 
-    if stealth and getattr(stealth, 'extra_args', None):
-        full_command = adapter.builder.apply_stealth_args(full_command, stealth)
+        if stealth and getattr(stealth, 'extra_args', None):
+            full_command = adapter.builder.apply_stealth_args(full_command, stealth)
 
-    async with semaphore:
-        result = await execute_via_worker(
-            tool_id=request.tool_id,
-            target=request.target,
-            args=request.args,
-            timeout=request.timeout,
-            output_dir=output_dir,
-            mission_id=mission.id,
-            queue_name=queue_name,
-            default_timeout=default_timeout,
-            buffer_timeout=buffer_timeout,
-        )
+        async with semaphore:
+            result = await execute_via_worker(
+                tool_id=request.tool_id,
+                target=request.target,
+                args=request.args,
+                timeout=request.timeout,
+                output_dir=output_dir,
+                mission_id=mission.id,
+                queue_name=queue_name,
+                default_timeout=default_timeout,
+                buffer_timeout=buffer_timeout,
+            )
 
-    if result.success:
-        result.stdout = truncate_for_llm(
-            result.stdout, max_chars=max_stdout_chars, label="stdout"
-        )
-        result.stderr = truncate_for_llm(
-            result.stderr, max_chars=max_stderr_chars, label="stderr"
-        )
-        log_success(mission, tool_name, result)
-        for finding in result.parsed_findings:
-            mission.add_finding(finding)
-            update_attack_surface_from_finding(mission, finding)
-        mission.record_tool_run(
-            tool_name, args=args, command=full_command, success=True,
-        )
-    else:
-        last_error = (
-            result.stderr[:max_stderr_chars]
-            if result.stderr
-            else "No error message"
-        )
-        mission.log(f"[ERROR] {tool_name} failed: {last_error[:200]}")
-        mission.record_tool_run(
-            tool_name, args=args, success=False, error=last_error,
-        )
+        if result.success:
+            result.stdout = truncate_for_llm(
+                result.stdout, max_chars=max_stdout_chars, label="stdout"
+            )
+            result.stderr = truncate_for_llm(
+                result.stderr, max_chars=max_stderr_chars, label="stderr"
+            )
+            log_success(mission, tool_name, result)
+            for finding in result.parsed_findings:
+                typed_finding = cast("FindingDict", finding)
+                mission.add_finding(typed_finding)
+                update_attack_surface_from_finding(mission, finding)
+            mission.record_tool_run(
+                tool_name, args=args, command=full_command, success=True,
+            )
+        else:
+            last_error = (
+                result.stderr[:max_stderr_chars]
+                if result.stderr
+                else "No error message"
+            )
+            mission.log(f"[ERROR] {tool_name} failed: {last_error[:200]}")
+            mission.record_tool_run(
+                tool_name, args=args, success=False, error=last_error,
+            )
 
-    return result
+        return result
+    finally:
+        try:
+            await persist_output_directory(mission.id, output_dir)
+        except (OSError, RuntimeError, ValueError) as exc:
+            logger.warning("Failed to persist output directory %s: %s", output_dir, exc)
+        cleanup_output_directory(output_dir)

@@ -191,13 +191,22 @@ class WarmPoolManager:
             import docker.types
 
             mounts = [
-                docker.types.Mount(target="/app/data", source="spectra_data", type="volume"),
-                docker.types.Mount(target="/opt/spectra_tools", source="spectra_tools_data", type="volume"),
+                docker.types.Mount(
+                    target="/app/data",
+                    source=self._pool._resolve_volume_name("spectra_data"),
+                    type="volume",
+                ),
+                docker.types.Mount(
+                    target="/opt/spectra_tools",
+                    source=self._pool._resolve_volume_name("spectra_tools_data"),
+                    type="volume",
+                ),
             ]
 
             # Create network if isolation enabled
             network_id = None
-            container_network = settings.SANDBOX_NETWORK
+            shared_network_name = self._pool._resolve_shared_network_name(settings.SANDBOX_NETWORK)
+            container_network = shared_network_name
 
             if settings.SANDBOX_NETWORK_ISOLATION:
                 net_name = f"spectra-warm-{placeholder_id[:8]}"
@@ -237,7 +246,7 @@ class WarmPoolManager:
             # Connect to shared network if using isolated network
             if network_id:
                 try:
-                    shared_net = self._pool._client.networks.get(settings.SANDBOX_NETWORK)
+                    shared_net = self._pool._client.networks.get(shared_network_name)
                     await asyncio.to_thread(shared_net.connect, container)
                 except OSError:
                     logger.debug("Failed to connect warm container to shared network")

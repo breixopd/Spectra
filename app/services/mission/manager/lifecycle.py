@@ -14,6 +14,7 @@ from app.services.ai.agents.base import AgentContext
 from app.services.billing.quota_enforcer import QuotaEnforcer
 from app.services.mission.mission import Mission
 from app.services.mission.state_store import MissionStateStore
+from app.services.tools.output import cleanup_mission_workspace
 from app.utils.geoip import resolve_ip
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,15 @@ class MissionLifecycleManager:
         """Stop a running mission."""
         if mission_id in self.active_missions:
             mission = self.active_missions[mission_id]
+            try:
+                from app.services.tools.sandbox import get_sandbox_pool
+
+                pool = get_sandbox_pool()
+                if pool and pool.available:
+                    await pool.destroy(mission_id)
+                    logger.info("Sandbox destroyed for stopped mission %s", mission_id)
+            except (ImportError, OSError, RuntimeError) as e:
+                logger.error("Failed to destroy sandbox for mission %s: %s", mission_id, e)
             # Disconnect VPN if configured
             if getattr(mission, "vpn_config", None):
                 try:
@@ -102,6 +112,7 @@ class MissionLifecycleManager:
             await self.update_db_status(mission)
             # Remove from distributed state
             await self.state_store.unregister(mission_id)
+            cleanup_mission_workspace(mission_id)
             return True
         return False
 

@@ -10,7 +10,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docs.docker.com/compose/)
 [![License: Private](https://img.shields.io/badge/License-Private-red.svg)]()
 
-[📖 Documentation](docs/wiki/home.md) · [🚀 Quick Start](#quick-start) · [📡 API Reference](docs/wiki/api-reference.md) · [🤝 Contributing](CONTRIBUTING.md)
+[📖 Wiki](docs/wiki/home.md) · [🚀 Quick Start](#quick-start) · [📡 API Reference](docs/wiki/api-reference.md) · [🤝 Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -75,67 +75,16 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 - **DI container** — lightweight service container (`app/core/container.py`) for testable dependency injection
 - **Notification jobs** — webhook delivery for mission completion, critical findings, and exploit success
 
-## Architecture
+## Documentation
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Caddy (TLS)                          │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────┐
-│                     FastAPI App (:5000)                      │
-│  ┌──────────┐  ┌───────────┐  ┌──────────┐  ┌───────────┐  │
-│  │ REST API │  │ WebSocket │  │  Web UI  │  │   Admin   │  │
-│  └────┬─────┘  └─────┬─────┘  └────┬─────┘  └─────┬─────┘  │
-│       └───────┬───────┴─────────────┴──────────────┘        │
-│               │                                              │
-│  ┌────────────▼─────────────────────────────────────────┐   │
-│  │              Service Layer                            │   │
-│  │  ┌─────────┐ ┌──────────┐ ┌─────────┐ ┌──────────┐  │   │
-│  │  │   AI    │ │ Mission  │ │  Tools  │ │ Storage  │  │   │
-│  │  │ Agents  │ │ Manager  │ │ Service │ │ Service  │  │   │
-│  │  └────┬────┘ └────┬─────┘ └────┬────┘ └────┬─────┘  │   │
-│  │       │           │            │            │         │   │
-│  │  ┌────▼────┐ ┌────▼─────┐ ┌───▼────┐  ┌───▼─────┐  │   │
-│  │  │   LLM  │ │  State   │ │ Plugin │  │  MinIO  │  │   │
-│  │  │ Router │ │ Machine  │ │Registry│  │   / S3  │  │   │
-│  │  └────────┘ └──────────┘ └────────┘  └─────────┘  │   │
-│  └──────────────────────────────────────────────────────┘   │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-    ┌─────────▼──────┐ ┌────▼─────┐ ┌─────▼──────┐
-    │  PostgreSQL +  │ │  Kali    │ │   Ollama   │
-    │   pgvector     │ │  Tools   │ │  (GPU/API) │
-    │                │ │  Worker  │ │            │
-    └────────────────┘ └──────────┘ └────────────┘
-```
+The repo documentation is organized as a wiki under [docs/wiki/home.md](docs/wiki/home.md).
 
-### Services
-
-| Service | Container | Purpose |
-|---------|-----------|---------|
-| **db** | PostgreSQL 16 + pgvector | Primary data store, vector search, job queue, cache |
-| **app** | FastAPI (Python 3.11) | API server + Web UI (port 5000) |
-| **tools** | Kali Linux worker | Security tool execution in isolated environment |
-| **minio** | MinIO | S3-compatible object storage for mission data |
-| **caddy** | Caddy | Reverse proxy, automatic TLS termination |
-| **ai** | Ollama (optional) | Local LLM inference (requires GPU) |
-
-### AI Agents
-
-| Agent | Responsibility |
-|-------|---------------|
-| **Scope** | Analyze targets, define assessment boundaries |
-| **Tool Selector** | Choose optimal tools for each task |
-| **Mission Controller** | Plan assessment phases and task ordering |
-| **Safety Supervisor** | Enforce scope limits, block dangerous actions |
-| **Exploit Crafter** | Generate and refine exploitation scripts |
-| **Reporter** | Produce findings reports with remediation advice |
-| **Debrief** | Summarize completed missions |
-| **CVE Intel** | Enrich findings with CVE/vulnerability data |
-| **Consensus** | Coordinate multi-agent voting on decisions |
+Start here:
+- [Wiki Home](docs/wiki/home.md)
+- [Deployment Guide](docs/wiki/deployment-guide.md)
+- [Configuration](docs/wiki/configuration.md)
+- [Development](docs/wiki/development.md)
+- [Microservices Split Notes](docs/wiki/microservices-split.md)
 
 ## Quick Start
 
@@ -204,33 +153,6 @@ All API endpoints are under `/api/v1/` with a deprecated alias at `/api/`.
 | **Admin** | `/api/admin/` | User/plan management, audit logs |
 
 Interactive API docs are available at `/docs` (Swagger UI) and `/redoc`.
-
-## Project Structure
-
-```
-spectra/
-├── app/                    # Application code
-│   ├── api/                # FastAPI routers and schemas
-│   │   ├── routers/        # Route handlers (admin, auth, missions, tools, ...)
-│   │   └── schemas.py      # Pydantic request/response models
-│   ├── core/               # Infrastructure (config, DB, security, cache, events)
-│   ├── models/             # SQLAlchemy ORM models
-│   ├── repositories/       # Data access layer (Repository pattern)
-│   ├── services/           # Business logic
-│   │   ├── ai/             # LLM clients, agents, consensus, RAG
-│   │   ├── mission/        # Mission lifecycle, execution, steering
-│   │   ├── tools/          # Tool registry, adapters, sandboxes
-│   │   └── ...             # Billing, email, gateway, storage, scaling
-│   ├── templates/          # Jinja2 HTML templates
-│   ├── static/             # CSS, JS, images
-│   └── worker/             # Tools container job queue worker
-├── plugins/                # Security tool plugin definitions (JSON)
-├── alembic/                # Database migrations
-├── docker/                 # Dockerfiles and Compose configs
-├── tests/                  # Unit, integration, and E2E tests
-├── docs/                   # Documentation wiki
-└── scripts/                # Utility scripts (setup, benchmarks, etc.)
-```
 
 ## Development
 

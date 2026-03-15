@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import shutil
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -55,6 +56,47 @@ def prepare_output_directory(mission_id: str, run_id: str) -> Path:
     path = data_path("missions", mission_id, "scans", run_id)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+async def persist_output_directory(mission_id: str, output_dir: str | Path) -> None:
+    """Persist transient scan artifacts to storage when S3-backed storage is enabled."""
+    from app.core.config import settings
+    from app.services.storage import get_storage_service
+
+    storage = get_storage_service()
+    if not storage.is_s3:
+        return
+
+    root = Path(output_dir)
+    if not root.exists():
+        return
+
+    for file_path in root.rglob("*"):
+        if not file_path.is_file():
+            continue
+        rel_path = file_path.relative_to(root)
+        key = f"{mission_id}/scans/{root.name}/{rel_path.as_posix()}"
+        await storage.upload_file(settings.S3_BUCKET_MISSIONS, key, file_path)
+
+
+def cleanup_output_directory(output_dir: str | Path) -> None:
+    """Delete a transient scan output directory if it exists."""
+    path = Path(output_dir)
+    if not path.exists():
+        return
+    shutil.rmtree(path, ignore_errors=True)
+
+
+def cleanup_mission_workspace(mission_id: str) -> None:
+    """Delete the local mission workspace when storage of record is S3."""
+    from app.services.storage import get_storage_service
+
+    storage = get_storage_service()
+    if not storage.is_s3:
+        return
+    workspace = data_path("missions", mission_id)
+    if workspace.exists():
+        shutil.rmtree(workspace, ignore_errors=True)
 
 
 def create_error_result(

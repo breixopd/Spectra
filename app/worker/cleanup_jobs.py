@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from sqlalchemy import delete
 
+from app.core.paths import data_path
 from app.models.infrastructure import CacheEntry, JobQueue, SystemCache
 
 logger = logging.getLogger(__name__)
@@ -72,6 +75,38 @@ async def cleanup_completed_jobs(session, max_age_days: int = 30) -> int:
     return count
 
 
+async def cleanup_transient_mission_artifacts(max_age_hours: int = 6) -> int:
+    """Delete stale transient scan workspaces when storage of record is S3."""
+    from app.services.storage import get_storage_service
+
+    storage = get_storage_service()
+    if not storage.is_s3:
+        return 0
+
+    missions_root = data_path("missions")
+    if not missions_root.exists():
+        return 0
+
+    cutoff = datetime.now(UTC) - timedelta(hours=max_age_hours)
+    removed = 0
+
+    for mission_dir in missions_root.iterdir():
+        scans_dir = mission_dir / "scans"
+        if not scans_dir.exists():
+            continue
+        modified = datetime.fromtimestamp(scans_dir.stat().st_mtime, tz=UTC)
+        if modified >= cutoff:
+            continue
+        shutil.rmtree(scans_dir, ignore_errors=True)
+        removed += 1
+        if mission_dir.exists() and not any(mission_dir.iterdir()):
+            shutil.rmtree(mission_dir, ignore_errors=True)
+
+    if removed:
+        logger.info("Cleaned up %d stale transient mission workspace(s)", removed)
+    return removed
+
+
 async def run_all_cleanup() -> dict[str, int]:
     """Run all cleanup tasks. Intended for periodic scheduling."""
     from app.core.database import async_session_maker
@@ -86,6 +121,7 @@ async def run_all_cleanup() -> dict[str, int]:
 
     sandbox_pool = get_sandbox_pool()
     results["orphaned_sandboxes"] = await cleanup_orphaned_sandboxes(sandbox_pool)
+    results["transient_mission_artifacts"] = await cleanup_transient_mission_artifacts()
 
     total = sum(results.values())
     if total:

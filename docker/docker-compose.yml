@@ -100,14 +100,8 @@ services:
       - AI_SERVICE_URL=http://ai-svc:5010
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
     volumes:
-      - ../app:/app/app
-      - ../plugins:/app/plugins
-      - spectra_plugins:/app/plugins_shared
-      - ../keys:/app/keys:ro
-      - ../scripts:/app/scripts:ro
       - spectra_data:/app/data
-      - ../alembic:/app/alembic
-      - ../alembic.ini:/app/alembic.ini
+      - spectra_plugins:/app/plugins
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
@@ -154,7 +148,6 @@ services:
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
       - SKIP_MIGRATIONS=true
     volumes:
-      - ../app:/app/app
       - spectra_data:/app/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
@@ -191,7 +184,6 @@ services:
       - BACKUP_ENABLED=${BACKUP_ENABLED:-false}
       - SKIP_MIGRATIONS=true
     volumes:
-      - ../app:/app/app
       - spectra_data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
@@ -228,10 +220,8 @@ services:
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
       - SKIP_MIGRATIONS=true
     volumes:
-      - ../app:/app/app
       - spectra_data:/app/data
-      - ../plugins:/app/plugins
-      - ../keys:/app/keys:ro
+      - spectra_plugins:/app/plugins
       - spectra_tools_data:/opt/spectra_tools
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:

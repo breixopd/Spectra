@@ -24,6 +24,20 @@ jobs:
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: spectra
+          POSTGRES_PASSWORD: spectra_test
+          POSTGRES_DB: spectra_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U spectra -d spectra_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,7 +55,7 @@ jobs:
             --cov-fail-under=60
         env:
           AI_PROVIDER: mock
-          DATABASE_URL: "sqlite+aiosqlite:///test.db"
+          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
           FULLY_AUTOMATED: "true"
@@ -117,6 +131,25 @@ jobs:
       - run: pip install bandit[toml]
       - run: bandit -r app/ -c pyproject.toml -f json -o bandit-report.json || true
       - run: bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high
+
+  docker-build:
+    name: Docker Build Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.app
+          push: false
+          load: false
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.tools
+          push: false
+          load: false
 
   deps:
     name: Dependency Audit
