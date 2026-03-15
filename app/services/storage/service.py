@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from app.core.config import settings
+from app.core.paths import data_path
 
 if TYPE_CHECKING:
     pass
@@ -82,12 +83,12 @@ class StorageService:
     def _local_path(self, bucket: str, key: str) -> Path:
         """Map bucket/key to local filesystem path with traversal protection."""
         bucket_map = {
-            settings.S3_BUCKET_MISSIONS: Path("data/missions"),
-            settings.S3_BUCKET_SESSIONS: Path("data/sessions"),
-            settings.S3_BUCKET_KNOWLEDGE: Path("data/cache"),
-            settings.S3_BUCKET_BACKUPS: Path("data/backups"),
+            settings.S3_BUCKET_MISSIONS: data_path("missions"),
+            settings.S3_BUCKET_SESSIONS: data_path("sessions"),
+            settings.S3_BUCKET_KNOWLEDGE: data_path("cache"),
+            settings.S3_BUCKET_BACKUPS: data_path("backups"),
         }
-        base = bucket_map.get(bucket, Path(f"data/{bucket}"))
+        base = bucket_map.get(bucket, data_path(bucket))
         full = base / key
         if not str(full.resolve()).startswith(str(base.resolve())):
             raise ValueError("Path traversal detected")

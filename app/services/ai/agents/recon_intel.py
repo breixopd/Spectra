@@ -11,12 +11,12 @@ import json
 import logging
 import re
 import time
-from pathlib import Path
 from typing import Any, Literal
 
 import httpx
 from pydantic import BaseModel, Field
 
+from app.core.paths import data_path
 from app.services.ai.agents.base import (
     Agent,
     AgentAction,
@@ -28,7 +28,7 @@ from app.services.ai.agents.registry import register_agent
 
 logger = logging.getLogger(__name__)
 
-_CACHE_DIR = Path("data/cache")
+_CACHE_DIR = data_path("cache")
 _KEV_CACHE_PATH = _CACHE_DIR / "cisa_kev.json"
 _KEV_TTL_SECONDS = 86_400  # 24 hours
 

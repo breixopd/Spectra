@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.services.ai.llm as llm_module
 from app.api.schemas import SystemSetupRequest
 from app.core.config import settings
+from app.core.paths import data_path
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.services.ai.llm import close_global_llm_client, get_llm_client
@@ -204,7 +205,7 @@ class SystemSetupService:
 
     def _save_infra_config(self, updates: dict) -> None:
         """Save infrastructure config to persistent file."""
-        config_path = Path("data/config/infra_config.json")
+        config_path = data_path("config", "infra_config.json")
         data = {}
 
         if config_path.exists():

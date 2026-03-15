@@ -12,6 +12,7 @@ from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
 
+from app.services.ai.errors import LLMParseError
 from app.services.ai.agents.base import (
     ActionRisk,
     Agent,
@@ -337,10 +338,10 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                     action.tool_name = matches[0]
                     selected_tool = registry.get_tool(action.tool_name)
                 else:
-                    logger.warning("LLM suggested non-existent tool: %s", action.tool_name)
-                    # Fall back to smart selection
-                    action = self._smart_fallback_selection(input_data, candidates)
-                    selected_tool = registry.get_tool(action.tool_name)
+                    raise LLMParseError(
+                        agent=self.name,
+                        raw_response=f"Unknown tool selected by LLM: {action.tool_name}",
+                    )
 
             if selected_tool:
                 # Apply stealth mode adjustments from tool config
@@ -592,67 +593,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 temperature=0.3,
             )
         except (OSError, RuntimeError, ValueError, TimeoutError) as e:
-            logger.warning("LLM selection failed, using smart fallback: %s", e)
-            return self._smart_fallback_selection(input_data, available_tools)
-
-    def _smart_fallback_selection(
-        self,
-        input_data: ToolSelectorInput,
-        available_tools: list[Any],
-    ) -> ToolSelectorOutput:
-        """Smart fallback when LLM fails - uses tool metadata for ranking."""
-        # Score tools based on relevance
-        scored_tools = []
-        phase_caps = self.PHASE_CAPABILITIES.get(input_data.current_phase, [])
-
-        for tool in available_tools:
-            score = 0
-            config = tool.config
-
-            # Score by capability match
-            matching_caps = sum(
-                1 for cap in phase_caps if cap in config.metadata.capabilities
-            )
-            score += matching_caps * 10
-
-            # Score by prerequisites (prefer tools with no unmet prereqs)
-            prereqs_met = all(
-                p in input_data.tools_already_run for p in config.metadata.prerequisites
-            )
-            if prereqs_met:
-                score += 20
-
-            # Prefer lower risk tools in general (safety)
-            risk_scores = {
-                RiskLevel.PASSIVE: 5,
-                RiskLevel.LOW: 4,
-                RiskLevel.MEDIUM: 3,
-                RiskLevel.HIGH: 2,
-                RiskLevel.CRITICAL: 1,
-            }
-            score += risk_scores.get(config.metadata.risk_level, 0)
-
-            scored_tools.append((score, tool))
-
-        # Sort by score descending
-        scored_tools.sort(key=lambda x: x[0], reverse=True)
-
-        selected_tool = scored_tools[0][1] if scored_tools else available_tools[0]
-
-        return ToolSelectorOutput(
-            tool_name=selected_tool.config.id,
-            target=input_data.target,
-            tool_args={},
-            confidence=0.6,
-            risk_level=self._map_risk_level(selected_tool.config.metadata.risk_level),
-            reasoning=f"Fallback selection based on capability matching: {selected_tool.config.name}",
-            alternatives=[
-                t.config.id
-                for t in available_tools[1:4]
-                if t.config.id != selected_tool.config.id
-            ],
-            estimated_duration=selected_tool.config.execution.timeout,
-        )
+            raise LLMParseError(agent=self.name, raw_response=str(e)) from e
 
     def _apply_stealth_settings(
         self,

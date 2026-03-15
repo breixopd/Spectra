@@ -20,12 +20,14 @@ from typing import Any
 
 import httpx
 
+from app.core.paths import data_path
+
 logger = logging.getLogger(__name__)
 
 # NVD API configuration
 NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 NVD_RATE_LIMIT_DELAY = 6.5  # seconds between requests (5 req / 30s limit)
-CVE_CACHE_DIR = Path("data/cache/cve_cache")
+CVE_CACHE_DIR = data_path("cache", "cve_cache")
 CVE_CACHE_TTL = 86400  # 24 hours
 
 

@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.api.dependencies import get_current_active_user
+from app.core.paths import data_path
 from app.models.user import User
 from app.services.system.checklists import get_checklist, list_checklists
 from app.services.system.cvss import calculate_cvss31
@@ -125,9 +126,7 @@ async def api_generate_report(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Generate report data from a session using a template."""
-    from pathlib import Path
-
-    session_path = Path("data/sessions") / f"{req.session_id}.json"
+    session_path = data_path("sessions", f"{req.session_id}.json")
     try:
         return generate_report_data(session_path, req.template_id)
     except FileNotFoundError:

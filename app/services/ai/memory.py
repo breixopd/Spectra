@@ -28,9 +28,11 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.core.paths import data_path
+
 logger = logging.getLogger(__name__)
 
-MEMORY_DIR = Path("data/cache")
+MEMORY_DIR = data_path("cache")
 
 
 class ToolLesson(BaseModel):
@@ -636,7 +638,7 @@ class MissionMemory:
         }
 
         # Persist aggregated knowledge
-        output_dir = Path("data/cache")
+        output_dir = data_path("cache")
         output_dir.mkdir(parents=True, exist_ok=True)
         try:
             out_path = output_dir / "aggregated_knowledge.json"

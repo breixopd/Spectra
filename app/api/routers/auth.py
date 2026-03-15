@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.core.paths import data_path
 from app.api.schemas import SystemSetupRequest, Token, UserResponse
 from app.api.schemas.auth import (
     ForgotPasswordRequest,
@@ -58,7 +59,7 @@ router = APIRouter()
 
 
 # --- Persistent Account Lockout ---
-_LOCKOUT_FILE = Path("data/auth/.lockout_state.json")
+_LOCKOUT_FILE = data_path("auth", ".lockout_state.json")
 
 _login_failures: dict[str, dict] = {}  # ip -> {"count": int, "locked_until": float}
 _lockout_lock = threading.Lock()

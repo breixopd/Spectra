@@ -23,6 +23,7 @@ except ImportError:
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.paths import data_root
 from app.core.background_tasks import (
     cache_cleanup_loop,
     periodic_cleanup_loop,
@@ -91,7 +92,7 @@ async def run_startup_checks() -> None:
 
     # 3. Disk space for data directory
     try:
-        data_dir = Path("data")
+        data_dir = data_root()
         data_dir.mkdir(parents=True, exist_ok=True)
         usage = shutil.disk_usage(str(data_dir))
         free_mb = usage.free / (1024 * 1024)

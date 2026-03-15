@@ -28,6 +28,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.core.paths import data_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -237,7 +239,7 @@ class PlaybookEngine:
     relying on LLM to hallucinate tool names and arguments.
     """
 
-    _PATTERNS_FILE = Path("data/cache/exploit_patterns.json")
+    _PATTERNS_FILE = data_path("cache", "exploit_patterns.json")
 
     def __init__(self, custom_playbook_dir: str | Path | None = None, patterns_file: str | Path | None = None):
         self.playbooks: list[ServicePlaybook] = []
