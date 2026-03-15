@@ -15,7 +15,7 @@ class ToolInstaller:
         self.check_persistence = check_persistence
         self.tools_path = Path("/opt/spectra_tools")
 
-    async def install(self, tool_id: str) -> dict:
+    async def install(self, tool_id: str, progress_callback=None) -> dict:
         """
         Install a tool by ID.
 
@@ -47,7 +47,7 @@ class ToolInstaller:
             logger.info("Tool '%s' appears to be already installed.", tool_id)
 
         try:
-            success = await registry.install_tool(tool_id)
+            success = await registry.install_tool(tool_id, progress_callback=progress_callback)
             # Re-fetch tool to get updated status
             tool = registry.get_tool(tool_id)
 
@@ -66,7 +66,7 @@ class ToolInstaller:
                 "error": str(e),
             }
 
-    async def uninstall(self, tool_id: str) -> dict:
+    async def uninstall(self, tool_id: str, progress_callback=None) -> dict:
         """
         Uninstall a tool by ID.
 
@@ -80,7 +80,7 @@ class ToolInstaller:
         registry = get_registry()
 
         try:
-            success = await registry.uninstall_tool(tool_id)
+            success = await registry.uninstall_tool(tool_id, progress_callback=progress_callback)
             return {
                 "tool_id": tool_id,
                 "success": success,

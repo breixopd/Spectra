@@ -136,12 +136,17 @@ class SandboxPool:
             docker.types.Mount(target="/opt/spectra_tools", source="spectra_tools_data", type="volume"),
         ]
 
-        # Mount plugins from host if bind-mounted, otherwise use app working dir
+        # Mount plugins: prefer named volume (works in DinD), fall back to bind mount (host dev)
         import pathlib
 
+        plugins_volume = getattr(settings, "SANDBOX_PLUGINS_VOLUME", "spectra_plugins")
         app_root = pathlib.Path(__file__).resolve().parents[4]
         plugins_dir = app_root / "plugins"
-        if plugins_dir.is_dir():
+        if plugins_volume:
+            mounts.append(
+                docker.types.Mount(target="/app/plugins", source=plugins_volume, type="volume", read_only=True)
+            )
+        elif plugins_dir.is_dir():
             mounts.append(
                 docker.types.Mount(target="/app/plugins", source=str(plugins_dir), type="bind", read_only=True)
             )

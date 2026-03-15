@@ -165,7 +165,11 @@ async def install_tool_job(
 
     logger.info("Installing tool: %s", tool_id)
     installer = ToolInstaller()
-    result = await installer.install(tool_id)
+
+    async def progress_callback(update: dict[str, Any]) -> None:
+        await _sync_tool_status(tool_id, update)
+
+    result = await installer.install(tool_id, progress_callback=progress_callback)
 
     await _sync_tool_status(tool_id, result)
     return result
@@ -180,7 +184,11 @@ async def uninstall_tool_job(
 
     logger.info("Uninstalling tool: %s", tool_id)
     installer = ToolInstaller()
-    result = await installer.uninstall(tool_id)
+
+    async def progress_callback(update: dict[str, Any]) -> None:
+        await _sync_tool_status(tool_id, update)
+
+    result = await installer.uninstall(tool_id, progress_callback=progress_callback)
 
     await _sync_tool_status(
         tool_id,

@@ -72,13 +72,15 @@ class PluginLoader:
         config = self.validator.validate_plugin(data)
 
         # Determine initial status based on system availability
-        status = ToolStatus.PENDING
+        status = ToolStatus.DISABLED if not config.enabled else ToolStatus.PENDING
         if config.id in tools:
             # Preserve status if reloading
-            status = tools[config.id].status
+            previous = tools[config.id].status
+            status = ToolStatus.DISABLED if not config.enabled else previous
         else:
             # Check if tool is already installed in the tools container
-            status = await self._check_tool_availability(config)
+            if config.enabled:
+                status = await self._check_tool_availability(config)
 
         tools[config.id] = RegisteredTool(
             config=config,

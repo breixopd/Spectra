@@ -112,7 +112,7 @@ class SystemSetupRequest(BaseModel):
     """Schema for system setup."""
 
     user: UserCreate
-    llm_provider: str | None = Field(None, pattern="^(ollama|api|litellm|qwen|z\\.ai|anthropic|groq|openai)$")
+    llm_provider: str | None = Field(None, pattern="^(ollama|api|litellm|qwen|z\\.ai|anthropic|groq|openai|openrouter)$")
     llm_model: str | None = None
     llm_api_key: str | None = None
     llm_api_base: str | None = None

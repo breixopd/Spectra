@@ -231,6 +231,12 @@ class ToolRegistry:
 
         updated = 0
         for tool_id, tool in self._tools.items():
+            if not tool.config.enabled:
+                if tool.status != ToolStatus.DISABLED:
+                    tool.status = ToolStatus.DISABLED
+                    updated += 1
+                continue
+
             try:
                 key = f"spectra:tool_status:{tool_id}"
                 status_data = await cache.get(key)
@@ -255,7 +261,24 @@ class ToolRegistry:
                 updated += 1
                 logger.debug("Updated %s status to %s", tool_id, new_status)
 
+            error_message = status_data.get("error")
+            if isinstance(error_message, str):
+                tool.error_message = error_message or None
+
         return updated
+
+    async def set_enabled(self, tool_id: str, enabled: bool) -> RegisteredTool:
+        """Persist plugin enabled state and update in-memory status."""
+        if tool_id not in self._tools:
+            raise PluginValidationError(f"Unknown tool: {tool_id}")
+
+        tool = self._tools[tool_id]
+        tool.config.enabled = enabled
+        tool.status = ToolStatus.PENDING if enabled else ToolStatus.DISABLED
+        if not enabled:
+            tool.error_message = None
+        await self._save_plugin(tool.config)
+        return tool
 
     def get_tools_by_category(self, category: str) -> list[RegisteredTool]:
         """Get all tools in a specific category."""

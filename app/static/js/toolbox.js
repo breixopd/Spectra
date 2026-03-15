@@ -32,8 +32,8 @@ async function refreshTools() {
         grid.innerHTML = tools.map((tool, i) => `
             <div onclick="selectTool('${tool.id}')" class="glass-panel p-5 rounded-xl hover:bg-white/5 cursor-pointer group border border-transparent hover:border-violet-500/30 relative overflow-hidden animate-fade-in-up" style="animation-delay: ${i * 0.04}s">
                 <div class="flex justify-between items-start mb-3">
-                    <div class="w-9 h-9 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center">
-                        <i class="fa-solid fa-wrench"></i>
+                    <div class="w-9 h-9 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center" style="background:${escapeHtml(tool.color || 'rgba(139,92,246,0.2)')}; color:#fff;">
+                        <i class="fa-solid ${escapeHtml(tool.icon || 'fa-wrench')}"></i>
                     </div>
                     <span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium ${getStatusColor(tool.status)}">
                         ${(tool.status || 'pending').toUpperCase()}
@@ -54,7 +54,8 @@ function getStatusColor(status) {
         'ready': 'bg-green-500/20 text-green-400',
         'installing': 'bg-blue-500/20 text-blue-400 animate-pulse',
         'failed': 'bg-red-500/20 text-red-400',
-        'pending': 'bg-yellow-500/20 text-yellow-400'
+        'pending': 'bg-yellow-500/20 text-yellow-400',
+        'disabled': 'bg-slate-500/20 text-slate-400'
     };
     return map[status] || 'bg-gray-500/20 text-gray-400';
 }
@@ -80,8 +81,8 @@ async function selectTool(id) {
 
         container.innerHTML = `
             <div class="flex items-center gap-4 mb-6 animate-fade-in-up">
-                <div class="w-12 h-12 rounded-xl bg-violet-500/20 text-violet-400 flex items-center justify-center text-xl">
-                    <i class="fa-solid fa-wrench"></i>
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl" style="background:${escapeHtml(tool.color || 'rgba(139,92,246,0.2)')}; color:#fff;">
+                    <i class="fa-solid ${escapeHtml(tool.icon || 'fa-wrench')}"></i>
                 </div>
                 <div>
                     <h2 class="text-xl font-bold text-white">${escapeHtml(tool.name)}</h2>
@@ -121,10 +122,29 @@ async function selectTool(id) {
                     <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Command</label>
                     <code class="block mt-1 p-3 rounded-lg bg-black/40 font-mono text-xs text-violet-300 overflow-x-auto">${escapeHtml(tool.execution_command)} ${escapeHtml(tool.args_template)}</code>
                 </div>
+                ${tool.status_message || (tool.install_logs && tool.install_logs.length) ? `
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Install Status</label>
+                    <div class="mt-1 p-3 rounded-lg bg-black/40 border border-white/5">
+                        <div class="text-xs text-slate-300">${escapeHtml(tool.status_message || tool.status_phase || 'No additional status')}</div>
+                        ${tool.last_updated ? `<div class="text-[10px] text-slate-500 mt-1">Updated: ${escapeHtml(tool.last_updated)}</div>` : ''}
+                        ${tool.last_output ? `<pre class="text-[11px] text-slate-400 mt-2 whitespace-pre-wrap">${escapeHtml(tool.last_output)}</pre>` : ''}
+                        ${tool.install_logs && tool.install_logs.length ? `<div class="mt-2 max-h-40 overflow-y-auto rounded bg-black/30 p-2 text-[11px] text-slate-400 whitespace-pre-wrap">${tool.install_logs.map(line => escapeHtml(line)).join('\n')}</div>` : ''}
+                    </div>
+                </div>` : ''}
                 <div class="pt-4 border-t border-white/10 flex gap-3">
                     <button onclick="showTestModal('${tool.id}')" class="flex-1 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white text-sm font-medium transition-all">
                         <i class="fa-solid fa-play mr-1"></i> Run Test
                     </button>
+                    ${tool.enabled ? `
+                        <button onclick="toggleToolEnabled('${tool.id}', false)" class="px-4 py-2.5 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-300 transition-colors">
+                            <i class="fa-solid fa-toggle-off"></i>
+                        </button>
+                    ` : `
+                        <button onclick="toggleToolEnabled('${tool.id}', true)" class="px-4 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-colors">
+                            <i class="fa-solid fa-toggle-on"></i>
+                        </button>
+                    `}
                     ${tool.status !== 'ready' && tool.status !== 'installing' ? `
                         <button onclick="installTool('${tool.id}')" class="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors">
                             <i class="fa-solid fa-download mr-1"></i> Install
@@ -151,6 +171,23 @@ async function installTool(id) {
         
         logs.innerHTML += `\n> Installation started.`;
         refreshTools();
+        selectTool(id);
+    } catch (e) {
+        logs.innerHTML += `\n> Error: ${e.message}`;
+    }
+}
+
+async function toggleToolEnabled(id, enabled) {
+    const logs = document.getElementById('install-logs');
+    logs.innerHTML += `\n> ${enabled ? 'Enabling' : 'Disabling'} ${id}...`;
+
+    try {
+        const path = enabled ? 'enable' : 'disable';
+        const { error } = await spectraApi.post(`/api/v1/tools/${id}/${path}`);
+        if (error) throw new Error(error);
+        logs.innerHTML += `\n> ${enabled ? 'Enabled' : 'Disabled'} ${id}.`;
+        await refreshTools();
+        await selectTool(id);
     } catch (e) {
         logs.innerHTML += `\n> Error: ${e.message}`;
     }

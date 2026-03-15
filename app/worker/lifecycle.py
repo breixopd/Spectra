@@ -64,7 +64,11 @@ async def _auto_install_pending() -> None:
                 from app.services.tools.installer import ToolInstaller
 
                 installer = ToolInstaller()
-                result = await installer.install(tool_id)
+
+                async def progress_callback(update: dict) -> None:
+                    await _sync_tool_status(tool_id, update)
+
+                result = await installer.install(tool_id, progress_callback=progress_callback)
 
                 if result.get("success"):
                     logger.info("[OK] Installed %s", tool_id)
@@ -74,6 +78,12 @@ async def _auto_install_pending() -> None:
                 await _sync_tool_status(tool_id, result)
             except (OSError, RuntimeError, ValueError) as e:
                 logger.error("Error installing %s: %s", tool_id, e)
+                await _sync_tool_status(
+                    tool_id,
+                    {"status": "failed", "error": str(e)},
+                )
+            except Exception as e:  # noqa: BLE001 – unknown plugin errors must not crash worker
+                logger.error("Unexpected error installing %s: %s", tool_id, e)
                 await _sync_tool_status(
                     tool_id,
                     {"status": "failed", "error": str(e)},

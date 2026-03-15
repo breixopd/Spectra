@@ -659,7 +659,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         tool: RegisteredTool,
         args: dict[str, Any],
     ) -> dict[str, Any]:
-        """Apply stealth settings from tool config or fallback defaults."""
+        """Apply stealth settings from tool config only."""
         # Strict overrides for stealth mode
         stealth_args = args.copy()
 
@@ -671,29 +671,6 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 stealth_args["delay"] = tool.config.stealth.delay_ms
             if tool.config.stealth.extra_args:
                 stealth_args.update(tool.config.stealth.extra_args)
-
-        # Hardcoded fallbacks for common tools to ENSURE safety
-        # Using a mapping for cleaner extensibility (KISS)
-        tool_name = tool.config.id
-
-        stealth_overrides = {
-            "nmap": {
-                "-T": "1",  # Paranoid
-                "--scan-delay": "1s",
-                "-T4": None,  # Remove aggressive
-                "-T5": None,  # Remove aggressive
-            },
-            "naabu": {"rate": 50},
-            "ffuf": {"rate": 5, "delay": 1000},
-            "nuclei": {"rate-limit": 5},
-        }
-
-        if tool_name in stealth_overrides:
-            for key, val in stealth_overrides[tool_name].items():
-                if val is None:
-                    stealth_args.pop(key, None)
-                else:
-                    stealth_args[key] = val
 
         return stealth_args
 

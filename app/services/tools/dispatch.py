@@ -37,12 +37,14 @@ def build_execution_request(
     run_id = f"{tool_name}_{timestamp}_{uuid.uuid4().hex[:4]}"
     output_dir = prepare_output_directory(mission.id, run_id)
 
+    effective_timeout = max(timeout or 0, tool.config.execution.timeout)
+
     adapter = CommandToolAdapter(tool.config)
     request = ToolExecutionRequest(
         tool_id=tool_name,
         target=target,
         args=args or {},
-        timeout=timeout,
+        timeout=effective_timeout,
     )
     full_command = adapter.builder.build_command(
         request, output_dir=str(output_dir)

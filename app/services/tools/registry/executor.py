@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import shlex
 import signal
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,28 @@ if TYPE_CHECKING:
     from asyncio import StreamReader
 
 logger = logging.getLogger(__name__)
+
+_ROOT_REQUIRED_TOKENS = (
+    "apt-get",
+    "apt ",
+    "dpkg ",
+)
+
+
+def _needs_privilege_elevation(command: str) -> bool:
+    lowered = f" {command.strip().lower()} "
+    return any(token in lowered for token in _ROOT_REQUIRED_TOKENS)
+
+
+def _prepare_command(command: str) -> str:
+    stripped = command.strip()
+    if not stripped:
+        return stripped
+    if stripped.startswith("sudo "):
+        return stripped
+    if _needs_privilege_elevation(stripped):
+        return f"sudo -n bash -lc {shlex.quote(stripped)}"
+    return stripped
 
 
 async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, str]:
@@ -45,10 +68,12 @@ async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, 
     env["PATH"] = f"/opt/spectra_tools:{env.get('PATH', '')}"
 
     logger.debug("Executing: %s", command[:200])
+    prepared_command = _prepare_command(command)
+    logger.debug("Executing: %s", prepared_command[:200])
 
     try:
         proc = await asyncio.create_subprocess_shell(
-            command,
+            prepared_command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             start_new_session=True,

@@ -84,9 +84,33 @@ def _to_summary(t: RegisteredTool) -> ToolSummary:
         category=t.config.category,
         description=t.config.description,
         status=t.status,
+        enabled=t.config.enabled,
         icon=t.config.ui.icon,
         color=t.config.ui.color,
     )
+
+
+async def _get_cached_status(tool_id: str) -> dict[str, str | list[str] | None]:
+    from app.core.cache import get_cache
+
+    cache = get_cache()
+    if not cache:
+        return {}
+
+    try:
+        payload = await cache.get(f"spectra:tool_status:{tool_id}")
+    except (OSError, ConnectionError, RuntimeError) as e:
+        logger.debug("Tool status lookup failed for %s: %s", tool_id, e)
+        return {}
+
+    return payload if isinstance(payload, dict) else {}
+
+
+def _cached_logs(payload: dict[str, str | list[str] | None]) -> list[str]:
+    logs = payload.get("logs")
+    if not isinstance(logs, list):
+        return []
+    return [str(item) for item in logs if isinstance(item, str)]
 
 
 # --- Endpoints ---
@@ -296,10 +320,17 @@ async def get_tool(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Get detailed information about a specific tool."""
+    try:
+        await registry.sync_status_from_cache()
+    except (OSError, ConnectionError, RuntimeError) as e:
+        logger.debug("Tool status sync failed: %s", e)
+
     tool = registry.get_tool(tool_id)
 
     if not tool:
         raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
+
+    cached_status = await _get_cached_status(tool_id)
 
     return ToolDetailResponse(
         id=tool.config.id,
@@ -308,6 +339,7 @@ async def get_tool(
         category=tool.config.category,
         description=tool.config.description,
         status=tool.status,
+        enabled=tool.config.enabled,
         installed_version=tool.installed_version,
         error_message=tool.error_message,
         execution_command=tool.config.execution.command,
@@ -315,6 +347,11 @@ async def get_tool(
         timeout=tool.config.execution.timeout,
         icon=tool.config.ui.icon,
         color=tool.config.ui.color,
+        status_message=str(cached_status.get("message") or "") or None,
+        status_phase=str(cached_status.get("phase") or "") or None,
+        last_updated=str(cached_status.get("last_updated") or "") or None,
+        install_logs=_cached_logs(cached_status),
+        last_output=str(cached_status.get("last_output") or "") or None,
     )
 
 
@@ -346,6 +383,7 @@ async def get_tool_execution_config(
         args_template=config.execution.args_template,
         timeout=config.execution.timeout,
         placeholders=user_placeholders,
+        args_schema=config.execution.args_schema,
         arg_modifiers=config.execution.arg_modifiers,
         metadata=ToolMetadataResponse(
             ai_description=config.metadata.ai_description,
@@ -519,6 +557,44 @@ async def install_tool(
     )
 
 
+@router.post("/{tool_id}/enable", response_model=InstallToolResponse)
+@limiter.limit("10/minute")
+async def enable_tool(
+    request: Request,
+    response: Response,
+    tool_id: str,
+    registry: ToolRegistry = Depends(get_tool_registry),
+    _current_user: User = Depends(get_current_superuser),
+):
+    """Enable a plugin for platform use."""
+    tool = await registry.set_enabled(tool_id, True)
+    return InstallToolResponse(
+        success=True,
+        tool_id=tool_id,
+        status=tool.status.value,
+        message=f"Tool '{tool.config.name}' enabled",
+    )
+
+
+@router.post("/{tool_id}/disable", response_model=InstallToolResponse)
+@limiter.limit("10/minute")
+async def disable_tool(
+    request: Request,
+    response: Response,
+    tool_id: str,
+    registry: ToolRegistry = Depends(get_tool_registry),
+    _current_user: User = Depends(get_current_superuser),
+):
+    """Disable a plugin so it is hidden from platform execution paths."""
+    tool = await registry.set_enabled(tool_id, False)
+    return InstallToolResponse(
+        success=True,
+        tool_id=tool_id,
+        status=tool.status.value,
+        message=f"Tool '{tool.config.name}' disabled",
+    )
+
+
 @router.delete("/{tool_id}", response_model=ToolRemoveResponse)
 @limiter.limit("5/minute")
 async def remove_tool(
@@ -639,9 +715,17 @@ async def get_tool_stats(
     try:
         key = f"spectra:tool_stats:{tool_id}"
         stats = await cache.get(key)
+        status_payload = await _get_cached_status(tool_id)
 
         if not stats or not isinstance(stats, dict):
-            return ToolStatsResponse(tool_id=tool_id)
+            return ToolStatsResponse(
+                tool_id=tool_id,
+                status=str(status_payload.get("status") or "") or None,
+                status_message=str(status_payload.get("message") or "") or None,
+                last_updated=str(status_payload.get("last_updated") or "") or None,
+                install_logs=_cached_logs(status_payload),
+                error=str(status_payload.get("error") or "") or None,
+            )
 
         return ToolStatsResponse(
             tool_id=tool_id,
@@ -650,6 +734,11 @@ async def get_tool_stats(
             fail_count=int(stats.get("fail_count", 0)),
             last_run=stats.get("last_run"),
             last_duration=float(stats["last_duration"]) if stats.get("last_duration") else None,
+            status=str(status_payload.get("status") or "") or None,
+            status_message=str(status_payload.get("message") or "") or None,
+            last_updated=str(status_payload.get("last_updated") or "") or None,
+            install_logs=_cached_logs(status_payload),
+            error=str(status_payload.get("error") or "") or None,
         )
     except (OSError, RuntimeError, KeyError, ValueError) as e:
         logger.error("Failed to get stats for %s: %s", tool_id, e)

@@ -37,6 +37,15 @@ else
     echo "Migrations applied."
 fi
 
+# Ensure data directories are writable (volumes mount as root)
+mkdir -p /app/data/missions /app/data/backups /app/logs
+chown -R spectra:spectra /app/data /app/logs 2>/dev/null || true
+
+# Sync plugins to shared volume (for sandbox DinD access)
+if [ -d /app/plugins ] && [ -d /app/plugins_shared ]; then
+    cp -a /app/plugins/. /app/plugins_shared/ 2>/dev/null || true
+fi
+
 # Drop privileges and start application as spectra user
 echo "Starting application..."
 exec gosu spectra "$@"
