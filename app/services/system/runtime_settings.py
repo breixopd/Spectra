@@ -136,6 +136,35 @@ async def get_runtime_setting_value(key: str) -> str | int | bool | None:
         return getattr(settings, key, None)
 
 
+async def get_runtime_setting_str(key: str, default: str = "") -> str:
+    """Get a single runtime setting as a string."""
+    val = await get_runtime_setting_value(key)
+    return str(val) if val is not None else default
+
+
+async def get_runtime_setting_int(key: str, default: int = 0) -> int:
+    """Get a single runtime setting as an integer."""
+    val = await get_runtime_setting_value(key)
+    if isinstance(val, int):
+        return val
+    if isinstance(val, str):
+        try:
+            return int(val)
+        except ValueError:
+            return default
+    return default
+
+
+async def get_runtime_setting_bool(key: str, default: bool = False) -> bool:
+    """Get a single runtime setting as a boolean."""
+    val = await get_runtime_setting_value(key)
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.lower() in ("true", "1", "yes")
+    return default
+
+
 def _apply_general_runtime_settings(rows: dict[str, str]) -> None:
     for key, (attr_name, kind) in GENERAL_RUNTIME_FIELD_MAP.items():
         if key not in rows:

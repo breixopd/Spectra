@@ -5,7 +5,7 @@ Provides endpoints for telemetry, metrics, and system health monitoring.
 """
 
 import logging
-from typing import Any
+from typing import Any, TypedDict
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -18,13 +18,26 @@ from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
+
+class SystemStatsResponse(TypedDict):
+    """Typed shape for the /stats endpoint response."""
+
+    overview: dict[str, Any]
+    services: dict[str, dict[str, Any]]
+    traces: list[dict[str, Any]]
+    circuit_breakers: dict[str, dict[str, Any]]
+    events: list[dict[str, Any]]
+    cache: dict[str, Any]
+    cache_available: bool
+
+
 router = APIRouter(prefix="/observability", tags=["Observability"])
 
 
 @router.get("/stats")
 async def get_observability_stats(
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
-) -> dict[str, Any]:
+) -> SystemStatsResponse:
     """
     Get comprehensive observability statistics.
 
