@@ -231,46 +231,58 @@ class Mission:
 
     def add_finding(self, finding: dict[str, Any]) -> None:
         """Add a finding to the mission, deduplicating by key fields."""
-        # Build dedup key from template-id + host/port, or name + port
+        if self._is_duplicate_finding(finding):
+            return
+        if self._is_known_false_positive(finding):
+            return
+        finding = self._apply_mitre_tags(finding)
+        finding["count"] = 1
+        self.findings.append(finding)
+        self._broadcast("finding", finding)
+
+    def _is_duplicate_finding(self, finding: dict[str, Any]) -> bool:
+        """Check for exact or fuzzy duplicates; merge into existing if found."""
         dedup_key = self._finding_dedup_key(finding)
 
-        # Check for exact duplicates — increment count
+        # Exact duplicates — increment count
         for existing in self.findings:
             if self._finding_dedup_key(existing) == dedup_key:
                 existing["count"] = existing.get("count", 1) + 1
-                return
+                return True
 
-        # Check for fuzzy duplicates (same host+port, similar description)
+        # Fuzzy duplicates (same host+port, similar description)
         for existing in self.findings:
             if self._is_fuzzy_duplicate(existing, finding):
                 existing["count"] = existing.get("count", 1) + 1
                 # Keep the one with more detail
                 if len(str(finding)) > len(str(existing)):
                     existing.update({k: v for k, v in finding.items() if k != "count"})
-                return
+                return True
 
-        # Check if this is a known false positive
+        return False
+
+    def _is_known_false_positive(self, finding: dict[str, Any]) -> bool:
+        """Check if a finding matches a known false positive."""
         try:
             from app.services.ai.memory import get_memory
 
             memory = get_memory()
             template_id = finding.get("template-id") or finding.get("name", "")
             if template_id and memory.is_false_positive(template_id):
-                return
+                return True
         except (OSError, RuntimeError, ValueError) as e:
             logger.debug("Non-critical operation failed: %s", e)
+        return False
 
-        # Auto-tag with MITRE ATT&CK techniques
+    def _apply_mitre_tags(self, finding: dict[str, Any]) -> dict[str, Any]:
+        """Auto-tag a finding with MITRE ATT&CK techniques."""
         try:
             from app.services.ai.mitre_attack import tag_finding_with_attack
 
             finding = tag_finding_with_attack(finding)
         except (OSError, RuntimeError, ValueError) as e:
             logger.debug("Non-critical operation failed: %s", e)
-
-        finding["count"] = 1
-        self.findings.append(finding)
-        self._broadcast("finding", finding)
+        return finding
 
     def _finding_dedup_key(self, finding: dict[str, Any]) -> str:
         """Generate a deduplication key for a finding (normalized for comparison)."""
