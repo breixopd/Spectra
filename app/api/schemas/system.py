@@ -28,16 +28,14 @@ class HealthResponse(BaseModel):
 
 # --- AI Provider Schemas ---
 
-_SUPPORTED_AI_PROVIDERS = {"ollama", "api", "openai", "litellm", "mock", "qwen", "z.ai", "anthropic", "groq"}
+_SUPPORTED_AI_PROVIDERS = {"ollama", "api", "openai", "litellm", "qwen", "z.ai", "anthropic", "groq"}
 
 
 def _normalize_ai_provider(value: str) -> str:
     provider = value.strip().lower()
     if provider not in _SUPPORTED_AI_PROVIDERS:
         raise ValueError("Unsupported provider")
-    if provider != "mock":
-        return "litellm"
-    return provider
+    return "litellm"
 
 
 class AIProviderProfile(BaseModel):
@@ -114,7 +112,7 @@ class SystemSetupRequest(BaseModel):
     """Schema for system setup."""
 
     user: UserCreate
-    llm_provider: str | None = Field(None, pattern="^(ollama|api|litellm|mock|qwen|z\\.ai|anthropic|groq|openai)$")
+    llm_provider: str | None = Field(None, pattern="^(ollama|api|litellm|qwen|z\\.ai|anthropic|groq|openai)$")
     llm_model: str | None = None
     llm_api_key: str | None = None
     llm_api_base: str | None = None
@@ -163,7 +161,7 @@ class SystemSetupRequest(BaseModel):
 class SettingsUpdate(BaseModel):
     """Schema for settings updates with optional partial fields."""
 
-    ai_provider: str | None = Field(None, pattern="^(ollama|api|litellm|mock)$")
+    ai_provider: str | None = Field(None, pattern="^(ollama|api|litellm)$")
     llm_api_key: str | None = None
     llm_api_base_url: str | None = None
     llm_model: str | None = None

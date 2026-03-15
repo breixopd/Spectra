@@ -79,7 +79,7 @@ _CLOUD_PROVIDER_ALIASES = {"api", "openai", "litellm", "ollama"}
 
 
 def _normalize_provider_name(provider: str | None) -> str:
-    normalized = (provider or "mock").strip().lower() or "mock"
+    normalized = (provider or "litellm").strip().lower() or "litellm"
     if normalized in _CLOUD_PROVIDER_ALIASES:
         return "litellm"
     return normalized
@@ -330,7 +330,7 @@ def _build_legacy_model_config_from_settings() -> tuple[list[dict], list[dict], 
     default_model = "openai/gpt-4.1-mini"
 
     raw_provider = settings.AI_PROVIDER
-    raw_lower = str(raw_provider or "mock").strip().lower()
+    raw_lower = str(raw_provider or "litellm").strip().lower()
 
     if raw_lower == "ollama":
         ollama_model = f"ollama/{settings.OLLAMA_MODEL}"
@@ -361,7 +361,7 @@ def _build_legacy_model_config_from_settings() -> tuple[list[dict], list[dict], 
             )
             fallbacks.append({"default": ["cloud-fallback"]})
 
-    elif raw_lower != "mock":
+    else:
         api_key = settings.LLM_API_KEY.get_secret_value()
         if raw_lower in ("api", "openai") and not api_key:
             return [], [], default_model
@@ -495,9 +495,10 @@ def create_smart_router() -> LLMClient:
     """Create a SmartRouter from current settings."""
     normalized_provider = _normalize_provider_name(settings.AI_PROVIDER)
     if normalized_provider == "mock":
-        from app.services.ai.mock_client import MockLLMClient
-
-        return MockLLMClient()
+        raise ValueError(
+            "Mock LLM provider is not available in the app. "
+            "Use AI_PROVIDER=litellm with a real model."
+        )
 
     model_list, fallbacks, default_model = build_model_config_from_settings()
 

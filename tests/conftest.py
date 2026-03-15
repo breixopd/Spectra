@@ -119,6 +119,35 @@ def disable_rate_limiting_for_unit_tests(request):
 
 
 @pytest.fixture(autouse=True)
+def mock_llm_for_unit_tests(request):
+    """
+    Provide mock LLM client for unit tests.
+
+    The mock LLM client was removed from the production app — it now
+    lives in tests/mocks/mock_llm_client.py and is injected here.
+    """
+    if _is_live_test(request.node):
+        yield
+        return
+
+    from tests.mocks.mock_llm_client import MockLLMClient
+
+    mock_instance = MockLLMClient()
+
+    def patched_get_llm_client(provider: str = "litellm", **kwargs):
+        return mock_instance
+
+    def patched_get_default_llm_client():
+        return mock_instance
+
+    with (
+        patch("app.services.ai.llm.get_llm_client", patched_get_llm_client),
+        patch("app.services.ai.llm.get_default_llm_client", patched_get_default_llm_client),
+    ):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def mock_database_for_unit_tests(request):
     """
     Mock database session for unit tests only.

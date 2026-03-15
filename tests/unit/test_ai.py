@@ -177,12 +177,10 @@ class TestMockLLMClient:
 class TestLLMFactory:
     """Tests for the LLM factory function."""
 
-    def test_get_mock_client(self):
-        """Test creating a mock client."""
-        from app.services.ai.mock_client import MockLLMClient as ProductionMock
-
-        client = get_llm_client("mock")
-        assert isinstance(client, ProductionMock)
+    def test_get_mock_client_raises(self):
+        """Test that mock provider is rejected in production code."""
+        with pytest.raises(ValueError, match="Mock LLM provider is not available"):
+            get_llm_client("mock")
 
     def test_get_ollama_client(self):
         """Test creating an Ollama-routed LiteLLM client."""

@@ -63,7 +63,7 @@ class Settings(BaseSettings):
         return v
 
     # --- AI / LLM ---
-    AI_PROVIDER: str = "litellm"  # litellm (all models), mock (testing only)
+    AI_PROVIDER: str = "litellm"  # litellm routes to all supported providers
     OLLAMA_HOST: str = "http://ai:11434"
     OLLAMA_MODEL: str = "qwen2.5:3b"
 
@@ -289,7 +289,7 @@ class Settings(BaseSettings):
     def validate_ai_provider(cls, v: str) -> str:
         """Validate AI provider is supported."""
         # Core providers + named presets (qwen, z.ai, etc.)
-        core_providers = {"ollama", "api", "litellm", "mock"}
+        core_providers = {"ollama", "api", "litellm"}
         # Named presets route through litellm with preset configs
         preset_providers = {"qwen", "z.ai", "openai", "anthropic", "groq"}
         normalized = v.lower().strip()

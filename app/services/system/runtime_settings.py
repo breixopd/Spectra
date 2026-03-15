@@ -166,7 +166,7 @@ def apply_runtime_settings(rows: dict[str, str], runtime_ai_config: RuntimeAICon
 
     default_profile_name = runtime_ai_config.routing.get("default", "default")
     default_profile = runtime_ai_config.profiles.get(default_profile_name, {})
-    default_provider = default_profile.get("provider", "mock")
+    default_provider = default_profile.get("provider", "litellm")
     settings.AI_PROVIDER = default_provider
 
     cloud_profile = None

@@ -72,14 +72,14 @@ def _find_first_profile(profiles: dict[str, dict[str, Any]], providers: tuple[st
 
 
 def _normalize_provider_name(provider: str | None) -> str:
-    normalized = str(provider or "mock").strip().lower() or "mock"
+    normalized = str(provider or "litellm").strip().lower() or "litellm"
     if normalized in _CLOUD_PROVIDER_ALIASES:
         return "litellm"
     return normalized
 
 
 def _normalize_profile(profile: dict[str, Any]) -> dict[str, Any]:
-    raw_provider = str(profile.get("provider", "mock")).strip().lower()
+    raw_provider = str(profile.get("provider", "litellm")).strip().lower()
     model = str(profile.get("model", "")).strip()
     if raw_provider == "ollama" and not model.startswith("ollama/"):
         model = f"ollama/{model}"
@@ -136,7 +136,7 @@ def _infer_profile_from_model(
             }
 
     if not profile:
-        raw_default = str(default_provider or "mock").strip().lower()
+        raw_default = str(default_provider or "litellm").strip().lower()
         profile = {"provider": default_provider, "model": raw_model}
         if raw_default == "ollama":
             profile["base_url"] = rows.get("OLLAMA_HOST") or settings.OLLAMA_HOST
@@ -153,7 +153,7 @@ def _infer_profile_from_model(
 
 
 def _build_legacy_profiles(rows: dict[str, str]) -> RuntimeAIConfig:
-    raw_provider_str = str(rows.get("AI_PROVIDER") or settings.AI_PROVIDER or "mock").strip().lower()
+    raw_provider_str = str(rows.get("AI_PROVIDER") or settings.AI_PROVIDER or "litellm").strip().lower()
     provider = _normalize_provider_name(raw_provider_str)
     routing: dict[str, str] = {"default": "default"}
     profiles: dict[str, dict[str, Any]] = {}
@@ -179,7 +179,7 @@ def _build_legacy_profiles(rows: dict[str, str]) -> RuntimeAIConfig:
             default_profile["api_key"] = api_key
     else:
         default_profile = {
-            "provider": "mock",
+            "provider": "litellm",
             "model": rows.get("LLM_MODEL") or settings.LLM_MODEL,
         }
 
@@ -270,7 +270,7 @@ def runtime_ai_rows_from_settings(settings_obj: Any | None = None) -> dict[str, 
     target_settings = settings_obj or settings
     has_structured_profiles = bool(getattr(target_settings, "AI_PROVIDER_PROFILES", {}) or {})
     return {
-        "AI_PROVIDER": str(getattr(target_settings, "AI_PROVIDER", "mock") or "mock"),
+        "AI_PROVIDER": str(getattr(target_settings, "AI_PROVIDER", "litellm") or "litellm"),
         "LLM_MODEL": str(getattr(target_settings, "LLM_MODEL", "") or ""),
         "LLM_TIER1_MODEL": ""
         if has_structured_profiles
@@ -422,7 +422,7 @@ def serialize_runtime_ai_config_values(
 
     default_profile_name = runtime_ai_config.routing.get("default", "default")
     default_profile = runtime_ai_config.profiles.get(default_profile_name, {})
-    values["AI_PROVIDER"] = (str(default_profile.get("provider", "mock")), False)
+    values["AI_PROVIDER"] = (str(default_profile.get("provider", "litellm")), False)
 
     cloud_profile = None
     for p in runtime_ai_config.profiles.values():

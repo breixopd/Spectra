@@ -171,16 +171,14 @@ class TestBuildModelConfig:
             assert default == "default"
             assert len(fallbacks) == 1
 
-    def test_mock_provider(self):
+    def test_mock_provider_raises(self):
         with patch("app.services.ai.router.settings") as mock_settings:
             mock_settings.AI_PROVIDER_PROFILES = {}
             mock_settings.AI_PROVIDER_ROUTING = {}
             mock_settings.AI_PROVIDER_FALLBACKS = {}
             mock_settings.AI_PROVIDER = "mock"
-            router = create_smart_router()
-            from app.services.ai.mock_client import MockLLMClient as ProductionMock
-
-            assert isinstance(router, ProductionMock)
+            with pytest.raises(ValueError, match="Mock LLM provider is not available"):
+                create_smart_router()
 
     def test_no_api_key(self):
         with patch("app.services.ai.router.settings") as mock_settings:
