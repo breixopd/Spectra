@@ -231,6 +231,7 @@ services:
       - ../app:/app/app
       - spectra_data:/app/data
       - ../plugins:/app/plugins
+      - ../keys:/app/keys:ro
       - spectra_tools_data:/opt/spectra_tools
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
