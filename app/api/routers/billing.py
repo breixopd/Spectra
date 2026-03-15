@@ -57,7 +57,7 @@ async def create_checkout(
         return {"checkout_url": checkout_url}
     except ValueError as e:
         raise HTTPException(400, str(e))
-    except (OSError, RuntimeError, ValueError):
+    except (OSError, RuntimeError):
         logger.exception("Payment checkout error")
         raise HTTPException(502, "Payment provider error")
 

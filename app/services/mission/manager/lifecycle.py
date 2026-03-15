@@ -93,9 +93,9 @@ class MissionLifecycleManager:
                     from app.services.tools.vpn import VPNManager
 
                     vpn_mgr = VPNManager()
-                    await vpn_mgr.disconnect(mission.vpn_config)
+                    await vpn_mgr.disconnect(str(mission.vpn_config))
                     logger.info("VPN disconnected for stopped mission %s", mission_id)
-                except (OSError, RuntimeError, ImportError) as e:
+                except (OSError, RuntimeError, ImportError, ValueError, TypeError) as e:
                     logger.error("Failed to disconnect VPN for mission %s: %s", mission_id, e)
             mission.stop()
             # Update DB status immediately
@@ -187,7 +187,7 @@ class MissionLifecycleManager:
             async with async_session_maker() as session:
                 async with session.begin():
                     repo = MissionRepository(session)
-                    db_mission = await repo.get(mission_id)
+                    db_mission = await repo.get_by_id(mission_id)
                     if not db_mission or not db_mission.checkpoint_data:
                         raise ValueError(f"No checkpoint data for mission {mission_id}")
 
@@ -197,7 +197,7 @@ class MissionLifecycleManager:
                     return mission
         except ValueError:
             raise
-        except (OSError, RuntimeError, ValueError) as e:
+        except (OSError, RuntimeError) as e:
             raise RuntimeError(f"Failed to resume mission {mission_id}: {e}") from e
 
     async def initialize_mission(self, mission: Mission) -> AgentContext | None:

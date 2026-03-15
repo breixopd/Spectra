@@ -264,9 +264,9 @@ class MissionExecutionManager:
             try:
                 from app.services.tools.vpn import VPNManager
                 vpn_mgr = VPNManager()
-                await vpn_mgr.disconnect(mission.vpn_config)
+                await vpn_mgr.disconnect(str(mission.vpn_config))
                 mission.log(f"[VPN] Disconnected '{mission.vpn_config}'")
-            except (ImportError, OSError, RuntimeError, TypeError) as vpn_err:
+            except (ImportError, OSError, RuntimeError, TypeError, ValueError) as vpn_err:
                 logger.error("VPN disconnect failed for mission %s: %s", mission.id, vpn_err)
 
         try:

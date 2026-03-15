@@ -459,6 +459,11 @@ async def verify_finding(
 
     updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
     await db.commit()
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Update failed unexpectedly",
+        )
 
     return FindingDetailResponse(
         id=updated.id,
@@ -499,6 +504,11 @@ async def mark_false_positive(
 
     updated = await repo.update(finding_id, status=FindingStatus.FALSE_POSITIVE)
     await db.commit()
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Update failed unexpectedly",
+        )
 
     return FindingDetailResponse(
         id=updated.id,

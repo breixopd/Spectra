@@ -167,8 +167,7 @@ class BackupService:
 
             storage = StorageService()
             s3_key = f"backups/{backup_id}.dump"
-            with open(file_path, "rb") as f:
-                await storage.upload_fileobj(f, self.settings.BACKUP_S3_BUCKET, s3_key)
+            await storage.upload_file(self.settings.BACKUP_S3_BUCKET, s3_key, file_path)
             return f"s3://{self.settings.BACKUP_S3_BUCKET}/{s3_key}"
         except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
             logger.warning("S3 backup upload failed: %s", e)
