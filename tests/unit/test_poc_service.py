@@ -170,7 +170,7 @@ class TestPOCServiceGenerate:
     @pytest.mark.asyncio
     async def test_handles_exception_gracefully(self, poc_service, poc_request, agent_context):
         poc_service.developer_agent = AsyncMock()
-        poc_service.developer_agent.execute = AsyncMock(side_effect=Exception("Unexpected"))
+        poc_service.developer_agent.execute = AsyncMock(side_effect=RuntimeError("Unexpected"))
 
         with patch("app.services.poc.service.shell_manager") as mock_shell:
             mock_shell.start_listener = MagicMock(return_value=4444)

@@ -52,7 +52,7 @@ def get_user_identifier(request: Request) -> str:
             username = payload.get("sub")
             if username:
                 return f"user:{username}"
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.debug("JWT decode failed in rate limiter: %s", e)
             return f"invalid:{get_remote_address(request)}"
 
@@ -135,7 +135,7 @@ async def rate_limit_exceeded_handler(
     if exc.limit:
         try:
             retry_after = int(exc.limit.get_expiry())
-        except Exception:
+        except (OSError, RuntimeError, ValueError, AttributeError, TypeError):
             pass
 
     return JSONResponse(

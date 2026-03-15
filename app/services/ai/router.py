@@ -142,7 +142,7 @@ class LiteLLMRouter(LLMClient):
             else:
                 self._router = None
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, ImportError) as e:
             logger.warning("Failed to initialize LiteLLM Router: %s", e)
             self._router = None
 
@@ -250,7 +250,7 @@ class LiteLLMRouter(LLMClient):
                 raw={},
             )
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             duration_ms = (time.time() - start_time) * 1000
             await record_llm_call(
                 provider=self.provider,
@@ -293,7 +293,7 @@ class LiteLLMRouter(LLMClient):
                 delta = chunk.choices[0].delta
                 if delta and delta.content:
                     yield delta.content
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.warning("Streaming failed, falling back to non-streaming: %s", e)
             result = await self.generate(
                 prompt=prompt,
@@ -315,7 +315,7 @@ class LiteLLMRouter(LLMClient):
                 timeout=10,
             )
             return bool(response.content)
-        except Exception:
+        except (OSError, RuntimeError, ValueError, TimeoutError):
             return False
 
     async def close(self) -> None:

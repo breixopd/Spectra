@@ -89,7 +89,7 @@ class DemoRecorder:
             location = await storage.upload(settings.S3_BUCKET_MISSIONS, key, content.encode())
             logger.info("Demo recording saved: %s", location)
             return location
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.error("Failed to save demo: %s", e)
             return None
 

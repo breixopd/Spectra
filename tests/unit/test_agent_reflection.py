@@ -132,7 +132,7 @@ async def test_reflection_failure_returns_default_score():
     agent = _make_agent(reflection_enabled=True, threshold=0.7)
 
     # Simulate _reflect raising an exception internally → returns (0.8, "")
-    agent._llm_generate = AsyncMock(side_effect=Exception("LLM down"))
+    agent._llm_generate = AsyncMock(side_effect=RuntimeError("LLM down"))
 
     result = await agent.execute_with_reflection(_ctx(), _Input())
     # 0.8 >= 0.7 threshold, so should accept on first iteration

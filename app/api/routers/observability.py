@@ -37,7 +37,7 @@ async def get_observability_stats(
         if cache:
             cache_stats = cache.get_stats() or {}
             cache_available = True
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.warning("Cache unavailable for observability stats")
 
     return {
@@ -139,7 +139,7 @@ async def get_cache_stats(
             return {"cache_available": False}
         stats = cache.get_stats()
         return {**stats, "cache_available": True}
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.warning("Cache unavailable for stats endpoint")
         return {"cache_available": False}
 

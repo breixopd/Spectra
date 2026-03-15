@@ -331,7 +331,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
                 }
                 for r in results
             ]
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.debug("RAG history query failed: %s", e)
             return []
 
@@ -373,7 +373,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
                 for line in text.splitlines()
                 if line.strip() and not line.strip().startswith("#")
             ]
-        except Exception:
+        except (OSError, RuntimeError, ValueError, TimeoutError):
             logger.exception("LLM enrichment failed")
             return []
 
@@ -459,7 +459,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
             )
             return AgentResult(success=True, action=output)
 
-        except Exception:
+        except (OSError, RuntimeError, ValueError, TimeoutError):
             logger.exception("ReconIntelAgent execution failed")
             return AgentResult(
                 success=False,

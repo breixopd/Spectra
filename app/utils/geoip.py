@@ -103,7 +103,7 @@ async def resolve_ip(ip: str) -> GeoLocation | None:
         logger.warning("GeoIP lookup timed out for %s", ip)
     except aiohttp.ClientError as e:
         logger.warning("GeoIP network error for %s: %s", ip, e)
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("GeoIP unexpected error for %s: %s", ip, e)
 
     return None

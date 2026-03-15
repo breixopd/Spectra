@@ -58,7 +58,7 @@ async def send_notification(
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(url, content=message, headers=headers)
             return response.status_code < 400
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
         logger.debug("Notification failed: %s", e)
         return False
 

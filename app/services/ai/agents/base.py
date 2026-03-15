@@ -265,7 +265,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
             content = response.content
             data = _json.loads(content[content.find("{"):content.rfind("}") + 1])
             return float(data.get("quality", 0.8)), str(data.get("feedback", ""))
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.debug("Reflection failed: %s", e)
             return 0.8, ""
 
@@ -485,7 +485,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
         for attempt in range(max_retries + 1):
             try:
                 return await func(*args, **kwargs)
-            except Exception as exc:
+            except (OSError, RuntimeError, ValueError, TimeoutError) as exc:
                 last_error = exc
                 if attempt < max_retries:
                     delay = backoff_factor ** attempt

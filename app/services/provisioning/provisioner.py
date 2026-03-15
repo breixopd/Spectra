@@ -151,7 +151,7 @@ class ServerProvisioner:
             result.error = f"Cannot reach server: {e}"
             result.logs.append(f"ERROR: {result.error}")
             logger.error("Cannot reach server: host=%s error=%s", config.host, e)
-        except Exception as e:
+        except (RuntimeError, ValueError) as e:
             result.error = f"Unexpected error: {e}"
             result.logs.append(f"ERROR: {result.error}")
             logger.exception("Provisioning failed for %s", config.host)
@@ -176,7 +176,7 @@ class ServerProvisioner:
                     "system_info": (result.stdout or "").strip().split("\n")[0],  # type: ignore[union-attr]
                     "docker_installed": has_docker,
                 }
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
             return {"connected": False, "error": str(e)}
 
     async def deprovision(self, config: ServerConfig) -> ProvisioningResult:
@@ -207,7 +207,7 @@ class ServerProvisioner:
                 await conn.run(stop_cmd, check=False)
                 result.logs.append("Services stopped and removed")
                 result.success = True
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
             result.error = str(e)
             result.logs.append(f"ERROR: {result.error}")
 

@@ -42,7 +42,7 @@ class SandboxOrchestratorClient:
     async def get(self, mission_id: str) -> dict | None:
         try:
             return await self._client.get(f"/v1/sandboxes/{mission_id}")
-        except Exception:
+        except (OSError, RuntimeError, ConnectionError, TimeoutError):
             return None
 
     async def exec_command(self, mission_id: str, command: str, **kwargs: Any) -> dict:

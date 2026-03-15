@@ -49,7 +49,7 @@ class EmbeddingService:
             test = await asyncio.to_thread(lambda: list(self._local_embedder.embed(["dim_probe"])))  # type: ignore[union-attr]
             self._embedding_dim = len(test[0])
             logger.info("Local embedding model loaded: %s dim=%d", self._local_model_name, self._embedding_dim)
-        except Exception as e:
+        except (OSError, RuntimeError, ImportError) as e:
             self._api_ready = False
             raise RuntimeError(f"Failed to load local embedding model '{self._local_model_name}': {e}") from e
 
@@ -124,7 +124,7 @@ class EmbeddingService:
                     **self._litellm_kwargs,
                 )
                 return response.data[0]["embedding"]
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                 if attempt == 0:
                     logger.warning("Embedding attempt failed, retrying: %s", e)
                     continue
@@ -157,7 +157,7 @@ class EmbeddingService:
                     **self._litellm_kwargs,
                 )
                 return [item["embedding"] for item in response.data]
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                 if attempt == 0:
                     logger.warning("Batch embedding attempt failed, retrying: %s", e)
                     continue

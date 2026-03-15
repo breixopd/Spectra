@@ -74,7 +74,7 @@ class ServiceRegistry:
                         results[name] = {"status": "unknown"}
                 else:
                     results[name] = {"status": "no_health_check"}
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 results[name] = {"status": "error", "error": str(e)}
         self._health_cache = results
         return results
@@ -130,7 +130,7 @@ class ServiceRegistry:
                         "healthy_nodes": sum(1 for n in nodes if n["health_status"] == "healthy"),
                         "nodes": nodes,
                     }
-        except Exception:
+        except OSError:
             pass  # Pool not initialized yet
         return topology
 
@@ -140,7 +140,7 @@ class ServiceRegistry:
             if svc and hasattr(svc, "close"):
                 try:
                     await svc.close()
-                except Exception as e:
+                except (OSError, RuntimeError) as e:
                     logger.warning("Error closing %s service: %s", name, e)
         self._services.clear()
 
@@ -150,7 +150,7 @@ class ServiceRegistry:
         if svc and hasattr(svc, "close"):
             try:
                 await svc.close()
-            except Exception:
+            except OSError:
                 logger.debug("Error closing invalidated %s service", service_name)
 
 

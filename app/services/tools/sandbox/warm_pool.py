@@ -84,7 +84,7 @@ class WarmPoolManager:
             asyncio.create_task(self._spawn_warm_container())
 
             return info
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("Failed to create sandbox after claiming warm container: %s", exc)
             return None
 
@@ -124,7 +124,7 @@ class WarmPoolManager:
                 if sb.network_id:
                     await self._pool._remove_network(sb.network_id, sb.container_name)
                 count += 1
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.warning("Failed to cleanup warm container %s: %s", sb.container_name, exc)
 
         # Mark all warm as destroyed in DB
@@ -195,7 +195,7 @@ class WarmPoolManager:
                     )
                     network_id = net.id
                     container_network = net_name
-                except Exception:
+                except OSError:
                     logger.debug("Failed to create isolated network, falling back to shared")
 
             container = self._pool._client.containers.run(
@@ -224,7 +224,7 @@ class WarmPoolManager:
                 try:
                     shared_net = self._pool._client.networks.get(settings.SANDBOX_NETWORK)
                     await asyncio.to_thread(shared_net.connect, container)
-                except Exception:
+                except OSError:
                     logger.debug("Failed to connect warm container to shared network")
 
             # Update DB
@@ -238,7 +238,7 @@ class WarmPoolManager:
 
             logger.info("Warm container created: %s", container_name)
 
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.error("Failed to create warm container: %s", exc)
 
     async def _count_warm(self) -> int:

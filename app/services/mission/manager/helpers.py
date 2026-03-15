@@ -72,9 +72,9 @@ async def run_debrief(
                         lesson=lesson,
                         context=f"Mission {mission.id} against {mission.target}",
                     )
-            except Exception:
+            except (OSError, RuntimeError):
                 logger.debug("Failed to persist debrief lessons (non-critical)")
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.debug("Debrief failed (non-critical): %s", e)
 
 
@@ -118,7 +118,7 @@ async def generate_html_report(mission: Mission) -> None:
         if path:
             mission.report_path = path
             mission.log(f"Report saved: {path}")
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
         logger.warning("HTML report generation failed: %s", e)
 
 
@@ -189,7 +189,7 @@ async def adapt_plan_to_findings(
         else:
             mission.log("[ADAPT] Plan adaptation not needed")
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Plan adaptation failed: %s", e)
         mission.log(f"[ADAPT] Adaptation failed: {e}")
 
@@ -249,7 +249,7 @@ async def handle_task_failure(
         else:
             mission.log(f"[ADAPT] Replanning failed: {result.error}")
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("Adaptive replanning failed: %s", e, exc_info=True)
         mission.log(f"[ADAPT] Critical failure: {e}")
 
@@ -410,7 +410,7 @@ async def execute_mission_tasks(
 
                 await lifecycle.update_db_status(mission)
                 await lifecycle.save_checkpoint(mission)
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 await handle_task_failure(
                     mission, task, str(e), context,
                     mission_controller, consensus, steering,

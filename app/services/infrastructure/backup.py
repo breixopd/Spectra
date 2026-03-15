@@ -92,7 +92,7 @@ class BackupService:
         except TimeoutError:
             logger.error("Backup timed out after 600s")
             return {"status": "failed", "error": "Backup timed out"}
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("Backup failed: %s", e)
             return {"status": "failed", "error": str(e)}
 
@@ -145,7 +145,7 @@ class BackupService:
             logger.info("Backup restored from: %s", backup_path)
             return {"status": "success", "restored_from": backup_path}
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             return {"status": "failed", "error": str(e)}
 
     async def list_backups(self) -> list[dict]:
@@ -170,7 +170,7 @@ class BackupService:
             with open(file_path, "rb") as f:
                 await storage.upload_fileobj(f, self.settings.BACKUP_S3_BUCKET, s3_key)
             return f"s3://{self.settings.BACKUP_S3_BUCKET}/{s3_key}"
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
             logger.warning("S3 backup upload failed: %s", e)
             return None
 

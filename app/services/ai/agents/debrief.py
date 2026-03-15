@@ -116,6 +116,6 @@ Provide:
                 temperature=0.4,
             )
             return AgentResult(success=True, action=result)
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("Debrief failed: %s", e)
             return AgentResult(success=False, error=str(e))

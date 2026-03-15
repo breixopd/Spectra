@@ -79,7 +79,7 @@ async def test_uninstall_success(mock_registry):
 async def test_uninstall_failure(mock_registry):
     installer = ToolInstaller()
 
-    mock_registry.uninstall_tool = AsyncMock(side_effect=Exception("Uninstall failed"))
+    mock_registry.uninstall_tool = AsyncMock(side_effect=RuntimeError("Uninstall failed"))
 
     result = await installer.uninstall("test-tool")
 

@@ -115,7 +115,7 @@ async def update_user_settings(
             details={"action": "settings_updated", "fields": list(updates.keys())},
             request=request,
         )
-    except Exception:
+    except OSError:
         pass  # Audit failure shouldn't block the operation
 
     return _prefs_to_response(prefs)
@@ -144,7 +144,7 @@ async def clear_byok(
             details={"action": "byok_cleared"},
             request=request,
         )
-    except Exception:
+    except OSError:
         pass
 
     return {"detail": "BYOK configuration cleared"}

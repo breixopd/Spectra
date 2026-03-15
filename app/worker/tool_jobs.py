@@ -131,7 +131,7 @@ async def execute_tool_job(
     if stdout or (output_file and Path(output_file).exists()):
         try:
             parsed_findings = await parser.parse_output(stdout, stderr, output_file)
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.warning("Failed to parse output for %s: %s", tool_id, e)
 
     # Track job stats in cache

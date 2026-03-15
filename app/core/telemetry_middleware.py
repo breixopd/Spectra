@@ -50,7 +50,7 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
         start = time.monotonic()
         try:
             response = await call_next(request)
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             elapsed_ms = (time.monotonic() - start) * 1000
             telemetry.increment_counter("http.requests.active", -1)
 

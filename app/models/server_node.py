@@ -76,7 +76,7 @@ class ServerNode(Base):
             from app.core.encryption import _get_default_secret, encrypt_field
 
             self.api_key = encrypt_field(plaintext_key, _get_default_secret())
-        except Exception:
+        except (OSError, RuntimeError, ImportError):
             logger.warning("Encryption unavailable, storing api_key as-is")
             self.api_key = plaintext_key
 
@@ -88,7 +88,7 @@ class ServerNode(Base):
             from app.core.encryption import _get_default_secret, decrypt_field
 
             return decrypt_field(self.api_key, _get_default_secret())
-        except Exception:
+        except (OSError, RuntimeError, ImportError):
             # Fallback: may be stored as plaintext from before encryption was added
             return self.api_key
 

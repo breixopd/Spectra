@@ -177,7 +177,7 @@ class TestVectorGeneratorAgent:
     @pytest.mark.asyncio
     async def test_execute_handles_llm_error_gracefully(self):
         mock_llm = AsyncMock()
-        mock_llm.generate_structured = AsyncMock(side_effect=Exception("LLM down"))
+        mock_llm.generate_structured = AsyncMock(side_effect=RuntimeError("LLM down"))
         agent = VectorGeneratorAgent(mock_llm)
 
         context = AgentContext(

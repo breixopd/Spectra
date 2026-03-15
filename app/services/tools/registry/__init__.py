@@ -136,7 +136,7 @@ class ToolRegistry:
                 "cryptography package not installed. Signature verification will fail if safe_mode is enabled."
             )
             return None
-        except Exception as e:
+        except (OSError, ValueError, KeyError) as e:
             logger.error("Failed to load public key from %s: %s", found_path, e)
             return None
 
@@ -234,7 +234,7 @@ class ToolRegistry:
             try:
                 key = f"spectra:tool_status:{tool_id}"
                 status_data = await cache.get(key)
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.debug("Failed to get status for %s: %s", tool_id, e)
                 continue
 

@@ -202,7 +202,7 @@ def load_custom_chains() -> list[ExploitChain]:
                 )
             )
         return chains
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.warning("Failed to load custom chains: %s", e)
         return []
 

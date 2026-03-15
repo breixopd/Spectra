@@ -114,7 +114,7 @@ class CircuitBreaker:
             state_dict = data if isinstance(data, dict) else json.loads(data)
             state_dict["state"] = CircuitState(state_dict["state"])
             return CircuitBreakerState(**state_dict)
-        except Exception as e:
+        except (ValueError, TypeError, KeyError) as e:
             logger.warning("Failed to deserialize circuit state: %s", e)
             return None
 

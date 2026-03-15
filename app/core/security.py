@@ -117,7 +117,7 @@ async def _persist_to_db() -> None:
                 )
 
             await session.commit()
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         _logger.warning("Failed to persist blacklist to DB: %s", e)
 
 
@@ -154,7 +154,7 @@ async def _load_from_db() -> None:
                     loaded_users += 1
 
         _logger.info("Loaded %d token + %d user blacklist entries from DB", loaded_tokens, loaded_users)
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         _logger.warning("Failed to load blacklist from DB: %s", e)
 
 
@@ -173,7 +173,7 @@ def _get_token_expiry(token: str) -> float:
             options={"verify_exp": False},
         )
         return float(payload.get("exp", _time.time() + 3600))
-    except Exception:
+    except (ValueError, TypeError, KeyError):
         return _time.time() + 3600
 
 

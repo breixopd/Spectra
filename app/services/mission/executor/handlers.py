@@ -125,7 +125,7 @@ class TaskDispatcher:
             try:
                 await handler(mission, task, context)
                 mission.task_tree.update_status(task_tree_id, TaskStatus.COMPLETED)
-            except Exception:
+            except (OSError, RuntimeError, ValueError):
                 mission.task_tree.update_status(task_tree_id, TaskStatus.FAILED)
                 raise
         else:

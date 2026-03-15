@@ -33,7 +33,7 @@ async def vpn_connect_job(config_path: str, vpn_type: str) -> dict[str, Any]:
             "stderr": stderr,
             "exit_code": returncode,
         }
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("VPN connect failed: %s", e)
         return {"success": False, "error": str(e)}
 
@@ -61,7 +61,7 @@ async def vpn_disconnect_job(config_name: str, vpn_type: str) -> dict[str, Any]:
             "stderr": stderr,
             "exit_code": returncode,
         }
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("VPN disconnect failed: %s", e)
         return {"success": False, "error": str(e)}
 
@@ -90,7 +90,7 @@ async def vpn_status_job() -> dict[str, Any]:
             )
             result["public_ip"] = out_ip.strip() if rc_ip == 0 else "unknown"
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("VPN status check failed: %s", e)
         result["error"] = str(e)
     return result
@@ -112,6 +112,6 @@ async def vpn_test_job() -> dict[str, Any]:
             "public_ip": None,
             "message": f"Connectivity check failed: {stderr or 'no response'}",
         }
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("VPN test failed: %s", e)
         return {"success": False, "error": str(e)}

@@ -63,7 +63,7 @@ async def get_safety_stats(
                 flagged += 1
 
         return {"allowed": allowed, "blocked": blocked, "flagged": flagged}
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         return {"allowed": 0, "blocked": 0, "flagged": 0}
 
 
@@ -88,7 +88,7 @@ async def get_system_status(
         from app.services.storage import get_storage_service
         storage = get_storage_service()
         storage_health = await storage.health_check()
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         storage_health = {"status": "unavailable", "error": str(e)}
 
     overall_status = "ready"
@@ -98,7 +98,7 @@ async def get_system_status(
     try:
         await db.execute(text("SELECT 1"))
         db_status = ComponentStatus(status="healthy", message="Connected")
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.error("Database connection check failed: %s", e)
         db_status = ComponentStatus(status="error", message="Connection failed")
         overall_status = "degraded"
@@ -122,7 +122,7 @@ async def get_system_status(
                 tool_stats.failed += 1
             elif tool.status == ToolStatus.DISABLED:
                 tool_stats.disabled += 1
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Failed to get tool stats: %s", e)
 
     tools_installing = await check_tools_installing(cache)
@@ -155,7 +155,7 @@ async def get_system_status(
             rag_status = "fallback"
             if overall_status == "ready":
                 status_messages.append("RAG using fallback embeddings")
-    except Exception:
+    except (OSError, RuntimeError, ImportError):
         rag_status = "unavailable"
 
     if tool_stats.installing > 0:

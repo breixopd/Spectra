@@ -54,7 +54,7 @@ async def admin_page(request: Request):
         from app.services.system.runtime_settings import get_runtime_setting_value
 
         maintenance_active = bool(await get_runtime_setting_value("MAINTENANCE_MODE"))
-    except Exception:
+    except OSError:
         pass
 
     return templates.TemplateResponse(

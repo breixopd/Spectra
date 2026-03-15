@@ -133,7 +133,7 @@ async def test_health_verbose_cache_healthy():
         "sys.modules",
         {
             "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception("no LLM"))),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError("no LLM"))),
             "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
             "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: None),
         },
@@ -157,9 +157,9 @@ async def test_health_verbose_cache_unavailable():
         "sys.modules",
         {
             "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception)),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
             "app.core.cache": MagicMock(get_cache=lambda: None),
-            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=Exception)),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=RuntimeError)),
         },
     ):
         result = await health_check(response=response, db=db, verbose=True)
@@ -185,9 +185,9 @@ async def test_health_verbose_disk_info():
         "sys.modules",
         {
             "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception)),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
             "app.core.cache": MagicMock(get_cache=lambda: None),
-            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=Exception)),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=RuntimeError)),
         },
     ):
         with patch("app.api.routers.health.shutil.disk_usage", return_value=mock_usage):
@@ -228,7 +228,7 @@ async def test_readiness_all_ready():
 @pytest.mark.asyncio
 async def test_readiness_db_down():
     db = AsyncMock()
-    db.execute = AsyncMock(side_effect=Exception("db down"))
+    db.execute = AsyncMock(side_effect=OSError("db down"))
     response = _mock_response()
 
     mock_rag = MagicMock()
@@ -257,8 +257,8 @@ async def test_readiness_llm_unavailable():
     with patch.dict(
         "sys.modules",
         {
-            "app.services.ai.rag": MagicMock(RAGService=MagicMock(side_effect=Exception)),
-            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=Exception)),
+            "app.services.ai.rag": MagicMock(RAGService=MagicMock(side_effect=RuntimeError)),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
         },
     ):
         result = await readiness_check(response=response, db=db)

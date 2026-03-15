@@ -191,7 +191,7 @@ Provide a JSON response with:
 
             return AgentResult(success=True, action=action)
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("Safety check failed: %s", e)
             # Fail safe: Block if we can't decide
             return AgentResult(

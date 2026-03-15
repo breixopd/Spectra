@@ -129,7 +129,7 @@ def _get_tool_cache_stats() -> dict[str, int]:
     try:
         from app.core.optimizations import tool_cache
         return tool_cache.stats
-    except Exception:
+    except (OSError, RuntimeError, ImportError):
         return {"size": 0, "hits": 0, "misses": 0, "hit_rate_pct": 0}
 
 
@@ -191,7 +191,7 @@ async def get_system_operations(cache: CacheService | None) -> list[OngoingOpera
                     )
                 )
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Failed to retrieve operations from cache: %s", e)
 
     return operations
@@ -205,7 +205,7 @@ async def check_tools_installing(cache: CacheService | None) -> bool:
         progress = await cache.get(SystemKeys.INSTALL_PROGRESS)
         if isinstance(progress, dict):
             return progress.get("active", False)
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.debug("System status check failed: %s", e)
     return False
 
@@ -218,6 +218,6 @@ async def check_embeddings_loading(cache: CacheService | None) -> bool:
         emb_status = await cache.get(SystemKeys.EMBEDDINGS_STATUS)
         if isinstance(emb_status, dict):
             return emb_status.get("loading", False)
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.debug("System status check failed: %s", e)
     return False

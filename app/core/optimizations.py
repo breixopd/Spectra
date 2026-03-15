@@ -175,7 +175,7 @@ async def check_llm_health() -> bool:
 
         client = await get_global_llm_client()
         return await client.health_check()
-    except Exception:
+    except (OSError, RuntimeError, ValueError, TimeoutError):
         return False
 
 

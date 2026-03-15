@@ -321,7 +321,7 @@ async def bulk_import_targets(
                 user_id=str(_current_user.id),
             )
             imported += 1
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("Bulk import failed for target %s: %s", addr, e)
             errors.append(f"{addr}: invalid data format")
 

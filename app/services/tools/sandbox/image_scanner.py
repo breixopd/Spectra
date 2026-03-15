@@ -168,7 +168,7 @@ class ImageScanner:
 
             return scan_result
 
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.error("Image scan failed for %s: %s", image_tag, exc)
             return ScanResult(
                 image=image_tag,
@@ -190,7 +190,7 @@ class ImageScanner:
                 if row and isinstance(row.value, dict):
                     return row.value
                 return None
-        except Exception:
+        except (OSError, RuntimeError):
             return None
 
     async def _run_trivy(self, image_tag: str) -> dict[str, Any]:
@@ -237,5 +237,5 @@ class ImageScanner:
                 else:
                     session.add(SystemStatus(key="image_scan_result", value=scan_result.to_dict()))
                 await session.commit()
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             logger.debug("Failed to store scan result: %s", exc)

@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
         svc = EmbeddingService()
         await svc._load_model()
         logger.info("Embedding service initialized")
-    except Exception as e:
+    except (OSError, RuntimeError, ImportError) as e:
         logger.warning("Embedding init failed (will retry on first use): %s", e)
 
     yield
@@ -110,7 +110,7 @@ async def ai_chat(req: ChatRequest):
             model=result.model,
             usage=result.usage,
         )
-    except Exception:
+    except (OSError, RuntimeError, ValueError, TimeoutError):
         logger.exception("AI chat error")
         raise HTTPException(500, "Internal service error")
 
@@ -142,7 +142,7 @@ async def generate_embeddings(req: EmbeddingRequest):
             model=svc.model_name or "unknown",
             dimensions=len(embeddings[0]) if embeddings else 0,
         )
-    except Exception:
+    except (OSError, RuntimeError, ValueError, TimeoutError):
         logger.exception("Embedding error")
         raise HTTPException(500, "Internal service error")
 
@@ -176,6 +176,6 @@ async def rag_query(req: RAGRequest):
             results=[{"content": r.content, "score": r.score, "metadata": r.metadata} for r in results],
             query=req.query,
         )
-    except Exception:
+    except (OSError, RuntimeError, ValueError, TimeoutError):
         logger.exception("RAG query error")
         raise HTTPException(500, "Internal service error")

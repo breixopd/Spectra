@@ -122,7 +122,7 @@ class TestLiteLLMRouter:
     @pytest.mark.asyncio
     async def test_health_check_failure(self):
         router = LiteLLMRouter()
-        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(side_effect=Exception("down")))
+        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(side_effect=RuntimeError("down")))
         with patch.dict(sys.modules, {"litellm": fake_litellm}):
             assert await router.health_check() is False
 

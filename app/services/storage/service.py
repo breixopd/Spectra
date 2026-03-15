@@ -185,7 +185,7 @@ class StorageService:
             return False
         except (FileNotFoundError, OSError):
             return False
-        except Exception:
+        except (RuntimeError, ConnectionError, ValueError):
             logger.warning("Unexpected error checking existence: %s/%s", bucket, key, exc_info=True)
             return False
 
@@ -265,7 +265,7 @@ class StorageService:
             async with self._session.client(**self._s3_kwargs()) as s3:
                 await s3.list_buckets()
             return {"status": "healthy", "mode": "s3", "endpoint": settings.S3_ENDPOINT_URL}
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError) as e:
             return {"status": "unhealthy", "mode": "s3", "error": str(e)}
 
     async def close(self) -> None:

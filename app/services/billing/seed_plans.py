@@ -139,5 +139,5 @@ async def seed_default_plans() -> None:
             session.add_all(default_plans)
             await session.commit()
             logger.info("Created %d default plans", len(default_plans))
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.warning("Failed to seed default plans: %s", e)

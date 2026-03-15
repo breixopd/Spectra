@@ -153,7 +153,7 @@ class VectorGeneratorAgent(Agent[VectorGeneratorInput, VectorGeneratorOutput]):
                 action.vectors = det_vectors + action.vectors
 
             return AgentResult(success=True, action=action)
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("VectorGenerator failed: %s", e)
             return AgentResult(success=False, error=str(e))
 
@@ -252,7 +252,7 @@ Think like an experienced penetration tester following PTES methodology:
 
             return response
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("LLM vector generation failed: %s", e)
             return VectorGeneratorOutput(
                 confidence=0.0,

@@ -142,7 +142,7 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
                 error=None if validated_targets else "No valid targets found",
             )
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("ScopeAgent failed: %s", e)
             return AgentResult(
                 success=False,
@@ -307,7 +307,7 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
                 system_prompt=system_prompt,
                 temperature=0.2,  # Low temperature for parsing
             )
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.warning("LLM parsing failed, using regex only: %s", e)
             return ScopeAction(
                 confidence=0.5,

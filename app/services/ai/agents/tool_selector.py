@@ -248,7 +248,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             # Sync tool status from cache (set by tools container worker)
             try:
                 await registry.sync_status_from_cache()
-            except Exception as e:
+            except (OSError, RuntimeError, TypeError) as e:
                 logger.debug("Tool status sync failed: %s", e)
 
             # Get all registered tools (not just available - they auto-install)
@@ -370,7 +370,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 action=action,
             )
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("ToolSelector failed: %s", e)
             return AgentResult(
                 success=False,
@@ -492,7 +492,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 service=primary_service,
                 os_family=os_family,
             )
-        except Exception as e:
+        except (KeyError, ValueError, RuntimeError) as e:
             logger.debug("Memory context fetch failed: %s", e)
 
         # Get playbook recommendations
@@ -505,7 +505,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 input_data.known_services,
                 input_data.tools_already_run,
             )
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.debug("Playbook context fetch failed: %s", e)
 
         # Get CVE intelligence for discovered services (live + builtin)
@@ -522,11 +522,11 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                     cve_context = await get_cve_context_for_services_live(
                         input_data.known_services
                     )
-                except Exception:
+                except (OSError, RuntimeError, ValueError, TimeoutError):
                     cve_context = get_cve_context_for_services(
                         input_data.known_services
                     )
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.debug("CVE context fetch failed: %s", e)
 
         # Generate smart wordlist context for brute-force and directory tools
@@ -547,7 +547,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                             f"users=[{','.join(creds['users'][:5])}] "
                             f"passwords=[{','.join(creds['passwords'][:5])}]"
                         )
-        except Exception as e:
+        except (KeyError, ValueError, RuntimeError) as e:
             logger.debug("Wordlist context fetch failed: %s", e)
 
         # Combine all learned context
@@ -591,7 +591,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 system_prompt=system_prompt,
                 temperature=0.3,
             )
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.warning("LLM selection failed, using smart fallback: %s", e)
             return self._smart_fallback_selection(input_data, available_tools)
 

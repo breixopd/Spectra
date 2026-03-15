@@ -120,7 +120,7 @@ class MissionMemory:
         for key, data in profiles_raw.items():
             try:
                 self.target_profiles[key] = TargetProfile(**data)
-            except Exception as e:
+            except (ValueError, TypeError, KeyError) as e:
                 logger.debug("Failed to load target profile: %s", e)
 
         self._rebuild_indexes()
@@ -157,7 +157,7 @@ class MissionMemory:
         try:
             data = json.loads(path.read_text())
             return [model_cls(**item) for item in data if isinstance(item, dict)]
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.warning("Failed to load %s: %s — trying backups", filename, e)
             return self._load_with_fallback(filename, model_cls)
 
@@ -168,14 +168,14 @@ class MissionMemory:
             return None
         try:
             return json.loads(path.read_text())
-        except Exception:
+        except (OSError, ValueError):
             # Try backups for raw files too
             for i in range(1, self.MAX_BACKUPS + 1):
                 bak = self.memory_dir / f"{filename}.{i}.bak"
                 if bak.exists():
                     try:
                         return json.loads(bak.read_text())
-                    except Exception:
+                    except (OSError, ValueError):
                         continue
             return None
 
@@ -188,7 +188,7 @@ class MissionMemory:
                     data = json.loads(bak.read_text())
                     logger.info("Recovered %s from backup %d", filename, i)
                     return [model_cls(**item) for item in data if isinstance(item, dict)]
-                except Exception:
+                except (OSError, ValueError):
                     continue
         return []
 
@@ -262,7 +262,7 @@ class MissionMemory:
         try:
             tmp.write_text(json.dumps(data, indent=2, default=str))
             tmp.rename(path)
-        except Exception as e:
+        except OSError as e:
             logger.warning("Failed to save %s: %s", filename, e)
             if tmp.exists():
                 tmp.unlink()
@@ -641,7 +641,7 @@ class MissionMemory:
         try:
             out_path = output_dir / "aggregated_knowledge.json"
             out_path.write_text(json.dumps(result, indent=2, default=str))
-        except Exception as e:
+        except OSError as e:
             logger.warning("Failed to save aggregated knowledge: %s", e)
 
         return result

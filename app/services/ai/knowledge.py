@@ -139,7 +139,7 @@ async def get_exploit_context(
             return f"\n--- Past Exploits & CVEs ---\n{context}\n"
         return ""
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Failed to get exploit context: %s", e)
         return ""
 
@@ -170,7 +170,7 @@ async def get_tool_usage_context(
             return f"\n--- Past Successful Actions ---\n{context}\n"
         return ""
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Failed to get tool usage context: %s", e)
         return ""
 
@@ -194,7 +194,7 @@ async def get_mission_context(
             return f"\n--- Past Successful Approaches ---\n{context}\n"
         return ""
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Failed to get mission context: %s", e)
         return ""
 
@@ -216,7 +216,7 @@ async def get_available_tools_context(grouped: bool = True) -> str:
         # Sync tool status from cache before displaying
         try:
             await registry.sync_status_from_cache()
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.debug("Failed to sync tool status: %s", e)
 
         # Show ALL tools, not just available ones - they will be auto-installed when used
@@ -253,7 +253,7 @@ async def get_available_tools_context(grouped: bool = True) -> str:
 
             return "--- Security Tools ---\n" + "\n".join(tool_descriptions) + "\n"
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError, ImportError) as e:
         logger.warning("Failed to get tools context: %s", e)
         return ""
 
@@ -320,6 +320,6 @@ async def index_exploit_attempt(
         logger.info("Indexed %s to knowledge base: %s", doc_type, vector_name)
         return True
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Failed to index exploit attempt: %s", e)
         return False

@@ -18,11 +18,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 try:
+    from cryptography.exceptions import InvalidSignature as _CryptoInvalidSignature
     from cryptography.hazmat.primitives.asymmetric import ed25519 as crypto_ed25519_mod
 
     _HAS_CRYPTOGRAPHY = True
 except ImportError:
     _HAS_CRYPTOGRAPHY = False
+    _CryptoInvalidSignature = None  # type: ignore[assignment,misc]
     crypto_ed25519_mod = None  # type: ignore
 
 
@@ -68,7 +70,7 @@ class PluginValidator:
         # Validate schema
         try:
             config = ToolConfig.model_validate(validation_data)
-        except Exception as e:
+        except (ValueError, TypeError, KeyError) as e:
             raise PluginValidationError(f"Invalid plugin schema: {e}") from e
 
         # Restore signature
@@ -109,8 +111,13 @@ class PluginValidator:
 
         except PluginSignatureError:
             raise
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             raise PluginSignatureError(f"Signature verification failed: {e}") from e
+        except BaseException as e:
+            # Catch cryptography.exceptions.InvalidSignature (only when cryptography installed)
+            if _CryptoInvalidSignature is not None and isinstance(e, _CryptoInvalidSignature):
+                raise PluginSignatureError(f"Signature verification failed: {e}") from e
+            raise
 
     def _validate_commands(self, config: ToolConfig) -> None:
         """Check installation and execution commands against the blocklist."""

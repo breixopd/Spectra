@@ -28,7 +28,7 @@ async def startup() -> None:
             safe_mode=settings.PLUGIN_SAFE_MODE,
         )
         logger.info("Loaded %d tool plugins", len(registry.list_tools()))
-    except Exception as e:
+    except (OSError, RuntimeError, ImportError) as e:
         logger.error("Failed to initialize registry: %s", e, exc_info=True)
         return
 
@@ -72,7 +72,7 @@ async def _auto_install_pending() -> None:
                     logger.warning("[FAIL] Failed to install %s: %s", tool_id, result.get("error"))
 
                 await _sync_tool_status(tool_id, result)
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.error("Error installing %s: %s", tool_id, e)
                 await _sync_tool_status(
                     tool_id,
@@ -88,7 +88,7 @@ async def shutdown() -> None:
 
         await engine.dispose()
         logger.info("Database connections closed")
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.warning("Error closing database connections: %s", e)
 
 
@@ -113,6 +113,6 @@ async def heartbeat_loop(queue_name: str, interval: int = 30) -> None:
                 await session.commit()
         except asyncio.CancelledError:
             break
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.debug("Heartbeat update failed: %s", e)
         await asyncio.sleep(interval)

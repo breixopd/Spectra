@@ -33,7 +33,7 @@ class GoldenImageBuilder:
 
             self._client = docker.from_env()
             self._client.ping()
-        except Exception as exc:
+        except (OSError, RuntimeError, ImportError) as exc:
             logger.warning("GoldenImageBuilder: Docker not available (%s)", exc)
 
     @property
@@ -280,7 +280,7 @@ class GoldenImageBuilder:
                     else:
                         session.add(SystemStatus(key="golden_image_build", value=result))
                     await session.commit()
-            except Exception as exc:
+            except (OSError, RuntimeError) as exc:
                 logger.debug("Failed to store build status: %s", exc)
 
             # Scan the image if scanning is enabled
@@ -304,12 +304,12 @@ class GoldenImageBuilder:
                             result["status"] = "blocked"
                             result["message"] = f"Image blocked: {scan_result.critical} critical CVEs"
                             logger.warning("Golden image blocked due to %d critical CVEs", scan_result.critical)
-                        except Exception as untag_exc:
+                        except OSError as untag_exc:
                             logger.error("Failed to untag blocked image: %s", untag_exc)
 
             return result
 
-        except Exception as exc:
+        except (OSError, RuntimeError) as exc:
             result["status"] = "error"
             result["error"] = str(exc)[:500]
             result["completed_at"] = datetime.now(UTC).isoformat()
@@ -318,7 +318,7 @@ class GoldenImageBuilder:
             # Try to clean up temp image
             try:
                 await asyncio.to_thread(self._client.images.remove, temp_tag, force=True)
-            except Exception:
+            except OSError:
                 logger.debug("Failed to clean up temp image %s", temp_tag)
 
             return result
@@ -339,5 +339,5 @@ class GoldenImageBuilder:
                 if row and isinstance(row.value, dict):
                     return row.value
                 return None
-        except Exception:
+        except (OSError, RuntimeError):
             return None

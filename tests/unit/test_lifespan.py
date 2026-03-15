@@ -35,7 +35,7 @@ class TestRunStartupChecks:
         from app.core.lifespan import run_startup_checks
 
         mock_session = AsyncMock()
-        mock_session.execute.side_effect = Exception("connection refused")
+        mock_session.execute.side_effect = OSError("connection refused")
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=False)
         mock_session_maker.return_value = mock_session
@@ -60,7 +60,7 @@ class TestSetSystemStatus:
     async def test_set_system_status_handles_error(self):
         from app.core.lifespan import set_system_status
 
-        with patch("app.core.cache.get_cache", side_effect=Exception("fail")):
+        with patch("app.core.cache.get_cache", side_effect=RuntimeError("fail")):
             # Should not raise
             await set_system_status("error", "bad")
 

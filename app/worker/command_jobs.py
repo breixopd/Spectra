@@ -110,7 +110,7 @@ async def execute_script_job(
             "stderr": stderr,
         }
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("Script execution failed: %s", e)
         return {
             "success": False,
@@ -121,5 +121,5 @@ async def execute_script_job(
     finally:
         try:
             shutil.rmtree(work_dir)
-        except Exception as e:
+        except OSError as e:
             logger.debug("Cleanup failed: %s", e)

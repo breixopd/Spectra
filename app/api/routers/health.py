@@ -12,6 +12,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
@@ -61,7 +62,7 @@ async def health_check(
             "status": "healthy",
             "latency_ms": latency_ms,
         }
-    except Exception as e:
+    except (OSError, SQLAlchemyError) as e:
         health_status["components"]["database"] = {
             "status": "unhealthy",
             "error": type(e).__name__,
@@ -78,7 +79,7 @@ async def health_check(
                 health_status["components"]["embeddings"] = "healthy"
             else:
                 health_status["components"]["embeddings"] = "degraded: using fallback (no semantic search)"
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             health_status["components"]["embeddings"] = f"unavailable: {type(e).__name__}"
 
         # Check LLM provider
@@ -88,7 +89,7 @@ async def health_check(
             router_instance = get_smart_router()
             provider = getattr(router_instance, "provider", "unknown")
             health_status["components"]["llm"] = f"configured: {provider}"
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             health_status["components"]["llm"] = f"unavailable: {type(e).__name__}"
 
         # Check cache
@@ -104,7 +105,7 @@ async def health_check(
                 }
             else:
                 health_status["components"]["cache"] = {"status": "unavailable"}
-        except Exception as e:
+        except (OSError, ConnectionError, TimeoutError) as e:
             health_status["components"]["cache"] = {"status": "error", "error": type(e).__name__}
 
         # Check worker / sandbox pool
@@ -118,7 +119,7 @@ async def health_check(
                 health_status["components"]["sandbox_pool"] = "unavailable: Docker not accessible"
             else:
                 health_status["components"]["sandbox_pool"] = "not initialized"
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             health_status["components"]["sandbox_pool"] = f"error: {type(e).__name__}"
 
         # Disk space for data directory
@@ -134,7 +135,7 @@ async def health_check(
                 "total_gb": total_gb,
                 "used_percent": used_pct,
             }
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             health_status["components"]["disk"] = {"status": "error", "error": type(e).__name__}
 
     if not is_healthy:
@@ -163,7 +164,7 @@ async def readiness_check(
     try:
         await db.execute(text("SELECT 1"))
         checks["database"] = True
-    except Exception:
+    except (OSError, SQLAlchemyError):
         logger.debug("Health check: database unavailable", exc_info=True)
 
     # LLM
@@ -172,7 +173,7 @@ async def readiness_check(
 
         router_instance = get_smart_router()
         checks["llm"] = router_instance is not None
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.debug("Health check: LLM unavailable", exc_info=True)
 
     # Embeddings
@@ -181,7 +182,7 @@ async def readiness_check(
 
         rag = RAGService()
         checks["embeddings"] = rag.is_functional
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.debug("Health check: embeddings unavailable", exc_info=True)
 
     all_ready = all(checks.values())

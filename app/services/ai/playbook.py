@@ -278,7 +278,7 @@ class PlaybookEngine:
                     tags=pb_data.get("tags", []),
                 )
                 self.playbooks.append(pb)
-            except Exception as e:
+            except (ValueError, TypeError, KeyError) as e:
                 logger.warning("Failed to load playbook: %s", e)
 
         logger.info("Loaded %d default playbooks", len(self.playbooks))
@@ -290,7 +290,7 @@ class PlaybookEngine:
                 data = json.loads(self._PATTERNS_FILE.read_text())
                 self.exploit_patterns = [ExploitPattern(**p) for p in data]
                 logger.info("Loaded %d exploit patterns from disk", len(self.exploit_patterns))
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.warning("Failed to load exploit patterns: %s", e)
 
     def _save_patterns(self) -> None:
@@ -304,7 +304,7 @@ class PlaybookEngine:
                 default=str,
             ))
             tmp.rename(self._PATTERNS_FILE)
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.warning("Failed to save exploit patterns: %s", e)
             if tmp.exists():
                 tmp.unlink()
@@ -328,7 +328,7 @@ class PlaybookEngine:
                         )
                         self.playbooks.append(pb)
                 logger.info("Loaded custom playbook from %s", path.name)
-            except Exception as e:
+            except (OSError, ValueError, KeyError) as e:
                 logger.warning("Failed to load custom playbook %s: %s", path, e)
 
     def add_playbook(self, playbook: ServicePlaybook) -> None:

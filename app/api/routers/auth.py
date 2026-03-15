@@ -86,7 +86,7 @@ def _ensure_lockout_loaded() -> None:
                     locked_until = entry.get("locked_until", 0)
                     if locked_until > now or entry.get("count", 0) > 0:
                         _login_failures[ip] = entry
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             logger.warning("Failed to load lockout state: %s", exc)
         _lockout_loaded = True
 
@@ -96,7 +96,7 @@ def _persist_lockout() -> None:
     try:
         _LOCKOUT_FILE.parent.mkdir(parents=True, exist_ok=True)
         _LOCKOUT_FILE.write_text(json.dumps(_login_failures))
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         logger.warning("Failed to persist lockout state: %s", exc)
 
 
