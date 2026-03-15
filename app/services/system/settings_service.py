@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import SettingsUpdateRequest
+from app.api.schemas import SettingsUpdate
 from app.core.config import settings
 from app.services.system.runtime_settings import (
     build_runtime_ai_config_from_payload,
@@ -46,7 +46,7 @@ def get_sandbox_status() -> dict:
 
 
 def _collect_general_db_settings(
-    data: SettingsUpdateRequest,
+    data: SettingsUpdate,
     fields_set: set[str],
 ) -> dict[str, tuple[str, bool]]:
     """Map general (non-AI) request fields to DB key/value tuples."""
@@ -122,7 +122,7 @@ _AI_FIELD_NAMES = frozenset({
 
 
 def _collect_ai_db_settings(
-    data: SettingsUpdateRequest,
+    data: SettingsUpdate,
     fields_set: set[str],
 ) -> dict[str, tuple[str, bool]]:
     """Map AI-related request fields to DB key/value tuples."""
@@ -184,7 +184,7 @@ def _collect_ai_db_settings(
 
 
 async def apply_settings_update(
-    data: SettingsUpdateRequest,
+    data: SettingsUpdate,
     db: AsyncSession,
 ) -> dict[str, str]:
     """Persist settings update atomically.  Returns a status dict."""

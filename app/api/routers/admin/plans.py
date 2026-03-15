@@ -9,9 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import (
-    PlanCreateRequest,
+    PlanCreate,
     PlanResponse,
-    PlanUpdateRequest,
+    PlanUpdate,
 )
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
@@ -56,7 +56,7 @@ async def list_plans(
 
 @router.post("/api/admin/plans", status_code=status.HTTP_201_CREATED)
 async def create_plan(
-    body: PlanCreateRequest,
+    body: PlanCreate,
     request: Request,
     admin: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),
@@ -118,7 +118,7 @@ async def create_plan(
 @router.put("/api/admin/plans/{plan_id}")
 async def update_plan(
     plan_id: str,
-    body: PlanUpdateRequest,
+    body: PlanUpdate,
     request: Request,
     admin: User = require_permission(Permission.MANAGE_SETTINGS),
     session: AsyncSession = Depends(get_async_session),

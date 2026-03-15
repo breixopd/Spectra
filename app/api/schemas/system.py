@@ -160,7 +160,7 @@ class SystemSetupRequest(BaseModel):
         )
 
 
-class SettingsUpdateRequest(BaseModel):
+class SettingsUpdate(BaseModel):
     """Schema for settings updates with optional partial fields."""
 
     ai_provider: str | None = Field(None, pattern="^(ollama|api|litellm|mock)$")
@@ -288,7 +288,7 @@ class UserAdminResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserCreateRequest(BaseModel):
+class AdminUserCreate(BaseModel):
     """Admin creating a user."""
 
     username: str = Field(..., min_length=3, max_length=50)
@@ -314,7 +314,7 @@ class UserCreateRequest(BaseModel):
         return v
 
 
-class UserUpdateRequest(BaseModel):
+class AdminUserUpdate(BaseModel):
     """Admin updating a user."""
 
     email: str | None = Field(
@@ -326,7 +326,7 @@ class UserUpdateRequest(BaseModel):
     plan_id: str | None = None
 
 
-class PlanCreateRequest(BaseModel):
+class PlanCreate(BaseModel):
     """Create a subscription plan."""
 
     name: str = Field(..., min_length=1, max_length=100)
@@ -345,7 +345,7 @@ class PlanCreateRequest(BaseModel):
     features: dict | None = None
 
 
-class PlanUpdateRequest(BaseModel):
+class PlanUpdate(BaseModel):
     """Update a subscription plan."""
 
     display_name: str | None = Field(None, min_length=1, max_length=200)

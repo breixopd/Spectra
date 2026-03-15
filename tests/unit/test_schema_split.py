@@ -52,36 +52,36 @@ class TestPackageImports:
             AIProviderFallbacks,
             AIProviderProfile,
             AIProviderRouting,
+            AdminUserCreate,
+            AdminUserUpdate,
             HealthResponse,
             LLMTestRequest,
-            PlanCreateRequest,
+            PlanCreate,
             PlanResponse,
-            PlanUpdateRequest,
+            PlanUpdate,
             ServerProvisionRequest,
             ServerVerifyRequest,
-            SettingsUpdateRequest,
+            SettingsUpdate,
             SystemSetupRequest,
             UserAdminResponse,
-            UserCreateRequest,
-            UserUpdateRequest,
         )
 
         for cls in (
             AIProviderFallbacks,
             AIProviderProfile,
             AIProviderRouting,
+            AdminUserCreate,
+            AdminUserUpdate,
             HealthResponse,
             LLMTestRequest,
-            PlanCreateRequest,
+            PlanCreate,
             PlanResponse,
-            PlanUpdateRequest,
+            PlanUpdate,
             ServerProvisionRequest,
             ServerVerifyRequest,
-            SettingsUpdateRequest,
+            SettingsUpdate,
             SystemSetupRequest,
             UserAdminResponse,
-            UserCreateRequest,
-            UserUpdateRequest,
         ):
             assert cls is not None
 
@@ -140,10 +140,10 @@ class TestDirectModuleImports:
         assert all(cls is not None for cls in (StartMissionRequest, TargetCreate, TargetResponse, TargetUpdate))
 
     def test_system_module(self):
-        from app.api.schemas.system import HealthResponse, SettingsUpdateRequest
+        from app.api.schemas.system import HealthResponse, SettingsUpdate
 
         assert HealthResponse is not None
-        assert SettingsUpdateRequest is not None
+        assert SettingsUpdate is not None
 
     def test_tool_module(self):
         from app.api.schemas.tool import ToolListResponse, ToolSummary
