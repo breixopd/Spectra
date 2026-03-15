@@ -13,7 +13,7 @@ class TestGoldenImageConfig:
     def test_auto_build_default_true(self):
         from app.core.config import Settings
 
-        s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
+        s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_AUTO_BUILD_IMAGE is True
 
 

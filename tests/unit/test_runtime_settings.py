@@ -19,7 +19,6 @@ def test_normalize_runtime_ai_config_from_legacy_rows():
         "LLM_API_BASE_URL": "https://example.test/v1",
         "LLM_TIER1_MODEL": "ollama/qwen2.5:3b",
         "LLM_TIER2_MODEL": "gpt-4o-mini",
-        "OLLAMA_ENABLED": "true",
         "OLLAMA_HOST": "http://ollama:11434",
         "OLLAMA_MODEL": "qwen2.5:7b",
     }
@@ -33,11 +32,9 @@ def test_normalize_runtime_ai_config_from_legacy_rows():
     }
     assert runtime_ai_config.profiles["default"]["provider"] == "litellm"
     assert runtime_ai_config.profiles["default"]["model"] == "gpt-4o-mini"
-    assert runtime_ai_config.profiles["ollama"]["provider"] == "litellm"
-    assert runtime_ai_config.profiles["ollama"]["model"] == "ollama/qwen2.5:7b"
     assert runtime_ai_config.profiles["tier1"]["provider"] == "litellm"
     assert runtime_ai_config.profiles["tier1"]["model"] == "ollama/qwen2.5:3b"
-    assert runtime_ai_config.fallbacks == {"default": ["ollama"]}
+    assert runtime_ai_config.fallbacks == {}
 
 
 def test_normalize_runtime_ai_config_normalizes_structured_api_profiles():
