@@ -51,7 +51,7 @@ class SchedulerService:
         """Check for stale sandbox containers and clean them up. Runs every 60s."""
         while self.running:
             try:
-                from app.core.lifespan import sandbox_watchdog_loop
+                from app.core.background_tasks import sandbox_watchdog_loop
 
                 await sandbox_watchdog_loop()
             except (OSError, RuntimeError, ValueError) as e:

@@ -21,6 +21,7 @@ from app.services.ai.blackboard import MissionBlackboard, get_blackboard
 from app.services.mission.credentials import CredentialStore
 from app.services.mission.task_tree import PentestTaskTree, TaskStatus
 from app.services.mission.types import (
+    FindingDict,
     MissionProgress,
     ServiceInfo,
     ToolExecutionRecord,
@@ -235,7 +236,7 @@ class Mission:
         self.log(f"Web App: {url} ({', '.join(technologies or [])})")
         return app
 
-    def add_finding(self, finding: dict[str, Any]) -> None:
+    def add_finding(self, finding: FindingDict) -> None:
         """Add a finding to the mission, deduplicating by key fields."""
         if self._is_duplicate_finding(finding):
             return

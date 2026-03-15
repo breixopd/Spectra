@@ -65,3 +65,42 @@ class AttackSurfaceSummary(TypedDict):
     vectors_failed: int
     vectors_by_priority: dict[str, int]
     exploitation_success_rate: float
+
+
+class FindingDict(TypedDict, total=False):
+    """Structure of a finding recorded by ``Mission.add_finding()``."""
+
+    title: str
+    description: str
+    severity: str
+    host: str
+    port: int
+    service: str
+    source: str
+    tool_name: str
+    confirmed: bool
+    proof: str
+    cve_id: str
+    cvss: float
+    location: str
+    recommendation: str
+
+
+class MissionListItem(TypedDict):
+    """Single mission item returned by ``list_missions()``."""
+
+    id: str
+    target: str
+    status: str
+    directive: str
+    start_time: str | None
+    findings_count: int
+    tools_run_count: int
+
+
+class TokenUsage(TypedDict, total=False):
+    """Token count structure for LLM cost tracking."""
+
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
