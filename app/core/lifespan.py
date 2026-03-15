@@ -40,32 +40,8 @@ from app.core.system_status import (
 from app.core.telemetry import telemetry
 from app.services.ai.llm import close_global_llm_client
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
-from app.services.tools.models import ToolStatus
 
 logger = logging.getLogger(__name__)
-
-
-async def _mark_all_tools_ready() -> None:
-    """Mark all registered tools as ready in cache.
-
-    Used as a fallback when the tools worker is not available.
-    """
-    try:
-        from app.core.cache import get_cache
-        from app.services.tools.registry import get_registry
-
-        cache = get_cache()
-        registry = get_registry()
-        tools = registry.list_tools()
-        for tool in tools:
-            key = f"spectra:tool_status:{tool.config.id}"
-            if cache:
-                await cache.set(key, {"status": "ready"}, ttl=3600)
-            tool.status = ToolStatus.READY
-
-        logger.info("Marked %d tools as ready (no worker)", len(tools))
-    except (OSError, RuntimeError, ImportError) as e:
-        logger.warning("Failed to mark tools as ready: %s", e)
 
 
 from app.services.billing.seed_plans import seed_default_plans  # noqa: E402
@@ -139,11 +115,6 @@ async def run_startup_tasks() -> None:
         await add_system_operation(
             "tool_install", "install", "Installing security tools"
         )
-
-        # Mark tools as ready immediately so the UI works.
-        # If the tools worker (Kali container) is running, it will update
-        # statuses to reflect actual installation state.
-        await _mark_all_tools_ready()
 
         try:
             from app.core.queue import PostgresJobQueue

@@ -291,7 +291,7 @@ class Settings(BaseSettings):
         # Core providers + named presets (qwen, z.ai, etc.)
         core_providers = {"ollama", "api", "litellm"}
         # Named presets route through litellm with preset configs
-        preset_providers = {"qwen", "z.ai", "openai", "anthropic", "groq"}
+        preset_providers = {"qwen", "z.ai", "openai", "anthropic", "groq", "openrouter"}
         normalized = v.lower().strip()
         if normalized not in core_providers and normalized not in preset_providers:
             raise ValueError(f"AI_PROVIDER must be one of {core_providers | preset_providers}")

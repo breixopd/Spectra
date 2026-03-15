@@ -180,8 +180,23 @@ async def _sync_tool_status(
 
     cache = CacheService()
     key = f"spectra:tool_status:{tool_id}"
+    existing = await cache.get(key)
+    if not isinstance(existing, dict):
+        existing = {}
+
     status = str(result.get("status") or "unknown")
     error = str(result.get("error") or "")
+    message = str(result.get("message") or existing.get("message") or "")
+    phase = str(result.get("phase") or existing.get("phase") or "")
+    command = str(result.get("command") or existing.get("command") or "")
+    last_output = str(result.get("last_output") or existing.get("last_output") or "")
+
+    logs = existing.get("logs")
+    if not isinstance(logs, list):
+        logs = []
+    log_entry = result.get("log_entry")
+    if isinstance(log_entry, str) and log_entry.strip():
+        logs = [*logs, f"{datetime.now().isoformat()} {log_entry.strip()}"][-40:]
 
     await cache.set(
         key,
@@ -189,6 +204,12 @@ async def _sync_tool_status(
             "status": status,
             "last_updated": datetime.now().isoformat(),
             "error": error,
+            "message": message,
+            "phase": phase,
+            "command": command,
+            "last_output": last_output,
+            "command_index": result.get("command_index"),
+            "logs": logs,
         },
         ttl=3600,  # 1 hour
     )

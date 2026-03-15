@@ -5,7 +5,9 @@ Provides endpoints for telemetry, metrics, and system health monitoring.
 """
 
 import logging
-from typing import Any, TypedDict
+from typing import Any
+
+from typing_extensions import TypedDict
 
 from fastapi import APIRouter, HTTPException, Query
 

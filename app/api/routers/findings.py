@@ -138,7 +138,7 @@ async def list_findings(
     severity: Severity | None = None,
     status_filter: FindingStatus | None = Query(None, alias="status"),
     db: AsyncSession = Depends(get_async_session),
-    __current_user: User = Depends(get_current_active_user),
+    _current_user: User = Depends(get_current_active_user),
 ) -> PaginatedResponse:
     """List all findings with optional filters.
 
@@ -149,8 +149,8 @@ async def list_findings(
     # Build filter kwargs
     filters: dict = {}
     # User isolation
-    if not __current_user.is_superuser:
-        filters["user_id"] = str(__current_user.id)
+    if not _current_user.is_superuser:
+        filters["user_id"] = str(_current_user.id)
     if severity:
         filters["severity"] = severity
     if status_filter:

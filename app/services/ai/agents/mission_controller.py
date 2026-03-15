@@ -278,6 +278,7 @@ Your plan must be:
                         raise LLMParseError(agent=self.name, raw_response=str(e)) from e
                     # Slightly adjust prompt or temperature on retry if needed
                     # For now, just retry
+            raise LLMParseError(agent=self.name, raw_response="Plan generation exhausted retries")
         except AgentError:
             raise
         except (OSError, RuntimeError, ValueError, TimeoutError) as e:

@@ -433,7 +433,7 @@
             <div class="testimonial-card reveal">
                 <div class="testimonial-quote">{{ review.quote }}</div>
                 <div class="testimonial-author">
-                    <div class="testimonial-avatar" style="background:{% if loop.index % 3 == 1 %}var(--accent-dim);color:var(--accent){% elif loop.index % 3 == 2 %}var(--violet-dim);color:var(--violet){% else %}rgba(56,189,248,0.12);color:#38bdf8{% endif %};">{{ review.initials }}</div>
+                    <div class="testimonial-avatar {% if loop.index % 3 == 1 %}testimonial-avatar-accent{% elif loop.index % 3 == 2 %}testimonial-avatar-violet{% else %}testimonial-avatar-sky{% endif %}">{{ review.initials }}</div>
                     <div>
                         <div class="testimonial-name">{{ review.author_name }}</div>
                         <div class="testimonial-role">{{ review.author_role }}</div>

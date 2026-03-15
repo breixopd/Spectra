@@ -53,7 +53,10 @@
 button:active:not(:disabled) { transform: scale(0.97); }
 
 /* Focus rings for accessibility */
-input:focus, select:focus, textarea:focus { outline: none; ring: 2px; ring-color: rgba(139,92,246,0.4); }
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(139,92,246,0.4);
+}
 
 /* Glass panel subtle border glow on hover */
 .glass-panel { transition: border-color 0.3s ease, box-shadow 0.3s ease; }

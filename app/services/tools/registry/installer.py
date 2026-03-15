@@ -22,6 +22,13 @@ logger = logging.getLogger(__name__)
 class PluginInstaller:
     """Handles installation and uninstallation of tools."""
 
+    @staticmethod
+    def _truncate_output(output: str, limit: int = 600) -> str:
+        text = (output or "").strip()
+        if len(text) <= limit:
+            return text
+        return text[:limit] + "..."
+
     async def install_tool(
         self,
         tool: "RegisteredTool",
@@ -44,12 +51,30 @@ class PluginInstaller:
         try:
             # Check if already installed via verification command
             if config.installation.verification_command:
+                if progress_callback:
+                    await progress_callback(
+                        {
+                            "status": ToolStatus.INSTALLING.value,
+                            "phase": "verifying",
+                            "tool_id": tool_id,
+                            "message": "Running installation verification",
+                            "log_entry": f"[verify] {config.installation.verification_command}",
+                        }
+                    )
                 is_verified = await self._verify_installation(config)
                 if is_verified:
                     logger.info("Tool %s is already installed (verified)", tool_id)
                     tool.status = ToolStatus.READY
                     if progress_callback:
-                        await progress_callback({"status": "ready", "tool_id": tool_id})
+                        await progress_callback(
+                            {
+                                "status": ToolStatus.READY.value,
+                                "phase": "verified",
+                                "tool_id": tool_id,
+                                "message": "Tool already installed and verified",
+                                "log_entry": "[ok] Existing installation verified",
+                            }
+                        )
                     return True
 
             # Handle different installation methods
@@ -75,20 +100,51 @@ class PluginInstaller:
                 if progress_callback:
                     await progress_callback(
                         {
-                            "status": "running",
+                            "status": ToolStatus.INSTALLING.value,
+                            "phase": "running_command",
                             "tool_id": tool_id,
                             "command_index": i,
                             "command": cmd,
+                            "message": f"Running install command {i + 1}/{len(config.installation.commands)}",
+                            "log_entry": f"[run {i + 1}/{len(config.installation.commands)}] {cmd}",
                         }
                     )
 
                 returncode, stdout, stderr = await run_command_safe(cmd)
+
+                if progress_callback:
+                    summary = f"exit={returncode}"
+                    if stdout.strip():
+                        summary += f" stdout={self._truncate_output(stdout)}"
+                    if stderr.strip():
+                        summary += f" stderr={self._truncate_output(stderr)}"
+                    await progress_callback(
+                        {
+                            "status": ToolStatus.INSTALLING.value,
+                            "phase": "command_complete",
+                            "tool_id": tool_id,
+                            "command_index": i,
+                            "command": cmd,
+                            "last_output": self._truncate_output(stdout or stderr),
+                            "log_entry": f"[done {i + 1}/{len(config.installation.commands)}] {summary}",
+                        }
+                    )
 
                 if returncode != 0:
                     raise PluginInstallationError(f"Command failed (exit {returncode}): {stderr}")
 
             # Verify installation
             if config.installation.verification_command:
+                if progress_callback:
+                    await progress_callback(
+                        {
+                            "status": ToolStatus.INSTALLING.value,
+                            "phase": "verifying",
+                            "tool_id": tool_id,
+                            "message": "Running installation verification",
+                            "log_entry": f"[verify] {config.installation.verification_command}",
+                        }
+                    )
                 verified = await self._verify_installation(config)
                 if not verified:
                     raise PluginInstallationError("Verification command failed")
@@ -98,7 +154,15 @@ class PluginInstaller:
             tool.installed_version = config.version
 
             if progress_callback:
-                await progress_callback({"status": "ready", "tool_id": tool_id})
+                await progress_callback(
+                    {
+                        "status": ToolStatus.READY.value,
+                        "phase": "complete",
+                        "tool_id": tool_id,
+                        "message": "Installation completed successfully",
+                        "log_entry": "[ok] Installation completed successfully",
+                    }
+                )
 
             logger.info("Successfully installed %s", tool_id)
             return True
@@ -110,9 +174,12 @@ class PluginInstaller:
             if progress_callback:
                 await progress_callback(
                     {
-                        "status": "failed",
+                        "status": ToolStatus.FAILED.value,
+                        "phase": "failed",
                         "tool_id": tool_id,
+                        "message": "Installation failed",
                         "error": str(e),
+                        "log_entry": f"[fail] {e}",
                     }
                 )
 
@@ -150,10 +217,13 @@ class PluginInstaller:
                     if progress_callback:
                         await progress_callback(
                             {
-                                "status": "running",
+                                "status": "uninstalling",
+                                "phase": "running_command",
                                 "tool_id": tool_id,
                                 "command_index": i,
                                 "command": cmd,
+                                "message": f"Running uninstall command {i + 1}/{len(config.installation.uninstall_commands)}",
+                                "log_entry": f"[remove {i + 1}/{len(config.installation.uninstall_commands)}] {cmd}",
                             }
                         )
 

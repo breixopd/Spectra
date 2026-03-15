@@ -291,6 +291,7 @@ class ToolConfig(BaseModel):
     version: str = Field(..., description="Semantic version (e.g., '1.0.0')", pattern=r"^\d+\.\d+\.\d+$")
     category: ToolCategory = Field(..., description="Primary tool category for organization")
     description: str = Field(..., description="Brief description of what the tool does")
+    enabled: bool = Field(default=True, description="Whether the plugin is enabled for platform use")
 
     # NEW: Rich metadata for AI
     metadata: ToolMetadata = Field(
@@ -369,7 +370,7 @@ class RegisteredTool(BaseModel):
     @property
     def is_available(self) -> bool:
         """Check if the tool is ready to use."""
-        return self.status == ToolStatus.READY
+        return self.config.enabled and self.status == ToolStatus.READY
 
 
 class ToolExecutionRequest(BaseModel):

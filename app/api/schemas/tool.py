@@ -14,6 +14,7 @@ class ToolSummary(BaseModel):
     category: ToolCategory
     description: str
     status: ToolStatus
+    enabled: bool
     icon: str
     color: str
 
@@ -34,6 +35,7 @@ class ToolDetailResponse(BaseModel):
     category: ToolCategory
     description: str
     status: ToolStatus
+    enabled: bool
     installed_version: str | None
     error_message: str | None
     execution_command: str
@@ -41,6 +43,11 @@ class ToolDetailResponse(BaseModel):
     timeout: int
     icon: str
     color: str
+    status_message: str | None = None
+    status_phase: str | None = None
+    last_updated: str | None = None
+    install_logs: list[str] = []
+    last_output: str | None = None
 
 
 class PluginUploadResponse(BaseModel):
@@ -75,6 +82,10 @@ class ToolStatsResponse(BaseModel):
     fail_count: int = 0
     last_run: str | None = None
     last_duration: float | None = None
+    status: str | None = None
+    status_message: str | None = None
+    last_updated: str | None = None
+    install_logs: list[str] = []
     error: str | None = None
 
 
@@ -112,6 +123,7 @@ class ToolExecConfigResponse(BaseModel):
     args_template: str
     timeout: int
     placeholders: list[str]
+    args_schema: dict = {}
     arg_modifiers: dict[str, str] = {}
     metadata: ToolMetadataResponse
     stealth: ToolStealthResponse

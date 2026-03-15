@@ -102,6 +102,7 @@ services:
     volumes:
       - ../app:/app/app
       - ../plugins:/app/plugins
+      - spectra_plugins:/app/plugins_shared
       - ../keys:/app/keys:ro
       - ../scripts:/app/scripts:ro
       - spectra_data:/app/data
@@ -209,10 +210,10 @@ services:
 
   # Worker (Tool Execution via Ephemeral Sandbox Containers)
   worker:
-    image: spectra-app:latest
+    image: spectra-tools:latest
     build:
       context: ..
-      dockerfile: docker/Dockerfile.app
+      dockerfile: docker/Dockerfile.tools
     container_name: spectra-worker
     expose:
       - "5012"
@@ -230,6 +231,7 @@ services:
       - ../app:/app/app
       - spectra_data:/app/data
       - ../plugins:/app/plugins
+      - spectra_tools_data:/opt/spectra_tools
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
@@ -250,6 +252,8 @@ networks:
 volumes:
   postgres_data:
   spectra_data:
+  spectra_tools_data:
+  spectra_plugins:
   caddy_data:
   caddy_config:
   minio_data:

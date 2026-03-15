@@ -156,8 +156,6 @@ Example response format:
 
         if hasattr(llm_response, "content"):
             response_text = llm_response.content
-        elif hasattr(llm_response, "text"):
-            response_text = llm_response.text
         else:
             response_text = str(llm_response)
 
