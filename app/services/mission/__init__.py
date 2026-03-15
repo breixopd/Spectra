@@ -10,5 +10,22 @@ Provides:
 from app.services.mission.executor import MissionExecutor
 from app.services.mission.manager import MissionManager, mission_manager
 from app.services.mission.mission import Mission
+from app.services.mission.types import (
+    AttackSurfaceSummary,
+    MissionProgress,
+    ServiceInfo,
+    ToolExecutionRecord,
+    VulnInfo,
+)
 
-__all__ = ["Mission", "MissionExecutor", "MissionManager", "mission_manager"]
+__all__ = [
+    "AttackSurfaceSummary",
+    "Mission",
+    "MissionExecutor",
+    "MissionManager",
+    "MissionProgress",
+    "ServiceInfo",
+    "ToolExecutionRecord",
+    "VulnInfo",
+    "mission_manager",
+]
