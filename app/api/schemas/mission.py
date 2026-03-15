@@ -152,3 +152,14 @@ class MissionDetailResponse(MissionResponse):
     directive: str | None = None
     summary: dict[str, object] | None = None
     created_at: str
+
+
+class PresetResponse(BaseModel):
+    """Response model for mission preset configurations."""
+
+    name: str
+    description: str
+    target_type: str | None = None
+    scope: str | None = None
+    phases: list[str] = []
+    safety_level: str = "standard"
