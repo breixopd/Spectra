@@ -21,7 +21,7 @@ from app.api.schemas.auth import (
     UserCreate,
     UserResponse,
 )
-from app.api.schemas.common import PaginatedResponse
+from app.api.schemas.common import PaginatedResponse, StatusResponse
 from app.api.schemas.cve import (
     CVEEnrichedResponse,
     CVEExploitsResponse,
@@ -30,7 +30,10 @@ from app.api.schemas.cve import (
 )
 from app.api.schemas.finding import FindingResponse
 from app.api.schemas.mission import (
+    ActionApprovalResponse,
+    MissionDeleteResponse,
     MissionDetailResponse,
+    MissionFindingSummary,
     MissionResponse,
     StartMissionRequest,
     TargetCreate,
@@ -86,10 +89,14 @@ __all__ = [
     "UserResponse",
     # common
     "PaginatedResponse",
+    "StatusResponse",
     # finding
     "FindingResponse",
     # mission
+    "ActionApprovalResponse",
+    "MissionDeleteResponse",
     "MissionDetailResponse",
+    "MissionFindingSummary",
     "MissionResponse",
     "StartMissionRequest",
     "TargetCreate",

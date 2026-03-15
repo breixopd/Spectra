@@ -1,4 +1,4 @@
-"""Safety and consensus checks for tool execution."""
+"""Safety checks for tool execution."""
 
 from __future__ import annotations
 
@@ -9,9 +9,11 @@ from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.safety import SafetyAction, SafetyInput
 from app.services.tools.models import ToolExecutionRequest
 
+# Backward-compat re-export — consensus moved to its own module.
+from app.services.tools.consensus import perform_consensus_check  # noqa: F401
+
 if TYPE_CHECKING:
     from app.services.ai.agents.safety import SafetySupervisorAgent
-    from app.services.ai.consensus import VotingSystem
     from app.services.ai.llm import LLMClient
     from app.services.mission.mission import Mission
     from app.services.tools.adapter import CommandToolAdapter
@@ -179,34 +181,4 @@ Example response format:
     return None
 
 
-async def perform_consensus_check(
-    mission: Mission,
-    tool_name: str,
-    risk_level: str,
-    consensus: VotingSystem,
-) -> bool:
-    """Get consensus for high-risk actions."""
-    mission.log(f"[VOTE] High-risk action: {tool_name} ({risk_level})")
 
-    from app.services.ai.agents.base import ActionRisk, AgentAction
-
-    proxy_action = AgentAction(
-        action_type="tool_execution",
-        risk_level=ActionRisk.HIGH if risk_level == "high" else ActionRisk.CRITICAL,
-        confidence=1.0,
-        reasoning=f"Execute high-risk tool {tool_name}",
-    )
-
-    vote_result = await consensus.vote_on_action(
-        proxy_action,
-        {"target": mission.target, "tool": tool_name},
-    )
-
-    if vote_result.status != "approved":
-        mission.log(
-            f"[REJECTED] Action blocked by consensus: {vote_result.escalation_reason}"
-        )
-        return False
-
-    mission.log("[APPROVED] Action validated by consensus")
-    return True

@@ -21,6 +21,12 @@ from app.api.dependencies import (
     get_current_active_user,
 )
 from app.api.schemas import MissionResponse, PaginatedResponse, StartMissionRequest
+from app.api.schemas import (
+    ActionApprovalResponse,
+    MissionDeleteResponse,
+    MissionFindingSummary,
+    StatusResponse,
+)
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
@@ -418,12 +424,12 @@ async def export_mission_json(
     )
 
 
-@router.get("/{mission_id}/findings")
+@router.get("/{mission_id}/findings", response_model=list[MissionFindingSummary])
 async def get_mission_findings(
     mission_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
-) -> list[dict[str, str]]:
+) -> list[MissionFindingSummary]:
     """Get all findings for a specific mission."""
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
@@ -432,15 +438,15 @@ async def get_mission_findings(
     check_resource_owner(mission, _current_user, "mission")
     raw_findings = mission.summary.get("findings", []) if mission.summary else []
     return [
-        {
-            "id": str(i),
-            "title": f.get("title", "Untitled"),
-            "severity": f.get("severity", "info"),
-            "status": f.get("status", "potential"),
-            "description": f.get("description", ""),
-            "tool_source": f.get("tool_source", f.get("tool", "")),
-            "created_at": f.get("created_at", ""),
-        }
+        MissionFindingSummary(
+            id=str(i),
+            title=f.get("title", "Untitled"),
+            severity=f.get("severity", "info"),
+            status=f.get("status", "potential"),
+            description=f.get("description", ""),
+            tool_source=f.get("tool_source", f.get("tool", "")),
+            created_at=f.get("created_at", ""),
+        )
         for i, f in enumerate(raw_findings)
         if isinstance(f, dict)
     ]
@@ -510,6 +516,7 @@ async def get_mission(
 
 @router.delete(
     "/{mission_id}",
+    response_model=MissionDeleteResponse,
     summary="Delete mission",
     description="Permanently delete a completed or failed mission and its associated storage data.",
 )
@@ -518,7 +525,7 @@ async def delete_mission(
     request: Request,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
-) -> dict[str, str]:
+) -> MissionDeleteResponse:
     """Delete a mission and clean up associated filesystem data."""
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
@@ -556,11 +563,12 @@ async def delete_mission(
         request=request,
     )
 
-    return {"status": "deleted", "mission_id": mission_id}
+    return MissionDeleteResponse(status="deleted", mission_id=mission_id)
 
 
 @router.post(
     "/{mission_id}/stop",
+    response_model=StatusResponse,
     summary="Stop mission",
     description="Stop a running mission. The mission must be in an active state.",
 )
@@ -570,7 +578,7 @@ async def stop_mission(
     response: Response,
     mission_id: str,
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
-) -> dict[str, str]:
+) -> StatusResponse:
     """Stop a running mission. Requires superuser privileges."""
     active = await mission_manager.get_mission(mission_id)
     if active:
@@ -578,11 +586,12 @@ async def stop_mission(
     result = await mission_manager.stop_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
-    return {"message": "Mission stopping"}
+    return StatusResponse(message="Mission stopping")
 
 
 @router.post(
     "/{mission_id}/pause",
+    response_model=StatusResponse,
     summary="Pause mission",
     description="Pause a running mission. It can be resumed later.",
 )
@@ -592,7 +601,7 @@ async def pause_mission(
     response: Response,
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
-) -> dict[str, str]:
+) -> StatusResponse:
     """Pause a running mission."""
     active = await mission_manager.get_mission(mission_id)
     if active:
@@ -600,11 +609,12 @@ async def pause_mission(
     result = await mission_manager.pause_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
-    return {"message": "Mission paused"}
+    return StatusResponse(message="Mission paused")
 
 
 @router.post(
     "/{mission_id}/resume",
+    response_model=StatusResponse,
     summary="Resume mission",
     description="Resume a previously paused mission from where it left off.",
 )
@@ -614,7 +624,7 @@ async def resume_mission(
     response: Response,
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
-) -> dict[str, str]:
+) -> StatusResponse:
     """Resume a paused mission."""
     active = await mission_manager.get_mission(mission_id)
     if active:
@@ -622,7 +632,7 @@ async def resume_mission(
     result = await mission_manager.resume_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
-    return {"message": "Mission resumed"}
+    return StatusResponse(message="Mission resumed")
 
 
 @router.get("/{mission_id}/diff/{other_mission_id}")
@@ -752,12 +762,12 @@ class ApproveActionRequest(BaseModel):
     approved: bool = Field(default=True, description="Whether to approve the action")
 
 
-@router.post("/{mission_id}/approve")
+@router.post("/{mission_id}/approve", response_model=ActionApprovalResponse)
 async def approve_action(
     mission_id: str,
     body: ApproveActionRequest,
     _current_user: User = Depends(get_current_active_user),
-) -> dict[str, str | bool]:
+) -> ActionApprovalResponse:
     """Approve or reject a pending action in a mission that requires approval."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
@@ -774,4 +784,4 @@ async def approve_action(
         "action_id": body.action_id,
         "approved": body.approved,
     })
-    return {"status": "approval_sent", "action_id": body.action_id, "approved": body.approved}
+    return ActionApprovalResponse(status="approval_sent", action_id=body.action_id, approved=body.approved)

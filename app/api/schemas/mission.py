@@ -99,6 +99,33 @@ class StartMissionRequest(BaseModel):
         return cleaned
 
 
+class MissionDeleteResponse(BaseModel):
+    """Response for mission deletion."""
+
+    status: str
+    mission_id: str
+
+
+class MissionFindingSummary(BaseModel):
+    """Summary of a finding within a mission."""
+
+    id: str
+    title: str
+    severity: str
+    status: str
+    description: str
+    tool_source: str
+    created_at: str
+
+
+class ActionApprovalResponse(BaseModel):
+    """Response for action approval/rejection."""
+
+    status: str
+    action_id: str
+    approved: bool
+
+
 class MissionResponse(BaseModel):
     """Schema for mission response."""
 
