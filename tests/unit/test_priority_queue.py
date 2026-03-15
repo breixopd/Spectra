@@ -12,13 +12,13 @@ class TestPriorityConfig:
     def test_per_user_limit_default(self):
         from app.core.config import Settings
 
-        s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
+        s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_PER_USER_LIMIT == 3
 
     def test_default_priority_default(self):
         from app.core.config import Settings
 
-        s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
+        s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_DEFAULT_PRIORITY == 5
 
 

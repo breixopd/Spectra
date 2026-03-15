@@ -159,8 +159,7 @@ class TestEngineConfig:
         from app.core.database import engine
 
         url_str = str(engine.url)
-        # The URL should contain an async driver (asyncpg or aiosqlite)
-        assert "asyncpg" in url_str or "aiosqlite" in url_str
+        assert "asyncpg" in url_str
 
     def test_session_maker_produces_async_sessions(self):
         from app.core.database import async_session_maker

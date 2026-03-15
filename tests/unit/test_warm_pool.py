@@ -12,13 +12,13 @@ class TestWarmPoolConfig:
     def test_warm_pool_enabled_default_false(self):
         from app.core.config import Settings
 
-        s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
+        s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_WARM_POOL_ENABLED is False
 
     def test_warm_pool_size_default(self):
         from app.core.config import Settings
 
-        s = Settings(DATABASE_URL=SecretStr("sqlite:///test.db"))
+        s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
         assert s.SANDBOX_WARM_POOL_SIZE == 2
 
 
