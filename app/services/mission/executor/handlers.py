@@ -9,6 +9,9 @@ import uuid
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, cast
 
+if TYPE_CHECKING:
+    from app.services.ai.agents.tool_selector import ToolSelectorInput
+
 from app.core.constants import MAX_HOSTS_DEFAULT
 from app.core.events import events
 from app.services.ai.agents.base import AgentContext, ParallelToolAction, ToolAction
@@ -240,7 +243,7 @@ class TaskDispatcher:
         mission: Mission,
         task: Task,
         context: AgentContext,
-    ) -> "ToolSelectorInput":
+    ) -> ToolSelectorInput:
         """Build tool selector input from mission state and blackboard."""
         from app.services.ai.agents.tool_selector import ToolSelectorInput
 

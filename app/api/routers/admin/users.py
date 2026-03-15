@@ -14,10 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_ui_user
 from app.api.schemas import (
-    PaginatedResponse,
-    UserAdminResponse,
     AdminUserCreate,
     AdminUserUpdate,
+    PaginatedResponse,
+    UserAdminResponse,
 )
 from app.core.config import settings
 from app.core.database import get_async_session
