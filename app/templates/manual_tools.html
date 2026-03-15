@@ -858,6 +858,67 @@ const TOOL_CHAINS = {
 
 let lastToolOutput = '';
 
+function getSchemaFields(schema) {
+    const properties = schema && typeof schema === 'object' ? (schema.properties || {}) : {};
+    const required = new Set(Array.isArray(schema?.required) ? schema.required : []);
+    return Object.entries(properties).map(([name, spec]) => ({
+        name,
+        spec: spec || {},
+        required: required.has(name),
+    }));
+}
+
+function schemaPlaceholder(name, spec) {
+    if (spec.placeholder) return spec.placeholder;
+    if (spec.description) return spec.description;
+    if (spec.examples && spec.examples.length) return String(spec.examples[0]);
+    return name;
+}
+
+function renderSchemaField(name, spec, required) {
+    const fieldId = `arg-${name}`;
+    const label = `${escapeHtml(name)}${required ? ' *' : ''}`;
+    const description = spec.description ? `<div class="text-[10px] text-slate-500 mt-1">${escapeHtml(spec.description)}</div>` : '';
+    const defaultValue = spec.default ?? '';
+
+    if (Array.isArray(spec.enum) && spec.enum.length) {
+        const options = spec.enum.map(value => {
+            const selected = String(value) === String(defaultValue) ? ' selected' : '';
+            return `<option value="${escapeHtml(String(value))}"${selected}>${escapeHtml(String(value))}</option>`;
+        }).join('');
+        return `<div class="arg-field">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${label}</label>
+            <select id="${fieldId}" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white focus:outline-none">${options}</select>
+            ${description}
+        </div>`;
+    }
+
+    if (spec.type === 'boolean') {
+        const checked = defaultValue ? ' checked' : '';
+        return `<div class="arg-field">
+            <label class="flex items-center gap-2 text-sm text-white">
+                <input type="checkbox" id="${fieldId}" class="accent-violet-500"${checked}>
+                <span>${escapeHtml(name)}</span>
+            </label>
+            ${description}
+        </div>`;
+    }
+
+    const inputType = spec.type === 'integer' || spec.type === 'number' ? 'number' : 'text';
+    const valueAttr = defaultValue !== '' ? ` value="${escapeHtml(String(defaultValue))}"` : '';
+    const minAttr = spec.minimum !== undefined ? ` min="${escapeHtml(String(spec.minimum))}"` : '';
+    const maxAttr = spec.maximum !== undefined ? ` max="${escapeHtml(String(spec.maximum))}"` : '';
+    const stepAttr = spec.type === 'number' ? ' step="any"' : '';
+
+    return `<div class="arg-field">
+        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${label}</label>
+        <input type="${inputType}" id="${fieldId}"${valueAttr}${minAttr}${maxAttr}${stepAttr}
+            placeholder="${escapeHtml(schemaPlaceholder(name, spec))}"
+            class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
+        ${description}
+    </div>`;
+}
+
 function buildForm(cfg) {
     document.getElementById('form-tool-name').textContent = cfg.name;
     document.getElementById('form-tool-desc').textContent = cfg.metadata.ai_description || cfg.description;
@@ -876,6 +937,7 @@ function buildForm(cfg) {
 
     const container = document.getElementById('args-container');
     const placeholders = cfg.placeholders || [];
+    const schemaFields = getSchemaFields(cfg.args_schema).filter(field => field.name !== 'output_file');
 
     let html = `<div class="arg-field">
         <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Target *</label>
@@ -883,30 +945,37 @@ function buildForm(cfg) {
             class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
     </div>`;
 
-    placeholders.forEach(p => {
-        if (p === 'target') return;
-        const modifier = (cfg.arg_modifiers || {})[p];
-        const hint = modifier ? `Prefix: ${modifier.prefix || 'none'}, Sep: ${modifier.separator || 'space'}` : '';
-        const isWordlist = /^(wordlist|dictionary|w)$/i.test(p);
-        if (isWordlist) {
-            html += `<div class="arg-field">
-                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${p}</label>
-                <div class="relative">
-                    <input type="text" id="arg-${p}" list="wordlist-options" placeholder="${hint || 'Select or type wordlist path'}"
+    if (schemaFields.length) {
+        schemaFields.forEach(({ name, spec, required }) => {
+            if (name === 'target') return;
+            html += renderSchemaField(name, spec, required);
+        });
+    } else {
+        placeholders.forEach(p => {
+            if (p === 'target') return;
+            const modifier = (cfg.arg_modifiers || {})[p];
+            const hint = modifier ? `Prefix: ${modifier.prefix || 'none'}, Sep: ${modifier.separator || 'space'}` : '';
+            const isWordlist = /^(wordlist|dictionary|w)$/i.test(p);
+            if (isWordlist) {
+                html += `<div class="arg-field">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${p}</label>
+                    <div class="relative">
+                        <input type="text" id="arg-${p}" list="wordlist-options" placeholder="${hint || 'Select or type wordlist path'}"
+                            class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
+                        <datalist id="wordlist-options"></datalist>
+                        <button type="button" onclick="refreshWordlistOptions()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs" title="Refresh wordlists"><i class="fa-solid fa-rotate"></i></button>
+                    </div>
+                </div>`;
+                setTimeout(refreshWordlistOptions, 100);
+            } else {
+                html += `<div class="arg-field">
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${p}</label>
+                    <input type="text" id="arg-${p}" placeholder="${hint || p}"
                         class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
-                    <datalist id="wordlist-options"></datalist>
-                    <button type="button" onclick="refreshWordlistOptions()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs" title="Refresh wordlists"><i class="fa-solid fa-rotate"></i></button>
-                </div>
-            </div>`;
-            setTimeout(refreshWordlistOptions, 100);
-        } else {
-            html += `<div class="arg-field">
-                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">${p}</label>
-                <input type="text" id="arg-${p}" placeholder="${hint || p}"
-                    class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
-            </div>`;
-        }
-    });
+                </div>`;
+            }
+        });
+    }
 
     html += `<div class="arg-field">
         <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Timeout (s)</label>
@@ -934,11 +1003,31 @@ async function executeManualTool() {
     if (!target) { alert('Target is required'); return; }
 
     const args = {};
-    (selectedToolConfig.placeholders || []).forEach(p => {
-        if (p === 'target') return;
-        const val = document.getElementById('arg-' + p)?.value;
-        if (val) args[p] = val;
-    });
+    const schemaFields = getSchemaFields(selectedToolConfig.args_schema).filter(field => field.name !== 'target' && field.name !== 'output_file');
+    if (schemaFields.length) {
+        schemaFields.forEach(({ name, spec }) => {
+            const input = document.getElementById('arg-' + name);
+            if (!input) return;
+            let val;
+            if (spec.type === 'boolean') {
+                val = input.checked;
+                if (val || spec.default) args[name] = val;
+                return;
+            }
+            val = input.value;
+            if (val === '' || val === undefined || val === null) return;
+            if (spec.type === 'integer') args[name] = parseInt(val, 10);
+            else if (spec.type === 'number') args[name] = parseFloat(val);
+            else if (spec.type === 'array') args[name] = String(val).split(',').map(v => v.trim()).filter(Boolean);
+            else args[name] = val;
+        });
+    } else {
+        (selectedToolConfig.placeholders || []).forEach(p => {
+            if (p === 'target') return;
+            const val = document.getElementById('arg-' + p)?.value;
+            if (val) args[p] = val;
+        });
+    }
     const timeout = parseInt(document.getElementById('arg-timeout')?.value) || 300;
 
     const btn = document.getElementById('run-btn');
