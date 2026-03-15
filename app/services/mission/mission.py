@@ -20,6 +20,12 @@ from app.services.ai.agents.mission_controller import MissionPlan
 from app.services.ai.blackboard import MissionBlackboard, get_blackboard
 from app.services.mission.credentials import CredentialStore
 from app.services.mission.task_tree import PentestTaskTree, TaskStatus
+from app.services.mission.types import (
+    MissionProgress,
+    ServiceInfo,
+    ToolExecutionRecord,
+    VulnInfo,
+)
 from app.utils.geoip import GeoLocation
 
 logger = logging.getLogger(__name__)
@@ -70,7 +76,7 @@ class Mission:
         # Tool execution tracking for adaptive selection
         self.tools_run: list[str] = []
         # Detailed tool execution history with arguments
-        self.tool_executions: list[dict[str, Any]] = []
+        self.tool_executions: list[ToolExecutionRecord] = []
         # Report file path when generated
         self.report_path: str | None = None
         # Replan tracking
@@ -381,54 +387,55 @@ class Mission:
             self.tools_run.append(tool_id)
 
         # Store detailed execution record
-        self.tool_executions.append(
-            {
-                "tool": tool_id,
-                "args": args or {},
-                "command": command,
-                "success": success,
-                "error": error,
-                "timestamp": datetime.now().isoformat(),
-            }
-        )
+        record: ToolExecutionRecord = {
+            "tool": tool_id,
+            "args": args or {},
+            "command": command,
+            "success": success,
+            "error": error,
+            "timestamp": datetime.now().isoformat(),
+        }
+        self.tool_executions.append(record)
 
-    def get_known_services(self) -> list[dict[str, Any]]:
+    def get_known_services(self) -> list[ServiceInfo]:
         """Get discovered services as dicts for agent input."""
         return [
-            {
-                "host": svc.host,
-                "port": svc.port,
-                "protocol": svc.protocol,
-                "service": svc.service,
-                "product": svc.product,
-                "version": svc.version,
-            }
+            ServiceInfo(
+                host=svc.host,
+                port=svc.port,
+                protocol=svc.protocol,
+                service=svc.service,
+                product=svc.product,
+                version=svc.version,
+            )
             for svc in self.attack_surface.services
         ]
 
-    def get_known_vulns(self) -> list[dict[str, Any]]:
+    def get_known_vulns(self) -> list[VulnInfo]:
         """Get discovered vulnerabilities as dicts for agent input."""
         return [
-            {
-                "id": vuln.id,
-                "name": vuln.title,
-                "severity": vuln.severity,
-                "cve_id": vuln.cve_id,
-                "cvss": vuln.cvss,
-            }
+            VulnInfo(
+                id=vuln.id,
+                name=vuln.title,
+                severity=vuln.severity,
+                cve_id=vuln.cve_id,
+                cvss=vuln.cvss,
+            )
             for vuln in self.attack_surface.vulnerabilities
         ]
 
-    def get_progress(self) -> dict[str, Any]:
+    def get_progress(self) -> MissionProgress:
         """Estimate mission progress based on task tree state."""
         if not self.task_tree:
-            return {"percent": 0, "phase": "unknown", "eta_minutes": None}
+            return MissionProgress(percent=0, phase="unknown", eta_minutes=None)
 
         nodes = self.task_tree._nodes
         total = len(nodes) - 1  # exclude root
         if total <= 0:
-            return {"percent": 0, "phase": "initializing",
-                    "completed_tasks": 0, "total_tasks": 0, "active_tasks": []}
+            return MissionProgress(
+                percent=0, phase="initializing",
+                completed_tasks=0, total_tasks=0, active_tasks=[],
+            )
 
         completed = sum(
             1 for n in nodes.values()
@@ -444,13 +451,13 @@ class Mission:
             technique = active[0].technique.split("/")[0]
             phase = technique
 
-        return {
-            "percent": percent,
-            "phase": phase,
-            "completed_tasks": completed,
-            "total_tasks": total,
-            "active_tasks": [{"id": n.id, "name": n.name} for n in active],
-        }
+        return MissionProgress(
+            percent=percent,
+            phase=phase,
+            completed_tasks=completed,
+            total_tasks=total,
+            active_tasks=[{"id": n.id, "name": n.name} for n in active],
+        )
 
     # --- Serialization ---
 

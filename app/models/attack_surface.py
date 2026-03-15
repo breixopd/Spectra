@@ -11,6 +11,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.services.mission.types import AttackSurfaceSummary
+
 
 def _utc_now() -> datetime:
     """Return current UTC time as timezone-aware datetime."""
@@ -277,7 +279,7 @@ class AttackSurface(BaseModel):
                     v.status = VectorStatus.FAILED
                 break
 
-    def get_summary(self) -> dict:
+    def get_summary(self) -> AttackSurfaceSummary:
         """Get attack surface summary."""
         # Count vectors by priority
         vectors_by_priority = {

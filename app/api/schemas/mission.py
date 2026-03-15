@@ -3,6 +3,7 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.target import TargetStatus
+from app.services.mission.types import AttackSurfaceSummary, ToolExecutionRecord
 
 
 class TargetCreate(BaseModel):
@@ -135,12 +136,12 @@ class MissionResponse(BaseModel):
     current_phase: str | None = None
     logs: list[str]
     directive: str | None = None
-    findings: list[dict] | None = None
+    findings: list[dict[str, object]] | None = None
     findings_count: int | None = None
     tools_run: list[str] = Field(default_factory=list)
-    tool_executions: list[dict] | None = None
+    tool_executions: list[ToolExecutionRecord] | None = None
     report_path: str | None = None
-    attack_surface: dict | None = None
+    attack_surface: AttackSurfaceSummary | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -149,5 +150,5 @@ class MissionDetailResponse(MissionResponse):
     """Detailed mission response with summary."""
 
     directive: str | None = None
-    summary: dict | None = None
+    summary: dict[str, object] | None = None
     created_at: str
