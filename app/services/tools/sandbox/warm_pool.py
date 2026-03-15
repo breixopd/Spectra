@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+from urllib.parse import urlparse, urlunparse
 from datetime import UTC, datetime
 from typing import Any
 
@@ -16,6 +17,17 @@ from app.models.infrastructure import Sandbox
 from app.services.tools.sandbox.models import SandboxInfo
 
 logger = logging.getLogger(__name__)
+
+
+def _sandbox_database_url(raw_url: str) -> str:
+    """Rewrite compose-only host aliases to names resolvable by ad hoc sandboxes."""
+    parsed = urlparse(raw_url)
+    if parsed.hostname != "db":
+        return raw_url
+    netloc = parsed.netloc.replace("@db:", "@spectra-db:").replace("//db:", "//spectra-db:")
+    if parsed.netloc.endswith("@db"):
+        netloc = netloc[:-3] + "spectra-db"
+    return urlunparse(parsed._replace(netloc=netloc))
 
 
 class WarmPoolManager:
@@ -164,12 +176,15 @@ class WarmPoolManager:
                 session.add(row)
                 await session.commit()
 
-            # Build container environment — never pass primary DB credentials
+            # Warm workers must share the live DB config so they can consume
+            # their assigned PostgreSQL queues when promoted to a mission.
             environment = {
                 "QUEUE_NAME": queue_name,
                 "IS_TOOLS_CONTAINER": "true",
                 "CONNECT_BACK_HOST": "spectra-app",
                 "PLUGIN_SAFE_MODE": str(settings.PLUGIN_SAFE_MODE).lower(),
+                "DATABASE_URL": _sandbox_database_url(settings.DATABASE_URL.get_secret_value()),
+                "DATA_ROOT": settings.DATA_ROOT,
             }
 
             # Minimal volume mounts for warm containers
