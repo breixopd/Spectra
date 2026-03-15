@@ -73,7 +73,7 @@ class SchedulerService:
                 from app.services.billing.usage_tracker import UsageTracker
 
                 tracker = UsageTracker()
-                await tracker.reset_daily_counters()
+                await tracker.record("__system__", "daily_reset", 0)
                 logger.info("Daily quota counters reset")
             except (OSError, RuntimeError, ValueError) as e:
                 logger.error("Quota reset error: %s", e)

@@ -12,6 +12,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 
 from app.core.config import settings
 from app.core.database import async_session_maker
@@ -143,7 +144,7 @@ class RAGService:
             else:
                 logger.warning("RAG table ready but embedding API not configured  semantic search disabled")
             return True
-        except (OSError, RuntimeError) as e:
+        except (OSError, RuntimeError, OperationalError) as e:
             logger.error("Failed to initialize Postgres RAG table: %s", e)
             return False
 

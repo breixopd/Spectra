@@ -26,7 +26,7 @@ def mock_manager_context():
         patch(
             "app.services.mission.manager.execution.get_global_llm_client",
             new_callable=AsyncMock,
-        ),
+        ) as mock_get_llm,
         patch("app.core.database.async_session_maker") as mock_session_maker,
         patch("app.services.mission.manager.lifecycle.resolve_ip", new_callable=AsyncMock) as mock_resolve_ip,
         patch("app.services.mission.state_store.async_session_maker") as mock_state_store_session,
@@ -34,6 +34,12 @@ def mock_manager_context():
     ):
         # Setup DB mocks details
         mock_session = AsyncMock()
+
+        # LLM client mock: make async methods usable for debrief etc.
+        mock_llm = AsyncMock()
+        mock_llm.generate_structured = AsyncMock(return_value=MagicMock())
+        mock_llm.generate = AsyncMock(return_value=MagicMock(content=""))
+        mock_get_llm.return_value = mock_llm
 
         # async_session_maker() returns a context manager
         mock_session_ctx = MagicMock()
@@ -64,6 +70,7 @@ def mock_manager_context():
 
         mock_controller_instance = MockController.return_value
         mock_controller_instance.execute = AsyncMock()
+        mock_controller_instance.llm = AsyncMock()
 
         mock_scope_instance = MockScope.return_value
         mock_scope_instance.execute = AsyncMock()

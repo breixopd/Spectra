@@ -295,7 +295,7 @@ class TelemetryCollector:
             async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
                 span = self.start_span(span_name, attributes=attributes)
                 try:
-                    result = await func(*args, **kwargs)
+                    result = await func(*args, **kwargs)  # type: ignore[misc]
                     self.end_span(span, "ok")
                     return result
                 except (OSError, RuntimeError, ValueError) as e:
@@ -316,7 +316,7 @@ class TelemetryCollector:
             import asyncio
 
             if asyncio.iscoroutinefunction(func):
-                return async_wrapper
+                return async_wrapper  # type: ignore[return-value]
             return sync_wrapper
 
         return decorator

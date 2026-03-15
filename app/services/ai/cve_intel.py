@@ -62,12 +62,12 @@ def _load_cve_knowledge_base() -> list[dict[str, Any]]:
 
     try:
         _cve_knowledge_base = json.loads(kb_path.read_text())
-        logger.info("Loaded CVE knowledge base: %d entries", len(_cve_knowledge_base))
+        logger.info("Loaded CVE knowledge base: %d entries", len(_cve_knowledge_base or []))
     except (OSError, ValueError) as exc:
         logger.warning("Failed to load CVE knowledge base: %s", exc)
         _cve_knowledge_base = []
 
-    return _cve_knowledge_base
+    return _cve_knowledge_base or []
 
 
 def reload_cve_knowledge_base() -> int:
@@ -239,7 +239,7 @@ def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
         if time.time() - cached_at > CVE_CACHE_TTL:
             return None
         return data.get("results", [])
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError):
         return None
 
 
