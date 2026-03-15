@@ -13,10 +13,10 @@ from app.services.tools.service import (
 @pytest.fixture
 def mock_service_context():
     with (
-        patch("app.services.tools.service.get_registry") as mock_get_registry,
+        patch("app.services.tools.validation.get_registry") as mock_get_registry,
         patch("app.services.tools.service.SafetySupervisorAgent") as MockSafety,
         patch("app.services.tools.service.VotingSystem") as MockVoting,
-        patch("app.services.tools.service.CommandToolAdapter") as MockAdapter,
+        patch("app.services.tools.dispatch.CommandToolAdapter") as MockAdapter,
     ):
         registry = MagicMock()
         registry.sync_status_from_cache = AsyncMock()
@@ -83,7 +83,7 @@ async def test_execute_tool_success(mock_service_context):
     service.safety_supervisor.execute.return_value = safety_result
 
     # Mock the module-level worker execution function
-    with patch("app.services.tools.service.execute_via_worker", new_callable=AsyncMock, return_value=result_obj):
+    with patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock, return_value=result_obj):
         result = await service.execute_request(mission=mission, tool_name="nmap", target="127.0.0.1")
 
     if not result.success:

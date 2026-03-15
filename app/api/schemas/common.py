@@ -18,3 +18,10 @@ class PaginatedResponse(BaseModel):
         if "pages" not in data and data.get("per_page"):
             data["pages"] = max(1, -(-data["total"] // data["per_page"]))  # ceil division
         super().__init__(**data)
+
+
+class StatusResponse(BaseModel):
+    """Generic status/message response for simple action endpoints."""
+
+    status: str | None = None
+    message: str | None = None

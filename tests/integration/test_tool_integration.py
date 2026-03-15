@@ -62,7 +62,7 @@ def integration_context(mock_registry):
     # Actually, we keep ToolExecutionService real, but mock its dependencies: Safety, Voting.
 
     with (
-        patch("app.services.tools.service.get_registry", return_value=mock_registry),
+        patch("app.services.tools.validation.get_registry", return_value=mock_registry),
         patch("app.services.tools.service.SafetySupervisorAgent") as MockSafetyAgent,
         patch("app.services.tools.service.VotingSystem") as MockVotingSystem,
         patch("app.services.ai.agents.tool_selector.ToolSelectorAgent") as MockToolSelector,

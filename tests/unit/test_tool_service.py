@@ -85,7 +85,7 @@ class TestToolServiceExecution:
         mission.id = "m1"
         mission.log = MagicMock()
 
-        with patch("app.services.tools.service.get_registry") as mock_reg:
+        with patch("app.services.tools.validation.get_registry") as mock_reg:
             registry = mock_reg.return_value
             registry.sync_status_from_cache = AsyncMock()
             registry.get_tool = MagicMock(return_value=None)
