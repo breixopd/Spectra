@@ -20,12 +20,12 @@ from app.services.ai.agents.mission_controller import MissionPlan
 from app.services.ai.blackboard import MissionBlackboard, get_blackboard
 from app.services.mission.credentials import CredentialStore
 from app.services.mission.finding_dedup import (
+    RELATED_CVE_GROUPS,
     are_related_cves,
     finding_dedup_key,
     is_duplicate_finding,
     is_fuzzy_duplicate,
     normalize_finding,
-    RELATED_CVE_GROUPS,
 )
 from app.services.mission.task_tree import PentestTaskTree, TaskStatus
 from app.services.mission.types import (

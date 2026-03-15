@@ -21,6 +21,8 @@ try:
 except ImportError:
     DockerException = OSError  # Fallback when docker SDK not installed
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.core.background_tasks import (
     cache_cleanup_loop,
     periodic_cleanup_loop,
@@ -29,7 +31,6 @@ from app.core.background_tasks import (
 from app.core.cache import CacheService, set_cache
 from app.core.config import settings
 from app.core.database import async_session_maker, engine
-from sqlalchemy.exc import SQLAlchemyError
 from app.core.events import EventType, events
 from app.core.system_status import (
     add_system_operation,
