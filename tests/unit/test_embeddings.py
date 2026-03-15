@@ -83,14 +83,15 @@ class TestModelLoading:
     """Tests for _load_model() lazy-loading behaviour."""
 
     @pytest.mark.asyncio
-    async def test_load_model_no_op_when_mock_provider(self, service):
-        """_load_model does not set _api_ready when AI_PROVIDER=mock."""
+    async def test_load_model_uses_local_fallback_when_no_api_key(self, service):
+        """_load_model falls back to local model when no API key is available."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "mock"
+            mock_settings.AI_PROVIDER = "litellm"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
             await service._load_model()
-        assert service._api_ready is False
+        assert service._api_ready is True
+        assert service._use_local is True
 
     @pytest.mark.asyncio
     async def test_load_model_uses_local_when_no_api_key(self, service):

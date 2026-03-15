@@ -65,10 +65,6 @@ class EmbeddingService:
             if self._api_ready:
                 return
 
-            if settings.AI_PROVIDER == "mock":
-                logger.info("AI_PROVIDER=mock — embedding service disabled")
-                return
-
             # Check if using local embedding model
             model_lower = self.model_name.lower()
             emb_key = settings.EMBEDDING_API_KEY.get_secret_value()

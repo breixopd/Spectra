@@ -1,10 +1,10 @@
-"""Tests for app.services.ai.mock_client.MockLLMClient."""
+"""Tests for tests.mocks.mock_llm_client.MockLLMClient."""
 
 import json
 
 import pytest
 
-from app.services.ai.mock_client import MockLLMClient
+from tests.mocks.mock_llm_client import MockLLMClient
 
 
 @pytest.mark.asyncio

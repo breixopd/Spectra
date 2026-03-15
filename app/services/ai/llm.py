@@ -237,7 +237,7 @@ def get_llm_client(
     Factory function to get the appropriate LLM client.
 
     Args:
-        provider: "litellm" (all providers) or "mock" (testing).
+        provider: "litellm" (all providers via LiteLLM router).
         **kwargs: Provider-specific arguments.
 
     Returns:
@@ -248,9 +248,10 @@ def get_llm_client(
     normalized_provider = _normalize_provider_name(provider)
 
     if normalized_provider == "mock":
-        from app.services.ai.mock_client import MockLLMClient
-
-        return MockLLMClient()
+        raise ValueError(
+            "Mock LLM provider is not available in the app. "
+            "Use AI_PROVIDER=litellm with a real model for production/development."
+        )
 
     # Everything else goes through LiteLLM
     model = kwargs.get("model", "")
@@ -288,7 +289,10 @@ def get_default_llm_client() -> LLMClient:
     provider = _normalize_provider_name(settings.AI_PROVIDER)
 
     if provider == "mock":
-        return get_llm_client(provider="mock")
+        raise ValueError(
+            "Mock LLM provider is not available in the app. "
+            "Use AI_PROVIDER=litellm with a real model."
+        )
 
     try:
         client = create_smart_router()

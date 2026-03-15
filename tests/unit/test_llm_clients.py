@@ -257,11 +257,9 @@ class TestGetLLMClient:
         client = get_llm_client("openai", api_key="sk-test")
         assert isinstance(client, LiteLLMRouter)
 
-    def test_mock_provider(self):
-        from app.services.ai.mock_client import MockLLMClient as ProductionMock
-
-        client = get_llm_client("mock", responses=["hi"])
-        assert isinstance(client, ProductionMock)
+    def test_mock_provider_raises(self):
+        with pytest.raises(ValueError, match="Mock LLM provider is not available"):
+            get_llm_client("mock")
 
 
 # ===================================================================
@@ -330,13 +328,11 @@ class TestGetDefaultLLMClient:
 
     @patch("app.services.ai.router.settings")
     @patch("app.services.ai.llm.settings")
-    def test_mock_provider(self, mock_llm_settings, mock_router_settings):
-        from app.services.ai.mock_client import MockLLMClient as ProductionMock
-
+    def test_mock_provider_raises(self, mock_llm_settings, mock_router_settings):
         mock_llm_settings.AI_PROVIDER = "mock"
         mock_router_settings.AI_PROVIDER = "mock"
-        client = get_default_llm_client()
-        assert isinstance(client, ProductionMock)
+        with pytest.raises(ValueError, match="Mock LLM provider is not available"):
+            get_default_llm_client()
 
     @patch("app.services.ai.router.settings")
     @patch("app.services.ai.llm.settings")
