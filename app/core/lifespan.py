@@ -229,50 +229,8 @@ async def _seed_default_data() -> None:
     logger.info("[OK] Service registry initialized")
 
 
-async def _initialize_services() -> None:
-    """Start background services: AI models, tool registry, sandboxes, etc."""
-    await set_system_status("initializing", "Loading AI models...")
-
-    # Preload embedding model in background (for RAG)
-    try:
-        from app.services.ai.embeddings import EmbeddingService
-
-        await add_system_operation("embeddings", "load", "Loading embedding model")
-        embed_service = EmbeddingService()
-
-        async def load_embeddings_with_status():
-            try:
-                await embed_service._load_model()
-                logger.info("[OK] Embedding model loaded")
-            except (OSError, RuntimeError, ImportError) as e:
-                logger.warning("Embedding model loading failed: %s", e)
-            finally:
-                await remove_system_operation("embeddings")
-
-        asyncio.create_task(load_embeddings_with_status())
-        logger.info("Triggered embedding model preloading")
-    except (OSError, RuntimeError, ImportError) as e:
-        logger.warning("Failed to trigger embedding preloading: %s", e)
-
-    await set_system_status("initializing", "Loading tool plugins...")
-
-    # Initialize tool registry and load plugins
-    try:
-        from app.services.tools.registry import initialize_registry
-
-        registry = await initialize_registry(
-            plugins_dir="plugins",
-            public_key_path="keys/plugin_signing.pub",
-            safe_mode=settings.PLUGIN_SAFE_MODE,
-        )
-        tool_count = len(registry.list_tools())
-        logger.info("[OK] Tool registry initialized: %d tools loaded", tool_count)
-    except (OSError, ValueError, KeyError) as e:
-        logger.error("Failed to initialize tool registry: %s", e)
-
-    await set_system_status("initializing", "Installing tools...")
-
-    # Initialize sandbox pool
+async def _initialize_sandbox() -> None:
+    """Initialize sandbox pool, warm pool manager, and golden image builder."""
     try:
         from app.services.tools.sandbox import SandboxPool, set_sandbox_pool
 
@@ -324,7 +282,9 @@ async def _initialize_services() -> None:
     except (DockerException, OSError) as e:
         logger.warning("Sandbox pool init failed: %s", e)
 
-    # Initialize server pool manager
+
+async def _initialize_scaling() -> None:
+    """Initialize server pool manager and start health loop."""
     try:
         from app.services.scaling import get_pool_manager
         pool_mgr = get_pool_manager()
@@ -332,6 +292,56 @@ async def _initialize_services() -> None:
         logger.info("[OK] Server pool manager initialized")
     except (OSError, RuntimeError, ImportError) as e:
         logger.warning("Server pool manager init failed: %s", e)
+
+
+async def _initialize_services() -> None:
+    """Start background services: AI models, tool registry, sandboxes, etc."""
+    await set_system_status("initializing", "Loading AI models...")
+
+    # Preload embedding model in background (for RAG)
+    try:
+        from app.services.ai.embeddings import EmbeddingService
+
+        await add_system_operation("embeddings", "load", "Loading embedding model")
+        embed_service = EmbeddingService()
+
+        async def load_embeddings_with_status():
+            try:
+                await embed_service._load_model()
+                logger.info("[OK] Embedding model loaded")
+            except (OSError, RuntimeError, ImportError) as e:
+                logger.warning("Embedding model loading failed: %s", e)
+            finally:
+                await remove_system_operation("embeddings")
+
+        asyncio.create_task(load_embeddings_with_status())
+        logger.info("Triggered embedding model preloading")
+    except (OSError, RuntimeError, ImportError) as e:
+        logger.warning("Failed to trigger embedding preloading: %s", e)
+
+    await set_system_status("initializing", "Loading tool plugins...")
+
+    # Initialize tool registry and load plugins
+    try:
+        from app.services.tools.registry import initialize_registry
+
+        registry = await initialize_registry(
+            plugins_dir="plugins",
+            public_key_path="keys/plugin_signing.pub",
+            safe_mode=settings.PLUGIN_SAFE_MODE,
+        )
+        tool_count = len(registry.list_tools())
+        logger.info("[OK] Tool registry initialized: %d tools loaded", tool_count)
+    except (OSError, ValueError, KeyError) as e:
+        logger.error("Failed to initialize tool registry: %s", e)
+
+    await set_system_status("initializing", "Installing tools...")
+
+    # Initialize sandbox pool
+    await _initialize_sandbox()
+
+    # Initialize server pool manager
+    await _initialize_scaling()
 
     # Trigger background setup tasks (including tool installation)
     asyncio.create_task(run_startup_tasks())
