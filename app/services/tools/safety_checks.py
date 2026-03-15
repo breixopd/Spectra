@@ -57,7 +57,7 @@ async def perform_safety_check(
                 )
                 return False, safety_result.action.reason
         return True, "Safe"
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError, TimeoutError) as e:
         mission.log(f"Safety check failed verification: {e}")
         return False, str(e)
 
@@ -173,7 +173,7 @@ Example response format:
             mission.log(f"[INFO] LLM suggested fix: {fixed_args}")
             return fixed_args
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError, TimeoutError) as e:
         logger.warning("Failed to fix command via LLM: %s", e)
 
     return None

@@ -154,7 +154,7 @@ async def maintenance_mode_check(request: Request, call_next):
                         content=_maint_templates.get_template("errors/maintenance.html").render(message=msg),
                         status_code=503,
                     )
-        except Exception:
+        except (OSError, RuntimeError):
             pass  # If DB is down, don't block requests
     return await call_next(request)
 
@@ -342,7 +342,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
         logger.debug("WebSocket client %s disconnected normally", user.username)
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError) as e:
         logger.warning("WebSocket error for %s: %s", user.username, e)
         await manager.disconnect(websocket)
 

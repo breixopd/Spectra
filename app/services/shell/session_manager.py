@@ -72,13 +72,13 @@ class ShellSession:
             try:
                 sock = self._exec_handle.output
                 sock.sendall(data.encode())
-            except Exception as e:
+            except OSError as e:
                 logger.error("Failed to write to sandbox exec socket: %s", e)
                 self.active = False
         elif self.socket:
             try:
                 self.socket.sendall(data.encode())
-            except Exception as e:
+            except OSError as e:
                 logger.error("Failed to write to shell socket: %s", e)
                 self.active = False
 
@@ -91,7 +91,7 @@ class ShellSession:
             try:
                 text = data.decode("utf-8", errors="replace")
                 asyncio.run_coroutine_threadsafe(self.websocket.send_text(text), self._loop)
-            except Exception as e:
+            except OSError as e:
                 logger.error("Failed to broadcast output: %s", e)
         else:
             # Buffer if no listener
@@ -216,7 +216,7 @@ class ShellSessionManager:
                         if not data:
                             break
                         session.broadcast_output(data)
-                    except Exception as e:
+                    except OSError as e:
                         logger.error("Socket error: %s", e)
                         break
 
@@ -225,7 +225,7 @@ class ShellSessionManager:
                 self.listeners.pop(port, None)
                 conn.close()
                 server.close()
-            except Exception as e:
+            except OSError as e:
                 logger.error("Listener error on port %s: %s", port, e)
                 self.listeners.pop(port, None)
 
@@ -294,7 +294,7 @@ class ShellSessionManager:
                         if not data:
                             break
                         session.broadcast_output(data)
-                except Exception as e:
+                except OSError as e:
                     logger.error("Sandbox relay error for session %s: %s", session_id, e)
 
                 logger.info("Sandbox shell session %s ended", session_id)
@@ -304,7 +304,7 @@ class ShellSessionManager:
                     raw_sock.close()
                 except OSError:
                     pass  # Socket already closed
-            except Exception as e:
+            except OSError as e:
                 logger.error("Sandbox listener error for session %s: %s", session_id, e)
                 self.listeners.pop(port, None)
 
@@ -321,7 +321,7 @@ class ShellSessionManager:
             client = docker.from_env()
             container_name = f"spectra-sandbox-{mission_id[:8]}"
             return client.containers.get(container_name)
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.debug("Could not find sandbox container for mission %s: %s", mission_id[:8], e)
             return None
 
@@ -353,7 +353,7 @@ class ShellSessionManager:
                 try:
                     session.socket.shutdown(socket.SHUT_RDWR)
                     session.socket.close()
-                except Exception as e:
+                except OSError as e:
                     logger.warning("Error closing socket for session %s: %s", session_id, e)
             if session._exec_handle:
                 try:
@@ -378,7 +378,7 @@ class ShellSessionManager:
                         try:
                             session.socket.shutdown(socket.SHUT_RDWR)
                             session.socket.close()
-                        except Exception as e:
+                        except OSError as e:
                             logger.debug("Socket cleanup error for expired session: %s", e)
                     if session._exec_handle:
                         try:

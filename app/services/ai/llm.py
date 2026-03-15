@@ -62,7 +62,7 @@ class LLMClient(ABC):
                     timeout=timeout,
                     task_type=task_type,
                 )
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
                     delay = 2**attempt
@@ -199,7 +199,7 @@ Respond ONLY with the JSON object. No markdown, no explanation, just the JSON.""
                         raise ValueError("Repaired JSON is not a dict")
                 except ImportError:
                     raise
-                except Exception as repair_error:
+                except (ValueError, TypeError, KeyError) as repair_error:
                     logger.debug("JSON repair failed: %s", repair_error)
                     raise
 
@@ -212,7 +212,7 @@ Respond ONLY with the JSON object. No markdown, no explanation, just the JSON.""
                 safe_content = safe_content[:1000] + "..."
             logger.debug("Raw response: %s", safe_content)
             raise ValueError(f"LLM response is not valid JSON: {e}") from e
-        except Exception as e:
+        except (ValueError, TypeError, KeyError) as e:
             logger.error("Failed to validate LLM response: %s", e)
             raise ValueError(f"LLM response failed validation: {e}") from e
 
@@ -294,7 +294,7 @@ def get_default_llm_client() -> LLMClient:
         client = create_smart_router()
         logger.info("Using LiteLLM smart router (provider=%s)", settings.AI_PROVIDER)
         return client
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Smart router init failed, falling back to direct LiteLLM: %s", e)
         return LiteLLMRouter(default_model=settings.LLM_MODEL or "openai/gpt-4o-mini")
 

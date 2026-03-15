@@ -59,7 +59,15 @@ class TestLandingPage:
     async def test_landing_page_renders(self, client):
         plan_result = MagicMock()
         plan_result.scalars.return_value.all.return_value = []
-        maker, _ = _mock_session_ctx([plan_result])
+
+        findings_result = MagicMock()
+        findings_result.scalar.return_value = 0
+        missions_result = MagicMock()
+        missions_result.scalar.return_value = 0
+        reviews_result = MagicMock()
+        reviews_result.fetchall.return_value = []
+
+        maker, _ = _mock_session_ctx([plan_result, findings_result, missions_result, reviews_result])
 
         with (
             patch("app.api.routers.public._get_user_from_cookie", return_value=None),

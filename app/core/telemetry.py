@@ -277,7 +277,7 @@ class TelemetryCollector:
         try:
             yield span
             self.end_span(span, "ok")
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             self.end_span(span, "error", str(e))
             raise
 
@@ -298,7 +298,7 @@ class TelemetryCollector:
                     result = await func(*args, **kwargs)
                     self.end_span(span, "ok")
                     return result
-                except Exception as e:
+                except (OSError, RuntimeError, ValueError) as e:
                     self.end_span(span, "error", str(e))
                     raise
 
@@ -309,7 +309,7 @@ class TelemetryCollector:
                     result = func(*args, **kwargs)
                     self.end_span(span, "ok")
                     return result
-                except Exception as e:
+                except (OSError, RuntimeError, ValueError) as e:
                     self.end_span(span, "error", str(e))
                     raise
 

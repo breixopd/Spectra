@@ -164,7 +164,7 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
                         safety_metadata["preflight_allowed"],
                         safety_metadata["preflight_risk"],
                     )
-            except Exception:
+            except (OSError, RuntimeError, ValueError):
                 logger.exception("Pre-flight safety check failed (non-fatal)")
 
             # Parse directive and create mission plan
@@ -182,7 +182,7 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
             raise
         except TimeoutError as e:
             raise LLMTimeoutError(agent=self.name, timeout_seconds=0) from e
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("MissionController failed: %s", e)
             return AgentResult(
                 success=False,
@@ -220,7 +220,7 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
             stats = memory.get_stats()
             if stats["tool_lessons"] > 0 or stats["exploit_lessons"] > 0:
                 memory_context += f"\n(Memory: {stats['tool_lessons']} tool lessons, {stats['exploit_lessons']} exploit patterns, {stats['target_profiles']} OS profiles)"
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.debug("Memory context fetch failed: %s", e)
 
         from app.services.ai.context import ContextManager, ContextSection, Priority
@@ -272,7 +272,7 @@ Your plan must be:
                         max_tokens=4096,
                     )
                     return plan
-                except Exception as e:
+                except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                     logger.warning("Plan generation attempt %d failed: %s", attempt + 1, e)
                     if attempt == max_retries - 1:
                         raise LLMParseError(agent=self.name, raw_response=str(e)) from e
@@ -280,7 +280,7 @@ Your plan must be:
                     # For now, just retry
         except AgentError:
             raise
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("Plan generation failed after %d attempts: %s", max_retries, e)
             raise
 
@@ -406,7 +406,7 @@ Determine:
                 system_prompt=self._build_system_prompt(context),
                 temperature=0.3,
             )
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.warning("Steering interpretation failed: %s", e)
             return SteeringAction(
                 confidence=0.5,

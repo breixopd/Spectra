@@ -112,7 +112,7 @@ class TestRAGIndexDocument:
     @pytest.mark.asyncio
     async def test_index_document_handles_error(self, rag_service, sample_doc):
         rag_service._table_ready = True
-        rag_service.embeddings.embed = AsyncMock(side_effect=Exception("embed fail"))
+        rag_service.embeddings.embed = AsyncMock(side_effect=RuntimeError("embed fail"))
 
         result = await rag_service.index_document(sample_doc)
         assert result is False

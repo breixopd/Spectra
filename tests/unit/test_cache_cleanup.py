@@ -50,7 +50,7 @@ class TestCachePurgeExpired:
     @pytest.mark.asyncio
     async def test_purge_expired_handles_db_error(self, mock_session_maker):
         maker, session = mock_session_maker
-        session.execute = AsyncMock(side_effect=RuntimeError("db gone"))
+        session.execute = AsyncMock(side_effect=OSError("db gone"))
 
         cache = CacheService(session_maker=maker)
         count = await cache.purge_expired()

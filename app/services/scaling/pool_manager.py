@@ -175,7 +175,7 @@ class ServerPoolManager:
                 if resp.status_code == 200:
                     return {"health_status": "healthy", "last_error": None}
                 return {"health_status": "unhealthy", "last_error": f"HTTP {resp.status_code}"}
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
             return {"health_status": "unhealthy", "last_error": str(e)}
 
     async def health_check_all(self) -> dict[str, list[dict]]:
@@ -216,7 +216,7 @@ class ServerPoolManager:
             while True:
                 try:
                     await self.health_check_all()
-                except Exception:
+                except (OSError, RuntimeError, ValueError):
                     logger.exception("Health check loop error")
                 await asyncio.sleep(self._health_interval)
 

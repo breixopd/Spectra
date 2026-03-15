@@ -103,7 +103,7 @@ class PluginInstaller:
             logger.info("Successfully installed %s", tool_id)
             return True
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, PluginInstallationError) as e:
             tool.status = ToolStatus.FAILED
             tool.error_message = str(e)
 
@@ -161,7 +161,7 @@ class PluginInstaller:
 
                     if returncode != 0:
                         raise PluginInstallationError(f"Uninstall command failed (exit {returncode}): {stderr}")
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError, PluginInstallationError) as e:
                 logger.error("Failed to uninstall %s: %s", tool_id, e)
                 # We still try to remove the plugin file even if commands fail
                 pass

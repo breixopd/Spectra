@@ -61,7 +61,7 @@ def record_mission_lessons(mission: Mission) -> None:
             f"{stats['exploit_lessons']} exploit patterns, {stats['target_profiles']} OS profiles"
         )
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.debug("Post-mission learning failed (non-critical): %s", e)
 
 
@@ -165,5 +165,5 @@ async def index_to_rag(mission: Mission) -> None:
             indexed += 1
 
         mission.log(f"[RAG] Indexed {indexed} documents for future reference")
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.debug("RAG indexing failed (non-critical): %s", e)

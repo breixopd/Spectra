@@ -326,7 +326,7 @@ async def list_services(
                         resp = await client.get(f"{base}/health")
                         health_status = "healthy" if resp.status_code == 200 else "unhealthy"
                         break
-                except Exception:
+                except (OSError, RuntimeError, ConnectionError, TimeoutError):
                     health_status = "unreachable"
 
         results.append({

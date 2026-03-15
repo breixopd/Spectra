@@ -51,7 +51,7 @@ async def download_data_sources(
         kb_path = cache_dir / "cve_knowledge_base.json"
         kb_path.write_text(_json.dumps(_CVE_KNOWLEDGE_BASE, indent=2))
         kb_count = len(_CVE_KNOWLEDGE_BASE)
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         logger.warning("Failed to write CVE knowledge base: %s", exc)
         kb_count = 0
 

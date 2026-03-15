@@ -263,7 +263,7 @@ class TestShellKeepalive:
 
         mock_ws = AsyncMock()
         # Let the first sleep succeed, then raise to break the loop
-        mock_ws.send_json = AsyncMock(side_effect=[None, Exception("stop")])
+        mock_ws.send_json = AsyncMock(side_effect=[None, OSError("stop")])
 
         with patch("app.api.routers.shell.asyncio.sleep", new_callable=AsyncMock):
             await _keepalive(mock_ws)

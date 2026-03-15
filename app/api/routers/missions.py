@@ -137,7 +137,7 @@ async def get_attack_coverage(
                 {"tool_name": lesson.tool_id, "source": "tool_execution"}
             )
         return get_attack_summary(findings)
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         return {"tactics": {}, "total_techniques": 0}
 
 

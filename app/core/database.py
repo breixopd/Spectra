@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import AsyncAdaptedQueuePool
 
 from app.core.config import settings
@@ -84,7 +85,7 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
         try:
             yield session
-        except Exception:
+        except (OSError, RuntimeError, SQLAlchemyError):
             await session.rollback()
             raise
         finally:

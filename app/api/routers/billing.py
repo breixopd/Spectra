@@ -57,7 +57,7 @@ async def create_checkout(
         return {"checkout_url": checkout_url}
     except ValueError as e:
         raise HTTPException(400, str(e))
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.exception("Payment checkout error")
         raise HTTPException(502, "Payment provider error")
 
@@ -90,7 +90,7 @@ async def stripe_webhook(request: Request):
     svc = PaymentService()
     try:
         event = await svc._adapter.handle_webhook(payload, sig)
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.exception("Webhook verification failed")
         raise HTTPException(400, "Webhook verification failed")
 

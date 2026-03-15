@@ -73,7 +73,7 @@ async def test_reporter_risk_calculation(reporter_agent):
 @pytest.mark.asyncio
 async def test_reporter_llm_failure_fallback(reporter_agent, context):
     # Simulate LLM failure
-    reporter_agent.llm.generate.side_effect = Exception("LLM Error")
+    reporter_agent.llm.generate.side_effect = RuntimeError("LLM Error")
 
     input_data = ReporterInput(findings=[], mission_summary="Mission summary", target="example.com")
 

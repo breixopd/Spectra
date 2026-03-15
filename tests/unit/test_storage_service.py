@@ -246,7 +246,7 @@ class TestStorageServiceS3Mode:
         mock_ctx.__aenter__ = AsyncMock(return_value=mock_client)
         mock_ctx.__aexit__ = AsyncMock(return_value=None)
         mock_session.client.return_value = mock_ctx
-        mock_client.list_buckets = AsyncMock(side_effect=Exception("connection refused"))
+        mock_client.list_buckets = AsyncMock(side_effect=ConnectionError("connection refused"))
 
         result = await svc.health_check()
         assert result["status"] == "unhealthy"

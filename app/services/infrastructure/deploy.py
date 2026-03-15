@@ -92,7 +92,7 @@ class ServerDeployer:
 
             return DeployResult(DeploymentStatus.COMPLETE, "Deployment successful", logs)
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.exception("Deployment to %s failed", hostname)
             logs.append(f"FATAL: {e}")
             return DeployResult(DeploymentStatus.FAILED, str(e), logs)

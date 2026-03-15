@@ -63,7 +63,7 @@ def _load_cve_knowledge_base() -> list[dict[str, Any]]:
     try:
         _cve_knowledge_base = json.loads(kb_path.read_text())
         logger.info("Loaded CVE knowledge base: %d entries", len(_cve_knowledge_base))
-    except Exception as exc:
+    except (OSError, ValueError) as exc:
         logger.warning("Failed to load CVE knowledge base: %s", exc)
         _cve_knowledge_base = []
 
@@ -184,7 +184,7 @@ async def fetch_cves_from_nvd(
     except httpx.TimeoutException:
         logger.warning("NVD API timeout for '%s'", keyword)
         return []
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
         logger.warning("NVD API error for '%s': %s", keyword, e)
         return []
 
@@ -239,7 +239,7 @@ def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
         if time.time() - cached_at > CVE_CACHE_TTL:
             return None
         return data.get("results", [])
-    except Exception:
+    except (OSError, ValueError) as exc:
         return None
 
 
@@ -253,7 +253,7 @@ def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
             "cached_at": time.time(),
             "results": results,
         }, indent=2))
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.debug("Failed to cache CVEs: %s", e)
 
 
@@ -392,7 +392,7 @@ async def lookup_cves_live(
                 builtin.append(cve)
                 builtin_ids.add(cve["cve"])
 
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
         logger.debug("Live CVE fetch failed, using builtin only: %s", e)
 
     # Re-sort merged results

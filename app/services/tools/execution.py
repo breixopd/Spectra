@@ -99,7 +99,7 @@ async def execute_via_worker(
         return create_error_result(
             tool_id, target, f"Job timed out after {job_timeout}s"
         )
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("Worker execution failed: %s", e)
         return create_error_result(tool_id, target, f"Worker error: {e}")
 
@@ -129,6 +129,6 @@ async def ensure_tool_installed(
             return True
         return False
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("Tool installation failed: %s", e)
         return False

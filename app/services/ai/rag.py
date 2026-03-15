@@ -143,7 +143,7 @@ class RAGService:
             else:
                 logger.warning("RAG table ready but embedding API not configured  semantic search disabled")
             return True
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("Failed to initialize Postgres RAG table: %s", e)
             return False
 
@@ -201,7 +201,7 @@ class RAGService:
                 )
                 await session.commit()
             return True
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("Failed to index document %s in Postgres RAG: %s", doc.id, e)
             return False
 
@@ -292,7 +292,7 @@ class RAGService:
                     )
                 )
             return results
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("Postgres RAG search failed: %s", e)
             return []
 
@@ -339,7 +339,7 @@ class RAGService:
                 session_id=row.get("session_id"),
                 metadata=metadata or {},
             )
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("Failed to get document %s from Postgres RAG: %s", doc_id, e)
             return None
 
@@ -353,7 +353,7 @@ class RAGService:
                 deleted = result.rowcount > 0  # type: ignore[union-attr]
                 await session.commit()
                 return deleted
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("Failed to delete document %s from Postgres RAG: %s", doc_id, e)
             return False
 
@@ -365,7 +365,7 @@ class RAGService:
             async with async_session_maker() as session:
                 count = await session.execute(text("SELECT COUNT(*) FROM rag_documents"))
                 return {"num_docs": count.scalar() or 0, "backend": "postgres"}
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("Failed to get Postgres RAG stats: %s", e)
             return {"num_docs": 0, "backend": "postgres", "error": str(e)}
 

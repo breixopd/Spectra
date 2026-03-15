@@ -26,7 +26,7 @@ async def send_webhook_notification(payload: dict, webhook_url: str) -> bool:
             if not success:
                 logger.warning("Webhook %s returned %d", webhook_url, resp.status_code)
             return success
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
         logger.error("Webhook delivery failed: %s", e)
         return False
 

@@ -56,7 +56,7 @@ class PostgresJobQueue:
                 # Use driver_connection for asyncpg
                 if hasattr(raw_conn, "driver_connection"):
                     await raw_conn.driver_connection.execute(f"NOTIFY spectra_jobs, '{self.queue_name}'")
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.warning("NOTIFY failed: %s", e)
 
         logger.info("Enqueued job %s (%s)", job_id, function_name)
@@ -259,7 +259,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                     await session.commit()
                 logger.info("Job %s completed successfully", job.id)
 
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 # 5. Failure -> Retry or Dead Letter
                 logger.error("Job %s failed: %s", job.id, e)
                 queue = PostgresJobQueue(queue_name)
@@ -280,9 +280,9 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                         await session.execute(stmt)
                         await session.commit()
                     logger.info("Marked abandoned job %s as failed", current_job_id)
-                except Exception as e:
+                except (OSError, RuntimeError) as e:
                     logger.warning("Failed to mark abandoned job as failed: %s", e)
             break
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("Error in worker loop: %s", e)
             await asyncio.sleep(poll_delay)

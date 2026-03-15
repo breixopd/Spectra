@@ -41,7 +41,7 @@ class MetricsStore:
                 self._take_snapshot()
             except asyncio.CancelledError:
                 break
-            except Exception:
+            except (OSError, RuntimeError, ValueError):
                 logger.exception("Error taking metrics snapshot")
 
     def _take_snapshot(self) -> None:

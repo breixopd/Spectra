@@ -81,7 +81,7 @@ async def landing_page(request: Request):
             total_findings = findings_result.scalar() or 0
             missions_result = await session.execute(text("SELECT COUNT(*) FROM missions WHERE status = 'completed'"))
             total_missions = missions_result.scalar() or 0
-        except Exception:
+        except (OSError, RuntimeError, ValueError):
             logger.debug("Failed to load landing stats", exc_info=True)
             total_findings = 0
             total_missions = 0
@@ -105,7 +105,7 @@ async def landing_page(request: Request):
                 json.loads(r[0]) if isinstance(r[0], str) else r[0]
                 for r in reviews_result.fetchall()
             ]
-        except Exception:
+        except (ValueError, TypeError):
             logger.debug("Failed to load reviews", exc_info=True)
             reviews = []
 
@@ -139,7 +139,7 @@ async def legal_terms(request: Request):
             row = result.fetchone()
             if row:
                 content_override = row[0]
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal terms", exc_info=True)
     return templates.TemplateResponse("legal/terms.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
 
@@ -155,7 +155,7 @@ async def legal_privacy(request: Request):
             row = result.fetchone()
             if row:
                 content_override = row[0]
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal privacy", exc_info=True)
     return templates.TemplateResponse("legal/privacy.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
 
@@ -171,7 +171,7 @@ async def legal_cookies(request: Request):
             row = result.fetchone()
             if row:
                 content_override = row[0]
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal cookies", exc_info=True)
     return templates.TemplateResponse("legal/cookie.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
 
@@ -210,7 +210,7 @@ async def changelog_page(request: Request):
                 {"title": r[0], "content": json.loads(r[1]) if isinstance(r[1], str) else r[1]}
                 for r in result.fetchall()
             ]
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load changelog", exc_info=True)
     return templates.TemplateResponse(
         "changelog.html",
@@ -343,7 +343,7 @@ async def register_user(request: Request, body: RegisterRequest):
             username=body.username,
             login_url=f"{base_url}/login",
         )
-    except Exception:
+    except (OSError, RuntimeError, ConnectionError):
         logger.exception("Failed to send welcome email to %s", body.username)
 
     return {"detail": "Account created successfully. You can now sign in."}
@@ -376,7 +376,7 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest):
                 username=user.username,
                 reset_url=f"{base_url}/reset-password?token={token}",
             )
-        except Exception:
+        except (OSError, RuntimeError, ConnectionError):
             logger.exception("Failed to send password reset email for %s", user.username)
 
     return {"detail": "If an account with that email exists, a reset link has been sent."}

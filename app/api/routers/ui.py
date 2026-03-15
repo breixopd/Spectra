@@ -53,7 +53,7 @@ async def _check_user_feature(user_id: str | None, feature: str) -> bool:
             features = result.scalar_one_or_none()
             if features and isinstance(features, dict):
                 return bool(features.get(feature))
-    except Exception:
+    except (OSError, RuntimeError):
         pass
     return False
 

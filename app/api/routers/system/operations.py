@@ -70,7 +70,7 @@ async def clear_tool_statistics(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Cache service is unavailable",
         )
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("Failed to clear tool statistics: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -129,7 +129,7 @@ async def clear_missions(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database service is unavailable",
         )
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         await db.rollback()
         logger.error("Failed to clear missions: %s", e)
         raise HTTPException(
@@ -180,7 +180,7 @@ async def clear_cache(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Cache service is unavailable",
         )
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("Failed to clear cache: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -245,7 +245,7 @@ async def remove_operation(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Cache service is unavailable",
         )
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("Failed to remove operation: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -295,7 +295,7 @@ async def update_operation_progress(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("Failed to update operation progress: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

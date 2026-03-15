@@ -101,6 +101,6 @@ class POCService:
 
             return POCResult(success=True, content=poc_output.code_content, metadata=metadata)
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("POC Service error: %s", e, exc_info=True)
             return POCResult(success=False, error=str(e))

@@ -81,7 +81,7 @@ class MissionExecutor:
         """Execute a single task with the appropriate agent."""
         try:
             await self.dispatcher.dispatch(mission, task, context)
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             mission.log(f"Task execution failed: {e}")
             logger.error("Error executing task %s: %s", task.task_id, e, exc_info=True)
             raise

@@ -45,7 +45,7 @@ class ToolResultCache:
                     data = json.loads(row[0]) if isinstance(row[0], str) else row[0]
                     logger.info("Cache HIT: %s on %s", tool_name, target)
                     return data
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.debug("Cache lookup failed: %s", e)
         return None
 
@@ -72,7 +72,7 @@ class ToolResultCache:
                 )
                 await session.commit()
                 logger.info("Cache SET: %s on %s (TTL: %ds)", tool_name, target, ttl_seconds)
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.debug("Cache set failed: %s", e)
 
     async def invalidate(self, tool_name: str, target: str, args: dict | None = None):
@@ -86,7 +86,7 @@ class ToolResultCache:
             async with async_session_maker() as session:
                 await session.execute(text("DELETE FROM system_cache WHERE key = :key"), {"key": key})
                 await session.commit()
-        except Exception:
+        except OSError:
             pass
 
 

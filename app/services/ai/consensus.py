@@ -414,7 +414,7 @@ Vote NEEDS_INFO if more context is required."""
                 reasoning=response.reasoning,
                 concerns=response.concerns,
             )
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("Vote generation failed for %s: %s", voter_id, e)
             # Return abstain vote on failure
             return Vote(

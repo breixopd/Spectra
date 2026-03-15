@@ -122,7 +122,7 @@ class CacheService:
                     return _json_loads(row)
                 self._stats["misses"] += 1
                 return None
-        except Exception as e:
+        except (OSError, ConnectionError, TimeoutError, ValueError, TypeError) as e:
             logger.warning("Cache get error for %s: %s", key, e)
             self._stats["misses"] += 1
             return None
@@ -189,7 +189,7 @@ class CacheService:
                 await session.commit()
             self._stats["sets"] += 1
             return True
-        except Exception as e:
+        except (OSError, ConnectionError, TimeoutError, ValueError, TypeError) as e:
             logger.warning("Cache set error for %s: %s", key, e)
             return False
 
@@ -204,7 +204,7 @@ class CacheService:
                 if deleted:
                     self._stats["deletes"] += 1
                 return deleted
-        except Exception as e:
+        except (OSError, ConnectionError, TimeoutError) as e:
             logger.warning("Cache delete error for %s: %s", key, e)
             return False
 
@@ -228,7 +228,7 @@ class CacheService:
                 count = result.rowcount
                 self._stats["deletes"] += count
                 return count
-        except Exception as e:
+        except (OSError, ConnectionError, TimeoutError) as e:
             logger.warning("Cache delete pattern error for %s: %s", pattern, e)
             return 0
 
@@ -254,7 +254,7 @@ class CacheService:
                 result = await session.execute(stmt)
                 rows = result.scalars().all()
                 return [_json_loads(row) for row in rows]
-        except Exception as e:
+        except (OSError, ConnectionError, TimeoutError, ValueError, TypeError) as e:
             logger.warning("Cache get_by_pattern error for %s: %s", pattern, e)
             return []
 
@@ -273,7 +273,7 @@ class CacheService:
                 )
                 result = await session.execute(stmt)
                 return result.scalar_one() > 0
-        except Exception as e:
+        except (OSError, ConnectionError, TimeoutError) as e:
             logger.warning("Cache exists error for %s: %s", key, e)
             return False
 
@@ -392,7 +392,7 @@ class CacheService:
                 if count:
                     logger.info("Purged %d expired cache entries", count)
                 return count
-        except Exception as e:
+        except (OSError, ConnectionError, TimeoutError) as e:
             logger.warning("Cache purge_expired error: %s", e)
             return 0
 

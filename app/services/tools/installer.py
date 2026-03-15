@@ -57,7 +57,7 @@ class ToolInstaller:
                 "status": (tool.status.value if hasattr(tool.status, "value") else tool.status) if tool else "unknown",
                 "error": tool.error_message if tool else None,
             }
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("Installation failed for '%s': %s", tool_id, e)
             return {
                 "tool_id": tool_id,
@@ -86,7 +86,7 @@ class ToolInstaller:
                 "success": success,
                 "status": "uninstalled" if success else "failed",
             }
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("Uninstallation failed for '%s': %s", tool_id, e)
             return {
                 "tool_id": tool_id,
@@ -146,7 +146,7 @@ class ToolInstaller:
                         pass
                     return False
 
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.warning("Verification failed for %s: %s", tool.config.id, e)
                 # Fallback to shutil check if verification command fails to run
                 pass

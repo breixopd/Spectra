@@ -115,7 +115,7 @@ class TestGatewayClientHealthCheck:
 
     async def test_unhealthy(self, client: GatewayClient):
         with patch.object(client, "get", new_callable=AsyncMock) as mock:
-            mock.side_effect = Exception("boom")
+            mock.side_effect = ConnectionError("boom")
             result = await client.health_check()
         assert result["status"] == "unhealthy"
         assert "boom" in result["error"]

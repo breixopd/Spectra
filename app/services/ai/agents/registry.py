@@ -105,7 +105,7 @@ def _ensure_all_agents_imported() -> None:
     for mod_name in _agent_modules:
         try:
             importlib.import_module(mod_name)
-        except Exception:
+        except (OSError, RuntimeError, ImportError):
             logger.debug("Could not import agent module: %s", mod_name)
     _all_imported = True
     logger.debug("Agent registry: %d agents registered", len(_registry))

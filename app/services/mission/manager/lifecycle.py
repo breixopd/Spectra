@@ -78,7 +78,7 @@ class MissionLifecycleManager:
                     )
         except SQLAlchemyError as e:
             logger.error("Failed to persist mission start (DB error): %s", e)
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("Failed to persist mission start (Unexpected): %s", e)
 
         return mission
@@ -95,7 +95,7 @@ class MissionLifecycleManager:
                     vpn_mgr = VPNManager()
                     await vpn_mgr.disconnect(mission.vpn_config)
                     logger.info("VPN disconnected for stopped mission %s", mission_id)
-                except Exception as e:
+                except (OSError, RuntimeError, ImportError) as e:
                     logger.error("Failed to disconnect VPN for mission %s: %s", mission_id, e)
             mission.stop()
             # Update DB status immediately
@@ -144,7 +144,7 @@ class MissionLifecycleManager:
                     )
         except SQLAlchemyError as e:
             logger.error("Failed to update mission DB (DB error): %s", e)
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("Failed to update mission DB (Unexpected): %s", e)
 
         # Sync to distributed state store
@@ -157,7 +157,7 @@ class MissionLifecycleManager:
                 "user_id": mission.user_id,
                 "started_at": mission.start_time.isoformat(),
             })
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.warning("Failed to sync mission state to store: %s", e)
 
     async def save_checkpoint(self, mission: Mission) -> None:
@@ -173,7 +173,7 @@ class MissionLifecycleManager:
                         resume=True,
                     )
             logger.info("Checkpoint saved for mission %s", mission.id)
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("Failed to save checkpoint for mission %s: %s", mission.id, e)
 
     async def resume_mission_from_db(self, mission_id: str) -> Mission:
@@ -197,7 +197,7 @@ class MissionLifecycleManager:
                     return mission
         except ValueError:
             raise
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             raise RuntimeError(f"Failed to resume mission {mission_id}: {e}") from e
 
     async def initialize_mission(self, mission: Mission) -> AgentContext | None:
@@ -223,10 +223,10 @@ class MissionLifecycleManager:
                             job = Job(job_id)
                             await job.result(timeout=30)
                             mission.log("[VPN] Tunnel established successfully")
-                        except Exception:
+                        except (OSError, RuntimeError, TimeoutError):
                             mission.log("[VPN] Warning: tunnel not confirmed after 30s, proceeding anyway")
                             logger.warning("VPN tunnel not confirmed for mission %s after 30s", mission.id)
-                except Exception as vpn_err:
+                except (OSError, RuntimeError, ImportError) as vpn_err:
                     mission.log(f"[VPN] Failed to connect '{mission.vpn_config}': {vpn_err}")
                     logger.error("VPN connect failed for mission %s: %s", mission.id, vpn_err)
             else:
@@ -240,7 +240,7 @@ class MissionLifecycleManager:
                         mission.log(f"[VPN] {len(configs)} VPN config(s) available")
                     else:
                         mission.log("[VPN] No VPN connection active - using direct network")
-                except Exception:
+                except (OSError, RuntimeError, ImportError):
                     mission.log("[VPN] Could not check VPN status")
 
             self._broadcast_state(mission.id, "mission_controller", "running", plan="Initializing...")
@@ -267,7 +267,7 @@ class MissionLifecycleManager:
                 max_concurrency=3,
             )
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             mission.set_status("failed")
             mission.log(f"Initialization failed: {e}")
             logger.error("Mission init error for %s: %s", mission.id, e, exc_info=True)

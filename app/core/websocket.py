@@ -68,7 +68,7 @@ class ConnectionManager:
 
                 payload = decode_token(token)
                 user_id = payload.get("sub")
-            except (JWTError, Exception):
+            except (JWTError, ValueError, KeyError):
                 await websocket.close(code=4001, reason="Invalid or expired token")
                 return False
 
@@ -138,7 +138,7 @@ class ConnectionManager:
                     await connection.send_text(message)
                 else:
                     disconnected.append(connection)
-            except Exception as e:
+            except (OSError, RuntimeError, ConnectionError) as e:
                 logger.warning("Failed to send to WebSocket: %s", e)
                 disconnected.append(connection)
 
@@ -164,7 +164,7 @@ class ConnectionManager:
             if websocket.client_state == WebSocketState.CONNECTED:
                 await websocket.send_text(message)
                 return True
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError) as e:
             logger.warning("Failed to send personal message: %s", e)
         return False
 
@@ -213,7 +213,7 @@ class ConnectionManager:
         try:
             message = json.dumps({"type": event_type, "data": data}, default=json_serializer)
             await self.broadcast(message)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.error("Failed to serialize event %s: %s", event_type, e)
 
     async def join_room(self, websocket: WebSocket, room_id: str) -> None:
@@ -250,7 +250,7 @@ class ConnectionManager:
         for ws in members:
             try:
                 await ws.send_text(message)
-            except Exception:
+            except (OSError, RuntimeError, ConnectionError):
                 dead.append(ws)
         if dead:
             async with self._lock:
@@ -292,7 +292,7 @@ class ConnectionManager:
                 payload = _json.dumps({"channel": channel, "data": data})[:7999]
                 await conn.execute(text("SELECT pg_notify('spectra_ws', :payload)"), {"payload": payload})
                 await conn.commit()
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError) as e:
             logger.debug("PG NOTIFY broadcast failed (non-critical): %s", e)
 
     async def broadcast_to_room_cross_instance(self, room_id: str, data: dict[str, Any]) -> None:
@@ -329,7 +329,7 @@ class ConnectionManager:
                 await conn.close()
         except ImportError:
             logger.debug("asyncpg not available — PG LISTEN disabled")
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError) as e:
             logger.warning("PG LISTEN for WebSocket relay failed: %s", e)
 
     def _on_pg_notification(self, connection: Any, pid: int, channel: str, payload: str) -> None:
@@ -341,7 +341,7 @@ class ConnectionManager:
             if ws_channel:
                 # Forward to local connections only (don't re-broadcast to PG)
                 asyncio.create_task(self._local_room_broadcast(ws_channel, data))
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.debug("PG notification parse error: %s", e)
 
     async def _local_room_broadcast(self, room_id: str, data: dict[str, Any]) -> None:

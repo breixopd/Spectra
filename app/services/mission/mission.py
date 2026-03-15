@@ -257,7 +257,7 @@ class Mission:
             template_id = finding.get("template-id") or finding.get("name", "")
             if template_id and memory.is_false_positive(template_id):
                 return
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.debug("Non-critical operation failed: %s", e)
 
         # Auto-tag with MITRE ATT&CK techniques
@@ -265,7 +265,7 @@ class Mission:
             from app.services.ai.mitre_attack import tag_finding_with_attack
 
             finding = tag_finding_with_attack(finding)
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.debug("Non-critical operation failed: %s", e)
 
         finding["count"] = 1
@@ -475,7 +475,7 @@ class Mission:
         if self.plan:
             try:
                 plan_data = self.plan.model_dump()
-            except Exception:
+            except (ValueError, TypeError, KeyError):
                 plan_data = None
 
         return {
@@ -518,7 +518,7 @@ class Mission:
         if data.get("attack_surface"):
             try:
                 mission.attack_surface = AttackSurface.model_validate(data["attack_surface"])
-            except Exception as e:
+            except (ValueError, TypeError, KeyError) as e:
                 logger.warning("Failed to restore attack surface: %s", e)
 
         # Restore plan
@@ -526,14 +526,14 @@ class Mission:
             try:
                 from app.services.ai.agents.mission_controller import MissionPlan
                 mission.plan = MissionPlan.model_validate(data["plan"])
-            except Exception as e:
+            except (ValueError, TypeError, KeyError) as e:
                 logger.warning("Failed to restore plan: %s", e)
 
         # Restore task tree
         if data.get("task_tree"):
             try:
                 mission.task_tree = PentestTaskTree.from_dict(data["task_tree"])
-            except Exception as e:
+            except (ValueError, TypeError, KeyError) as e:
                 logger.warning("Failed to restore task tree: %s", e)
 
         return mission

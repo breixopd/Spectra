@@ -78,7 +78,7 @@ class MissionExecutionManager:
             logger.info("Mission %s cancelled", mission.id)
             self._broadcast_state("mission_controller", "cancelled")
             await self.lifecycle.update_db_status(mission)
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             mission.set_status("failed")
             mission.log(f"Mission failed: {e}")
             logger.error("Mission %s failed: %s", mission.id, e, exc_info=True)

@@ -130,7 +130,7 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
                 action=report,
             )
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("Report generation failed: %s", e)
             return AgentResult(
                 success=False,
@@ -205,7 +205,7 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
                 temperature=0.3,
             )
             return response.strip()
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.warning("LLM summary generation failed, using fallback: %s", e)
             # Fallback to template
             return f"""

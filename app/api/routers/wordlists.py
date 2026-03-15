@@ -81,7 +81,7 @@ async def list_wordlists(
             try:
                 with f.open("r", errors="ignore") as fh:
                     lines = sum(1 for _ in fh)
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 logger.debug("Failed to count wordlist lines: %s", e)
             system.append(
                 {
@@ -103,7 +103,7 @@ async def list_wordlists(
             try:
                 with f.open("r", errors="ignore") as fh:
                     lines = sum(1 for _ in fh)
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 logger.debug("Failed to count wordlist lines: %s", e)
             user_local.append(
                 {
@@ -175,7 +175,7 @@ async def download_preset(
             dest.write_bytes(resp.content)
             logger.info("Downloaded preset wordlist: %s (%d bytes)", preset_id, len(resp.content))
             return {"status": "downloaded", "filename": f"{preset_id}.txt", "lines": resp.text.count("\n")}
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
         logger.error("Failed to download preset %s: %s", preset_id, e)
         raise HTTPException(status_code=502, detail=f"Download failed: {e}") from e
 

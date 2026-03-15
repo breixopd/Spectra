@@ -319,11 +319,11 @@ class SandboxPool:
                 for c in containers:
                     try:
                         c.stop(timeout=5)
-                    except Exception:
+                    except OSError:
                         logger.debug("Failed to stop container %s during cleanup", getattr(c, "name", "unknown"))
                     try:
                         c.remove(force=True)
-                    except Exception:
+                    except OSError:
                         logger.debug("Failed to remove container %s during cleanup", getattr(c, "name", "unknown"))
                     count += 1
 
@@ -332,7 +332,7 @@ class SandboxPool:
                 for net in networks:
                     try:
                         net.remove()
-                    except Exception:
+                    except OSError:
                         logger.debug("Failed to remove orphaned network %s", getattr(net, "name", "unknown"))
                 if networks:
                     logger.info("Cleaned up %d orphaned sandbox networks", len(networks))
@@ -399,7 +399,7 @@ class SandboxPool:
         try:
             c = self._client.containers.get(container_id)
             return c.status == "running"
-        except Exception:
+        except OSError:
             # Expected when container was already removed (race with cleanup)
             return False
 
@@ -412,12 +412,12 @@ class SandboxPool:
             try:
                 c = self._client.containers.get(container_id)
                 c.stop(timeout=10)
-            except Exception:
+            except OSError:
                 logger.debug("Failed to stop container %s (may already be stopped)", name, exc_info=True)
             try:
                 c = self._client.containers.get(container_id)
                 c.remove(force=True)
-            except Exception:
+            except OSError:
                 logger.debug("Failed to remove container %s (may already be removed)", name, exc_info=True)
 
         await asyncio.to_thread(_do_stop)
@@ -435,7 +435,7 @@ class SandboxPool:
                 for cid in list(net.attrs.get("Containers", {}).keys()):
                     try:
                         net.disconnect(cid, force=True)
-                    except Exception:
+                    except OSError:
                         logger.debug(
                             "Failed to disconnect container %s from network %s",
                             cid[:12],
@@ -444,7 +444,7 @@ class SandboxPool:
                         )
                 net.remove()
                 logger.info("Removed isolated network %s (sandbox=%s)", network_id[:12], sandbox_name)
-            except Exception as exc:
+            except OSError as exc:
                 logger.debug("Network %s already removed or not found: %s", network_id[:12], exc)
 
         await asyncio.to_thread(_do_remove)

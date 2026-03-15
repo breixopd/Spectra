@@ -331,5 +331,5 @@ async def save_pdf_report(mission_id: str, pdf_bytes: bytes) -> str:
         key = f"{mission_id}/reports/{filename}"
         location = await storage.upload(settings.S3_BUCKET_MISSIONS, key, encrypted)
         return location
-    except Exception as e:
+    except (OSError, ValueError) as e:
         raise RuntimeError(f"Failed to save PDF report for {mission_id}: {e}") from e

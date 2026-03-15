@@ -29,7 +29,7 @@ def with_retry(max_retries: int = HTTP_CLIENT_MAX_RETRIES, backoff_base: float =
                     return await func(*args, **kwargs)
                 except (asyncio.CancelledError, KeyboardInterrupt):
                     raise
-                except Exception as exc:
+                except (OSError, RuntimeError, ValueError) as exc:
                     last_exc = exc
                     if attempt < max_retries:
                         wait = min(backoff_base**attempt, max_backoff)

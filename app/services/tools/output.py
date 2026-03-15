@@ -318,5 +318,5 @@ def record_to_memory(
                     os_family, ineffective_tools=[tool_name]
                 )
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Memory recording failed: %s", e)

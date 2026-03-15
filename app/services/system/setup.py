@@ -64,7 +64,7 @@ class SystemSetupService:
 
             return user
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             await self.session.rollback()
             logger.error("Setup failed: %s", e, exc_info=True)
             raise HTTPException(
@@ -113,7 +113,7 @@ class SystemSetupService:
 
         except ImportError:
             logger.error("Cryptography package missing - cannot generate keys")
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("Failed to generate signing keys: %s", e)
 
     async def _create_admin_user(self, setup_in: SystemSetupRequest) -> User:
@@ -211,7 +211,7 @@ class SystemSetupService:
             try:
                 with open(config_path, encoding="utf-8") as f:
                     data = json.load(f)
-            except Exception as e:
+            except (OSError, ValueError, KeyError) as e:
                 logger.warning("Could not read existing infra config: %s", e)
 
         data.update(updates)
@@ -220,7 +220,7 @@ class SystemSetupService:
             config_path.parent.mkdir(parents=True, exist_ok=True)
             with open(config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
-        except Exception as e:
+        except (OSError, ValueError, KeyError) as e:
             logger.error("Failed to save infra config: %s", e)
 
     async def _reinitialize_llm(self, setup_in: SystemSetupRequest) -> None:
@@ -250,7 +250,7 @@ class SystemSetupService:
             logger.info(
                 "LLM client reinitialized with provider: %s", setup_in.llm_provider
             )
-        except Exception as e:
+        except (OSError, RuntimeError, ImportError) as e:
             logger.error("Failed to initialize LLM client: %s", e)
             # Don't fail the whole setup if LLM fails, user can fix later
 
@@ -260,7 +260,7 @@ class SystemSetupService:
             # Use 1 instead of "1" for cross-db compatibility (Postgres/SQLite)
             await self.session.execute(text("SELECT 1"))
             return True
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             logger.error("Database check failed: %s", e)
             return False
 
@@ -283,7 +283,7 @@ class SystemSetupService:
                 return True
             logger.error("Docker check failed: %s", stderr.decode())
             return False
-        except Exception as e:
+        except (OSError, RuntimeError, ImportError) as e:
             logger.error("Docker check failed: %s", e)
             return False
 
@@ -310,7 +310,7 @@ class SystemSetupService:
                         logger.info("Stopping container: %s", name)
                         await asyncio.create_subprocess_exec("docker", "stop", name)
                         break
-        except Exception as e:
+        except (OSError, RuntimeError, ImportError) as e:
             logger.warning("Failed to stop container *%s: %s", container_name_suffix, e)
 
     async def check_directories(self) -> bool:
@@ -328,7 +328,7 @@ class SystemSetupService:
                     logger.error("Directory missing: %s", d)
                     return False
             return True
-        except Exception as e:
+        except (OSError, ValueError, KeyError) as e:
             logger.error("Directory check failed: %s", e)
             return False
 

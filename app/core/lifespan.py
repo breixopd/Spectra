@@ -25,6 +25,7 @@ except ImportError:
 from app.core.cache import CacheService, set_cache
 from app.core.config import settings
 from app.core.database import async_session_maker, engine
+from sqlalchemy.exc import SQLAlchemyError
 from app.core.events import EventType, events
 from app.core.telemetry import telemetry
 from app.services.ai.llm import close_global_llm_client
@@ -53,7 +54,7 @@ async def cache_cleanup_loop() -> None:
         except asyncio.CancelledError:
             logger.info("Cache cleanup task stopped")
             break
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("Cache cleanup error: %s", e)
 
 
@@ -72,7 +73,7 @@ async def periodic_cleanup_loop() -> None:
         except asyncio.CancelledError:
             logger.info("System cleanup task stopped")
             break
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.error("System cleanup error: %s", e)
 
 
@@ -120,7 +121,7 @@ async def sandbox_watchdog_loop() -> None:
         except asyncio.CancelledError:
             logger.info("Sandbox watchdog stopped")
             break
-        except Exception as e:
+        except (OSError, RuntimeError, SQLAlchemyError) as e:
             logger.error("Sandbox watchdog error: %s", e)
 
 
@@ -136,7 +137,7 @@ async def set_system_status(status: str, message: str) -> None:
                 "message": message,
                 "timestamp": datetime.now().isoformat(),
             }, ttl=3600)
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.debug("Failed to set system status: %s", e)
 
 
@@ -154,7 +155,7 @@ async def add_system_operation(op_id: str, op_type: str, desc: str) -> None:
                 "started_at": datetime.now().isoformat(),
             }
             await cache.set(f"spectra:system:operations:{op_id}", op, ttl=3600)
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.debug("Failed to add system operation: %s", e)
 
 
@@ -166,7 +167,7 @@ async def remove_system_operation(op_id: str) -> None:
         cache = get_cache()
         if cache:
             await cache.delete(f"spectra:system:operations:{op_id}")
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.debug("Failed to remove system operation: %s", e)
 
 
@@ -189,7 +190,7 @@ async def _mark_all_tools_ready() -> None:
             tool.status = ToolStatus.READY
 
         logger.info("Marked %d tools as ready (no worker)", len(tools))
-    except Exception as e:
+    except (OSError, RuntimeError, ImportError) as e:
         logger.warning("Failed to mark tools as ready: %s", e)
 
 
@@ -213,7 +214,7 @@ async def run_startup_checks() -> None:
         logger.info("[CHECK][OK] Database connectivity verified")
     except TimeoutError:
         logger.warning("[CHECK][WARN] Database connectivity check timed out (10s)")
-    except Exception as e:
+    except (OSError, RuntimeError, SQLAlchemyError) as e:
         logger.warning("[CHECK][WARN] Database connectivity check failed: %s", e)
 
     # 2. Required tables existence
@@ -235,7 +236,7 @@ async def run_startup_checks() -> None:
             logger.warning("[CHECK][WARN] Missing database tables: %s", ", ".join(sorted(missing)))
         else:
             logger.info("[CHECK][OK] All expected tables present")
-    except Exception as e:
+    except (OSError, RuntimeError, SQLAlchemyError) as e:
         logger.warning("[CHECK][WARN] Table existence check failed: %s", e)
 
     # 3. Disk space for data directory
@@ -250,7 +251,7 @@ async def run_startup_checks() -> None:
             )
         else:
             logger.info("[CHECK][OK] Disk space: %.0f MB free", free_mb)
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError) as e:
         logger.warning("[CHECK][WARN] Disk space check failed: %s", e)
 
     logger.info("[CHECK] Startup checks complete")
@@ -276,14 +277,14 @@ async def run_startup_tasks() -> None:
             queue = PostgresJobQueue()
             await queue.enqueue_job("install_all_tools_job")
             logger.info("Queued tool installation job via PostgresJobQueue")
-        except Exception as e:
+        except (OSError, RuntimeError, ImportError) as e:
             logger.debug("Could not queue install job (tools worker may not be running): %s", e)
 
         await remove_system_operation("tool_install")
         await set_system_status("ready", "System ready")
         logger.info("Startup tasks completed")
 
-    except Exception as e:
+    except (OSError, RuntimeError, ImportError) as e:
         logger.warning("Startup tasks failed: %s", e)
         await set_system_status("ready", "System ready (some tasks skipped)")
 
@@ -370,14 +371,14 @@ async def _initialize_services() -> None:
             try:
                 await embed_service._load_model()
                 logger.info("[OK] Embedding model loaded")
-            except Exception as e:
+            except (OSError, RuntimeError, ImportError) as e:
                 logger.warning("Embedding model loading failed: %s", e)
             finally:
                 await remove_system_operation("embeddings")
 
         asyncio.create_task(load_embeddings_with_status())
         logger.info("Triggered embedding model preloading")
-    except Exception as e:
+    except (OSError, RuntimeError, ImportError) as e:
         logger.warning("Failed to trigger embedding preloading: %s", e)
 
     await set_system_status("initializing", "Loading tool plugins...")
@@ -425,7 +426,7 @@ async def _initialize_services() -> None:
                             await warm_manager.maintain()
                         except asyncio.CancelledError:
                             break
-                        except Exception as e:
+                        except (OSError, RuntimeError) as e:
                             logger.error("Warm pool maintain error: %s", e)
 
                 asyncio.create_task(warm_pool_maintain_loop())
@@ -456,7 +457,7 @@ async def _initialize_services() -> None:
         pool_mgr = get_pool_manager()
         await pool_mgr.start_health_loop()
         logger.info("[OK] Server pool manager initialized")
-    except Exception as e:
+    except (OSError, RuntimeError, ImportError) as e:
         logger.warning("Server pool manager init failed: %s", e)
 
     # Trigger background setup tasks (including tool installation)
@@ -491,7 +492,7 @@ async def _start_event_bridge() -> Any | None:
         bridge.start()
         logger.info("[OK] Event bridge started")
         return bridge
-    except Exception as e:
+    except (OSError, RuntimeError, ImportError) as e:
         logger.warning("Failed to start event bridge: %s", e)
         return None
 
@@ -503,7 +504,7 @@ async def _shutdown_services() -> None:
         from app.services.storage import close_storage_service
         await close_storage_service()
         logger.info("[OK] Storage service closed")
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.warning("Storage service close error: %s", e)
 
     logger.info("[SHUTDOWN] Shutting down Spectra...")
@@ -513,7 +514,7 @@ async def _shutdown_services() -> None:
         from app.services.scaling import get_pool_manager
         pool_mgr = get_pool_manager()
         await pool_mgr.stop_health_loop()
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.warning("Server pool shutdown error: %s", e)
 
     # Clean up warm pool first
@@ -522,7 +523,7 @@ async def _shutdown_services() -> None:
         wm = get_warm_pool_manager()
         if wm:
             await wm.cleanup()
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.warning("Warm pool cleanup error: %s", e)
 
     # Clean up sandbox containers (before cancelling tasks)
@@ -533,7 +534,7 @@ async def _shutdown_services() -> None:
         if pool and pool.available:
             cleaned = await pool.cleanup_all()
             logger.info("[OK] Cleaned up %d sandbox containers", cleaned)
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.warning("Sandbox cleanup error: %s", e)
 
     try:
@@ -564,7 +565,7 @@ async def _shutdown_services() -> None:
         await engine.dispose()
         logger.info("[OK] Database connections closed")
 
-    except Exception as e:
+    except (OSError, RuntimeError) as e:
         logger.error("[ERROR] Shutdown error: %s", e)
 
     logger.info("[STOPPED] Spectra stopped.")
@@ -583,7 +584,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await _initialize_services()
         logger.info("[READY] Spectra is ready!")
         _event_bridge = await _start_event_bridge()
-    except Exception as e:
+    except (OSError, RuntimeError, ImportError) as e:
         logger.error("[ERROR] Startup failed: %s", e)
         raise
 
@@ -593,7 +594,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         try:
             _event_bridge.stop()
             logger.info("[OK] Event bridge stopped")
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             logger.debug("Event bridge stop failed: %s", e)
 
     await _shutdown_services()

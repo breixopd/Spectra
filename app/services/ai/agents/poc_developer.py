@@ -108,6 +108,6 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
 
             return AgentResult(success=True, action=action)
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("POC Developer failed: %s", e)
             return AgentResult(success=False, error=str(e))

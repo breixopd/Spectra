@@ -8,6 +8,7 @@ from app.services.tools.models import (
     RegisteredTool,
     ToolStatus,
 )
+from app.services.tools.registry.exceptions import PluginSignatureError, PluginValidationError
 from app.services.tools.registry.validator import PluginValidator
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ class PluginLoader:
                     )
 
                 loaded_ids.add(tool_id)
-            except Exception as e:
+            except (OSError, ValueError, KeyError, PluginValidationError, PluginSignatureError) as e:
                 logger.error("Failed to load plugin %s: %s", json_file.name, e)
 
         # Remove tools that are no longer on disk

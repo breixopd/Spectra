@@ -113,7 +113,7 @@ async def _deliver(wh: Webhook, event: str, payload: dict[str, Any]) -> None:
                     event,
                     attempt + 1,
                 )
-            except Exception:
+            except (OSError, RuntimeError, ConnectionError, TimeoutError):
                 logger.warning(
                     "Webhook %s delivery failed for %s (attempt %d)", wh.id, event, attempt + 1, exc_info=True
                 )

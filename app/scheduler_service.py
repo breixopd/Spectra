@@ -54,7 +54,7 @@ class SchedulerService:
                 from app.core.lifespan import sandbox_watchdog_loop
 
                 await sandbox_watchdog_loop()
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.error("Sandbox watchdog error: %s", e)
             await asyncio.sleep(60)
 
@@ -75,7 +75,7 @@ class SchedulerService:
                 tracker = UsageTracker()
                 await tracker.reset_daily_counters()
                 logger.info("Daily quota counters reset")
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.error("Quota reset error: %s", e)
 
     async def _metrics_collector(self):
@@ -87,7 +87,7 @@ class SchedulerService:
                 store = get_metrics_store()
                 if store:
                     await store.collect()
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.error("Metrics collection error: %s", e)
             await asyncio.sleep(30)
 
@@ -104,7 +104,7 @@ class SchedulerService:
                         {"status": "running", "timestamp": datetime.utcnow().isoformat()},
                         ttl=60,
                     )
-            except Exception:
+            except OSError:
                 pass
             await asyncio.sleep(15)
 
@@ -125,7 +125,7 @@ class SchedulerService:
                 svc = BackupService()
                 result = await svc.create_backup()
                 logger.info("Scheduled backup: %s", result.get("status"))
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.error("Scheduled backup failed: %s", e)
 
             await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)

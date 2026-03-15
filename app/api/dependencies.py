@@ -36,7 +36,7 @@ def get_ui_user(request: Request) -> dict | None:
         payload = decode_token(token)
         if payload and payload.get("sub"):
             return payload
-    except Exception:
+    except (OSError, RuntimeError, ValueError):
         logger.debug("UI token decode failed", exc_info=True)
     return None
 

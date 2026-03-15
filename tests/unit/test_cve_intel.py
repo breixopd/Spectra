@@ -270,7 +270,7 @@ class TestFetchCVEsFromNVD:
                     mock_client = AsyncMock()
                     MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client)
                     MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
-                    mock_client.get = AsyncMock(side_effect=Exception("network fail"))
+                    mock_client.get = AsyncMock(side_effect=RuntimeError("network fail"))
 
                     result = await fetch_cves_from_nvd("test")
                     assert result == []
@@ -342,7 +342,7 @@ class TestLookupCVEsLive:
 
     @pytest.mark.asyncio
     async def test_live_failure_falls_back(self):
-        with patch("app.services.ai.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, side_effect=Exception("fail")):
+        with patch("app.services.ai.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, side_effect=RuntimeError("fail")):
             with patch("app.services.ai.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
                 results = await lookup_cves_live(product="Apache")
                 assert len(results) > 0  # Falls back to builtin

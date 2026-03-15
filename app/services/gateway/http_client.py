@@ -85,7 +85,7 @@ class GatewayClient:
     async def health_check(self) -> dict:
         try:
             return await self.get("/health")
-        except Exception as e:
+        except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
             return {"status": "unhealthy", "error": str(e)}
 
     async def close(self) -> None:

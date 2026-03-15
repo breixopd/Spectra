@@ -55,7 +55,7 @@ async def test_send_webhook_handles_network_exception():
     from app.worker.notification_jobs import send_webhook_notification
 
     mock_client = AsyncMock()
-    mock_client.post = AsyncMock(side_effect=Exception("connection refused"))
+    mock_client.post = AsyncMock(side_effect=ConnectionError("connection refused"))
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 

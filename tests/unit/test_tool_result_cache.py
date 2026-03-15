@@ -84,7 +84,7 @@ class TestCacheGet:
         cache = ToolResultCache()
 
         mock_session = AsyncMock()
-        mock_session.execute.side_effect = Exception("connection failed")
+        mock_session.execute.side_effect = OSError("connection failed")
 
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
@@ -133,7 +133,7 @@ class TestCacheSet:
         cache = ToolResultCache()
 
         mock_session = AsyncMock()
-        mock_session.execute.side_effect = Exception("write failed")
+        mock_session.execute.side_effect = OSError("write failed")
 
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)

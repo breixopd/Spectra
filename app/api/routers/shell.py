@@ -34,7 +34,7 @@ async def _keepalive(websocket: WebSocket) -> None:
         while True:
             await asyncio.sleep(KEEPALIVE_INTERVAL)
             await websocket.send_json({"type": "ping"})
-    except Exception:
+    except OSError:
         pass
 
 
@@ -89,7 +89,7 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
             await session.write(data)
     except WebSocketDisconnect:
         await session.disconnect_websocket()
-    except Exception as e:
+    except (OSError, RuntimeError, ConnectionError) as e:
         logger.error("WebSocket error: %s", e)
         await session.disconnect_websocket()
     finally:

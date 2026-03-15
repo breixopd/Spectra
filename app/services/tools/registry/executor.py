@@ -54,7 +54,7 @@ async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, 
             start_new_session=True,
             env=env,
         )
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         logger.error("Failed to start subprocess: %s", e)
         return (-1, "", str(e))
 
@@ -99,7 +99,7 @@ async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, 
 
         return (-1, "", f"Command timed out after {timeout}s")
 
-    except Exception as e:
+    except (OSError, RuntimeError, ValueError) as e:
         # Clean up on any other error
         for task in (stdout_task, stderr_task):
             if task is not None:

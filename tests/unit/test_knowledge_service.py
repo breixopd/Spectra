@@ -178,7 +178,7 @@ class TestRAGBackendSelection:
 
     @pytest.mark.asyncio
     async def test_rag_method_exception_returns_empty_string(self, mock_rag_service):
-        mock_rag_service.get_context_for_prompt.side_effect = Exception("search error")
+        mock_rag_service.get_context_for_prompt.side_effect = RuntimeError("search error")
 
         with patch("app.services.ai.knowledge.get_rag_service", return_value=mock_rag_service):
             result = await get_exploit_context("query")
@@ -323,7 +323,7 @@ class TestGetMissionContext:
     async def test_exception_returns_empty_string(self):
         with patch(
             "app.services.ai.knowledge.get_rag_service",
-            side_effect=Exception("fail"),
+            side_effect=RuntimeError("fail"),
         ):
             result = await get_mission_context("directive", target="host")
 
@@ -462,7 +462,7 @@ class TestGetAvailableToolsContext:
         tools = [_make_mock_tool("Nmap", "nmap", "scanner", True)]
 
         mock_registry = MagicMock()
-        mock_registry.sync_status_from_cache = AsyncMock(side_effect=Exception("cache down"))
+        mock_registry.sync_status_from_cache = AsyncMock(side_effect=RuntimeError("cache down"))
         mock_registry.list_tools.return_value = tools
 
         with patch("app.services.tools.registry.get_registry", return_value=mock_registry):
@@ -536,7 +536,7 @@ class TestIndexExploitAttempt:
     async def test_failure_returns_false(self):
         with patch(
             "app.services.ai.knowledge.get_rag_service",
-            side_effect=Exception("connection refused"),
+            side_effect=RuntimeError("connection refused"),
         ):
             result = await index_exploit_attempt(
                 vector_name="test",

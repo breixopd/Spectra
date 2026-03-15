@@ -185,7 +185,7 @@ class EventBus:
                 result = handler(event)
                 if asyncio.iscoroutine(result):
                     await result
-            except Exception as e:
+            except (OSError, RuntimeError, ValueError) as e:
                 logger.error("Event handler error for %s: %s", event_name, e, exc_info=True)
                 if critical:
                     raise
