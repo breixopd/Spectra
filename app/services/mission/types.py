@@ -6,7 +6,7 @@ IDE support and static analysis without changing runtime behaviour.
 
 from __future__ import annotations
 
-from typing_extensions import NotRequired, TypedDict
+from typing import NotRequired, TypedDict
 
 
 class ToolExecutionRecord(TypedDict):
@@ -84,6 +84,7 @@ class FindingDict(TypedDict, total=False):
     cvss: float
     location: str
     recommendation: str
+    count: int
 
 
 class MissionListItem(TypedDict):

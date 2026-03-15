@@ -8,6 +8,8 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from app.core.paths import data_path
+
 if TYPE_CHECKING:
     from app.services.mission.mission import Mission
     from app.services.tools.models import ToolExecutionResult
@@ -50,7 +52,7 @@ def validate_tool_name(tool_name: str) -> bool:
 
 def prepare_output_directory(mission_id: str, run_id: str) -> Path:
     """Create and return the output directory path."""
-    path = Path("data/missions") / mission_id / "scans" / run_id
+    path = data_path("missions", mission_id, "scans", run_id)
     path.mkdir(parents=True, exist_ok=True)
     return path
 

@@ -185,27 +185,6 @@ def _build_legacy_profiles(rows: dict[str, str]) -> RuntimeAIConfig:
 
     profiles["default"] = _normalize_profile(default_profile)
 
-    has_api_fallback = bool(rows.get("LLM_API_KEY"))
-    if raw_provider_str == "ollama" and has_api_fallback:
-        profiles["api-fallback"] = _normalize_profile(
-            {
-                "provider": "litellm",
-                "model": rows.get("LLM_MODEL") or settings.LLM_MODEL,
-                "base_url": rows.get("LLM_API_BASE_URL") or settings.LLM_API_BASE_URL,
-                "api_key": rows.get("LLM_API_KEY"),
-            }
-        )
-        fallbacks["default"] = ["api-fallback"]
-    elif raw_provider_str != "ollama" and provider == "litellm" and _as_bool(rows.get("OLLAMA_ENABLED")):
-        profiles["ollama"] = _normalize_profile(
-            {
-                "provider": "ollama",
-                "model": rows.get("OLLAMA_MODEL") or settings.OLLAMA_MODEL,
-                "base_url": rows.get("OLLAMA_HOST") or settings.OLLAMA_HOST,
-            }
-        )
-        fallbacks["default"] = ["ollama"]
-
     for tier_name, row_key in (
         ("tier1", "LLM_TIER1_MODEL"),
         ("tier2", "LLM_TIER2_MODEL"),

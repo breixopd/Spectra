@@ -4,10 +4,10 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Any, ClassVar
 
 from app.core.enums import MissionStatus
+from app.core.paths import data_path
 from app.core.state_machine import MissionStateMachine
 from app.core.websocket import manager as ws_manager
 from app.models.attack_surface import (
@@ -93,7 +93,7 @@ class Mission:
 
         # Mission-scoped logger and output directory
         self._logger = logging.getLogger(f"spectra.mission.{self.id[:8]}")
-        self.output_dir = Path(f"data/missions/{self.id}")
+        self.output_dir = data_path("missions", self.id)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Inter-agent shared blackboard
@@ -246,14 +246,15 @@ class Mission:
 
     def add_finding(self, finding: FindingDict) -> None:
         """Add a finding to the mission, deduplicating by key fields."""
-        if self._is_duplicate_finding(finding):
+        finding_data = dict(finding)
+        if self._is_duplicate_finding(finding_data):
             return
-        if self._is_known_false_positive(finding):
+        if self._is_known_false_positive(finding_data):
             return
-        finding = self._apply_mitre_tags(finding)
-        finding["count"] = 1
-        self.findings.append(finding)
-        self._broadcast("finding", finding)
+        finding_data = self._apply_mitre_tags(finding_data)
+        finding_data["count"] = 1
+        self.findings.append(finding_data)
+        self._broadcast("finding", finding_data)
 
     def _is_duplicate_finding(self, finding: dict[str, Any]) -> bool:
         """Check for exact or fuzzy duplicates; merge into existing if found."""

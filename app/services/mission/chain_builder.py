@@ -19,6 +19,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.core.paths import data_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -180,7 +182,7 @@ def get_builtin_chains() -> list[ExploitChain]:
     return chains
 
 
-CUSTOM_CHAINS_PATH = Path("data/cache/custom_chains.json")
+CUSTOM_CHAINS_PATH = data_path("cache", "custom_chains.json")
 
 
 def load_custom_chains() -> list[ExploitChain]:

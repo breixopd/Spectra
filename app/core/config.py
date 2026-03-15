@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "text"  # "json" for structured logs in production, "text" for dev
+    DATA_ROOT: str = "/app/data"
 
     # --- Request Timeout ---
     REQUEST_TIMEOUT_SECONDS: int = 60  # Cancel requests exceeding this (0 = disabled)
@@ -150,6 +151,7 @@ class Settings(BaseSettings):
     # --- Sandbox Pool ---
     SANDBOX_IMAGE: str = "spectra-tools"
     SANDBOX_NETWORK: str = "spectra-network"
+    SANDBOX_PLUGINS_VOLUME: str = "spectra_plugins"
     SANDBOX_MAX_CONTAINERS: int = 10
 
     @field_validator("SANDBOX_MAX_CONTAINERS")

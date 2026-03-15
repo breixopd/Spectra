@@ -198,19 +198,10 @@ class LiteLLMRouter(LLMClient):
         try:
             router = self._get_router()
 
-            if router:
-                response = await router.acompletion(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    timeout=timeout or settings.LLM_TIMEOUT,
-                )
-            else:
-                if not self._direct_fallback_warned:
-                    logger.warning("LiteLLM router unavailable, using direct API call (no fallback chain)")
-                    self._direct_fallback_warned = True
-                response = await litellm.acompletion(
+            if not router:
+                raise RuntimeError("LiteLLM router unavailable")
+
+            response = await router.acompletion(
                     model=model,
                     messages=messages,
                     temperature=temperature,
@@ -293,17 +284,8 @@ class LiteLLMRouter(LLMClient):
                 delta = chunk.choices[0].delta
                 if delta and delta.content:
                     yield delta.content
-        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
-            logger.warning("Streaming failed, falling back to non-streaming: %s", e)
-            result = await self.generate(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=timeout,
-                task_type=task_type,
-            )
-            yield result.content
+        except (OSError, RuntimeError, ValueError, TimeoutError):
+            raise
 
     async def health_check(self) -> bool:
         """Check if the configured LLM is reachable."""
@@ -345,22 +327,6 @@ def _build_legacy_model_config_from_settings() -> tuple[list[dict], list[dict], 
         )
         default_model = "default"
 
-        # Add cloud fallback if API key is configured
-        api_key = settings.LLM_API_KEY.get_secret_value()
-        if api_key:
-            cloud_model = settings.LLM_MODEL or "glm-4.7-flash"
-            model_list.append(
-                {
-                    "model_name": "cloud-fallback",
-                    "litellm_params": {
-                        "model": cloud_model,
-                        "api_key": api_key,
-                        **({"api_base": settings.LLM_API_BASE_URL} if settings.LLM_API_BASE_URL else {}),
-                    },
-                }
-            )
-            fallbacks.append({"default": ["cloud-fallback"]})
-
     else:
         api_key = settings.LLM_API_KEY.get_secret_value()
         if raw_lower in ("api", "openai") and not api_key:
@@ -383,21 +349,6 @@ def _build_legacy_model_config_from_settings() -> tuple[list[dict], list[dict], 
             }
         )
         default_model = "default"
-
-        # Only add explicit Ollama fallback when the compatibility flag is actually enabled.
-        if getattr(settings, "OLLAMA_ENABLED", False) is True:
-            ollama_model = f"ollama/{settings.OLLAMA_MODEL}"
-            model_list.append(
-                {
-                    "model_name": "ollama-local",
-                    "litellm_params": {
-                        "model": ollama_model,
-                        "api_base": settings.OLLAMA_HOST,
-                    },
-                }
-            )
-            # Ollama can serve as fallback for the API provider
-            fallbacks.append({"default": ["ollama-local"]})
 
     # Register per-tier models as separate model groups in the LiteLLM router
     # so tier routing can reference them by name
@@ -503,8 +454,7 @@ def create_smart_router() -> LLMClient:
     model_list, fallbacks, default_model = build_model_config_from_settings()
 
     if not model_list:
-        logger.warning("No model configs, falling back to direct LiteLLM calls")
-        return LiteLLMRouter(default_model=default_model)
+        raise ValueError("No LLM model configuration resolved from current settings")
 
     router = LiteLLMRouter(
         model_configs=model_list,

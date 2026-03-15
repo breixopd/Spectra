@@ -299,8 +299,8 @@ def get_default_llm_client() -> LLMClient:
         logger.info("Using LiteLLM smart router (provider=%s)", settings.AI_PROVIDER)
         return client
     except (OSError, RuntimeError, ValueError) as e:
-        logger.warning("Smart router init failed, falling back to direct LiteLLM: %s", e)
-        return LiteLLMRouter(default_model=settings.LLM_MODEL or "openai/gpt-4o-mini")
+        logger.error("Smart router init failed: %s", e)
+        raise
 
 
 # Global singleton
