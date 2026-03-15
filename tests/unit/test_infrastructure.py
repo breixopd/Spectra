@@ -1,68 +1,88 @@
 from datetime import datetime
+import uuid
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import pytest_asyncio
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.core.config import settings
 from app.models.infrastructure import InfrastructureBase, JobQueue, SystemCache, SystemStatus
 
 
-@pytest.fixture
-def sqlite_engine():
-    engine = create_engine("sqlite:///:memory:")
-    InfrastructureBase.metadata.create_all(engine)
-    return engine
+@pytest_asyncio.fixture
+async def infra_engine():
+    engine = create_async_engine(settings.DATABASE_URL.get_secret_value())
+    async with engine.begin() as conn:
+        await conn.run_sync(InfrastructureBase.metadata.create_all)
+    yield engine
+    await engine.dispose()
 
 
-@pytest.fixture
-def db_session(sqlite_engine):
-    Session = sessionmaker(bind=sqlite_engine)
-    session = Session()
-    yield session
-    session.close()
+@pytest_asyncio.fixture
+async def db_session(infra_engine):
+    maker = async_sessionmaker(infra_engine, class_=AsyncSession, expire_on_commit=False)
+    async with maker() as session:
+        await session.execute(delete(JobQueue))
+        await session.execute(delete(SystemCache))
+        await session.execute(delete(SystemStatus))
+        await session.commit()
+        yield session
 
 
-def test_jsonb_type_sqlite(db_session):
-    # Test JSONBType behaves as expected with SQLite
-    cache_item = SystemCache(key="test_key", value={"some": "data"})
+@pytest.mark.asyncio
+async def test_jsonb_type_round_trip(db_session):
+    cache_item = SystemCache(key=f"test_key_{uuid.uuid4().hex[:8]}", value={"some": "data"})
     db_session.add(cache_item)
-    db_session.commit()
+    await db_session.commit()
 
-    retrieved = db_session.query(SystemCache).filter_by(key="test_key").first()
+    retrieved = await db_session.scalar(select(SystemCache).where(SystemCache.key == cache_item.key))
     assert retrieved is not None
     assert retrieved.value == {"some": "data"}
 
 
-def test_jsonb_type_none_values(db_session):
-    # Test JSONBType handles None correctly where column allows null
-    # JobQueue.result is nullable, SystemCache.value is not
-    job = JobQueue(id="job_null", queue_name="test_q", function="my_func", result=None)
+@pytest.mark.asyncio
+async def test_jsonb_type_none_values(db_session):
+    job_id = f"job_null_{uuid.uuid4().hex[:8]}"
+    job = JobQueue(id=job_id, queue_name="test_q", function="my_func", result=None)
     db_session.add(job)
-    db_session.commit()
+    await db_session.commit()
 
-    retrieved = db_session.query(JobQueue).filter_by(id="job_null").first()
+    retrieved = await db_session.get(JobQueue, job_id)
+    assert retrieved is not None
     assert retrieved.result is None
 
 
-def test_job_queue_model(db_session):
+@pytest.mark.asyncio
+async def test_job_queue_model(db_session):
+    job_id = f"job_{uuid.uuid4().hex[:8]}"
     job = JobQueue(
-        id="job_1", queue_name="test_q", function="my_func", args=[1, 2], kwargs={"test": "val"}, status="queued"
+        id=job_id,
+        queue_name="test_q",
+        function="my_func",
+        args=[1, 2],
+        kwargs={"test": "val"},
+        status="queued",
     )
     db_session.add(job)
-    db_session.commit()
+    await db_session.commit()
 
-    retrieved = db_session.query(JobQueue).filter_by(id="job_1").first()
+    retrieved = await db_session.get(JobQueue, job_id)
+    assert retrieved is not None
     assert retrieved.function == "my_func"
     assert retrieved.args == [1, 2]
     assert retrieved.kwargs == {"test": "val"}
     assert retrieved.status == "queued"
 
 
-def test_system_status_model(db_session):
-    status = SystemStatus(key="test_status", value={"is_ready": True})
+@pytest.mark.asyncio
+async def test_system_status_model(db_session):
+    key = f"test_status_{uuid.uuid4().hex[:8]}"
+    status = SystemStatus(key=key, value={"is_ready": True})
     db_session.add(status)
-    db_session.commit()
+    await db_session.commit()
 
-    retrieved = db_session.query(SystemStatus).filter_by(key="test_status").first()
+    retrieved = await db_session.get(SystemStatus, key)
+    assert retrieved is not None
     assert retrieved.value == {"is_ready": True}
     assert isinstance(retrieved.updated_at, datetime)

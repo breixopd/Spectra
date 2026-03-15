@@ -1,92 +1,50 @@
+import uuid
+
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import pytest_asyncio
+from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 import app.core.queue
+from app.core.config import settings
 from app.core.queue import Job, PostgresJobQueue
 from app.models.infrastructure import InfrastructureBase, JobQueue
 
 
-@pytest.fixture
-def sqlite_engine():
-    engine = create_engine("sqlite:///:memory:")
-    InfrastructureBase.metadata.create_all(engine)
-    return engine
+@pytest_asyncio.fixture
+async def queue_engine():
+    engine = create_async_engine(settings.DATABASE_URL.get_secret_value())
+    async with engine.begin() as conn:
+        await conn.run_sync(InfrastructureBase.metadata.create_all)
+    yield engine
+    await engine.dispose()
 
 
-@pytest.fixture
-def db_session(sqlite_engine):
-    Session = sessionmaker(bind=sqlite_engine)
-    session = Session()
-    yield session
-    session.close()
-
-
-class MockSessionManager:
-    def __init__(self, db_session):
-        self.db_session = db_session
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-    async def commit(self):
-        self.db_session.commit()
-
-    async def connection(self):
-        class MockConnection:
-            async def get_raw_connection(self):
-                class MockRawConn:
-                    pass
-
-                return MockRawConn()
-
-        return MockConnection()
-
-    def add(self, obj):
-        self.db_session.add(obj)
-
-    async def execute(self, stmt):
-        # Synchronously execute on db_session
-        result = self.db_session.execute(stmt)
-
-        # Mock result for async
-        class MockResult:
-            def __init__(self, res):
-                self.res = res
-
-            def scalar_one_or_none(self):
-                # Attempt to get single scalar or full row based on what was requested
-                row = self.res.first()
-                if row is None:
-                    return None
-                if len(row) == 1:
-                    return row[0]
-                return row[0]  # Return the ORM object if it's the whole row
-
-        return MockResult(result)
-
-
-@pytest.fixture
-def mock_session_maker(db_session, monkeypatch):
-    def maker():
-        return MockSessionManager(db_session)
-
-    monkeypatch.setattr(app.core.queue, "async_session_maker", maker)
+@pytest_asyncio.fixture
+async def db_session_maker(queue_engine):
+    maker = async_sessionmaker(queue_engine, class_=AsyncSession, expire_on_commit=False)
+    async with maker() as session:
+        await session.execute(delete(JobQueue))
+        await session.commit()
     return maker
 
 
+@pytest.fixture
+def mock_session_maker(db_session_maker, monkeypatch):
+    monkeypatch.setattr(app.core.queue, "async_session_maker", db_session_maker)
+    return db_session_maker
+
+
 @pytest.mark.asyncio
-async def test_postgres_job_queue_enqueue(db_session, mock_session_maker):
+async def test_postgres_job_queue_enqueue(db_session_maker, mock_session_maker):
     queue = PostgresJobQueue("test_q")
     job_id = await queue.enqueue_job("test_func", 1, 2, _timeout=10, kwarg1="val1")
 
     assert job_id is not None
 
-    # Verify job is in DB
-    job_record = db_session.query(JobQueue).filter_by(id=job_id).first()
+    async with db_session_maker() as session:
+        job_record = await session.get(JobQueue, job_id)
+
     assert job_record is not None
     assert job_record.queue_name == "test_q"
     assert job_record.function == "test_func"
@@ -97,11 +55,19 @@ async def test_postgres_job_queue_enqueue(db_session, mock_session_maker):
 
 
 @pytest.mark.asyncio
-async def test_job_status_and_result(db_session, mock_session_maker):
-    # Add job directly
-    job_id = "test_status_job"
-    db_session.add(JobQueue(id=job_id, queue_name="q", function="f", status="completed", result={"ok": True}))
-    db_session.commit()
+async def test_job_status_and_result(db_session_maker, mock_session_maker):
+    job_id = str(uuid.uuid4())
+    async with db_session_maker() as session:
+        session.add(
+            JobQueue(
+                id=job_id,
+                queue_name="q",
+                function="f",
+                status="completed",
+                result={"ok": True},
+            )
+        )
+        await session.commit()
 
     job = Job(job_id)
     assert await job.status() == "completed"
