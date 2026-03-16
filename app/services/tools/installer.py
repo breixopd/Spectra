@@ -47,7 +47,10 @@ class ToolInstaller:
             logger.info("Tool '%s' appears to be already installed.", tool_id)
 
         try:
-            success = await registry.install_tool(tool_id, progress_callback=progress_callback)
+            if progress_callback is None:
+                success = await registry.install_tool(tool_id)
+            else:
+                success = await registry.install_tool(tool_id, progress_callback=progress_callback)
             # Re-fetch tool to get updated status
             tool = registry.get_tool(tool_id)
 
@@ -80,7 +83,10 @@ class ToolInstaller:
         registry = get_registry()
 
         try:
-            success = await registry.uninstall_tool(tool_id, progress_callback=progress_callback)
+            if progress_callback is None:
+                success = await registry.uninstall_tool(tool_id)
+            else:
+                success = await registry.uninstall_tool(tool_id, progress_callback=progress_callback)
             return {
                 "tool_id": tool_id,
                 "success": success,

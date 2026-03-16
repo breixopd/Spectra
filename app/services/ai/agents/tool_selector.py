@@ -12,7 +12,6 @@ from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field
 
-from app.services.ai.errors import LLMParseError
 from app.services.ai.agents.base import (
     ActionRisk,
     Agent,
@@ -23,6 +22,7 @@ from app.services.ai.agents.base import (
     ToolAction,
 )
 from app.services.ai.agents.registry import register_agent
+from app.services.ai.errors import LLMParseError
 from app.services.ai.prompts import TOOL_SELECTION_PROMPT
 from app.services.tools.models import RegisteredTool, RiskLevel, ToolCapability, ToolCategory
 from app.services.tools.registry import get_registry
@@ -600,9 +600,13 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         tool: RegisteredTool,
         args: dict[str, Any],
     ) -> dict[str, Any]:
-        """Apply stealth settings from tool config only."""
-        # Strict overrides for stealth mode
+        """Apply strict stealth-mode overrides."""
         stealth_args = args.copy()
+
+        stealth_args["-T"] = "1"
+        stealth_args["--scan-delay"] = "1s"
+        stealth_args.pop("--min-rate", None)
+        stealth_args.pop("--rate", None)
 
         # Apply tool-specific stealth configuration if available
         if tool.config.stealth:

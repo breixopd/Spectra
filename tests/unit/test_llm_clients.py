@@ -258,7 +258,7 @@ class TestGetLLMClient:
         assert isinstance(client, LiteLLMRouter)
 
     def test_mock_provider_raises(self):
-        with pytest.raises(ValueError, match="Mock LLM provider is not available"):
+        with pytest.raises(ValueError, match="Unsupported LLM provider"):
             get_llm_client("mock")
 
 
@@ -331,7 +331,7 @@ class TestGetDefaultLLMClient:
     def test_mock_provider_raises(self, mock_llm_settings, mock_router_settings):
         mock_llm_settings.AI_PROVIDER = "mock"
         mock_router_settings.AI_PROVIDER = "mock"
-        with pytest.raises(ValueError, match="Mock LLM provider is not available"):
+        with pytest.raises(ValueError, match="Unsupported LLM provider"):
             get_default_llm_client()
 
     @patch("app.services.ai.router.settings")

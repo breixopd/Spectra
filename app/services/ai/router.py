@@ -184,7 +184,6 @@ class LiteLLMRouter(LLMClient):
         task_type: str | None = None,
     ) -> LLMResponse:
         """Generate text using LiteLLM with smart routing."""
-        import litellm
 
         model = self._get_model_for_task(task_type)
 
@@ -197,17 +196,16 @@ class LiteLLMRouter(LLMClient):
 
         try:
             router = self._get_router()
-
             if not router:
-                raise RuntimeError("LiteLLM router unavailable")
+                raise RuntimeError("LiteLLM router is not initialized")
 
             response = await router.acompletion(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    timeout=timeout or settings.LLM_TIMEOUT,
-                )
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=timeout or settings.LLM_TIMEOUT,
+            )
 
             choice = response.choices[0]
             usage = response.usage
@@ -241,7 +239,7 @@ class LiteLLMRouter(LLMClient):
                 raw={},
             )
 
-        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
+        except (OSError, RuntimeError, ValueError, TimeoutError, ImportError) as e:
             duration_ms = (time.time() - start_time) * 1000
             await record_llm_call(
                 provider=self.provider,
@@ -297,7 +295,7 @@ class LiteLLMRouter(LLMClient):
                 timeout=10,
             )
             return bool(response.content)
-        except (OSError, RuntimeError, ValueError, TimeoutError):
+        except (OSError, RuntimeError, ValueError, TimeoutError, ImportError):
             return False
 
     async def close(self) -> None:
@@ -447,8 +445,7 @@ def create_smart_router() -> LLMClient:
     normalized_provider = _normalize_provider_name(settings.AI_PROVIDER)
     if normalized_provider == "mock":
         raise ValueError(
-            "Mock LLM provider is not available in the app. "
-            "Use AI_PROVIDER=litellm with a real model."
+            "Unsupported LLM provider configured; the application runtime requires LiteLLM-backed providers."
         )
 
     model_list, fallbacks, default_model = build_model_config_from_settings()

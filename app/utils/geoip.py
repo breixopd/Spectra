@@ -7,9 +7,9 @@ Provides IP geolocation using the free ip-api.com service.
 import asyncio
 import ipaddress
 import logging
-from typing_extensions import TypedDict
 
 import aiohttp
+from typing_extensions import TypedDict
 
 logger = logging.getLogger(__name__)
 

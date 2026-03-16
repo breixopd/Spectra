@@ -36,11 +36,15 @@ def build_execution_request(
     timeout: int | None,
 ) -> tuple[ToolExecutionRequest, CommandToolAdapter, str, str]:
     """Construct the execution request, adapter, command, and output dir."""
+    configured_timeout = getattr(tool.config.execution, "timeout", 0)
+    if not isinstance(configured_timeout, (int, float)):
+        configured_timeout = 0
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_id = f"{tool_name}_{timestamp}_{uuid.uuid4().hex[:4]}"
     output_dir = prepare_output_directory(mission.id, run_id)
 
-    effective_timeout = max(timeout or 0, tool.config.execution.timeout)
+    effective_timeout = max(timeout or 0, int(configured_timeout))
 
     adapter = CommandToolAdapter(tool.config)
     request = ToolExecutionRequest(

@@ -60,7 +60,7 @@ run_in_docker() {
 
     docker run --rm \
         -e DATABASE_URL=sqlite+aiosqlite:///tmp/test.db \
-        -e AI_PROVIDER=mock \
+        -e AI_PROVIDER=litellm \
         -e JWT_SECRET_KEY=test-secret-key \
         -e FULLY_AUTOMATED=true \
         -e PLUGIN_SAFE_MODE=false \

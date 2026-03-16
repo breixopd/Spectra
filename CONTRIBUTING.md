@@ -199,7 +199,7 @@ make test-coverage
 ### Test guidelines
 
 - **pytest-asyncio**: Mode is `strict` — all async tests need `@pytest.mark.asyncio`
-- **Environment**: Tests load `.env.test` via `pytest-dotenv`. It sets `DATABASE_URL` to SQLite, `AI_PROVIDER=mock`, and `FULLY_AUTOMATED=true`.
+- **Environment**: Tests load `.env.test` via `pytest-dotenv`. It sets the shared test `DATABASE_URL`, `AI_PROVIDER=litellm`, and `FULLY_AUTOMATED=true`.
 - Write tests for behavior, not implementation details
 - Don't test what the type system already guarantees
 - Unit tests should not require Docker, databases, or network access
@@ -211,8 +211,8 @@ Key variables in `.env.test`:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `DATABASE_URL` | `sqlite+aiosqlite:///test.db` | In-memory test database |
-| `AI_PROVIDER` | `mock` | Avoids real LLM calls |
+| `DATABASE_URL` | `postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test` | Shared PostgreSQL test database |
+| `AI_PROVIDER` | `litellm` | Keeps test settings aligned with application routing |
 | `FULLY_AUTOMATED` | `true` | Skips human approval prompts |
 | `JWT_SECRET_KEY` | `test-secret-key` | Deterministic JWT signing |
 

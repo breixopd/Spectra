@@ -10,7 +10,6 @@ import logging
 import threading
 import time
 from datetime import timedelta
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
@@ -20,7 +19,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
-from app.core.paths import data_path
 from app.api.schemas import SystemSetupRequest, Token, UserResponse
 from app.api.schemas.auth import (
     ForgotPasswordRequest,
@@ -33,6 +31,7 @@ from app.api.schemas.system import DeleteAccountRequest
 from app.core.config import settings
 from app.core.database import get_async_session
 from app.core.events import EventType, events
+from app.core.paths import data_path
 from app.core.rate_limit import RateLimits, limiter
 from app.core.security import (
     JWTError,

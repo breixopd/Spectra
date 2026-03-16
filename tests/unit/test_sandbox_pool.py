@@ -204,9 +204,9 @@ class TestSandboxPoolVolumes:
         assert '"QUEUE_NAME"' in source
         assert '"IS_TOOLS_CONTAINER"' in source
         assert '"PLUGIN_SAFE_MODE"' in source
-        # Security: sensitive credentials must NOT be passed to sandbox containers
-        assert "SANDBOX_BLOCKED_ENV" in source or '"DATABASE_URL"' not in source
-        assert "SANDBOX_BLOCKED_ENV" in source or '"JWT_SECRET_KEY"' not in source
+        # Sandbox workers need DB access for mission queues, but must not receive auth secrets.
+        assert '"DATABASE_URL"' in source
+        assert '"JWT_SECRET_KEY"' not in source
 
     def test_sandbox_mounts_data_and_tools_volumes(self):
         """Verify sandbox uses named Docker volumes for data and tools."""

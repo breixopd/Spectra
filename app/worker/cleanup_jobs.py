@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import shutil
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 from sqlalchemy import delete
 

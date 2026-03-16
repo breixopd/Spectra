@@ -1,9 +1,11 @@
 """Mock LLM clients for deterministic testing."""
 
 import logging
+from enum import Enum
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
+from pydantic.fields import PydanticUndefined
 
 from app.services.ai.llm import LLMClient, LLMResponse
 
@@ -96,12 +98,23 @@ class MockLLMClient(LLMClient):
 
     def _generate_default(self, response_model: type[T]) -> T:
         """Generate a default instance of a Pydantic model."""
+        model_fields = response_model.model_fields
         schema = response_model.model_json_schema()
         props = schema.get("properties", {})
         defs = schema.get("$defs", {})
 
         data = {}
-        for prop_name, prop_info in props.items():
+        for prop_name, field_info in model_fields.items():
+            if field_info.default is not PydanticUndefined and field_info.default is not None:
+                data[prop_name] = field_info.default
+                continue
+
+            annotation = field_info.annotation
+            if isinstance(annotation, type) and issubclass(annotation, Enum):
+                data[prop_name] = list(annotation)[0]
+                continue
+
+            prop_info = props.get(prop_name, {})
             # Check for enum via anyOf or $ref
             enum_vals = prop_info.get("enum")
             if not enum_vals:
