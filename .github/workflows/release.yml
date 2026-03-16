@@ -33,7 +33,7 @@ jobs:
           POSTGRES_PASSWORD: spectra_test
           POSTGRES_DB: spectra_test
         ports:
-          - 5432:5432
+          - 5433:5432
         options: >-
           --health-cmd "pg_isready -U spectra -d spectra_test"
           --health-interval 10s
@@ -92,7 +92,7 @@ jobs:
             --cov-fail-under=60
         env:
           AI_PROVIDER: litellm
-          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
+          DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test"
           DATA_ROOT: data
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
