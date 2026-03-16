@@ -177,10 +177,12 @@ class TestMockLLMClient:
 class TestLLMFactory:
     """Tests for the LLM factory function."""
 
-    def test_get_mock_client_raises(self):
-        """Test that mock provider is rejected in production code."""
-        with pytest.raises(ValueError, match="Unsupported LLM provider"):
-            get_llm_client("mock")
+    def test_get_custom_provider_returns_litellm_router(self):
+        """Factory helpers should still return the shared LiteLLM router."""
+        from app.services.ai.router import LiteLLMRouter
+
+        client = get_llm_client("custom_provider", model="test-model")
+        assert isinstance(client, LiteLLMRouter)
 
     def test_get_ollama_client(self):
         """Test creating an Ollama-routed LiteLLM client."""

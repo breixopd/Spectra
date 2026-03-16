@@ -88,6 +88,7 @@ class SystemStatusResponse(BaseModel):
 
     # Tool cache stats
     tool_cache_stats: dict[str, int] | None = None
+    storage_health: dict[str, Any] | None = None
 
 
 class ClearResponse(BaseModel):

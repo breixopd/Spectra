@@ -276,6 +276,8 @@ class MissionLifecycleManager:
                 phase="scope",
                 stealth_mode=False,
                 max_concurrency=3,
+                extra_context="",
+                cost_tracker=None,
             )
 
         except (OSError, RuntimeError, ValueError) as e:

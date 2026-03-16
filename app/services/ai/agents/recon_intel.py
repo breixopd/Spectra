@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from app.core.paths import data_path
 from app.services.ai.agents.base import (
+    ActionRisk,
     Agent,
     AgentAction,
     AgentContext,
@@ -450,7 +451,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
             output = ReconIntelOutput(
                 intel_type=qt,
                 confidence=confidence,
-                risk_level="low",
+                risk_level=ActionRisk.LOW,
                 reasoning=f"Gathered intelligence from {len(source_results)} sources",
                 findings=all_findings,
                 cve_details=cve_details,

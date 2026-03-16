@@ -44,6 +44,8 @@ async def perform_safety_check(
             phase="safety_check",
             stealth_mode=False,
             max_concurrency=1,
+            extra_context="",
+            cost_tracker=None,
         )
 
         safety_result = await safety_supervisor.execute(

@@ -245,11 +245,7 @@ def get_llm_client(
     """
     from app.services.ai.router import LiteLLMRouter, _normalize_provider_name
 
-    normalized_provider = _normalize_provider_name(provider)
-    if normalized_provider == "mock":
-        raise ValueError(
-            "Unsupported LLM provider configured; the application runtime requires LiteLLM-backed providers."
-        )
+    _normalize_provider_name(provider)
 
     # Everything else goes through LiteLLM
     model = kwargs.get("model", "")
@@ -284,11 +280,7 @@ def get_default_llm_client() -> LLMClient:
 
     from app.services.ai.router import _normalize_provider_name, create_smart_router
 
-    provider = _normalize_provider_name(settings.AI_PROVIDER)
-    if provider == "mock":
-        raise ValueError(
-            "Unsupported LLM provider configured; the application runtime requires LiteLLM-backed providers."
-        )
+    _normalize_provider_name(settings.AI_PROVIDER)
 
     try:
         client = create_smart_router()

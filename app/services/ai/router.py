@@ -442,11 +442,7 @@ def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
 
 def create_smart_router() -> LLMClient:
     """Create a SmartRouter from current settings."""
-    normalized_provider = _normalize_provider_name(settings.AI_PROVIDER)
-    if normalized_provider == "mock":
-        raise ValueError(
-            "Unsupported LLM provider configured; the application runtime requires LiteLLM-backed providers."
-        )
+    _normalize_provider_name(settings.AI_PROVIDER)
 
     model_list, fallbacks, default_model = build_model_config_from_settings()
 

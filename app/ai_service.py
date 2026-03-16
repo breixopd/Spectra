@@ -173,7 +173,14 @@ async def rag_query(req: RAGRequest):
             filters=req.filters,
         )
         return RAGResponse(
-            results=[{"content": r.content, "score": r.score, "metadata": r.metadata} for r in results],
+            results=[
+                {
+                    "content": r.document.content,
+                    "score": r.score,
+                    "metadata": r.document.metadata,
+                }
+                for r in results
+            ],
             query=req.query,
         )
     except (OSError, RuntimeError, ValueError, TimeoutError):
