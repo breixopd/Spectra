@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 import uuid
 
@@ -12,7 +13,8 @@ from app.models.infrastructure import InfrastructureBase, JobQueue, SystemCache,
 
 @pytest_asyncio.fixture
 async def infra_engine():
-    engine = create_async_engine(settings.DATABASE_URL.get_secret_value())
+    database_url = os.environ.get("DATABASE_URL") or settings.DATABASE_URL.get_secret_value()
+    engine = create_async_engine(database_url)
     async with engine.begin() as conn:
         await conn.run_sync(
             lambda sync_conn: InfrastructureBase.metadata.create_all(
