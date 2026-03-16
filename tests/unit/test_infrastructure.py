@@ -14,7 +14,12 @@ from app.models.infrastructure import InfrastructureBase, JobQueue, SystemCache,
 async def infra_engine():
     engine = create_async_engine(settings.DATABASE_URL.get_secret_value())
     async with engine.begin() as conn:
-        await conn.run_sync(InfrastructureBase.metadata.create_all)
+        await conn.run_sync(
+            lambda sync_conn: InfrastructureBase.metadata.create_all(
+                sync_conn,
+                tables=[SystemCache.__table__, JobQueue.__table__, SystemStatus.__table__],
+            )
+        )
     yield engine
     await engine.dispose()
 

@@ -65,8 +65,8 @@ async def _auto_install_pending() -> None:
 
                 installer = ToolInstaller()
 
-                async def progress_callback(update: dict) -> None:
-                    await _sync_tool_status(tool_id, update)
+                async def progress_callback(update: dict, current_tool_id: str = tool_id) -> None:
+                    await _sync_tool_status(current_tool_id, update)
 
                 result = await installer.install(tool_id, progress_callback=progress_callback)
 

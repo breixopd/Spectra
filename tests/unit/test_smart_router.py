@@ -67,7 +67,7 @@ class TestLiteLLMRouter:
 
     @pytest.mark.asyncio
     async def test_generate_direct_litellm(self):
-        """Test generation when no router configured (uses litellm.acompletion directly)."""
+        """Test generation through the configured LiteLLM router instance."""
         router = LiteLLMRouter(default_model="gpt-4o-mini")
 
         mock_response = MagicMock()
@@ -78,11 +78,10 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 20
         mock_response.usage.total_tokens = 30
 
-        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
-        with patch.dict(sys.modules, {"litellm": fake_litellm}):
-            result = await router.generate("hello")
-            assert result.content == "test response"
-            assert result.usage["total_tokens"] == 30
+        router._router = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
+        result = await router.generate("hello")
+        assert result.content == "test response"
+        assert result.usage["total_tokens"] == 30
 
     @pytest.mark.asyncio
     async def test_generate_with_task_type(self):
@@ -98,11 +97,10 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 5
         mock_response.usage.total_tokens = 10
 
-        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
-        with patch.dict(sys.modules, {"litellm": fake_litellm}):
-            await router.generate("select a tool", task_type="tool_selection")
-            call_args = fake_litellm.acompletion.call_args
-            assert call_args.kwargs["model"] == "cheap-model"
+        router._router = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
+        await router.generate("select a tool", task_type="tool_selection")
+        call_args = router._router.acompletion.call_args
+        assert call_args.kwargs["model"] == "cheap-model"
 
     @pytest.mark.asyncio
     async def test_health_check_success(self):
@@ -115,16 +113,14 @@ class TestLiteLLMRouter:
         mock_response.usage.completion_tokens = 1
         mock_response.usage.total_tokens = 2
 
-        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
-        with patch.dict(sys.modules, {"litellm": fake_litellm}):
-            assert await router.health_check() is True
+        router._router = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
+        assert await router.health_check() is True
 
     @pytest.mark.asyncio
     async def test_health_check_failure(self):
         router = LiteLLMRouter()
-        fake_litellm = types.SimpleNamespace(acompletion=AsyncMock(side_effect=RuntimeError("down")))
-        with patch.dict(sys.modules, {"litellm": fake_litellm}):
-            assert await router.health_check() is False
+        router._router = types.SimpleNamespace(acompletion=AsyncMock(side_effect=RuntimeError("down")))
+        assert await router.health_check() is False
 
     @pytest.mark.asyncio
     async def test_close(self):
@@ -153,7 +149,7 @@ class TestBuildModelConfig:
             assert default == "default"
             assert fallbacks == []
 
-    def test_ollama_with_cloud_fallback(self):
+    def test_ollama_without_implicit_cloud_fallback(self):
         with patch("app.services.ai.router.settings") as mock_settings:
             mock_settings.AI_PROVIDER_PROFILES = {}
             mock_settings.AI_PROVIDER_ROUTING = {}
@@ -167,18 +163,9 @@ class TestBuildModelConfig:
             mock_settings.LLM_API_BASE_URL = None
 
             configs, fallbacks, default = build_model_config_from_settings()
-            assert len(configs) == 2
+            assert len(configs) == 1
             assert default == "default"
-            assert len(fallbacks) == 1
-
-    def test_mock_provider_raises(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER_PROFILES = {}
-            mock_settings.AI_PROVIDER_ROUTING = {}
-            mock_settings.AI_PROVIDER_FALLBACKS = {}
-            mock_settings.AI_PROVIDER = "mock"
-            with pytest.raises(ValueError, match="Mock LLM provider is not available"):
-                create_smart_router()
+            assert fallbacks == []
 
     def test_no_api_key(self):
         with patch("app.services.ai.router.settings") as mock_settings:

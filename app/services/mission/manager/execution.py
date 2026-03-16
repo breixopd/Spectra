@@ -31,8 +31,8 @@ from app.services.mission.manager.helpers import (
 from app.services.mission.manager.lifecycle import MissionLifecycleManager
 from app.services.mission.manager.steering import MissionSteeringManager
 from app.services.mission.mission import Mission
-from app.services.tools.output import cleanup_mission_workspace
 from app.services.shell.session_manager import shell_manager
+from app.services.tools.output import cleanup_mission_workspace
 
 logger = logging.getLogger(__name__)
 

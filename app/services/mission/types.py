@@ -6,7 +6,9 @@ IDE support and static analysis without changing runtime behaviour.
 
 from __future__ import annotations
 
-from typing_extensions import NotRequired, TypedDict
+from typing import NotRequired
+
+from typing_extensions import TypedDict
 
 
 class ToolExecutionRecord(TypedDict):

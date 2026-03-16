@@ -19,6 +19,7 @@ from app.services.ai.agents.exploit_crafter import (
     ExploitCrafter,
     ExploitInput,
 )
+from app.services.ai.errors import LLMParseError
 from app.services.ai.agents.post_exploitation import (
     PostExploitAction,
     PostExploitationAgent,
@@ -197,7 +198,7 @@ class TestExploitCrafter:
         """_configure_exploit calls generate_structured and sets attempt_number."""
         llm = MockLLMClient(
             structured_responses={
-                "ExploitAction": {
+                "ExploitCrafterOutput": {
                     "confidence": 0.9,
                     "risk_level": "high",
                     "reasoning": "LLM chose this",
@@ -220,8 +221,8 @@ class TestExploitCrafter:
         assert action.exploit_name == "ms17_010"
 
     @pytest.mark.asyncio
-    async def test_configure_exploit_fallback_on_llm_failure(self, context):
-        """When LLM raises, _configure_exploit returns a fallback ExploitAction."""
+    async def test_configure_exploit_raises_on_llm_failure(self, context):
+        """When LLM raises, _configure_exploit surfaces a parse error."""
         llm = MockLLMClient()
         llm.generate_structured = AsyncMock(side_effect=RuntimeError("LLM down"))
         agent = ExploitCrafter(llm=llm)
@@ -229,15 +230,8 @@ class TestExploitCrafter:
         candidate = {"name": "fallback_exploit", "type": "generic"}
         input_data = ExploitInput(target="10.0.0.1", service_info={"port": 80})
 
-        action = await agent._configure_exploit(context, candidate, input_data, attempt=1)
-
-        assert isinstance(action, ExploitAction)
-        assert action.exploit_name == "fallback_exploit"
-        assert action.payload_type == "linux/x64/meterpreter/reverse_tcp"
-        assert action.configuration["RHOST"] == "10.0.0.1"
-        assert action.configuration["RPORT"] == 80
-        assert action.attempt_number == 1
-        assert "Fallback" in action.reasoning
+        with pytest.raises(LLMParseError):
+            await agent._configure_exploit(context, candidate, input_data, attempt=1)
 
     @pytest.mark.asyncio
     async def test_verify_success_uid(self, mock_llm):

@@ -290,7 +290,8 @@ class Settings(BaseSettings):
     @classmethod
     def validate_ai_provider(cls, v: str) -> str:
         """Validate AI provider is supported."""
-        # Core providers + named presets (qwen, z.ai, etc.)
+        # All application LLM traffic goes through LiteLLM. Legacy provider
+        # names are accepted only as configuration aliases.
         core_providers = {"ollama", "api", "litellm"}
         # Named presets route through litellm with preset configs
         preset_providers = {"qwen", "z.ai", "openai", "anthropic", "groq", "openrouter"}

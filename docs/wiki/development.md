@@ -55,7 +55,7 @@ If the shared Compose test stack hits a network/subnet conflict:
 docker build -f docker/Dockerfile.tools -t spectra-tools-test .
 docker run --rm \
   -e DATABASE_URL=sqlite+aiosqlite:///test.db \
-  -e AI_PROVIDER=mock \
+  -e AI_PROVIDER=litellm \
   -e JWT_SECRET_KEY=test-secret-key \
   -e FULLY_AUTOMATED=true \
   -e PLUGIN_SAFE_MODE=false \
@@ -112,8 +112,8 @@ docker compose -f docker/docker-compose.test.yml --profile targets up -d
 
 - `.env.test` is loaded by `pytest-dotenv` via `pytest.ini`
 - `pytest-asyncio` mode is `strict` — all async tests need `@pytest.mark.asyncio`
-- `DATABASE_URL` defaults to SQLite/aiosqlite in tests
-- `AI_PROVIDER=mock` for testing without a real LLM
+- `DATABASE_URL` is configured via `.env.test` for the shared test database
+- `AI_PROVIDER=litellm` keeps application wiring aligned with production
 - `FULLY_AUTOMATED=true` disables human approval requirements
 
 ---

@@ -179,7 +179,7 @@ class TestLLMFactory:
 
     def test_get_mock_client_raises(self):
         """Test that mock provider is rejected in production code."""
-        with pytest.raises(ValueError, match="Mock LLM provider is not available"):
+        with pytest.raises(ValueError, match="Unsupported LLM provider"):
             get_llm_client("mock")
 
     def test_get_ollama_client(self):

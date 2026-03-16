@@ -246,11 +246,9 @@ def get_llm_client(
     from app.services.ai.router import LiteLLMRouter, _normalize_provider_name
 
     normalized_provider = _normalize_provider_name(provider)
-
     if normalized_provider == "mock":
         raise ValueError(
-            "Mock LLM provider is not available in the app. "
-            "Use AI_PROVIDER=litellm with a real model for production/development."
+            "Unsupported LLM provider configured; the application runtime requires LiteLLM-backed providers."
         )
 
     # Everything else goes through LiteLLM
@@ -284,14 +282,12 @@ def get_default_llm_client() -> LLMClient:
     Uses in-process LiteLLM router with provider profiles.
     """
 
-    from app.services.ai.router import LiteLLMRouter, _normalize_provider_name, create_smart_router
+    from app.services.ai.router import _normalize_provider_name, create_smart_router
 
     provider = _normalize_provider_name(settings.AI_PROVIDER)
-
     if provider == "mock":
         raise ValueError(
-            "Mock LLM provider is not available in the app. "
-            "Use AI_PROVIDER=litellm with a real model."
+            "Unsupported LLM provider configured; the application runtime requires LiteLLM-backed providers."
         )
 
     try:

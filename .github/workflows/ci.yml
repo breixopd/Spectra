@@ -54,8 +54,9 @@ jobs:
             --cov-report=xml:coverage.xml \
             --cov-fail-under=60
         env:
-          AI_PROVIDER: mock
+          AI_PROVIDER: litellm
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
+          DATA_ROOT: data
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
           FULLY_AUTOMATED: "true"
@@ -113,8 +114,9 @@ jobs:
             --timeout=120 \
             -k "not live and not e2e"
         env:
-          AI_PROVIDER: mock
+          AI_PROVIDER: litellm
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
+          DATA_ROOT: data
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
           FULLY_AUTOMATED: "true"

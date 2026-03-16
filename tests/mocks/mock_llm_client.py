@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class MockLLMClient(LLMClient):
-    """Mock LLM client used when AI_PROVIDER=mock."""
+    """Minimal mock LLM client for tests that inject a fake client explicitly."""
 
     provider = "mock"
 

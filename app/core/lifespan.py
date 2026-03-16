@@ -10,7 +10,6 @@ import logging
 import shutil
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
@@ -23,7 +22,6 @@ except ImportError:
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.paths import data_root
 from app.core.background_tasks import (
     cache_cleanup_loop,
     periodic_cleanup_loop,
@@ -33,6 +31,7 @@ from app.core.cache import CacheService, set_cache
 from app.core.config import settings
 from app.core.database import async_session_maker, engine
 from app.core.events import EventType, events
+from app.core.paths import data_root
 from app.core.system_status import (
     add_system_operation,
     remove_system_operation,

@@ -7,9 +7,8 @@ Provides endpoints for telemetry, metrics, and system health monitoring.
 import logging
 from typing import Any
 
-from typing_extensions import TypedDict
-
 from fastapi import APIRouter, HTTPException, Query
+from typing_extensions import TypedDict
 
 from app.core.cache import get_cache
 from app.core.circuit_breaker import circuit_breakers
