@@ -124,7 +124,7 @@ class ToolExecConfigResponse(BaseModel):
     timeout: int
     placeholders: list[str]
     args_schema: dict = {}
-    arg_modifiers: dict[str, str] = {}
+    arg_modifiers: dict[str, dict[str, str]] = {}
     metadata: ToolMetadataResponse
     stealth: ToolStealthResponse
     parsing_format: str = ""

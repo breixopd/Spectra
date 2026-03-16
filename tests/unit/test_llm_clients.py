@@ -257,9 +257,11 @@ class TestGetLLMClient:
         client = get_llm_client("openai", api_key="sk-test")
         assert isinstance(client, LiteLLMRouter)
 
-    def test_mock_provider_raises(self):
-        with pytest.raises(ValueError, match="Unsupported LLM provider"):
-            get_llm_client("mock")
+    def test_custom_provider_returns_litellm_router(self):
+        from app.services.ai.router import LiteLLMRouter
+
+        client = get_llm_client("custom_provider", model="test-model")
+        assert isinstance(client, LiteLLMRouter)
 
 
 # ===================================================================
@@ -325,14 +327,6 @@ class TestGetDefaultLLMClient:
             from app.services.ai.router import LiteLLMRouter
 
             assert isinstance(client, LiteLLMRouter)
-
-    @patch("app.services.ai.router.settings")
-    @patch("app.services.ai.llm.settings")
-    def test_mock_provider_raises(self, mock_llm_settings, mock_router_settings):
-        mock_llm_settings.AI_PROVIDER = "mock"
-        mock_router_settings.AI_PROVIDER = "mock"
-        with pytest.raises(ValueError, match="Unsupported LLM provider"):
-            get_default_llm_client()
 
     @patch("app.services.ai.router.settings")
     @patch("app.services.ai.llm.settings")

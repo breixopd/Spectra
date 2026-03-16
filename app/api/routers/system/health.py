@@ -173,7 +173,7 @@ async def get_system_status(
     else:
         message = ", ".join(status_messages) if status_messages else "Unknown status"
 
-    resp = SystemStatusResponse(
+    return SystemStatusResponse(
         status=overall_status,
         message=message,
         timestamp=timestamp,
@@ -187,10 +187,8 @@ async def get_system_status(
         setup_message=setup_message,
         rag_status=rag_status,
         tool_cache_stats=_get_tool_cache_stats(),
+        storage_health=storage_health,
     )
-    resp_dict = resp.model_dump()
-    resp_dict["storage_health"] = storage_health
-    return resp_dict
 
 
 @router.get("/services/health")

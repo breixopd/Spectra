@@ -200,6 +200,8 @@ class ToolExecutionService:
             )
             if error is not None:
                 return error
+            if tool is None:
+                return create_error_result(tool_name, target, f"Tool not found: {tool_name}")
 
             request, adapter, full_command, output_dir = build_execution_request(
                 mission, tool, tool_name, target, args, timeout,
