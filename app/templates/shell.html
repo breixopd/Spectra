@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Spectra Shell | {{ session_id }}</title>
-    <script src="/static/vendor/js/tailwind.js"></script>
+    <link rel="stylesheet" href="/static/css/output.css">
     <link rel="stylesheet" href="/static/vendor/css/xterm.css" />
     <script src="/static/vendor/js/xterm.js"></script>
     <script src="/static/vendor/js/xterm-addon-fit.js"></script>
@@ -46,7 +46,8 @@
         // WebSocket Connection with auto-reconnect
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const sessionId = {{ session_id|tojson }};
-        const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}`;
+        const shellToken = localStorage.getItem('token');
+        const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}${shellToken ? '?token=' + encodeURIComponent(shellToken) : ''}`;
         const ws = new ReconnectingWebSocket(wsUrl, { maxRetries: 10 });
 
         ws.on('open', () => {

@@ -84,28 +84,28 @@
             <button class="flex items-center gap-2 px-3 py-2 bg-slate-900/50 hover:bg-white/5 border border-white/10 rounded-lg text-xs text-slate-300 transition-colors">
                 <i class="fa-solid fa-bolt text-violet-400"></i>
                 <span>Presets</span>
-                <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
+                <i class="fa-solid fa-chevron-down text-xs opacity-60"></i>
             </button>
             <div class="absolute right-0 top-full mt-1 w-64 bg-slate-900 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
                 <div class="p-1.5" id="preset-dropdown">
-                    <div class="px-2 py-1 text-[9px] font-mono text-slate-500 uppercase tracking-wider">Scan Presets</div>
+                    <div class="px-2 py-1 text-xs font-mono text-slate-500 uppercase tracking-wider">Scan Presets</div>
                     <button onclick="launchPreset('quick_recon')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
-                        <i class="fa-solid fa-bolt text-amber-400 w-4"></i> Quick Recon <span class="ml-auto text-[9px] text-slate-500">~5 min</span>
+                        <i class="fa-solid fa-bolt text-amber-400 w-4"></i> Quick Recon <span class="ml-auto text-xs text-slate-500">~5 min</span>
                     </button>
                     <button onclick="launchPreset('full_assessment')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
-                        <i class="fa-solid fa-shield text-violet-400 w-4"></i> Full Assessment <span class="ml-auto text-[9px] text-slate-500">~30 min</span>
+                        <i class="fa-solid fa-shield text-violet-400 w-4"></i> Full Assessment <span class="ml-auto text-xs text-slate-500">~30 min</span>
                     </button>
                     <button onclick="launchPreset('web_only')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
-                        <i class="fa-solid fa-globe text-blue-400 w-4"></i> Web Application <span class="ml-auto text-[9px] text-slate-500">~15 min</span>
+                        <i class="fa-solid fa-globe text-blue-400 w-4"></i> Web Application <span class="ml-auto text-xs text-slate-500">~15 min</span>
                     </button>
                     <button onclick="launchPreset('stealth')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
-                        <i class="fa-solid fa-ghost text-slate-400 w-4"></i> Stealth Scan <span class="ml-auto text-[9px] text-slate-500">~45 min</span>
+                        <i class="fa-solid fa-ghost text-slate-400 w-4"></i> Stealth Scan <span class="ml-auto text-xs text-slate-500">~45 min</span>
                     </button>
                     <button onclick="launchPreset('exploit_focus')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
-                        <i class="fa-solid fa-crosshairs text-rose-400 w-4"></i> Exploit Focus <span class="ml-auto text-[9px] text-slate-500">~20 min</span>
+                        <i class="fa-solid fa-crosshairs text-rose-400 w-4"></i> Exploit Focus <span class="ml-auto text-xs text-slate-500">~20 min</span>
                     </button>
                     <button onclick="launchPreset('api_security')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
-                        <i class="fa-solid fa-code text-emerald-400 w-4"></i> API Security <span class="ml-auto text-[9px] text-slate-500">~15 min</span>
+                        <i class="fa-solid fa-code text-emerald-400 w-4"></i> API Security <span class="ml-auto text-xs text-slate-500">~15 min</span>
                     </button>
                 </div>
             </div>
@@ -165,7 +165,7 @@
         <!-- Map -->
         <div class="glass-panel rounded-xl overflow-hidden relative" style="min-height: 220px; max-width: 100%;">
             <div class="absolute top-3 left-3 z-[400] pointer-events-none">
-                <span class="text-[10px] font-mono tracking-widest text-slate-400 uppercase bg-slate-900/80 px-2 py-0.5 rounded">Location</span>
+                <span class="text-xs font-mono tracking-widest text-slate-400 uppercase bg-slate-900/80 px-2 py-0.5 rounded">Location</span>
             </div>
             <div id="threat-map" class="w-full h-full bg-[#0f172a]" style="min-height: 220px;">
                 <div id="map-placeholder" class="flex items-center justify-center h-full text-slate-700">
@@ -179,7 +179,7 @@
 
         <!-- Findings Summary -->
         <div class="glass-panel rounded-xl p-4">
-            <span class="text-[10px] font-mono tracking-widest text-slate-500 uppercase block mb-3">Findings</span>
+            <span class="text-xs font-mono tracking-widest text-slate-500 uppercase block mb-3">Findings</span>
             <div id="findings-loading" class="grid grid-cols-4 gap-2">
                 <div class="bg-slate-800/30 border border-white/5 rounded-lg flex flex-col items-center justify-center py-3">
                     <div class="skeleton skeleton-number"></div>
@@ -198,29 +198,29 @@
                     <div class="skeleton skeleton-text" style="width:60%;height:0.5rem;"></div>
                 </div>
             </div>
-            <div id="findings-data" class="hidden grid grid-cols-4 gap-2" role="status" aria-label="Findings summary">
+            <div id="findings-data" class="hidden grid grid-cols-4 gap-2" role="status" aria-label="Findings summary" aria-live="polite">
                 <div class="bg-rose-500/10 border border-rose-500/20 rounded-lg flex flex-col items-center justify-center py-3" data-tooltip="CVSS 9.0-10.0" data-tooltip-pos="bottom">
                     <span class="text-xl font-bold text-rose-500 font-mono" id="count-critical">0</span>
-                    <span class="text-[9px] text-rose-400/70 uppercase mt-0.5">Critical</span>
+                    <span class="text-xs text-rose-400/70 uppercase mt-0.5">Critical</span>
                 </div>
                 <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg flex flex-col items-center justify-center py-3" data-tooltip="CVSS 7.0-8.9" data-tooltip-pos="bottom">
                     <span class="text-xl font-bold text-amber-500 font-mono" id="count-high">0</span>
-                    <span class="text-[9px] text-amber-400/70 uppercase mt-0.5">High</span>
+                    <span class="text-xs text-amber-400/70 uppercase mt-0.5">High</span>
                 </div>
                 <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg flex flex-col items-center justify-center py-3" data-tooltip="CVSS 4.0-6.9" data-tooltip-pos="bottom">
                     <span class="text-xl font-bold text-blue-500 font-mono" id="count-medium">0</span>
-                    <span class="text-[9px] text-blue-400/70 uppercase mt-0.5">Medium</span>
+                    <span class="text-xs text-blue-400/70 uppercase mt-0.5">Medium</span>
                 </div>
                 <div class="bg-slate-700/20 border border-slate-700/30 rounded-lg flex flex-col items-center justify-center py-3" data-tooltip="CVSS 0.0-3.9 / Informational" data-tooltip-pos="bottom">
                     <span class="text-xl font-bold text-slate-400 font-mono" id="count-info">0</span>
-                    <span class="text-[9px] text-slate-500 uppercase mt-0.5">Info</span>
+                    <span class="text-xs text-slate-500 uppercase mt-0.5">Info</span>
                 </div>
             </div>
         </div>
 
         <!-- Active Shells -->
         <div class="glass-panel rounded-xl p-4 flex flex-col">
-            <span class="text-[10px] font-mono tracking-widest text-emerald-400/70 uppercase block mb-2">Sessions</span>
+            <span class="text-xs font-mono tracking-widest text-emerald-400/70 uppercase block mb-2">Sessions</span>
             <div id="shell-list" class="flex-1 overflow-y-auto space-y-1.5">
                 <div class="dash-empty" style="padding:1rem 0.5rem;min-height:auto;">
                     <i class="fa-solid fa-terminal block" style="font-size:1.25rem;"></i>
@@ -236,7 +236,7 @@
         <div class="glass-panel rounded-xl relative overflow-hidden flex-1 min-h-[280px]">
             <div class="absolute top-3 left-3 z-10 flex items-center gap-2">
                 <i class="fa-solid fa-diagram-project text-violet-400 text-xs"></i>
-                <span class="text-[10px] font-mono tracking-widest text-slate-500 uppercase">Network Topology</span>
+                <span class="text-xs font-mono tracking-widest text-slate-500 uppercase">Network Topology</span>
             </div>
             <div id="network-graph" class="absolute inset-0 flex items-center justify-center">
                 <div class="text-center text-slate-700">
@@ -245,13 +245,13 @@
                 </div>
             </div>
             <div class="absolute bottom-3 right-3 z-10">
-                <div class="flex items-center gap-2 text-[10px] font-mono text-slate-500">
+                <div class="flex items-center gap-2 text-xs font-mono text-slate-500">
                     <span class="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
                     <span id="node-count">0 nodes</span>
                 </div>
             </div>
             <!-- Graph Legend -->
-            <div class="absolute bottom-3 left-3 z-10 flex items-center gap-3 text-[10px] font-mono text-slate-500">
+            <div class="absolute bottom-3 left-3 z-10 flex items-center gap-3 text-xs font-mono text-slate-500">
                 <span class="flex items-center gap-1" data-tooltip="Target host"><span class="w-2 h-2 rounded-full bg-violet-500"></span>Target</span>
                 <span class="flex items-center gap-1" data-tooltip="Discovered service"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Service</span>
                 <span class="flex items-center gap-1" data-tooltip="Vulnerability finding"><span class="w-2 h-2 rounded-full bg-rose-500"></span>Vuln</span>
@@ -289,7 +289,7 @@
             <i class="fa-solid fa-list-tree text-violet-400 text-sm"></i>
             <span class="text-sm font-medium text-white">Task Tree</span>
         </div>
-        <span class="text-[10px] font-mono text-slate-500" id="task-tree-status"></span>
+        <span class="text-xs font-mono text-slate-500" id="task-tree-status"></span>
     </div>
     <div class="p-4 max-h-64 overflow-y-auto font-mono text-xs" id="task-tree-content" aria-live="polite">
         <div class="text-slate-600 text-center py-4">No active tasks</div>
@@ -318,7 +318,7 @@
             <i class="fa-solid fa-chart-line text-emerald-400 text-sm"></i>
             <span class="text-sm font-medium text-white">Metrics &amp; Trends</span>
         </div>
-        <select id="metrics-timerange" onchange="loadMetrics()" class="px-2 py-1 bg-slate-900/50 border border-white/10 rounded text-[10px] text-slate-300 focus:outline-none">
+        <select id="metrics-timerange" onchange="loadMetrics()" class="px-2 py-1 bg-slate-900/50 border border-white/10 rounded text-xs text-slate-300 focus:outline-none">
             <option value="7">7 days</option>
             <option value="30">30 days</option>
             <option value="90">90 days</option>
@@ -328,25 +328,25 @@
     <div class="p-5">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
-                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Findings Over Time</span>
+                <span class="text-xs font-mono text-slate-500 uppercase tracking-wider block mb-2">Findings Over Time</span>
                 <canvas id="chart-findings-time" height="160"></canvas>
             </div>
             <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
-                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Missions Per Week</span>
+                <span class="text-xs font-mono text-slate-500 uppercase tracking-wider block mb-2">Missions Per Week</span>
                 <canvas id="chart-missions-week" height="160"></canvas>
             </div>
             <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
-                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Top Vulnerabilities</span>
+                <span class="text-xs font-mono text-slate-500 uppercase tracking-wider block mb-2">Top Vulnerabilities</span>
                 <div id="top-vulns-list" class="space-y-1.5 max-h-40 overflow-y-auto text-xs"></div>
             </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
-                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Severity Breakdown</span>
+                <span class="text-xs font-mono text-slate-500 uppercase tracking-wider block mb-2">Severity Breakdown</span>
                 <div class="flex items-center justify-center" style="max-height:200px;"><canvas id="chart-severity" height="180"></canvas></div>
             </div>
             <div class="bg-slate-900/50 rounded-lg p-4 border border-white/5">
-                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block mb-2">Top Targets</span>
+                <span class="text-xs font-mono text-slate-500 uppercase tracking-wider block mb-2">Top Targets</span>
                 <canvas id="chart-top-targets" height="180"></canvas>
             </div>
         </div>
@@ -361,12 +361,12 @@
         <p class="text-xs text-slate-400 mb-4" id="pb-detail-desc"></p>
         <div class="space-y-3">
             <div>
-                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Phases</span>
+                <span class="text-xs font-mono text-slate-500 uppercase tracking-wider">Phases</span>
                 <div id="pb-detail-phases" class="mt-2 space-y-1.5"></div>
             </div>
             <div class="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
-                <div><span class="text-[10px] text-slate-500">Stealth</span><p class="text-sm text-white" id="pb-detail-stealth">N/A</p></div>
-                <div><span class="text-[10px] text-slate-500">Auto-exploit</span><p class="text-sm text-white" id="pb-detail-autoexploit">N/A</p></div>
+                <div><span class="text-xs text-slate-500">Stealth</span><p class="text-sm text-white" id="pb-detail-stealth">N/A</p></div>
+                <div><span class="text-xs text-slate-500">Auto-exploit</span><p class="text-sm text-white" id="pb-detail-autoexploit">N/A</p></div>
             </div>
         </div>
         <div class="flex justify-end space-x-3 mt-6">
@@ -409,308 +409,8 @@
 
 {% block scripts %}
 <script src="/static/vendor/js/chart.umd.min.js"></script>
-<script src="/static/js/dashboard.js"></script>
-<script nonce="{{ request.state.csp_nonce }}">
-// --- Metrics & Trends (Chart.js) ---
-let chartInstances = {};
+{% endblock %}
 
-async function loadMetrics() {
-    const days = parseInt(document.getElementById('metrics-timerange').value) || 0;
-    let missions = [], allFindings = [];
-    const errEl = document.getElementById('dashboard-error');
-    const findingsLoading = document.getElementById('findings-loading');
-    const findingsData = document.getElementById('findings-data');
-
-    try {
-        const res = await fetch('/api/v1/missions');
-        if (res.ok) missions = await res.json();
-        if (errEl) errEl.classList.add('hidden');
-    } catch {
-        if (errEl) errEl.classList.remove('hidden');
-    }
-
-    const cutoff = days > 0 ? new Date(Date.now() - days * 86400000) : null;
-    if (cutoff) missions = missions.filter(m => new Date(m.created_at) >= cutoff);
-
-    // Toggle getting started card based on mission existence
-    const gettingStarted = document.getElementById('getting-started');
-    if (gettingStarted) {
-        gettingStarted.classList.toggle('hidden', missions.length > 0);
-    }
-
-    // Show empty state for findings when none exist
-    if (findingsLoading && findingsData && missions.length === 0) {
-        findingsLoading.innerHTML = '<div class="col-span-4 dash-empty" style="padding:1rem 0.5rem;min-height:auto;"><i class="fa-solid fa-shield-halved block" style="font-size:1.25rem;"></i><p style="font-size:0.75rem;">No findings yet</p></div>';
-    }
-
-    // Gather all findings
-    for (const m of missions) {
-        try {
-            const r = await fetch(`/api/v1/missions/${m.id}/findings`);
-            if (r.ok) { const f = await r.json(); f.forEach(x => { x._mission = m; }); allFindings.push(...f); }
-        } catch {}
-    }
-
-    // Swap skeleton for real data
-    if (findingsLoading) findingsLoading.classList.add('hidden');
-    if (findingsData) findingsData.classList.remove('hidden');
-
-    // Show empty state for metrics when no data
-    const metricsSection = document.getElementById('metrics-section');
-    if (metricsSection && missions.length === 0 && allFindings.length === 0) {
-        const metricsBody = metricsSection.querySelector('.p-5');
-        if (metricsBody) {
-            metricsBody.innerHTML = '<div class="dash-empty" style="padding:3rem 1rem;"><i class="fa-solid fa-chart-bar block"></i><h3>No data yet</h3><p>Complete your first assessment to see trends and metrics here.</p></div>';
-        }
-    } else {
-        renderFindingsOverTime(allFindings, days);
-        renderMissionsPerWeek(missions);
-        renderSeverityBreakdown(allFindings);
-        renderTopVulns(allFindings);
-        renderTopTargets(allFindings, missions);
-    }
-}
-
-function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
-
-function renderFindingsOverTime(findings, days) {
-    destroyChart('findings-time');
-    const grouped = {};
-    findings.forEach(f => { const d = (f.created_at || '').split('T')[0]; if (d) grouped[d] = (grouped[d] || 0) + 1; });
-    const labels = Object.keys(grouped).sort();
-    const data = labels.map(l => grouped[l]);
-    const ctx = document.getElementById('chart-findings-time');
-    if (!ctx) return;
-    chartInstances['findings-time'] = new Chart(ctx, {
-        type: 'line', data: { labels, datasets: [{ label: 'Findings', data, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.3, pointRadius: 2 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } }, y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } } } }
-    });
-}
-
-function renderMissionsPerWeek(missions) {
-    destroyChart('missions-week');
-    const grouped = {};
-    missions.forEach(m => {
-        const d = new Date(m.created_at);
-        const weekStart = new Date(d); weekStart.setDate(d.getDate() - d.getDay());
-        const key = weekStart.toISOString().split('T')[0];
-        grouped[key] = (grouped[key] || 0) + 1;
-    });
-    const labels = Object.keys(grouped).sort();
-    const data = labels.map(l => grouped[l]);
-    const ctx = document.getElementById('chart-missions-week');
-    if (!ctx) return;
-    chartInstances['missions-week'] = new Chart(ctx, {
-        type: 'bar', data: { labels, datasets: [{ label: 'Missions', data, backgroundColor: '#10b981', borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { display: false } }, y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } } } }
-    });
-}
-
-function renderSeverityBreakdown(findings) {
-    destroyChart('severity');
-    const counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
-    findings.forEach(f => { const s = (f.severity || 'info').toLowerCase(); if (s in counts) counts[s]++; });
-    const ctx = document.getElementById('chart-severity');
-    if (!ctx) return;
-    chartInstances['severity'] = new Chart(ctx, {
-        type: 'doughnut', data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: ['#f43f5e', '#f59e0b', '#3b82f6', '#64748b', '#475569'], borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 10, family: 'JetBrains Mono' }, padding: 8, usePointStyle: true, pointStyleWidth: 8 } } } }
-    });
-}
-
-function renderTopVulns(findings) {
-    const typeCounts = {};
-    findings.forEach(f => { const t = f.title || 'Unknown'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
-    const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    const el = document.getElementById('top-vulns-list');
-    if (!el) return;
-    el.innerHTML = sorted.length === 0 ? '<div class="text-slate-600 text-center py-4">No findings</div>' :
-        sorted.map(([name, count], i) => `<div class="flex items-center gap-2"><span class="text-[10px] text-slate-600 w-4">${i + 1}.</span><span class="flex-1 text-slate-300 truncate">${escapeHtml(name)}</span><span class="text-[10px] font-mono text-slate-500">${count}</span></div>`).join('');
-}
-
-function renderTopTargets(findings, missions) {
-    destroyChart('top-targets');
-    const targetCounts = {};
-    findings.forEach(f => { const t = f._mission?.target || 'Unknown'; targetCounts[t] = (targetCounts[t] || 0) + 1; });
-    const sorted = Object.entries(targetCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    const ctx = document.getElementById('chart-top-targets');
-    if (!ctx) return;
-    chartInstances['top-targets'] = new Chart(ctx, {
-        type: 'bar', data: { labels: sorted.map(s => s[0]), datasets: [{ label: 'Findings', data: sorted.map(s => s[1]), backgroundColor: '#8b5cf6', borderRadius: 4 }] },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } }, y: { ticks: { color: '#94a3b8', font: { size: 9, family: 'JetBrains Mono' } }, grid: { display: false } } } }
-    });
-}
-
-// --- Playbook Detail Modal ---
-let selectedPlaybookData = null;
-
-function showPlaybookDetail(playbook) {
-    selectedPlaybookData = playbook;
-    document.getElementById('pb-detail-title').textContent = playbook.name || 'Playbook';
-    document.getElementById('pb-detail-desc').textContent = playbook.description || '';
-    const phasesEl = document.getElementById('pb-detail-phases');
-    const steps = playbook.steps || playbook.phases || [];
-    phasesEl.innerHTML = steps.map((s, i) => `<div class="flex items-center gap-2 text-xs"><span class="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-[10px] font-mono shrink-0">${i + 1}</span><span class="text-slate-300">${escapeHtml(typeof s === 'string' ? s : s.name || s.description || JSON.stringify(s))}</span></div>`).join('');
-    document.getElementById('pb-detail-stealth').textContent = playbook.stealth ? 'On' : 'Off';
-    document.getElementById('pb-detail-autoexploit').textContent = playbook.auto_exploit !== false ? 'Yes' : 'No';
-    document.getElementById('playbook-detail-modal').classList.remove('hidden');
-}
-function closePlaybookDetail() { document.getElementById('playbook-detail-modal').classList.add('hidden'); }
-function launchPlaybook() {
-    if (!selectedPlaybookData) return;
-    const target = document.getElementById('mission-target')?.value?.trim();
-    if (!target) { closePlaybookDetail(); document.getElementById('mission-target')?.focus(); return; }
-    closePlaybookDetail();
-    startMission(target, selectedPlaybookData.description || 'Playbook execution', selectedPlaybookData.id);
-}
-
-// Add info icon handler to adversary-playbook dropdown
-(function setupPlaybookInfo() {
-    const sel = document.getElementById('adversary-playbook');
-    if (!sel) return;
-    sel.addEventListener('dblclick', async () => {
-        const val = sel.value;
-        if (!val) return;
-        try {
-            const res = await fetch('/api/v1/missions/adversary-playbooks');
-            if (!res.ok) return;
-            const playbooks = await res.json();
-            const pb = playbooks.find(p => p.id === val);
-            if (pb) showPlaybookDetail(pb);
-        } catch {}
-    });
-})();
-
-// --- Finding Detail Modal ---
-let currentFinding = null;
-
-function openFindingDetail(finding) {
-    currentFinding = finding;
-    document.getElementById('fd-title').textContent = finding.title || 'Finding';
-    const sevColors = { critical: 'text-rose-400', high: 'text-amber-400', medium: 'text-blue-400', low: 'text-slate-400', info: 'text-slate-500' };
-    const sev = (finding.severity || 'info').toLowerCase();
-
-    document.getElementById('fd-tab-details').innerHTML = `
-        <div class="space-y-3">
-            <div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 uppercase w-20">Severity</span><span class="${sevColors[sev] || 'text-slate-400'} font-medium uppercase text-sm">${escapeHtml(sev)}</span></div>
-            <div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 uppercase w-20">Tool</span><span class="text-sm text-white">${escapeHtml(finding.tool_source || 'N/A')}</span></div>
-            <div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 uppercase w-20">Status</span><span class="text-sm text-white">${escapeHtml(finding.status || 'confirmed')}</span></div>
-            <div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 uppercase w-20">Found</span><span class="text-sm text-white">${finding.created_at ? new Date(finding.created_at).toLocaleString() : 'N/A'}</span></div>
-            <div class="pt-2 border-t border-white/5"><span class="text-[10px] text-slate-500 uppercase block mb-1">Description</span><p class="text-sm text-slate-300">${escapeHtml(finding.description || 'No description available.')}</p></div>
-        </div>`;
-    document.getElementById('fd-tab-evidence').innerHTML = `<div class="text-sm text-slate-500">No evidence uploaded yet.</div>`;
-    document.getElementById('fd-tab-remediation').innerHTML = `<div class="space-y-2 text-sm text-slate-300">${finding.remediation ? `<p>${escapeHtml(finding.remediation)}</p>` : '<p class="text-slate-500">No remediation steps available.</p>'}</div>`;
-    document.getElementById('fd-tab-notes').innerHTML = `<textarea class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 outline-none resize-none" rows="4" placeholder="Add notes about this finding..."></textarea>`;
-
-    switchFDTab('details');
-    document.getElementById('finding-detail-modal').classList.remove('hidden');
-}
-function closeFindingDetail() { document.getElementById('finding-detail-modal').classList.add('hidden'); }
-
-function switchFDTab(tab) {
-    document.querySelectorAll('.fd-tab').forEach(t => { t.classList.remove('text-violet-400', 'border-violet-500'); t.classList.add('text-slate-400', 'border-transparent'); });
-    const active = document.querySelector(`.fd-tab[data-tab="${tab}"]`);
-    if (active) { active.classList.add('text-violet-400', 'border-violet-500'); active.classList.remove('text-slate-400', 'border-transparent'); }
-    ['details', 'evidence', 'remediation', 'notes'].forEach(t => {
-        const el = document.getElementById(`fd-tab-${t}`);
-        if (el) el.classList.toggle('hidden', t !== tab);
-    });
-}
-
-function markFalsePositive() {
-    if (!currentFinding) return;
-    fetch(`/api/v1/findings/${currentFinding.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'false_positive' }) }).catch(() => {});
-    closeFindingDetail();
-}
-function retestFinding() { closeFindingDetail(); }
-
-// Make findings clickable in the dashboard
-const origHandleFinding = handleFinding;
-handleFinding = function(data) {
-    origHandleFinding(data);
-    // Store finding data for click access
-    if (!window._dashboardFindings) window._dashboardFindings = [];
-    window._dashboardFindings.push(data);
-};
-
-// --- Task Tree ---
-function renderTaskTree(tasks) {
-    const panel = document.getElementById('task-tree-panel');
-    const content = document.getElementById('task-tree-content');
-    if (!tasks || tasks.length === 0) { panel.classList.add('hidden'); return; }
-    panel.classList.remove('hidden');
-
-    const icons = { completed: '☑', running: '●', pending: '○', failed: '✗' };
-    const colors = { completed: 'text-emerald-400', running: 'text-amber-400 animate-pulse', pending: 'text-slate-500', failed: 'text-rose-400' };
-
-    function renderNode(task, depth = 0) {
-        const indent = depth * 20;
-        const icon = icons[task.status] || '○';
-        const color = colors[task.status] || 'text-slate-500';
-        let html = `<div class="flex items-center gap-2 py-0.5 hover:bg-white/5 rounded px-2 cursor-pointer" style="padding-left:${indent + 8}px" onclick='openFindingDetail(${JSON.stringify(task).replace(/'/g, "&#39;")})'>
-            <span class="${color}">${icon}</span>
-            <span class="text-slate-300">${escapeHtml(task.name || task.tool || 'Task')}</span>
-            ${task.status === 'running' ? '<span class="text-[10px] text-amber-400 ml-auto">running...</span>' : ''}
-        </div>`;
-        if (task.children) task.children.forEach(c => { html += renderNode(c, depth + 1); });
-        return html;
-    }
-
-    content.innerHTML = tasks.map(t => renderNode(t)).join('');
-    const running = tasks.filter(t => t.status === 'running').length;
-    const completed = tasks.filter(t => t.status === 'completed').length;
-    document.getElementById('task-tree-status').textContent = `${completed}/${tasks.length} complete, ${running} active`;
-}
-
-// --- Attack Paths Graph ---
-let attackPathCy = null;
-
-function renderAttackPaths(paths) {
-    const panel = document.getElementById('attack-paths-panel');
-    if (!paths || paths.length === 0) { panel.classList.add('hidden'); return; }
-    panel.classList.remove('hidden');
-    const container = document.getElementById('attack-paths-graph');
-    container.innerHTML = '';
-
-    attackPathCy = cytoscape({
-        container,
-        style: [
-            { selector: 'node', style: { 'label': 'data(label)', 'color': '#94a3b8', 'font-size': '9px', 'font-family': 'JetBrains Mono', 'text-valign': 'bottom', 'text-margin-y': 4, 'width': 24, 'height': 24 } },
-            { selector: 'node[type="entry"]', style: { 'background-color': '#3b82f6' } },
-            { selector: 'node[type="exploit"]', style: { 'background-color': '#f43f5e' } },
-            { selector: 'node[type="pivot"]', style: { 'background-color': '#f59e0b' } },
-            { selector: 'node[type="goal"]', style: { 'background-color': '#10b981' } },
-            { selector: 'edge', style: { 'width': 2, 'line-color': '#475569', 'target-arrow-color': '#475569', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'label': 'data(label)', 'font-size': '8px', 'color': '#64748b' } }
-        ],
-        layout: { name: 'dagre', rankDir: 'LR', animate: true }
-    });
-
-    paths.forEach((path, pi) => {
-        path.forEach((step, si) => {
-            const nodeId = `ap-${pi}-${si}`;
-            attackPathCy.add({ group: 'nodes', data: { id: nodeId, label: step.name || step.title || 'Step', type: step.type || (si === 0 ? 'entry' : 'exploit') } });
-            if (si > 0) {
-                attackPathCy.add({ group: 'edges', data: { source: `ap-${pi}-${si-1}`, target: nodeId, label: step.technique || '' } });
-            }
-        });
-    });
-
-    try { attackPathCy.layout({ name: 'dagre', rankDir: 'LR', animate: true }).run(); } catch { attackPathCy.layout({ name: 'cose', animate: true }).run(); }
-}
-
-// Listen for task/path updates via WebSocket
-const origOnSocket = window.onSocketMessage;
-window.onSocketMessage = function(data) {
-    if (origOnSocket) origOnSocket(data);
-    try {
-        const msg = JSON.parse(data);
-        if (msg.type === 'task_tree') renderTaskTree(msg.data);
-        if (msg.type === 'attack_paths') renderAttackPaths(msg.data);
-        if (msg.type === 'task_update' && msg.data?.tasks) renderTaskTree(msg.data.tasks);
-    } catch {}
-};
-
-// Load metrics on page load
-document.addEventListener('DOMContentLoaded', () => { loadMetrics(); });
-</script>
+{% block page_module %}
+<script type="module" src="/static/js/dashboard.js"></script>
 {% endblock %}

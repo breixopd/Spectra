@@ -5,9 +5,11 @@ Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
+from datetime import datetime, timezone
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError
+from jwt.exceptions import InvalidTokenError as JWTError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,6 +73,12 @@ async def get_current_user(
 
     if user is None:
         raise credentials_exception
+
+    if user.invalidated_before:
+        token_iat = payload.get("iat")
+        if token_iat and datetime.fromtimestamp(token_iat, tz=timezone.utc) < user.invalidated_before:
+            raise HTTPException(status_code=401, detail="Session invalidated")
+
     return user
 
 

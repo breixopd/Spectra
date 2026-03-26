@@ -89,6 +89,8 @@ services:
         condition: service_healthy
       ai-svc:
         condition: service_healthy
+      tensorzero:
+        condition: service_healthy
     env_file:
       - ../.env
     environment:
@@ -141,12 +143,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      tensorzero:
+        condition: service_healthy
     env_file:
       - ../.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
       - SKIP_MIGRATIONS=true
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
     volumes:
       - spectra_data:/app/data
     healthcheck:
@@ -160,6 +165,61 @@ services:
         limits:
           cpus: '1'
           memory: 1G
+    networks:
+      - spectra-network
+
+  # ClickHouse (TensorZero analytics + inference storage)
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.11-alpine
+    container_name: spectra-clickhouse
+    restart: unless-stopped
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=tensorzero
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    networks:
+      - spectra-network
+
+  # TensorZero Gateway (AI routing, observability, optimization)
+  tensorzero:
+    image: tensorzero/gateway
+    container_name: spectra-tensorzero
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ../config/tensorzero.toml:/app/config/tensorzero.toml:ro
+    environment:
+      - TENSORZERO_CONFIG_FILE=/app/config/tensorzero.toml
+      - TENSORZERO_CLICKHOUSE_URL=http://clickhouse:8123/tensorzero
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-${LLM_API_KEY:-}}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
     networks:
       - spectra-network
 
@@ -248,3 +308,4 @@ volumes:
   caddy_data:
   caddy_config:
   minio_data:
+  clickhouse_data:

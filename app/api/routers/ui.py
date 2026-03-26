@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import _is_admin_user, get_current_active_user, get_ui_user
-from app.api.schemas import LLMTestRequest, SettingsUpdate
+from app.api.schemas import SettingsUpdate
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
 from app.core.rbac import Permission, require_permission
@@ -22,7 +22,6 @@ from app.services.system.settings_service import (
     apply_settings_update,
     get_ai_status_snapshot,
     get_current_settings,
-    test_llm_connection,
 )
 from app.version import __version__
 
@@ -374,18 +373,33 @@ async def get_ai_status(
 
 
 @router.post("/test-llm")
-async def test_llm_endpoint(request: Request, payload: LLMTestRequest):
-    """Test connection to LLM provider. Requires auth after setup."""
-    async with async_session_maker() as session:
-        result = await session.execute(select(User.id).limit(1))
-        if result.scalar_one_or_none():
-            token = request.headers.get("Authorization", "").replace("Bearer ", "")
-            if not token:
-                raise HTTPException(status_code=401, detail="Authentication required")
-    return await test_llm_connection(
-        provider=payload.provider,
-        model=payload.model,
-        api_key=payload.api_key,
-        base_url=payload.base_url,
-        ollama_host=payload.ollama_host,
-    )
+async def test_llm_connection(request: Request):
+    """Test TensorZero gateway connection."""
+    import httpx
+
+    gw_url = settings.TENSORZERO_GATEWAY_URL or "http://tensorzero:3000"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{gw_url}/health")
+            if resp.status_code == 200:
+                return {"status": "ok", "message": "TensorZero gateway is healthy"}
+            return {"status": "error", "message": f"Gateway returned status {resp.status_code}"}
+    except Exception as e:
+        return {"status": "error", "message": f"Cannot reach gateway at {gw_url}: {str(e)}"}
+
+
+@router.post("/test-tz-gateway")
+async def test_tz_gateway(request: Request):
+    """Test TensorZero gateway connection (setup page)."""
+    import httpx
+
+    body = await request.json()
+    gw_url = body.get("gateway_url") or settings.TENSORZERO_GATEWAY_URL or "http://tensorzero:3000"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{gw_url}/health")
+            if resp.status_code == 200:
+                return {"success": True}
+            return {"success": False, "error": f"Gateway returned status {resp.status_code}"}
+    except Exception as e:
+        return {"success": False, "error": f"Cannot reach gateway at {gw_url}: {str(e)}"}

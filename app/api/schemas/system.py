@@ -1,8 +1,6 @@
 """System, admin, health, and configuration schemas."""
 
-from typing import Any
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.api.schemas.auth import UserCreate
 
@@ -26,85 +24,6 @@ class HealthResponse(BaseModel):
     error: str | None = None
 
 
-# --- AI Provider Schemas ---
-
-_SUPPORTED_AI_PROVIDERS = {"ollama", "api", "openai", "litellm", "qwen", "z.ai", "anthropic", "groq"}
-
-
-def _normalize_ai_provider(value: str) -> str:
-    provider = value.strip().lower()
-    if provider not in _SUPPORTED_AI_PROVIDERS:
-        raise ValueError("Unsupported provider")
-    return "litellm"
-
-
-class AIProviderProfile(BaseModel):
-    """Provider profile payload for runtime AI routing."""
-
-    provider: str = Field(..., description="Provider id")
-    model: str = Field(..., min_length=1, description="Model or provider/model route")
-    base_url: str | None = None
-    api_key: str | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def prefix_ollama_model(cls, data: Any) -> Any:
-        """Add ollama/ prefix to model before provider gets normalized."""
-        if isinstance(data, dict):
-            raw_provider = str(data.get("provider", "")).strip().lower()
-            model = str(data.get("model", "")).strip()
-            if raw_provider == "ollama" and model and not model.startswith("ollama/"):
-                data = {**data, "model": f"ollama/{model}"}
-        return data
-
-    @field_validator("provider")
-    @classmethod
-    def validate_provider(cls, value: str) -> str:
-        return _normalize_ai_provider(value)
-
-    @field_validator("model")
-    @classmethod
-    def validate_model(cls, value: str) -> str:
-        model = value.strip()
-        if not model:
-            raise ValueError("Model is required")
-        return model
-
-
-class AIProviderRouting(BaseModel):
-    """Default and per-tier route selection."""
-
-    default: str | None = None
-    tier1: str | None = None
-    tier2: str | None = None
-    tier3: str | None = None
-
-    def as_dict(self) -> dict[str, str | None]:
-        return {
-            "default": self.default,
-            "tier1": self.tier1,
-            "tier2": self.tier2,
-            "tier3": self.tier3,
-        }
-
-
-class AIProviderFallbacks(BaseModel):
-    """Ordered fallback chain selection."""
-
-    default: list[str] | None = None
-    tier1: list[str] | None = None
-    tier2: list[str] | None = None
-    tier3: list[str] | None = None
-
-    def as_dict(self) -> dict[str, list[str] | None]:
-        return {
-            "default": self.default,
-            "tier1": self.tier1,
-            "tier2": self.tier2,
-            "tier3": self.tier3,
-        }
-
-
 # --- Setup & Settings Schemas ---
 
 
@@ -112,21 +31,9 @@ class SystemSetupRequest(BaseModel):
     """Schema for system setup."""
 
     user: UserCreate
-    llm_provider: str | None = Field(None, pattern="^(ollama|api|litellm|qwen|z\\.ai|anthropic|groq|openai|openrouter)$")
-    llm_model: str | None = None
-    llm_api_key: str | None = None
-    llm_api_base: str | None = None
-    ollama_host: str | None = None
-    ollama_model: str | None = None  # Ollama model when both providers configured
-    provider_ollama: bool = False     # Whether ollama is enabled
-    provider_api: bool = False        # Whether API is enabled
-    provider_profiles: dict[str, AIProviderProfile] | None = None
-    provider_routing: AIProviderRouting | None = None
-    provider_fallbacks: AIProviderFallbacks | None = None
-    # Per-tier model routing (optional)
-    llm_tier1_model: str | None = None
-    llm_tier2_model: str | None = None
-    llm_tier3_model: str | None = None
+    # AI Gateway (TensorZero)
+    tensorzero_gateway_url: str | None = None
+    tensorzero_api_key: str | None = None
     # Embedding configuration
     embedding_model: str | None = None
     # Infrastructure options
@@ -139,47 +46,22 @@ class SystemSetupRequest(BaseModel):
     s3_endpoint_url: str | None = None
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
-
-    @field_validator("llm_provider")
-    @classmethod
-    def normalize_llm_provider(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return _normalize_ai_provider(value)
-
-    @model_validator(mode="after")
-    def validate_ai_config(self) -> "SystemSetupRequest":
-        if self.provider_profiles:
-            return self
-        if self.llm_provider and self.llm_model:
-            return self
-        raise ValueError(
-            "Either provider_profiles or llm_provider with llm_model is required"
-        )
+    # Optional AI model configuration
+    ai_models: dict | None = None
 
 
 class SettingsUpdate(BaseModel):
     """Schema for settings updates with optional partial fields."""
 
-    ai_provider: str | None = Field(None, pattern="^(ollama|api|litellm)$")
-    llm_api_key: str | None = None
-    llm_api_base_url: str | None = None
-    llm_model: str | None = None
-    ollama_host: str | None = None
-    ollama_model: str | None = None
-    ollama_enabled: bool | None = None
-    provider_profiles: dict[str, AIProviderProfile] | None = None
-    provider_routing: AIProviderRouting | None = None
-    provider_fallbacks: AIProviderFallbacks | None = None
+    # AI Gateway (TensorZero)
+    tensorzero_gateway_url: str | None = None
+    tensorzero_api_key: str | None = None
     log_level: str | None = Field(None, pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
     plugin_safe_mode: bool | None = None
     connect_back_host: str | None = None
     require_approval: bool | None = None
     fully_automated: bool | None = None
     notification_webhook: str | None = None
-    llm_tier1_model: str | None = None
-    llm_tier2_model: str | None = None
-    llm_tier3_model: str | None = None
     embedding_model: str | None = None
     embedding_api_key: str | None = None
     embedding_api_base_url: str | None = None
@@ -233,13 +115,6 @@ class SettingsUpdate(BaseModel):
                 raise ValueError("Resource tiers must be valid JSON")
         return value
 
-    @field_validator("ai_provider")
-    @classmethod
-    def normalize_ai_provider(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return _normalize_ai_provider(value)
-
     @field_validator("notification_webhook")
     @classmethod
     def validate_webhook_url(cls, value: str | None) -> str | None:
@@ -253,18 +128,9 @@ class SettingsUpdate(BaseModel):
 
 
 class LLMTestRequest(BaseModel):
-    """Schema for testing LLM connection."""
+    """Schema for testing LLM connection via TensorZero gateway."""
 
-    provider: str
-    model: str
-    api_key: str | None = None
-    base_url: str | None = None
-    ollama_host: str | None = None
-
-    @field_validator("provider")
-    @classmethod
-    def validate_provider(cls, value: str) -> str:
-        return _normalize_ai_provider(value)
+    model: str | None = None
 
 
 # --- Admin Schemas ---

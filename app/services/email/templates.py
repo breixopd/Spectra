@@ -46,12 +46,21 @@ SUBSCRIPTION = """
 <p><a href="{dashboard_url}" style="color:#8b5cf6;">Go to Dashboard</a></p>
 """
 
+EMAIL_VERIFICATION = """
+<h1 style="color:#fff;font-size:22px;margin:0 0 16px;">Verify Your Email</h1>
+<p>Hi {username},</p>
+<p>Please verify your email address by clicking the link below. This link expires in 24 hours.</p>
+<p><a href="{verify_url}" style="color:#8b5cf6;">{verify_url}</a></p>
+<p>If you didn't create this account, you can safely ignore this email.</p>
+"""
+
 TEMPLATES: dict[str, str] = {
     "welcome": WELCOME,
     "password_reset": PASSWORD_RESET,
     "mission_complete": MISSION_COMPLETE,
     "alert": ALERT,
     "subscription": SUBSCRIPTION,
+    "email_verification": EMAIL_VERIFICATION,
 }
 
 

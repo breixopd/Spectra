@@ -64,7 +64,7 @@ Dedicated LLM routing, embedding generation, and RAG queries.
 | **Dependencies** | PostgreSQL (pgvector for RAG), LLM provider (configurable) |
 | **Resource Limits** | 1 CPU, 1 GB RAM (configurable) |
 
-Uses the `SmartRouter` (`app/services/ai/router.py`) with LiteLLM for provider-agnostic model routing across tiers.
+Uses the `SmartRouter` (`app/services/ai/router.py`) with TensorZero for provider-agnostic model routing across tiers.
 
 ### Scheduler — `spectra-scheduler`
 

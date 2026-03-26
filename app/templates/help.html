@@ -69,7 +69,7 @@
                         <div class="guide-step flex gap-3 items-start">
                             <div class="flex-1">
                                 <h3 class="text-sm font-semibold text-white">Initial Setup</h3>
-                                <p class="text-xs text-slate-400 mt-1">On first launch you'll be redirected to <span class="kb">/setup</span>. Create your admin account and configure your AI provider — either a local Ollama instance or a cloud API gateway (OpenAI, Anthropic, etc.) via LiteLLM.</p>
+                                <p class="text-xs text-slate-400 mt-1">On first launch you'll be redirected to <span class="kb">/setup</span>. Create your admin account and configure your AI provider — either a local Ollama instance or a cloud API gateway (OpenAI, Anthropic, etc.) via TensorZero.</p>
                             </div>
                         </div>
                         <div class="guide-step flex gap-3 items-start">
@@ -276,7 +276,7 @@
                             <p class="text-xs text-slate-400 mb-2">{{ app_name }} ships with 25+ plugins for common security tools:</p>
                             <div class="flex flex-wrap gap-1.5">
                                 {% for name in ['nmap', 'nuclei', 'nikto', 'sqlmap', 'hydra', 'feroxbuster', 'subfinder', 'httpx', 'amass', 'gobuster', 'ffuf', 'dirsearch', 'wpscan', 'testssl', 'crackmapexec', 'enum4linux', 'kerbrute', 'searchsploit', 'metasploit', 'naabu', 'whatweb', 'linpeas', 'winpeas', 'socat', 'chisel', 'impacket'] %}
-                                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-white/5">{{ name }}</span>
+                                <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-white/5">{{ name }}</span>
                                 {% endfor %}
                             </div>
                         </div>

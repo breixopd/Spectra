@@ -30,9 +30,9 @@ def test_normalize_runtime_ai_config_from_legacy_rows():
         "tier1": "tier1",
         "tier2": "tier2",
     }
-    assert runtime_ai_config.profiles["default"]["provider"] == "litellm"
+    assert runtime_ai_config.profiles["default"]["provider"] == "tensorzero"
     assert runtime_ai_config.profiles["default"]["model"] == "gpt-4o-mini"
-    assert runtime_ai_config.profiles["tier1"]["provider"] == "litellm"
+    assert runtime_ai_config.profiles["tier1"]["provider"] == "tensorzero"
     assert runtime_ai_config.profiles["tier1"]["model"] == "ollama/qwen2.5:3b"
     assert runtime_ai_config.fallbacks == {}
 
@@ -49,7 +49,7 @@ def test_normalize_runtime_ai_config_normalizes_structured_api_profiles():
 
     runtime_ai_config = normalize_runtime_ai_config(rows)
 
-    assert runtime_ai_config.profiles["default"]["provider"] == "litellm"
+    assert runtime_ai_config.profiles["default"]["provider"] == "tensorzero"
     assert runtime_ai_config.profiles["default"]["model"] == "gpt-4o-mini"
     assert runtime_ai_config.profiles["default"]["base_url"] == "https://example.test/v1"
 
@@ -104,7 +104,7 @@ def test_apply_runtime_settings_sets_resolved_fields():
         mock_settings.LLM_MODEL = "fallback-model"
         apply_runtime_settings(rows, runtime_ai_config)
 
-    assert mock_settings.AI_PROVIDER == "litellm"
+    assert mock_settings.AI_PROVIDER == "tensorzero"
     assert mock_settings.AI_PROVIDER_ROUTING == {"default": "default"}
     assert mock_settings.OLLAMA_MODEL == "qwen2.5:7b"
     assert mock_settings.EMBEDDING_MODEL == "text-embedding-3-small"

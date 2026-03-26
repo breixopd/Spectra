@@ -63,16 +63,10 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_MAX_OVERFLOW must be between 0 and 100")
         return v
 
-    # --- AI / LLM ---
-    AI_PROVIDER: str = "litellm"  # litellm routes to all supported providers
-    OLLAMA_HOST: str = "http://ai:11434"
-    OLLAMA_MODEL: str = "qwen2.5:3b"
-
-    # Cloud/API Provider (OpenAI, OpenRouter, vLLM, LocalAI, etc.)
-    LLM_API_KEY: SecretStr = SecretStr("")
-    LLM_API_BASE_URL: str | None = None
-    LLM_MODEL: str = "gpt-4o-mini"
-    LLM_TIMEOUT: float = 600.0
+    # --- AI / LLM (TensorZero Gateway) ---
+    TENSORZERO_GATEWAY_URL: str = ""  # e.g. http://tensorzero:3000
+    TENSORZERO_API_KEY: str = ""  # API key passed to TZ gateway (for provider auth)
+    LLM_TIMEOUT: float = 600.0  # Request timeout for LLM calls
 
     @field_validator("LLM_TIMEOUT")
     @classmethod
@@ -81,18 +75,10 @@ class Settings(BaseSettings):
             raise ValueError("LLM_TIMEOUT must be 5-1200 seconds")
         return v
 
-    # Per-tier model routing (empty = use default model for all tiers)
-    LLM_TIER1_MODEL: str = ""  # Cheap/fast: scope, tool selection, parsing
-    LLM_TIER2_MODEL: str = ""  # Balanced: planning, steering, reporting
-    LLM_TIER3_MODEL: str = ""  # Capable: exploit crafting, PoC generation
-    AI_PROVIDER_PROFILES: dict[str, dict[str, Any]] = Field(default_factory=dict)
-    AI_PROVIDER_ROUTING: dict[str, str] = Field(default_factory=dict)
-    AI_PROVIDER_FALLBACKS: dict[str, list[str]] = Field(default_factory=dict)
-
-    # Embedding model (local/ prefix uses fastembed; API model uses LLM provider)
+    # Embedding model (local/ prefix uses fastembed; otherwise uses API)
     EMBEDDING_MODEL: str = "local/BAAI/bge-small-en-v1.5"
-    EMBEDDING_API_KEY: SecretStr = Field(default=SecretStr(""), description="API key for embedding provider (falls back to LLM_API_KEY)")
-    EMBEDDING_API_BASE_URL: str = Field(default="", description="Base URL for embedding API (falls back to LLM_API_BASE_URL)")
+    EMBEDDING_API_KEY: SecretStr = Field(default=SecretStr(""), description="API key for embedding provider")
+    EMBEDDING_API_BASE_URL: str = Field(default="", description="Base URL for embedding API")
 
     # --- Platform Settings ---
     PLATFORM_DOMAIN: str = ""  # Public domain (e.g., "spectra.example.com")
@@ -204,8 +190,6 @@ class Settings(BaseSettings):
     # AI microservice — LLM, embeddings, RAG (for split mode)
     AI_SERVICE_URL: str = Field(default="", description="URL for AI microservice (empty = use in-process)")
 
-    # LLM gateway settings removed; use LLM_API_BASE_URL for OpenAI-compatible endpoints
-
     # Sandbox Orchestrator — external container management (for multi-node)
     SANDBOX_ORCHESTRATOR_URL: str | None = None  # e.g. "http://orchestrator:8084"
     SANDBOX_ORCHESTRATOR_TIMEOUT: int = 30
@@ -238,6 +222,12 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: SecretStr = SecretStr("")
     SMTP_FROM: str = ""
     SMTP_USE_TLS: bool = True
+    EMAIL_VERIFICATION_ENABLED: bool = False  # Auto-enabled when SMTP is configured and verified
+
+    @property
+    def smtp_configured(self) -> bool:
+        """Check if SMTP is configured with required fields."""
+        return bool(self.SMTP_HOST and self.SMTP_USER)
 
     @field_validator("SMTP_PORT")
     @classmethod
@@ -246,8 +236,7 @@ class Settings(BaseSettings):
             raise ValueError("SMTP_PORT must be between 1 and 65535")
         return v
 
-    # Multi-provider
-    OLLAMA_ENABLED: bool = False  # Whether Ollama is available as secondary provider
+
 
     # --- Object Storage (S3/MinIO) ---
     S3_ENDPOINT_URL: str = ""  # MinIO/S3 endpoint (e.g., http://minio:9000)
@@ -285,22 +274,6 @@ class Settings(BaseSettings):
         if v.upper() not in valid_levels:
             raise ValueError(f"LOG_LEVEL must be one of {valid_levels}")
         return v.upper()
-
-    @field_validator("AI_PROVIDER")
-    @classmethod
-    def validate_ai_provider(cls, v: str) -> str:
-        """Validate AI provider is supported."""
-        # All application LLM traffic goes through LiteLLM. Legacy provider
-        # names are accepted only as configuration aliases.
-        core_providers = {"ollama", "api", "litellm"}
-        # Named presets route through litellm with preset configs
-        preset_providers = {"qwen", "z.ai", "openai", "anthropic", "groq", "openrouter"}
-        normalized = v.lower().strip()
-        if normalized not in core_providers and normalized not in preset_providers:
-            raise ValueError(f"AI_PROVIDER must be one of {core_providers | preset_providers}")
-        if normalized == "api":
-            return "litellm"
-        return normalized
 
     @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES")
     @classmethod

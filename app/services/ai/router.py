@@ -1,12 +1,12 @@
 """
-LiteLLM-Powered Smart Router for LLM Requests.
+TensorZero-Powered Smart Router for LLM Requests.
 
-Replaces the custom OllamaClient/APIClient with a unified router that:
-- Routes to any provider (Ollama, OpenAI, Anthropic, Groq, etc.) via one interface
-- Automatic fallbacks: local model fails → cloud model takes over
-- Per-task model selection: cheap models for simple tasks, expensive for complex
-- Cost tracking, rate limiting, retry with exponential backoff
-- Supports 100+ models through LiteLLM's unified API
+Routes all LLM requests through the TensorZero gateway, which provides:
+- Unified multi-provider API (OpenAI, Anthropic, Ollama, etc.)
+- Automatic fallbacks between providers
+- A/B testing and prompt experimentation
+- Inference observability and cost tracking
+- Task-function mapping for per-task model routing
 
 Usage:
     router = get_smart_router()
@@ -18,6 +18,7 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any, TypeVar
 
+import httpx
 from pydantic import BaseModel
 
 from app.core.config import settings
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
-# Task complexity tiers — determines which model to use
+# Task complexity tiers — determines which TensorZero function to use
 TASK_TIERS = {
     # Tier 1: Simple, deterministic tasks → cheapest/fastest model
     "scope": 1,
@@ -47,132 +48,35 @@ TASK_TIERS = {
     "post_exploitation": 3,
 }
 
-# Pre-configured provider profiles
-PROVIDER_PRESETS = {
-    "z.ai": {
-        "name": "Z.AI (Zhipu GLM)",
-        "base_url": "https://api.z.ai/api/coding/paas/v4",
-        "models": {
-            "glm-4.7": {"tier": 3, "description": "Flagship coding model, 200K context"},
-            "glm-4.7-flashx": {"tier": 2, "description": "Fast and affordable, 200K context"},
-            "glm-4.7-flash": {"tier": 1, "description": "Free tier, lightweight"},
-            "glm-5": {"tier": 3, "description": "Latest flagship, 744B MoE"},
-        },
-        "default_model": "glm-4.7-flash",
-    },
-    "qwen": {
-        "name": "Qwen (Alibaba DashScope)",
-        "base_url": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-        "models": {
-            "qwen3.5-397b-a17b": {"tier": 3, "description": "Qwen 3.5 flagship MoE, 397B params"},
-            "qwen3.5-plus": {"tier": 2, "description": "Qwen 3.5 Plus, multimodal, 1M context"},
-            "qwen3.5-flash": {"tier": 1, "description": "Qwen 3.5 Flash, fast, 1M context"},
-            "qwen3-235b-a22b": {"tier": 3, "description": "Qwen 3 MoE, 22B active"},
-            "qwen3-32b": {"tier": 2, "description": "32B dense, 128K context"},
-            "qwen3-8b": {"tier": 1, "description": "8B dense, 128K context, fast"},
-        },
-        "default_model": "qwen3.5-plus",
-    },
-}
-
-_CLOUD_PROVIDER_ALIASES = {"api", "openai", "litellm", "ollama"}
-
-
-def _normalize_provider_name(provider: str | None) -> str:
-    normalized = (provider or "litellm").strip().lower() or "litellm"
-    if normalized in _CLOUD_PROVIDER_ALIASES:
-        return "litellm"
-    return normalized
-
-
-def _resolve_litellm_model_name(model: str, *, base_url: str | None = None) -> str:
-    if base_url and "/" not in model:
-        return f"openai/{model}"
-    return model
-
-
-class LiteLLMRouter(LLMClient):
+class TensorZeroRouter(LLMClient):
     """
-    Smart LLM router powered by LiteLLM.
+    Smart LLM router powered by TensorZero gateway.
 
-    Features:
-    - Unified interface for all providers (Ollama, OpenAI, Anthropic, etc.)
-    - Automatic fallbacks when a model/provider fails
-    - Per-task model routing based on complexity
-    - Cost tracking and rate limiting
-    - Retry with exponential backoff
+    All inference requests are routed through the TensorZero gateway,
+    which handles multi-provider routing, fallbacks, A/B testing,
+    observability, and optimization.
     """
 
-    provider = "litellm"
+    provider = "tensorzero"
 
-    def __init__(
-        self,
-        model_configs: list[dict[str, Any]] | None = None,
-        fallbacks: list[dict[str, list[str]]] | None = None,
-        default_model: str = "openai/gpt-4o-mini",
-    ):
-        self._router = None
-        self._model_configs = model_configs or []
-        self._fallbacks = fallbacks or []
-        self._default_model = default_model
-        self._task_model_map: dict[int, str] = {}
-        self._direct_fallback_warned = False
+    def __init__(self, gateway_url: str = ""):
+        self._gateway_url = (gateway_url or settings.TENSORZERO_GATEWAY_URL).rstrip("/")
+        self._client: httpx.AsyncClient | None = None
 
-    def _get_router(self):
-        """Lazy-initialize the LiteLLM router."""
-        if self._router is not None:
-            return self._router
+    def _get_client(self) -> httpx.AsyncClient:
+        """Lazy-initialize the HTTP client."""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                base_url=self._gateway_url,
+                timeout=httpx.Timeout(settings.LLM_TIMEOUT, connect=10.0),
+            )
+        return self._client
 
-        try:
-            from litellm import Router
-
-            if self._model_configs:
-                self._router = Router(
-                    model_list=self._model_configs,
-                    fallbacks=self._fallbacks,
-                    retry_after=2,
-                    num_retries=2,
-                    timeout=settings.LLM_TIMEOUT,
-                    allowed_fails=3,
-                )
-                logger.info(
-                    "LiteLLM Router initialized with %d model configs",
-                    len(self._model_configs),
-                )
-            else:
-                self._router = None
-
-        except (OSError, RuntimeError, ValueError, ImportError) as e:
-            logger.warning("Failed to initialize LiteLLM Router: %s", e)
-            self._router = None
-
-        return self._router
-
-    def _get_model_for_task(self, task_type: str | None = None) -> str:
-        """Select the best model based on task complexity."""
-        if not task_type:
-            return self._default_model
-
-        tier = TASK_TIERS.get(task_type, 2)
-
-        if tier in self._task_model_map:
-            return self._task_model_map[tier]
-
-        return self._default_model
-
-    def configure_task_models(
-        self,
-        tier1_model: str | None = None,
-        tier2_model: str | None = None,
-        tier3_model: str | None = None,
-    ) -> None:
-        """Configure which models to use for each task tier."""
-        if tier1_model:
-            self._task_model_map[1] = tier1_model
-        if tier2_model:
-            self._task_model_map[2] = tier2_model
-        if tier3_model:
-            self._task_model_map[3] = tier3_model
+    def _get_function_for_task(self, task_type: str | None) -> str:
+        """Map a Spectra task type to a TensorZero function name."""
+        if task_type and task_type in TASK_TIERS:
+            return task_type
+        return "default"
 
     async def generate(
         self,
@@ -183,73 +87,104 @@ class LiteLLMRouter(LLMClient):
         timeout: float | None = None,
         task_type: str | None = None,
     ) -> LLMResponse:
-        """Generate text using LiteLLM with smart routing."""
-
-        model = self._get_model_for_task(task_type)
+        """Generate text via TensorZero gateway."""
+        function_name = self._get_function_for_task(task_type)
 
         messages = []
         if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+            messages.append({"role": "system", "content": [{"type": "text", "value": system_prompt}]})
+        messages.append({"role": "user", "content": [{"type": "text", "value": prompt}]})
+
+        payload: dict[str, Any] = {
+            "function_name": function_name,
+            "input": {"messages": messages},
+            "params": {
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            },
+        }
 
         start_time = time.time()
+        client = self._get_client()
 
         try:
-            router = self._get_router()
-            if not router:
-                raise RuntimeError("LiteLLM router is not initialized")
-
-            response = await router.acompletion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
+            response = await client.post(
+                "/inference",
+                json=payload,
                 timeout=timeout or settings.LLM_TIMEOUT,
             )
+            response.raise_for_status()
+            data = response.json()
 
-            choice = response.choices[0]
-            usage = response.usage
+            content = ""
+            if data.get("content"):
+                for block in data["content"]:
+                    if block.get("type") == "text":
+                        content += block.get("text", "")
+
+            usage = data.get("usage", {})
+            model = data.get("variant_name", function_name)
+            inference_id = data.get("inference_id", "")
 
             duration_ms = (time.time() - start_time) * 1000
-            total_tokens = usage.total_tokens if usage else 0
+            total_tokens = usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+
             logger.debug(
-                "LiteLLM [%s] %.0fms tokens=%d",
+                "TensorZero [%s/%s] %.0fms tokens=%d id=%s",
+                function_name,
                 model,
                 duration_ms,
                 total_tokens,
+                inference_id,
             )
 
             await record_llm_call(
                 provider=self.provider,
-                model=model,
+                model=f"{function_name}/{model}",
                 duration_ms=duration_ms,
                 tokens=total_tokens,
                 success=True,
             )
 
             return LLMResponse(
-                content=choice.message.content or "",
-                model=model,
+                content=content,
+                model=f"{function_name}/{model}",
                 provider=self.provider,
                 usage={
-                    "prompt_tokens": usage.prompt_tokens if usage else 0,
-                    "completion_tokens": usage.completion_tokens if usage else 0,
-                    "total_tokens": usage.total_tokens if usage else 0,
+                    "prompt_tokens": usage.get("input_tokens", 0),
+                    "completion_tokens": usage.get("output_tokens", 0),
+                    "total_tokens": total_tokens,
                 },
-                raw={},
+                raw={
+                    "inference_id": inference_id,
+                    "episode_id": data.get("episode_id", ""),
+                },
             )
 
-        except (OSError, RuntimeError, ValueError, TimeoutError, ImportError) as e:
+        except httpx.HTTPStatusError as e:
             duration_ms = (time.time() - start_time) * 1000
             await record_llm_call(
                 provider=self.provider,
-                model=model,
+                model=function_name,
                 duration_ms=duration_ms,
                 tokens=0,
                 success=False,
             )
-            logger.error("LiteLLM generation failed for model %s: %s", model, e)
-            raise
+            error_body = e.response.text[:500] if e.response else ""
+            logger.error("TensorZero HTTP error %s for %s: %s", e.response.status_code, function_name, error_body)
+            raise RuntimeError(f"TensorZero gateway error ({e.response.status_code}): {error_body}") from e
+
+        except (httpx.ConnectError, httpx.TimeoutException, OSError) as e:
+            duration_ms = (time.time() - start_time) * 1000
+            await record_llm_call(
+                provider=self.provider,
+                model=function_name,
+                duration_ms=duration_ms,
+                tokens=0,
+                success=False,
+            )
+            logger.error("TensorZero connection error for %s: %s", function_name, e)
+            raise RuntimeError(f"TensorZero gateway unreachable: {e}") from e
 
     async def stream(
         self,
@@ -260,224 +195,99 @@ class LiteLLMRouter(LLMClient):
         timeout: float | None = None,
         task_type: str | None = None,
     ) -> AsyncIterator[str]:
-        """Stream tokens using litellm's streaming API."""
-        import litellm
+        """Stream tokens via TensorZero gateway."""
+        function_name = self._get_function_for_task(task_type)
 
-        model = self._get_model_for_task(task_type)
-        messages: list[dict[str, str]] = []
+        messages = []
         if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+            messages.append({"role": "system", "content": [{"type": "text", "value": system_prompt}]})
+        messages.append({"role": "user", "content": [{"type": "text", "value": prompt}]})
 
+        payload: dict[str, Any] = {
+            "function_name": function_name,
+            "input": {"messages": messages},
+            "stream": True,
+            "params": {
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            },
+        }
+
+        client = self._get_client()
+
+        async with client.stream(
+            "POST",
+            "/inference",
+            json=payload,
+            timeout=timeout or settings.LLM_TIMEOUT,
+        ) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line or not line.startswith("data: "):
+                    continue
+                data_str = line[6:]
+                if data_str == "[DONE]":
+                    break
+                try:
+                    import json
+                    chunk = json.loads(data_str)
+                    for block in chunk.get("content", []):
+                        if block.get("type") == "text":
+                            text = block.get("text", "")
+                            if text:
+                                yield text
+                except (ValueError, KeyError):
+                    continue
+
+    async def send_feedback(
+        self,
+        inference_id: str,
+        metric_name: str,
+        value: bool | float,
+    ) -> None:
+        """Send feedback to TensorZero for optimization."""
+        client = self._get_client()
         try:
-            response = await litellm.acompletion(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-                timeout=timeout or settings.LLM_TIMEOUT,
+            response = await client.post(
+                "/feedback",
+                json={
+                    "metric_name": metric_name,
+                    "inference_id": inference_id,
+                    "value": value,
+                },
+                timeout=10.0,
             )
-            async for chunk in response:
-                delta = chunk.choices[0].delta
-                if delta and delta.content:
-                    yield delta.content
-        except (OSError, RuntimeError, ValueError, TimeoutError):
-            raise
+            response.raise_for_status()
+        except (httpx.HTTPError, OSError) as e:
+            logger.warning("Failed to send feedback to TensorZero: %s", e)
 
     async def health_check(self) -> bool:
-        """Check if the configured LLM is reachable."""
+        """Check if TensorZero gateway is reachable."""
         try:
-            response = await self.generate(
-                "ping",
-                max_tokens=5,
-                temperature=0,
-                timeout=10,
-            )
-            return bool(response.content)
-        except (OSError, RuntimeError, ValueError, TimeoutError, ImportError):
+            client = self._get_client()
+            response = await client.get("/health", timeout=5.0)
+            return response.status_code == 200
+        except (httpx.HTTPError, OSError):
             return False
 
     async def close(self) -> None:
-        """Clean up resources."""
-        self._router = None
-
-
-def _build_legacy_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
-    """Build LiteLLM model configs from legacy flat settings."""
-    model_list = []
-    fallbacks = []
-    default_model = "openai/gpt-4.1-mini"
-
-    raw_provider = settings.AI_PROVIDER
-    raw_lower = str(raw_provider or "litellm").strip().lower()
-
-    if raw_lower == "ollama":
-        ollama_model = f"ollama/{settings.OLLAMA_MODEL}"
-        model_list.append(
-            {
-                "model_name": "default",
-                "litellm_params": {
-                    "model": ollama_model,
-                    "api_base": settings.OLLAMA_HOST,
-                },
-            }
-        )
-        default_model = "default"
-
-    else:
-        api_key = settings.LLM_API_KEY.get_secret_value()
-        if raw_lower in ("api", "openai") and not api_key:
-            return [], [], default_model
-
-        cloud_model = settings.LLM_MODEL or "glm-4.7"
-        litellm_model = _resolve_litellm_model_name(
-            cloud_model,
-            base_url=settings.LLM_API_BASE_URL,
-        )
-
-        model_list.append(
-            {
-                "model_name": "default",
-                "litellm_params": {
-                    "model": litellm_model,
-                    **({"api_key": api_key} if api_key else {}),
-                    **({"api_base": settings.LLM_API_BASE_URL} if settings.LLM_API_BASE_URL else {}),
-                },
-            }
-        )
-        default_model = "default"
-
-    # Register per-tier models as separate model groups in the LiteLLM router
-    # so tier routing can reference them by name
-    api_key_val = settings.LLM_API_KEY.get_secret_value() if settings.LLM_API_KEY else ""
-    tier_models = {
-        settings.LLM_TIER1_MODEL: "tier1",
-        settings.LLM_TIER2_MODEL: "tier2",
-        settings.LLM_TIER3_MODEL: "tier3",
-    }
-    registered_names = {cfg["model_name"] for cfg in model_list}
-    for tier_model_name, group_name in tier_models.items():
-        if not isinstance(tier_model_name, str) or not tier_model_name.strip():
-            continue
-        if group_name in registered_names:
-            continue
-        # Detect Ollama-style models by prefix or legacy provider
-        if tier_model_name.startswith("ollama/") or raw_lower == "ollama":
-            litellm_tier = tier_model_name if tier_model_name.startswith("ollama/") else f"ollama/{tier_model_name}"
-        else:
-            litellm_tier = _resolve_litellm_model_name(
-                tier_model_name,
-                base_url=settings.LLM_API_BASE_URL,
-            )
-
-        tier_params: dict[str, Any] = {"model": litellm_tier}
-        if api_key_val:
-            tier_params["api_key"] = api_key_val
-        if settings.LLM_API_BASE_URL:
-            tier_params["api_base"] = settings.LLM_API_BASE_URL
-        elif raw_lower == "ollama" or litellm_tier.startswith("ollama/"):
-            tier_params["api_base"] = settings.OLLAMA_HOST
-
-        model_list.append(
-            {
-                "model_name": group_name,
-                "litellm_params": tier_params,
-            }
-        )
-    return model_list, fallbacks, default_model
-
-
-def _build_model_config_for_profile(
-    profile_name: str,
-    profile: dict[str, Any],
-) -> dict[str, Any]:
-    model = str(profile.get("model", "")).strip()
-    litellm_params: dict[str, Any] = {}
-
-    if model.startswith("ollama/"):
-        litellm_params = {
-            "model": model,
-            "api_base": profile.get("base_url") or settings.OLLAMA_HOST,
-        }
-    else:
-        base_url = profile.get("base_url")
-        litellm_params = {
-            "model": _resolve_litellm_model_name(model, base_url=base_url),
-        }
-        if profile.get("api_key"):
-            litellm_params["api_key"] = profile["api_key"]
-        if base_url:
-            litellm_params["api_base"] = base_url
-
-    return {
-        "model_name": profile_name,
-        "litellm_params": litellm_params,
-    }
-
-
-def build_model_config_from_settings() -> tuple[list[dict], list[dict], str]:
-    """Build LiteLLM model configs from the resolved provider-profile settings."""
-    profiles = getattr(settings, "AI_PROVIDER_PROFILES", {}) or {}
-    routing = getattr(settings, "AI_PROVIDER_ROUTING", {}) or {}
-    fallbacks_map = getattr(settings, "AI_PROVIDER_FALLBACKS", {}) or {}
-
-    if not profiles or routing.get("default") not in profiles:
-        return _build_legacy_model_config_from_settings()
-
-    model_list = [_build_model_config_for_profile(profile_name, profile) for profile_name, profile in profiles.items()]
-    default_model = routing.get("default", "default")
-    fallbacks: list[dict[str, list[str]]] = []
-    seen_sources: set[str] = set()
-
-    for route_name, fallback_profiles in fallbacks_map.items():
-        source_profile = routing.get(route_name, default_model)
-        filtered_targets = [name for name in fallback_profiles if name in profiles]
-        if source_profile in profiles and filtered_targets and source_profile not in seen_sources:
-            fallbacks.append({source_profile: filtered_targets})
-            seen_sources.add(source_profile)
-
-    return model_list, fallbacks, default_model
+        """Close the HTTP client."""
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
 
 
 def create_smart_router() -> LLMClient:
-    """Create a SmartRouter from current settings."""
-    _normalize_provider_name(settings.AI_PROVIDER)
-
-    model_list, fallbacks, default_model = build_model_config_from_settings()
-
-    if not model_list:
-        raise ValueError("No LLM model configuration resolved from current settings")
-
-    router = LiteLLMRouter(
-        model_configs=model_list,
-        fallbacks=fallbacks,
-        default_model=default_model,
-    )
-
-    routing = getattr(settings, "AI_PROVIDER_ROUTING", {}) or {}
-    if routing:
-        tier1 = routing.get("tier1")
-        tier2 = routing.get("tier2")
-        tier3 = routing.get("tier3")
-    else:
-        tier1 = settings.LLM_TIER1_MODEL
-        tier2 = settings.LLM_TIER2_MODEL
-        tier3 = settings.LLM_TIER3_MODEL
-
-    if tier1 or tier2 or tier3:
-        router.configure_task_models(
-            tier1_model=tier1 or None,
-            tier2_model=tier2 or None,
-            tier3_model=tier3 or None,
-        )
-        logger.info(
-            "Tier routing configured: T1=%s T2=%s T3=%s",
-            tier1 or "(default)",
-            tier2 or "(default)",
-            tier3 or "(default)",
+    """Create a TensorZero router from current settings."""
+    gateway_url = settings.TENSORZERO_GATEWAY_URL
+    if not gateway_url:
+        raise ValueError(
+            "TENSORZERO_GATEWAY_URL is not configured. "
+            "Set it to the TensorZero gateway address (e.g., http://tensorzero:3000)"
         )
 
+    router = TensorZeroRouter(gateway_url=gateway_url)
+    logger.info("TensorZero router created: %s", gateway_url)
     return router
 
 

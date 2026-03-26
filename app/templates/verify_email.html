@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% include 'partials/head.html' %}
+    <title>Email Verification — Spectra</title>
+    <link rel="stylesheet" href="/static/css/auth.css">
+</head>
+<body>
+<div class="auth-form-panel" style="margin: 0 auto; max-width: 480px; padding-top: 10vh;">
+<div class="card">
+    <div class="logo">
+        <a href="/">
+            {% include 'partials/shield_svg.html' %}
+            Spectra
+        </a>
+    </div>
+    {% if success %}
+    <div style="text-align: center; padding: 2rem 0;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">&#x2713;</div>
+        <h1 style="margin-bottom: 0.5rem;">Email Verified</h1>
+        <p class="subtitle">{{ message }}</p>
+        <a href="/login" class="btn" style="display: inline-block; margin-top: 1.5rem;">Sign In</a>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 2rem 0;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">&#x2717;</div>
+        <h1 style="margin-bottom: 0.5rem;">Verification Failed</h1>
+        <p class="subtitle">{{ message }}</p>
+        <a href="/register" class="btn" style="display: inline-block; margin-top: 1.5rem;">Register Again</a>
+    </div>
+    {% endif %}
+</div>
+</div>
+</body>
+</html>

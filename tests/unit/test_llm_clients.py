@@ -239,10 +239,10 @@ class TestGetLLMClient:
         client = get_llm_client("ollama", host="http://myhost:1234", model="mymodel")
         assert isinstance(client, LiteLLMRouter)
 
-    def test_litellm_provider(self):
+    def test_tensorzero_provider(self):
         from app.services.ai.router import LiteLLMRouter
 
-        client = get_llm_client("litellm", model="gpt-4", api_key="sk-test")
+        client = get_llm_client("tensorzero", model="gpt-4", api_key="sk-test")
         assert isinstance(client, LiteLLMRouter)
 
     def test_api_provider_returns_litellm_router(self):
@@ -330,8 +330,8 @@ class TestGetDefaultLLMClient:
 
     @patch("app.services.ai.router.settings")
     @patch("app.services.ai.llm.settings")
-    def test_unknown_provider_returns_litellm(self, mock_llm_settings, mock_router_settings):
-        """Unknown providers now normalize to litellm instead of raising."""
+    def test_unknown_provider_returns_tensorzero(self, mock_llm_settings, mock_router_settings):
+        """Unknown providers now normalize to tensorzero instead of raising."""
         mock_llm_settings.AI_PROVIDER = "unknown_provider"
         mock_router_settings.AI_PROVIDER = "unknown_provider"
         mock_router_settings.LLM_API_KEY = MagicMock()

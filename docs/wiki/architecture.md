@@ -82,11 +82,11 @@ PostgreSQL-backed semantic search engine (`app/services/ai/rag.py`).
 | Component | File | Purpose |
 |-----------|------|---------|
 | `RAGService` | `rag.py` | Document storage, cosine similarity search |
-| `EmbeddingService` | `embeddings.py` | Embeddings via AI API provider (LiteLLM, OpenAI-compatible API) |
+| `EmbeddingService` | `embeddings.py` | Embeddings via API provider or local fastembed |
 
 ### How It Works
 
-1. **Embedding** — Text is embedded via the AI API provider (LiteLLM supports OpenAI, DashScope, any compatible provider). Configure `EMBEDDING_MODEL` to select the model.
+1. **Embedding** — Text is embedded via the configured embedding provider (local fastembed or any OpenAI-compatible API). Configure `EMBEDDING_MODEL` to select the model.
 2. **Storage** — Embeddings stored as JSONB arrays in a `rag_documents` PostgreSQL table.
 3. **Search** — Query embedded, cosine similarity computed in application code against stored vectors.
 
@@ -103,7 +103,7 @@ PostgreSQL-backed semantic search engine (`app/services/ai/rag.py`).
 
 ```python
 RAGConfig(
-    embedding_model="text-embedding-3-small",  # LiteLLM/OpenAI model key
+    embedding_model="text-embedding-3-small",  # OpenAI-compatible model key
     embedding_dim=1536,                         # Auto-adapts to actual dimension
     default_top_k=5,                            # Results per query
     min_score=0.5,                              # Cosine similarity threshold
@@ -228,7 +228,7 @@ Spectra uses a **ServiceRegistry** pattern (`app/services/gateway/service_regist
 | Component | Reason |
 |-----------|--------|
 | PostgreSQL | Single `DATABASE_URL` is sufficient; use managed DB for HA |
-| Embeddings | Handled by the AI provider (LiteLLM API) — no separate service |
+| Embeddings | Handled by local fastembed or API provider — no separate service |
 | RAG / Vector Search | Runs on the same PostgreSQL DB (pgvector) |
 | Agent orchestration | Core logic, not a hot path for scaling |
 
@@ -251,7 +251,7 @@ For scaling across multiple servers, see the [Scaling Guide](scaling.md). Spectr
 
 ## LLM Routing (`router.py`)
 
-LiteLLM-powered smart routing. See [Configuration](configuration.md) for all LLM settings.
+TensorZero-powered smart routing. See [Configuration](configuration.md) for all LLM settings.
 
 ### Task Tiers
 

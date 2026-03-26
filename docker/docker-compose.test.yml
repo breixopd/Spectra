@@ -155,7 +155,7 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - AI_PROVIDER=litellm
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
     volumes:
@@ -187,7 +187,7 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - AI_PROVIDER=litellm
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
     volumes:

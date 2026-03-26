@@ -109,8 +109,9 @@ async def update_user_settings(
     await session.refresh(prefs)
 
     try:
+        event_type = AuditEventType.BYOK_CHANGED if byok_data else AuditEventType.SETTINGS_CHANGED
         await audit_log_event(
-            session, AuditEventType.SETTINGS_CHANGED,
+            session, event_type,
             user_id=str(user.id),
             details={"action": "settings_updated", "fields": list(updates.keys())},
             request=request,
@@ -139,7 +140,7 @@ async def clear_byok(
 
     try:
         await audit_log_event(
-            session, AuditEventType.SETTINGS_CHANGED,
+            session, AuditEventType.BYOK_CHANGED,
             user_id=str(user.id),
             details={"action": "byok_cleared"},
             request=request,

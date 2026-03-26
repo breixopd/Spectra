@@ -3,7 +3,7 @@
 
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
        lint format check clean docker-build docker-up docker-down \
-       deploy rollback deploy-check help
+       deploy rollback deploy-check help css-build css-watch
 
 SHELL := /bin/bash
 
@@ -66,5 +66,15 @@ deploy-check: ## Run pre-deploy checks without deploying
 	@test -x scripts/deploy.sh || { echo "ERROR: deploy.sh not executable"; exit 1; }
 	@test -x scripts/health_check.sh || { echo "ERROR: health_check.sh not executable"; exit 1; }
 	@echo "All pre-deploy checks passed."
+
+
+# --- CSS (Tailwind) ---
+css-build: ## Build Tailwind CSS (production, minified)
+	@npx tailwindcss -i app/static/css/input.css -o app/static/css/output.css --minify 2>/dev/null || \
+	 tailwindcss -i app/static/css/input.css -o app/static/css/output.css --minify
+
+css-watch: ## Watch and rebuild Tailwind CSS on changes
+	@npx tailwindcss -i app/static/css/input.css -o app/static/css/output.css --watch 2>/dev/null || \
+	 tailwindcss -i app/static/css/input.css -o app/static/css/output.css --watch
 
 

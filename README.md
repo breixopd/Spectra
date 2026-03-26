@@ -25,18 +25,21 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 ## Key Features
 
 ### Multi-Agent AI System
+
 - **12 specialized agents** — scope analysis, tool selection, exploitation, reporting, and more
 - **K-threshold consensus voting** — critical decisions require agreement from multiple agents
 - **5 quality gates** ensure decisions are validated before execution
 - **Adaptive replanning** — agents autonomously adjust strategy based on findings
 
 ### Plugin-Based Tool System
+
 - **26 security tools** out of the box (Nmap, Nuclei, SQLMap, Metasploit, etc.)
 - JSON-defined plugin configurations — add new tools without code changes
 - Cryptographic signature verification for plugin integrity
 - Auto-installation and status tracking in isolated containers
 
 ### RAG Knowledge Base
+
 - Contextual retrieval from CVE databases and tool documentation
 - Past assessment knowledge reuse via pgvector embeddings
 - **Free local embeddings** by default — fastembed with BAAI/bge-small-en-v1.5, no API key needed
@@ -44,24 +47,28 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 - Exploit database integration with searchable indices
 
 ### Per-Mission Sandboxes
+
 - Isolated Docker containers with resource limits and network isolation
 - Tiered resource allocation (basic, standard, enhanced, maximum)
 - OOM-triggered automatic tier escalation
 - Heartbeat monitoring with automatic cleanup
 
 ### Real-Time Dashboard
+
 - Live mission monitoring with WebSocket updates
 - Tool management, installation, and status tracking
 - Admin panel with user/plan/server management
 - Audit logging for compliance
 
 ### Multi-Server Scaling
+
 - Server pool management with health monitoring
 - Remote server provisioning via SSH
 - Load balancing with weighted node selection
 - S3-compatible storage (MinIO) with local filesystem fallback
 
 ### Security and Access Control
+
 - JWT authentication with role-based access control (RBAC)
 - Three roles: admin, operator, viewer
 - Password reset flow (forgot-password → token → reset) with anti-enumeration
@@ -69,6 +76,7 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 - Audit trail for all administrative actions
 
 ### Reliability & Infrastructure
+
 - **Dead-letter queue** — failed jobs retry 3x with backoff, then move to dead letter for admin review
 - **Cleanup workers** — hourly automated cleanup of expired cache, orphaned sandboxes, and old jobs
 - **WebSocket reconnection** — client-side exponential backoff (1s → 30s max, 10 retries)
@@ -80,6 +88,7 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 The repo documentation is organized as a wiki under [docs/wiki/home.md](docs/wiki/home.md).
 
 Start here:
+
 - [Wiki Home](docs/wiki/home.md)
 - [Deployment Guide](docs/wiki/deployment-guide.md)
 - [Configuration](docs/wiki/configuration.md)
@@ -115,9 +124,9 @@ Open http://localhost:5000 — on first run you'll be redirected to `/setup` to 
 ### 4. Configure AI provider
 
 In the setup wizard or admin panel, configure your LLM provider:
-- **API providers**: OpenAI, Anthropic, OpenRouter, or any OpenAI-compatible endpoint
-- **Local inference**: Ollama (requires GPU)
-- **Remote gateway**: Point to a remote Spectra LLM gateway
+
+- **TensorZero Gateway**: Routes requests to any supported LLM provider (OpenAI, Anthropic, OpenRouter, etc.)
+- **Configuration**: Set `TENSORZERO_GATEWAY_URL` to point to your TensorZero gateway instance
 
 See [Getting Started](docs/wiki/development.md#getting-started) for detailed setup instructions.
 
@@ -125,16 +134,15 @@ See [Getting Started](docs/wiki/development.md#getting-started) for detailed set
 
 Spectra is configured via environment variables in `.env`. Key settings:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://spectra:spectra_dev@db:5432/spectra` |
-| `AI_PROVIDER` | LLM provider (`litellm`, `ollama`, `mock`) | `litellm` |
-| `LLM_MODEL` | Default LLM model | `openrouter/arcee-ai/trinity-large-preview:free` |
-| `FULLY_AUTOMATED` | Skip human approval for all actions | `false` |
-| `JWT_SECRET_KEY` | Secret key for JWT tokens | (auto-generated) |
-| `PLUGIN_SAFE_MODE` | Require signed plugins | `true` |
-| `LLM_GATEWAY_URL` | Remote LLM gateway URL | — |
-| `SANDBOX_ORCHESTRATOR_URL` | Remote sandbox orchestrator URL | — |
+| Variable                 | Description                         | Default                                                    |
+| ------------------------ | ----------------------------------- | ---------------------------------------------------------- |
+| `DATABASE_URL`           | PostgreSQL connection string        | `postgresql+asyncpg://spectra:spectra_dev@db:5432/spectra` |
+| `TENSORZERO_GATEWAY_URL` | TensorZero gateway URL              | `""`                                                       |
+| `LLM_TIMEOUT`            | LLM request timeout (seconds)       | `600`                                                      |
+| `FULLY_AUTOMATED`        | Skip human approval for all actions | `false`                                                    |
+| `JWT_SECRET_KEY`         | Secret key for JWT tokens           | (auto-generated)                                           |
+| `PLUGIN_SAFE_MODE`       | Require signed plugins              | `true`                                                     |
+| `EMBEDDING_MODEL`        | Embedding model for RAG             | `local/BAAI/bge-small-en-v1.5`                             |
 
 See [Configuration Guide](docs/wiki/configuration.md) for the full reference.
 
@@ -142,15 +150,15 @@ See [Configuration Guide](docs/wiki/configuration.md) for the full reference.
 
 All API endpoints are under `/api/v1/` with a deprecated alias at `/api/`.
 
-| Endpoint Group | Path | Description |
-|---------------|------|-------------|
-| **Auth** | `/api/v1/auth/` | Login, token management, setup |
-| **Missions** | `/api/v1/missions/` | Create, monitor, steer missions |
-| **Tools** | `/api/v1/tools/` | Tool registry, execution, plugins |
-| **Findings** | `/api/v1/findings/` | Security findings CRUD |
-| **Exploits** | `/api/v1/exploits/` | Exploit attempt history |
-| **System** | `/api/v1/system/` | Health, status, operations |
-| **Admin** | `/api/admin/` | User/plan management, audit logs |
+| Endpoint Group | Path                | Description                       |
+| -------------- | ------------------- | --------------------------------- |
+| **Auth**       | `/api/v1/auth/`     | Login, token management, setup    |
+| **Missions**   | `/api/v1/missions/` | Create, monitor, steer missions   |
+| **Tools**      | `/api/v1/tools/`    | Tool registry, execution, plugins |
+| **Findings**   | `/api/v1/findings/` | Security findings CRUD            |
+| **Exploits**   | `/api/v1/exploits/` | Exploit attempt history           |
+| **System**     | `/api/v1/system/`   | Health, status, operations        |
+| **Admin**      | `/api/admin/`       | User/plan management, audit logs  |
 
 Interactive API docs are available at `/docs` (Swagger UI) and `/redoc`.
 
@@ -164,7 +172,7 @@ pip install -r requirements-app.txt
 
 # Set up environment
 cp .env.example .env
-# Edit .env with local database URL and AI provider settings
+# Edit .env with local database URL and TensorZero gateway settings
 
 # Run database migrations
 alembic upgrade head
@@ -196,22 +204,22 @@ ruff check app/
 
 Full documentation is in the [Wiki](docs/wiki/home.md):
 
-| Topic | Link |
-|-------|------|
-| Architecture | [docs/wiki/architecture.md](docs/wiki/architecture.md) |
-| Configuration | [docs/wiki/configuration.md](docs/wiki/configuration.md) |
-| Deployment | [docs/wiki/deployment.md](docs/wiki/deployment.md) |
-| Scaling | [docs/wiki/scaling.md](docs/wiki/scaling.md) |
-| API Reference | [docs/wiki/api-reference.md](docs/wiki/api-reference.md) |
-| Plugins | [docs/wiki/plugins.md](docs/wiki/plugins.md) |
+| Topic            | Link                                                           |
+| ---------------- | -------------------------------------------------------------- |
+| Architecture     | [docs/wiki/architecture.md](docs/wiki/architecture.md)         |
+| Configuration    | [docs/wiki/configuration.md](docs/wiki/configuration.md)       |
+| Deployment       | [docs/wiki/deployment.md](docs/wiki/deployment.md)             |
+| Scaling          | [docs/wiki/scaling.md](docs/wiki/scaling.md)                   |
+| API Reference    | [docs/wiki/api-reference.md](docs/wiki/api-reference.md)       |
+| Plugins          | [docs/wiki/plugins.md](docs/wiki/plugins.md)                   |
 | Pentest Workflow | [docs/wiki/pentest-workflow.md](docs/wiki/pentest-workflow.md) |
-| Sandboxes | [docs/wiki/sandboxes.md](docs/wiki/sandboxes.md) |
-| Security | [docs/wiki/security.md](docs/wiki/security.md) |
-| Authentication | [docs/wiki/authentication.md](docs/wiki/authentication.md) |
-| Worker System | [docs/wiki/worker-system.md](docs/wiki/worker-system.md) |
+| Sandboxes        | [docs/wiki/sandboxes.md](docs/wiki/sandboxes.md)               |
+| Security         | [docs/wiki/security.md](docs/wiki/security.md)                 |
+| Authentication   | [docs/wiki/authentication.md](docs/wiki/authentication.md)     |
+| Worker System    | [docs/wiki/worker-system.md](docs/wiki/worker-system.md)       |
 | Deployment Guide | [docs/wiki/deployment-guide.md](docs/wiki/deployment-guide.md) |
-| Development | [docs/wiki/development.md](docs/wiki/development.md) |
-| Roadmap | [docs/wiki/roadmap.md](docs/wiki/roadmap.md) |
+| Development      | [docs/wiki/development.md](docs/wiki/development.md)           |
+| Roadmap          | [docs/wiki/roadmap.md](docs/wiki/roadmap.md)                   |
 
 ## Contributing
 

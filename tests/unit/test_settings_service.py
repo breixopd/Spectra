@@ -40,11 +40,11 @@ class TestPublicAiProvider:
     def _fn(self):
         return _mod().public_ai_provider
 
-    def test_none_defaults_to_litellm(self):
-        assert self._fn()(None) == "litellm"
+    def test_none_defaults_to_tensorzero(self):
+        assert self._fn()(None) == "tensorzero"
 
-    def test_empty_defaults_to_litellm(self):
-        assert self._fn()("") == "litellm"
+    def test_empty_defaults_to_tensorzero(self):
+        assert self._fn()("") == "tensorzero"
 
     def test_ollama(self):
         assert self._fn()("ollama") == "ollama"
@@ -54,11 +54,11 @@ class TestPublicAiProvider:
         assert fn("Ollama") == "ollama"
         assert fn("OLLAMA") == "ollama"
 
-    def test_litellm_passthrough(self):
-        assert self._fn()("litellm") == "litellm"
+    def test_litellm_maps_to_tensorzero(self):
+        assert self._fn()("litellm") == "tensorzero"
 
-    def test_api_becomes_litellm(self):
-        assert self._fn()("api") == "litellm"
+    def test_api_becomes_tensorzero(self):
+        assert self._fn()("api") == "tensorzero"
 
     def test_whitespace_stripped(self):
         assert self._fn()("  ollama  ") == "ollama"

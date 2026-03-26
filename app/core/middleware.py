@@ -36,6 +36,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 if origin not in allowed_origins:
                     logger.debug("Cross-origin request from %s allowed (DEBUG mode)", origin)
 
+        # --- CSRF Protection (Double-Submit Cookie) ---
+        if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+            auth_header = request.headers.get("authorization", "")
+            api_key = request.headers.get("x-api-key", "")
+            is_api = request.url.path.startswith("/api/")
+            if not is_api and not auth_header and not api_key:
+                csrf_cookie = request.cookies.get("csrf_token")
+                csrf_header = request.headers.get("x-csrf-token")
+                if not csrf_cookie or not csrf_header or not secrets.compare_digest(csrf_cookie, csrf_header):
+                    logger.warning("CSRF validation failed for %s %s", request.method, request.url.path)
+                    return Response("CSRF validation failed", status_code=HTTP_403_FORBIDDEN)
+
         response = await call_next(request)
 
         # Headers for security
@@ -66,6 +78,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "frame-ancestors 'none'; "
                 "base-uri 'self'; "
                 "form-action 'self';"
+            )
+
+        # Set CSRF cookie for browser clients (non-API requests)
+        if not request.url.path.startswith("/api/") and "csrf_token" not in request.cookies:
+            csrf_tok = secrets.token_urlsafe(32)
+            response.set_cookie(
+                "csrf_token",
+                csrf_tok,
+                httponly=False,
+                secure=not settings.DEBUG,
+                samesite="strict",
+                max_age=86400,
             )
 
         return response

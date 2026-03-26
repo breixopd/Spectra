@@ -91,7 +91,7 @@ def test_token_without_type_claim_still_decodes():
     but get_current_user will reject it since type != 'access'."""
     from datetime import UTC, datetime
 
-    from jose import jwt
+    import jwt
 
     from app.core.config import settings
 
@@ -115,7 +115,7 @@ async def test_get_current_user_rejects_token_without_type():
     from datetime import UTC, datetime
 
     from fastapi import HTTPException
-    from jose import jwt
+    import jwt
 
     from app.api.dependencies import get_current_user
     from app.core.config import settings

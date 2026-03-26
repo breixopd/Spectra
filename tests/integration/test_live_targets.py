@@ -50,7 +50,7 @@ def auth_headers():
                     "email": "admin@spectra.local",
                     "password": "Admin123!",
                 },
-                "llm_provider": os.getenv("AI_PROVIDER", "litellm"),
+                "llm_provider": os.getenv("AI_PROVIDER", "tensorzero"),
                 "llm_model": os.getenv("LLM_MODEL", "gpt-4o-mini"),
                 "llm_api_key": os.getenv("LLM_API_KEY", ""),
                 "llm_api_base": os.getenv("LLM_API_BASE_URL") or None,

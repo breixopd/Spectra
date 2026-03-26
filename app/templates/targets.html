@@ -10,7 +10,7 @@
         <div class="relative group">
             <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center">
                 <i class="fa-solid fa-file-import mr-2 text-slate-400"></i>Import
-                <i class="fa-solid fa-chevron-down text-[9px] ml-2 opacity-60"></i>
+                <i class="fa-solid fa-chevron-down text-xs ml-2 opacity-60"></i>
             </button>
             <div class="absolute right-0 top-full mt-1 w-48 bg-slate-900 border border-white/10 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden p-1.5">
                 <button onclick="openImportModal('csv')" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
@@ -49,7 +49,7 @@
                     <p class="text-xs text-slate-500 target-desc">Legacy Web Server</p>
                 </div>
                 <div class="flex space-x-2">
-                    <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">OWNED</span>
+                    <span class="px-2 py-0.5 rounded text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">OWNED</span>
                 </div>
             </div>
             
@@ -129,14 +129,14 @@
             <span class="text-sm font-medium text-white">Attack Surface Map</span>
         </div>
         <div class="flex items-center gap-2">
-            <select id="as-layout" onchange="changeASLayout()" class="px-2 py-1 bg-slate-900/50 border border-white/10 rounded text-[10px] text-slate-300 focus:outline-none">
+            <select id="as-layout" onchange="changeASLayout()" class="px-2 py-1 bg-slate-900/50 border border-white/10 rounded text-xs text-slate-300 focus:outline-none">
                 <option value="cose">Force Directed</option>
                 <option value="dagre">Hierarchical</option>
                 <option value="grid">Grid</option>
             </select>
-            <button onclick="fitASGraph()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 transition-colors">Fit</button>
-            <button onclick="resetASGraph()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 transition-colors">Reset</button>
-            <button onclick="exportASGraph()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[10px] text-slate-300 transition-colors">PNG</button>
+            <button onclick="fitASGraph()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs text-slate-300 transition-colors">Fit</button>
+            <button onclick="resetASGraph()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs text-slate-300 transition-colors">Reset</button>
+            <button onclick="exportASGraph()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs text-slate-300 transition-colors">PNG</button>
         </div>
     </div>
     <div class="flex" style="min-height:400px;">
@@ -151,7 +151,7 @@
             <div id="as-panel-content" class="space-y-3 text-xs text-slate-400"></div>
         </div>
     </div>
-    <div class="px-5 py-2 border-t border-white/5 flex items-center gap-4 text-[10px] font-mono text-slate-500">
+    <div class="px-5 py-2 border-t border-white/5 flex items-center gap-4 text-xs font-mono text-slate-500">
         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-violet-500"></span>Host</span>
         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>Service</span>
         <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span>Finding</span>
@@ -169,7 +169,7 @@
                  ondrop="handleImportDrop(event)" ondragover="event.preventDefault()" onclick="document.getElementById('import-file-input').click()">
                 <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-500 mb-2"></i>
                 <p class="text-sm text-slate-400">Drop file here or click to browse</p>
-                <p class="text-[10px] text-slate-600 mt-1" id="import-format-hint">CSV format: ip, hostname, notes</p>
+                <p class="text-xs text-slate-600 mt-1" id="import-format-hint">CSV format: ip, hostname, notes</p>
                 <input type="file" id="import-file-input" class="hidden" onchange="handleImportFile(event)" accept=".csv,.xml,.txt">
             </div>
             <div id="import-paste-area" class="hidden">
@@ -180,7 +180,7 @@
             <div id="import-preview" class="hidden">
                 <div class="flex items-center justify-between mb-2">
                     <span class="text-xs font-medium text-slate-400">Preview (<span id="import-count">0</span> targets)</span>
-                    <button onclick="clearImportPreview()" class="text-[10px] text-slate-500 hover:text-white transition-colors">Clear</button>
+                    <button onclick="clearImportPreview()" class="text-xs text-slate-500 hover:text-white transition-colors">Clear</button>
                 </div>
                 <div class="max-h-48 overflow-y-auto rounded-lg border border-white/5">
                     <table class="w-full text-xs">
@@ -204,196 +204,8 @@
 <script src="/static/vendor/js/xterm.js"></script>
 <script src="/static/vendor/js/xterm-addon-fit.js"></script>
 <script src="/static/js/reconnecting-ws.js"></script>
-<script src="/static/js/targets.js"></script>
-<script nonce="{{ request.state.csp_nonce }}">
-// --- Bulk Import ---
-let importFormat = 'csv';
-let parsedTargets = [];
+{% endblock %}
 
-function openImportModal(fmt) {
-    importFormat = fmt;
-    parsedTargets = [];
-    document.getElementById('import-preview').classList.add('hidden');
-    document.getElementById('import-btn').disabled = true;
-    const pasteArea = document.getElementById('import-paste-area');
-    const uploadArea = document.getElementById('import-upload-area');
-    if (fmt === 'paste') { pasteArea.classList.remove('hidden'); uploadArea.classList.add('hidden'); }
-    else { pasteArea.classList.add('hidden'); uploadArea.classList.remove('hidden'); }
-    const hint = document.getElementById('import-format-hint');
-    hint.textContent = fmt === 'csv' ? 'CSV: ip, hostname, notes' : fmt === 'nmap' ? 'Nmap XML output file' : '';
-    document.getElementById('import-modal').classList.remove('hidden');
-}
-function closeImportModal() { document.getElementById('import-modal').classList.add('hidden'); }
-
-function handleImportDrop(e) { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) parseFile(f); }
-function handleImportFile(e) { const f = e.target.files[0]; if (f) parseFile(f); }
-
-function parseFile(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const text = e.target.result;
-        if (importFormat === 'csv') parseCSV(text);
-        else if (importFormat === 'nmap') parseNmapXML(text);
-        else parsePasteList(text);
-    };
-    reader.readAsText(file);
-}
-
-function parseCSV(text) {
-    const lines = text.trim().split('\n');
-    const hasHeader = lines[0] && /ip|address|host/i.test(lines[0]);
-    const data = hasHeader ? lines.slice(1) : lines;
-    parsedTargets = data.filter(l => l.trim()).map(l => {
-        const cols = l.split(',').map(c => c.trim());
-        return { address: cols[0] || '', hostname: cols[1] || '', notes: cols[2] || '' };
-    }).filter(t => t.address);
-    showPreview();
-}
-
-function parseNmapXML(text) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/xml');
-    const hosts = doc.querySelectorAll('host');
-    parsedTargets = [];
-    hosts.forEach(h => {
-        const addrEl = h.querySelector('address');
-        const addr = addrEl ? addrEl.getAttribute('addr') : null;
-        if (!addr) return;
-        const hostnameEl = h.querySelector('hostnames hostname');
-        const hostname = hostnameEl ? hostnameEl.getAttribute('name') : '';
-        const ports = [];
-        h.querySelectorAll('ports port').forEach(p => {
-            const state = p.querySelector('state');
-            if (state && state.getAttribute('state') === 'open') ports.push(p.getAttribute('portid'));
-        });
-        parsedTargets.push({ address: addr, hostname, notes: ports.length ? `Ports: ${ports.join(', ')}` : '' });
-    });
-    showPreview();
-}
-
-function parsePasteList(text) {
-    if (!text) text = document.getElementById('import-paste-text').value;
-    parsedTargets = text.trim().split('\n').map(l => l.trim()).filter(Boolean).map(l => ({ address: l, hostname: '', notes: '' }));
-    showPreview();
-}
-
-function showPreview() {
-    if (parsedTargets.length === 0) return;
-    const body = document.getElementById('import-preview-body');
-    const esc = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
-    body.innerHTML = parsedTargets.slice(0, 50).map(t => `<tr><td class="px-3 py-1.5 font-mono">${esc(t.address)}</td><td class="px-3 py-1.5">${esc(t.hostname)}</td><td class="px-3 py-1.5">${esc(t.notes)}</td></tr>`).join('');
-    document.getElementById('import-count').textContent = parsedTargets.length;
-    document.getElementById('import-preview').classList.remove('hidden');
-    document.getElementById('import-btn').disabled = false;
-}
-
-function clearImportPreview() { parsedTargets = []; document.getElementById('import-preview').classList.add('hidden'); document.getElementById('import-btn').disabled = true; }
-
-// Listen for paste area changes
-document.getElementById('import-paste-text')?.addEventListener('input', () => { if (importFormat === 'paste') parsePasteList(); });
-
-async function executeImport() {
-    if (parsedTargets.length === 0) return;
-    document.getElementById('import-btn').disabled = true;
-    document.getElementById('import-btn').innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Importing...';
-    let success = 0;
-    for (const t of parsedTargets) {
-        try {
-            const res = await fetch('/api/v1/targets', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ address: t.address, description: t.hostname || t.notes || '', status:'pending', os:'Unknown' }) });
-            if (res.ok) { success++; const data = await res.json(); addTargetToGrid({ address: data.address, description: data.description, status: data.status, os: data.os }); }
-        } catch {}
-    }
-    document.getElementById('import-btn').innerHTML = '<i class="fa-solid fa-file-import mr-2"></i>Import All';
-    closeImportModal();
-    if (success > 0) loadAttackSurface();
-}
-
-// --- Attack Surface Graph (Cytoscape.js) ---
-let asCy = null;
-
-function initASGraph() {
-    const container = document.getElementById('as-graph');
-    container.innerHTML = '';
-    asCy = cytoscape({
-        container,
-        style: [
-            { selector: 'node', style: { 'label': 'data(label)', 'color': '#94a3b8', 'font-size': '9px', 'font-family': 'JetBrains Mono', 'text-valign': 'bottom', 'text-margin-y': 4, 'background-color': '#64748b', 'width': 20, 'height': 20 } },
-            { selector: 'node[type="host"]', style: { 'background-color': '#8b5cf6', 'width': 28, 'height': 28 } },
-            { selector: 'node[type="service"]', style: { 'background-color': '#10b981', 'width': 18, 'height': 18 } },
-            { selector: 'node[type="finding"]', style: { 'background-color': '#f43f5e', 'width': 14, 'height': 14 } },
-            { selector: 'node[type="finding"][severity="high"]', style: { 'background-color': '#f59e0b' } },
-            { selector: 'node[type="finding"][severity="medium"]', style: { 'background-color': '#3b82f6' } },
-            { selector: 'edge', style: { 'width': 1, 'line-color': '#334155', 'curve-style': 'bezier' } }
-        ],
-        layout: { name: 'cose', animate: true }
-    });
-    asCy.on('tap', 'node', (e) => showASNodeDetails(e.target.data()));
-}
-
-async function loadAttackSurface() {
-    try {
-        const res = await fetch('/api/v1/targets');
-        if (!res.ok) return;
-        const targets = await res.json();
-        if (targets.length === 0) return;
-        if (!asCy) initASGraph();
-        asCy.elements().remove();
-
-        for (const t of targets) {
-            const hostId = `host-${t.id}`;
-            asCy.add({ group: 'nodes', data: { id: hostId, label: t.address, type: 'host', raw: t } });
-
-            // Fetch findings for this target
-            try {
-                const fRes = await fetch(`/api/v1/targets/${t.id}/findings`);
-                if (fRes.ok) {
-                    const findings = await fRes.json();
-                    findings.forEach(f => {
-                        const fId = `finding-${f.id}`;
-                        asCy.add({ group: 'nodes', data: { id: fId, label: f.title || 'Finding', type: 'finding', severity: (f.severity||'info').toLowerCase(), raw: f } });
-                        asCy.add({ group: 'edges', data: { source: hostId, target: fId } });
-                    });
-                }
-            } catch {}
-        }
-
-        asCy.layout({ name: document.getElementById('as-layout').value || 'cose', animate: true }).run();
-        document.getElementById('as-node-count').textContent = `${asCy.nodes().length} nodes`;
-    } catch (e) { console.error('Attack surface load error:', e); }
-}
-
-function changeASLayout() { if (asCy) asCy.layout({ name: document.getElementById('as-layout').value, animate: true }).run(); }
-function fitASGraph() { if (asCy) asCy.fit(); }
-function resetASGraph() { if (asCy) { asCy.elements().remove(); loadAttackSurface(); } }
-function exportASGraph() { if (!asCy) return; const png = asCy.png({ bg: '#0f172a', full: true }); const a = document.createElement('a'); a.href = png; a.download = 'attack-surface.png'; a.click(); }
-
-function showASNodeDetails(data) {
-    const panel = document.getElementById('as-side-panel');
-    const title = document.getElementById('as-panel-title');
-    const content = document.getElementById('as-panel-content');
-    panel.classList.remove('hidden');
-
-    if (data.type === 'host') {
-        const t = data.raw || {};
-        title.textContent = t.address || data.label;
-        content.innerHTML = `
-            <div><span class="text-slate-500">OS:</span> <span class="text-white">${escapeHtml(t.os || 'Unknown')}</span></div>
-            <div><span class="text-slate-500">Status:</span> <span class="text-white">${escapeHtml(t.status || 'N/A')}</span></div>
-            <div><span class="text-slate-500">Description:</span> <span class="text-white">${escapeHtml(t.description || 'None')}</span></div>
-            <div class="pt-2 flex gap-2">
-                <button onclick="window.location.href='/targets'" class="px-2 py-1 bg-violet-600 hover:bg-violet-500 rounded text-[10px] text-white transition-colors">View Findings</button>
-            </div>`;
-    } else if (data.type === 'finding') {
-        const f = data.raw || {};
-        title.textContent = f.title || 'Finding';
-        const sevColors = { critical: 'text-rose-400', high: 'text-amber-400', medium: 'text-blue-400', low: 'text-slate-400' };
-        content.innerHTML = `
-            <div><span class="text-slate-500">Severity:</span> <span class="${sevColors[f.severity] || 'text-slate-400'} font-medium uppercase">${escapeHtml(f.severity || 'info')}</span></div>
-            <div><span class="text-slate-500">Tool:</span> <span class="text-white">${escapeHtml(f.tool_source || 'N/A')}</span></div>
-            <div class="mt-2"><span class="text-slate-500">Description:</span><p class="text-white mt-1">${escapeHtml(f.description || 'No description')}</p></div>`;
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => { loadAttackSurface(); });
-</script>
+{% block page_module %}
+<script type="module" src="/static/js/targets.js"></script>
 {% endblock %}

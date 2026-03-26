@@ -31,7 +31,7 @@ def setup_request():
             email="admin@example.com",
             password="SecurePassword123!",  # Meets complexity reqs
         ),
-        llm_provider="litellm",
+        llm_provider="tensorzero",
         llm_model="gpt-4",
         llm_api_key="sk-test",
         use_custom_db=False,
@@ -98,7 +98,7 @@ async def test_configure_system_persists_db_backed_profiles_and_fallbacks(servic
         ),
         provider_profiles={
             "default": {
-                "provider": "litellm",
+                "provider": "tensorzero",
                 "model": "gpt-4o-mini",
                 "base_url": "https://example.test/v1",
                 "api_key": "sk-primary",
@@ -109,7 +109,7 @@ async def test_configure_system_persists_db_backed_profiles_and_fallbacks(servic
                 "base_url": "http://ollama:11434",
             },
             "fallback_1": {
-                "provider": "litellm",
+                "provider": "tensorzero",
                 "model": "gpt-4.1-mini",
                 "base_url": "https://backup.test/v1",
                 "api_key": "sk-backup",
@@ -137,7 +137,7 @@ async def test_configure_system_persists_db_backed_profiles_and_fallbacks(servic
     assert '"fallback_1"' in config_map["AI_PROVIDER_FALLBACKS"].value
 
 
-def test_system_setup_request_normalizes_legacy_api_provider_to_litellm():
+def test_system_setup_request_normalizes_legacy_api_provider_to_tensorzero():
     request = SystemSetupRequest(
         user=UserCreate(
             username="admin",
@@ -149,7 +149,7 @@ def test_system_setup_request_normalizes_legacy_api_provider_to_litellm():
         llm_api_key="sk-test",
     )
 
-    assert request.llm_provider == "litellm"
+    assert request.llm_provider == "tensorzero"
 
 
 @pytest.mark.asyncio

@@ -55,7 +55,7 @@ If the shared Compose test stack hits a network/subnet conflict:
 docker build -f docker/Dockerfile.tools -t spectra-tools-test .
 docker run --rm \
   -e DATABASE_URL=sqlite+aiosqlite:///test.db \
-  -e AI_PROVIDER=litellm \
+  -e TENSORZERO_GATEWAY_URL=http://tensorzero:3000 \
   -e JWT_SECRET_KEY=test-secret-key \
   -e FULLY_AUTOMATED=true \
   -e PLUGIN_SAFE_MODE=false \
@@ -113,7 +113,7 @@ docker compose -f docker/docker-compose.test.yml --profile targets up -d
 - `.env.test` is loaded by `pytest-dotenv` via `pytest.ini`
 - `pytest-asyncio` mode is `strict` — all async tests need `@pytest.mark.asyncio`
 - `DATABASE_URL` is configured via `.env.test` for the shared test database
-- `AI_PROVIDER=litellm` keeps application wiring aligned with production
+- `TENSORZERO_GATEWAY_URL` points to the TensorZero gateway for LLM routing
 - `FULLY_AUTOMATED=true` disables human approval requirements
 
 ---
@@ -141,7 +141,7 @@ app/
 │   │   ├── context.py # Context window management (token budgeting)
 │   │   ├── rag.py    # PostgreSQL-backed RAG engine
 │   │   ├── embeddings.py # Embedding service
-│   │   ├── router.py # LiteLLM smart routing
+│   │   ├── router.py # TensorZero smart routing
 │   │   ├── memory.py # Persistent cross-mission learning
 │   │   ├── playbook.py # Deterministic attack playbooks
 │   │   ├── grounding.py # Anti-hallucination framework
