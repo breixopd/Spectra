@@ -304,7 +304,7 @@ class TestLiteLLMProvider:
 
     def test_litellm_provider_basic(self):
         with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.LLM_MODEL = "ollama/qwen2.5:7b"
             mock_settings.LLM_API_KEY = MagicMock()
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
@@ -319,7 +319,7 @@ class TestLiteLLMProvider:
 
     def test_litellm_provider_with_api_key(self):
         with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.LLM_MODEL = "anthropic/claude-3-haiku"
             mock_settings.LLM_API_KEY = MagicMock()
             mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-ant-test"

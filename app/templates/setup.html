@@ -76,133 +76,92 @@
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-microchip"></i> Quick Setup
+                            <i class="fa-solid fa-microchip"></i> AI Gateway
                         </h2>
-                        <p class="text-sm text-gray-400 mt-1">Choose one default provider profile. Everything inherits from it unless you open Advanced Routing.</p>
+                        <p class="text-sm text-gray-400 mt-1">All AI inference routes through the TensorZero gateway. Set the provider API key in the TensorZero container's environment.</p>
                     </div>
-                    <button type="button" id="test-default-profile" class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors border border-white/10">
-                        Test Default Profile
+                    <button type="button" id="test-tz-gateway" class="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors border border-white/10">
+                        Test Gateway
                     </button>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-4">
                     <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-white">Default Profile</p>
-                                <p class="text-xs text-gray-500">Profile ID: default</p>
-                            </div>
-                            <span class="text-[11px] uppercase tracking-[0.2em] text-violet-300">Primary Route</span>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">TensorZero Gateway URL</label>
+                            <input type="text" name="tensorzero_gateway_url" id="tensorzero_gateway_url" value="http://tensorzero:3000" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            <p class="text-xs text-gray-500 mt-1">The URL of the TensorZero gateway container</p>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">Provider</label>
-                                <select name="default_provider" id="default_provider" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                                    <option value="ollama">Ollama (Local)</option>
-                                    <option value="litellm">Cloud / API Gateway</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">Model / Route</label>
-                                <input type="text" name="default_model" id="default_model" value="openrouter/auto" required aria-required="true" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                            </div>
-                        </div>
-                        <div class="profile-api-fields space-y-4 hidden" data-profile="default">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">Gateway / API Base URL</label>
-                                <input type="text" name="default_api_base_url" placeholder="https://api.openai.com/v1" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">API Key</label>
-                                <input type="password" name="default_api_key" placeholder="sk-..." class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                            </div>
-                        </div>
-                        <div class="profile-ollama-fields space-y-4" data-profile="default">
-                            <div>
-                                <label class="block text-xs font-medium text-gray-400 mb-1">Ollama Host</label>
-                                <input type="text" name="default_ollama_host" value="http://localhost:11434" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                            </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Embedding Model</label>
+                            <input type="text" name="embedding_model" value="local/BAAI/bge-small-en-v1.5" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
+                            <p class="text-xs text-gray-500 mt-1">Prefix with <code class="text-violet-400">local/</code> for free offline embeddings</p>
                         </div>
                     </div>
 
                     <div class="rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-cyan-500/5 p-4 space-y-3">
-                        <p class="text-sm font-medium text-white">What stays simple</p>
-                        <p class="text-xs text-gray-400">One profile powers all three tiers by default.</p>
-                        <p class="text-xs text-gray-400">Advanced routing is optional and hidden until you need it.</p>
-                        <p class="text-xs text-gray-400">Fallback profiles only run if the default route fails.</p>
-                        <div id="test-status" class="text-xs text-gray-500 pt-2 border-t border-white/10">Connection tests run against the default profile only during setup.</div>
+                        <p class="text-sm font-medium text-white">How it works</p>
+                        <p class="text-xs text-gray-400">All AI calls route through TensorZero. Models and providers are configured in <code class="text-violet-400">config/tensorzero.toml</code>.</p>
+                        <p class="text-xs text-gray-400">Set <code class="text-violet-400">OPENAI_API_KEY</code> in the TensorZero container's environment to use OpenRouter or any OpenAI-compatible provider.</p>
+                        <p class="text-xs text-gray-400">Model tiers (fast/balanced/capable) can be changed in the Admin UI after setup.</p>
+                        <div id="test-status" class="text-xs text-gray-500 pt-2 border-t border-white/10">Gateway connection will be tested when you click "Test Gateway".</div>
                     </div>
                 </div>
 
-                <div class="border border-white/10 rounded-xl overflow-hidden">
-                    <button type="button" id="toggle-advanced-ai" class="w-full flex items-center justify-between px-4 py-3 text-left bg-black/20 hover:bg-black/30 transition-colors">
+                <!-- Optional: Customize AI Models -->
+                <div class="mt-4">
+                    <label class="flex items-center gap-2 cursor-pointer group">
+                        <input type="checkbox" id="customize-ai" class="rounded border-white/20 bg-black/30 text-violet-500 focus:ring-violet-500" onchange="document.getElementById('ai-custom-panel').classList.toggle('hidden')">
+                        <span class="text-sm text-gray-300 group-hover:text-violet-300 transition-colors">Customize AI model configuration</span>
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1 ml-6">Leave unchecked to use optimized defaults (recommended for first setup)</p>
+                </div>
+
+                <div id="ai-custom-panel" class="hidden mt-4 space-y-4 p-4 rounded-xl bg-black/20 border border-white/5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <p class="text-sm font-medium text-gray-200">Advanced Routing</p>
-                            <p class="text-xs text-gray-500">Override individual tiers and add an ordered fallback chain.</p>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Provider Type</label>
+                            <select id="ai-provider-type" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none">
+                                <option value="openai" selected>OpenAI-Compatible (OpenRouter, vLLM, Ollama)</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="google_ai_studio_gemini">Google Gemini</option>
+                            </select>
                         </div>
-                        <i class="fa-solid fa-chevron-right text-gray-500 text-xs transition-transform" id="advanced-ai-chevron"></i>
-                    </button>
-                    <div id="advanced-ai-section" class="hidden px-4 pb-4 pt-3 space-y-4">
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            {% for tier, title, description in [("tier1", "Tier 1", "Fast and cheap work like parsing and tool selection"), ("tier2", "Tier 2", "Balanced planning, steering, and reporting"), ("tier3", "Tier 3", "High-capability exploit and post-exploitation tasks")] %}
-                            <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3" data-tier-card="{{ tier }}">
-                                <div class="flex items-center justify-between gap-3">
-                                    <div>
-                                        <p class="text-sm font-medium text-white">{{ title }}</p>
-                                        <p class="text-xs text-gray-500">{{ description }}</p>
-                                    </div>
-                                    <label class="inline-flex items-center gap-2 text-xs text-gray-300">
-                                        <input type="checkbox" class="tier-toggle rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500" data-tier="{{ tier }}">
-                                        Override
-                                    </label>
-                                </div>
-                                <input type="hidden" name="{{ tier }}_profile_id" value="{{ tier }}">
-                                <div class="tier-fields hidden space-y-3" data-tier-fields="{{ tier }}">
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-400 mb-1">Provider</label>
-                                        <select name="{{ tier }}_provider" class="profile-provider w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" data-profile-prefix="{{ tier }}">
-                                            <option value="ollama">Ollama (Local)</option>
-                                            <option value="litellm">Cloud / API Gateway</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-gray-400 mb-1">Model / Route</label>
-                                        <input type="text" name="{{ tier }}_model" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" placeholder="Copied from the default profile when you enable override">
-                                    </div>
-                                    <div class="profile-api-fields space-y-3 hidden" data-profile="{{ tier }}">
-                                        <input type="text" name="{{ tier }}_api_base_url" placeholder="https://api.openai.com/v1" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                                        <input type="password" name="{{ tier }}_api_key" placeholder="API key" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                                    </div>
-                                    <div class="profile-ollama-fields space-y-3" data-profile="{{ tier }}">
-                                        <input type="text" name="{{ tier }}_ollama_host" value="http://localhost:11434" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
+                    </div>
 
-                        <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-4">
-                            <div class="flex items-center justify-between gap-4">
-                                <div>
-                                    <p class="text-sm font-medium text-white">Fallback Chain</p>
-                                    <p class="text-xs text-gray-500">Fallback profiles run in order if the default route fails. Leave empty if you do not need failover.</p>
-                                </div>
-                                <button type="button" id="add-fallback-profile" class="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-medium transition-colors border border-white/10">
-                                    Add Fallback
-                                </button>
-                            </div>
-                            <div id="fallback-profiles" class="space-y-3"></div>
+                    <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tier 1 — Fast (parsing, tool selection)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Primary Model</label>
+                            <input type="text" id="ai-fast-primary" value="stepfun/step-2-16k:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
                         </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Fallback Model</label>
+                            <input type="text" id="ai-fast-fallback" value="google/gemma-3-4b-it:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                        </div>
+                    </div>
 
-                        <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
-                            <p class="text-sm font-medium text-white">Embedding Profile</p>
-                            <div>
-                                <div>
-                                    <label class="block text-xs font-medium text-gray-400 mb-1">Embedding Model</label>
-                                    <input type="text" name="embedding_model" value="local/BAAI/bge-small-en-v1.5" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                                    <p class="text-xs text-gray-500 mt-1">Default runs locally (free). Set to an API model name to use your LLM provider for embeddings instead.</p>
-                                </div>
-                            </div>
+                    <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tier 2 — Balanced (planning, reporting)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Primary Model</label>
+                            <input type="text" id="ai-balanced-primary" value="nvidia/llama-3.3-nemotron-super-49b-v1:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Fallback Model</label>
+                            <input type="text" id="ai-balanced-fallback" value="deepseek/deepseek-r1-0528:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tier 3 — Capable (exploit crafting, PoC)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Primary Model</label>
+                            <input type="text" id="ai-capable-primary" value="nvidia/llama-3.1-nemotron-ultra-253b-v1:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Fallback Model</label>
+                            <input type="text" id="ai-capable-fallback" value="deepseek/deepseek-r1-0528:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
                         </div>
                     </div>
                 </div>
@@ -219,22 +178,6 @@
                 </div>
 
                 <div id="infra-settings" class="space-y-4 hidden">
-                    <!-- LLM Gateway -->
-                    <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="use-external-llm" class="rounded bg-black/30 border-white/20 text-violet-500 focus:ring-violet-500">
-                                <label for="use-external-llm" class="text-sm text-gray-300">Use external LLM Gateway</label>
-                            </div>
-                            <span id="llm-status-dot" class="flex items-center gap-1.5 text-xs text-gray-500">
-                                <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span> In-process
-                            </span>
-                        </div>
-                        <div id="llm-gateway-fields" class="space-y-3 hidden">
-                            <p class="text-xs text-gray-500">LLM gateway settings have been removed. Use the LLM API Base URL and API Key fields above to configure your LLM provider directly.</p>
-                        </div>
-                    </div>
-
                     <!-- Sandbox Orchestrator -->
                     <div class="p-4 rounded-lg bg-black/20 border border-white/5 space-y-3">
                         <div class="flex items-center justify-between">
@@ -268,215 +211,35 @@
     </div>
 </div>
 
-<template id="fallback-profile-template">
-    <div class="fallback-row rounded-lg border border-white/10 bg-black/30 p-4 space-y-3">
-        <div class="flex items-center justify-between gap-3">
-            <div>
-                <p class="text-sm font-medium text-white">Fallback Profile <span class="fallback-order text-violet-300"></span></p>
-                <p class="text-xs text-gray-500">Runs after the profile above it fails.</p>
-            </div>
-            <button type="button" class="remove-fallback text-xs text-rose-300 hover:text-rose-200">Remove</button>
-        </div>
-        <input type="hidden" class="fallback-profile-id">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="block text-xs font-medium text-gray-400 mb-1">Provider</label>
-                <select class="fallback-provider w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-                    <option value="ollama">Ollama (Local)</option>
-                    <option value="litellm">Cloud / API Gateway</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-gray-400 mb-1">Model / Route</label>
-                <input type="text" class="fallback-model w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors">
-            </div>
-        </div>
-        <div class="fallback-api-fields space-y-3 hidden">
-            <input type="text" class="fallback-api-base-url w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" placeholder="https://api.openai.com/v1">
-            <input type="password" class="fallback-api-key w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" placeholder="API key">
-        </div>
-        <div class="fallback-ollama-fields">
-            <input type="text" class="fallback-ollama-host w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white text-sm focus:border-violet-500 focus:outline-none transition-colors" value="http://localhost:11434">
-        </div>
-    </div>
-</template>
-
 <script nonce="{{ request.state.csp_nonce }}">
     const setupForm = document.getElementById('setup-form');
     const errorMsg = document.getElementById('error-msg');
-    const advancedToggle = document.getElementById('toggle-advanced-ai');
-    const advancedSection = document.getElementById('advanced-ai-section');
-    const advancedChevron = document.getElementById('advanced-ai-chevron');
     const infraToggle = document.getElementById('toggle-infra');
     const infraSettings = document.getElementById('infra-settings');
     const customDb = document.getElementById('custom-db');
     const dbFields = document.getElementById('db-fields');
-    const embeddingModelWrapper = document.getElementById('embedding-model-wrapper');
     const testStatus = document.getElementById('test-status');
-    const fallbackContainer = document.getElementById('fallback-profiles');
-    const fallbackTemplate = document.getElementById('fallback-profile-template');
-    const topologyToggle = document.getElementById('toggle-topology');
-    const topologySettings = document.getElementById('topology-settings');
 
-    function defaultModelFor(provider) {
-        if (provider === 'litellm') return 'openrouter/auto';
-        return 'qwen2.5:3b';
-    }
-
-    function toggleProfileFields(prefix) {
-        const provider = document.querySelector(`[name="${prefix}_provider"]`).value;
-        const apiFields = document.querySelector(`.profile-api-fields[data-profile="${prefix}"]`);
-        const ollamaFields = document.querySelector(`.profile-ollama-fields[data-profile="${prefix}"]`);
-        if (apiFields) apiFields.classList.toggle('hidden', provider !== 'litellm');
-        if (ollamaFields) ollamaFields.classList.toggle('hidden', provider !== 'ollama');
-        const modelField = document.querySelector(`[name="${prefix}_model"]`);
-        if (modelField && !modelField.value.trim()) {
-            modelField.value = defaultModelFor(provider);
-        }
-    }
-
-    function toggleTierFields(tier) {
-        const enabled = document.querySelector(`.tier-toggle[data-tier="${tier}"]`).checked;
-        const fields = document.querySelector(`[data-tier-fields="${tier}"]`);
-        fields.classList.toggle('hidden', !enabled);
-        if (enabled) {
-            const modelField = document.querySelector(`[name="${tier}_model"]`);
-            if (modelField && !modelField.value.trim()) {
-                copyProfileValues('default', tier);
-            }
-            toggleProfileFields(tier);
-        }
-    }
-
-    function copyProfileValues(sourcePrefix, targetPrefix) {
-        const provider = document.querySelector(`[name="${sourcePrefix}_provider"]`)?.value;
-        const model = document.querySelector(`[name="${sourcePrefix}_model"]`)?.value;
-        if (provider) {
-            document.querySelector(`[name="${targetPrefix}_provider"]`).value = provider;
-        }
-        if (model) {
-            document.querySelector(`[name="${targetPrefix}_model"]`).value = model;
-        }
-
-        const sourceApiBaseUrl = document.querySelector(`[name="${sourcePrefix}_api_base_url"]`)?.value;
-        const sourceOllamaHost = document.querySelector(`[name="${sourcePrefix}_ollama_host"]`)?.value;
-        if (sourceApiBaseUrl !== undefined) {
-            document.querySelector(`[name="${targetPrefix}_api_base_url"]`).value = sourceApiBaseUrl;
-        }
-        if (sourceOllamaHost !== undefined) {
-            document.querySelector(`[name="${targetPrefix}_ollama_host"]`).value = sourceOllamaHost;
-        }
-    }
-
-    function updateFallbackLabels() {
-        Array.from(fallbackContainer.querySelectorAll('.fallback-row')).forEach((row, index) => {
-            row.querySelector('.fallback-order').textContent = `#${index + 1}`;
-            row.querySelector('.fallback-profile-id').value = `fallback_${index + 1}`;
-        });
-    }
-
-    function toggleFallbackFields(row) {
-        const provider = row.querySelector('.fallback-provider').value;
-        row.querySelector('.fallback-api-fields').classList.toggle('hidden', provider !== 'litellm');
-        row.querySelector('.fallback-ollama-fields').classList.toggle('hidden', provider !== 'ollama');
-        const modelField = row.querySelector('.fallback-model');
-        if (!modelField.value.trim()) {
-            modelField.value = defaultModelFor(provider);
-        }
-    }
-
-    function addFallbackRow(profile) {
-        const row = fallbackTemplate.content.firstElementChild.cloneNode(true);
-        fallbackContainer.appendChild(row);
-        if (profile) {
-            row.querySelector('.fallback-profile-id').value = profile.id || '';
-            row.querySelector('.fallback-provider').value = profile.provider || 'litellm';
-            row.querySelector('.fallback-model').value = profile.model || '';
-            row.querySelector('.fallback-api-base-url').value = profile.base_url || '';
-            row.querySelector('.fallback-api-key').value = profile.api_key || '';
-            row.querySelector('.fallback-ollama-host').value = profile.base_url || 'http://localhost:11434';
-        }
-        row.querySelector('.fallback-provider').addEventListener('change', () => toggleFallbackFields(row));
-        row.querySelector('.remove-fallback').addEventListener('click', () => {
-            row.remove();
-            updateFallbackLabels();
-        });
-        toggleFallbackFields(row);
-        updateFallbackLabels();
-    }
-
-    function collectProfile(prefix) {
-        const provider = document.querySelector(`[name="${prefix}_provider"]`).value;
-        const model = document.querySelector(`[name="${prefix}_model"]`).value.trim();
-        if (!model) {
-            throw new Error(`Model is required for ${prefix === 'default' ? 'the default profile' : prefix.toUpperCase()}`);
-        }
-        const profile = { provider, model };
-        if (provider === 'ollama') {
-            const host = document.querySelector(`[name="${prefix}_ollama_host"]`).value.trim();
-            if (host) profile.base_url = host;
-        }
-        if (provider === 'litellm') {
-            const baseUrl = document.querySelector(`[name="${prefix}_api_base_url"]`).value.trim();
-            const apiKey = document.querySelector(`[name="${prefix}_api_key"]`).value.trim();
-            if (baseUrl) profile.base_url = baseUrl;
-            if (apiKey) profile.api_key = apiKey;
-        }
-        return profile;
-    }
-
-    function collectFallbackProfiles() {
-        const profiles = {};
-        const chain = [];
-        Array.from(fallbackContainer.querySelectorAll('.fallback-row')).forEach((row, index) => {
-            const profileId = row.querySelector('.fallback-profile-id').value || `fallback_${index + 1}`;
-            const provider = row.querySelector('.fallback-provider').value;
-            const model = row.querySelector('.fallback-model').value.trim();
-            if (!model) return;
-            const profile = { provider, model };
-            if (provider === 'ollama') {
-                const host = row.querySelector('.fallback-ollama-host').value.trim();
-                if (host) profile.base_url = host;
-            }
-            if (provider === 'litellm') {
-                const baseUrl = row.querySelector('.fallback-api-base-url').value.trim();
-                const apiKey = row.querySelector('.fallback-api-key').value.trim();
-                if (baseUrl) profile.base_url = baseUrl;
-                if (apiKey) profile.api_key = apiKey;
-            }
-            profiles[profileId] = profile;
-            chain.push(profileId);
-        });
-        return { profiles, chain };
-    }
-
-    async function testDefaultProfile() {
-        const button = document.getElementById('test-default-profile');
+    async function testTZGateway() {
+        const button = document.getElementById('test-tz-gateway');
         button.disabled = true;
-        testStatus.textContent = 'Testing default profile...';
+        testStatus.textContent = 'Testing gateway connection...';
         testStatus.className = 'text-xs text-gray-400 pt-2 border-t border-white/10';
         try {
-            const profile = collectProfile('default');
-            const payload = {
-                provider: profile.provider,
-                model: profile.model,
-                api_key: profile.api_key || null,
-                base_url: profile.base_url || null,
-                ollama_host: profile.base_url || null,
-            };
-            const response = await fetch('/test-llm', {
+            const url = document.getElementById('tensorzero_gateway_url').value.trim() || 'http://tensorzero:3000';
+            const response = await fetch('/test-tz-gateway', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({ gateway_url: url }),
             });
             const result = await response.json();
             if (!result.success) {
-                throw new Error(result.error || 'Connection test failed');
+                throw new Error(result.error || 'Gateway connection failed');
             }
-            testStatus.textContent = 'Default profile is reachable.';
+            testStatus.textContent = 'Gateway is reachable.';
             testStatus.className = 'text-xs text-emerald-400 pt-2 border-t border-white/10';
         } catch (error) {
             testStatus.textContent = error.message;
@@ -486,17 +249,6 @@
         }
     }
 
-    document.querySelectorAll('.profile-provider').forEach((select) => {
-        select.addEventListener('change', () => toggleProfileFields(select.dataset.profilePrefix));
-        toggleProfileFields(select.dataset.profilePrefix);
-    });
-    document.querySelectorAll('.tier-toggle').forEach((checkbox) => {
-        checkbox.addEventListener('change', () => toggleTierFields(checkbox.dataset.tier));
-    });
-    advancedToggle.addEventListener('click', () => {
-        advancedSection.classList.toggle('hidden');
-        advancedChevron.classList.toggle('rotate-90');
-    });
     infraToggle.addEventListener('click', () => {
         infraSettings.classList.toggle('hidden');
         infraToggle.textContent = infraSettings.classList.contains('hidden') ? 'Show Options' : 'Hide Options';
@@ -504,14 +256,7 @@
     customDb.addEventListener('change', () => {
         dbFields.classList.toggle('hidden', !customDb.checked);
     });
-    document.getElementById('add-fallback-profile').addEventListener('click', () => addFallbackRow());
-    document.getElementById('test-default-profile').addEventListener('click', testDefaultProfile);
-
-    // Service topology toggles
-    topologyToggle.addEventListener('click', () => {
-        topologySettings.classList.toggle('hidden');
-        topologyToggle.textContent = topologySettings.classList.contains('hidden') ? 'Show Options' : 'Hide Options';
-    });
+    document.getElementById('test-tz-gateway').addEventListener('click', testTZGateway);
 
     function setupServiceToggle(checkboxId, fieldsId, statusDotId, defaultLabel) {
         const checkbox = document.getElementById(checkboxId);
@@ -527,7 +272,6 @@
         });
     }
 
-    setupServiceToggle('use-external-llm', 'llm-gateway-fields', 'llm-status-dot', 'In-process');
     setupServiceToggle('use-external-sandbox', 'sandbox-fields', 'sandbox-status-dot', 'In-process');
 
     setupForm.addEventListener('submit', async (event) => {
@@ -547,30 +291,13 @@
         submitButton.textContent = 'Setting up...';
 
         try {
-            const providerProfiles = { default: collectProfile('default') };
-            const providerRouting = { default: 'default' };
-
-            ['tier1', 'tier2', 'tier3'].forEach((tier) => {
-                if (!document.querySelector(`.tier-toggle[data-tier="${tier}"]`).checked) {
-                    return;
-                }
-                const profileId = document.querySelector(`[name="${tier}_profile_id"]`).value || tier;
-                providerProfiles[profileId] = collectProfile(tier);
-                providerRouting[tier] = profileId;
-            });
-
-            const fallbackData = collectFallbackProfiles();
-            Object.assign(providerProfiles, fallbackData.profiles);
-
             const payload = {
                 user: {
                     username: setupForm.username.value.trim(),
                     email: setupForm.email.value.trim(),
                     password,
                 },
-                provider_profiles: providerProfiles,
-                provider_routing: providerRouting,
-                provider_fallbacks: { default: fallbackData.chain },
+                tensorzero_gateway_url: document.getElementById('tensorzero_gateway_url').value.trim() || 'http://tensorzero:3000',
                 embedding_model: setupForm.embedding_model.value.trim() || null,
                 use_custom_db: customDb.checked,
                 database_url: setupForm.database_url.value.trim() || null,
@@ -581,6 +308,25 @@
                 contact_email: setupForm.contact_email?.value.trim() || null,
                 allow_registration: setupForm.allow_registration?.checked ?? true,
             };
+
+            // If user customized AI models, include them
+            if (document.getElementById('customize-ai')?.checked) {
+                payload.ai_models = {
+                    provider_type: document.getElementById('ai-provider-type')?.value || 'openai',
+                    fast: {
+                        primary: document.getElementById('ai-fast-primary')?.value || '',
+                        fallback: document.getElementById('ai-fast-fallback')?.value || '',
+                    },
+                    balanced: {
+                        primary: document.getElementById('ai-balanced-primary')?.value || '',
+                        fallback: document.getElementById('ai-balanced-fallback')?.value || '',
+                    },
+                    capable: {
+                        primary: document.getElementById('ai-capable-primary')?.value || '',
+                        fallback: document.getElementById('ai-capable-fallback')?.value || '',
+                    },
+                };
+            }
 
             const setupResponse = await fetch('/api/v1/auth/setup', {
                 method: 'POST',

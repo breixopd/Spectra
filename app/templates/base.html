@@ -8,31 +8,14 @@
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#8b5cf6">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="{{ request.cookies.get('csrf_token', '') }}">
+    <meta property="og:image" content="/static/og-image.svg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:type" content="website">
 
-    <!-- Tailwind CSS (local) -->
-    <script src="/static/vendor/js/tailwind.js"></script>
-    <script nonce="{{ request.state.csp_nonce }}">
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        slate: { 950: '#020617' },
-                        emerald: { 400: '#34d399', 500: '#10b981' },
-                        violet: { 400: '#a78bfa', 500: '#8b5cf6' },
-                        rose: { 400: '#fb7185', 500: '#f43f5e' },
-                        amber: { 400: '#fbbf24', 500: '#f59e0b' }
-                    },
-                    fontFamily: {
-                        mono: ['"JetBrains Mono"', 'monospace'],
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                    animation: {
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Tailwind CSS (compiled) -->
+    <link rel="stylesheet" href="/static/css/output.css">
 
     <!-- Fonts (local) -->
     <link rel="stylesheet" href="/static/vendor/css/fonts.css">
@@ -52,15 +35,14 @@
     <!-- Auth Check -->
     <script nonce="{{ request.state.csp_nonce }}">
         // Check if user is authenticated
-        const publicPaths = ['/login', '/setup'];
+        const publicPaths = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy'];
         const token = localStorage.getItem('token');
         
         if (!token && !publicPaths.includes(window.location.pathname)) {
             // Check if setup is needed
-            fetch('/api/v1/auth/setup/status')
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.is_setup) {
+            spectraApi.get('/api/v1/auth/setup/status')
+                .then(({ data }) => {
+                    if (!data?.is_setup) {
                         window.location.href = '/setup';
                     } else {
                         window.location.href = '/login';
@@ -68,40 +50,14 @@
                 })
                 .catch(() => window.location.href = '/login');
         }
-        
-        // Add token to all fetch requests
-        const originalFetch = window.fetch;
-        window.fetch = async function(url, options = {}) {
-            if (token && !url.includes('/token')) {
-                options.headers = {
-                    ...options.headers,
-                    'Authorization': `Bearer ${token}`
-                };
-            }
-            
-            const response = await originalFetch(url, options);
-            
-            if (response.status === 401 && !publicPaths.includes(window.location.pathname)) {
-                localStorage.removeItem('token');
-                window.location.href = '/login';
-            }
-
-            if (response.status === 403 && !publicPaths.includes(window.location.pathname)) {
-                _spectraToast('Access denied — your plan may not include this feature', 'error');
-            }
-
-            if (response.status === 429 && !publicPaths.includes(window.location.pathname)) {
-                _spectraToast('Rate limit exceeded — please wait and try again', 'warning');
-            }
-            
-            return response;
-        };
 
         function _spectraToast(msg, type) {
             let c = document.getElementById('spectra-toast-container');
             if (!c) {
                 c = document.createElement('div');
                 c.id = 'spectra-toast-container';
+                c.setAttribute('aria-live', 'assertive');
+                c.setAttribute('role', 'alert');
                 c.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;';
                 document.body.appendChild(c);
             }
@@ -116,10 +72,69 @@
             setTimeout(() => el.remove(), 5000);
         }
 
+        function _spectraConfirm(msg, onConfirm, opts) {
+            opts = opts || {};
+            var modal = document.getElementById('spectra-gc-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'spectra-gc-modal';
+                modal.className = 'hidden fixed inset-0 z-50 flex items-center justify-center p-4';
+                modal.setAttribute('role', 'dialog');
+                modal.innerHTML = '<div class="fixed inset-0 bg-black/60 backdrop-filter backdrop-blur-sm" data-gc-dismiss></div>'
+                    + '<div class="relative w-full max-w-md glass-panel rounded-2xl shadow-2xl">'
+                    + '<div class="p-6">'
+                    + '<h3 id="spectra-gc-title" class="text-lg font-semibold text-white mb-2"></h3>'
+                    + '<p id="spectra-gc-msg" class="text-sm text-slate-400 mb-4"></p>'
+                    + '<div id="spectra-gc-input-area" class="hidden mb-4"></div>'
+                    + '<div class="flex gap-3 justify-end">'
+                    + '<button id="spectra-gc-cancel" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors">Cancel</button>'
+                    + '<button id="spectra-gc-ok" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold transition-colors">Confirm</button>'
+                    + '</div></div></div>';
+                document.body.appendChild(modal);
+            }
+            document.getElementById('spectra-gc-title').textContent = opts.title || 'Confirm';
+            document.getElementById('spectra-gc-msg').textContent = msg;
+            var inputArea = document.getElementById('spectra-gc-input-area');
+            inputArea.classList.add('hidden');
+            inputArea.innerHTML = '';
+            var okBtn = document.getElementById('spectra-gc-ok');
+            var cancelBtn = document.getElementById('spectra-gc-cancel');
+            okBtn.textContent = opts.confirmLabel || 'Confirm';
+            cancelBtn.style.display = opts.hideCancel ? 'none' : '';
+            var newOk = okBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOk, okBtn);
+            var newCancel = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+            function dismiss() { modal.classList.add('hidden'); }
+            modal.querySelector('[data-gc-dismiss]').onclick = dismiss;
+            newCancel.addEventListener('click', dismiss);
+            newOk.addEventListener('click', function() { dismiss(); if (onConfirm) onConfirm(); });
+            modal.classList.remove('hidden');
+        }
+
+        function _spectraPrompt(msg, onSubmit, opts) {
+            opts = opts || {};
+            _spectraConfirm(msg, null, opts);
+            var inputArea = document.getElementById('spectra-gc-input-area');
+            inputArea.classList.remove('hidden');
+            inputArea.innerHTML = '<input id="spectra-gc-input" type="' + (opts.inputType || 'text')
+                + '" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none"'
+                + ' placeholder="' + (opts.placeholder || '') + '" autocomplete="off">';
+            var inp = document.getElementById('spectra-gc-input');
+            var okBtn = document.getElementById('spectra-gc-ok');
+            var newOk = okBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOk, okBtn);
+            newOk.addEventListener('click', function() {
+                var val = inp.value;
+                if (val) { document.getElementById('spectra-gc-modal').classList.add('hidden'); onSubmit(val); }
+            });
+            inp.focus();
+        }
+
         // Show admin nav link for admin users
         if (token && !publicPaths.includes(window.location.pathname)) {
-            fetch('/api/admin/stats').then(r => {
-                if (r.ok) {
+            spectraApi.get('/api/admin/stats').then(r => {
+                if (!r.error) {
                     document.addEventListener('DOMContentLoaded', function() {
                         const adminLink = document.getElementById('admin-nav-link');
                         if (adminLink) adminLink.classList.remove('hidden');
@@ -131,9 +146,8 @@
             }).catch(() => {});
 
             // Plan-gate nav items
-            fetch('/api/v1/auth/me', { headers: { 'Authorization': `Bearer ${token}` } })
-                .then(r => r.ok ? r.json() : null)
-                .then(user => {
+            spectraApi.get('/api/v1/auth/me')
+                .then(({ data: user }) => {
                     if (!user || !user.plan) return;
                     const features = user.plan.features || {};
                     document.querySelectorAll('[data-feature]').forEach(el => {
@@ -156,7 +170,7 @@
 <body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-y-auto md:overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
 
     <!-- Skip to content for accessibility -->
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg focus:outline-none">Skip to content</a>
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg focus:shadow-lg">Skip to main content</a>
 
     <!-- Global Status Bar (shown when setup in progress) -->
     <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-900/90 to-slate-900/90 backdrop-blur-sm border-b border-violet-500/30">
@@ -181,7 +195,7 @@
 
         {% if not is_public_page %}
         <!-- Mobile Header -->
-        <div class="mobile-header">
+        <header class="mobile-header" role="banner">
             <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
                 <i class="fa-solid fa-bars text-lg"></i>
             </button>
@@ -190,7 +204,7 @@
                 <span class="font-mono font-bold text-sm tracking-wider text-white">{{ app_name | upper }}</span>
             </div>
             <div class="w-10"></div>
-        </div>
+        </header>
 
         <!-- Sidebar Overlay (mobile) -->
         <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -202,7 +216,7 @@
                     <span class="text-violet-400 mr-3">{% include 'partials/shield_svg.html' %}</span>
                     <span class="font-mono font-bold text-lg tracking-wider text-white">{{ app_name | upper }}</span>
                 </div>
-                <nav class="p-4 space-y-1">
+                <nav class="p-4 space-y-1" role="navigation" aria-label="Main navigation">
                     <a href="/dashboard" data-tooltip="Mission control & live assessment" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/dashboard' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i class="fa-solid fa-gauge text-lg mr-3 {% if request.path == '/dashboard' %}text-violet-400{% else %}group-hover:text-violet-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Dashboard</span>
@@ -266,7 +280,7 @@
                         </div>
                         <div class="ml-3">
                             <p class="text-xs font-medium text-white">Admin</p>
-                            <p class="text-[10px] text-emerald-400 flex items-center mt-0.5">
+                            <p class="text-xs text-emerald-400 flex items-center mt-0.5">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
                                 Connected
                             </p>
@@ -274,8 +288,8 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <a href="/changelog" class="text-xs text-slate-500 hover:text-violet-400 transition-colors cursor-pointer" title="View changelog">v{{ version }}</a>
-                        <button onclick="document.cookie='access_token=; Path=/; Max-Age=0'; fetch('/api/auth/logout',{method:'POST',headers:{'Authorization':'Bearer '+document.cookie.match(/access_token=([^;]+)/)?.[1]}}).finally(()=>window.location.href='/login')" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out">
-                            <i class="fa-solid fa-right-from-bracket text-[10px]"></i>
+                        <button onclick="(async()=>{const t=localStorage.getItem('token');try{await fetch('/api/v1/auth/logout',{method:'POST',headers:{'Authorization':'Bearer '+(t||'')}});}catch(e){}localStorage.removeItem('token');localStorage.removeItem('refresh_token');window.location.href='/login';})()" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out">
+                            <i class="fa-solid fa-right-from-bracket text-xs"></i>
                         </button>
                     </div>
                 </div>
@@ -354,7 +368,7 @@
         let systemReady = false;
 
         async function checkSystemStatus() {
-            const publicPaths = ['/login', '/setup'];
+            const publicPaths = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy'];
             if (publicPaths.includes(window.location.pathname)) return;
 
             const statusBar = document.getElementById('global-status-bar');
@@ -366,15 +380,13 @@
             if (!statusBar) return;
 
             try {
-                const response = await fetch('/api/v1/system/status');
-                if (!response.ok) {
+                const { data, error } = await spectraApi.get('/api/v1/system/status');
+                if (error) {
                     // Server might be starting up
                     statusBar.classList.remove('hidden');
                     statusMsg.textContent = 'Connecting to server...';
                     return;
                 }
-
-                const data = await response.json();
                 
                 if (data.status === 'ready' && !data.tools_installing && !data.embeddings_loading) {
                     // System is ready - hide bar and stop frequent polling
@@ -467,10 +479,15 @@
         });
     </script>
     <script src="/static/js/reconnecting-ws.js"></script>
+    <script src="/static/js/modules/modal.js" type="module"></script>
+    <script src="/static/js/modules/tabs.js" type="module"></script>
+    <script src="/static/js/modules/confirm.js" type="module"></script>
     <script nonce="{{ request.state.csp_nonce }}">
     function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
     </script>
     {% block scripts %}{% endblock %}
     {% block extra_js %}{% endblock %}
+    {% block page_module %}{% endblock %}
+    {% include 'partials/_cookie_consent.html' %}
 </body>
 </html>

@@ -35,13 +35,13 @@ async function refreshTools() {
                     <div class="w-9 h-9 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center" style="background:${escapeHtml(tool.color || 'rgba(139,92,246,0.2)')}; color:#fff;">
                         <i class="fa-solid ${escapeHtml(tool.icon || 'fa-wrench')}"></i>
                     </div>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium ${getStatusColor(tool.status)}">
+                    <span class="px-2 py-0.5 rounded text-xs font-mono font-medium ${getStatusColor(tool.status)}">
                         ${(tool.status || 'pending').toUpperCase()}
                     </span>
                 </div>
                 <h3 class="text-white font-semibold mb-1">${escapeHtml(tool.name)}</h3>
                 <p class="text-slate-400 text-xs line-clamp-2">${escapeHtml(tool.description)}</p>
-                <div class="mt-2 text-[10px] text-slate-500 font-mono">${escapeHtml(tool.category)} · v${escapeHtml(tool.version)}</div>
+                <div class="mt-2 text-xs text-slate-500 font-mono">${escapeHtml(tool.category)} · v${escapeHtml(tool.version)}</div>
             </div>
         `).join('');
     } catch (e) {
@@ -93,15 +93,15 @@ async function selectTool(id) {
             <div class="grid grid-cols-3 gap-3 mb-4 animate-fade-in-up stagger-1">
                 <div class="bg-black/30 rounded-lg p-3 text-center">
                     <div class="text-2xl font-bold font-mono text-white">${stats.total_count || 0}</div>
-                    <div class="text-[10px] text-slate-500 uppercase">Runs</div>
+                    <div class="text-xs text-slate-500 uppercase">Runs</div>
                 </div>
                 <div class="bg-black/30 rounded-lg p-3 text-center">
                     <div class="text-2xl font-bold font-mono text-emerald-400">${stats.success_count || 0}</div>
-                    <div class="text-[10px] text-slate-500 uppercase">Pass</div>
+                    <div class="text-xs text-slate-500 uppercase">Pass</div>
                 </div>
                 <div class="bg-black/30 rounded-lg p-3 text-center">
                     <div class="text-2xl font-bold font-mono text-rose-400">${stats.fail_count || 0}</div>
-                    <div class="text-[10px] text-slate-500 uppercase">Fail</div>
+                    <div class="text-xs text-slate-500 uppercase">Fail</div>
                 </div>
             </div>
 
@@ -115,19 +115,19 @@ async function selectTool(id) {
             
             <div class="space-y-4 animate-fade-in-up stagger-2">
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Description</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
                     <p class="text-slate-300 text-sm mt-1">${escapeHtml(tool.description)}</p>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Command</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Command</label>
                     <code class="block mt-1 p-3 rounded-lg bg-black/40 font-mono text-xs text-violet-300 overflow-x-auto">${escapeHtml(tool.execution_command)} ${escapeHtml(tool.args_template)}</code>
                 </div>
                 ${tool.status_message || (tool.install_logs && tool.install_logs.length) ? `
                 <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Install Status</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Install Status</label>
                     <div class="mt-1 p-3 rounded-lg bg-black/40 border border-white/5">
                         <div class="text-xs text-slate-300">${escapeHtml(tool.status_message || tool.status_phase || 'No additional status')}</div>
-                        ${tool.last_updated ? `<div class="text-[10px] text-slate-500 mt-1">Updated: ${escapeHtml(tool.last_updated)}</div>` : ''}
+                        ${tool.last_updated ? `<div class="text-xs text-slate-500 mt-1">Updated: ${escapeHtml(tool.last_updated)}</div>` : ''}
                         ${tool.last_output ? `<pre class="text-[11px] text-slate-400 mt-2 whitespace-pre-wrap">${escapeHtml(tool.last_output)}</pre>` : ''}
                         ${tool.install_logs && tool.install_logs.length ? `<div class="mt-2 max-h-40 overflow-y-auto rounded bg-black/30 p-2 text-[11px] text-slate-400 whitespace-pre-wrap">${tool.install_logs.map(line => escapeHtml(line)).join('\n')}</div>` : ''}
                     </div>
@@ -194,15 +194,15 @@ async function toggleToolEnabled(id, enabled) {
 }
 
 async function deleteTool(id) {
-    if (!confirm('Are you sure you want to delete this tool?')) return;
-    
-    try {
-        await spectraApi.delete(`/api/v1/tools/${id}`);
-        refreshTools();
-        document.getElementById('tool-details').innerHTML = '<p class="text-gray-500 italic text-center mt-10">Select a tool to view details</p>';
-    } catch (e) {
-        alert(e);
-    }
+    _spectraConfirm('Are you sure you want to delete this tool?', async () => {
+        try {
+            await spectraApi.delete(`/api/v1/tools/${id}`);
+            refreshTools();
+            document.getElementById('tool-details').innerHTML = '<p class="text-gray-500 italic text-center mt-10">Select a tool to view details</p>';
+        } catch (e) {
+            _spectraToast(String(e), 'error');
+        }
+    }, { title: 'Delete Tool' });
 }
 
 // Drag & Drop Logic
@@ -319,7 +319,7 @@ async function runToolTest(toolId) {
     const runBtn = document.getElementById('test-run-btn');
 
     if (!target) {
-        alert('Please enter a target');
+        _spectraToast('Please enter a target', 'warning');
         return;
     }
 
@@ -328,7 +328,7 @@ async function runToolTest(toolId) {
         try {
             args = JSON.parse(argsInput);
         } catch (e) {
-            alert('Invalid JSON in args field');
+            _spectraToast('Invalid JSON in args field', 'error');
             return;
         }
     }

@@ -65,11 +65,8 @@ SERVICE_AUTH_SECRET=<generate with: openssl rand -hex 32>
 # --- Domain (for Caddy TLS) ---
 SPECTRA_DOMAIN=spectra.example.com
 
-# --- AI Provider ---
-AI_PROVIDER=litellm
-LLM_API_KEY=sk-your-api-key
-LLM_API_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4o-mini
+# --- AI Provider (TensorZero) ---
+TENSORZERO_GATEWAY_URL=http://tensorzero:3000
 
 # --- Security ---
 FULLY_AUTOMATED=false

@@ -31,7 +31,7 @@ services:
       - db_password
 
   app:
-    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:-latest}
     deploy:
       replicas: 2
       placement:
@@ -64,7 +64,7 @@ services:
       - db_password
 
   ai-service:
-    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:-latest}
     command: ["python", "-m", "uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "8001"]
     deploy:
       replicas: 1
@@ -88,7 +88,7 @@ services:
       - service_auth
 
   scheduler:
-    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:-latest}
     command: ["python", "-m", "uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "8002"]
     deploy:
       replicas: 1
@@ -113,7 +113,7 @@ services:
       - service_auth
 
   worker:
-    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:-latest}
     command: ["python", "-m", "uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "8003"]
     deploy:
       replicas: 2
@@ -157,6 +157,60 @@ services:
     networks:
       - spectra-net
 
+  # ClickHouse (TensorZero analytics + inference storage)
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.11-alpine
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.role == ai
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: tensorzero
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    networks:
+      - spectra-net
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # TensorZero Gateway (AI routing, observability, optimization)
+  tensorzero:
+    image: tensorzero/gateway
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.role == ai
+      restart_policy:
+        condition: on-failure
+    environment:
+      TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
+      TENSORZERO_CLICKHOUSE_URL: http://clickhouse:8123/tensorzero
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-${LLM_API_KEY:-}}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    configs:
+      - source: tensorzero_config
+        target: /app/config/tensorzero.toml
+    networks:
+      - spectra-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    secrets:
+      - service_auth
+
 networks:
   spectra-net:
     driver: overlay
@@ -167,6 +221,7 @@ volumes:
     driver: local
   caddy_data:
   caddy_config:
+  clickhouse_data:
 
 secrets:
   db_password:
@@ -179,3 +234,5 @@ secrets:
 configs:
   caddyfile:
     file: ./Caddyfile.prod
+  tensorzero_config:
+    file: ../config/tensorzero.toml

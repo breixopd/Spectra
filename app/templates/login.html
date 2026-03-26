@@ -47,7 +47,31 @@
                 <div id="error-msg" class="mt-4 text-center text-red-400 text-sm hidden" aria-live="polite" role="alert"></div>
                 <div id="success-msg" class="mt-4 text-center text-green-400 text-sm hidden bg-green-500/10 border border-green-500/20 p-3 rounded-lg"></div>
 
-                <div class="mt-6 text-center text-sm space-y-2">
+                <div id="mfa-step" class="hidden space-y-4">
+                    <div class="text-center mb-4">
+                        <div class="w-16 h-16 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-shield-halved text-2xl"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-white">Two-Factor Authentication</h2>
+                        <p class="text-slate-400 mt-2 text-sm">Enter the 6-digit code from your authenticator app.</p>
+                    </div>
+                    <div>
+                        <label for="totp-code" class="block text-sm font-medium text-slate-400 mb-1">Authentication Code</label>
+                        <input type="text" id="totp-code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required
+                               class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white text-center text-2xl tracking-[0.5em] font-mono focus:border-violet-500 focus:outline-none transition-colors"
+                               placeholder="000000">
+                    </div>
+                    <div id="mfa-error-msg" class="text-center text-red-400 text-sm hidden" aria-live="polite" role="alert"></div>
+                    <button id="mfa-submit" type="button"
+                            class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white font-bold transition-all shadow-lg shadow-violet-500/20 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Verify
+                    </button>
+                    <button id="mfa-cancel" type="button" class="w-full py-2 text-sm text-slate-400 hover:text-white transition-colors">
+                        ← Back to login
+                    </button>
+                </div>
+
+                <div id="login-footer" class="mt-6 text-center text-sm space-y-2">
                     <a href="/forgot-password" class="text-violet-400 hover:text-violet-300 transition-colors block">Forgot Password?</a>
                     <p class="text-slate-400">Don't have an account? <a href="/register" class="text-violet-400 hover:text-violet-300 transition-colors">Register</a></p>
                 </div>
@@ -64,7 +88,97 @@
         successMsg.classList.remove('hidden');
     }
 
-    document.getElementById('login-form').onsubmit = async (e) => {
+    let mfaTempToken = null;
+
+    const loginForm = document.getElementById('login-form');
+    const mfaStep = document.getElementById('mfa-step');
+    const loginFooter = document.getElementById('login-footer');
+    const totpInput = document.getElementById('totp-code');
+    const mfaSubmitBtn = document.getElementById('mfa-submit');
+    const mfaCancelBtn = document.getElementById('mfa-cancel');
+    const mfaErrorMsg = document.getElementById('mfa-error-msg');
+
+    // Only allow digits in the TOTP input
+    totpInput.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '');
+        if (e.target.value.length === 6) {
+            submitMfaCode();
+        }
+    });
+
+    function showMfaStep() {
+        loginForm.classList.add('hidden');
+        loginFooter.classList.add('hidden');
+        document.getElementById('error-msg').classList.add('hidden');
+        document.getElementById('success-msg').classList.add('hidden');
+        mfaStep.classList.remove('hidden');
+        mfaErrorMsg.classList.add('hidden');
+        totpInput.value = '';
+        totpInput.focus();
+    }
+
+    function showLoginForm() {
+        mfaTempToken = null;
+        mfaStep.classList.add('hidden');
+        mfaErrorMsg.classList.add('hidden');
+        totpInput.value = '';
+        loginForm.classList.remove('hidden');
+        loginFooter.classList.remove('hidden');
+    }
+
+    async function submitMfaCode() {
+        const code = totpInput.value.trim();
+        if (code.length !== 6 || !/^[0-9]{6}$/.test(code)) return;
+
+        mfaSubmitBtn.disabled = true;
+        mfaSubmitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Verifying…';
+        mfaErrorMsg.classList.add('hidden');
+
+        try {
+            const res = await fetch('/api/v1/auth/mfa/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + mfaTempToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ code: code })
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => null);
+                throw new Error(errData?.detail || 'Invalid authentication code');
+            }
+
+            const data = await res.json();
+            mfaTempToken = null;
+            localStorage.setItem('token', data.access_token);
+            if (data.refresh_token) {
+                localStorage.setItem('refresh_token', data.refresh_token);
+            }
+            window.location.href = '/dashboard';
+
+        } catch (err) {
+            mfaSubmitBtn.disabled = false;
+            mfaSubmitBtn.innerHTML = 'Verify';
+            totpInput.value = '';
+            totpInput.focus();
+            mfaErrorMsg.textContent = err.message;
+            mfaErrorMsg.classList.remove('hidden');
+        }
+    }
+
+    mfaSubmitBtn.addEventListener('click', submitMfaCode);
+    mfaCancelBtn.addEventListener('click', showLoginForm);
+
+    totpInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            submitMfaCode();
+        }
+    });
+
+    loginForm.onsubmit = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
         const btn = e.target.querySelector('button[type="submit"]');
@@ -85,7 +199,19 @@
             if (!res.ok) throw new Error('Invalid credentials');
             
             const data = await res.json();
+
+            if (data.mfa_required) {
+                btn.disabled = false;
+                btn.innerHTML = origText;
+                mfaTempToken = data.access_token;
+                showMfaStep();
+                return;
+            }
+
             localStorage.setItem('token', data.access_token);
+            if (data.refresh_token) {
+                localStorage.setItem('refresh_token', data.refresh_token);
+            }
             window.location.href = '/dashboard';
             
         } catch (err) {

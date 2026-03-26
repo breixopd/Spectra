@@ -37,7 +37,7 @@ pip install -r requirements-app.txt
 
 # Copy environment file
 cp .env.example .env
-# Edit .env with your local settings (DATABASE_URL, AI_PROVIDER, etc.)
+# Edit .env with your local settings (DATABASE_URL, TENSORZERO_GATEWAY_URL, etc.)
 ```
 
 ### Using the Makefile

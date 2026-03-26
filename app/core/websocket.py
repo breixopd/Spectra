@@ -12,7 +12,7 @@ import logging
 from typing import Any
 
 from fastapi import WebSocket
-from jose import JWTError
+from jwt.exceptions import InvalidTokenError as JWTError
 from starlette.websockets import WebSocketState
 
 logger = logging.getLogger(__name__)

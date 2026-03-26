@@ -1,0 +1,177 @@
+let allReports = [];
+let currentPage = 1;
+const pageSize = 12;
+
+document.addEventListener('DOMContentLoaded', () => { loadReports(); });
+
+async function loadReports() {
+    try {
+        const { data: summary, error } = await spectraApi.get('/api/v1/missions/summary');
+        if (error) throw new Error('Failed');
+
+        allReports = (summary.missions || []).map(m => ({
+            ...m,
+            counts: {
+                critical: m.findings?.critical || 0,
+                high: m.findings?.high || 0,
+                medium: m.findings?.medium || 0,
+                low: m.findings?.low || 0,
+                info: m.findings?.info || 0,
+            },
+            totalFindings: m.findings?.total || 0,
+        }));
+
+        document.getElementById('reports-loading').classList.add('hidden');
+        renderReports();
+    } catch (e) {
+        console.error('Error loading reports:', e);
+        document.getElementById('reports-loading').classList.add('hidden');
+        document.getElementById('reports-empty').classList.remove('hidden');
+    }
+}
+
+function applyFilters() { currentPage = 1; renderReports(); }
+
+function getFilteredReports() {
+    const statusFilter = document.getElementById('filter-status').value;
+    const severityFilter = document.getElementById('filter-severity').value;
+    const search = document.getElementById('filter-search').value.toLowerCase();
+    return allReports.filter(r => {
+        if (statusFilter && r.status !== statusFilter) return false;
+        if (severityFilter && (r.counts[severityFilter] || 0) === 0) return false;
+        if (search) {
+            const haystack = `${r.target || ''} ${r.directive || ''} ${r.id || ''}`.toLowerCase();
+            if (!haystack.includes(search)) return false;
+        }
+        return true;
+    });
+}
+
+function renderReports() {
+    const filtered = getFilteredReports();
+    const grid = document.getElementById('reports-grid');
+    const empty = document.getElementById('reports-empty');
+    if (filtered.length === 0) { grid.classList.add('hidden'); grid.innerHTML = ''; empty.classList.remove('hidden'); document.getElementById('pagination-controls').innerHTML = ''; return; }
+    empty.classList.add('hidden');
+    grid.classList.remove('hidden');
+    const totalPages = Math.ceil(filtered.length / pageSize);
+    const start = (currentPage - 1) * pageSize;
+    const page = filtered.slice(start, start + pageSize);
+
+    grid.innerHTML = page.map(r => {
+        const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
+        const sc = { completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', running: 'bg-blue-500/10 text-blue-400 border-blue-500/20', failed: 'bg-rose-500/10 text-rose-400 border-rose-500/20', paused: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }[r.status] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+        const si = { completed: 'fa-check', running: 'fa-spinner fa-spin', failed: 'fa-xmark', paused: 'fa-pause' }[r.status] || 'fa-question';
+        return `<div class="glass-panel rounded-xl p-5 flex flex-col gap-3 group hover:border-violet-500/20 transition-all">
+            <div class="flex items-start justify-between"><div class="flex-1 min-w-0"><h3 class="text-white font-medium truncate">${escapeHtml(r.target || 'Unknown Target')}</h3><p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(r.directive || 'Security Assessment')}</p></div><span class="px-2 py-0.5 rounded text-xs font-mono border ${sc} ml-2 shrink-0"><i class="fa-solid ${si} mr-1"></i>${r.status || 'unknown'}</span></div>
+            <div class="flex items-center gap-4 text-xs text-slate-500"><span><i class="fa-solid fa-calendar mr-1"></i>${date}</span><span><i class="fa-solid fa-bug mr-1"></i>${r.totalFindings} findings</span></div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+                ${r.counts.critical > 0 ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 text-xs font-mono border border-rose-500/20">${r.counts.critical} Crit</span>` : ''}
+                ${r.counts.high > 0 ? `<span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-mono border border-amber-500/20">${r.counts.high} High</span>` : ''}
+                ${r.counts.medium > 0 ? `<span class="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs font-mono border border-blue-500/20">${r.counts.medium} Med</span>` : ''}
+                ${r.counts.low > 0 ? `<span class="px-1.5 py-0.5 rounded bg-slate-500/10 text-slate-400 text-xs font-mono border border-slate-500/20">${r.counts.low} Low</span>` : ''}
+                ${r.totalFindings === 0 ? '<span class="text-xs text-slate-600">No findings</span>' : ''}
+            </div>
+            <div class="flex items-center gap-2 mt-auto pt-2 border-t border-white/5">
+                <button onclick="viewReport('${r.id}')" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors text-center"><i class="fa-solid fa-eye mr-1 text-violet-400"></i>View</button>
+                <button onclick="downloadReportHTML('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Download HTML"><i class="fa-solid fa-file-code text-blue-400"></i></button>
+                <button onclick="downloadReportPDF('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Print / PDF"><i class="fa-solid fa-file-pdf text-rose-400"></i></button>
+                <button onclick="showDeleteMissionModal('${r.id}', '${escapeHtml(r.target || 'Unknown')}')" class="px-3 py-2 bg-slate-800 hover:bg-rose-900/50 rounded text-xs text-white transition-colors" title="Delete Mission"><i class="fa-solid fa-trash text-rose-400"></i></button>
+            </div>
+        </div>`;
+    }).join('');
+
+    const pagEl = document.getElementById('pagination-controls');
+    if (totalPages <= 1) { pagEl.innerHTML = ''; return; }
+    let h = `<button onclick="goToPage(${currentPage-1})" class="px-3 py-1.5 rounded text-xs ${currentPage===1?'text-slate-600 cursor-not-allowed':'text-slate-300 bg-slate-800 hover:bg-slate-700'}" ${currentPage===1?'disabled':''}>&laquo;</button>`;
+    for (let i = 1; i <= totalPages; i++) h += `<button onclick="goToPage(${i})" class="px-3 py-1.5 rounded text-xs ${i===currentPage?'bg-violet-600 text-white':'text-slate-300 bg-slate-800 hover:bg-slate-700'}">${i}</button>`;
+    h += `<button onclick="goToPage(${currentPage+1})" class="px-3 py-1.5 rounded text-xs ${currentPage===totalPages?'text-slate-600 cursor-not-allowed':'text-slate-300 bg-slate-800 hover:bg-slate-700'}" ${currentPage===totalPages?'disabled':''}>&raquo;</button>`;
+    pagEl.innerHTML = h;
+}
+
+function goToPage(p) { const t = Math.ceil(getFilteredReports().length / pageSize); if (p < 1 || p > t) return; currentPage = p; renderReports(); }
+
+async function viewReport(missionId) {
+    const r = allReports.find(m => m.id === missionId);
+    if (!r) return;
+    document.getElementById('view-report-title').textContent = `Report: ${r.target || 'Unknown'}`;
+    let findings = [];
+    const { data: findingsData } = await spectraApi.get(`/api/v1/missions/${missionId}/findings`);
+    if (findingsData) findings = findingsData;
+    const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+    findings.sort((a, b) => (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5));
+    const sevBadge = s => { const c = { critical:'bg-rose-500/20 text-rose-400', high:'bg-amber-500/20 text-amber-400', medium:'bg-blue-500/20 text-blue-400', low:'bg-slate-500/20 text-slate-400', info:'bg-slate-700/30 text-slate-500' }; return `<span class="px-2 py-0.5 rounded text-xs font-mono uppercase ${c[s]||c.info}">${s}</span>`; };
+    document.getElementById('view-report-content').innerHTML = `<div class="max-w-4xl mx-auto space-y-6"><div class="border-b border-white/10 pb-4"><h2 class="text-xl font-bold text-white">${escapeHtml(r.target||'Unknown')}</h2><p class="text-sm text-slate-400 mt-1">${escapeHtml(r.directive||'Security Assessment')}</p><p class="text-xs text-slate-500 mt-2">Date: ${r.created_at?new Date(r.created_at).toLocaleString():'N/A'} | Status: ${r.status} | Total: ${findings.length}</p></div><div><h3 class="text-lg font-semibold text-white mb-3">Findings (${findings.length})</h3>${findings.length===0?'<p class="text-slate-500 text-sm">No findings.</p>':''}<div class="space-y-3">${findings.map(f=>`<div class="glass-panel rounded-lg p-4 border-l-2 ${f.severity==='critical'?'border-rose-500':f.severity==='high'?'border-amber-500':f.severity==='medium'?'border-blue-500':'border-slate-600'}"><div class="flex items-center gap-2 mb-2">${sevBadge(f.severity)}<span class="text-white font-medium text-sm">${escapeHtml(f.title||'Untitled')}</span></div><p class="text-xs text-slate-400">${escapeHtml(f.description||'No description')}</p>${f.tool_source?`<p class="text-xs text-slate-500 mt-2">Tool: ${escapeHtml(f.tool_source)}</p>`:''}</div>`).join('')}</div></div></div>`;
+    document.getElementById('view-report-modal').classList.remove('hidden');
+}
+
+function closeViewReportModal() { document.getElementById('view-report-modal').classList.add('hidden'); }
+
+function printReport() {
+    const content = document.getElementById('view-report-content').innerHTML;
+    const w = window.open('', '_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>Report</title><style>body{font-family:sans-serif;padding:2rem;color:#1e293b}h2{font-size:1.25rem}h3{font-size:1rem;margin-top:1.5rem}.finding{border:1px solid #e2e8f0;border-radius:0.5rem;padding:1rem;margin:0.5rem 0}</style></head><body>${content}</body></html>`);
+    w.document.close();
+    w.print();
+}
+
+function downloadReportHTML(id) { viewReport(id).then(() => printReport()); }
+function downloadReportPDF(id) { viewReport(id).then(() => printReport()); }
+
+async function openNewReportModal() {
+    const sel = document.getElementById('report-mission-select');
+    sel.innerHTML = '<option value="">Select a mission...</option>';
+    const { data: missionsList } = await spectraApi.get('/api/v1/missions');
+    if (missionsList) { missionsList.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = `${m.target||'Unknown'} (${m.status})`; sel.appendChild(o); }); }
+    document.getElementById('new-report-modal').classList.remove('hidden');
+}
+function closeNewReportModal() { document.getElementById('new-report-modal').classList.add('hidden'); }
+
+async function generateReport() {
+    const mid = document.getElementById('report-mission-select').value;
+    if (!mid) { _spectraToast('Select a mission', 'warning'); return; }
+    const tpl = document.getElementById('report-template-select').value;
+    await spectraApi.post('/api/v1/reports/generate', {mission_id:mid,template:tpl});
+    closeNewReportModal();
+    viewReport(mid);
+}
+
+let deleteMissionId = null;
+function showDeleteMissionModal(id, target) {
+    deleteMissionId = id;
+    document.getElementById('delete-mission-target').textContent = target;
+    document.getElementById('download-before-delete-btn').onclick = () => {
+        window.open(`/api/v1/missions/${id}/report/pdf`, '_blank');
+    };
+    document.getElementById('delete-mission-modal').classList.remove('hidden');
+}
+function hideDeleteMissionModal() {
+    document.getElementById('delete-mission-modal').classList.add('hidden');
+}
+async function confirmDeleteMission() {
+    hideDeleteMissionModal();
+    const { error } = await spectraApi.delete(`/api/v1/missions/${deleteMissionId}`);
+    if (error) {
+        _spectraToast(error.detail || 'Failed to delete mission', 'error');
+        return;
+    }
+    allReports = allReports.filter(r => r.id !== deleteMissionId);
+    renderReports();
+}
+const debouncedApplyFilters = debounce(applyFilters);
+
+// Expose functions used by HTML onclick/onchange handlers
+window.openNewReportModal = openNewReportModal;
+window.applyFilters = applyFilters;
+window.debouncedApplyFilters = debouncedApplyFilters;
+window.closeNewReportModal = closeNewReportModal;
+window.generateReport = generateReport;
+window.closeViewReportModal = closeViewReportModal;
+window.printReport = printReport;
+window.viewReport = viewReport;
+window.downloadReportHTML = downloadReportHTML;
+window.downloadReportPDF = downloadReportPDF;
+window.showDeleteMissionModal = showDeleteMissionModal;
+window.hideDeleteMissionModal = hideDeleteMissionModal;
+window.confirmDeleteMission = confirmDeleteMission;
+window.goToPage = goToPage;

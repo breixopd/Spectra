@@ -47,116 +47,34 @@
                         <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-4">
                             <div class="flex items-start justify-between gap-4">
                                 <div>
-                                    <p class="text-sm font-medium text-white">Quick Setup</p>
-                                    <p class="text-xs text-slate-500 mt-1">Pick one default profile. All tiers inherit from it unless you enable overrides.</p>
+                                    <p class="text-sm font-medium text-white">AI Gateway</p>
+                                    <p class="text-xs text-slate-500 mt-1">All AI inference routes through TensorZero. Configure models in the Admin Panel.</p>
                                 </div>
                                 <button type="button" id="test-default-profile-btn" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
-                                    Test Default Profile
+                                    Test Gateway
                                 </button>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-400 mb-1">Default Provider</label>
-                                    <select name="default_provider" id="default_provider" class="profile-provider w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" data-profile-prefix="default">
-                                        <option value="ollama">Ollama (Local)</option>
-                                        <option value="litellm">Cloud / API Gateway</option>
-                                    </select>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">TensorZero Gateway URL</label>
+                                    <input type="text" name="tensorzero_gateway_url" id="tensorzero_gateway_url" placeholder="http://tensorzero:3000" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-400 mb-1">Default Model / Route</label>
-                                    <input type="text" name="default_model" id="default_model" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Request Timeout (seconds)</label>
+                                    <input type="number" name="llm_timeout" id="llm_timeout" min="30" max="1200" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
                                 </div>
                             </div>
 
-                            <div class="profile-api-fields hidden space-y-3" data-profile="default">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-400 mb-1">Gateway / API Base URL</label>
-                                    <input type="text" name="default_api_base_url" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="https://api.openai.com/v1">
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Embedding Model</label>
+                                    <input type="text" name="embedding_model" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
+                                    <p class="text-xs text-slate-500 mt-1">Prefix with <code class="text-violet-400">local/</code> for free offline embeddings</p>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-medium text-slate-400 mb-1">API Key</label>
-                                    <input type="password" name="default_api_key" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="Leave blank to keep the current secret">
-                                </div>
-                            </div>
-
-                            <div class="profile-ollama-fields space-y-3" data-profile="default">
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-400 mb-1">Ollama Host</label>
-                                    <input type="text" name="default_ollama_host" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="border border-white/10 rounded-lg overflow-hidden">
-                            <button type="button" id="toggle-advanced-routing" class="w-full flex items-center justify-between px-4 py-3 text-left bg-slate-900/40 hover:bg-slate-900/70 transition-colors">
-                                <div>
-                                    <p class="text-sm font-medium text-white">Advanced Routing</p>
-                                    <p class="text-xs text-slate-500">Override tiers and add fallback profiles without cluttering the default path.</p>
-                                </div>
-                                <i id="advanced-routing-chevron" class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform"></i>
-                            </button>
-                            <div id="advanced-routing-section" class="hidden px-4 pb-4 pt-3 space-y-4">
-                                <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                                    {% for tier, title, description in [("tier1", "Tier 1", "Fast parsing, tool selection, and safety checks"), ("tier2", "Tier 2", "Balanced planning, reporting, and supervision"), ("tier3", "Tier 3", "High-capability exploit and post-exploitation work")] %}
-                                    <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-3">
-                                        <div class="flex items-start justify-between gap-3">
-                                            <div>
-                                                <p class="text-sm font-medium text-white">{{ title }}</p>
-                                                <p class="text-xs text-slate-500">{{ description }}</p>
-                                            </div>
-                                            <label class="inline-flex items-center gap-2 text-xs text-slate-300">
-                                                <input type="checkbox" class="tier-toggle rounded bg-slate-900/50 border-white/20 text-violet-500 focus:ring-violet-500" data-tier="{{ tier }}">
-                                                Override
-                                            </label>
-                                        </div>
-                                        <input type="hidden" name="{{ tier }}_profile_id" value="{{ tier }}">
-                                        <div class="tier-fields hidden space-y-3" data-tier-fields="{{ tier }}">
-                                            <div>
-                                                <label class="block text-xs font-medium text-slate-400 mb-1">Provider</label>
-                                                <select name="{{ tier }}_provider" class="profile-provider w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" data-profile-prefix="{{ tier }}">
-                                                    <option value="ollama">Ollama (Local)</option>
-                                                    <option value="litellm">Cloud / API Gateway</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label class="block text-xs font-medium text-slate-400 mb-1">Model / Route</label>
-                                                <input type="text" name="{{ tier }}_model" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="Copied from the default profile when you enable override">
-                                            </div>
-                                            <div class="profile-api-fields hidden space-y-3" data-profile="{{ tier }}">
-                                                <input type="text" name="{{ tier }}_api_base_url" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="https://api.openai.com/v1">
-                                                <input type="password" name="{{ tier }}_api_key" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="Leave blank to keep the current secret">
-                                            </div>
-                                            <div class="profile-ollama-fields space-y-3" data-profile="{{ tier }}">
-                                                <input type="text" name="{{ tier }}_ollama_host" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="http://localhost:11434">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-
-                                <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-4">
-                                    <div class="flex items-start justify-between gap-4">
-                                        <div>
-                                            <p class="text-sm font-medium text-white">Default Fallback Chain</p>
-                                            <p class="text-xs text-slate-500">Fallback profiles run in order when the default route fails. Leave empty if you do not need failover.</p>
-                                        </div>
-                                        <button type="button" id="add-fallback-profile" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
-                                            Add Fallback
-                                        </button>
-                                    </div>
-                                    <div id="fallback-profiles" class="space-y-3"></div>
-                                </div>
-
-                                <div class="rounded-xl border border-white/10 bg-slate-950/40 p-4 space-y-3">
-                                    <p class="text-sm font-medium text-white">Embedding Configuration</p>
-                                    <div>
-                                        <div>
-                                            <label class="block text-xs font-medium text-slate-400 mb-1">Embedding Model</label>
-                                            <input type="text" name="embedding_model" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                                            <p class="text-xs text-slate-500 mt-1">Uses your configured LLM API key for embeddings.</p>
-                                        </div>
-                                    </div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1">Embedding API Key</label>
+                                    <input type="password" name="embedding_api_key" placeholder="Only needed for API-based embeddings" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
                                 </div>
                             </div>
                         </div>
@@ -211,8 +129,8 @@
                     </div>
 
                     <div class="rounded-xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-cyan-500/5 p-4 space-y-3 h-fit" id="resolved-ai-summary">
-                        <p class="text-sm font-medium text-white">Resolved Runtime</p>
-                        <div class="text-xs text-slate-400">Loading current provider routes...</div>
+                        <p class="text-sm font-medium text-white">AI Gateway</p>
+                        <div class="text-xs text-slate-400">All AI inference routes through TensorZero. Configure models and providers in <code class="text-violet-400">config/tensorzero.toml</code> or the Admin Panel &rarr; AI Config.</div>
                     </div>
                 </div>
 
@@ -223,39 +141,6 @@
                 </div>
             </form>
         </div>
-
-        <template id="fallback-profile-template">
-            <div class="fallback-row rounded-lg border border-white/10 bg-slate-900/50 p-4 space-y-3">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <p class="text-sm font-medium text-white">Fallback Profile <span class="fallback-order text-violet-300"></span></p>
-                        <p class="text-xs text-slate-500">Runs after the profile above it fails.</p>
-                    </div>
-                    <button type="button" class="remove-fallback text-xs text-rose-300 hover:text-rose-200">Remove</button>
-                </div>
-                <input type="hidden" class="fallback-profile-id">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Provider</label>
-                        <select class="fallback-provider w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                            <option value="ollama">Ollama (Local)</option>
-                            <option value="litellm">Cloud / API Gateway</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Model / Route</label>
-                        <input type="text" class="fallback-model w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
-                    </div>
-                </div>
-                <div class="fallback-api-fields hidden space-y-3">
-                    <input type="text" class="fallback-api-base-url w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="https://api.openai.com/v1">
-                    <input type="password" class="fallback-api-key w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="Leave blank to keep the current secret">
-                </div>
-                <div class="fallback-ollama-fields">
-                    <input type="text" class="fallback-ollama-host w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none" placeholder="http://localhost:11434">
-                </div>
-            </div>
-        </template>
 
         <!-- Platform Settings -->
         <div class="glass-panel rounded-xl p-6">
@@ -664,22 +549,20 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/settings.js"></script>
-<script nonce="{{ request.state.csp_nonce }}">
-    // Data Management Functions
-    async function clearToolStats() {
-        if (!confirm('Clear all tool statistics?')) return;
+<script type="module" src="/static/js/settings.js"></script>
+<script>
+        _spectraConfirm('Clear all tool statistics?', async () => {
         try {
-            const res = await fetch('/api/v1/system/clear/tools', { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) {
-                alert(`Cleared ${data.cleared_count || 0} tool stat entries`);
+            const { data, error } = await spectraApi.post('/api/v1/system/clear/tools');
+            if (!error) {
+                _spectraToast(`Cleared ${data.cleared_count || 0} tool stat entries`, 'success');
             } else {
-                alert('Error: ' + (data.detail || 'Failed to clear'));
+                _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
             }
         } catch (e) {
-            alert('Error: ' + e.message);
+            _spectraToast('Error: ' + e.message, 'error');
         }
+        }, { title: 'Clear Tool Statistics' });
     }
 
     function showClearMissionsConfirm() {
@@ -693,54 +576,52 @@
     async function confirmClearMissions() {
         hideClearMissionsConfirm();
         try {
-            const res = await fetch('/api/v1/system/clear/missions?confirm=true', { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) {
-                alert(`Deleted ${data.deleted_count || 0} missions`);
+            const { data, error } = await spectraApi.post('/api/v1/system/clear/missions?confirm=true');
+            if (!error) {
+                _spectraToast(`Deleted ${data.deleted_count || 0} missions`, 'success');
             } else {
-                alert('Error: ' + (data.detail || 'Failed to clear'));
+                _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
             }
         } catch (e) {
-            alert('Error: ' + e.message);
+            _spectraToast('Error: ' + e.message, 'error');
         }
     }
 
     async function clearCache() {
-        if (!confirm('Clear application cache? This may affect performance temporarily.')) return;
+        _spectraConfirm('Clear application cache? This may affect performance temporarily.', async () => {
         try {
-            const res = await fetch('/api/v1/system/clear/cache', { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) {
-                alert(`Cleared ${data.cleared_count || 0} cache entries`);
+            const { data, error } = await spectraApi.post('/api/v1/system/clear/cache');
+            if (!error) {
+                _spectraToast(`Cleared ${data.cleared_count || 0} cache entries`, 'success');
             } else {
-                alert('Error: ' + (data.detail || 'Failed to clear'));
+                _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
             }
         } catch (e) {
-            alert('Error: ' + e.message);
+            _spectraToast('Error: ' + e.message, 'error');
         }
+        }, { title: 'Clear Cache' });
     }
 
     async function reinstallTools() {
-        if (!confirm('Reinstall all tools? This may take several minutes.')) return;
+        _spectraConfirm('Reinstall all tools? This may take several minutes.', async () => {
         try {
-            const res = await fetch('/api/v1/tools/install-all', { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) {
-                alert('Tool installation queued. Check system status for progress.');
+            const { data, error } = await spectraApi.post('/api/v1/tools/install-all');
+            if (!error) {
+                _spectraToast('Tool installation queued. Check system status for progress.', 'success');
             } else {
-                alert('Error: ' + (data.detail || 'Failed to queue'));
+                _spectraToast('Error: ' + (error.detail || 'Failed to queue'), 'error');
             }
         } catch (e) {
-            alert('Error: ' + e.message);
+            _spectraToast('Error: ' + e.message, 'error');
         }
+        }, { title: 'Reinstall Tools' });
     }
 
     // Load system status on page load
     async function loadSystemStatus() {
         const container = document.getElementById('system-status-content');
         try {
-            const res = await fetch('/api/v1/system/status');
-            const data = await res.json();
+            const { data } = await spectraApi.get('/api/v1/system/status');
             
             const dbStatus = data.database?.status === 'connected' ? 
                 '<span class="text-emerald-400"><i class="fa-solid fa-check-circle"></i> Connected</span>' :
@@ -782,8 +663,7 @@
     async function loadDataSourceStatus() {
         const container = document.getElementById('data-sources-status');
         try {
-            const res = await fetch('/api/v1/system/data-sources');
-            const data = await res.json();
+            const { data } = await spectraApi.get('/api/v1/system/data-sources');
             const sources = data.sources || [];
 
             if (sources.length === 0) {
@@ -826,14 +706,13 @@
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Downloading...';
         status.textContent = 'This may take a minute...';
         try {
-            const res = await fetch('/api/v1/system/data-sources/download', { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) {
+            const { data, error } = await spectraApi.post('/api/v1/system/data-sources/download');
+            if (!error) {
                 status.textContent = `Updated: ${data.stats?.cve_kb_entries || 0} CVEs, ${data.stats?.metasploit || 0} MSF modules`;
                 status.className = 'text-xs text-emerald-400';
                 loadDataSourceStatus();
             } else {
-                status.textContent = 'Error: ' + (data.detail || 'Download failed');
+                status.textContent = 'Error: ' + (error.detail || 'Download failed');
                 status.className = 'text-xs text-rose-400';
             }
         } catch (e) {
@@ -851,15 +730,14 @@
     async function loadVpnConfigs() {
         const container = document.getElementById('vpn-configs-list');
         try {
-            const res = await fetch('/api/v1/vpn/configs');
-            if (!res.ok) { container.innerHTML = '<span class="text-slate-500 text-sm">No configs found</span>'; return; }
-            const configs = await res.json();
+            const { data: configs, error } = await spectraApi.get('/api/v1/vpn/configs');
+            if (error) { container.innerHTML = '<span class="text-slate-500 text-sm">No configs found</span>'; return; }
             if (!configs.length) { container.innerHTML = '<span class="text-slate-500 text-sm">No configs uploaded yet</span>'; return; }
             container.innerHTML = configs.map(c => `
                 <div class="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-white/5">
                     <div>
                         <span class="text-sm font-medium text-white">${escapeHtml(c.name)}</span>
-                        <span class="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-slate-700 text-slate-300">${escapeHtml(c.type)}</span>
+                        <span class="ml-2 px-1.5 py-0.5 text-xs rounded bg-slate-700 text-slate-300">${escapeHtml(c.type)}</span>
                         <span class="ml-2 text-xs text-slate-500">${(c.size / 1024).toFixed(1)} KB</span>
                     </div>
                     <div class="flex gap-2">
@@ -874,37 +752,35 @@
 
     async function vpnConnect(name) {
         try {
-            const res = await fetch(`/api/v1/vpn/connect/${encodeURIComponent(name)}`, { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) alert('VPN connect job queued: ' + data.job_id);
-            else alert('Error: ' + (data.detail || 'Failed'));
-        } catch (e) { alert('Error: ' + e.message); }
+            const { data, error } = await spectraApi.post(`/api/v1/vpn/connect/${encodeURIComponent(name)}`);
+            if (!error) _spectraToast('VPN connect job queued: ' + data.job_id, 'success');
+            else _spectraToast('Error: ' + (error.detail || 'Failed'), 'error');
+        } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
     }
 
     async function vpnDisconnect(name) {
         try {
-            const res = await fetch(`/api/v1/vpn/disconnect/${encodeURIComponent(name)}`, { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) alert('VPN disconnect job queued: ' + data.job_id);
-            else alert('Error: ' + (data.detail || 'Failed'));
-        } catch (e) { alert('Error: ' + e.message); }
+            const { data, error } = await spectraApi.post(`/api/v1/vpn/disconnect/${encodeURIComponent(name)}`);
+            if (!error) _spectraToast('VPN disconnect job queued: ' + data.job_id, 'success');
+            else _spectraToast('Error: ' + (error.detail || 'Failed'), 'error');
+        } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
     }
 
     async function vpnDelete(name) {
-        if (!confirm(`Delete VPN config "${name}"?`)) return;
-        try {
-            const res = await fetch(`/api/v1/vpn/configs/${encodeURIComponent(name)}`, { method: 'DELETE' });
-            if (res.ok) { loadVpnConfigs(); } else { const d = await res.json(); alert('Error: ' + (d.detail || 'Failed')); }
-        } catch (e) { alert('Error: ' + e.message); }
+        _spectraConfirm(`Delete VPN config "${name}"?`, async () => {
+            try {
+                const { error } = await spectraApi.delete(`/api/v1/vpn/configs/${encodeURIComponent(name)}`);
+                if (!error) { loadVpnConfigs(); } else { _spectraToast('Error: ' + (error.detail || 'Failed'), 'error'); }
+            } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+        }, { title: 'Delete VPN Config' });
     }
 
     async function testVpnConnection() {
         try {
-            const res = await fetch('/api/v1/vpn/test', { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) alert('VPN test job queued: ' + data.job_id);
-            else alert('Error: ' + (data.detail || 'Failed'));
-        } catch (e) { alert('Error: ' + e.message); }
+            const { data, error } = await spectraApi.post('/api/v1/vpn/test');
+            if (!error) _spectraToast('VPN test job queued: ' + data.job_id, 'success');
+            else _spectraToast('Error: ' + (error.detail || 'Failed'), 'error');
+        } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
     }
 
     document.getElementById('vpn-upload-form').addEventListener('submit', async (e) => {
@@ -915,19 +791,18 @@
         fd.append('vpn_type', form.vpn_type.value);
         fd.append('file', form.vpn_file.files[0]);
         try {
-            const res = await fetch('/api/v1/vpn/configs', { method: 'POST', body: fd });
-            const data = await res.json();
-            if (res.ok) { alert('Config uploaded: ' + data.name); form.reset(); loadVpnConfigs(); }
-            else alert('Error: ' + (data.detail || 'Upload failed'));
-        } catch (e) { alert('Error: ' + e.message); }
+            const { data, error } = await spectraApi.post('/api/v1/vpn/configs', fd);
+            if (!error) { _spectraToast('Config uploaded: ' + data.name, 'success'); form.reset(); loadVpnConfigs(); }
+            else _spectraToast('Error: ' + (error.detail || 'Upload failed'), 'error');
+        } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
     });
 
     async function loadVpnStatus() {
         const dot = document.getElementById('vpn-status-dot');
         const text = document.getElementById('vpn-status-text');
         try {
-            const res = await fetch('/api/v1/vpn/status');
-            if (res.ok) {
+            const { error } = await spectraApi.get('/api/v1/vpn/status');
+            if (!error) {
                 text.textContent = 'Status check queued (runs in tools container)';
                 dot.className = 'w-3 h-3 rounded-full bg-slate-500';
             } else {
@@ -950,9 +825,8 @@
         const container = document.getElementById('svc-topology-cards');
         const refreshInfo = document.getElementById('svc-topology-refresh-info');
         try {
-            const res = await fetch('/system/services/topology');
-            if (!res.ok) throw new Error('Failed to fetch topology');
-            const topology = await res.json();
+            const { data: topology, error } = await spectraApi.get('/system/services/topology');
+            if (error) throw new Error('Failed to fetch topology');
             const entries = Object.entries(topology);
 
             if (!entries.length) {
@@ -976,7 +850,7 @@
                             <span class="w-2 h-2 rounded-full ${dotClass}"></span>
                             <span class="text-sm font-medium text-white">${escapeHtml(displayName)}</span>
                         </div>
-                        <span class="text-[10px] uppercase tracking-wider font-semibold ${modeColors[mode] || 'text-slate-400'}">
+                        <span class="text-xs uppercase tracking-wider font-semibold ${modeColors[mode] || 'text-slate-400'}">
                             <i class="fa-solid ${modeIcon[mode] || 'fa-circle-question'} mr-0.5"></i> ${escapeHtml(mode)}
                         </span>
                     </div>

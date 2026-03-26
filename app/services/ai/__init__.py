@@ -2,7 +2,7 @@
 AI Services package for the MAKER Framework.
 
 Contains:
-- LLM clients (LiteLLM smart router, Mock) — all providers unified through LiteLLM
+- LLM clients (TensorZero smart router, Mock) — all providers unified through TensorZero
 - Agent swarm architecture (scope, tool selector, exploit, safety, etc.)
 - Consensus engine (K-threshold voting system)
 - Persistent memory (cross-mission learning)

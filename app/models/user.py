@@ -4,7 +4,9 @@ User model for authentication and authorization.
 Stores user credentials and role information for the Spectra platform.
 """
 
-from sqlalchemy import Boolean, ForeignKey, String
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -47,6 +49,10 @@ class User(Base):
     api_key_prefix: Mapped[str | None] = mapped_column(String(10), nullable=True)
     mfa_secret: Mapped[str | None] = mapped_column(String(255), nullable=True)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
+    login_fail_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invalidated_before: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, server_default="true")
 
     __exclude_fields__ = {"hashed_password", "mfa_secret"}
 

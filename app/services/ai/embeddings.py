@@ -1,7 +1,7 @@
-"""Embedding Service — local (fastembed) or API (LiteLLM).
+"""Embedding Service — local (fastembed) or API (OpenAI SDK).
 
 By default uses fastembed for free local embeddings.  Falls back to
-LiteLLM when an API-backed model is configured.
+OpenAI SDK when an API-backed model is configured.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
-    """Embedding service: local fastembed or LiteLLM API backend."""
+    """Embedding service: local fastembed or OpenAI SDK API backend."""
 
     def __init__(self, model_name: str = ""):
         self.model_name = model_name or settings.EMBEDDING_MODEL
@@ -24,8 +24,8 @@ class EmbeddingService:
         self._local_embedder: object | None = None
         self._local_model_name: str = ""
         self._init_lock: asyncio.Lock | None = None
-        self._litellm_model: str = ""
-        self._litellm_kwargs: dict = {}
+        self._openai_client: object | None = None
+        self._openai_model: str = ""
         self._embedding_dim: int | None = None
 
     @property
@@ -54,7 +54,7 @@ class EmbeddingService:
             raise RuntimeError(f"Failed to load local embedding model '{self._local_model_name}': {e}") from e
 
     async def _load_model(self) -> None:
-        """Configure API backend via LiteLLM."""
+        """Configure API backend via OpenAI SDK."""
         if self._api_ready:
             return
 
@@ -67,8 +67,7 @@ class EmbeddingService:
 
             # Check if using local embedding model
             model_lower = self.model_name.lower()
-            emb_key = settings.EMBEDDING_API_KEY.get_secret_value()
-            api_key = emb_key if emb_key else settings.LLM_API_KEY.get_secret_value()
+            api_key = settings.EMBEDDING_API_KEY.get_secret_value()
 
             if model_lower.startswith("local/") or (not api_key):
                 # Mark as local — actual model download is deferred to first embed() call
@@ -78,48 +77,39 @@ class EmbeddingService:
                 logger.info("Local embedding configured (lazy): model=%s (downloaded on first use)", self._local_model_name)
                 return
 
-            if not api_key:
-                logger.warning("Embedding service requires an API key. Configure EMBEDDING_API_KEY or LLM_API_KEY.")
-                return
+            from openai import AsyncOpenAI
 
-            import litellm  # noqa: F401
+            base_url = settings.EMBEDDING_API_BASE_URL
 
-            emb_base = settings.EMBEDDING_API_BASE_URL
-            base_url = emb_base if emb_base else settings.LLM_API_BASE_URL
-
-            if base_url:
-                self._litellm_model = f"openai/{self.model_name}"
-                self._litellm_kwargs = {"api_base": base_url, "api_key": api_key}
-            else:
-                self._litellm_model = self.model_name
-                self._litellm_kwargs = {"api_key": api_key}
+            self._openai_client = AsyncOpenAI(
+                api_key=api_key,
+                base_url=base_url or None,
+            )
+            self._openai_model = self.model_name
 
             self._api_ready = True
-            logger.info("Embedding service ready: model=%s", self._litellm_model)
+            logger.info("Embedding service ready: model=%s", self._openai_model)
 
     async def embed(self, text: str) -> list[float]:
         """Generate embedding for a single text."""
         await self._load_model()
 
         if not self._api_ready:
-            raise RuntimeError("Embedding service not configured. Set LLM_API_KEY or use a local model (EMBEDDING_MODEL=local/BAAI/bge-small-en-v1.5).")
+            raise RuntimeError("Embedding service not configured. Set EMBEDDING_API_KEY or use a local model (EMBEDDING_MODEL=local/BAAI/bge-small-en-v1.5).")
 
         if self._use_local:
             await self._ensure_local_loaded()
             embeddings = await asyncio.to_thread(lambda: list(self._local_embedder.embed([text])))  # type: ignore[union-attr]
             return embeddings[0].tolist()
 
-        import litellm
-
         for attempt in range(2):
             try:
-                response = await litellm.aembedding(
-                    model=self._litellm_model,
+                response = await self._openai_client.embeddings.create(  # type: ignore[union-attr]
+                    model=self._openai_model,
                     input=[text],
                     encoding_format="float",
-                    **self._litellm_kwargs,
                 )
-                return response.data[0]["embedding"]
+                return response.data[0].embedding
             except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                 if attempt == 0:
                     logger.warning("Embedding attempt failed, retrying: %s", e)
@@ -142,17 +132,14 @@ class EmbeddingService:
             embeddings = await asyncio.to_thread(lambda: list(self._local_embedder.embed(texts)))  # type: ignore[union-attr]
             return [e.tolist() for e in embeddings]
 
-        import litellm
-
         for attempt in range(2):
             try:
-                response = await litellm.aembedding(
-                    model=self._litellm_model,
+                response = await self._openai_client.embeddings.create(  # type: ignore[union-attr]
+                    model=self._openai_model,
                     input=texts,
                     encoding_format="float",
-                    **self._litellm_kwargs,
                 )
-                return [item["embedding"] for item in response.data]
+                return [item.embedding for item in response.data]
             except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                 if attempt == 0:
                     logger.warning("Batch embedding attempt failed, retrying: %s", e)

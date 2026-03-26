@@ -147,7 +147,7 @@ class AgentResult:
 
 # --- Base Agent ---
 
-# Maps AgentRole → task_type string used by LiteLLMRouter for tier routing
+# Maps AgentRole → task_type string used by TensorZeroRouter for tier routing
 ROLE_TASK_MAP: dict[AgentRole, str] = {
     AgentRole.SCOPE: "scope",
     AgentRole.TOOL_SELECTOR: "tool_selection",
@@ -193,6 +193,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
         """
         self.llm = llm
         self._cost_tracker: CostTracker | None = None
+        self._last_inference_id: str = ""
 
     @property
     def _task_type(self) -> str | None:
@@ -205,6 +206,10 @@ class Agent(ABC, Generic[InputT, OutputT]):
         start = time.monotonic()
         response = await self.llm.generate(**kwargs)
         latency = (time.monotonic() - start) * 1000
+
+        # Capture inference_id for feedback
+        if hasattr(response, "raw") and isinstance(response.raw, dict):
+            self._last_inference_id = response.raw.get("inference_id", "")
 
         if self._cost_tracker:
             self._cost_tracker.record(
@@ -512,4 +517,13 @@ class Agent(ABC, Generic[InputT, OutputT]):
             logger.error("%s failed: %s", self.name, result.error)
         else:
             logger.info("%s completed successfully (action=%s)", self.name, result.action.action_type if result.action else "none")
+
+        # Send TensorZero feedback for optimization
+        if self._last_inference_id:
+            try:
+                from app.services.ai.feedback import send_task_feedback
+                await send_task_feedback(self._last_inference_id, success=result.success)
+            except Exception:  # noqa: BLE001
+                logger.debug("Failed to send TZ feedback", exc_info=True)
+
         return result

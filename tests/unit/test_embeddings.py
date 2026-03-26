@@ -86,7 +86,7 @@ class TestModelLoading:
     async def test_load_model_uses_local_fallback_when_no_api_key(self, service):
         """_load_model falls back to local model when no API key is available."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
             await service._load_model()
@@ -97,7 +97,7 @@ class TestModelLoading:
     async def test_load_model_uses_local_when_no_api_key(self, service):
         """_load_model configures local fastembed when no API key is available."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
             await service._load_model()
@@ -109,7 +109,7 @@ class TestModelLoading:
     async def test_load_model_configures_api_with_base_url(self, service):
         """_load_model sets up litellm params with custom base URL."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
             mock_settings.EMBEDDING_API_BASE_URL = ""
@@ -139,7 +139,7 @@ class TestModelLoading:
     async def test_embed_uses_local_fallback_when_no_api_key(self, service):
         """embed() falls back to local embeddings when no API key configured."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
             await service._load_model()
@@ -150,7 +150,7 @@ class TestModelLoading:
     async def test_embed_batch_uses_local_fallback_when_no_api_key(self, service):
         """embed_batch() falls back to local embeddings when no API key configured."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
             await service._load_model()
@@ -166,7 +166,7 @@ class TestModelLoading:
     async def test_is_functional_true_after_api_init(self, service):
         """is_functional returns True after successful API init."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
             mock_settings.EMBEDDING_API_BASE_URL = ""
@@ -178,7 +178,7 @@ class TestModelLoading:
     async def test_load_model_configures_api_without_base_url(self, service):
         """_load_model uses model name directly when no base URL."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "litellm"
+            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
             mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
             mock_settings.EMBEDDING_API_BASE_URL = ""

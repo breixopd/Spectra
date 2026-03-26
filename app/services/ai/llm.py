@@ -230,61 +230,36 @@ Respond ONLY with the JSON object. No markdown, no explanation, just the JSON.""
 
 
 def get_llm_client(
-    provider: str = "litellm",
+    provider: str = "tensorzero",
     **kwargs,
 ) -> LLMClient:
     """
     Factory function to get the appropriate LLM client.
 
     Args:
-        provider: "litellm" (all providers via LiteLLM router).
-        **kwargs: Provider-specific arguments.
+        provider: "tensorzero" (all providers via TensorZero gateway).
+        **kwargs: Provider-specific arguments (gateway_url, etc.).
 
     Returns:
         Configured LLM client instance.
     """
-    from app.services.ai.router import LiteLLMRouter, _normalize_provider_name
+    from app.services.ai.router import TensorZeroRouter
 
-    _normalize_provider_name(provider)
-
-    # Everything else goes through LiteLLM
-    model = kwargs.get("model", "")
-    base_url = kwargs.get("base_url") or kwargs.get("host")
-    api_key = kwargs.get("api_key")
-
-    # Detect Ollama-style requests: if host is provided or raw provider is "ollama"
-    raw_lower = (provider or "").strip().lower()
-    if raw_lower == "ollama" and model and not model.startswith("ollama/"):
-        model = f"ollama/{model}"
-
-    model_configs = []
-    if model:
-        litellm_params: dict[str, Any] = {"model": model}
-        if base_url:
-            litellm_params["api_base"] = base_url
-        if api_key:
-            litellm_params["api_key"] = api_key
-        model_configs.append({"model_name": "default", "litellm_params": litellm_params})
-
-    return LiteLLMRouter(
-        model_configs=model_configs or None,
-        default_model=model or "openai/gpt-4o-mini",
-    )
+    gateway_url = kwargs.get("gateway_url") or settings.TENSORZERO_GATEWAY_URL
+    return TensorZeroRouter(gateway_url=gateway_url)
 
 
 def get_default_llm_client() -> LLMClient:
     """Get the LLM client configured in settings.
 
-    Uses in-process LiteLLM router with provider profiles.
+    Uses TensorZero gateway for all LLM routing.
     """
 
-    from app.services.ai.router import _normalize_provider_name, create_smart_router
-
-    _normalize_provider_name(settings.AI_PROVIDER)
+    from app.services.ai.router import create_smart_router
 
     try:
         client = create_smart_router()
-        logger.info("Using LiteLLM smart router (provider=%s)", settings.AI_PROVIDER)
+        logger.info("Using TensorZero smart router (provider=tensorzero)")
         return client
     except (OSError, RuntimeError, ValueError) as e:
         logger.error("Smart router init failed: %s", e)

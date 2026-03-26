@@ -4,13 +4,9 @@ Authentication Router.
 Handles user login, setup, and token generation.
 """
 
-import asyncio
-import json
 import logging
-import threading
-import time
-from datetime import timedelta
-from typing import Annotated
+from datetime import datetime, timedelta, timezone
+from typing import Annotated, TYPE_CHECKING
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -31,7 +27,6 @@ from app.api.schemas.system import DeleteAccountRequest
 from app.core.config import settings
 from app.core.database import get_async_session
 from app.core.events import EventType, events
-from app.core.paths import data_path
 from app.core.rate_limit import RateLimits, limiter
 from app.core.security import (
     JWTError,
@@ -57,92 +52,45 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# --- Persistent Account Lockout ---
-_LOCKOUT_FILE = data_path("auth", ".lockout_state.json")
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
-_login_failures: dict[str, dict] = {}  # ip -> {"count": int, "locked_until": float}
-_lockout_lock = threading.Lock()
-_lockout_loaded = False
 
+# --- Account Lockout (DB-backed) ---
 LOCKOUT_THRESHOLD_1 = 5   # failures before first lockout
-LOCKOUT_DURATION_1 = 300  # 5 minutes in seconds
+LOCKOUT_DURATION_1 = 300  # 5 minutes
 LOCKOUT_THRESHOLD_2 = 10  # failures before extended lockout
-LOCKOUT_DURATION_2 = 1800 # 30 minutes in seconds
+LOCKOUT_DURATION_2 = 1800 # 30 minutes
 
 
-def _ensure_lockout_loaded() -> None:
-    """Load lockout state from persistent storage once."""
-    global _lockout_loaded
-    if _lockout_loaded:
-        return
-    with _lockout_lock:
-        if _lockout_loaded:
-            return
-        try:
-            if _LOCKOUT_FILE.exists():
-                data = json.loads(_LOCKOUT_FILE.read_text())
-                now = time.time()
-                for ip, entry in data.items():
-                    locked_until = entry.get("locked_until", 0)
-                    if locked_until > now or entry.get("count", 0) > 0:
-                        _login_failures[ip] = entry
-        except (OSError, ValueError) as exc:
-            logger.warning("Failed to load lockout state: %s", exc)
-        _lockout_loaded = True
+async def _check_lockout(user: "User") -> None:
+    """Raise 429 if the user account is currently locked."""
+    if user.locked_until and user.locked_until > datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Account temporarily locked due to too many failed attempts",
+        )
 
 
-def _persist_lockout() -> None:
-    """Save lockout state to file (call while holding lock)."""
-    try:
-        _LOCKOUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-        _LOCKOUT_FILE.write_text(json.dumps(_login_failures))
-    except (OSError, ValueError) as exc:
-        logger.warning("Failed to persist lockout state: %s", exc)
-
-
-async def _persist_lockout_async() -> None:
-    """Save lockout state to file asynchronously."""
-    await asyncio.to_thread(_persist_lockout)
-
-
-def _check_lockout(ip: str) -> None:
-    """Raise 429 if the IP is currently locked out."""
-    _ensure_lockout_loaded()
-    with _lockout_lock:
-        entry = _login_failures.get(ip)
-        if not entry:
-            return
-        locked_until = entry.get("locked_until", 0)
-        if locked_until and time.time() < locked_until:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Account temporarily locked due to too many failed attempts",
-            )
-        # If lockout expired, keep count for escalation but clear lock
-        if locked_until and time.time() >= locked_until:
-            entry["locked_until"] = 0
-
-
-def _record_failure(ip: str) -> None:
+async def _record_failure(user: "User", session: "AsyncSession") -> None:
     """Record a failed login attempt and apply lockout if threshold reached."""
-    _ensure_lockout_loaded()
-    with _lockout_lock:
-        entry = _login_failures.setdefault(ip, {"count": 0, "locked_until": 0})
-        entry["count"] = entry.get("count", 0) + 1
-        count = entry["count"]
-        if count >= LOCKOUT_THRESHOLD_2:
-            entry["locked_until"] = time.time() + LOCKOUT_DURATION_2
-        elif count >= LOCKOUT_THRESHOLD_1:
-            entry["locked_until"] = time.time() + LOCKOUT_DURATION_1
-        _persist_lockout()
+    user.login_fail_count = (user.login_fail_count or 0) + 1
+    count = user.login_fail_count
+
+    if count >= LOCKOUT_THRESHOLD_2:
+        user.locked_until = datetime.now(timezone.utc) + timedelta(seconds=LOCKOUT_DURATION_2)
+    elif count >= LOCKOUT_THRESHOLD_1:
+        user.locked_until = datetime.now(timezone.utc) + timedelta(seconds=LOCKOUT_DURATION_1)
+
+    await session.commit()
 
 
-def _reset_failures(ip: str) -> None:
-    """Reset failure count on successful login."""
-    _ensure_lockout_loaded()
-    with _lockout_lock:
-        _login_failures.pop(ip, None)
-        _persist_lockout()
+async def _record_success(user: "User", session: "AsyncSession") -> None:
+    """Clear lockout state on successful login."""
+    if user.login_fail_count or user.locked_until:
+        user.login_fail_count = 0
+        user.locked_until = None
+        await session.commit()
 
 
 @router.post(
@@ -165,13 +113,15 @@ async def login_for_access_token(
     """
     client_ip = request.client.host if request.client else "unknown"
 
-    # Check account lockout before attempting auth
-    _check_lockout(client_ip)
-
     # Find user
     stmt = select(User).where(User.username == form_data.username)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
+
+    # Check account lockout after user lookup (user-based, not IP-based)
+    # If user doesn't exist, skip lockout to avoid user enumeration
+    if user:
+        await _check_lockout(user)
 
     # Always verify password even if user doesn't exist (timing-safe)
     dummy_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCJzFhWMu"
@@ -184,7 +134,8 @@ async def login_for_access_token(
             "Failed login attempt for user '%s' from %s", form_data.username, client_ip
         )
 
-        _record_failure(client_ip)
+        if user:
+            await _record_failure(user, session)
 
         # Emit failed login event
         await events.emit(
@@ -216,13 +167,20 @@ async def login_for_access_token(
             status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
         )
 
+    # Block unverified users when email verification is active
+    if (settings.smtp_configured or settings.EMAIL_VERIFICATION_ENABLED) and not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email address before logging in. Check your inbox for the verification link.",
+        )
+
     # If MFA is enabled, return a partial MFA token instead of full access
     if user.mfa_enabled:
         mfa_token = create_access_token(
             data={"sub": user.username, "mfa_pending": True},
             expires_delta=timedelta(minutes=5),
         )
-        _reset_failures(client_ip)
+        await _record_success(user, session)
         return {
             "access_token": mfa_token,
             "refresh_token": None,
@@ -258,7 +216,7 @@ async def login_for_access_token(
         request=request,
     )
 
-    _reset_failures(client_ip)
+    await _record_success(user, session)
 
     # Set HttpOnly cookie for browser-based auth
     response.set_cookie(
@@ -435,6 +393,7 @@ async def mfa_setup(
 
 @router.post("/mfa/verify-setup", tags=["MFA"])
 async def mfa_verify_setup(
+    request: Request,
     body: MFAVerifyRequest,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -451,6 +410,14 @@ async def mfa_verify_setup(
 
     user.mfa_enabled = True
     await session.commit()
+
+    await audit_log_event(
+        session, AuditEventType.MFA_ENABLED,
+        user_id=str(user.id),
+        details={"username": user.username},
+        request=request,
+    )
+
     return {"detail": "MFA enabled successfully"}
 
 
@@ -520,6 +487,7 @@ async def mfa_verify_login(
 
 @router.post("/mfa/disable", tags=["MFA"])
 async def mfa_disable(
+    request: Request,
     body: MFADisableRequest,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -538,6 +506,14 @@ async def mfa_disable(
     user.mfa_enabled = False
     user.mfa_secret = None
     await session.commit()
+
+    await audit_log_event(
+        session, AuditEventType.MFA_DISABLED,
+        user_id=str(user.id),
+        details={"username": user.username},
+        request=request,
+    )
+
     return {"detail": "MFA disabled successfully"}
 
 
@@ -659,7 +635,16 @@ async def change_password(
         raise HTTPException(400, "Current password is incorrect")
 
     user.hashed_password = get_password_hash(body.new_password)
+    user.invalidated_before = datetime.now(timezone.utc)
     await session.commit()
+
+    await audit_log_event(
+        session, AuditEventType.PASSWORD_CHANGED,
+        user_id=str(user.id),
+        details={"username": user.username},
+        request=request,
+    )
+
     return {"detail": "Password changed successfully"}
 
 
@@ -689,6 +674,13 @@ async def delete_account(
 
     user_id = str(user.id)
     username = user.username
+
+    await audit_log_event(
+        session, AuditEventType.ACCOUNT_DELETED,
+        user_id=user_id,
+        details={"username": username},
+        request=request,
+    )
 
     # Nullify audit log references before cascade
     from sqlalchemy import text
@@ -746,5 +738,14 @@ async def reset_password(
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     user.hashed_password = get_password_hash(body.new_password)
+    user.invalidated_before = datetime.now(timezone.utc)
     await session.commit()
+
+    await audit_log_event(
+        session, AuditEventType.PASSWORD_RESET,
+        user_id=str(user.id),
+        details={"user_id": str(user.id)},
+        request=request,
+    )
+
     return {"message": "Password reset successfully"}

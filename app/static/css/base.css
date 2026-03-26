@@ -1,7 +1,6 @@
 /* base.css — Shared styles extracted from base.html */
 
-.glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
-.glass-sidebar { background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(16px); border-right: 1px solid rgba(255, 255, 255, 0.05); }
+.glass-sidebar { background: var(--glass-sidebar-bg); backdrop-filter: blur(var(--glass-sidebar-blur)); border-right: 1px solid var(--border-subtle); }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #020617; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
@@ -58,9 +57,7 @@ input:focus, select:focus, textarea:focus {
     box-shadow: 0 0 0 2px rgba(139,92,246,0.4);
 }
 
-/* Glass panel subtle border glow on hover */
-.glass-panel { transition: border-color 0.3s ease, box-shadow 0.3s ease; }
-.glass-panel:hover { border-color: rgba(255,255,255,0.08); }
+
 
 /* Tooltip system */
 [data-tooltip] {

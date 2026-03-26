@@ -10,26 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import SettingsUpdate
 from app.core.config import settings
+from app.services.system.runtime_ai_config import apply_ai_settings
 from app.services.system.runtime_settings import (
-    build_runtime_ai_config_from_payload,
-    get_resolved_runtime_ai_config_snapshot,
-    get_runtime_ai_config_from_settings,
     hydrate_runtime_settings_from_db,
-    serialize_runtime_ai_config_values,
     upsert_system_config_values,
 )
 
 logger = logging.getLogger(__name__)
 
 _SETTINGS_LOCK = asyncio.Lock()
-
-
-def public_ai_provider(provider: str | None) -> str:
-    """Normalise raw provider string to the public-facing label."""
-    normalized = (provider or "litellm").strip().lower()
-    if normalized == "ollama":
-        return "ollama"
-    return "litellm"
 
 
 def get_sandbox_status() -> dict:
@@ -85,6 +74,9 @@ def _collect_general_db_settings(
         ("s3_access_key", "S3_ACCESS_KEY", "str", True),
         ("s3_secret_key", "S3_SECRET_KEY", "str", True),
         ("s3_region", "S3_REGION", "str", False),
+        # AI Gateway
+        ("tensorzero_gateway_url", "TENSORZERO_GATEWAY_URL", "str", False),
+        ("tensorzero_api_key", "TENSORZERO_API_KEY", "str", True),
     ]
     result: dict[str, tuple[str, bool]] = {}
     for field_name, db_key, conv, is_secret in mapping:
@@ -104,85 +96,6 @@ def _collect_general_db_settings(
     return result
 
 
-_AI_FIELD_NAMES = frozenset({
-    "ai_provider",
-    "llm_api_key",
-    "llm_api_base_url",
-    "llm_model",
-    "ollama_host",
-    "ollama_model",
-    "ollama_enabled",
-    "provider_profiles",
-    "provider_routing",
-    "provider_fallbacks",
-    "llm_tier1_model",
-    "llm_tier2_model",
-    "llm_tier3_model",
-})
-
-
-def _collect_ai_db_settings(
-    data: SettingsUpdate,
-    fields_set: set[str],
-) -> dict[str, tuple[str, bool]]:
-    """Map AI-related request fields to DB key/value tuples."""
-    if not _AI_FIELD_NAMES.intersection(fields_set):
-        return {}
-
-    runtime_ai_config = build_runtime_ai_config_from_payload(
-        base_config=get_runtime_ai_config_from_settings(settings),
-        provider_profiles=(
-            {
-                name: profile.model_dump(exclude_none=True)
-                for name, profile in data.provider_profiles.items()
-            }
-            if data.provider_profiles is not None
-            else None
-        ),
-        provider_routing=(
-            data.provider_routing.as_dict()
-            if data.provider_routing is not None
-            else None
-        ),
-        provider_fallbacks=(
-            data.provider_fallbacks.as_dict()
-            if data.provider_fallbacks is not None
-            else None
-        ),
-        legacy_provider=(
-            data.ai_provider if "ai_provider" in fields_set else None
-        ),
-        legacy_model=(data.llm_model if "llm_model" in fields_set else None),
-        legacy_api_key=(
-            data.llm_api_key if "llm_api_key" in fields_set else None
-        ),
-        legacy_api_base_url=(
-            data.llm_api_base_url if "llm_api_base_url" in fields_set else None
-        ),
-        legacy_ollama_host=(
-            data.ollama_host if "ollama_host" in fields_set else None
-        ),
-        legacy_ollama_model=(
-            data.ollama_model if "ollama_model" in fields_set else None
-        ),
-        legacy_ollama_enabled=(
-            data.ollama_enabled if "ollama_enabled" in fields_set else None
-        ),
-        legacy_tier_models={
-            "LLM_TIER1_MODEL": (
-                data.llm_tier1_model if "llm_tier1_model" in fields_set else None
-            ),
-            "LLM_TIER2_MODEL": (
-                data.llm_tier2_model if "llm_tier2_model" in fields_set else None
-            ),
-            "LLM_TIER3_MODEL": (
-                data.llm_tier3_model if "llm_tier3_model" in fields_set else None
-            ),
-        },
-    )
-    return serialize_runtime_ai_config_values(runtime_ai_config)
-
-
 async def apply_settings_update(
     data: SettingsUpdate,
     db: AsyncSession,
@@ -191,7 +104,6 @@ async def apply_settings_update(
     async with _SETTINGS_LOCK:
         fields_set = data.model_fields_set
         db_settings = _collect_general_db_settings(data, fields_set)
-        db_settings.update(_collect_ai_db_settings(data, fields_set))
 
         await upsert_system_config_values(db, db_settings)
         await db.commit()
@@ -202,30 +114,16 @@ async def apply_settings_update(
 
 def get_current_settings() -> dict[str, Any]:
     """Return the full settings snapshot for the GET /api/settings endpoint."""
-    from app.services.ai.router import PROVIDER_PRESETS
-
-    resolved_ai = get_resolved_runtime_ai_config_snapshot(settings_obj=settings)
-    provider = public_ai_provider(
-        resolved_ai.get("default_route", {}).get("provider") or settings.AI_PROVIDER
-    )
-
     return {
-        "ai_provider": provider,
-        "llm_model": settings.LLM_MODEL,
-        "llm_api_base_url": settings.LLM_API_BASE_URL,
-        "ollama_host": settings.OLLAMA_HOST,
-        "ollama_model": settings.OLLAMA_MODEL,
-        "ollama_enabled": settings.OLLAMA_ENABLED,
+        "tensorzero_gateway_url": settings.TENSORZERO_GATEWAY_URL,
+        "tensorzero_api_key_configured": bool(settings.TENSORZERO_API_KEY),
+        "llm_timeout": settings.LLM_TIMEOUT,
         "log_level": settings.LOG_LEVEL,
         "plugin_safe_mode": settings.PLUGIN_SAFE_MODE,
         "connect_back_host": settings.CONNECT_BACK_HOST,
         "require_approval": settings.REQUIRE_APPROVAL,
         "fully_automated": settings.FULLY_AUTOMATED,
-        "llm_api_key_configured": bool(settings.LLM_API_KEY.get_secret_value()),
         "notification_webhook": settings.NOTIFICATION_WEBHOOK or "",
-        "llm_tier1_model": settings.LLM_TIER1_MODEL,
-        "llm_tier2_model": settings.LLM_TIER2_MODEL,
-        "llm_tier3_model": settings.LLM_TIER3_MODEL,
         "platform_domain": settings.PLATFORM_DOMAIN,
         "platform_base_url": settings.PLATFORM_BASE_URL,
         "platform_exposed": settings.PLATFORM_EXPOSED,
@@ -253,11 +151,6 @@ def get_current_settings() -> dict[str, Any]:
         "s3_configured": bool(settings.S3_ENDPOINT_URL),
         "embedding_model": settings.EMBEDDING_MODEL,
         "embedding_api_base_url": settings.EMBEDDING_API_BASE_URL,
-        "provider_profiles": resolved_ai["profiles"],
-        "provider_routing": resolved_ai["routing"],
-        "provider_fallbacks": resolved_ai["fallbacks"],
-        "resolved_ai": resolved_ai,
-        "provider_presets": PROVIDER_PRESETS,
     }
 
 
@@ -267,72 +160,34 @@ async def get_ai_status_snapshot() -> dict[str, Any]:
 
     client = await get_global_llm_client()
     is_healthy = await client.health_check()
-    resolved_ai = get_resolved_runtime_ai_config_snapshot(settings_obj=settings)
-    resolved_routing = {"default": resolved_ai["default_route"], **resolved_ai["tiers"]}
-    provider = public_ai_provider(
-        resolved_ai.get("default_route", {}).get("provider") or settings.AI_PROVIDER
-    )
 
     return {
-        "provider": provider,
-        "model": resolved_ai["default_route"].get("model"),
+        "provider": "tensorzero",
+        "gateway_url": settings.TENSORZERO_GATEWAY_URL,
         "healthy": is_healthy,
-        "default_profile": resolved_ai["default_profile"],
-        "profiles": resolved_ai["profiles"],
-        "fallbacks": resolved_ai["fallbacks"],
-        "resolved_routing": resolved_routing,
-        "provider_info": {
-            "litellm": {
-                "label": "LiteLLM (Unified AI Gateway)",
-                "base_url": settings.LLM_API_BASE_URL,
-                "configured": bool(settings.LLM_API_KEY.get_secret_value()),
-                "ollama_host": settings.OLLAMA_HOST,
-                "ollama_model": settings.OLLAMA_MODEL,
-            },
-        },
+        "embedding_model": settings.EMBEDDING_MODEL,
+        "timeout": settings.LLM_TIMEOUT,
     }
 
 
 async def test_llm_connection(
-    provider: str | None,
-    model: str | None,
-    api_key: str | None,
-    base_url: str | None,
-    ollama_host: str | None,
+    model: str | None = None,
 ) -> dict[str, Any]:
-    """Test connectivity to an LLM provider. Returns {success, error?}."""
-    from app.services.ai.llm import get_llm_client
+    """Test connectivity to TensorZero gateway. Returns {success, error?}."""
+    from app.services.ai.llm import get_global_llm_client
 
     try:
-        resolved_model = model or ""
-        resolved_base = base_url or ollama_host
-        raw_provider = (provider or "litellm").strip().lower()
-
-        if (raw_provider == "ollama" or ollama_host) and not resolved_model.startswith("ollama/"):
-            resolved_model = f"ollama/{resolved_model}"
-            if not resolved_base:
-                resolved_base = ollama_host or "http://localhost:11434"
-
-        client = get_llm_client(
-            provider="litellm",
-            model=resolved_model,
-            api_key=api_key,
-            base_url=resolved_base,
-        )
-
+        client = await get_global_llm_client()
         response = await client.generate("Hello, are you there?", max_tokens=10)
         await client.close()
 
         if response:
             return {"success": True}
         return {"success": False, "error": "No response from LLM"}
-    except (ConnectionError, TimeoutError, ValueError, RuntimeError, OSError):
-        return {"success": False, "error": "Failed to communicate with LLM provider"}
+    except (ConnectionError, TimeoutError, ValueError, RuntimeError, OSError) as e:
+        return {"success": False, "error": f"Failed to communicate with TensorZero gateway: {e}"}
 
 
 async def load_settings_from_db() -> None:
-    """Load settings from DB SystemConfig table, overriding in-memory values.
-
-    Should be called during app startup so that DB values take precedence.
-    """
+    """Load settings from DB SystemConfig table, overriding in-memory values."""
     await hydrate_runtime_settings_from_db(persist_normalized=True, reset_caches=False)

@@ -4,8 +4,8 @@ Tests for the security module (JWT and password hashing).
 
 from datetime import timedelta
 
+import jwt
 import pytest
-from jose import jwt
 
 from app.core.config import settings
 from app.core.security import (

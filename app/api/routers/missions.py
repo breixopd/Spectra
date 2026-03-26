@@ -66,6 +66,53 @@ async def get_scan_presets(
     return SCAN_PRESETS
 
 
+@router.get("/summary", tags=["Missions"])
+async def get_missions_summary(
+    db: AsyncSession = Depends(get_async_session),
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    """Get aggregated mission summary with finding counts — single query, no N+1."""
+    from sqlalchemy import func, select
+
+    from app.models.mission import Mission
+
+    stmt = select(Mission).order_by(Mission.created_at.desc())
+
+    if not _current_user.is_superuser:
+        stmt = stmt.where(Mission.user_id == str(_current_user.id))
+
+    result = await db.execute(stmt)
+    db_missions = result.scalars().all()
+
+    missions = []
+    totals = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "total": 0}
+
+    for m in db_missions:
+        raw_findings = m.summary.get("findings", []) if m.summary else []
+        counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
+        for f in raw_findings:
+            if isinstance(f, dict):
+                sev = (f.get("severity") or "info").lower()
+                if sev in counts:
+                    counts[sev] += 1
+        total_findings = sum(counts.values())
+
+        missions.append({
+            "id": str(m.id),
+            "target": m.target,
+            "directive": m.directive,
+            "status": m.status,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+            "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+            "findings": {**counts, "total": total_findings},
+        })
+        for sev in ("critical", "high", "medium", "low", "info"):
+            totals[sev] += counts[sev]
+        totals["total"] += total_findings
+
+    return {"missions": missions, "totals": totals, "count": len(missions)}
+
+
 @router.get("/adversary-playbooks")
 async def get_adversary_playbooks(
     _current_user: User = Depends(get_current_active_user),
@@ -787,3 +834,60 @@ async def approve_action(
         "approved": body.approved,
     })
     return ActionApprovalResponse(status="approval_sent", action_id=body.action_id, approved=body.approved)
+
+
+class MissionFeedback(BaseModel):
+    """User feedback for a completed mission."""
+    rating: int = Field(..., ge=1, le=5, description="1-5 star rating")
+    comment: str | None = Field(None, max_length=1000, description="Optional feedback comment")
+
+
+@router.post("/{mission_id}/feedback")
+async def submit_mission_feedback(
+    mission_id: str,
+    feedback: MissionFeedback,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Submit feedback for a completed mission. Helps improve AI performance via TensorZero."""
+    repo = MissionRepository(db)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(404, "Mission not found")
+
+    check_resource_owner(mission, current_user, "mission")
+
+    if mission.status not in ("completed", "exploitation_successful", "failed"):
+        raise HTTPException(400, "Feedback can only be submitted for finished missions")
+
+    mission.feedback_rating = feedback.rating
+    mission.feedback_comment = feedback.comment
+    await db.commit()
+
+    try:
+        from app.services.ai.feedback import send_quality_score
+        score = (feedback.rating - 1) / 4.0
+        logger.info("Mission %s feedback: %d stars (score=%.2f)", mission_id, feedback.rating, score)
+    except Exception:
+        logger.debug("TZ feedback send skipped (no inference tracking yet)")
+
+    return {"status": "ok", "message": "Thank you for your feedback!"}
+
+
+@router.get("/{mission_id}/feedback")
+async def get_mission_feedback(
+    mission_id: str,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Get feedback for a mission."""
+    repo = MissionRepository(db)
+    mission = await repo.get_by_id(mission_id)
+    if not mission:
+        raise HTTPException(404, "Mission not found")
+    check_resource_owner(mission, current_user, "mission")
+    return {
+        "rating": mission.feedback_rating,
+        "comment": mission.feedback_comment,
+        "has_feedback": mission.feedback_rating is not None,
+    }

@@ -22,19 +22,6 @@ function debounce(func, wait = 300) {
 }
 window.debounce = debounce;
 
-/**
- * Escape HTML special characters to prevent XSS.
- * @param {string} str - The string to escape.
- * @returns {string} The escaped string.
- */
-function escapeHtml(str) {
-    if (typeof str !== 'string') return str;
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
-}
-window.escapeHtml = escapeHtml;
-
 const spectraApi = (() => {
     'use strict';
 
@@ -68,6 +55,12 @@ const spectraApi = (() => {
             options.body = JSON.stringify(options.body);
         }
 
+        // CSRF token from cookie (double-submit pattern)
+        const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+        if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes((options.method || 'GET').toUpperCase())) {
+            headers['X-CSRF-Token'] = csrfToken;
+        }
+
         _activeRequests++;
         _onLoadingChange(_activeRequests);
 
@@ -75,7 +68,7 @@ const spectraApi = (() => {
             const response = await fetch(url, { ...options, headers });
 
             // Handle auth failures
-            const publicPaths = ['/login', '/setup'];
+            const publicPaths = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy'];
             if (response.status === 401 && !publicPaths.includes(window.location.pathname)) {
                 localStorage.removeItem('token');
                 window.location.href = '/login';

@@ -35,33 +35,12 @@ AI provider, model, API keys, and routing settings are configured through the **
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `AI_PROVIDER` | str | `"litellm"` | Provider: `litellm` (all models), `ollama`, `mock` (testing) |
-| `OLLAMA_HOST` | str | `"http://ai:11434"` | Ollama server URL |
-| `OLLAMA_MODEL` | str | `"qwen2.5:3b"` | Default Ollama model |
-| `OLLAMA_ENABLED` | bool | `false` | Whether Ollama is available as secondary provider |
-| `LLM_API_KEY` | SecretStr | `""` | API key for cloud LLM provider |
-| `LLM_API_BASE_URL` | str | `None` | OpenAI-compatible API endpoint URL |
-| `LLM_MODEL` | str | `"gpt-4o-mini"` | Default LLM model |
+| `TENSORZERO_GATEWAY_URL` | str | `""` | TensorZero gateway URL (e.g. `http://tensorzero:3000`) |
+| `TENSORZERO_API_KEY` | str | `""` | API key passed to TensorZero gateway (for provider auth) |
 | `LLM_TIMEOUT` | float | `600.0` | LLM request timeout (seconds) |
-
-### Per-Tier Model Routing
-
-Override the default model for specific task complexity tiers. Leave empty to use `LLM_MODEL` for all tiers.
-
-| Variable | Tier | Use Cases |
-|----------|------|-----------|
-| `LLM_TIER1_MODEL` | Simple | Scope parsing, tool selection, safety checks |
-| `LLM_TIER2_MODEL` | Balanced | Planning, steering, reporting |
-| `LLM_TIER3_MODEL` | Capable | Exploit crafting, PoC generation |
-
-### Advanced Routing
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `AI_PROVIDER_PROFILES` | dict | `{}` | Named provider profiles with model/endpoint configs |
-| `AI_PROVIDER_ROUTING` | dict | `{}` | Task-to-profile routing rules |
-| `AI_PROVIDER_FALLBACKS` | dict | `{}` | Fallback chains per profile |
 | `EMBEDDING_MODEL` | str | `"local/BAAI/bge-small-en-v1.5"` | Model for RAG embeddings (see [Embeddings](#embeddings) below) |
+
+Model routing and fallback chains are configured in the TensorZero gateway config (`config/tensorzero.toml`), not via environment variables.
 
 ---
 
@@ -72,7 +51,7 @@ Spectra supports two embedding backends:
 | Mode | `EMBEDDING_MODEL` value | Requirements |
 |------|------------------------|--------------|
 | **Local (default)** | `local/BAAI/bge-small-en-v1.5` | None — fastembed downloads the model on first use |
-| **API** | Any model name (e.g. `text-embedding-3-small`) | `LLM_API_KEY` or `EMBEDDING_API_KEY` |
+| **API** | Any model name (e.g. `text-embedding-3-small`) | `EMBEDDING_API_KEY` |
 
 **Local embeddings** use [fastembed](https://github.com/qdrant/fastembed) with ONNX-optimized models.
 The model is **lazy-loaded** — it is only downloaded on the first `embed()` call. If you

@@ -49,6 +49,8 @@ class Mission(Base):
     requires_approval: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False, server_default="false"
     )
+    feedback_rating: Mapped[int | None] = mapped_column(nullable=True, default=None)  # 1-5 stars
+    feedback_comment: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 
     def __repr__(self) -> str:
         """String representation of the mission."""

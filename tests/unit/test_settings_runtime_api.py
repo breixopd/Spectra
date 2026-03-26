@@ -131,7 +131,7 @@ async def test_update_settings_merges_partial_runtime_ai_payload(test_app):
     fallbacks = json.loads(persisted["AI_PROVIDER_FALLBACKS"][0])
 
     assert set(profiles) == {"default", "tier1", "tier2"}
-    assert profiles["tier2"]["provider"] == "litellm"
+    assert profiles["tier2"]["provider"] == "tensorzero"
     assert profiles["tier2"]["model"] == "ollama/qwen2.5:14b"
     assert routing == {"default": "default", "tier1": "tier1"}
     assert fallbacks == {"default": ["tier1", "tier2"]}
@@ -150,8 +150,8 @@ async def test_get_settings_returns_resolved_db_backed_configuration(test_app):
     assert response.status_code == 200
     data = response.json()
 
-    assert data["ai_provider"] == "litellm"
-    assert data["provider_profiles"]["default"]["provider"] == "litellm"
+    assert data["ai_provider"] == "tensorzero"
+    assert data["provider_profiles"]["default"]["provider"] == "tensorzero"
     assert data["provider_routing"]["tier1"] == "tier1"
     assert data["provider_fallbacks"]["default"] == ["tier1"]
     assert data["resolved_ai"]["default_profile"] == "default"
@@ -204,25 +204,25 @@ async def test_ai_status_exposes_resolved_runtime_routes(test_app):
     assert response.status_code == 200
     data = response.json()
 
-    assert data["provider"] == "litellm"
+    assert data["provider"] == "tensorzero"
     assert data["healthy"] is True
     assert data["default_profile"] == "default"
     assert data["resolved_routing"]["tier1"]["profile"] == "tier1"
     assert data["fallbacks"]["default"] == ["tier1"]
-    assert "litellm" in data["provider_info"]
+    assert "tensorzero" in data["provider_info"]
     assert "api" not in data["provider_info"]
 
 
-def test_settings_update_request_normalizes_legacy_api_provider_to_litellm():
+def test_settings_update_request_normalizes_legacy_api_provider_to_tensorzero():
     payload = ui.SettingsUpdate(ai_provider="api")
 
-    assert payload.ai_provider == "litellm"
+    assert payload.ai_provider == "tensorzero"
 
 
-def test_llm_test_request_normalizes_legacy_api_provider_to_litellm():
+def test_llm_test_request_normalizes_legacy_api_provider_to_tensorzero():
     payload = ui.LLMTestRequest(provider="api", model="gpt-4o-mini")
 
-    assert payload.provider == "litellm"
+    assert payload.provider == "tensorzero"
 
 
 @pytest.mark.asyncio

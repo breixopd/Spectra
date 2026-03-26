@@ -68,7 +68,14 @@ COPY --chown=spectra:spectra alembic/ ./alembic/
 COPY --chown=spectra:spectra alembic.ini ./alembic.ini
 COPY --chown=spectra:spectra plugins/ ./plugins/
 COPY --chown=spectra:spectra keys/ ./keys/
+COPY --chown=spectra:spectra tailwind.config.js ./tailwind.config.js
 RUN chmod +x /app/scripts/start.sh
+
+# Build Tailwind CSS (standalone binary, no Node.js required)
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 && \
+    chmod +x tailwindcss-linux-x64 && \
+    ./tailwindcss-linux-x64 -i app/static/css/input.css -o app/static/css/output.css --minify && \
+    rm tailwindcss-linux-x64
 
 EXPOSE 5000
 

@@ -23,23 +23,17 @@ class TestSettingsValidators:
         with pytest.raises(ValidationError, match="LOG_LEVEL"):
             Settings(LOG_LEVEL="TRACE", _env_file=None)
 
-    def test_ai_provider_normalised(self):
+    def test_tensorzero_gateway_url_default_empty(self):
         from app.core.config import Settings
 
-        s = Settings(AI_PROVIDER="LITELLM", _env_file=None)
-        assert s.AI_PROVIDER == "litellm"
+        s = Settings(_env_file=None)
+        assert s.TENSORZERO_GATEWAY_URL == ""
 
-    def test_ai_provider_api_alias(self):
+    def test_tensorzero_gateway_url_set(self):
         from app.core.config import Settings
 
-        s = Settings(AI_PROVIDER="api", _env_file=None)
-        assert s.AI_PROVIDER == "litellm"
-
-    def test_ai_provider_invalid(self):
-        from app.core.config import Settings
-
-        with pytest.raises(ValidationError, match="AI_PROVIDER"):
-            Settings(AI_PROVIDER="gpt-magic", _env_file=None)
+        s = Settings(TENSORZERO_GATEWAY_URL="http://tensorzero:3000", _env_file=None)
+        assert s.TENSORZERO_GATEWAY_URL == "http://tensorzero:3000"
 
     def test_token_expiry_minimum(self):
         from app.core.config import Settings
@@ -128,11 +122,11 @@ class TestDefaults:
         s = Settings(_env_file=None)
         assert s.APP_NAME == "Spectra"
 
-    def test_default_ai_provider(self):
+    def test_default_tensorzero_gateway_url(self):
         from app.core.config import Settings
 
-        # AI_PROVIDER env var may be set by .env.test; check class default
-        assert Settings.model_fields["AI_PROVIDER"].default == "litellm"
+        # TENSORZERO_GATEWAY_URL defaults to empty string
+        assert Settings.model_fields["TENSORZERO_GATEWAY_URL"].default == ""
 
     def test_sandbox_defaults(self):
         from app.core.config import Settings

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}System Status — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="page-header">
+        <h1><i class="fa-solid fa-signal text-violet-400 mr-2"></i>System Status</h1>
+        <p class="page-description">Real-time service status and health information.</p>
+    </div>
+
+    <div id="status-container" class="space-y-4">
+        <div class="glass-panel rounded-xl p-6 animate-fade-in-up">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-white">Services</h2>
+                <span id="overall-status" class="px-3 py-1 rounded-full text-sm font-medium bg-slate-700 text-slate-400">Checking...</span>
+            </div>
+            <div id="services-list" class="space-y-3">
+                <p class="text-sm text-slate-500">Loading status...</p>
+            </div>
+        </div>
+        <div class="glass-panel rounded-xl p-6 animate-fade-in-up stagger-1">
+            <h2 class="text-lg font-semibold text-white mb-3">System Information</h2>
+            <div id="system-info" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <p class="text-sm text-slate-500">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_module %}
+<script type="module" src="/static/js/pages/status.js"></script>
+{% endblock %}

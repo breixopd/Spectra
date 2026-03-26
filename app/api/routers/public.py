@@ -12,7 +12,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select, text
@@ -120,6 +120,42 @@ async def landing_page(request: Request):
             "reviews": reviews,
         },
     )
+
+
+@router.get("/sitemap.xml", response_class=Response, include_in_schema=False)
+async def sitemap(request: Request):
+    """Dynamic sitemap for public pages."""
+    base = f"{request.url.scheme}://{request.url.netloc}"
+    urls = [
+        ("", "1.0", "monthly"),
+        ("/changelog", "0.5", "weekly"),
+        ("/help", "0.5", "monthly"),
+        ("/docs", "0.7", "weekly"),
+        ("/login", "0.3", "monthly"),
+        ("/register", "0.3", "monthly"),
+    ]
+    xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>']
+    xml_parts.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    for path, priority, freq in urls:
+        xml_parts.append(f"  <url><loc>{base}{path}</loc><priority>{priority}</priority><changefreq>{freq}</changefreq></url>")
+    xml_parts.append("</urlset>")
+    return Response(content="\n".join(xml_parts), media_type="application/xml")
+
+
+@router.get("/status", response_class=HTMLResponse, include_in_schema=False)
+async def status_page(request: Request):
+    return templates.TemplateResponse("status.html", {
+        "request": request,
+        "app_name": settings.APP_NAME,
+    })
+
+
+@router.get("/security", response_class=HTMLResponse, include_in_schema=False)
+async def security_page(request: Request):
+    return templates.TemplateResponse("security.html", {
+        "request": request,
+        "app_name": settings.APP_NAME,
+    })
 
 
 @router.get("/pricing", response_class=HTMLResponse, include_in_schema=False)
@@ -330,6 +366,41 @@ async def register_user(request: Request, body: RegisterRequest):
 
         await session.commit()
 
+        from app.models.audit_log import AuditEventType
+        from app.services.system.audit import log_event as audit_log_event
+
+        await audit_log_event(
+            session, AuditEventType.REGISTRATION,
+            user_id=str(user.id),
+            details={"username": body.username},
+            request=request,
+        )
+
+        # Auto-detect: if SMTP is configured, require email verification
+        if settings.smtp_configured or settings.EMAIL_VERIFICATION_ENABLED:
+            user.email_verified = False
+            await session.commit()
+
+            # Send verification email
+            try:
+                from app.core.security import create_email_verification_token
+                from app.services.email import EmailService
+
+                token = create_email_verification_token(str(user.id))
+                base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/")
+                verify_url = f"{base_url}/verify-email?token={token}"
+
+                email_svc = EmailService()
+                await email_svc.send_template(
+                    to=body.email,
+                    template_name="email_verification",
+                    subject="Verify your Spectra account",
+                    username=body.username,
+                    verify_url=verify_url,
+                )
+            except (OSError, RuntimeError, ConnectionError):
+                logger.exception("Failed to send verification email to %s", body.username)
+
     # Send welcome email (fire-and-forget — don't block registration)
     try:
         from app.services.email import EmailService
@@ -346,7 +417,49 @@ async def register_user(request: Request, body: RegisterRequest):
     except (OSError, RuntimeError, ConnectionError):
         logger.exception("Failed to send welcome email to %s", body.username)
 
+    if settings.smtp_configured or settings.EMAIL_VERIFICATION_ENABLED:
+        return {"detail": "Account created. Please check your email to verify your account before signing in."}
     return {"detail": "Account created successfully. You can now sign in."}
+
+
+@router.get("/verify-email", response_class=HTMLResponse, include_in_schema=False)
+async def verify_email_page(request: Request, token: str = ""):
+    """Handle email verification link click."""
+    from app.core.security import verify_email_verification_token
+
+    if not token:
+        return templates.TemplateResponse("verify_email.html", {
+            "request": request,
+            "success": False,
+            "message": "Missing verification token.",
+        })
+
+    user_id = verify_email_verification_token(token)
+    if not user_id:
+        return templates.TemplateResponse("verify_email.html", {
+            "request": request,
+            "success": False,
+            "message": "Invalid or expired verification link. Please register again.",
+        })
+
+    async with async_session_maker() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            return templates.TemplateResponse("verify_email.html", {
+                "request": request,
+                "success": False,
+                "message": "Account not found.",
+            })
+
+        user.email_verified = True
+        await session.commit()
+
+    return templates.TemplateResponse("verify_email.html", {
+        "request": request,
+        "success": True,
+        "message": "Email verified! You can now log in.",
+    })
 
 
 @router.post("/api/public/forgot-password", tags=["Public"])

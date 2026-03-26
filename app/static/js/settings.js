@@ -6,11 +6,6 @@ function authHeaders(extra = {}) {
     };
 }
 
-function defaultModelFor(provider) {
-    if (provider === 'litellm') return 'gpt-4o-mini';
-    return 'qwen2.5:3b';
-}
-
 function setFieldValue(name, value) {
     const field = document.querySelector(`[name="${name}"]`);
     if (field) {
@@ -45,28 +40,16 @@ function copyProfileValues(sourcePrefix, targetPrefix) {
     }
 
     const sourceApiBaseUrl = document.querySelector(`[name="${sourcePrefix}_api_base_url"]`)?.value;
-    const sourceOllamaHost = document.querySelector(`[name="${sourcePrefix}_ollama_host"]`)?.value;
     if (sourceApiBaseUrl !== undefined) {
         setFieldValue(`${targetPrefix}_api_base_url`, sourceApiBaseUrl);
-    }
-    if (sourceOllamaHost !== undefined) {
-        setFieldValue(`${targetPrefix}_ollama_host`, sourceOllamaHost);
     }
 }
 
 function toggleProfileFields(prefix) {
     const provider = document.querySelector(`[name="${prefix}_provider"]`)?.value;
     const apiFields = document.querySelector(`.profile-api-fields[data-profile="${prefix}"]`);
-    const ollamaFields = document.querySelector(`.profile-ollama-fields[data-profile="${prefix}"]`);
     if (apiFields) {
-        apiFields.classList.toggle('hidden', provider !== 'litellm');
-    }
-    if (ollamaFields) {
-        ollamaFields.classList.toggle('hidden', provider !== 'ollama');
-    }
-    const modelField = document.querySelector(`[name="${prefix}_model"]`);
-    if (modelField && !modelField.value.trim()) {
-        modelField.value = defaultModelFor(provider);
+        apiFields.classList.toggle('hidden', !provider);
     }
 }
 
@@ -95,12 +78,7 @@ function updateFallbackLabels() {
 
 function toggleFallbackFields(row) {
     const provider = row.querySelector('.fallback-provider').value;
-    row.querySelector('.fallback-api-fields').classList.toggle('hidden', provider !== 'litellm');
-    row.querySelector('.fallback-ollama-fields').classList.toggle('hidden', provider !== 'ollama');
-    const modelField = row.querySelector('.fallback-model');
-    if (!modelField.value.trim()) {
-        modelField.value = defaultModelFor(provider);
-    }
+    row.querySelector('.fallback-api-fields').classList.toggle('hidden', !provider);
 }
 
 function addFallbackRow(profile = null) {
@@ -113,7 +91,6 @@ function addFallbackRow(profile = null) {
         row.querySelector('.fallback-model').value = profile.model || '';
         row.querySelector('.fallback-api-base-url').value = profile.base_url || '';
         row.querySelector('.fallback-api-key').value = profile.api_key || '';
-        row.querySelector('.fallback-ollama-host').value = profile.base_url || '';
     }
     row.querySelector('.fallback-provider').addEventListener('change', () => toggleFallbackFields(row));
     row.querySelector('.remove-fallback').addEventListener('click', () => {
@@ -132,16 +109,10 @@ function collectProfile(prefix) {
         throw new Error(`Model is required for ${prefix === 'default' ? 'the default profile' : prefix.toUpperCase()}`);
     }
     const profile = { provider, model };
-    if (provider === 'ollama') {
-        const host = document.querySelector(`[name="${prefix}_ollama_host"]`)?.value.trim();
-        if (host) profile.base_url = host;
-    }
-    if (provider === 'litellm') {
-        const baseUrl = document.querySelector(`[name="${prefix}_api_base_url"]`)?.value.trim();
-        const apiKey = document.querySelector(`[name="${prefix}_api_key"]`)?.value.trim();
-        if (baseUrl) profile.base_url = baseUrl;
-        if (apiKey) profile.api_key = apiKey;
-    }
+    const baseUrl = document.querySelector(`[name="${prefix}_api_base_url"]`)?.value.trim();
+    const apiKey = document.querySelector(`[name="${prefix}_api_key"]`)?.value.trim();
+    if (baseUrl) profile.base_url = baseUrl;
+    if (apiKey) profile.api_key = apiKey;
     return profile;
 }
 
@@ -154,16 +125,10 @@ function collectFallbackProfiles() {
         const model = row.querySelector('.fallback-model').value.trim();
         if (!model) return;
         const profile = { provider, model };
-        if (provider === 'ollama') {
-            const host = row.querySelector('.fallback-ollama-host').value.trim();
-            if (host) profile.base_url = host;
-        }
-        if (provider === 'litellm') {
-            const baseUrl = row.querySelector('.fallback-api-base-url').value.trim();
-            const apiKey = row.querySelector('.fallback-api-key').value.trim();
-            if (baseUrl) profile.base_url = baseUrl;
-            if (apiKey) profile.api_key = apiKey;
-        }
+        const baseUrl = row.querySelector('.fallback-api-base-url').value.trim();
+        const apiKey = row.querySelector('.fallback-api-key').value.trim();
+        if (baseUrl) profile.base_url = baseUrl;
+        if (apiKey) profile.api_key = apiKey;
         profiles[profileId] = profile;
         chain.push(profileId);
     });
@@ -174,11 +139,7 @@ function populateProfile(prefix, profile) {
     if (!profile) return;
     setFieldValue(`${prefix}_provider`, profile.provider);
     setFieldValue(`${prefix}_model`, profile.model);
-    if (profile.provider === 'ollama') {
-        setFieldValue(`${prefix}_ollama_host`, profile.base_url);
-    } else {
-        setFieldValue(`${prefix}_api_base_url`, profile.base_url);
-    }
+    setFieldValue(`${prefix}_api_base_url`, profile.base_url);
     toggleProfileFields(prefix);
 }
 
@@ -214,28 +175,16 @@ function renderResolvedSummary(resolvedAi) {
 
 function buildSettingsPayload() {
     const payload = {
-        provider_profiles: { default: collectProfile('default') },
-        provider_routing: { default: 'default' },
+        tensorzero_gateway_url: document.querySelector('[name="tensorzero_gateway_url"]')?.value.trim() || '',
+        llm_timeout: parseFloat(document.querySelector('[name="llm_timeout"]')?.value) || 600,
         log_level: document.querySelector('[name="log_level"]').value,
         plugin_safe_mode: document.querySelector('[name="plugin_safe_mode"]').checked,
         connect_back_host: document.querySelector('[name="connect_back_host"]').value.trim(),
         require_approval: document.querySelector('[name="require_approval"]').checked,
         notification_webhook: document.querySelector('[name="notification_webhook"]').value.trim(),
-        embedding_model: document.querySelector('[name="embedding_model"]').value.trim() || null,
+        embedding_model: document.querySelector('[name="embedding_model"]')?.value.trim() || null,
+        embedding_api_key: document.querySelector('[name="embedding_api_key"]')?.value.trim() || undefined,
     };
-
-    ['tier1', 'tier2', 'tier3'].forEach((tier) => {
-        if (!document.querySelector(`.tier-toggle[data-tier="${tier}"]`).checked) {
-            return;
-        }
-        const profileId = document.querySelector(`[name="${tier}_profile_id"]`).value || tier;
-        payload.provider_profiles[profileId] = collectProfile(tier);
-        payload.provider_routing[tier] = profileId;
-    });
-
-    const fallbackData = collectFallbackProfiles();
-    Object.assign(payload.provider_profiles, fallbackData.profiles);
-    payload.provider_fallbacks = { default: fallbackData.chain };
 
     const platformForm = document.getElementById('platform-form');
     payload.platform_domain = platformForm.querySelector('[name="platform_domain"]').value.trim();
@@ -299,13 +248,9 @@ async function loadSettings() {
     if (loadError) {
         throw new Error(loadError);
     }
-    const profiles = data.provider_profiles || {};
-    const routing = data.provider_routing || {};
-    const fallbacks = data.provider_fallbacks || {};
-    const defaultProfileId = routing.default || data.resolved_ai?.default_profile || 'default';
-    const defaultProfile = profiles[defaultProfileId] || profiles.default;
 
-    populateProfile('default', defaultProfile);
+    setFieldValue('tensorzero_gateway_url', data.tensorzero_gateway_url);
+    setFieldValue('llm_timeout', data.llm_timeout || 600);
     setFieldValue('log_level', data.log_level);
     setCheckboxValue('plugin_safe_mode', data.plugin_safe_mode);
     setFieldValue('connect_back_host', data.connect_back_host);
@@ -351,24 +296,6 @@ async function loadSettings() {
             statusText.className = 'text-xs text-amber-400';
         }
     }
-
-    ['tier1', 'tier2', 'tier3'].forEach((tier) => {
-        const routeId = routing[tier];
-        const enabled = !!routeId && routeId !== defaultProfileId;
-        document.querySelector(`.tier-toggle[data-tier="${tier}"]`).checked = enabled;
-        toggleTierFields(tier);
-        if (enabled) {
-            document.querySelector(`[name="${tier}_profile_id"]`).value = routeId;
-            populateProfile(tier, profiles[routeId]);
-        }
-    });
-
-    const fallbackContainer = document.getElementById('fallback-profiles');
-    fallbackContainer.innerHTML = '';
-    (fallbacks.default || []).forEach((profileId) => {
-        addFallbackRow({ id: profileId, ...(profiles[profileId] || {}) });
-    });
-    renderResolvedSummary(data.resolved_ai);
 }
 
 async function saveSettings(event) {
@@ -383,10 +310,10 @@ async function saveSettings(event) {
             throw new Error(saveError);
         }
         await loadSettings();
-        alert('Settings saved successfully.');
+        _spectraToast('Settings saved successfully.', 'success');
     } catch (error) {
         console.error('Error saving settings:', error);
-        alert(error.message || 'Failed to save settings');
+        _spectraToast(error.message || 'Failed to save settings', 'error');
     } finally {
         submitButton.disabled = false;
         submitButton.textContent = originalText;
@@ -399,21 +326,14 @@ async function testDefaultProfile() {
     button.disabled = true;
     button.textContent = 'Testing...';
     try {
-        const profile = collectProfile('default');
-        const { data: result, error: testError } = await spectraApi.post('/test-llm', {
-            provider: profile.provider,
-            model: profile.model,
-            api_key: profile.api_key || null,
-            base_url: profile.base_url || null,
-            ollama_host: profile.base_url || null,
-        });
-        if (testError || !result?.success) {
-            throw new Error(testError || result?.error || 'Connection test failed');
+        const { data: result, error: testError } = await spectraApi.get('/api/v1/admin/tensorzero/status');
+        if (testError || !result?.online) {
+            throw new Error(testError || result?.error || 'Gateway connection failed');
         }
-        alert('Default profile is reachable.');
+        _spectraToast('Gateway online — ' + (result.functions_count || 0) + ' functions, ' + (result.models_count || 0) + ' models configured.', 'success');
     } catch (error) {
-        console.error('Default profile test failed:', error);
-        alert(error.message || 'Connection test failed');
+        console.error('Gateway test failed:', error);
+        _spectraToast(error.message || 'Gateway connection failed', 'error');
     } finally {
         button.disabled = false;
         button.textContent = originalText;
@@ -434,20 +354,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     activateNavLink('general');
 
-    document.querySelectorAll('.profile-provider').forEach((select) => {
-        select.addEventListener('change', () => toggleProfileFields(select.dataset.profilePrefix));
-        toggleProfileFields(select.dataset.profilePrefix);
-    });
-    document.querySelectorAll('.tier-toggle').forEach((checkbox) => {
-        checkbox.addEventListener('change', () => toggleTierFields(checkbox.dataset.tier));
-    });
-    document.getElementById('toggle-advanced-routing')?.addEventListener('click', () => {
-        const section = document.getElementById('advanced-routing-section');
-        const chevron = document.getElementById('advanced-routing-chevron');
-        section.classList.toggle('hidden');
-        chevron.classList.toggle('rotate-90');
-    });
-    document.getElementById('add-fallback-profile')?.addEventListener('click', () => addFallbackRow());
     document.getElementById('test-default-profile-btn')?.addEventListener('click', testDefaultProfile);
     document.getElementById('settings-form')?.addEventListener('submit', saveSettings);
 
@@ -465,6 +371,339 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadSettings();
     } catch (error) {
         console.error('Failed to initialize settings page:', error);
-        alert('Failed to load settings. Refresh the page after logging in again if the problem persists.');
+        _spectraToast('Failed to load settings. Refresh the page after logging in again if the problem persists.', 'error');
     }
 });
+
+// === Data Management Functions ===
+async function clearToolStats() {
+    _spectraConfirm('Clear all tool statistics?', async () => {
+        try {
+            const { data, error } = await spectraApi.post('/api/v1/system/clear/tools');
+            if (!error) {
+                _spectraToast(`Cleared ${data.cleared_count || 0} tool stat entries`, 'success');
+            } else {
+                _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
+            }
+        } catch (e) {
+            _spectraToast('Error: ' + e.message, 'error');
+        }
+    }, { title: 'Clear Tool Statistics' });
+}
+
+function showClearMissionsConfirm() {
+    document.getElementById('clear-missions-modal').classList.remove('hidden');
+}
+
+function hideClearMissionsConfirm() {
+    document.getElementById('clear-missions-modal').classList.add('hidden');
+}
+
+async function confirmClearMissions() {
+    hideClearMissionsConfirm();
+    try {
+        const { data, error } = await spectraApi.post('/api/v1/system/clear/missions?confirm=true');
+        if (!error) {
+            _spectraToast(`Deleted ${data.deleted_count || 0} missions`, 'success');
+        } else {
+            _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
+        }
+    } catch (e) {
+        _spectraToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function clearCache() {
+    _spectraConfirm('Clear application cache? This may affect performance temporarily.', async () => {
+        try {
+            const { data, error } = await spectraApi.post('/api/v1/system/clear/cache');
+            if (!error) {
+                _spectraToast(`Cleared ${data.cleared_count || 0} cache entries`, 'success');
+            } else {
+                _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
+            }
+        } catch (e) {
+            _spectraToast('Error: ' + e.message, 'error');
+        }
+    }, { title: 'Clear Cache' });
+}
+
+async function reinstallTools() {
+    _spectraConfirm('Reinstall all tools? This may take several minutes.', async () => {
+        try {
+            const { data, error } = await spectraApi.post('/api/v1/tools/install-all');
+            if (!error) {
+                _spectraToast('Tool installation queued. Check system status for progress.', 'success');
+            } else {
+                _spectraToast('Error: ' + (error.detail || 'Failed to queue'), 'error');
+            }
+        } catch (e) {
+            _spectraToast('Error: ' + e.message, 'error');
+        }
+    }, { title: 'Reinstall Tools' });
+}
+
+// Load system status on page load
+async function loadSystemStatus() {
+    const container = document.getElementById('system-status-content');
+    try {
+        const { data } = await spectraApi.get('/api/v1/system/status');
+        
+        const dbStatus = data.database?.status === 'connected' ? 
+            '<span class="text-emerald-400"><i class="fa-solid fa-check-circle"></i> Connected</span>' :
+            '<span class="text-rose-400"><i class="fa-solid fa-times-circle"></i> Error</span>';
+
+        const ts = data.tool_stats || {};
+        
+        container.innerHTML = `
+            <div class="grid grid-cols-2 gap-4">
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Database</span>
+                    ${dbStatus}
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Tools Ready</span>
+                    <span class="text-white">${ts.ready || 0} / ${ts.total || 0}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-400">Tools Installing</span>
+                    <span class="${ts.installing > 0 ? 'text-amber-400' : 'text-slate-500'}">${ts.installing || 0}</span>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-white/5">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full ${data.status === 'ready' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}"></div>
+                    <span class="text-sm ${data.status === 'ready' ? 'text-emerald-400' : 'text-amber-400'}">${escapeHtml(data.message)}</span>
+                </div>
+            </div>
+        `;
+    } catch (e) {
+        container.innerHTML = '<span class="text-rose-400">Failed to load status</span>';
+    }
+}
+
+loadSystemStatus();
+setInterval(loadSystemStatus, 10000);
+
+// === Data Sources ===
+async function loadDataSourceStatus() {
+    const container = document.getElementById('data-sources-status');
+    try {
+        const { data } = await spectraApi.get('/api/v1/system/data-sources');
+        const sources = data.sources || [];
+
+        if (sources.length === 0) {
+            container.innerHTML = '<span class="text-slate-500 text-sm">No data sources configured</span>';
+            return;
+        }
+
+        container.innerHTML = sources.map(s => {
+            const ready = s.status === 'ready';
+            const stale = s.status === 'stale';
+            const dot = ready ? 'bg-emerald-500' : stale ? 'bg-amber-500' : 'bg-slate-600';
+            let statusHtml;
+            if (ready || stale) {
+                const size = s.size_bytes ? (s.size_bytes / 1024 / 1024).toFixed(1) + ' MB' : '';
+                const label = stale ? '<span class="text-amber-400">Stale</span>' : '<span class="text-emerald-400">Ready</span>';
+                const timeStr = s.last_updated ? new Date(s.last_updated * 1000).toLocaleDateString() : '';
+                statusHtml = `${label} <span class="text-slate-600 ml-1">${size}${timeStr ? ' · ' + timeStr : ''}</span>`;
+            } else if (s.status === 'on_demand') {
+                statusHtml = '<span class="text-sky-400">On-demand</span>';
+            } else {
+                statusHtml = '<span class="text-slate-500">Not downloaded</span>';
+            }
+            return `<div class="flex items-center justify-between py-2 border-b border-white/5">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full ${dot}"></div>
+                    <span class="text-sm text-white">${escapeHtml(s.name)}</span>
+                </div>
+                <div class="text-xs">${statusHtml}</div>
+            </div>`;
+        }).join('');
+    } catch {
+        container.innerHTML = '<span class="text-rose-400 text-sm">Failed to load data source status</span>';
+    }
+}
+
+async function downloadDataSources() {
+    const btn = document.getElementById('download-sources-btn');
+    const status = document.getElementById('download-sources-status');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Downloading...';
+    status.textContent = 'This may take a minute...';
+    try {
+        const { data, error } = await spectraApi.post('/api/v1/system/data-sources/download');
+        if (!error) {
+            status.textContent = `Updated: ${data.stats?.cve_kb_entries || 0} CVEs, ${data.stats?.metasploit || 0} MSF modules`;
+            status.className = 'text-xs text-emerald-400';
+            loadDataSourceStatus();
+        } else {
+            status.textContent = 'Error: ' + (error.detail || 'Download failed');
+            status.className = 'text-xs text-rose-400';
+        }
+    } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        status.className = 'text-xs text-rose-400';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-download mr-1"></i> Download / Update All Sources';
+    }
+}
+
+loadDataSourceStatus();
+
+// === VPN Management ===
+async function loadVpnConfigs() {
+    const container = document.getElementById('vpn-configs-list');
+    try {
+        const { data: configs, error } = await spectraApi.get('/api/v1/vpn/configs');
+        if (error) { container.innerHTML = '<span class="text-slate-500 text-sm">No configs found</span>'; return; }
+        if (!configs.length) { container.innerHTML = '<span class="text-slate-500 text-sm">No configs uploaded yet</span>'; return; }
+        container.innerHTML = configs.map(c => `
+            <div class="flex items-center justify-between p-3 rounded-lg bg-slate-900/50 border border-white/5">
+                <div>
+                    <span class="text-sm font-medium text-white">${escapeHtml(c.name)}</span>
+                    <span class="ml-2 px-1.5 py-0.5 text-xs rounded bg-slate-700 text-slate-300">${escapeHtml(c.type)}</span>
+                    <span class="ml-2 text-xs text-slate-500">${(c.size / 1024).toFixed(1)} KB</span>
+                </div>
+                <div class="flex gap-2">
+                    <button data-vpn-name="${escapeHtml(c.name)}" onclick="vpnConnect(this.dataset.vpnName)" class="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs transition-colors">Connect</button>
+                    <button data-vpn-name="${escapeHtml(c.name)}" onclick="vpnDisconnect(this.dataset.vpnName)" class="px-2 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs transition-colors">Disconnect</button>
+                    <button data-vpn-name="${escapeHtml(c.name)}" onclick="vpnDelete(this.dataset.vpnName)" class="px-2 py-1 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs transition-colors">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) { container.innerHTML = '<span class="text-rose-400 text-sm">Failed to load</span>'; }
+}
+
+async function vpnConnect(name) {
+    try {
+        const { data, error } = await spectraApi.post(`/api/v1/vpn/connect/${encodeURIComponent(name)}`);
+        if (!error) _spectraToast('VPN connect job queued: ' + data.job_id, 'success');
+        else _spectraToast('Error: ' + (error.detail || 'Failed'), 'error');
+    } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+}
+
+async function vpnDisconnect(name) {
+    try {
+        const { data, error } = await spectraApi.post(`/api/v1/vpn/disconnect/${encodeURIComponent(name)}`);
+        if (!error) _spectraToast('VPN disconnect job queued: ' + data.job_id, 'success');
+        else _spectraToast('Error: ' + (error.detail || 'Failed'), 'error');
+    } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+}
+
+async function vpnDelete(name) {
+    _spectraConfirm(`Delete VPN config "${name}"?`, async () => {
+        try {
+            const { error } = await spectraApi.delete(`/api/v1/vpn/configs/${encodeURIComponent(name)}`);
+            if (!error) { loadVpnConfigs(); } else { _spectraToast('Error: ' + (error.detail || 'Failed'), 'error'); }
+        } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+    }, { title: 'Delete VPN Config' });
+}
+
+async function testVpnConnection() {
+    try {
+        const { data, error } = await spectraApi.post('/api/v1/vpn/test');
+        if (!error) _spectraToast('VPN test job queued: ' + data.job_id, 'success');
+        else _spectraToast('Error: ' + (error.detail || 'Failed'), 'error');
+    } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+}
+
+document.getElementById('vpn-upload-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const fd = new FormData();
+    fd.append('name', form.vpn_name.value);
+    fd.append('vpn_type', form.vpn_type.value);
+    fd.append('file', form.vpn_file.files[0]);
+    try {
+        const { data, error } = await spectraApi.post('/api/v1/vpn/configs', fd);
+        if (!error) { _spectraToast('Config uploaded: ' + data.name, 'success'); form.reset(); loadVpnConfigs(); }
+        else _spectraToast('Error: ' + (error.detail || 'Upload failed'), 'error');
+    } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
+});
+
+async function loadVpnStatus() {
+    const dot = document.getElementById('vpn-status-dot');
+    const text = document.getElementById('vpn-status-text');
+    try {
+        const { error } = await spectraApi.get('/api/v1/vpn/status');
+        if (!error) {
+            text.textContent = 'Status check queued (runs in tools container)';
+            dot.className = 'w-3 h-3 rounded-full bg-slate-500';
+        } else {
+            text.textContent = 'VPN status unavailable';
+            dot.className = 'w-3 h-3 rounded-full bg-rose-500';
+        }
+    } catch {
+        text.textContent = 'Could not reach API';
+        dot.className = 'w-3 h-3 rounded-full bg-rose-500';
+    }
+}
+
+loadVpnConfigs();
+loadVpnStatus();
+
+// === External Services Topology ===
+let svcTopologyTimer = null;
+
+async function loadServiceTopology() {
+    const container = document.getElementById('svc-topology-cards');
+    const refreshInfo = document.getElementById('svc-topology-refresh-info');
+    try {
+        const { data: topology, error } = await spectraApi.get('/system/services/topology');
+        if (error) throw new Error('Failed to fetch topology');
+        const entries = Object.entries(topology);
+
+        if (!entries.length) {
+            container.innerHTML = '<div class="col-span-full text-center py-6 text-slate-500 text-sm">No services configured</div>';
+            return;
+        }
+
+        const modeColors = { local: 'text-emerald-400', remote: 'text-sky-400' };
+        const modeBg = { local: 'bg-emerald-500/10 border-emerald-500/20', remote: 'bg-sky-500/10 border-sky-500/20' };
+        const modeIcon = { local: 'fa-house', remote: 'fa-cloud' };
+
+        container.innerHTML = entries.map(([name, info]) => {
+            const mode = info.mode || 'local';
+            const url = info.url || '';
+            const healthy = info.healthy;
+            const dotClass = healthy === true ? 'bg-emerald-500' : healthy === false ? 'bg-rose-500' : 'bg-slate-500';
+            const displayName = name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            return `<div class="rounded-xl border ${modeBg[mode] || 'bg-slate-900/50 border-white/10'} p-3">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full ${dotClass}"></span>
+                        <span class="text-sm font-medium text-white">${escapeHtml(displayName)}</span>
+                    </div>
+                    <span class="text-xs uppercase tracking-wider font-semibold ${modeColors[mode] || 'text-slate-400'}">
+                        <i class="fa-solid ${modeIcon[mode] || 'fa-circle-question'} mr-0.5"></i> ${escapeHtml(mode)}
+                    </span>
+                </div>
+                ${url ? `<p class="text-[11px] text-slate-500 font-mono truncate" title="${escapeHtml(url)}">${escapeHtml(url)}</p>` : '<p class="text-[11px] text-slate-600">In-process</p>'}
+            </div>`;
+        }).join('');
+
+        const localCount = entries.filter(([, i]) => i.mode === 'local').length;
+        const remoteCount = entries.length - localCount;
+        refreshInfo.textContent = `${localCount} local, ${remoteCount} remote \u00b7 last checked ${new Date().toLocaleTimeString()}`;
+    } catch {
+        container.innerHTML = '<div class="col-span-full text-center py-4 text-rose-400 text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i> Failed to load service topology</div>';
+    }
+}
+
+loadServiceTopology();
+svcTopologyTimer = setInterval(loadServiceTopology, 60000);
+
+// Expose functions used by HTML onclick handlers
+window.clearToolStats = clearToolStats;
+window.showClearMissionsConfirm = showClearMissionsConfirm;
+window.hideClearMissionsConfirm = hideClearMissionsConfirm;
+window.confirmClearMissions = confirmClearMissions;
+window.clearCache = clearCache;
+window.reinstallTools = reinstallTools;
+window.downloadDataSources = downloadDataSources;
+window.testVpnConnection = testVpnConnection;
+window.vpnConnect = vpnConnect;
+window.vpnDisconnect = vpnDisconnect;
+window.vpnDelete = vpnDelete;

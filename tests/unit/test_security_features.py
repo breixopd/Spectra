@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import HTTPException
-from jose import JWTError
+from jwt.exceptions import InvalidTokenError as JWTError
 
 from app.api.routers.auth import (
     LOCKOUT_THRESHOLD_1,

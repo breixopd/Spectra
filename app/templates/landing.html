@@ -21,14 +21,14 @@
     <meta property="og:description" content="Deploy intelligent agents that plan, execute, and report on penetration tests with real-time monitoring and comprehensive findings.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.url.scheme }}://{{ request.url.netloc }}/">
-    <meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.png">
+    <meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.svg">
     <meta property="og:site_name" content="{{ app_name }}">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ app_name }} — Autonomous Security Assessment Platform">
     <meta name="twitter:description" content="AI-driven penetration testing and vulnerability scanning with real-time monitoring.">
-    <meta name="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.png">
+    <meta name="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.svg">
 
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -53,7 +53,8 @@
 <a href="#main-content" class="skip-link">Skip to main content</a>
 
 <!-- ====== NAVIGATION ====== -->
-<nav id="nav">
+<header>
+<nav id="nav" role="navigation" aria-label="Main navigation">
     <a href="/" class="nav-logo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(0,255,136,0.1)" stroke="var(--accent)"/>
@@ -74,9 +75,11 @@
         </svg>
     </button>
 </nav>
+</header>
 
 <!-- ====== HERO ====== -->
-<section class="hero" id="main-content">
+<main id="main-content">
+<section class="hero">
     <div class="hero-bg"></div>
     <div class="hero-grid"></div>
     <div class="hero-content">
@@ -481,6 +484,7 @@
         </div>
     </div>
 </section>
+</main>
 
 <!-- ====== FOOTER ====== -->
 <footer class="footer-full">
@@ -538,5 +542,6 @@
 </footer>
 
 <script nonce="{{ request.state.csp_nonce }}" src="/static/js/landing.js"></script>
+    {% include 'partials/_cookie_consent.html' %}
 </body>
 </html>

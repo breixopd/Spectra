@@ -20,9 +20,11 @@ class TestApiJsUtilities:
         content = API_JS.read_text()
         assert re.search(r"function\s+debounce\s*\(", content), "api.js must define a debounce function"
 
-    def test_escape_html_function_defined(self):
+    def test_escape_html_consolidated_in_base(self):
+        """escapeHtml is defined in base.html, not duplicated in api.js."""
         content = API_JS.read_text()
-        assert re.search(r"function\s+escapeHtml\s*\(", content), "api.js must define an escapeHtml function"
+        assert not re.search(r"function\s+escapeHtml\s*\(", content), \
+            "escapeHtml should NOT be in api.js — it is consolidated in base.html"
 
     def test_spectra_api_object_defined(self):
         content = API_JS.read_text()

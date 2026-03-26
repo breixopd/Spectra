@@ -134,7 +134,7 @@ def mock_llm_for_unit_tests(request):
 
     mock_instance = MockLLMClient()
 
-    def patched_get_llm_client(provider: str = "litellm", **kwargs):
+    def patched_get_llm_client(provider: str = "tensorzero", **kwargs):
         return mock_instance
 
     def patched_get_default_llm_client():

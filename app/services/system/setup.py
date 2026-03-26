@@ -14,11 +14,9 @@ from app.core.config import settings
 from app.core.paths import data_path
 from app.core.security import get_password_hash
 from app.models.user import User
-from app.services.ai.llm import close_global_llm_client, get_llm_client
+from app.services.ai.llm import close_global_llm_client
 from app.services.system.runtime_settings import (
-    build_runtime_ai_config_from_payload,
     hydrate_runtime_settings_from_db,
-    serialize_runtime_ai_config_values,
     upsert_system_config_values,
 )
 
@@ -49,6 +47,10 @@ class SystemSetupService:
 
             # 3. Handle Infrastructure persistence (JSON) & Docker
             await self._handle_infrastructure_changes(setup_in)
+
+            # 4. Apply custom AI model config if provided
+            if setup_in.ai_models:
+                await self._apply_custom_ai_config(setup_in.ai_models)
 
             # Commit changes
             await self.session.commit()
@@ -131,43 +133,13 @@ class SystemSetupService:
 
     async def _configure_system(self, setup_in: SystemSetupRequest) -> None:
         """Create or update SystemConfig entries in the database."""
-        runtime_ai_config = build_runtime_ai_config_from_payload(
-            provider_profiles=(
-                {
-                    name: profile.model_dump(exclude_none=True)
-                    for name, profile in setup_in.provider_profiles.items()
-                }
-                if setup_in.provider_profiles
-                else None
-            ),
-            provider_routing=(
-                setup_in.provider_routing.as_dict()
-                if setup_in.provider_routing
-                else None
-            ),
-            provider_fallbacks=(
-                setup_in.provider_fallbacks.as_dict()
-                if setup_in.provider_fallbacks
-                else None
-            ),
-            legacy_provider=setup_in.llm_provider,
-            legacy_model=setup_in.llm_model,
-            legacy_api_key=setup_in.llm_api_key,
-            legacy_api_base_url=setup_in.llm_api_base,
-            legacy_ollama_host=setup_in.ollama_host,
-            legacy_ollama_model=setup_in.ollama_model,
-            legacy_ollama_enabled=(
-                setup_in.provider_ollama
-                or (setup_in.provider_api and setup_in.provider_ollama)
-            ),
-            legacy_tier_models={
-                "LLM_TIER1_MODEL": setup_in.llm_tier1_model,
-                "LLM_TIER2_MODEL": setup_in.llm_tier2_model,
-                "LLM_TIER3_MODEL": setup_in.llm_tier3_model,
-            },
-        )
+        config_values: dict[str, tuple[str, bool]] = {}
 
-        config_values = serialize_runtime_ai_config_values(runtime_ai_config)
+        # TensorZero gateway
+        if setup_in.tensorzero_gateway_url:
+            config_values["TENSORZERO_GATEWAY_URL"] = (setup_in.tensorzero_gateway_url, False)
+        if setup_in.tensorzero_api_key:
+            config_values["TENSORZERO_API_KEY"] = (setup_in.tensorzero_api_key, True)
 
         # Embedding configuration
         if setup_in.embedding_model:
@@ -203,6 +175,97 @@ class SystemSetupService:
         if infra_updates:
             self._save_infra_config(infra_updates)
 
+    async def _apply_custom_ai_config(self, ai_models: dict) -> None:
+        """Write custom model config to tensorzero.toml during setup."""
+        import tomllib
+
+        config_path = Path(__file__).resolve().parents[2] / "config" / "tensorzero.toml"
+        if not config_path.exists():
+            config_path = Path("/app/config/tensorzero.toml")
+        if not config_path.exists():
+            logger.warning("Cannot find tensorzero.toml to apply custom AI config")
+            return
+
+        with open(config_path, "rb") as f:
+            current = tomllib.load(f)
+
+        provider_type = ai_models.get("provider_type", "openai")
+        tiers: dict[str, dict[str, str]] = {}
+        for tier in ("fast", "balanced", "capable"):
+            tier_conf = ai_models.get(tier, {})
+            tiers[tier] = {
+                "primary": tier_conf.get("primary", ""),
+                "fallback": tier_conf.get("fallback", ""),
+            }
+
+        lines = [
+            "# TensorZero Gateway Configuration for Spectra",
+            "# Configured during initial setup",
+            "",
+            "[gateway]",
+            'bind_address = "0.0.0.0:3000"',
+            "",
+            "# --- Models ---",
+        ]
+
+        for tier_name, models in tiers.items():
+            primary = models["primary"]
+            fallback = models["fallback"]
+            if fallback:
+                lines += [
+                    f"[models.{tier_name}]",
+                    'routing = ["primary", "fallback"]',
+                    "",
+                    f"[models.{tier_name}.providers.primary]",
+                    f'type = "{provider_type}"',
+                    f'model_name = "{primary}"',
+                    "",
+                    f"[models.{tier_name}.providers.fallback]",
+                    f'type = "{provider_type}"',
+                    f'model_name = "{fallback}"',
+                    "",
+                ]
+            else:
+                lines += [
+                    f"[models.{tier_name}]",
+                    'routing = ["primary"]',
+                    "",
+                    f"[models.{tier_name}.providers.primary]",
+                    f'type = "{provider_type}"',
+                    f'model_name = "{primary}"',
+                    "",
+                ]
+
+        lines.append("# --- Functions ---")
+        for fname, fconf in current.get("functions", {}).items():
+            ftype = fconf.get("type", "chat")
+            lines += [f"[functions.{fname}]", f'type = "{ftype}"', ""]
+            for vname, vconf in fconf.get("variants", {}).items():
+                vtype = vconf.get("type", "chat_completion")
+                vmodel = vconf.get("model", "balanced")
+                lines += [
+                    f"[functions.{fname}.variants.{vname}]",
+                    f'type = "{vtype}"',
+                    f'model = "{vmodel}"',
+                    "",
+                ]
+
+        lines.append("# --- Metrics ---")
+        for mname, mconf in current.get("metrics", {}).items():
+            mtype = mconf.get("type", "boolean")
+            mlevel = mconf.get("level", "inference")
+            mopt = mconf.get("optimize", "max")
+            lines += [
+                f"[metrics.{mname}]",
+                f'type = "{mtype}"',
+                f'level = "{mlevel}"',
+                f'optimize = "{mopt}"',
+                "",
+            ]
+
+        config_path.write_text("\n".join(lines) + "\n")
+        logger.info("Custom AI model configuration applied to tensorzero.toml")
+
     def _save_infra_config(self, updates: dict) -> None:
         """Save infrastructure config to persistent file."""
         config_path = data_path("config", "infra_config.json")
@@ -225,32 +288,18 @@ class SystemSetupService:
             logger.error("Failed to save infra config: %s", e)
 
     async def _reinitialize_llm(self, setup_in: SystemSetupRequest) -> None:
-        """Re-initialize the global LLM client with new settings."""
+        """Re-initialize the global LLM client with TensorZero settings."""
         await close_global_llm_client()
 
         try:
-            if setup_in.llm_provider == "ollama":
-                new_client = get_llm_client(
-                    provider="ollama",
-                    host=setup_in.ollama_host or "http://localhost:11434",
-                    model=setup_in.llm_model,
-                )
-            else:
-                if not setup_in.llm_api_key:
-                    # Should be caught by validation earlier, but safety check
-                    return
+            from app.services.ai.llm import get_llm_client
 
-                new_client = get_llm_client(
-                    provider="api",
-                    api_key=setup_in.llm_api_key,
-                    base_url=setup_in.llm_api_base,
-                    model=setup_in.llm_model,
-                )
+            new_client = get_llm_client(
+                gateway_url=setup_in.tensorzero_gateway_url or settings.TENSORZERO_GATEWAY_URL,
+            )
 
             llm_module._global_llm_client = new_client
-            logger.info(
-                "LLM client reinitialized with provider: %s", setup_in.llm_provider
-            )
+            logger.info("LLM client reinitialized with TensorZero gateway")
         except (OSError, RuntimeError, ImportError) as e:
             logger.error("Failed to initialize LLM client: %s", e)
             # Don't fail the whole setup if LLM fails, user can fix later

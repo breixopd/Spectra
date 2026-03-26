@@ -23,6 +23,8 @@ docker/data/
 docker/logs/
 
 docs/plan/
-.desloppify/
 .github/copilot-instructions.md
-scorecard.png
+app/static/css/output.css
+.github/agents/
+.github/instructions/
+.github/prompts/

@@ -43,9 +43,6 @@ from app.api.schemas.mission import (
 from app.api.schemas.system import (
     AdminUserCreate,
     AdminUserUpdate,
-    AIProviderFallbacks,
-    AIProviderProfile,
-    AIProviderRouting,
     DeleteAccountRequest,
     HealthResponse,
     LLMTestRequest,
@@ -103,9 +100,6 @@ __all__ = [
     "TargetResponse",
     "TargetUpdate",
     # system
-    "AIProviderFallbacks",
-    "AIProviderProfile",
-    "AIProviderRouting",
     "DeleteAccountRequest",
     "HealthResponse",
     "LLMTestRequest",

@@ -139,7 +139,7 @@ class RAGService:
             # Initialize embedding service (async load)
             await self.embeddings._load_model()
             if self.is_functional:
-                model_info = self.embeddings._litellm_model
+                model_info = self.embeddings.model_name
                 logger.info("RAG initialized: pgvector + %s embeddings", model_info)
             else:
                 logger.warning("RAG table ready but embedding API not configured  semantic search disabled")

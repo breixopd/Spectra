@@ -16,9 +16,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import bcrypt
+import jwt
 import pyotp
 from cryptography.fernet import Fernet, InvalidToken
-from jose import JWTError, jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 
 from app.core.config import settings
 
@@ -27,6 +28,8 @@ __all__ = [
     "create_refresh_token",
     "create_password_reset_token",
     "verify_password_reset_token",
+    "create_email_verification_token",
+    "verify_email_verification_token",
     "decode_token",
     "verify_password",
     "get_password_hash",
@@ -344,6 +347,32 @@ def verify_password_reset_token(token: str) -> str | None:
             algorithms=[settings.JWT_ALGORITHM],
         )
         if payload.get("type") != "password_reset":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
+
+
+def create_email_verification_token(user_id: str) -> str:
+    """Create a short-lived email verification token (24h expiry)."""
+    now = datetime.now(UTC)
+    expire = now + timedelta(hours=24)
+    return jwt.encode(
+        {"sub": user_id, "type": "email_verify", "exp": expire, "iat": now},
+        settings.JWT_SECRET_KEY.get_secret_value(),
+        algorithm=settings.JWT_ALGORITHM,
+    )
+
+
+def verify_email_verification_token(token: str) -> str | None:
+    """Verify an email verification token. Returns user_id or None."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY.get_secret_value(),
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        if payload.get("type") != "email_verify":
             return None
         return payload.get("sub")
     except JWTError:
