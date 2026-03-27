@@ -52,25 +52,25 @@
         <div class="flex items-center gap-2">
             <div class="flex border border-white/10 rounded-lg overflow-hidden">
                 <button id="tab-execute" class="tab-btn-manual active" onclick="switchManualTab('execute')">
-                    <i class="fa-solid fa-play mr-1.5"></i> Execute
+                    <i data-lucide="play" class="w-4 h-4 inline-block mr-1.5"></i> Execute
                 </button>
                 <button id="tab-pipeline" class="tab-btn-manual" onclick="switchManualTab('pipeline')">
-                    <i class="fa-solid fa-diagram-project mr-1.5"></i> Pipeline
+                    <i data-lucide="git-branch" class="w-4 h-4 inline-block mr-1.5"></i> Pipeline
                 </button>
                 <button id="tab-cve" class="tab-btn-manual" onclick="switchManualTab('cve')">
-                    <i class="fa-solid fa-shield-virus mr-1.5"></i> CVE Lookup
+                    <i data-lucide="shield-alert" class="w-4 h-4 inline-block mr-1.5"></i> CVE Lookup
                 </button>
                 <button id="tab-checklists" class="tab-btn-manual" onclick="switchManualTab('checklists')">
-                    <i class="fa-solid fa-list-check mr-1.5"></i> Checklists
+                    <i data-lucide="list-checks" class="w-4 h-4 inline-block mr-1.5"></i> Checklists
                 </button>
                 <button id="tab-notes" class="tab-btn-manual" onclick="switchManualTab('notes')">
-                    <i class="fa-solid fa-note-sticky mr-1.5"></i> Notes
+                    <i data-lucide="sticky-note" class="w-4 h-4 inline-block mr-1.5"></i> Notes
                 </button>
                 <button id="tab-evidence" class="tab-btn-manual" onclick="switchManualTab('evidence')">
-                    <i class="fa-solid fa-camera mr-1.5"></i> Evidence
+                    <i data-lucide="camera" class="w-4 h-4 inline-block mr-1.5"></i> Evidence
                 </button>
                 <button id="tab-helpers" class="tab-btn-manual" onclick="switchManualTab('helpers')">
-                    <i class="fa-solid fa-toolbox mr-1.5"></i> Helpers
+                    <i data-lucide="wrench" class="w-4 h-4 inline-block mr-1.5"></i> Helpers
                 </button>
             </div>
         </div>
@@ -79,30 +79,30 @@
     <!-- Tips Banner (dismissible) -->
     <div id="tips-banner" class="glass-panel rounded-xl p-3 mb-3 shrink-0 animate-fade-in-up border-l-2 border-violet-500/50">
         <div class="flex items-start gap-3">
-            <i class="fa-solid fa-lightbulb text-violet-400 mt-0.5 shrink-0"></i>
+            <i data-lucide="lightbulb" class="w-4 h-4 inline-block text-violet-400 mt-0.5 shrink-0"></i>
             <div class="flex-1">
                 <p id="tip-text" class="text-xs text-slate-300"></p>
             </div>
             <button onclick="nextTip()" class="text-xs text-violet-400 hover:text-violet-300 shrink-0" title="Next tip">Next</button>
             <button onclick="document.getElementById('tips-banner').classList.add('hidden')" class="text-slate-600 hover:text-slate-400 shrink-0" title="Dismiss tips">
-                <i class="fa-solid fa-xmark"></i>
+                <i data-lucide="x" class="w-4 h-4 inline-block"></i>
             </button>
         </div>
     </div>
 
     <!-- Session Bar -->
     <div id="session-bar" class="glass-panel rounded-xl p-2 mb-3 shrink-0 animate-fade-in-up flex items-center gap-3">
-        <i class="fa-solid fa-folder-open text-slate-500 text-xs"></i>
+        <i data-lucide="folder-open" class="w-4 h-4 inline-block text-slate-500"></i>
         <span id="session-label" class="text-xs text-slate-400">No active session</span>
         <div class="ml-auto flex gap-2">
             <button onclick="startSession()" id="session-start-btn" class="px-2.5 py-1 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-[11px] transition-colors">
-                <i class="fa-solid fa-plus mr-1"></i> New Session
+                <i data-lucide="plus" class="w-3.5 h-3.5 inline-block mr-1"></i> New Session
             </button>
             <button onclick="exportSession()" id="session-export-btn" class="hidden px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
-                <i class="fa-solid fa-file-export mr-1"></i> Export
+                <i data-lucide="file-output" class="w-3.5 h-3.5 inline-block mr-1"></i> Export
             </button>
             <button onclick="toggleScopePanel()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
-                <i class="fa-solid fa-crosshairs mr-1"></i> Scope
+                <i data-lucide="crosshair" class="w-3.5 h-3.5 inline-block mr-1"></i> Scope
             </button>
         </div>
     </div>
@@ -110,7 +110,7 @@
     <!-- Scope Panel (collapsible) -->
     <div id="scope-panel" class="scope-panel glass-panel rounded-xl mb-3 shrink-0">
         <div class="p-4">
-            <h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-crosshairs text-violet-400 mr-2"></i>Scope Management</h3>
+            <h3 class="text-sm font-bold text-white mb-3"><i data-lucide="crosshair" class="w-4 h-4 inline-block text-violet-400 mr-2"></i>Scope Management</h3>
             <div class="mb-4">
                 <div class="text-xs font-bold text-slate-500 uppercase mb-2">Targets</div>
                 <div class="flex gap-2 mb-2">
@@ -119,7 +119,7 @@
                     </select>
                     <input type="text" id="scope-target-value" placeholder="Value" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
                     <input type="text" id="scope-target-notes" placeholder="Notes" class="w-32 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none">
-                    <button onclick="addScopeTarget()" class="px-2.5 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i class="fa-solid fa-plus"></i></button>
+                    <button onclick="addScopeTarget()" class="px-2.5 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 inline-block"></i></button>
                 </div>
                 <div id="scope-targets-list" class="space-y-1 max-h-32 overflow-y-auto"></div>
             </div>
@@ -131,7 +131,7 @@
                     </select>
                     <input type="text" id="scope-excl-value" placeholder="Value" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
                     <input type="text" id="scope-excl-reason" placeholder="Reason" class="w-32 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none">
-                    <button onclick="addScopeExclusion()" class="px-2.5 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i class="fa-solid fa-plus"></i></button>
+                    <button onclick="addScopeExclusion()" class="px-2.5 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 inline-block"></i></button>
                 </div>
                 <div id="scope-exclusions-list" class="space-y-1 max-h-32 overflow-y-auto"></div>
             </div>
@@ -139,29 +139,29 @@
                 <div class="text-xs font-bold text-slate-500 uppercase mb-2">Rules of Engagement</div>
                 <textarea id="scope-roe" rows="3" placeholder="Markdown notes about rules of engagement..." class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none font-mono"></textarea>
             </div>
-            <button onclick="saveScope()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-all"><i class="fa-solid fa-save mr-1"></i> Save Scope</button>
+            <button onclick="saveScope()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-all"><i data-lucide="save" class="w-3.5 h-3.5 inline-block mr-1"></i> Save Scope</button>
         </div>
     </div>
 
     <!-- Global Target + Quick Actions -->
     <div class="glass-panel rounded-xl p-3 mb-4 shrink-0 animate-fade-in-up flex items-center gap-3">
         <div class="flex items-center gap-2 text-xs text-slate-400 shrink-0">
-            <i class="fa-solid fa-crosshairs text-violet-400"></i>
+            <i data-lucide="crosshair" class="w-4 h-4 inline-block text-violet-400"></i>
             <span class="font-medium">Target</span>
         </div>
         <input type="text" id="global-target" placeholder="Target IP or domain (e.g., 192.168.1.1)"
             class="flex-1 px-3 py-1.5 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:outline-none transition-all font-mono" style="max-width:320px;">
         <button onclick="quickRun('nmap')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Port scan">
-            <i class="fa-solid fa-network-wired text-violet-400"></i> Scan Ports
+            <i data-lucide="network" class="w-4 h-4 inline-block text-violet-400"></i> Scan Ports
         </button>
         <button onclick="quickRun('nuclei')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Vulnerability scan">
-            <i class="fa-solid fa-bug text-rose-400"></i> Vuln Scan
+            <i data-lucide="bug" class="w-4 h-4 inline-block text-rose-400"></i> Vuln Scan
         </button>
         <button onclick="quickRun('whatweb')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Fingerprint web tech">
-            <i class="fa-solid fa-globe text-blue-400"></i> Fingerprint
+            <i data-lucide="globe" class="w-4 h-4 inline-block text-blue-400"></i> Fingerprint
         </button>
         <div class="flex items-center gap-1.5 text-xs text-slate-500 shrink-0 ml-auto">
-            <i class="fa-solid fa-list-check"></i>
+            <i data-lucide="list-checks" class="w-4 h-4 inline-block"></i>
             <span id="all-findings-count">0</span> findings
         </div>
     </div>
@@ -182,7 +182,7 @@
             <!-- Config Form -->
             <div id="exec-form" class="glass-panel rounded-xl p-5 shrink-0">
                 <div id="no-tool-selected" class="text-center py-8">
-                    <i class="fa-solid fa-hand-pointer text-3xl text-slate-600 mb-3"></i>
+                    <i data-lucide="pointer" class="w-8 h-8 inline-block text-slate-600 mb-3"></i>
                     <p class="text-slate-500">Select a tool from the left to configure and run it</p>
                 </div>
                 <div id="tool-form-content" class="hidden">
@@ -202,10 +202,10 @@
                     <div class="flex items-center gap-3">
                         <button onclick="executeManualTool()" id="run-btn"
                             class="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2">
-                            <i class="fa-solid fa-play"></i> Run
+                            <i data-lucide="play" class="w-4 h-4 inline-block"></i> Run
                         </button>
                         <button onclick="clearOutput()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
-                            <i class="fa-solid fa-eraser mr-1"></i> Clear
+                            <i data-lucide="eraser" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear
                         </button>
                         <div id="exec-status" class="text-xs text-slate-500 ml-auto font-mono"></div>
                     </div>
@@ -221,14 +221,14 @@
             <div class="flex-1 min-h-0 bg-black rounded-xl border border-white/10 flex flex-col overflow-hidden">
                 <div class="flex items-center justify-between px-4 py-2 border-b border-white/10 shrink-0">
                     <div class="flex items-center gap-2 text-slate-400 text-xs">
-                        <i class="fa-solid fa-terminal"></i>
+                        <i data-lucide="terminal" class="w-4 h-4 inline-block"></i>
                         <span>Output</span>
                         <span id="output-tool-label" class="text-violet-400 font-mono"></span>
                     </div>
                     <div class="flex items-center gap-3 text-xs">
                         <span id="output-duration" class="text-slate-500 font-mono"></span>
                         <span id="output-findings-count" class="text-emerald-400 font-mono hidden"></span>
-                        <button onclick="openDiffModal()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors" title="Compare outputs"><i class="fa-solid fa-code-compare mr-1"></i>Compare</button>
+                        <button onclick="openDiffModal()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors" title="Compare outputs"><i data-lucide="git-compare" class="w-3.5 h-3.5 inline-block mr-1"></i>Compare</button>
                     </div>
                 </div>
                 <div id="output-area" class="flex-1 overflow-y-auto p-4 font-mono text-sm text-slate-300 whitespace-pre-wrap">
@@ -237,7 +237,7 @@
                 <!-- Findings panel -->
                 <div id="findings-panel" class="hidden border-t border-white/10 max-h-[200px] overflow-y-auto">
                     <div class="px-4 py-2 bg-slate-900/50 text-xs font-medium text-slate-400 sticky top-0">
-                        <i class="fa-solid fa-magnifying-glass mr-1"></i> Parsed Findings
+                        <i data-lucide="search" class="w-3.5 h-3.5 inline-block mr-1"></i> Parsed Findings
                     </div>
                     <div id="findings-list" class="p-3 space-y-2"></div>
                 </div>
@@ -246,8 +246,8 @@
             <!-- Command History Panel -->
             <div class="shrink-0">
                 <button onclick="toggleHistoryPanel()" class="w-full flex items-center justify-between px-4 py-2 bg-slate-900/80 border border-white/10 rounded-t-xl text-xs text-slate-400 hover:text-white transition-colors">
-                    <span><i class="fa-solid fa-clock-rotate-left mr-1.5"></i>Command History</span>
-                    <i id="history-chevron" class="fa-solid fa-chevron-up text-xs transition-transform rotate-180"></i>
+                    <span><i data-lucide="history" class="w-4 h-4 inline-block mr-1.5"></i>Command History</span>
+                    <i data-lucide="chevron-up" id="history-chevron" class="w-3.5 h-3.5 inline-block transition-transform rotate-180"></i>
                 </button>
                 <div id="history-panel" class="hidden bg-slate-900/80 border border-t-0 border-white/10 rounded-b-xl max-h-[250px] overflow-hidden">
                     <div class="flex items-center gap-2 px-3 py-2 border-b border-white/5">
@@ -284,23 +284,23 @@
                 </div>
                 <div class="flex gap-2">
                     <button onclick="addPipelineStep()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors">
-                        <i class="fa-solid fa-plus mr-1"></i> Add Step
+                        <i data-lucide="plus" class="w-3.5 h-3.5 inline-block mr-1"></i> Add Step
                     </button>
                     <button onclick="runPipeline()" id="pipeline-run-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all">
-                        <i class="fa-solid fa-play mr-1"></i> Run Pipeline
+                        <i data-lucide="play" class="w-4 h-4 inline-block mr-1"></i> Run Pipeline
                     </button>
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
                 <span class="text-xs text-slate-500 uppercase font-bold self-center mr-1">Templates:</span>
                 <button onclick="loadPipelineTemplate('recon')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
-                    <i class="fa-solid fa-radar text-violet-400 mr-1"></i> Recon (nmap + nikto + gobuster)
+                    <i data-lucide="radar" class="w-4 h-4 inline-block text-violet-400 mr-1"></i> Recon (nmap + nikto + gobuster)
                 </button>
                 <button onclick="loadPipelineTemplate('vuln')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
-                    <i class="fa-solid fa-bug text-rose-400 mr-1"></i> Vuln Scan (nmap + nuclei + searchsploit)
+                    <i data-lucide="bug" class="w-4 h-4 inline-block text-rose-400 mr-1"></i> Vuln Scan (nmap + nuclei + searchsploit)
                 </button>
                 <button onclick="loadPipelineTemplate('web')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
-                    <i class="fa-solid fa-globe text-blue-400 mr-1"></i> Web App (whatweb + nikto + sqlmap)
+                    <i data-lucide="globe" class="w-4 h-4 inline-block text-blue-400 mr-1"></i> Web App (whatweb + nikto + sqlmap)
                 </button>
             </div>
         </div>
@@ -310,7 +310,7 @@
             <div class="flex-1 glass-panel rounded-xl p-4 overflow-auto">
                 <div id="pipeline-canvas" class="flex items-start gap-0 min-h-[200px] pb-4">
                     <div class="empty-state" id="pipeline-empty">
-                        <i class="fa-solid fa-diagram-project text-violet-400/40"></i>
+                        <i data-lucide="git-branch" class="w-5 h-5 inline-block text-violet-400/40"></i>
                         <h3>Build your pipeline</h3>
                         <p>Click "Add Step" to chain tools together. Each step's output feeds into the next.</p>
                     </div>
@@ -320,7 +320,7 @@
             <!-- Pipeline Output -->
             <div class="lg:w-96 bg-black rounded-xl border border-white/10 flex flex-col overflow-hidden">
                 <div class="px-4 py-2 border-b border-white/10 text-xs text-slate-400 shrink-0">
-                    <i class="fa-solid fa-terminal mr-1"></i> Pipeline Output
+                    <i data-lucide="terminal" class="w-4 h-4 inline-block mr-1"></i> Pipeline Output
                 </div>
                 <div id="pipeline-output" class="flex-1 overflow-y-auto p-4 font-mono text-sm text-slate-300 whitespace-pre-wrap">
                     <span class="text-slate-600">Pipeline results will appear here...</span>
@@ -351,13 +351,13 @@
                         class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none">
                 </div>
                 <button onclick="searchCVEs()" id="cve-search-btn" class="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all shrink-0">
-                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Search
+                    <i data-lucide="search" class="w-3.5 h-3.5 inline-block mr-1"></i> Search
                 </button>
             </div>
         </div>
         <div class="flex-1 min-h-0 glass-panel rounded-xl overflow-hidden flex flex-col">
             <div class="px-4 py-2 border-b border-white/10 text-xs text-slate-400 flex items-center justify-between shrink-0">
-                <span><i class="fa-solid fa-shield-virus mr-1"></i> Results</span>
+                <span><i data-lucide="shield-alert" class="w-4 h-4 inline-block mr-1"></i> Results</span>
                 <span id="cve-count" class="text-slate-500 font-mono"></span>
             </div>
             <div id="cve-results" class="flex-1 overflow-y-auto p-4 space-y-2">
@@ -388,7 +388,7 @@
                 <div id="checklist-progress-text" class="text-xs text-slate-500 mt-1">0/0 completed</div>
             </div>
             <button onclick="resetChecklist()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors">
-                <i class="fa-solid fa-rotate-left mr-1"></i> Reset Checklist
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i> Reset Checklist
             </button>
         </div>
         <!-- Main -->
@@ -410,7 +410,7 @@
                     <option value="finding">By Finding</option>
                 </select>
                 <button onclick="createNote()" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors shrink-0">
-                    <i class="fa-solid fa-plus mr-1"></i>New
+                    <i data-lucide="plus" class="w-3.5 h-3.5 inline-block mr-1"></i>New
                 </button>
             </div>
             <div id="notes-list" class="flex-1 overflow-y-auto space-y-1 min-h-[100px]">
@@ -420,7 +420,7 @@
         <!-- Editor -->
         <div class="flex-1 min-h-0 flex flex-col glass-panel rounded-xl p-4">
             <div id="notes-editor-empty" class="flex-1 flex items-center justify-center text-slate-500 text-sm">
-                <div class="text-center"><i class="fa-solid fa-note-sticky text-3xl text-slate-600 mb-3"></i><p>Select or create a note</p></div>
+                <div class="text-center"><i data-lucide="sticky-note" class="w-8 h-8 inline-block text-slate-600 mb-3"></i><p>Select or create a note</p></div>
             </div>
             <div id="notes-editor" class="hidden flex-1 flex flex-col">
                 <input type="text" id="note-title" placeholder="Note title..." oninput="onNoteEdit()" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none mb-2 font-medium">
@@ -436,18 +436,18 @@
                     <button onclick="wrapNoteText('**','**')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors font-bold" title="Bold">B</button>
                     <button onclick="wrapNoteText('*','*')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors italic" title="Italic">I</button>
                     <button onclick="wrapNoteText('`','`')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors font-mono" title="Code">&lt;&gt;</button>
-                    <button onclick="wrapNoteText('[','](url)')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors" title="Link"><i class="fa-solid fa-link"></i></button>
+                    <button onclick="wrapNoteText('[','](url)')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors" title="Link"><i data-lucide="link" class="w-3 h-3 inline-block"></i></button>
                     <button onclick="wrapNoteText('### ','')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors" title="Heading">H</button>
                     <div class="flex-1"></div>
-                    <button onclick="toggleNotePreview()" id="note-preview-toggle" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors"><i class="fa-solid fa-eye mr-1"></i>Preview</button>
+                    <button onclick="toggleNotePreview()" id="note-preview-toggle" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors"><i data-lucide="eye" class="w-3.5 h-3.5 inline-block mr-1"></i>Preview</button>
                 </div>
                 <textarea id="note-content" placeholder="Write your notes here (Markdown supported)..." oninput="onNoteEdit()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono resize-none"></textarea>
                 <div id="note-preview" class="hidden flex-1 overflow-y-auto px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-slate-200 prose prose-invert prose-sm"></div>
                 <div class="flex items-center gap-2 mt-2">
                     <span id="note-autosave-status" class="text-xs text-slate-500"></span>
                     <div class="flex-1"></div>
-                    <button onclick="deleteNote()" class="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i class="fa-solid fa-trash mr-1"></i>Delete</button>
-                    <button onclick="saveCurrentNote()" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i class="fa-solid fa-save mr-1"></i>Save</button>
+                    <button onclick="deleteNote()" class="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i>Delete</button>
+                    <button onclick="saveCurrentNote()" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i data-lucide="save" class="w-3.5 h-3.5 inline-block mr-1"></i>Save</button>
                 </div>
             </div>
         </div>
@@ -457,11 +457,11 @@
     <div id="panel-evidence" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <div class="glass-panel rounded-xl p-4 mb-3 shrink-0 flex items-center gap-3">
             <label class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all cursor-pointer">
-                <i class="fa-solid fa-upload mr-1.5"></i>Upload File
+                <i data-lucide="upload" class="w-4 h-4 inline-block mr-1.5"></i>Upload File
                 <input type="file" id="evidence-file-input" class="hidden" multiple onchange="uploadEvidence(this)">
             </label>
             <button onclick="pasteEvidence()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
-                <i class="fa-solid fa-paste mr-1.5"></i>Paste from Clipboard
+                <i data-lucide="clipboard-paste" class="w-4 h-4 inline-block mr-1.5"></i>Paste from Clipboard
             </button>
             <div class="flex-1"></div>
             <select id="evidence-finding-filter" onchange="filterEvidence()" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
@@ -470,7 +470,7 @@
         </div>
         <!-- Dropzone -->
         <div id="evidence-dropzone" class="evidence-dropzone rounded-xl p-6 mb-3 shrink-0 text-center hidden">
-            <i class="fa-solid fa-cloud-arrow-up text-3xl text-violet-400/50 mb-2"></i>
+            <i data-lucide="upload" class="w-8 h-8 inline-block text-violet-400/50 mb-2"></i>
             <p class="text-slate-400 text-sm">Drop files here to upload</p>
         </div>
         <!-- Gallery -->
@@ -485,15 +485,15 @@
     <div id="panel-helpers" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <!-- Helpers Sub-Tabs -->
         <div class="flex border-b border-white/10 mb-3 shrink-0 overflow-x-auto">
-            <button class="helper-tab-btn active px-3 py-2 text-xs font-medium text-violet-400 border-b-2 border-violet-500 whitespace-nowrap" onclick="switchHelperTab('revshell')"><i class="fa-solid fa-terminal mr-1.5"></i>Reverse Shells</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('encoder')"><i class="fa-solid fa-code mr-1.5"></i>Encoder/Decoder</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('ports')"><i class="fa-solid fa-network-wired mr-1.5"></i>Port Reference</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('wordlists')"><i class="fa-solid fa-list mr-1.5"></i>Wordlists</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('cvss')"><i class="fa-solid fa-calculator mr-1.5"></i>CVSS Calculator</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('lfi')"><i class="fa-solid fa-folder-open mr-1.5"></i>LFI/RFI</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('sqli')"><i class="fa-solid fa-database mr-1.5"></i>SQL Injection</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('privesc')"><i class="fa-solid fa-arrow-up mr-1.5"></i>Priv Esc</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('adenum')"><i class="fa-solid fa-sitemap mr-1.5"></i>AD Enum</button>
+            <button class="helper-tab-btn active px-3 py-2 text-xs font-medium text-violet-400 border-b-2 border-violet-500 whitespace-nowrap" onclick="switchHelperTab('revshell')"><i data-lucide="terminal" class="w-4 h-4 inline-block mr-1.5"></i>Reverse Shells</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('encoder')"><i data-lucide="code" class="w-4 h-4 inline-block mr-1.5"></i>Encoder/Decoder</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('ports')"><i data-lucide="network" class="w-4 h-4 inline-block mr-1.5"></i>Port Reference</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('wordlists')"><i data-lucide="list" class="w-4 h-4 inline-block mr-1.5"></i>Wordlists</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('cvss')"><i data-lucide="calculator" class="w-4 h-4 inline-block mr-1.5"></i>CVSS Calculator</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('lfi')"><i data-lucide="folder-open" class="w-4 h-4 inline-block mr-1.5"></i>LFI/RFI</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('sqli')"><i data-lucide="database" class="w-4 h-4 inline-block mr-1.5"></i>SQL Injection</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('privesc')"><i data-lucide="arrow-up" class="w-4 h-4 inline-block mr-1.5"></i>Priv Esc</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('adenum')"><i data-lucide="git-branch" class="w-4 h-4 inline-block mr-1.5"></i>AD Enum</button>
         </div>
         <div class="flex-1 min-h-0 overflow-y-auto">
 
@@ -523,8 +523,8 @@
                 <!-- Output -->
                 <pre id="revshell-output" class="bg-black rounded-lg p-3 text-xs text-emerald-400 font-mono overflow-x-auto max-h-40 border border-white/5 whitespace-pre-wrap">Select a shell above</pre>
                 <div class="flex gap-2 mt-2">
-                    <button onclick="copyToClipboard('revshell-output')" class="text-xs text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-copy mr-1"></i>Copy Shell</button>
-                    <button id="revshell-copy-listener" onclick="copyListenerCmd()" class="hidden text-xs text-violet-400 hover:text-white transition-colors"><i class="fa-solid fa-headphones mr-1"></i>Copy Listener</button>
+                    <button onclick="copyToClipboard('revshell-output')" class="text-xs text-slate-400 hover:text-white transition-colors"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy Shell</button>
+                    <button id="revshell-copy-listener" onclick="copyListenerCmd()" class="hidden text-xs text-violet-400 hover:text-white transition-colors"><i data-lucide="headphones" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy Listener</button>
                 </div>
             </div>
         </div>
@@ -544,7 +544,7 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Output</label>
                         <pre id="encode-output" class="bg-black rounded-lg p-3 text-xs text-blue-400 font-mono overflow-auto border border-white/5 whitespace-pre-wrap" style="min-height:120px;max-height:200px;"></pre>
-                        <button onclick="copyToClipboard('encode-output')" class="mt-1 text-xs text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-copy mr-1"></i>Copy</button>
+                        <button onclick="copyToClipboard('encode-output')" class="mt-1 text-xs text-slate-400 hover:text-white transition-colors"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy</button>
                     </div>
                 </div>
                 <!-- Category Filters -->
@@ -583,14 +583,14 @@
         <!-- Wordlist Manager -->
         <div id="helper-wordlists" class="helper-panel hidden">
             <div class="glass-panel rounded-xl p-5">
-                <h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-list text-amber-400 mr-2"></i>Wordlists</h3>
+                <h3 class="text-sm font-bold text-white mb-3"><i data-lucide="list" class="w-4 h-4 inline-block text-amber-400 mr-2"></i>Wordlists</h3>
                 <div id="wordlist-list" class="space-y-1.5 max-h-48 overflow-y-auto mb-3">
                     <div class="text-slate-500 text-xs">Loading...</div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="loadWordlists()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded text-[11px] text-slate-300 transition-colors"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+                    <button onclick="loadWordlists()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded text-[11px] text-slate-300 transition-colors"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i>Refresh</button>
                     <label class="px-2.5 py-1 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-[11px] transition-colors cursor-pointer">
-                        <i class="fa-solid fa-upload mr-1"></i>Upload
+                        <i data-lucide="upload" class="w-3.5 h-3.5 inline-block mr-1"></i>Upload
                         <input type="file" id="wordlist-upload" class="hidden" onchange="uploadWordlist(this)">
                     </label>
                 </div>
@@ -604,7 +604,7 @@
             <div class="glass-panel rounded-xl p-5">
                 <div class="flex flex-col lg:flex-row gap-6">
                     <div class="flex-1 space-y-3">
-                        <h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-calculator text-violet-400 mr-2"></i>CVSS 3.1 Base Score</h3>
+                        <h3 class="text-sm font-bold text-white mb-3"><i data-lucide="calculator" class="w-4 h-4 inline-block text-violet-400 mr-2"></i>CVSS 3.1 Base Score</h3>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Attack Vector (AV)</label>
                             <div class="flex gap-1.5" data-cvss="AV">
@@ -691,7 +691,7 @@
                                 <div class="text-xs font-bold text-slate-500 uppercase mb-1">Vector String</div>
                                 <code id="cvss-vector-display" class="block text-[11px] text-violet-300 font-mono break-all bg-black/30 rounded p-2">-</code>
                             </div>
-                            <button onclick="copyCVSSVector()" class="w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"><i class="fa-solid fa-copy mr-1"></i>Copy Vector</button>
+                            <button onclick="copyCVSSVector()" class="w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy Vector</button>
                         </div>
                     </div>
                 </div>
@@ -738,7 +738,7 @@
         <!-- AD Enumeration -->
         <div id="helper-adenum" class="helper-panel hidden">
             <div class="glass-panel rounded-xl p-5">
-                <h3 class="text-sm font-bold text-white mb-3"><i class="fa-solid fa-sitemap text-blue-400 mr-2"></i>Active Directory Enumeration</h3>
+                <h3 class="text-sm font-bold text-white mb-3"><i data-lucide="git-branch" class="w-4 h-4 inline-block text-blue-400 mr-2"></i>Active Directory Enumeration</h3>
                 <div class="flex gap-2 mb-3">
                     <input type="text" id="ad-domain" placeholder="DOMAIN" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono w-32">
                     <input type="text" id="ad-user" placeholder="user" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono w-24">

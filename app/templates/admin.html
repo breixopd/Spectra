@@ -10,7 +10,7 @@
     <div class="flex items-center justify-between flex-wrap gap-3">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-lg flex items-center justify-center {{ 'bg-amber-500/20 text-amber-400' if maintenance_active else 'bg-slate-700 text-slate-400' }}">
-                <i class="fa-solid fa-wrench text-lg"></i>
+                <i data-lucide="wrench" class="w-5 h-5 inline-block"></i>
             </div>
             <div>
                 <h3 class="text-sm font-semibold text-white">Maintenance Mode</h3>
@@ -37,40 +37,40 @@
     <div class="md:col-span-3 lg:col-span-2 admin-sidebar">
         <nav class="space-y-1" role="tablist" aria-label="Admin sections">
             <a href="#" data-section="dashboard" role="tab" aria-selected="true" aria-controls="section-dashboard" class="active flex items-center px-3 py-2 rounded-lg text-sm font-medium">
-                <i class="fa-solid fa-chart-pie mr-3 text-violet-400 w-5 text-center"></i> Dashboard
+                <i data-lucide="pie-chart" class="w-4 h-4 inline-block mr-3 text-violet-400"></i> Dashboard
             </a>
             <a href="#" data-section="users" role="tab" aria-selected="false" aria-controls="section-users" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-users mr-3 text-slate-500 w-5 text-center"></i> Users
+                <i data-lucide="users" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Users
             </a>
             <a href="#" data-section="plans" role="tab" aria-selected="false" aria-controls="section-plans" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-layer-group mr-3 text-slate-500 w-5 text-center"></i> Plans
+                <i data-lucide="layers" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Plans
             </a>
             <a href="#" data-section="audit" role="tab" aria-selected="false" aria-controls="section-audit" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-scroll mr-3 text-slate-500 w-5 text-center"></i> Audit Logs
+                <i data-lucide="scroll" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Audit Logs
             </a>
             <a href="#" data-section="usage" role="tab" aria-selected="false" aria-controls="section-usage" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-coins mr-3 text-slate-500 w-5 text-center"></i> Usage
+                <i data-lucide="coins" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Usage
             </a>
             <a href="#" data-section="services" role="tab" aria-selected="false" aria-controls="section-services" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-network-wired mr-3 text-slate-500 w-5 text-center"></i> Services
+                <i data-lucide="network" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Services
             </a>
             <a href="#" data-section="content" role="tab" aria-selected="false" aria-controls="section-content" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-file-lines mr-3 text-slate-500 w-5 text-center"></i> Content
+                <i data-lucide="file-text" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Content
             </a>
             <a href="#" data-section="llm" role="tab" aria-selected="false" aria-controls="section-llm" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-brain mr-3 text-slate-500 w-5 text-center"></i> AI Config
+                <i data-lucide="brain" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> AI Config
             </a>
             <a href="#" data-section="tensorzero" role="tab" aria-selected="false" aria-controls="section-tensorzero" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-chart-line mr-3 text-slate-500 w-5 text-center"></i> AI Gateway
+                <i data-lucide="chart-line" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> AI Gateway
             </a>
             <a href="#" data-section="email" role="tab" aria-selected="false" aria-controls="section-email" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-envelope mr-3 text-slate-500 w-5 text-center"></i> Email
+                <i data-lucide="mail" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Email
             </a>
             <a href="#" data-section="backups" role="tab" aria-selected="false" aria-controls="section-backups" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                <i class="fa-solid fa-box-archive mr-3 text-slate-500 w-5 text-center"></i> Backups
+                <i data-lucide="archive" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Backups
             </a>
             <a href="/settings" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium hover:bg-white/5">
-                <i class="fa-solid fa-gear mr-3 text-slate-500 w-5 text-center"></i> System Settings
+                <i data-lucide="settings" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> System Settings
             </a>
         </nav>
     </div>
@@ -84,28 +84,28 @@
                 <div class="stat-card glass-panel rounded-xl p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Users</span>
-                        <i class="fa-solid fa-users text-violet-400"></i>
+                        <i data-lucide="users" class="w-5 h-5 inline-block text-violet-400"></i>
                     </div>
                     <p id="stat-total-users" class="text-2xl font-bold text-white">—</p>
                 </div>
                 <div class="stat-card glass-panel rounded-xl p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Active Users</span>
-                        <i class="fa-solid fa-user-check text-emerald-400"></i>
+                        <i data-lucide="user-check" class="w-5 h-5 inline-block text-emerald-400"></i>
                     </div>
                     <p id="stat-active-users" class="text-2xl font-bold text-white">—</p>
                 </div>
                 <div class="stat-card glass-panel rounded-xl p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Plans</span>
-                        <i class="fa-solid fa-layer-group text-amber-400"></i>
+                        <i data-lucide="layers" class="w-5 h-5 inline-block text-amber-400"></i>
                     </div>
                     <p id="stat-total-plans" class="text-2xl font-bold text-white">—</p>
                 </div>
                 <div class="stat-card glass-panel rounded-xl p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Missions</span>
-                        <i class="fa-solid fa-rocket text-cyan-400"></i>
+                        <i data-lucide="rocket" class="w-5 h-5 inline-block text-cyan-400"></i>
                     </div>
                     <p id="stat-total-missions" class="text-2xl font-bold text-white">—</p>
                 </div>
@@ -119,16 +119,16 @@
                     <h3 class="text-sm font-semibold text-white mb-3">Quick Actions</h3>
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="switchSection('users'); openCreateUserModal()" class="px-3 py-2 rounded-lg bg-violet-600/20 border border-violet-500/20 text-violet-300 text-sm hover:bg-violet-600/30 transition-colors">
-                            <i class="fa-solid fa-user-plus mr-1"></i> New User
+                            <i data-lucide="user-plus" class="w-4 h-4 inline-block mr-1"></i> New User
                         </button>
                         <button onclick="switchSection('plans'); openCreatePlanModal()" class="px-3 py-2 rounded-lg bg-emerald-600/20 border border-emerald-500/20 text-emerald-300 text-sm hover:bg-emerald-600/30 transition-colors">
-                            <i class="fa-solid fa-plus mr-1"></i> New Plan
+                            <i data-lucide="plus" class="w-4 h-4 inline-block mr-1"></i> New Plan
                         </button>
                         <button onclick="switchSection('audit')" class="px-3 py-2 rounded-lg bg-amber-600/20 border border-amber-500/20 text-amber-300 text-sm hover:bg-amber-600/30 transition-colors">
-                            <i class="fa-solid fa-scroll mr-1"></i> View Logs
+                            <i data-lucide="scroll" class="w-4 h-4 inline-block mr-1"></i> View Logs
                         </button>
                         <a href="/settings" class="px-3 py-2 rounded-lg bg-slate-600/20 border border-slate-500/20 text-slate-300 text-sm hover:bg-slate-600/30 transition-colors text-center">
-                            <i class="fa-solid fa-gear mr-1"></i> Settings
+                            <i data-lucide="settings" class="w-4 h-4 inline-block mr-1"></i> Settings
                         </a>
                     </div>
                 </div>
@@ -140,7 +140,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div class="flex items-center gap-2 flex-1">
                     <div class="relative flex-1 max-w-sm">
-                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <i data-lucide="search" class="w-3.5 h-3.5 inline-block absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
                         <input id="user-search" type="text" placeholder="Search users..." class="form-input pl-9 py-2" aria-label="Search users">
                     </div>
                     <select id="user-role-filter" class="form-input form-select w-32" aria-label="Filter by role">
@@ -156,7 +156,7 @@
                     </select>
                 </div>
                 <button onclick="openCreateUserModal()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
-                    <i class="fa-solid fa-user-plus mr-1"></i> Create User
+                    <i data-lucide="user-plus" class="w-4 h-4 inline-block mr-1"></i> Create User
                 </button>
             </div>
             <div class="glass-panel rounded-xl overflow-hidden">
@@ -191,7 +191,7 @@
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-white">Subscription Plans</h2>
                 <button onclick="openCreatePlanModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors">
-                    <i class="fa-solid fa-plus mr-1"></i> Create Plan
+                    <i data-lucide="plus" class="w-4 h-4 inline-block mr-1"></i> Create Plan
                 </button>
             </div>
             <div id="plans-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
@@ -210,10 +210,10 @@
                         Auto-refresh (60s)
                     </label>
                     <button id="svc-check-all-btn" onclick="checkAllHealth()" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">
-                        <i class="fa-solid fa-heart-pulse mr-1"></i> Check All Health
+                        <i data-lucide="heart-pulse" class="w-4 h-4 inline-block mr-1"></i> Check All Health
                     </button>
                     <button onclick="openProvisionModal()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition-colors">
-                        <i class="fa-solid fa-server mr-1"></i> Add Remote Server
+                        <i data-lucide="server" class="w-4 h-4 inline-block mr-1"></i> Add Remote Server
                     </button>
                 </div>
             </div>
@@ -222,7 +222,7 @@
             <!-- Services Health Monitor -->
             <div class="glass-panel rounded-xl p-5 space-y-4 mt-6">
                 <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-heartbeat text-emerald-400"></i> Microservices Health
+                    <i data-lucide="heart-pulse" class="w-4 h-4 inline-block text-emerald-400"></i> Microservices Health
                 </h3>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="microservices-health-grid">
                     <div class="glass-panel p-4 rounded-lg text-center">
@@ -252,10 +252,10 @@
             <div class="glass-panel rounded-xl p-5 space-y-4 mt-6">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-network-wired text-violet-400"></i> Server Nodes
+                        <i data-lucide="network" class="w-4 h-4 inline-block text-violet-400"></i> Server Nodes
                     </h3>
                     <button onclick="refreshNodesList()" class="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors">
-                        <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline-block mr-1"></i> Refresh
                     </button>
                 </div>
                 <div id="nodes-list" class="space-y-2">
@@ -268,7 +268,7 @@
                 <div class="modal-content" style="max-width:640px" role="dialog" aria-modal="true">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-semibold text-white">Deployment Logs</h3>
-                        <button onclick="closeModal('deploy-logs-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                        <button onclick="closeModal('deploy-logs-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
                     </div>
                     <pre id="deploy-logs-content" class="bg-slate-900/50 border border-white/5 rounded-lg p-3 text-xs text-slate-300 font-mono max-h-96 overflow-y-auto whitespace-pre-wrap"></pre>
                 </div>
@@ -277,7 +277,7 @@
             <!-- Billing Configuration -->
             <div class="glass-panel rounded-xl p-5 space-y-4 mt-6">
                 <h3 class="text-sm font-semibold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-credit-card text-emerald-400"></i> Billing
+                    <i data-lucide="credit-card" class="w-4 h-4 inline-block text-emerald-400"></i> Billing
                 </h3>
                 <p class="text-xs text-slate-500">Configure payment provider for self-service plan upgrades.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -304,7 +304,7 @@
                     </div>
                 </div>
                 <button onclick="saveBillingSettings()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium rounded-lg transition-colors">
-                    <i class="fa-solid fa-floppy-disk mr-1"></i> Save Billing Settings
+                    <i data-lucide="save" class="w-4 h-4 inline-block mr-1"></i> Save Billing Settings
                 </button>
             </div>
         </div>
@@ -315,28 +315,28 @@
                 <div class="stat-card glass-panel rounded-xl p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">LLM Calls</span>
-                        <i class="fa-solid fa-message text-violet-400"></i>
+                        <i data-lucide="message-square" class="w-5 h-5 inline-block text-violet-400"></i>
                     </div>
                     <p id="usage-total-calls" class="text-2xl font-bold text-white">—</p>
                 </div>
                 <div class="stat-card glass-panel rounded-xl p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Total Tokens</span>
-                        <i class="fa-solid fa-hashtag text-cyan-400"></i>
+                        <i data-lucide="hash" class="w-5 h-5 inline-block text-cyan-400"></i>
                     </div>
                     <p id="usage-total-tokens" class="text-2xl font-bold text-white">—</p>
                 </div>
                 <div class="stat-card glass-panel rounded-xl p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Est. Cost</span>
-                        <i class="fa-solid fa-dollar-sign text-amber-400"></i>
+                        <i data-lucide="dollar-sign" class="w-5 h-5 inline-block text-amber-400"></i>
                     </div>
                     <p id="usage-total-cost" class="text-2xl font-bold text-white">—</p>
                 </div>
                 <div class="stat-card glass-panel rounded-xl p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-slate-500 uppercase tracking-wider font-semibold">Active Missions</span>
-                        <i class="fa-solid fa-rocket text-emerald-400"></i>
+                        <i data-lucide="rocket" class="w-5 h-5 inline-block text-emerald-400"></i>
                     </div>
                     <p id="usage-active-missions" class="text-2xl font-bold text-white">—</p>
                 </div>
@@ -378,7 +378,7 @@
 
             <!-- Add button -->
             <button onclick="openContentModal()" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors mb-3">
-                <i class="fa-solid fa-plus mr-1"></i> Add Item
+                <i data-lucide="plus" class="w-4 h-4 inline-block mr-1"></i> Add Item
             </button>
 
             <!-- Content list -->
@@ -470,7 +470,7 @@
 
                 <div class="flex justify-end gap-3">
                     <button type="button" onclick="testTZConnection()" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg text-sm font-medium border border-emerald-500/30">
-                        <i class="fa-solid fa-plug mr-1"></i> Test Gateway
+                        <i data-lucide="plug" class="w-4 h-4 inline-block mr-1"></i> Test Gateway
                     </button>
                     <button type="button" onclick="saveTZConfig()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium">
                         Save Configuration
@@ -517,7 +517,7 @@
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-sm font-semibold text-white">Recent Inferences</h3>
                     <button onclick="loadTZInferences()" class="text-xs text-violet-400 hover:text-violet-300">
-                        <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 inline-block mr-1"></i> Refresh
                     </button>
                 </div>
                 <div id="tz-inferences-list" class="space-y-2 max-h-80 overflow-y-auto">
@@ -541,7 +541,7 @@
                         <p class="text-xs text-slate-400 mt-1">Open the TensorZero management dashboard for detailed analytics, prompt editing, and optimization.</p>
                     </div>
                     <a id="tz-dashboard-link" href="#" target="_blank" rel="noopener" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
-                        <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Open Dashboard
+                        <i data-lucide="external-link" class="w-4 h-4 inline-block mr-1"></i> Open Dashboard
                     </a>
                 </div>
             </div>
@@ -571,7 +571,7 @@
                         <input type="email" id="test-email-to" required placeholder="test@example.com" class="form-input w-full">
                     </div>
                     <button type="submit" id="test-email-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">
-                        <i class="fa-solid fa-paper-plane mr-1.5"></i> Send Test
+                        <i data-lucide="send" class="w-4 h-4 inline-block mr-1.5"></i> Send Test
                     </button>
                 </form>
                 <div id="test-email-result" class="hidden mt-3 p-3 rounded-lg text-sm"></div>
@@ -600,7 +600,7 @@
                     <p class="text-xs text-slate-500 mt-0.5">Create and restore PostgreSQL backups</p>
                 </div>
                 <button onclick="createBackup()" id="backup-create-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">
-                    <i class="fa-solid fa-plus mr-1.5"></i> Create Backup
+                    <i data-lucide="plus" class="w-4 h-4 inline-block mr-1.5"></i> Create Backup
                 </button>
             </div>
             <div class="glass-panel rounded-xl overflow-hidden">
@@ -670,7 +670,7 @@
     <div class="modal-content" style="max-width:600px;">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-white" id="content-modal-title">Add Content</h3>
-            <button onclick="closeContentModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
+            <button onclick="closeContentModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
         </div>
         <form id="content-form" class="space-y-3">
             <input type="hidden" id="content-edit-id">
@@ -742,7 +742,7 @@
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
         <div class="flex items-center justify-between mb-4">
             <h3 id="user-modal-title" class="text-lg font-semibold text-white">Create User</h3>
-            <button onclick="closeModal('user-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeModal('user-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
         </div>
         <form id="user-form" class="space-y-3">
             <input type="hidden" id="user-form-id">
@@ -793,7 +793,7 @@
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="plan-modal-title">
         <div class="flex items-center justify-between mb-4">
             <h3 id="plan-modal-title" class="text-lg font-semibold text-white">Create Plan</h3>
-            <button onclick="closeModal('plan-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeModal('plan-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
         </div>
         <form id="plan-form" class="space-y-3">
             <input type="hidden" id="plan-form-id">
@@ -897,7 +897,7 @@
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="service-modal-title">
         <div class="flex items-center justify-between mb-4">
             <h3 id="service-modal-title" class="text-lg font-semibold text-white">Configure Service</h3>
-            <button onclick="closeModal('service-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeModal('service-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
         </div>
         <form id="service-form" class="space-y-3">
             <input type="hidden" id="service-form-name">
@@ -917,11 +917,11 @@
             <div id="svc-test-result" class="hidden text-xs p-2 rounded-lg"></div>
             <div class="flex justify-between pt-2">
                 <button type="button" id="svc-reset-btn" onclick="resetServiceToLocal()" class="px-3 py-2 rounded-lg text-xs text-amber-400 border border-amber-500/20 hover:bg-amber-600/10 transition-colors">
-                    <i class="fa-solid fa-rotate-left mr-1"></i> Reset to Local
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i> Reset to Local
                 </button>
                 <div class="flex gap-2">
                     <button type="button" id="svc-test-btn" onclick="testServiceConnection()" class="px-3 py-2 rounded-lg text-xs text-cyan-400 border border-cyan-500/20 hover:bg-cyan-600/10 transition-colors">
-                        <i class="fa-solid fa-plug mr-1"></i> Test Connection
+                        <i data-lucide="plug" class="w-4 h-4 inline-block mr-1"></i> Test Connection
                     </button>
                     <button type="submit" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">Save</button>
                 </div>
@@ -935,7 +935,7 @@
     <div class="modal-content" style="max-width:560px" role="dialog" aria-modal="true" aria-labelledby="provision-modal-title">
         <div class="flex items-center justify-between mb-4">
             <h3 id="provision-modal-title" class="text-lg font-semibold text-white">Add Remote Server</h3>
-            <button onclick="closeModal('provision-modal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeModal('provision-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
         </div>
         <form id="provision-form" class="space-y-3" onsubmit="return false;">
             <div class="grid grid-cols-2 gap-3">
@@ -994,12 +994,12 @@
             </div>
             <div class="flex justify-between pt-2">
                 <button type="button" id="prov-test-btn" onclick="testServerConnection()" class="px-3 py-2 rounded-lg text-xs text-cyan-400 border border-cyan-500/20 hover:bg-cyan-600/10 transition-colors">
-                    <i class="fa-solid fa-plug mr-1"></i> Test Connection
+                    <i data-lucide="plug" class="w-4 h-4 inline-block mr-1"></i> Test Connection
                 </button>
                 <div class="flex gap-2">
                     <button type="button" onclick="closeModal('provision-modal')" class="px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-white/5 transition-colors">Cancel</button>
                     <button type="button" id="prov-submit-btn" onclick="provisionServer()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors">
-                        <i class="fa-solid fa-rocket mr-1"></i> Provision
+                        <i data-lucide="rocket" class="w-4 h-4 inline-block mr-1"></i> Provision
                     </button>
                 </div>
             </div>

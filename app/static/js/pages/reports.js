@@ -61,10 +61,11 @@ function renderReports() {
     grid.innerHTML = page.map(r => {
         const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
         const sc = { completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', running: 'bg-blue-500/10 text-blue-400 border-blue-500/20', failed: 'bg-rose-500/10 text-rose-400 border-rose-500/20', paused: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }[r.status] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
-        const si = { completed: 'fa-check', running: 'fa-spinner fa-spin', failed: 'fa-xmark', paused: 'fa-pause' }[r.status] || 'fa-question';
+        const si = { completed: 'check', running: 'loader', failed: 'x', paused: 'pause' }[r.status] || 'help-circle';
+        const siClass = r.status === 'running' ? 'w-3.5 h-3.5 inline-block animate-spin mr-1' : 'w-3.5 h-3.5 inline-block mr-1';
         return `<div class="glass-panel rounded-xl p-5 flex flex-col gap-3 group hover:border-violet-500/20 transition-all">
-            <div class="flex items-start justify-between"><div class="flex-1 min-w-0"><h3 class="text-white font-medium truncate">${escapeHtml(r.target || 'Unknown Target')}</h3><p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(r.directive || 'Security Assessment')}</p></div><span class="px-2 py-0.5 rounded text-xs font-mono border ${sc} ml-2 shrink-0"><i class="fa-solid ${si} mr-1"></i>${r.status || 'unknown'}</span></div>
-            <div class="flex items-center gap-4 text-xs text-slate-500"><span><i class="fa-solid fa-calendar mr-1"></i>${date}</span><span><i class="fa-solid fa-bug mr-1"></i>${r.totalFindings} findings</span></div>
+            <div class="flex items-start justify-between"><div class="flex-1 min-w-0"><h3 class="text-white font-medium truncate">${escapeHtml(r.target || 'Unknown Target')}</h3><p class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(r.directive || 'Security Assessment')}</p></div><span class="px-2 py-0.5 rounded text-xs font-mono border ${sc} ml-2 shrink-0"><i data-lucide="${si}" class="${siClass}"></i>${r.status || 'unknown'}</span></div>
+            <div class="flex items-center gap-4 text-xs text-slate-500"><span><i data-lucide="calendar" class="w-3.5 h-3.5 inline-block mr-1"></i>${date}</span><span><i data-lucide="bug" class="w-3.5 h-3.5 inline-block mr-1"></i>${r.totalFindings} findings</span></div>
             <div class="flex items-center gap-1.5 flex-wrap">
                 ${r.counts.critical > 0 ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 text-xs font-mono border border-rose-500/20">${r.counts.critical} Crit</span>` : ''}
                 ${r.counts.high > 0 ? `<span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-mono border border-amber-500/20">${r.counts.high} High</span>` : ''}
@@ -73,13 +74,14 @@ function renderReports() {
                 ${r.totalFindings === 0 ? '<span class="text-xs text-slate-600">No findings</span>' : ''}
             </div>
             <div class="flex items-center gap-2 mt-auto pt-2 border-t border-white/5">
-                <button onclick="viewReport('${r.id}')" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors text-center"><i class="fa-solid fa-eye mr-1 text-violet-400"></i>View</button>
-                <button onclick="downloadReportHTML('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Download HTML"><i class="fa-solid fa-file-code text-blue-400"></i></button>
-                <button onclick="downloadReportPDF('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Print / PDF"><i class="fa-solid fa-file-pdf text-rose-400"></i></button>
-                <button onclick="showDeleteMissionModal('${r.id}', '${escapeHtml(r.target || 'Unknown')}')" class="px-3 py-2 bg-slate-800 hover:bg-rose-900/50 rounded text-xs text-white transition-colors" title="Delete Mission"><i class="fa-solid fa-trash text-rose-400"></i></button>
+                <button onclick="viewReport('${r.id}')" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors text-center"><i data-lucide="eye" class="w-3.5 h-3.5 inline-block mr-1 text-violet-400"></i>View</button>
+                <button onclick="downloadReportHTML('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Download HTML"><i data-lucide="file-code" class="w-3.5 h-3.5 inline-block text-blue-400"></i></button>
+                <button onclick="downloadReportPDF('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Print / PDF"><i data-lucide="file-text" class="w-3.5 h-3.5 inline-block text-rose-400"></i></button>
+                <button onclick="showDeleteMissionModal('${r.id}', '${escapeHtml(r.target || 'Unknown')}')" class="px-3 py-2 bg-slate-800 hover:bg-rose-900/50 rounded text-xs text-white transition-colors" title="Delete Mission"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block text-rose-400"></i></button>
             </div>
         </div>`;
     }).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
     const pagEl = document.getElementById('pagination-controls');
     if (totalPages <= 1) { pagEl.innerHTML = ''; return; }

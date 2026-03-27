@@ -227,7 +227,7 @@ function startMission(target, directive, playbookId) {
     addTerminalLine(`Starting assessment against ${target}...`, 'info');
     
     const launchBtn = document.getElementById('launch-btn');
-    if (launchBtn) { launchBtn.disabled = true; launchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Launching…'; }
+    if (launchBtn) { launchBtn.disabled = true; launchBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Launching…'; }
 
     const reqEl = document.getElementById('mission-requirements');
     const requirements = reqEl && reqEl.value.trim() ? reqEl.value.trim() : null;
@@ -255,7 +255,8 @@ function startMission(target, directive, playbookId) {
         }
     })
     .finally(() => {
-        if (launchBtn) { launchBtn.disabled = false; launchBtn.innerHTML = '<i class="fa-solid fa-rocket"></i> Launch'; }
+        if (launchBtn) { launchBtn.disabled = false; launchBtn.innerHTML = '<i data-lucide="rocket" class="w-4 h-4 inline-block"></i> Launch'; }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     });
 }
 
@@ -321,16 +322,7 @@ async function switchModel(modelId) {
     addTerminalLine(`[SYSTEM] Switching AI model to ${modelId}...`, 'info');
     
     try {
-        // Determine provider based on model ID (heuristic)
-        let provider = 'ollama';
-        if (modelId.startsWith('gpt')) {
-            provider = 'openai';
-        }
-        
         const { error } = await spectraApi.post('/api/settings', {
-                ai_provider: provider,
-                llm_model: provider === 'api' ? modelId : undefined,
-                ollama_model: provider === 'ollama' ? modelId : undefined,
                 log_level: 'INFO',
                 plugin_safe_mode: true
         });
@@ -353,7 +345,8 @@ function showGraphPlaceholder() {
     const container = document.getElementById('network-graph');
     if (!container) return;
     graphPlaceholderVisible = true;
-    container.innerHTML = '<div class="text-center text-slate-700"><i class="fa-solid fa-diagram-project text-3xl mb-2"></i><p class="text-xs">Discovered services and hosts appear here</p></div>';
+    container.innerHTML = '<div class="text-center text-slate-700"><i data-lucide="git-branch" class="w-5 h-5 inline-block mb-2"></i><p class="text-xs">Discovered services and hosts appear here</p></div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function initGraph() {
@@ -593,7 +586,8 @@ async function loadMetrics() {
 
     // Show empty state for findings when none exist
     if (findingsLoading && findingsData && missions.length === 0) {
-        findingsLoading.innerHTML = '<div class="col-span-4 dash-empty" style="padding:1rem 0.5rem;min-height:auto;"><i class="fa-solid fa-shield-halved block" style="font-size:1.25rem;"></i><p style="font-size:0.75rem;">No findings yet</p></div>';
+        findingsLoading.innerHTML = '<div class="col-span-4 dash-empty" style="padding:1rem 0.5rem;min-height:auto;"><i data-lucide="shield" class="w-5 h-5 inline-block"></i><p style="font-size:0.75rem;">No findings yet</p></div>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
     // Gather all findings
@@ -613,7 +607,8 @@ async function loadMetrics() {
     if (metricsSection && missions.length === 0 && allFindings.length === 0) {
         const metricsBody = metricsSection.querySelector('.p-5');
         if (metricsBody) {
-            metricsBody.innerHTML = '<div class="dash-empty" style="padding:3rem 1rem;"><i class="fa-solid fa-chart-bar block"></i><h3>No data yet</h3><p>Complete your first assessment to see trends and metrics here.</p></div>';
+            metricsBody.innerHTML = '<div class="dash-empty" style="padding:3rem 1rem;"><i data-lucide="bar-chart-3" class="w-5 h-5 inline-block"></i><h3>No data yet</h3><p>Complete your first assessment to see trends and metrics here.</p></div>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     } else {
         renderFindingsOverTime(allFindings, days);

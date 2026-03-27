@@ -9,7 +9,7 @@ function addInstallCmd() {
     div.className = 'flex gap-2';
     div.innerHTML = `
         <input type="text" class="install-cmd w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-sm" placeholder="Command">
-        <button onclick="this.parentElement.remove()" class="px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"><i class="fa-solid fa-trash"></i></button>
+        <button onclick="this.parentElement.remove()" class="px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"><i data-lucide="trash-2" class="w-4 h-4 inline-block"></i></button>
     `;
     container.appendChild(div);
 }
@@ -65,17 +65,18 @@ function loadExample() {
 async function validatePlugin() {
     const status = document.getElementById('action-status');
     status.classList.remove('hidden');
-    status.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Validating...';
+    status.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Validating...';
     
     try {
         const config = buildConfig();
         const { error } = await spectraApi.post('/api/v1/tools/validate', config);
         if (error) throw new Error(error);
         
-        status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check"></i> Validation passed!</span>';
+        status.innerHTML = '<span class="text-green-400"><i data-lucide="check" class="w-4 h-4 inline-block"></i> Validation passed!</span>';
     } catch (e) {
-        status.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-times"></i> ${e.message}</span>`;
+        status.innerHTML = `<span class="text-red-400"><i data-lucide="x" class="w-4 h-4 inline-block"></i> ${e.message}</span>`;
     }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 async function getPrivateKeyPem() {
@@ -98,7 +99,7 @@ async function getPrivateKeyPem() {
 async function signAndSave() {
     const status = document.getElementById('action-status');
     status.classList.remove('hidden');
-    status.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Signing & Saving...';
+    status.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Signing & Saving...';
     
     try {
         const config = buildConfig();
@@ -108,7 +109,7 @@ async function signAndSave() {
         try {
             privateKeyPem = await getPrivateKeyPem();
         } catch (e) {
-            status.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-times"></i> ${e.message}</span>`;
+            status.innerHTML = `<span class="text-red-400"><i data-lucide="x" class="w-4 h-4 inline-block"></i> ${e.message}</span>`;
             return;
         }
 
@@ -134,21 +135,22 @@ async function signAndSave() {
         });
         if (uploadError) throw new Error(uploadError);
         
-        status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check"></i> Plugin signed & saved! Redirecting...</span>';
+        status.innerHTML = '<span class="text-green-400"><i data-lucide="check" class="w-4 h-4 inline-block"></i> Plugin signed & saved! Redirecting...</span>';
 
         setTimeout(() => {
             window.location.href = '/toolbox';
         }, 1500);
 
     } catch (e) {
-        status.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-times"></i> ${e.message}</span>`;
+        status.innerHTML = `<span class="text-red-400"><i data-lucide="x" class="w-4 h-4 inline-block"></i> ${e.message}</span>`;
     }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 async function saveWithoutSigning() {
     const status = document.getElementById('action-status');
     status.classList.remove('hidden');
-    status.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Saving (unsigned)...';
+    status.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Saving (unsigned)...';
 
     try {
         const config = buildConfig();
@@ -156,15 +158,16 @@ async function saveWithoutSigning() {
         const { error } = await spectraApi.post('/api/v1/tools/save-unsigned', config);
         if (error) throw new Error(error);
 
-        status.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check"></i> Plugin saved (unsigned)! Redirecting...</span>';
+        status.innerHTML = '<span class="text-green-400"><i data-lucide="check" class="w-4 h-4 inline-block"></i> Plugin saved (unsigned)! Redirecting...</span>';
         
         setTimeout(() => {
             window.location.href = '/toolbox';
         }, 1500);
         
     } catch (e) {
-        status.innerHTML = `<span class="text-red-400"><i class="fa-solid fa-times"></i> ${e.message}</span>`;
+        status.innerHTML = `<span class="text-red-400"><i data-lucide="x" class="w-4 h-4 inline-block"></i> ${e.message}</span>`;
     }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Auto-update preview on change

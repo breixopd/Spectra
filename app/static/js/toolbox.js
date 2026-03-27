@@ -4,6 +4,20 @@
  * Also handles Drag & Drop file uploads for plugins.
  */
 
+function _faToLucide(faIcon) {
+    const map = {
+        'fa-wrench':'wrench','fa-bug':'bug','fa-globe':'globe','fa-key':'key','fa-shield':'shield',
+        'fa-shield-halved':'shield','fa-terminal':'terminal','fa-network-wired':'network',
+        'fa-crosshairs':'crosshair','fa-database':'database','fa-bolt':'zap','fa-skull-crossbones':'skull',
+        'fa-magnifying-glass':'search','fa-search':'search','fa-code':'code','fa-server':'server',
+        'fa-lock':'lock','fa-file':'file','fa-folder':'folder','fa-rocket':'rocket','fa-play':'play',
+        'fa-screwdriver-wrench':'wrench','fa-shield-virus':'shield-alert','fa-toolbox':'wrench',
+    };
+    if (!faIcon) return 'wrench';
+    const name = faIcon.replace(/^fa-/, '');
+    return map[faIcon] || map['fa-' + name] || name;
+}
+
 let _lastToolsHash = '';
 
 function _hashTools(tools) {
@@ -19,7 +33,7 @@ async function refreshTools() {
 
         if (!tools || tools.length === 0) {
             if (_lastToolsHash !== 'empty') {
-                grid.innerHTML = '<div class="empty-state glass-panel rounded-xl"><i class="fa-solid fa-toolbox text-rose-400/40"></i><h3>No tools registered</h3><p>Upload a plugin JSON file to get started.</p></div>';
+                grid.innerHTML = '<div class="empty-state glass-panel rounded-xl"><i data-lucide="wrench" class="w-8 h-8 inline-block text-rose-400/40"></i><h3>No tools registered</h3><p>Upload a plugin JSON file to get started.</p></div>';
                 _lastToolsHash = 'empty';
             }
             return;
@@ -33,7 +47,7 @@ async function refreshTools() {
             <div onclick="selectTool('${tool.id}')" class="glass-panel p-5 rounded-xl hover:bg-white/5 cursor-pointer group border border-transparent hover:border-violet-500/30 relative overflow-hidden animate-fade-in-up" style="animation-delay: ${i * 0.04}s">
                 <div class="flex justify-between items-start mb-3">
                     <div class="w-9 h-9 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center" style="background:${escapeHtml(tool.color || 'rgba(139,92,246,0.2)')}; color:#fff;">
-                        <i class="fa-solid ${escapeHtml(tool.icon || 'fa-wrench')}"></i>
+                        <i data-lucide="${_faToLucide(tool.icon)}" class="w-5 h-5 inline-block"></i>
                     </div>
                     <span class="px-2 py-0.5 rounded text-xs font-mono font-medium ${getStatusColor(tool.status)}">
                         ${(tool.status || 'pending').toUpperCase()}
@@ -44,6 +58,7 @@ async function refreshTools() {
                 <div class="mt-2 text-xs text-slate-500 font-mono">${escapeHtml(tool.category)} · v${escapeHtml(tool.version)}</div>
             </div>
         `).join('');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (e) {
         grid.innerHTML = `<div class="text-red-400 p-4">Failed to load tools: ${escapeHtml(String(e))}</div>`;
     }
@@ -64,7 +79,7 @@ let currentTool = null;
 
 async function selectTool(id) {
     const container = document.getElementById('tool-details');
-    container.innerHTML = '<div class="text-center py-8 text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading...</div>';
+    container.innerHTML = '<div class="text-center py-8 text-slate-500"><i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-2"></i>Loading...</div>';
     
     try {
         const [toolResult, statsResult] = await Promise.all([
@@ -82,7 +97,7 @@ async function selectTool(id) {
         container.innerHTML = `
             <div class="flex items-center gap-4 mb-6 animate-fade-in-up">
                 <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl" style="background:${escapeHtml(tool.color || 'rgba(139,92,246,0.2)')}; color:#fff;">
-                    <i class="fa-solid ${escapeHtml(tool.icon || 'fa-wrench')}"></i>
+                    <i data-lucide="${_faToLucide(tool.icon)}" class="w-5 h-5 inline-block"></i>
                 </div>
                 <div>
                     <h2 class="text-xl font-bold text-white">${escapeHtml(tool.name)}</h2>
@@ -134,28 +149,29 @@ async function selectTool(id) {
                 </div>` : ''}
                 <div class="pt-4 border-t border-white/10 flex gap-3">
                     <button onclick="showTestModal('${tool.id}')" class="flex-1 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white text-sm font-medium transition-all">
-                        <i class="fa-solid fa-play mr-1"></i> Run Test
+                        <i data-lucide="play" class="w-4 h-4 inline-block mr-1"></i> Run Test
                     </button>
                     ${tool.enabled ? `
                         <button onclick="toggleToolEnabled('${tool.id}', false)" class="px-4 py-2.5 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-300 transition-colors">
-                            <i class="fa-solid fa-toggle-off"></i>
+                            <i data-lucide="toggle-left" class="w-5 h-5 inline-block"></i>
                         </button>
                     ` : `
                         <button onclick="toggleToolEnabled('${tool.id}', true)" class="px-4 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-colors">
-                            <i class="fa-solid fa-toggle-on"></i>
+                            <i data-lucide="toggle-right" class="w-5 h-5 inline-block"></i>
                         </button>
                     `}
                     ${tool.status !== 'ready' && tool.status !== 'installing' ? `
                         <button onclick="installTool('${tool.id}')" class="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors">
-                            <i class="fa-solid fa-download mr-1"></i> Install
+                            <i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i> Install
                         </button>
                     ` : ''}
                     <button onclick="deleteTool('${tool.id}')" class="px-4 py-2.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors">
-                        <i class="fa-solid fa-trash"></i>
+                        <i data-lucide="trash-2" class="w-4 h-4 inline-block"></i>
                     </button>
                 </div>
             </div>
         `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (e) {
         container.innerHTML = `<div class="text-red-400 p-4">Error: ${escapeHtml(String(e))}</div>`;
     }
@@ -244,7 +260,7 @@ async function handleFiles(files) {
     
     const status = document.getElementById('upload-status');
     status.classList.remove('hidden');
-    status.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+    status.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Uploading...';
     
     try {
         // [FIX] Use FormData to send file, not JSON
@@ -279,7 +295,7 @@ function showTestModal(toolId) {
             <div id="test-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
                 <div class="glass p-8 rounded-2xl w-full max-w-2xl relative max-h-[80vh] overflow-hidden flex flex-col">
                     <button onclick="document.getElementById('test-modal').remove()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
-                        <i class="fa-solid fa-xmark text-xl"></i>
+                        <i data-lucide="x" class="w-5 h-5 inline-block"></i>
                     </button>
                     
                     <h3 class="text-xl font-bold text-white mb-4">Test Tool: <span id="test-tool-name">${toolId}</span></h3>
@@ -298,7 +314,7 @@ function showTestModal(toolId) {
                     </div>
                     
                     <button onclick="runToolTest('${toolId}')" id="test-run-btn" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors mb-4">
-                        <i class="fa-solid fa-play"></i> Run Test
+                        <i data-lucide="play" class="w-4 h-4 inline-block"></i> Run Test
                     </button>
                     
                     <div id="test-result" class="flex-1 overflow-auto bg-black/50 rounded-lg p-4 font-mono text-sm hidden">
@@ -334,7 +350,7 @@ async function runToolTest(toolId) {
     }
 
     runBtn.disabled = true;
-        runBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
+        runBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Running...';
     resultDiv.classList.remove('hidden');
     resultDiv.innerHTML = '<div class="text-gray-400">Executing tool... This may take a while.</div>';
 
@@ -370,7 +386,7 @@ async function runToolTest(toolId) {
         resultDiv.innerHTML = `<div class="text-red-400">Error: ${escapeHtml(e.message)}</div>`;
     } finally {
         runBtn.disabled = false;
-        runBtn.innerHTML = '<i class="fa-solid fa-play"></i> Run Test';
+        runBtn.innerHTML = '<i data-lucide="play" class="w-4 h-4 inline-block"></i> Run Test';
     }
 }
 

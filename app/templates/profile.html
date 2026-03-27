@@ -34,22 +34,22 @@
         <div class="md:col-span-3 lg:col-span-2 profile-sidebar">
             <nav class="space-y-1">
                 <a href="#" data-section="profile" class="active flex items-center px-3 py-2 rounded-lg text-sm font-medium">
-                    <i class="fa-solid fa-user mr-2 text-violet-400 w-4 text-center"></i> Profile
+                    <i data-lucide="user" class="w-4 h-4 inline-block mr-2 text-violet-400"></i> Profile
                 </a>
                 <a href="#" data-section="security" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-lock mr-2 text-slate-500 w-4 text-center"></i> Security
+                    <i data-lucide="lock" class="w-4 h-4 inline-block mr-2 text-slate-500"></i> Security
                 </a>
                 <a href="#" data-section="api-keys" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-key mr-2 text-slate-500 w-4 text-center"></i> API Keys
+                    <i data-lucide="key" class="w-4 h-4 inline-block mr-2 text-slate-500"></i> API Keys
                 </a>
                 <a href="#" data-section="activity" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-clock-rotate-left mr-2 text-slate-500 w-4 text-center"></i> Activity
+                    <i data-lucide="history" class="w-4 h-4 inline-block mr-2 text-slate-500"></i> Activity
                 </a>
                 <a href="#" data-section="settings" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-sliders mr-2 text-slate-500 w-4 text-center"></i> Settings
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4 inline-block mr-2 text-slate-500"></i> Settings
                 </a>
                 <a href="#" data-section="plan" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-credit-card mr-2 text-slate-500 w-4 text-center"></i> Plan
+                    <i data-lucide="credit-card" class="w-4 h-4 inline-block mr-2 text-slate-500"></i> Plan
                 </a>
             </nav>
         </div>
@@ -185,7 +185,7 @@
                             <p class="text-sm text-slate-400">Manage keys for programmatic API access.</p>
                         </div>
                         <button onclick="generateApiKey()" class="px-3 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">
-                            <i class="fa-solid fa-plus mr-1"></i> Generate Key
+                            <i data-lucide="plus" class="w-3.5 h-3.5 inline-block mr-1"></i> Generate Key
                         </button>
                     </div>
                     <div id="api-keys-list">
@@ -212,7 +212,7 @@
                     <p class="text-sm text-slate-400 mb-4">Use your own AI provider credentials for missions.</p>
                     <div id="byok-gate" class="hidden">
                         <div class="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 mb-4">
-                            <i class="fa-solid fa-lock text-amber-400"></i>
+                            <i data-lucide="lock" class="w-4 h-4 inline-block text-amber-400"></i>
                             <div>
                                 <div class="text-sm font-medium text-amber-300">Feature locked</div>
                                 <div class="text-xs text-amber-400/70">BYOK is available on the <strong>Enterprise</strong> plan. <a href="#pricing" class="underline hover:text-white">Upgrade</a></div>

@@ -27,7 +27,7 @@
             <p class="text-slate-400 text-sm mt-0.5">Guides, tutorials, and troubleshooting</p>
         </div>
         <a href="/docs/api" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-medium transition-colors inline-flex items-center gap-2">
-            <i class="fa-solid fa-book-open"></i> Full API Reference
+            <i data-lucide="book-open" class="w-4 h-4 inline-block"></i> Full API Reference
         </a>
     </div>
 
@@ -36,22 +36,22 @@
         <div class="md:col-span-3 lg:col-span-2 help-sidebar overflow-y-auto">
             <nav class="space-y-1">
                 <a href="#" data-section="getting-started" class="active flex items-center px-3 py-2 rounded-lg text-sm font-medium">
-                    <i class="fa-solid fa-rocket mr-2 text-violet-400 w-4 text-center"></i> Getting Started
+                    <i data-lucide="rocket" class="w-4 h-4 inline-block mr-2 text-violet-400 text-center"></i> Getting Started
                 </a>
                 <a href="#" data-section="manual-mode" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-terminal mr-2 text-slate-500 w-4 text-center"></i> Manual Pentest
+                    <i data-lucide="terminal" class="w-4 h-4 inline-block mr-2 text-slate-500 text-center"></i> Manual Pentest
                 </a>
                 <a href="#" data-section="api-access" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-code mr-2 text-slate-500 w-4 text-center"></i> API Access
+                    <i data-lucide="code" class="w-4 h-4 inline-block mr-2 text-slate-500 text-center"></i> API Access
                 </a>
                 <a href="#" data-section="services" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-server mr-2 text-slate-500 w-4 text-center"></i> Services
+                    <i data-lucide="server" class="w-4 h-4 inline-block mr-2 text-slate-500 text-center"></i> Services
                 </a>
                 <a href="#" data-section="plugins" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-puzzle-piece mr-2 text-slate-500 w-4 text-center"></i> Plugins
+                    <i data-lucide="puzzle" class="w-4 h-4 inline-block mr-2 text-slate-500 text-center"></i> Plugins
                 </a>
                 <a href="#" data-section="troubleshooting" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
-                    <i class="fa-solid fa-wrench mr-2 text-slate-500 w-4 text-center"></i> Troubleshooting
+                    <i data-lucide="wrench" class="w-4 h-4 inline-block mr-2 text-slate-500 text-center"></i> Troubleshooting
                 </a>
             </nav>
         </div>
@@ -113,7 +113,7 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <span class="text-sm font-medium text-white">When to use Manual vs Autonomous</span>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <p class="text-xs text-slate-400">Use <strong class="text-slate-300">Autonomous mode</strong> (Dashboard → Launch) for comprehensive, AI-driven assessments where the agents plan, execute, and adapt automatically. Use <strong class="text-slate-300">Manual mode</strong> when you want precise control — running specific tools with exact arguments, chaining scans in a custom pipeline, or investigating a specific finding deeper.</p>
@@ -122,15 +122,15 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <span class="text-sm font-medium text-white">Available Tools</span>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <p class="text-xs text-slate-400 mb-2">All installed plugins are available in manual mode. Common categories include:</p>
                                 <div class="grid grid-cols-2 gap-2 text-xs">
-                                    <div class="flex items-center gap-2 text-slate-300"><i class="fa-solid fa-satellite-dish text-violet-400 w-4"></i> <strong>Recon:</strong> nmap, subfinder, httpx, amass</div>
-                                    <div class="flex items-center gap-2 text-slate-300"><i class="fa-solid fa-globe text-blue-400 w-4"></i> <strong>Web:</strong> nikto, feroxbuster, sqlmap, wpscan</div>
-                                    <div class="flex items-center gap-2 text-slate-300"><i class="fa-solid fa-key text-amber-400 w-4"></i> <strong>Brute:</strong> hydra, kerbrute, crackmapexec</div>
-                                    <div class="flex items-center gap-2 text-slate-300"><i class="fa-solid fa-bug text-rose-400 w-4"></i> <strong>Vuln:</strong> nuclei, searchsploit, testssl</div>
+                                    <div class="flex items-center gap-2 text-slate-300"><i data-lucide="radar" class="w-4 h-4 inline-block text-violet-400"></i> <strong>Recon:</strong> nmap, subfinder, httpx, amass</div>
+                                    <div class="flex items-center gap-2 text-slate-300"><i data-lucide="globe" class="w-4 h-4 inline-block text-blue-400"></i> <strong>Web:</strong> nikto, feroxbuster, sqlmap, wpscan</div>
+                                    <div class="flex items-center gap-2 text-slate-300"><i data-lucide="key" class="w-4 h-4 inline-block text-amber-400"></i> <strong>Brute:</strong> hydra, kerbrute, crackmapexec</div>
+                                    <div class="flex items-center gap-2 text-slate-300"><i data-lucide="bug" class="w-4 h-4 inline-block text-rose-400"></i> <strong>Vuln:</strong> nuclei, searchsploit, testssl</div>
                                 </div>
                                 <p class="text-xs text-slate-500 mt-2">See the <strong>Toolbox</strong> page for the full registry with install status and documentation links.</p>
                             </div>
@@ -138,7 +138,7 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <span class="text-sm font-medium text-white">Running Scans Manually</span>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <p class="text-xs text-slate-400">Navigate to <strong class="text-slate-300">Manual Mode</strong> → <strong class="text-slate-300">Execute</strong> tab. Select a tool from the catalog, fill in the target and parameters, then click <strong class="text-slate-300">Run</strong>. Output streams in real-time in the terminal panel below. You can run multiple tools concurrently in separate sessions.</p>
@@ -147,7 +147,7 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <span class="text-sm font-medium text-white">Tool Pipelines</span>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <p class="text-xs text-slate-400">Use the <strong class="text-slate-300">Pipeline</strong> tab to chain tools together. Output from one stage feeds into the next — for example, run <span class="kb">nmap</span> to discover open ports, then pipe those ports into <span class="kb">nuclei</span> for vulnerability scanning. Drag stages to reorder, and use the auto-parse feature to extract targets from previous output.</p>
@@ -156,7 +156,7 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <span class="text-sm font-medium text-white">Web Shell &amp; VPN</span>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <p class="text-xs text-slate-400">For full shell access, open a <strong class="text-slate-300">Web Shell</strong> session from any active sandbox. This gives you a terminal inside the tools container with all security tools pre-installed. For remote targets behind a VPN, upload your <span class="kb">.ovpn</span> configuration in <strong class="text-slate-300">Settings → VPN</strong> and select it when launching a mission.</p>
@@ -176,7 +176,7 @@
 
                     <div class="space-y-3">
                         <div class="help-card rounded-lg p-4">
-                            <h3 class="text-sm font-semibold text-white mb-2"><i class="fa-solid fa-key text-amber-400 mr-2"></i>Getting Your Token</h3>
+                            <h3 class="text-sm font-semibold text-white mb-2"><i data-lucide="key" class="w-4 h-4 inline-block text-amber-400 mr-2"></i>Getting Your Token</h3>
                             <p class="text-xs text-slate-400 mb-2">Authenticate via <span class="kb">POST /api/v1/auth/token</span> with your username and password. The response includes a JWT access token.</p>
                             <pre class="bg-slate-950/60 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto"><code>curl -X POST '/api/v1/auth/token' \
   -d 'username=admin&password=yourpassword' \
@@ -184,13 +184,13 @@
                         </div>
 
                         <div class="help-card rounded-lg p-4">
-                            <h3 class="text-sm font-semibold text-white mb-2"><i class="fa-solid fa-shield-halved text-emerald-400 mr-2"></i>Authentication</h3>
+                            <h3 class="text-sm font-semibold text-white mb-2"><i data-lucide="shield" class="w-4 h-4 inline-block text-emerald-400 mr-2"></i>Authentication</h3>
                             <p class="text-xs text-slate-400">Include the token in every request as a Bearer token in the Authorization header:</p>
                             <pre class="bg-slate-950/60 rounded-lg p-3 text-xs font-mono text-slate-300 mt-2"><code>Authorization: Bearer eyJhbGciOiJIUzI1NiIs...</code></pre>
                         </div>
 
                         <div class="help-card rounded-lg p-4">
-                            <h3 class="text-sm font-semibold text-white mb-2"><i class="fa-solid fa-gauge text-violet-400 mr-2"></i>Rate Limits &amp; Best Practices</h3>
+                            <h3 class="text-sm font-semibold text-white mb-2"><i data-lucide="gauge" class="w-4 h-4 inline-block text-violet-400 mr-2"></i>Rate Limits &amp; Best Practices</h3>
                             <ul class="text-xs text-slate-400 space-y-1 list-disc list-inside">
                                 <li>API calls are rate-limited per-user. Check response headers for limit info.</li>
                                 <li>Use pagination for list endpoints (<span class="kb">?page=1&per_page=20</span>).</li>
@@ -200,7 +200,7 @@
                         </div>
 
                         <div class="flex items-center gap-3 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20">
-                            <i class="fa-solid fa-arrow-right text-violet-400"></i>
+                            <i data-lucide="arrow-right" class="w-4 h-4 inline-block text-violet-400"></i>
                             <span class="text-xs text-violet-300">See the <a href="/docs/api" class="underline hover:text-white">full API Reference</a> for all endpoints, schemas, and an interactive playground.</span>
                         </div>
                     </div>
@@ -219,7 +219,7 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <span class="text-sm font-medium text-white">Service Topology (Local vs External)</span>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <p class="text-xs text-slate-400">{{ app_name }} can run services locally (Docker containers on the same host) or route them to external servers. Two gateway URLs control this:
@@ -229,7 +229,7 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <span class="text-sm font-medium text-white">Sandbox Workers</span>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <p class="text-xs text-slate-400">Sandbox workers are isolated Docker containers (based on Kali Linux) where security tools execute. Each mission gets its own sandbox for isolation. Configure pool size, memory limits, CPU shares, and timeouts in <strong class="text-slate-300">Settings → Sandbox</strong>. For high-throughput deployments, use an external sandbox orchestrator to distribute work across multiple nodes.</p>
@@ -238,7 +238,7 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <span class="text-sm font-medium text-white">MinIO / S3 Storage</span>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <p class="text-xs text-slate-400">MinIO (or any S3-compatible endpoint) stores mission artifacts: scan outputs, evidence files, screenshots, and generated reports. Configure the endpoint URL, access key, secret key, and region in <strong class="text-slate-300">Settings</strong>. Without S3 configured, artifacts are stored locally on disk.</p>
@@ -247,7 +247,7 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <span class="text-sm font-medium text-white">Health Monitoring</span>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <p class="text-xs text-slate-400">The <strong class="text-slate-300">Admin → Services</strong> tab shows real-time health status for all registered services with colored indicators: green (healthy), red (unhealthy), yellow (no health check), gray (disabled). The <strong class="text-slate-300">Observability</strong> page provides deeper metrics on system performance, queue depths, and resource usage.</p>
@@ -267,12 +267,12 @@
 
                     <div class="space-y-3">
                         <div class="help-card rounded-lg p-4">
-                            <h3 class="text-sm font-semibold text-white mb-2"><i class="fa-solid fa-file-code text-violet-400 mr-2"></i>What Are Plugins?</h3>
+                            <h3 class="text-sm font-semibold text-white mb-2"><i data-lucide="file-code" class="w-4 h-4 inline-block text-violet-400 mr-2"></i>What Are Plugins?</h3>
                             <p class="text-xs text-slate-400">Plugins are JSON configuration files that describe how to install and run a security tool. Each plugin defines the tool's name, description, installation commands, execution syntax, argument schema, and output parsing rules. Plugins live in the <span class="kb">plugins/</span> directory.</p>
                         </div>
 
                         <div class="help-card rounded-lg p-4">
-                            <h3 class="text-sm font-semibold text-white mb-2"><i class="fa-solid fa-toolbox text-rose-400 mr-2"></i>Available Plugins</h3>
+                            <h3 class="text-sm font-semibold text-white mb-2"><i data-lucide="wrench" class="w-4 h-4 inline-block text-rose-400 mr-2"></i>Available Plugins</h3>
                             <p class="text-xs text-slate-400 mb-2">{{ app_name }} ships with 25+ plugins for common security tools:</p>
                             <div class="flex flex-wrap gap-1.5">
                                 {% for name in ['nmap', 'nuclei', 'nikto', 'sqlmap', 'hydra', 'feroxbuster', 'subfinder', 'httpx', 'amass', 'gobuster', 'ffuf', 'dirsearch', 'wpscan', 'testssl', 'crackmapexec', 'enum4linux', 'kerbrute', 'searchsploit', 'metasploit', 'naabu', 'whatweb', 'linpeas', 'winpeas', 'socat', 'chisel', 'impacket'] %}
@@ -282,12 +282,12 @@
                         </div>
 
                         <div class="help-card rounded-lg p-4">
-                            <h3 class="text-sm font-semibold text-white mb-2"><i class="fa-solid fa-shield-halved text-emerald-400 mr-2"></i>Sandbox Execution</h3>
+                            <h3 class="text-sm font-semibold text-white mb-2"><i data-lucide="shield" class="w-4 h-4 inline-block text-emerald-400 mr-2"></i>Sandbox Execution</h3>
                             <p class="text-xs text-slate-400">All tools execute inside isolated sandbox containers — never on the host. Each sandbox has its own filesystem, network namespace, and resource limits. When <strong class="text-slate-300">Plugin Safe Mode</strong> is enabled in Settings, only digitally signed plugins are allowed to run.</p>
                         </div>
 
                         <div class="help-card rounded-lg p-4">
-                            <h3 class="text-sm font-semibold text-white mb-2"><i class="fa-solid fa-plus text-blue-400 mr-2"></i>Adding Plugins</h3>
+                            <h3 class="text-sm font-semibold text-white mb-2"><i data-lucide="plus" class="w-4 h-4 inline-block text-blue-400 mr-2"></i>Adding Plugins</h3>
                             <p class="text-xs text-slate-400">To add a new plugin, create a JSON file in the <span class="kb">plugins/</span> directory or use the <strong class="text-slate-300">Toolbox → Upload</strong> feature. The plugin auto-installs in the tools container on next startup. Use <strong class="text-slate-300">Toolbox → Create</strong> for an interactive plugin builder.</p>
                         </div>
                     </div>
@@ -306,10 +306,10 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <div class="flex items-center gap-2">
-                                    <i class="fa-solid fa-circle-exclamation text-amber-400 text-xs"></i>
+                                    <i data-lucide="alert-circle" class="w-3.5 h-3.5 inline-block text-amber-400"></i>
                                     <span class="text-sm font-medium text-white">Mission stuck or not progressing</span>
                                 </div>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
@@ -324,10 +324,10 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <div class="flex items-center gap-2">
-                                    <i class="fa-solid fa-circle-exclamation text-amber-400 text-xs"></i>
+                                    <i data-lucide="alert-circle" class="w-3.5 h-3.5 inline-block text-amber-400"></i>
                                     <span class="text-sm font-medium text-white">AI provider connection issues</span>
                                 </div>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
@@ -341,10 +341,10 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <div class="flex items-center gap-2">
-                                    <i class="fa-solid fa-circle-exclamation text-amber-400 text-xs"></i>
+                                    <i data-lucide="alert-circle" class="w-3.5 h-3.5 inline-block text-amber-400"></i>
                                     <span class="text-sm font-medium text-white">Sandbox errors</span>
                                 </div>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc list-inside">
@@ -358,10 +358,10 @@
                         <div>
                             <button class="help-accordion w-full flex items-center justify-between px-4 py-3 text-left" onclick="toggleAccordion(this)">
                                 <div class="flex items-center gap-2">
-                                    <i class="fa-solid fa-circle-exclamation text-amber-400 text-xs"></i>
+                                    <i data-lucide="alert-circle" class="w-3.5 h-3.5 inline-block text-amber-400"></i>
                                     <span class="text-sm font-medium text-white">Permission issues</span>
                                 </div>
-                                <i class="fa-solid fa-chevron-right text-slate-500 text-xs transition-transform accordion-icon"></i>
+                                <i data-lucide="chevron-right" class="w-3 h-3 inline-block text-slate-500 transition-transform accordion-icon"></i>
                             </button>
                             <div class="help-accordion-body px-4 pb-3">
                                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc list-inside">

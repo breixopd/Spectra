@@ -26,7 +26,7 @@
     <div class="relative">
         <input id="{{ id }}" name="{{ id }}" type="password" class="form-input pr-10" placeholder="{{ placeholder }}">
         <button type="button" onclick="this.previousElementSibling.type = this.previousElementSibling.type === 'password' ? 'text' : 'password'" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
-            <i class="fa-solid fa-eye text-xs"></i>
+            <i data-lucide="eye" class="w-3.5 h-3.5"></i>
         </button>
     </div>
     {% if help %}<p class="text-xs text-slate-600 mt-1">{{ help }}</p>{% endif %}
@@ -57,19 +57,19 @@
 
 {% macro btn_primary(text, onclick="", type="button", id="", icon="", disabled=false) %}
 <button type="{{ type }}" {{ 'id="' + id + '"' if id }} onclick="{{ onclick }}" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors" {{ 'disabled' if disabled }}>
-    {% if icon %}<i class="fa-solid fa-{{ icon }} mr-1.5"></i>{% endif %}{{ text }}
+    {% if icon %}<i data-lucide="{{ icon }}" class="w-4 h-4 inline-block mr-1.5"></i>{% endif %}{{ text }}
 </button>
 {% endmacro %}
 
 {% macro btn_secondary(text, onclick="", type="button", id="", icon="") %}
 <button type="{{ type }}" {{ 'id="' + id + '"' if id }} onclick="{{ onclick }}" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg text-sm font-medium border border-emerald-500/30 transition-colors">
-    {% if icon %}<i class="fa-solid fa-{{ icon }} mr-1.5"></i>{% endif %}{{ text }}
+    {% if icon %}<i data-lucide="{{ icon }}" class="w-4 h-4 inline-block mr-1.5"></i>{% endif %}{{ text }}
 </button>
 {% endmacro %}
 
 {% macro btn_danger(text, onclick="", type="button", id="", icon="") %}
 <button type="{{ type }}" {{ 'id="' + id + '"' if id }} onclick="{{ onclick }}" class="px-4 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 rounded-lg text-sm font-medium border border-rose-500/30 transition-colors">
-    {% if icon %}<i class="fa-solid fa-{{ icon }} mr-1.5"></i>{% endif %}{{ text }}
+    {% if icon %}<i data-lucide="{{ icon }}" class="w-4 h-4 inline-block mr-1.5"></i>{% endif %}{{ text }}
 </button>
 {% endmacro %}
 
@@ -82,7 +82,7 @@
 
 {% macro empty_state(message, icon="inbox") %}
 <div class="flex flex-col items-center justify-center py-12 text-slate-600">
-    <i class="fa-solid fa-{{ icon }} text-3xl mb-3"></i>
+    <i data-lucide="{{ icon }}" class="w-8 h-8 mb-3"></i>
     <p class="text-sm">{{ message }}</p>
 </div>
 {% endmacro %}

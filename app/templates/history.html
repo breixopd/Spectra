@@ -25,7 +25,7 @@
         <!-- Mission Details -->
         <div class="flex-1 glass-panel rounded-xl flex flex-col overflow-hidden relative">
             <div id="mission-details-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 animate-fade-in">
-                <i class="fa-solid fa-folder-open text-3xl text-slate-600/50 mb-3"></i>
+                <i data-lucide="folder-open" class="w-8 h-8 inline-block text-slate-600/50 mb-3"></i>
                 <p class="text-sm font-medium text-slate-400">Select a mission to view details</p>
                 <p class="text-xs text-slate-600 mt-1">Click on a mission from the list</p>
             </div>
@@ -40,10 +40,10 @@
                     <div class="flex items-center space-x-2">
                         <span class="px-2 py-1 rounded text-xs font-medium" id="detail-status">Status</span>
                         <button id="download-report-btn" class="p-2 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors" title="Download Report" aria-label="Download Report">
-                            <i class="fa-solid fa-download"></i>
+                            <i data-lucide="download" class="w-4 h-4 inline-block"></i>
                         </button>
                         <button id="delete-mission-btn" onclick="showDeleteModal()" class="p-2 rounded hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors" title="Delete Mission" aria-label="Delete Mission">
-                            <i class="fa-solid fa-trash"></i>
+                            <i data-lucide="trash-2" class="w-4 h-4 inline-block"></i>
                         </button>
                     </div>
                 </div>
@@ -87,16 +87,16 @@
                             <p class="text-xs text-slate-500">Your feedback helps improve AI accuracy and performance</p>
                         </div>
                         <span id="feedback-saved-badge" class="hidden px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/15 text-emerald-400">
-                            <i class="fa-solid fa-check mr-1"></i>Saved
+                            <i data-lucide="check" class="w-3.5 h-3.5 inline-block mr-1"></i>Saved
                         </span>
                     </div>
                     <div class="flex items-center gap-4">
                         <div id="star-rating" class="flex gap-1">
-                            <button type="button" data-star="1" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></button>
-                            <button type="button" data-star="2" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></button>
-                            <button type="button" data-star="3" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></button>
-                            <button type="button" data-star="4" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></button>
-                            <button type="button" data-star="5" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i class="fa-solid fa-star"></i></button>
+                            <button type="button" data-star="1" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i data-lucide="star" class="w-5 h-5 inline-block"></i></button>
+                            <button type="button" data-star="2" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i data-lucide="star" class="w-5 h-5 inline-block"></i></button>
+                            <button type="button" data-star="3" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i data-lucide="star" class="w-5 h-5 inline-block"></i></button>
+                            <button type="button" data-star="4" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i data-lucide="star" class="w-5 h-5 inline-block"></i></button>
+                            <button type="button" data-star="5" class="star-btn text-2xl text-slate-600 hover:text-amber-400 transition-colors"><i data-lucide="star" class="w-5 h-5 inline-block"></i></button>
                         </div>
                         <input id="feedback-comment" type="text" class="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm placeholder-slate-600" placeholder="Optional comment..." maxlength="1000">
                         <button id="submit-feedback-btn" onclick="submitFeedback()" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">
@@ -113,7 +113,7 @@
     <div class="w-full h-full flex items-center justify-center">
     <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4">
         <h3 class="text-lg font-semibold text-white mb-2">
-            <i class="fa-solid fa-exclamation-triangle text-rose-400 mr-2"></i>
+            <i data-lucide="alert-triangle" class="w-5 h-5 inline-block text-rose-400 mr-2"></i>
             Delete Mission
         </h3>
         <p class="text-slate-400 text-sm mb-4">
@@ -125,10 +125,10 @@
                 Cancel
             </button>
             <button id="download-before-delete-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
-                <i class="fa-solid fa-download mr-1"></i> Download Report
+                <i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i> Download Report
             </button>
             <button onclick="confirmDeleteMission()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
-                <i class="fa-solid fa-trash mr-1"></i> Delete
+                <i data-lucide="trash-2" class="w-4 h-4 inline-block mr-1"></i> Delete
             </button>
         </div>
     </div>

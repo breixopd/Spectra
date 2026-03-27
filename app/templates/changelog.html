@@ -7,7 +7,7 @@
             <p class="text-sm text-slate-500 mt-1">{{ app_name }} v{{ version }}</p>
         </div>
         <a href="/dashboard" class="text-xs text-slate-400 hover:text-white transition-colors">
-            <i class="fa-solid fa-arrow-left mr-1"></i> Back to Dashboard
+            <i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i> Back to Dashboard
         </a>
     </div>
 
@@ -40,7 +40,7 @@
         {% endfor %}
     {% else %}
         <div class="empty-state glass-panel rounded-xl">
-            <i class="fa-solid fa-scroll"></i>
+            <i data-lucide="scroll" class="w-5 h-5 inline-block"></i>
             <h3>No changelog entries yet</h3>
             <p>Changelog entries can be managed from the Admin panel under Content management.</p>
         </div>
