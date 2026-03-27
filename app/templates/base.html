@@ -23,13 +23,6 @@
     <!-- Icons (FontAwesome, local — being migrated to Lucide) -->
     <!-- <link rel="stylesheet" href="/static/vendor/css/fontawesome.min.css"> -->
 
-    <!-- Cytoscape.js (local) -->
-    <script src="/static/vendor/js/cytoscape.min.js"></script>
-
-    <!-- Leaflet Maps (local) -->
-    <link rel="stylesheet" href="/static/vendor/css/leaflet.css">
-    <script src="/static/vendor/js/leaflet.js"></script>
-
     <link rel="stylesheet" href="/static/css/base.css">
     {% block extra_css %}{% endblock %}
     <!-- Auth Check -->
@@ -58,25 +51,10 @@
                 .catch(() => {});
         }
 
+        // _spectraToast stub — real implementation loaded from toast.js module
         function _spectraToast(msg, type) {
-            let c = document.getElementById('spectra-toast-container');
-            if (!c) {
-                c = document.createElement('div');
-                c.id = 'spectra-toast-container';
-                c.setAttribute('aria-live', 'assertive');
-                c.setAttribute('role', 'alert');
-                c.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;';
-                document.body.appendChild(c);
-            }
-            const el = document.createElement('div');
-            const colors = {
-                error: 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;',
-                warning: 'background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#fbbf24;',
-            };
-            el.style.cssText = 'padding:0.75rem 1rem;border-radius:0.5rem;font-size:0.85rem;font-weight:500;backdrop-filter:blur(8px);' + (colors[type] || colors.error);
-            el.textContent = msg;
-            c.appendChild(el);
-            setTimeout(() => el.remove(), 5000);
+            // Queue until module loads
+            (window._toastQueue = window._toastQueue || []).push({ msg, type });
         }
 
         function _spectraConfirm(msg, onConfirm, opts) {
@@ -142,21 +120,8 @@
             inp.focus();
         }
 
-        // Show admin nav link for admin users
+        // Plan-gate nav items
         if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
-            spectraApi.get('/api/admin/stats').then(r => {
-                if (!r.error) {
-                    document.addEventListener('DOMContentLoaded', function() {
-                        const adminLink = document.getElementById('admin-nav-link');
-                        if (adminLink) adminLink.classList.remove('hidden');
-                    });
-                    // Handle case where DOM already loaded
-                    const adminLink = document.getElementById('admin-nav-link');
-                    if (adminLink) adminLink.classList.remove('hidden');
-                }
-            }).catch(() => {});
-
-            // Plan-gate nav items
             spectraApi.get('/api/v1/auth/me')
                 .then(({ data: user }) => {
                     if (!user || !user.plan) return;
@@ -264,10 +229,13 @@
                         <i data-lucide="settings" class="w-5 h-5 mr-3 {% if request.path == '/settings' %}text-slate-200{% else %}group-hover:text-slate-200{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Settings</span>
                     </a>
-                    <a href="/admin" id="admin-nav-link" data-tooltip="User & plan management" data-tooltip-pos="right" class="hidden flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                    {% set _nav_user = get_nav_user(request) %}
+                    {% if _nav_user and (_nav_user.get('is_superuser') or _nav_user.get('role') in ['admin', 'operator']) %}
+                    <a href="/admin" id="admin-nav-link" data-tooltip="User &amp; plan management" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i data-lucide="shield-check" class="w-5 h-5 mr-3 {% if request.path == '/admin' %}text-red-400{% else %}group-hover:text-red-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Admin</span>
                     </a>
+                    {% endif %}
                     <div class="border-t border-white/5 my-2"></div>
                     <a href="/docs/api" data-tooltip="API reference & playground" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/docs/api' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
                         <i data-lucide="book-open" class="w-5 h-5 mr-3 {% if request.path == '/docs/api' %}text-indigo-400{% else %}group-hover:text-indigo-400{% endif %} transition-colors"></i>
@@ -485,6 +453,7 @@
     <script src="/static/js/modules/modal.js" type="module"></script>
     <script src="/static/js/modules/tabs.js" type="module"></script>
     <script src="/static/js/modules/confirm.js" type="module"></script>
+    <script src="/static/js/modules/toast.js" type="module"></script>
     <script nonce="{{ request.state.csp_nonce }}">
     function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
     </script>
