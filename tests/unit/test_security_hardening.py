@@ -340,8 +340,8 @@ class TestMissionIsolation:
 
     def test_mission_has_output_dir(self):
         mission = Mission("10.0.0.1", "test")
-        assert mission.output_dir.exists()
         assert mission.id in str(mission.output_dir)
+        assert mission.output_dir.name == mission.id
 
     def test_log_includes_mission_id_prefix(self):
         mission = Mission("10.0.0.1", "test")

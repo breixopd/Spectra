@@ -26,7 +26,7 @@ class ReconnectingWebSocket {
             if (!this._closed && this.retries < this.maxRetries) {
                 const delay = Math.min(this.baseDelay * Math.pow(2, this.retries), this.maxDelay);
                 this.retries++;
-                console.log(`WebSocket reconnecting in ${delay / 1000}s (attempt ${this.retries}/${this.maxRetries})`);
+                console.debug(`WebSocket reconnecting in ${delay / 1000}s (attempt ${this.retries}/${this.maxRetries})`);
                 setTimeout(() => this.connect(), delay);
             }
         };
