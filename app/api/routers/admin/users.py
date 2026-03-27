@@ -26,6 +26,7 @@ from app.core.security import get_password_hash
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
+from app.services.system.rollback import create_snapshot
 from app.version import __version__
 
 logger = logging.getLogger(__name__)
@@ -194,6 +195,28 @@ async def update_user(
     row = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Capture before-state for rollback if reversible fields are changing
+    before_state = {
+        "is_active": row.is_active,
+        "role": row.role,
+        "is_superuser": row.is_superuser,
+        "plan_id": str(row.plan_id) if row.plan_id else None,
+    }
+    reversible_change = any([
+        body.is_active is not None and body.is_active != row.is_active,
+        body.role is not None and body.role != row.role,
+        body.plan_id is not None,
+    ])
+    if reversible_change:
+        await create_snapshot(
+            session,
+            actor_user_id=str(admin.id),
+            entity_type="user",
+            entity_id=str(row.id),
+            action=f"User updated: {row.username}",
+            before_state=before_state,
+        )
 
     if body.role is not None:
         row.role = body.role

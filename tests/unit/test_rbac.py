@@ -23,6 +23,7 @@ class TestPermissionEnum:
             "manage_users",
             "view_audit_log",
             "shell_access",
+            "rollback_own_actions",
         }
         actual = {p.value for p in Permission}
         assert expected == actual
@@ -54,7 +55,8 @@ class TestRolePermissions:
         # Should NOT have admin-only permissions
         assert Permission.MANAGE_SETTINGS not in op_perms
         assert Permission.MANAGE_USERS not in op_perms
-        assert Permission.VIEW_AUDIT_LOG not in op_perms
+        # Operators CAN view their own audit log
+        assert Permission.VIEW_AUDIT_LOG in op_perms
 
     def test_three_roles_defined(self):
         assert set(ROLE_PERMISSIONS.keys()) == {"admin", "operator", "viewer"}
