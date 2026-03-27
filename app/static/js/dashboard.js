@@ -152,8 +152,12 @@ document.addEventListener('click', (e) => {
     if (btn) connectShell(btn.dataset.shellId);
 });
 
-// Poll for shell updates every 5 seconds
-setInterval(updateShellList, 5000);
+// Poll for shell updates every 5 seconds — only when a mission is active
+setInterval(() => {
+    if (currentMissionId) {
+        updateShellList();
+    }
+}, 5000);
 
 
 // --- Mission Control ---
