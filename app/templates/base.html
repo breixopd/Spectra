@@ -279,7 +279,7 @@
         {% endif %}
 
         <!-- Main Content -->
-        <main id="main-content" class="{% if is_public_page %}w-full max-w-lg px-4{% else %}main-content flex-1 p-4 md:p-6 h-full overflow-y-auto overflow-x-hidden flex flex-col{% endif %}">
+        <main id="main-content" tabindex="-1" class="{% if is_public_page %}w-full max-w-lg px-4{% else %}main-content flex-1 p-4 md:p-6 h-full overflow-y-auto overflow-x-hidden flex flex-col{% endif %}">
             {% block content %}{% endblock %}
         </main>
     </div>

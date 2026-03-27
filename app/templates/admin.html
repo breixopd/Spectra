@@ -267,10 +267,10 @@
             </div>
 
             <!-- Deploy Logs Modal -->
-            <div class="modal-backdrop" id="deploy-logs-modal">
-                <div class="modal-content" style="max-width:640px" role="dialog" aria-modal="true">
+            <div class="modal-backdrop hidden" id="deploy-logs-modal">
+                <div class="modal-content" style="max-width:640px" role="dialog" aria-modal="true" aria-labelledby="deploy-logs-modal-title">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-white">Deployment Logs</h3>
+                        <h3 id="deploy-logs-modal-title" class="text-lg font-semibold text-white">Deployment Logs</h3>
                         <button onclick="closeModal('deploy-logs-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
                     </div>
                     <pre id="deploy-logs-content" class="bg-slate-900/50 border border-white/5 rounded-lg p-3 text-xs text-slate-300 font-mono max-h-96 overflow-y-auto whitespace-pre-wrap"></pre>
@@ -685,8 +685,8 @@
 </div>
 
 <!-- Content Modal -->
-<div id="content-modal" class="modal-backdrop">
-    <div class="modal-content" style="max-width:600px;">
+<div id="content-modal" class="modal-backdrop hidden">
+    <div class="modal-content" style="max-width:600px;" role="dialog" aria-modal="true" aria-labelledby="content-modal-title">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-white" id="content-modal-title">Add Content</h3>
             <button onclick="closeContentModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
@@ -757,7 +757,7 @@
 <div class="toast-container" id="toast-container" role="status" aria-live="polite"></div>
 
 <!-- Create/Edit User Modal -->
-<div class="modal-backdrop" id="user-modal">
+<div class="modal-backdrop hidden" id="user-modal">
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
         <div class="flex items-center justify-between mb-4">
             <h3 id="user-modal-title" class="text-lg font-semibold text-white">Create User</h3>
@@ -808,7 +808,7 @@
 </div>
 
 <!-- Create/Edit Plan Modal -->
-<div class="modal-backdrop" id="plan-modal">
+<div class="modal-backdrop hidden" id="plan-modal">
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="plan-modal-title">
         <div class="flex items-center justify-between mb-4">
             <h3 id="plan-modal-title" class="text-lg font-semibold text-white">Create Plan</h3>
@@ -916,7 +916,7 @@
 </div>
 
 <!-- Service Configure Modal -->
-<div class="modal-backdrop" id="service-modal">
+<div class="modal-backdrop hidden" id="service-modal">
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="service-modal-title">
         <div class="flex items-center justify-between mb-4">
             <h3 id="service-modal-title" class="text-lg font-semibold text-white">Configure Service</h3>
@@ -954,7 +954,7 @@
 </div>
 
 <!-- Server Provisioning Modal -->
-<div class="modal-backdrop" id="provision-modal">
+<div class="modal-backdrop hidden" id="provision-modal">
     <div class="modal-content" style="max-width:560px" role="dialog" aria-modal="true" aria-labelledby="provision-modal-title">
         <div class="flex items-center justify-between mb-4">
             <h3 id="provision-modal-title" class="text-lg font-semibold text-white">Add Remote Server</h3>
@@ -1031,7 +1031,7 @@
 </div>
 
 <!-- Confirm Modal -->
-<div class="modal-backdrop" id="confirm-modal">
+<div class="modal-backdrop hidden" id="confirm-modal">
     <div class="modal-content" style="max-width:400px" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
         <h3 id="confirm-title" class="text-lg font-semibold text-white mb-2">Confirm</h3>
         <p id="confirm-message" class="text-sm text-slate-400 mb-4"></p>
