@@ -30,7 +30,7 @@ if [ "${SKIP_MIGRATIONS:-false}" = "true" ]; then
     echo "Skipping migrations (SKIP_MIGRATIONS=true)"
 else
     echo "Running database migrations..."
-    if ! gosu spectra alembic upgrade head 2>&1; then
+    if ! gosu spectra alembic upgrade heads 2>&1; then
         echo "ERROR: Database migration failed. Check the error above."
         exit 1
     fi
