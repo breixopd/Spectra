@@ -271,6 +271,7 @@ class MissionLifecycleManager:
             return AgentContext(
                 mission_id=mission.id,
                 session_id=mission.id,
+                user_id=mission.user_id,
                 target=mission.target,
                 mission=effective_mission,
                 phase="scope",

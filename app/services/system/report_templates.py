@@ -36,20 +36,11 @@ def get_report_template(template_id: str) -> dict[str, Any] | None:
     return {"id": template_id, **t}
 
 
-def generate_report_data(session_path: Path, template_id: str) -> dict[str, Any]:
-    """Build report data from session file and template.
-
-    Raises FileNotFoundError if session file doesn't exist.
-    Raises ValueError if template_id is unknown.
-    """
+def build_report_data(session: dict[str, Any], template_id: str) -> dict[str, Any]:
+    """Build report data from session JSON and template."""
     template = REPORT_TEMPLATES.get(template_id)
     if template is None:
         raise ValueError(f"Unknown template: {template_id}")
-
-    if not session_path.exists():
-        raise FileNotFoundError(f"Session file not found: {session_path}")
-
-    session = json.loads(session_path.read_text())
 
     findings = session.get("findings", [])
     severity_counts: dict[str, int] = {}
@@ -71,3 +62,15 @@ def generate_report_data(session_path: Path, template_id: str) -> dict[str, Any]
         "tools_used": session.get("tools_used", []),
         "command_history": session.get("command_history", []),
     }
+
+
+def generate_report_data(session_path: Path, template_id: str) -> dict[str, Any]:
+    """Build report data from session file and template.
+
+    Raises FileNotFoundError if session file doesn't exist.
+    Raises ValueError if template_id is unknown.
+    """
+    if not session_path.exists():
+        raise FileNotFoundError(f"Session file not found: {session_path}")
+    session = json.loads(session_path.read_text())
+    return build_report_data(session, template_id)

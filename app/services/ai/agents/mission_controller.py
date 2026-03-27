@@ -215,7 +215,7 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
         try:
             from app.services.ai.memory import get_memory
 
-            memory = get_memory()
+            memory = get_memory(context.user_id)
             memory_context = memory.get_context_for_prompt()
             stats = memory.get_stats()
             if stats["tool_lessons"] > 0 or stats["exploit_lessons"] > 0:

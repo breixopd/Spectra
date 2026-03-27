@@ -1,8 +1,9 @@
 """Audit Log repository."""
 
 from collections.abc import Sequence
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditLog
@@ -18,10 +19,44 @@ class AuditLogRepository(BaseRepository[AuditLog]):
         skip: int = 0,
         limit: int = 50,
         event_type: str | None = None,
+        user_id: str | None = None,
+        ip_address: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
     ) -> Sequence[AuditLog]:
         stmt = select(AuditLog).order_by(AuditLog.created_at.desc())
+        if user_id:
+            stmt = stmt.where(AuditLog.user_id == user_id)
         if event_type:
             stmt = stmt.where(AuditLog.event_type == event_type)
+        if ip_address:
+            stmt = stmt.where(AuditLog.ip_address == ip_address)
+        if date_from:
+            stmt = stmt.where(AuditLog.created_at >= date_from)
+        if date_to:
+            stmt = stmt.where(AuditLog.created_at <= date_to)
         stmt = stmt.offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    async def count_events(
+        self,
+        event_type: str | None = None,
+        user_id: str | None = None,
+        ip_address: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> int:
+        stmt = select(func.count()).select_from(AuditLog)
+        if user_id:
+            stmt = stmt.where(AuditLog.user_id == user_id)
+        if event_type:
+            stmt = stmt.where(AuditLog.event_type == event_type)
+        if ip_address:
+            stmt = stmt.where(AuditLog.ip_address == ip_address)
+        if date_from:
+            stmt = stmt.where(AuditLog.created_at >= date_from)
+        if date_to:
+            stmt = stmt.where(AuditLog.created_at <= date_to)
+        result = await self.session.execute(stmt)
+        return result.scalar_one()

@@ -35,6 +35,12 @@ logger = logging.getLogger(__name__)
 MEMORY_DIR = data_path("cache")
 
 
+def _memory_dir_for_user(user_id: str | None) -> Path:
+    if not user_id:
+        return MEMORY_DIR
+    return MEMORY_DIR / "users" / user_id
+
+
 class ToolLesson(BaseModel):
     """What we learned from running a tool."""
 
@@ -729,11 +735,18 @@ def detect_os_from_services(services: list[dict[str, Any]]) -> str:
 # --- Singleton ---
 
 _memory: MissionMemory | None = None
+_memory_by_user: dict[str, MissionMemory] = {}
 
 
-def get_memory() -> MissionMemory:
-    """Get the global MissionMemory instance."""
+def get_memory(user_id: str | None = None) -> MissionMemory:
+    """Get the mission memory instance, scoped per user when user_id is provided."""
     global _memory
+    if user_id:
+        memory = _memory_by_user.get(user_id)
+        if memory is None:
+            memory = MissionMemory(memory_dir=_memory_dir_for_user(user_id))
+            _memory_by_user[user_id] = memory
+        return memory
     if _memory is None:
         _memory = MissionMemory()
     return _memory

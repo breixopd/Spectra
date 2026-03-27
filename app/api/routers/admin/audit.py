@@ -19,6 +19,7 @@ from app.models.audit_log import AuditLog
 from app.models.mission import Mission
 from app.models.plan import Plan
 from app.models.user import User
+from app.repositories.audit_log import AuditLogRepository
 from app.services.ai.cost_tracker import get_cost_trackers
 
 logger = logging.getLogger(__name__)
@@ -37,28 +38,27 @@ async def list_audit_logs(
     _user: User = require_permission(Permission.VIEW_AUDIT_LOG),
     session: AsyncSession = Depends(get_async_session),
 ) -> PaginatedResponse:
-    stmt = select(AuditLog)
-    count_stmt = select(func.count()).select_from(AuditLog)
-
-    if user_id:
-        stmt = stmt.where(AuditLog.user_id == user_id)
-        count_stmt = count_stmt.where(AuditLog.user_id == user_id)
-    if event_type:
-        stmt = stmt.where(AuditLog.event_type == event_type)
-        count_stmt = count_stmt.where(AuditLog.event_type == event_type)
-    if date_from:
-        dt = datetime.fromisoformat(date_from).replace(tzinfo=UTC)
-        stmt = stmt.where(AuditLog.created_at >= dt)
-        count_stmt = count_stmt.where(AuditLog.created_at >= dt)
-    if date_to:
-        dt = datetime.fromisoformat(date_to).replace(tzinfo=UTC)
-        stmt = stmt.where(AuditLog.created_at <= dt)
-        count_stmt = count_stmt.where(AuditLog.created_at <= dt)
-
-    total = (await session.execute(count_stmt)).scalar() or 0
+    repo = AuditLogRepository(session)
+    parsed_date_from = datetime.fromisoformat(date_from).replace(tzinfo=UTC) if date_from else None
+    parsed_date_to = datetime.fromisoformat(date_to).replace(tzinfo=UTC) if date_to else None
     offset = (page - 1) * per_page
-    stmt = stmt.order_by(AuditLog.created_at.desc()).offset(offset).limit(per_page)
-    rows = (await session.execute(stmt)).scalars().all()
+
+    total = await repo.count_events(
+        user_id=user_id,
+        event_type=event_type,
+        date_from=parsed_date_from,
+        date_to=parsed_date_to,
+    )
+    rows = await repo.list_events(
+        skip=offset,
+        limit=per_page,
+        user_id=user_id,
+        event_type=event_type,
+        date_from=parsed_date_from,
+        date_to=parsed_date_to,
+    )
+    if not isinstance(total, int):
+        total = len(rows)
 
     items = [
         {

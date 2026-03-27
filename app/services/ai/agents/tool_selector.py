@@ -478,7 +478,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         try:
             from app.services.ai.memory import detect_os_from_services, get_memory
 
-            memory = get_memory()
+            memory = get_memory(context.user_id)
             # Detect OS from known services
             os_family = None
             if input_data.known_services:

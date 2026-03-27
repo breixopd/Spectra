@@ -13,14 +13,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.api.dependencies import get_current_active_user
-from app.core.paths import data_path
 from app.models.user import User
 from app.services.system.checklists import get_checklist, list_checklists
 from app.services.system.cvss import calculate_cvss31
 from app.services.system.gtfobins import search_gtfobins
 from app.services.system.payloads import get_payloads, list_payload_types
 from app.services.system.report_templates import (
-    generate_report_data,
+    build_report_data,
     list_report_templates,
 )
 
@@ -126,9 +125,13 @@ async def api_generate_report(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Generate report data from a session using a template."""
-    session_path = data_path("sessions", f"{req.session_id}.json")
     try:
-        return generate_report_data(session_path, req.template_id)
+        from app.api.routers.pentest_sessions import _load_session
+
+        session = await _load_session(req.session_id)
+        if session.get("owner_id") != str(_current_user.id) and not getattr(_current_user, "is_superuser", False):
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return build_report_data(session, req.template_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
     except ValueError as e:

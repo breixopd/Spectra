@@ -60,6 +60,7 @@ class AgentContext(BaseModel):
 
     mission_id: str = Field(..., description="Current mission ID")
     session_id: str | None = Field(None, description="Current session ID (optional)")
+    user_id: str | None = Field(None, description="Owning user ID for scoped memory and data access")
     target: str | None = Field(None, description="Current target (IP/domain)")
     mission: str | None = Field(None, description="High-level mission directive")
     phase: str = Field("discovery", description="Current assessment phase")

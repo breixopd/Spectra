@@ -91,10 +91,11 @@ class Mission:
         # Replan tracking
         self.replan_count: int = 0
 
-        # Mission-scoped logger and output directory
+        # Mission-scoped logger and logical workspace prefix.
+        # Real transient directories are created by the tool-output layer on demand,
+        # and persisted data is written through StorageService.
         self._logger = logging.getLogger(f"spectra.mission.{self.id[:8]}")
         self.output_dir = data_path("missions", self.id)
-        self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Inter-agent shared blackboard
         self.blackboard: MissionBlackboard = get_blackboard(self.id)
@@ -265,7 +266,7 @@ class Mission:
         try:
             from app.services.ai.memory import get_memory
 
-            memory = get_memory()
+            memory = get_memory(self.user_id)
             template_id = finding.get("template-id") or finding.get("name", "")
             if template_id and memory.is_false_positive(template_id):
                 return True

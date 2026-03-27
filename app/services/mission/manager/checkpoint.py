@@ -16,7 +16,7 @@ def record_mission_lessons(mission: Mission) -> None:
     try:
         from app.services.ai.memory import get_memory
 
-        memory = get_memory()
+        memory = get_memory(mission.user_id)
 
         # Detect duplicate/low-value finding templates as false positives
         template_counts: dict[str, int] = {}
