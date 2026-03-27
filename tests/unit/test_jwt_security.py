@@ -70,6 +70,7 @@ async def test_get_current_user_accepts_access_token():
 
     mock_user = MagicMock()
     mock_user.username = "testuser"
+    mock_user.invalidated_before = None
 
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = mock_user

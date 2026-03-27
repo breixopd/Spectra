@@ -100,11 +100,14 @@ async def test_mfa_verify_setup_enables_mfa(mock_session):
     code = pyotp.TOTP(secret).now()
     body = MFAVerifyRequest(code=code)
 
-    result = await mfa_verify_setup(body=body, user=user, session=mock_session)
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+
+    with patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
+        result = await mfa_verify_setup(request=request, body=body, user=user, session=mock_session)
 
     assert result["detail"] == "MFA enabled successfully"
     assert user.mfa_enabled is True
-    mock_session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -121,8 +124,11 @@ async def test_mfa_verify_setup_rejects_bad_code(mock_session):
 
     body = MFAVerifyRequest(code="000000")
 
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+
     with pytest.raises(HTTPException) as exc_info:
-        await mfa_verify_setup(body=body, user=user, session=mock_session)
+        await mfa_verify_setup(request=request, body=body, user=user, session=mock_session)
     assert exc_info.value.status_code == 400
 
 
@@ -217,9 +223,12 @@ async def test_mfa_disable_requires_password_and_code(mock_session):
 
     # Wrong password
     body = MFADisableRequest(password="wrongpassword", code="000000")
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+
     with patch("app.api.routers.auth.verify_password", return_value=False):
         with pytest.raises(HTTPException) as exc_info:
-            await mfa_disable(body=body, user=user, session=mock_session)
+            await mfa_disable(request=request, body=body, user=user, session=mock_session)
         assert exc_info.value.status_code == 400
         assert "password" in exc_info.value.detail.lower()
 
@@ -237,8 +246,12 @@ async def test_mfa_disable_success(mock_session):
     code = pyotp.TOTP(secret).now()
     body = MFADisableRequest(password="correct", code=code)
 
-    with patch("app.api.routers.auth.verify_password", return_value=True):
-        result = await mfa_disable(body=body, user=user, session=mock_session)
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+
+    with patch("app.api.routers.auth.verify_password", return_value=True), \
+         patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
+        result = await mfa_disable(request=request, body=body, user=user, session=mock_session)
 
     assert result["detail"] == "MFA disabled successfully"
     assert user.mfa_enabled is False

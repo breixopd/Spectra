@@ -3,6 +3,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+
+
+@pytest.fixture(autouse=True)
+def _mission_runtime_isolation(tmp_path):
+    with (
+        patch("app.services.mission.mission.data_path", side_effect=lambda *parts: tmp_path.joinpath(*parts)),
+        patch("app.services.mission.mission.asyncio.create_task"),
+    ):
+        yield
+
 from app.services.ai.agents.base import AgentContext, SteeringAction
 from app.services.ai.agents.mission_controller import (
     AssessmentPhase,
@@ -21,6 +31,7 @@ def mock_manager_context():
         patch("app.services.mission.manager.execution.MissionExecutor") as MockExecutor,
         patch("app.services.mission.manager.execution.MissionController") as MockController,
         patch("app.services.mission.manager.execution.ScopeAgent") as MockScope,
+        patch("app.services.mission.manager.execution.index_to_rag", new_callable=AsyncMock) as mock_index_to_rag,
         patch("app.services.mission.manager.execution.VotingSystem") as MockVoting,
         patch("app.services.mission.manager.lifecycle.MissionRepository") as MockRepo,
         patch(
@@ -28,6 +39,7 @@ def mock_manager_context():
             new_callable=AsyncMock,
         ) as mock_get_llm,
         patch("app.core.database.async_session_maker") as mock_session_maker,
+        patch("app.services.mission.manager.lifecycle.async_session_maker") as mock_lifecycle_session,
         patch("app.services.mission.manager.lifecycle.resolve_ip", new_callable=AsyncMock) as mock_resolve_ip,
         patch("app.services.mission.state_store.async_session_maker") as mock_state_store_session,
         patch("app.services.billing.quota_enforcer.async_session_maker") as mock_quota_session,
@@ -48,6 +60,7 @@ def mock_manager_context():
 
         # Make the callable return the context manager
         mock_session_maker.return_value = mock_session_ctx
+        mock_lifecycle_session.return_value = mock_session_ctx
 
         # Configure state store and quota enforcer session mocks
         mock_state_store_session.return_value = mock_session_ctx
@@ -99,16 +112,12 @@ async def test_start_mission(mock_manager_context):
 
     resolve_ip.return_value = {"city": "Test City", "country": "Test Country"}
 
-    # Patch self.execution.run_mission_loop
-    with patch.object(manager.execution, "run_mission_loop", new_callable=AsyncMock) as mock_loop:
+    with patch("app.services.mission.manager.asyncio.create_task") as mock_create_task:
         mission_id = await manager.start_mission("127.0.0.1", "test directive")
-
-        # Yield to let the background task start
-        await asyncio.sleep(0)
 
         assert mission_id in manager.active_missions
         repo.create.assert_called_once()
-        mock_loop.assert_called_once()
+        mock_create_task.assert_called_once()
 
 
 @pytest.mark.asyncio

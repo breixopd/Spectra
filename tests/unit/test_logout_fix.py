@@ -6,29 +6,22 @@ BASE_TEMPLATE = Path(__file__).resolve().parents[2] / "app" / "templates" / "bas
 
 
 class TestLogoutButton:
-    """Verify logout button in base.html works correctly."""
+    """Verify logout button in base.html matches the current cookie-backed auth flow."""
 
-    def test_logout_uses_localstorage(self):
-        """Logout must read token from localStorage, not document.cookie."""
+    def test_logout_posts_to_versioned_api(self):
         content = BASE_TEMPLATE.read_text()
-        # Find the logout button section
-        assert "localStorage.getItem('token')" in content or 'localStorage.getItem("token")' in content, \
-            "Logout should read token from localStorage"
+        assert "/api/v1/auth/logout" in content
+        assert "method:'POST'" in content or 'method:"POST"' in content
 
-    def test_logout_does_not_read_cookie(self):
-        """Logout must NOT try to read HttpOnly cookie via document.cookie.match."""
+    def test_logout_uses_same_origin_credentials(self):
         content = BASE_TEMPLATE.read_text()
-        # The old broken pattern
-        assert "document.cookie.match(/access_token" not in content, \
-            "Logout must not try to read HttpOnly cookie via document.cookie"
+        assert "credentials:'same-origin'" in content or 'credentials:"same-origin"' in content
 
-    def test_logout_uses_correct_api_path(self):
-        """Logout must use /api/v1/auth/logout, not /api/auth/logout."""
+    def test_logout_does_not_read_cookie_manually(self):
         content = BASE_TEMPLATE.read_text()
-        assert "/api/v1/auth/logout" in content, "Logout must use versioned API path"
+        assert "document.cookie.match(/access_token" not in content
 
-    def test_logout_clears_localstorage(self):
-        """Logout must clear token from localStorage."""
+    def test_logout_does_not_use_localstorage_token(self):
         content = BASE_TEMPLATE.read_text()
-        assert "localStorage.removeItem('token')" in content or 'localStorage.removeItem("token")' in content, \
-            "Logout must clear token from localStorage"
+        assert "localStorage.getItem" not in content
+        assert "localStorage.removeItem" not in content

@@ -510,6 +510,13 @@ class TestConsolidatedStateEnums:
 
 
 class TestMissionFSMIntegration:
+    @pytest.fixture(autouse=True)
+    def _writable_data_root(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "app.services.mission.mission.data_path",
+            lambda *parts: tmp_path / "data" / "/".join(str(p) for p in parts),
+        )
+
     def test_mission_has_fsm(self):
         from app.services.mission.mission import Mission
 

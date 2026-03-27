@@ -49,11 +49,9 @@ class TestPackageImports:
 
     def test_system_schemas(self):
         from app.api.schemas import (
-            AIProviderFallbacks,
-            AIProviderProfile,
-            AIProviderRouting,
             AdminUserCreate,
             AdminUserUpdate,
+            DeleteAccountRequest,
             HealthResponse,
             LLMTestRequest,
             PlanCreate,
@@ -67,11 +65,9 @@ class TestPackageImports:
         )
 
         for cls in (
-            AIProviderFallbacks,
-            AIProviderProfile,
-            AIProviderRouting,
             AdminUserCreate,
             AdminUserUpdate,
+            DeleteAccountRequest,
             HealthResponse,
             LLMTestRequest,
             PlanCreate,

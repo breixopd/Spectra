@@ -175,35 +175,33 @@ class TestMockLLMClient:
 
 
 class TestLLMFactory:
-    """Tests for the LLM factory function."""
+    """Tests for the LLM factory function (TensorZero router)."""
 
-    def test_get_custom_provider_returns_litellm_router(self):
-        """Factory helpers should still return the shared LiteLLM router."""
-        from app.services.ai.router import LiteLLMRouter
+    def test_get_default_returns_tensorzero_router(self):
+        """Factory returns a TensorZero router."""
+        from app.services.ai.router import TensorZeroRouter
 
-        client = get_llm_client("custom_provider", model="test-model")
-        assert isinstance(client, LiteLLMRouter)
+        client = get_llm_client()
+        assert isinstance(client, TensorZeroRouter)
 
-    def test_get_ollama_client(self):
-        """Test creating an Ollama-routed LiteLLM client."""
-        from app.services.ai.router import LiteLLMRouter
+    def test_get_with_provider_arg_returns_tensorzero(self):
+        """Any provider string still returns the TensorZero router."""
+        from app.services.ai.router import TensorZeroRouter
 
-        client = get_llm_client("ollama", host="http://localhost:11434", model="test-model")
-        assert isinstance(client, LiteLLMRouter)
+        client = get_llm_client("openai")
+        assert isinstance(client, TensorZeroRouter)
 
-    def test_get_openai_client_requires_key(self):
-        """Test that OpenAI client works without key via LiteLLM."""
-        from app.services.ai.router import LiteLLMRouter
+    def test_client_has_generate_method(self):
+        """Returned client exposes the standard generate interface."""
+        client = get_llm_client()
+        assert hasattr(client, "generate")
 
-        client = get_llm_client("openai", model="gpt-4")
-        assert isinstance(client, LiteLLMRouter)
+    def test_custom_gateway_url(self):
+        """Factory accepts a custom gateway_url kwarg."""
+        from app.services.ai.router import TensorZeroRouter
 
-    def test_unknown_provider_returns_litellm(self):
-        """Test that unknown providers are handled via LiteLLM."""
-        from app.services.ai.router import LiteLLMRouter
-
-        client = get_llm_client("unknown_provider", model="test")
-        assert isinstance(client, LiteLLMRouter)
+        client = get_llm_client(gateway_url="http://custom:3000")
+        assert isinstance(client, TensorZeroRouter)
 
 
 # --- Agent Tests ---

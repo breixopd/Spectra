@@ -2,11 +2,24 @@
 Tests for the Mission class and attack surface tracking.
 """
 
+from unittest.mock import patch
+
+import pytest
+
 from app.models.attack_surface import (
     AttackVector,
     VectorPriority,
 )
 from app.services.mission.mission import Mission
+
+
+@pytest.fixture(autouse=True)
+def _mission_runtime_isolation(tmp_path):
+    with (
+        patch("app.services.mission.mission.data_path", side_effect=lambda *parts: tmp_path.joinpath(*parts)),
+        patch("app.services.mission.mission.asyncio.create_task"),
+    ):
+        yield
 
 
 class TestMissionCreation:

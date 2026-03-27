@@ -233,35 +233,17 @@ class TestGenerateStructured:
 class TestGetLLMClient:
     """Tests for the get_llm_client factory function."""
 
-    def test_ollama_provider_returns_litellm_router(self):
-        from app.services.ai.router import LiteLLMRouter
+    def test_default_returns_tensorzero_router(self):
+        from app.services.ai.router import TensorZeroRouter
 
-        client = get_llm_client("ollama", host="http://myhost:1234", model="mymodel")
-        assert isinstance(client, LiteLLMRouter)
+        client = get_llm_client()
+        assert isinstance(client, TensorZeroRouter)
 
-    def test_tensorzero_provider(self):
-        from app.services.ai.router import LiteLLMRouter
+    def test_with_gateway_url(self):
+        from app.services.ai.router import TensorZeroRouter
 
-        client = get_llm_client("tensorzero", model="gpt-4", api_key="sk-test")
-        assert isinstance(client, LiteLLMRouter)
-
-    def test_api_provider_returns_litellm_router(self):
-        from app.services.ai.router import LiteLLMRouter
-
-        client = get_llm_client("api", api_key="sk-test", model="gpt-4")
-        assert isinstance(client, LiteLLMRouter)
-
-    def test_openai_legacy_alias(self):
-        from app.services.ai.router import LiteLLMRouter
-
-        client = get_llm_client("openai", api_key="sk-test")
-        assert isinstance(client, LiteLLMRouter)
-
-    def test_custom_provider_returns_litellm_router(self):
-        from app.services.ai.router import LiteLLMRouter
-
-        client = get_llm_client("custom_provider", model="test-model")
-        assert isinstance(client, LiteLLMRouter)
+        client = get_llm_client(gateway_url="http://tz:3000")
+        assert isinstance(client, TensorZeroRouter)
 
 
 # ===================================================================
@@ -272,15 +254,9 @@ class TestGetLLMClient:
 class TestGetDefaultLLMClient:
     """Tests for get_default_llm_client reading from settings."""
 
-    def test_ollama_provider(self):
+    def test_configured_gateway(self):
         mock_settings = MagicMock()
-        mock_settings.AI_PROVIDER = "ollama"
-        mock_settings.OLLAMA_HOST = "http://ollama:11434"
-        mock_settings.OLLAMA_MODEL = "llama3"
-        mock_settings.LLM_API_KEY = MagicMock()
-        mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-        mock_settings.LLM_API_BASE_URL = None
-        mock_settings.LLM_MODEL = None
+        mock_settings.TENSORZERO_GATEWAY_URL = "http://tensorzero:3000"
         mock_settings.LLM_TIMEOUT = 600.0
 
         with (
@@ -288,64 +264,21 @@ class TestGetDefaultLLMClient:
             patch("app.services.ai.router.settings", mock_settings),
         ):
             client = get_default_llm_client()
-            from app.services.ai.router import LiteLLMRouter
+            from app.services.ai.router import TensorZeroRouter
 
-            assert isinstance(client, LiteLLMRouter)
+            assert isinstance(client, TensorZeroRouter)
 
-    def test_api_provider(self):
+    def test_raises_without_gateway_url(self):
         mock_settings = MagicMock()
-        mock_settings.AI_PROVIDER = "api"
-        mock_settings.LLM_API_KEY = MagicMock()
-        mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-secret"
-        mock_settings.LLM_API_BASE_URL = "https://api.example.com"
-        mock_settings.LLM_MODEL = "gpt-4o"
+        mock_settings.TENSORZERO_GATEWAY_URL = ""
         mock_settings.LLM_TIMEOUT = 600.0
 
         with (
             patch("app.services.ai.llm.settings", mock_settings),
             patch("app.services.ai.router.settings", mock_settings),
         ):
-            client = get_default_llm_client()
-            from app.services.ai.router import LiteLLMRouter
-
-            assert isinstance(client, LiteLLMRouter)
-
-    def test_openai_legacy_provider(self):
-        mock_settings = MagicMock()
-        mock_settings.AI_PROVIDER = "openai"
-        mock_settings.LLM_API_KEY = MagicMock()
-        mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-legacy"
-        mock_settings.LLM_API_BASE_URL = None
-        mock_settings.LLM_MODEL = "gpt-3.5-turbo"
-        mock_settings.LLM_TIMEOUT = 600.0
-
-        with (
-            patch("app.services.ai.llm.settings", mock_settings),
-            patch("app.services.ai.router.settings", mock_settings),
-        ):
-            client = get_default_llm_client()
-            from app.services.ai.router import LiteLLMRouter
-
-            assert isinstance(client, LiteLLMRouter)
-
-    @patch("app.services.ai.router.settings")
-    @patch("app.services.ai.llm.settings")
-    def test_unknown_provider_returns_tensorzero(self, mock_llm_settings, mock_router_settings):
-        """Unknown providers now normalize to tensorzero instead of raising."""
-        mock_llm_settings.AI_PROVIDER = "unknown_provider"
-        mock_router_settings.AI_PROVIDER = "unknown_provider"
-        mock_router_settings.LLM_API_KEY = MagicMock()
-        mock_router_settings.LLM_API_KEY.get_secret_value.return_value = ""
-        mock_router_settings.LLM_API_BASE_URL = None
-        mock_router_settings.LLM_MODEL = "test-model"
-        mock_router_settings.LLM_TIMEOUT = 600.0
-        mock_router_settings.OLLAMA_HOST = "http://ai:11434"
-        mock_router_settings.OLLAMA_MODEL = "qwen2.5:3b"
-        mock_llm_settings.LLM_MODEL = "test-model"
-        from app.services.ai.router import LiteLLMRouter
-
-        client = get_default_llm_client()
-        assert isinstance(client, LiteLLMRouter)
+            with pytest.raises((ValueError, RuntimeError)):
+                get_default_llm_client()
 
 
 # ===================================================================
