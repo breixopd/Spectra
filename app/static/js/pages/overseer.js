@@ -44,15 +44,10 @@ loadSafetyStats();
 // Auto-refresh every 30 seconds
 setInterval(loadSafetyStats, 30000);
 
-// WebSocket handler for Overseer
-const originalOnMessage = window.onSocketMessage;
-
-window.onSocketMessage = (data) => {
-    // Call original handler first (for logs/toasts)
-    if (originalOnMessage) originalOnMessage(data);
-    
+// Listen for async WS messages without overwriting the global handler
+document.addEventListener('spectra:ws-message', (event) => {
     try {
-        const msg = JSON.parse(data);
+        const msg = JSON.parse(event.detail);
         if (msg.type === 'agent_state') {
             updateAgentState(msg.data);
         } else if (msg.type === 'attack_surface') {
@@ -80,7 +75,7 @@ window.onSocketMessage = (data) => {
     } catch (e) {
         console.error("Overseer parse error", e);
     }
-};
+});
 
 function updateAgentState(state) {
     const agentId = state.agent_id;

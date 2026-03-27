@@ -50,26 +50,26 @@
             <p class="text-slate-400 text-sm mt-0.5">Run security tools directly — no AI required</p>
         </div>
         <div class="flex items-center gap-2">
-            <div class="flex border border-white/10 rounded-lg overflow-hidden">
-                <button id="tab-execute" class="tab-btn-manual active" onclick="switchManualTab('execute')">
+            <div class="flex border border-white/10 rounded-lg overflow-hidden" role="tablist" aria-label="Manual mode tabs">
+                <button id="tab-execute" class="tab-btn-manual active" role="tab" data-tab-group="manual-tabs" data-tab="execute" aria-selected="true" tabindex="0">
                     <i data-lucide="play" class="w-4 h-4 inline-block mr-1.5"></i> Execute
                 </button>
-                <button id="tab-pipeline" class="tab-btn-manual" onclick="switchManualTab('pipeline')">
+                <button id="tab-pipeline" class="tab-btn-manual" role="tab" data-tab-group="manual-tabs" data-tab="pipeline" aria-selected="false" tabindex="-1">
                     <i data-lucide="git-branch" class="w-4 h-4 inline-block mr-1.5"></i> Pipeline
                 </button>
-                <button id="tab-cve" class="tab-btn-manual" onclick="switchManualTab('cve')">
+                <button id="tab-cve" class="tab-btn-manual" role="tab" data-tab-group="manual-tabs" data-tab="cve" aria-selected="false" tabindex="-1">
                     <i data-lucide="shield-alert" class="w-4 h-4 inline-block mr-1.5"></i> CVE Lookup
                 </button>
-                <button id="tab-checklists" class="tab-btn-manual" onclick="switchManualTab('checklists')">
+                <button id="tab-checklists" class="tab-btn-manual" role="tab" data-tab-group="manual-tabs" data-tab="checklists" aria-selected="false" tabindex="-1">
                     <i data-lucide="list-checks" class="w-4 h-4 inline-block mr-1.5"></i> Checklists
                 </button>
-                <button id="tab-notes" class="tab-btn-manual" onclick="switchManualTab('notes')">
+                <button id="tab-notes" class="tab-btn-manual" role="tab" data-tab-group="manual-tabs" data-tab="notes" aria-selected="false" tabindex="-1">
                     <i data-lucide="sticky-note" class="w-4 h-4 inline-block mr-1.5"></i> Notes
                 </button>
-                <button id="tab-evidence" class="tab-btn-manual" onclick="switchManualTab('evidence')">
+                <button id="tab-evidence" class="tab-btn-manual" role="tab" data-tab-group="manual-tabs" data-tab="evidence" aria-selected="false" tabindex="-1">
                     <i data-lucide="camera" class="w-4 h-4 inline-block mr-1.5"></i> Evidence
                 </button>
-                <button id="tab-helpers" class="tab-btn-manual" onclick="switchManualTab('helpers')">
+                <button id="tab-helpers" class="tab-btn-manual" role="tab" data-tab-group="manual-tabs" data-tab="helpers" aria-selected="false" tabindex="-1">
                     <i data-lucide="wrench" class="w-4 h-4 inline-block mr-1.5"></i> Helpers
                 </button>
             </div>
@@ -167,7 +167,7 @@
     </div>
 
     <!-- Execute Tab -->
-    <div id="panel-execute" class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up stagger-1">
+    <div id="panel-execute" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="execute" class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up stagger-1">
         <!-- Tool Picker (Left) -->
         <div class="lg:w-72 shrink-0 flex flex-col gap-3">
             <input type="text" id="tool-search" placeholder="Search tools..." oninput="debouncedFilterTools()"
@@ -275,7 +275,7 @@
     </div>
 
     <!-- Pipeline Tab -->
-    <div id="panel-pipeline" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
+    <div id="panel-pipeline" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="pipeline" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <div class="glass-panel rounded-xl p-5 mb-4 shrink-0">
             <div class="flex items-center justify-between mb-3">
                 <div>
@@ -330,7 +330,7 @@
     </div>
 
     <!-- CVE Lookup Tab -->
-    <div id="panel-cve" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
+    <div id="panel-cve" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="cve" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <div class="glass-panel rounded-xl p-5 mb-4 shrink-0">
             <h2 class="text-lg font-bold text-white mb-1">CVE Lookup</h2>
             <p class="text-slate-400 text-sm mb-4">Search known vulnerabilities by product, version, or service.</p>
@@ -367,7 +367,7 @@
     </div>
 
     <!-- Checklists Tab -->
-    <div id="panel-checklists" class="hidden flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
+    <div id="panel-checklists" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="checklists" hidden class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
         <!-- Sidebar -->
         <div class="lg:w-64 shrink-0 flex flex-col gap-3">
             <div>
@@ -400,7 +400,7 @@
     </div>
 
     <!-- Notes Tab -->
-    <div id="panel-notes" class="hidden flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
+    <div id="panel-notes" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="notes" hidden class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
         <!-- Sidebar -->
         <div class="lg:w-64 shrink-0 flex flex-col gap-3">
             <div class="flex gap-2">
@@ -454,7 +454,7 @@
     </div>
 
     <!-- Evidence Tab -->
-    <div id="panel-evidence" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
+    <div id="panel-evidence" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="evidence" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <div class="glass-panel rounded-xl p-4 mb-3 shrink-0 flex items-center gap-3">
             <label class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all cursor-pointer">
                 <i data-lucide="upload" class="w-4 h-4 inline-block mr-1.5"></i>Upload File
@@ -482,7 +482,7 @@
     </div>
 
     <!-- Helpers Tab -->
-    <div id="panel-helpers" class="hidden flex-1 min-h-0 flex flex-col animate-fade-in-up">
+    <div id="panel-helpers" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="helpers" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <!-- Helpers Sub-Tabs -->
         <div class="flex border-b border-white/10 mb-3 shrink-0 overflow-x-auto">
             <button class="helper-tab-btn active px-3 py-2 text-xs font-medium text-violet-400 border-b-2 border-violet-500 whitespace-nowrap" onclick="switchHelperTab('revshell')"><i data-lucide="terminal" class="w-4 h-4 inline-block mr-1.5"></i>Reverse Shells</button>
