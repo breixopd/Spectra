@@ -5,6 +5,7 @@ Loads configuration from environment variables and .env files.
 """
 
 import logging
+import os
 from functools import lru_cache
 from typing import Any
 
@@ -64,7 +65,7 @@ class Settings(BaseSettings):
         return v
 
     # --- AI / LLM (TensorZero Gateway) ---
-    TENSORZERO_GATEWAY_URL: str = ""  # e.g. http://tensorzero:3000
+    TENSORZERO_GATEWAY_URL: str = "http://tensorzero:3000"  # Auto-detected in Docker stack
     TENSORZERO_API_KEY: str = ""  # API key passed to TZ gateway (for provider auth)
     LLM_TIMEOUT: float = 600.0  # Request timeout for LLM calls
 
@@ -252,6 +253,7 @@ class Settings(BaseSettings):
     BACKUP_ENABLED: bool = Field(default=False, description="Enable automated backups")
     BACKUP_SCHEDULE_HOURS: int = Field(default=24, description="Backup interval in hours")
     BACKUP_RETENTION_COUNT: int = Field(default=10, description="Number of backups to retain")
+    AUDIT_LOG_RETENTION_DAYS: int = Field(default=365, description="Days to retain audit log entries (0 = keep forever)")
     BACKUP_S3_BUCKET: str = Field(default="spectra-backups", description="S3 bucket for backups")
 
     # --- Billing / Stripe ---
@@ -285,18 +287,30 @@ class Settings(BaseSettings):
             logger.warning("Token expiry is very long (%d minutes)", v)
         return v
 
+    @field_validator("AUDIT_LOG_RETENTION_DAYS")
+    @classmethod
+    def validate_audit_retention(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("AUDIT_LOG_RETENTION_DAYS must be >= 0")
+        return v
+
 
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
     settings_instance = Settings()
+    environment = os.environ.get("ENVIRONMENT", "development")
 
     # Auto-generate JWT secret if empty or using placeholder
     jwt_val = settings_instance.JWT_SECRET_KEY.get_secret_value()
     if not jwt_val or jwt_val.startswith("change-me"):
+        if environment == "production":
+            raise ValueError(
+                "JWT_SECRET_KEY must be set in production. Refusing to boot with an empty or placeholder JWT secret."
+            )
         if not settings_instance.DEBUG:
             logger.warning(
-                "JWT_SECRET_KEY not set in production. Generating random key (sessions will invalidate on restart)."
+                "JWT_SECRET_KEY not set. Generating random key for non-production use (sessions will invalidate on restart)."
             )
 
         import secrets
@@ -304,15 +318,29 @@ def get_settings() -> Settings:
         settings_instance.JWT_SECRET_KEY = SecretStr(secrets.token_urlsafe(32))
 
     # Auto-generate SECRET_KEY if empty or default
-    if not settings_instance.SECRET_KEY or settings_instance.SECRET_KEY == "change-me-in-production":
+    secret_val = settings_instance.SECRET_KEY.get_secret_value()
+    if not secret_val or secret_val == "change-me-in-production":
+        if environment == "production":
+            raise ValueError(
+                "SECRET_KEY must be set in production. Refusing to boot with the insecure default or an empty secret."
+            )
         if not settings_instance.DEBUG:
             logger.warning(
-                "SECRET_KEY not set or using default in production. Generating random key (sessions will invalidate on restart)."
+                "SECRET_KEY not set or using default. Generating random key for non-production use (sessions will invalidate on restart)."
             )
 
         import secrets
 
         settings_instance.SECRET_KEY = SecretStr(secrets.token_urlsafe(32))
+
+    if (
+        settings_instance.SERVICE_MODE != "monolith"
+        and not settings_instance.SERVICE_AUTH_SECRET.get_secret_value()
+    ):
+        raise ValueError(
+            "SERVICE_AUTH_SECRET must be set when SERVICE_MODE is not 'monolith'. "
+            "Set a shared secret across all services."
+        )
 
     return settings_instance
 

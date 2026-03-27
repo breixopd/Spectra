@@ -185,7 +185,7 @@ async def get_attack_coverage(
     try:
         from app.services.ai.memory import get_memory
 
-        memory = get_memory()
+        memory = get_memory(str(_current_user.id))
         findings = []
         for lesson in memory.tool_lessons[-50:]:
             findings.append(

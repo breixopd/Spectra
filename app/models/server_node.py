@@ -76,8 +76,11 @@ class ServerNode(Base):
             from app.core.encryption import _get_default_secret, encrypt_field
 
             self.api_key = encrypt_field(plaintext_key, _get_default_secret())
-        except (OSError, RuntimeError, ImportError):
-            logger.warning("Encryption unavailable, storing api_key as-is")
+        except (OSError, RuntimeError, ImportError) as e:
+            raise RuntimeError(
+                f"Cannot store API key: encryption is unavailable ({e}). "
+                "Ensure the cryptography package is installed and SECRET_KEY is set."
+            ) from e
             self.api_key = plaintext_key
 
     def get_api_key(self) -> str | None:

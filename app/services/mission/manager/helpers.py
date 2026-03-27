@@ -65,7 +65,7 @@ async def run_debrief(
             try:
                 from app.services.ai.memory import get_memory
 
-                memory = get_memory()
+                memory = get_memory(mission.user_id)
                 for lesson in action.lessons_learned[:5]:
                     memory.record_tool_lesson(
                         tool="debrief",
@@ -331,6 +331,7 @@ async def execute_mission_tasks(
                 _context_copy = AgentContext(
                     mission_id=_context.mission_id,
                     session_id=_context.session_id,
+                    user_id=_context.user_id,
                     target=_context.target,
                     mission=_context.mission,
                 )

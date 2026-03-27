@@ -24,9 +24,11 @@ from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
+from app.models.audit_log import AuditEventType
 from app.models.finding import FindingStatus, Severity
 from app.models.user import User
 from app.repositories.finding import FindingRepository
+from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +86,7 @@ class FindingDetailResponse(FindingResponse):
 )
 async def create_finding(
     finding_in: FindingCreate,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> FindingDetailResponse:
@@ -103,6 +106,18 @@ async def create_finding(
         user_id=str(_current_user.id),
     )
     await db.commit()
+    await audit_log_event(
+        db,
+        AuditEventType.FINDING_CREATED,
+        user_id=str(_current_user.id),
+        details={
+            "finding_id": finding.id,
+            "target_id": finding.target_id,
+            "severity": finding.severity.value,
+            "title": finding.title,
+        },
+        request=request,
+    )
 
     return FindingDetailResponse(
         id=finding.id,
@@ -127,7 +142,7 @@ async def create_finding(
 )
 @limiter.limit("60/minute")
 async def list_findings(
-    request: Request,
+    request: Request = None,
     page: int = Query(default=1, ge=1, description="Page number"),
     per_page: int = Query(
         default=DEFAULT_PAGE_SIZE,
@@ -222,7 +237,7 @@ async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> lis
 )
 @limiter.limit("60/minute")
 async def export_findings_csv(
-    request: Request,
+    request: Request = None,
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
@@ -277,7 +292,7 @@ async def export_findings_csv(
 )
 @limiter.limit("60/minute")
 async def export_findings_json(
-    request: Request,
+    request: Request = None,
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
@@ -368,6 +383,7 @@ async def get_finding(
 async def update_finding(
     finding_id: str,
     finding_in: FindingUpdate,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -394,6 +410,14 @@ async def update_finding(
         )
     await db.commit()
 
+    await audit_log_event(
+        db,
+        AuditEventType.FINDING_UPDATED,
+        user_id=str(_current_user.id),
+        details={"finding_id": updated.id, "target_id": updated.target_id, "changed_fields": sorted(update_data.keys())},
+        request=request,
+    )
+
     return FindingDetailResponse(
         id=updated.id,
         target_id=updated.target_id,
@@ -417,6 +441,7 @@ async def update_finding(
 )
 async def delete_finding(
     finding_id: str,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> None:
@@ -431,8 +456,16 @@ async def delete_finding(
         )
     check_resource_owner(existing, _current_user, "finding")
 
+    details = {"finding_id": existing.id, "target_id": existing.target_id, "title": existing.title, "severity": existing.severity.value}
     await repo.delete(finding_id)
     await db.commit()
+    await audit_log_event(
+        db,
+        AuditEventType.FINDING_DELETED,
+        user_id=str(_current_user.id),
+        details=details,
+        request=request,
+    )
 
 
 @router.post(
@@ -443,6 +476,7 @@ async def delete_finding(
 )
 async def verify_finding(
     finding_id: str,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -464,6 +498,13 @@ async def verify_finding(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Update failed unexpectedly",
         )
+    await audit_log_event(
+        db,
+        AuditEventType.FINDING_UPDATED,
+        user_id=str(_current_user.id),
+        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "verify"},
+        request=request,
+    )
 
     return FindingDetailResponse(
         id=updated.id,
@@ -488,6 +529,7 @@ async def verify_finding(
 )
 async def mark_false_positive(
     finding_id: str,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -509,6 +551,13 @@ async def mark_false_positive(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Update failed unexpectedly",
         )
+    await audit_log_event(
+        db,
+        AuditEventType.FINDING_UPDATED,
+        user_id=str(_current_user.id),
+        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "mark_false_positive"},
+        request=request,
+    )
 
     return FindingDetailResponse(
         id=updated.id,
@@ -554,6 +603,7 @@ def _finding_to_response(f) -> FindingDetailResponse:
 )
 async def confirm_finding(
     finding_id: str,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -565,6 +615,13 @@ async def confirm_finding(
     check_resource_owner(existing, _current_user, "finding")
     updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
     await db.commit()
+    await audit_log_event(
+        db,
+        AuditEventType.FINDING_UPDATED,
+        user_id=str(_current_user.id),
+        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "confirm"},
+        request=request,
+    )
     return _finding_to_response(updated)
 
 
@@ -576,6 +633,7 @@ async def confirm_finding(
 )
 async def dismiss_finding(
     finding_id: str,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -587,6 +645,13 @@ async def dismiss_finding(
     check_resource_owner(existing, _current_user, "finding")
     updated = await repo.update(finding_id, status=FindingStatus.DISMISSED)
     await db.commit()
+    await audit_log_event(
+        db,
+        AuditEventType.FINDING_UPDATED,
+        user_id=str(_current_user.id),
+        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "dismiss"},
+        request=request,
+    )
     return _finding_to_response(updated)
 
 
@@ -598,6 +663,7 @@ async def dismiss_finding(
 )
 async def retest_finding(
     finding_id: str,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -609,6 +675,13 @@ async def retest_finding(
     check_resource_owner(existing, _current_user, "finding")
     updated = await repo.update(finding_id, status=FindingStatus.RETEST_PENDING)
     await db.commit()
+    await audit_log_event(
+        db,
+        AuditEventType.FINDING_UPDATED,
+        user_id=str(_current_user.id),
+        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "retest"},
+        request=request,
+    )
     return _finding_to_response(updated)
 
 

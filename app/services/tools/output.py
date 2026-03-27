@@ -301,7 +301,7 @@ def record_to_memory(
     try:
         from app.services.ai.memory import detect_os_from_output, get_memory
 
-        memory = get_memory()
+        memory = get_memory(mission.user_id)
 
         # Determine service context from mission's attack surface
         service = "unknown"

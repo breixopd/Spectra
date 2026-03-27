@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete
 
 from app.core.paths import data_path
+from app.models.audit_log import AuditLog
 from app.models.infrastructure import CacheEntry, JobQueue, SystemCache
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,25 @@ async def cleanup_completed_jobs(session, max_age_days: int = 30) -> int:
     return count
 
 
+async def cleanup_audit_logs(session, max_age_days: int | None = None) -> int:
+    """Delete audit log entries older than max_age_days."""
+    if max_age_days is None:
+        from app.core.config import get_settings
+
+        max_age_days = get_settings().AUDIT_LOG_RETENTION_DAYS
+
+    if max_age_days == 0:
+        return 0
+
+    cutoff = datetime.now(UTC) - timedelta(days=max_age_days)
+    result = await session.execute(delete(AuditLog).where(AuditLog.created_at < cutoff))
+    await session.commit()
+    count = result.rowcount  # type: ignore[union-attr]
+    if count:
+        logger.info("Cleaned up %d audit log entries older than %d days", count, max_age_days)
+    return count
+
+
 async def cleanup_transient_mission_artifacts(max_age_hours: int = 6) -> int:
     """Delete stale transient scan workspaces when storage of record is S3."""
     from app.services.storage import get_storage_service
@@ -117,6 +137,7 @@ async def run_all_cleanup() -> dict[str, int]:
         results["expired_cache"] = await cleanup_expired_cache(session)
         results["old_cache_entries"] = await cleanup_old_cache_entries(session)
         results["completed_jobs"] = await cleanup_completed_jobs(session)
+        results["audit_logs"] = await cleanup_audit_logs(session)
 
     sandbox_pool = get_sandbox_pool()
     results["orphaned_sandboxes"] = await cleanup_orphaned_sandboxes(sandbox_pool)

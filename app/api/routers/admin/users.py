@@ -138,7 +138,7 @@ async def get_user(
 @router.post("/api/admin/users", status_code=status.HTTP_201_CREATED)
 async def create_user(
     body: AdminUserCreate,
-    request: Request,
+    request: Request = None,
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> UserAdminResponse:
@@ -164,9 +164,9 @@ async def create_user(
 
     await audit_log_event(
         session,
-        AuditEventType.SETTINGS_CHANGED,
+        AuditEventType.USER_CREATED,
         user_id=admin.id,
-        details={"action": "user_created", "target_user": user.username},
+        details={"action": "user_created", "target_user": user.username, "target_user_id": str(user.id)},
         request=request,
     )
     await session.commit()
@@ -188,7 +188,7 @@ async def create_user(
 async def update_user(
     user_id: str,
     body: AdminUserUpdate,
-    request: Request,
+    request: Request = None,
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> UserAdminResponse:
@@ -202,6 +202,7 @@ async def update_user(
         "role": row.role,
         "is_superuser": row.is_superuser,
         "plan_id": str(row.plan_id) if row.plan_id else None,
+        "email": row.email,
     }
     reversible_change = any([
         body.is_active is not None and body.is_active != row.is_active,
@@ -233,15 +234,71 @@ async def update_user(
             raise HTTPException(status_code=409, detail="Email already in use")
         row.email = body.email
 
-    await audit_log_event(
-        session,
-        AuditEventType.SETTINGS_CHANGED,
-        user_id=admin.id,
-        details={"action": "user_updated", "target_user": row.username},
-        request=request,
-    )
     await session.commit()
     await session.refresh(row)
+
+    audit_events: list[tuple[AuditEventType, dict[str, str | bool | None | list[str]]]] = []
+    changed_fields: list[str] = []
+
+    if before_state["role"] != row.role:
+        changed_fields.append("role")
+        audit_events.append(
+            (
+                AuditEventType.USER_ROLE_CHANGED,
+                {
+                    "target_user": row.username,
+                    "old_role": before_state["role"],
+                    "new_role": row.role,
+                },
+            )
+        )
+    if before_state["is_active"] != row.is_active:
+        changed_fields.append("is_active")
+        audit_events.append(
+            (
+                AuditEventType.USER_STATUS_CHANGED,
+                {
+                    "target_user": row.username,
+                    "old_is_active": before_state["is_active"],
+                    "new_is_active": row.is_active,
+                },
+            )
+        )
+    if before_state["plan_id"] != (str(row.plan_id) if row.plan_id else None):
+        changed_fields.append("plan_id")
+        audit_events.append(
+            (
+                AuditEventType.PLAN_CHANGED,
+                {
+                    "target_user": row.username,
+                    "old_plan_id": before_state["plan_id"],
+                    "new_plan_id": str(row.plan_id) if row.plan_id else None,
+                },
+            )
+        )
+    if before_state["email"] != row.email:
+        changed_fields.append("email")
+
+    if not audit_events or "email" in changed_fields:
+        audit_events.append(
+            (
+                AuditEventType.SETTINGS_CHANGED,
+                {
+                    "action": "user_updated",
+                    "target_user": row.username,
+                    "changed_fields": changed_fields,
+                },
+            )
+        )
+
+    for event_type, details in audit_events:
+        await audit_log_event(
+            session,
+            event_type,
+            user_id=admin.id,
+            details=details,
+            request=request,
+        )
 
     return UserAdminResponse(
         id=row.id,
@@ -259,7 +316,7 @@ async def update_user(
 @router.delete("/api/admin/users/{user_id}", status_code=status.HTTP_200_OK)
 async def deactivate_user(
     user_id: str,
-    request: Request,
+    request: Request = None,
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
@@ -272,9 +329,9 @@ async def deactivate_user(
     row.is_active = False
     await audit_log_event(
         session,
-        AuditEventType.SETTINGS_CHANGED,
+        AuditEventType.USER_STATUS_CHANGED,
         user_id=admin.id,
-        details={"action": "user_deactivated", "target_user": row.username},
+        details={"action": "user_deactivated", "target_user": row.username, "new_is_active": False},
         request=request,
     )
     await session.commit()
@@ -284,7 +341,7 @@ async def deactivate_user(
 @router.post("/api/admin/users/{user_id}/reset-password")
 async def reset_password(
     user_id: str,
-    request: Request,
+    request: Request = None,
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
@@ -308,6 +365,7 @@ async def reset_password(
 @router.delete("/api/admin/users/{user_id}/purge")
 async def purge_user(
     user_id: str,
+    request: Request = None,
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -325,6 +383,14 @@ async def purge_user(
     await session.execute(
         text("UPDATE audit_logs SET user_id = NULL WHERE user_id = :uid"),
         {"uid": user_id},
+    )
+
+    await audit_log_event(
+        session,
+        AuditEventType.USER_DELETED,
+        user_id=str(admin.id),
+        details={"action": "user_purged", "target_user": target_user.username, "target_user_id": str(target_user.id)},
+        request=request,
     )
 
     await session.delete(target_user)

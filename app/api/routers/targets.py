@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,9 +19,11 @@ from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
+from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.repositories.finding import FindingRepository
 from app.repositories.target import TargetRepository
+from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,7 @@ router = APIRouter(prefix="/targets", tags=["Targets"])
 )
 async def create_target(
     target_in: TargetCreate,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> TargetResponse:
@@ -64,6 +67,14 @@ async def create_target(
         user_id=str(_current_user.id),
     )
     await db.commit()
+
+    await audit_log_event(
+        db,
+        AuditEventType.TARGET_CREATED,
+        user_id=str(_current_user.id),
+        details={"target_id": target.id, "address": target.address},
+        request=request,
+    )
 
     return TargetResponse(
         id=target.id,
@@ -165,6 +176,7 @@ async def get_target(
 )
 async def delete_target(
     target_id: str,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> None:
@@ -177,8 +189,16 @@ async def delete_target(
             detail="Target not found",
         )
     check_resource_owner(target, _current_user, "target")
+    details = {"target_id": target.id, "address": target.address}
     await repo.delete(target_id)
     await db.commit()
+    await audit_log_event(
+        db,
+        AuditEventType.TARGET_DELETED,
+        user_id=str(_current_user.id),
+        details=details,
+        request=request,
+    )
 
 
 @router.patch(
@@ -190,6 +210,7 @@ async def delete_target(
 async def update_target(
     target_id: str,
     target_in: TargetUpdate,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> TargetResponse:
@@ -216,6 +237,14 @@ async def update_target(
             detail="Target not found",
         )
     await db.commit()
+
+    await audit_log_event(
+        db,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=str(_current_user.id),
+        details={"action": "target_updated", "target_id": updated_target.id, "changed_fields": sorted(update_data.keys())},
+        request=request,
+    )
 
     return TargetResponse(
         id=updated_target.id,
@@ -294,7 +323,8 @@ class BulkImportResponse(BaseModel):
     description="Import up to 500 targets at once. Duplicates are skipped.",
 )
 async def bulk_import_targets(
-    request: BulkImportRequest,
+    payload: BulkImportRequest,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> BulkImportResponse:
@@ -304,7 +334,7 @@ async def bulk_import_targets(
     skipped = 0
     errors: list[str] = []
 
-    for item in request.targets:
+    for item in payload.targets:
         addr = item.address.strip()
         if not addr:
             continue
@@ -326,6 +356,14 @@ async def bulk_import_targets(
             errors.append(f"{addr}: invalid data format")
 
     await db.commit()
+    if imported:
+        await audit_log_event(
+            db,
+            AuditEventType.TARGET_CREATED,
+            user_id=str(_current_user.id),
+            details={"action": "bulk_import_targets", "imported": imported, "skipped": skipped},
+            request=request,
+        )
     return BulkImportResponse(imported=imported, skipped=skipped, errors=errors)
 
 
@@ -343,12 +381,13 @@ class BulkDeleteResponse(BaseModel):
 
 @router.post("/bulk-delete", response_model=BulkDeleteResponse)
 async def bulk_delete_targets(
-    request: BulkDeleteRequest,
+    payload: BulkDeleteRequest,
+    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> BulkDeleteResponse:
     """Bulk delete targets."""
-    if len(request.target_ids) > 100:
+    if len(payload.target_ids) > 100:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Maximum 100 targets per batch",
@@ -356,7 +395,7 @@ async def bulk_delete_targets(
 
     repo = TargetRepository(db)
     deleted_count = 0
-    for tid in request.target_ids:
+    for tid in payload.target_ids:
         target = await repo.get_by_id(tid)
         if not target:
             continue
@@ -364,5 +403,13 @@ async def bulk_delete_targets(
         if await repo.delete(tid):
             deleted_count += 1
     await db.commit()
+    if deleted_count:
+        await audit_log_event(
+            db,
+            AuditEventType.TARGET_DELETED,
+            user_id=str(_current_user.id),
+            details={"action": "bulk_delete_targets", "deleted": deleted_count},
+            request=request,
+        )
 
     return BulkDeleteResponse(deleted=deleted_count)
