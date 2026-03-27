@@ -20,7 +20,12 @@
             <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span class="text-slate-300 font-mono text-sm">Session: {{ session_id }}</span>
         </div>
-        <span class="text-slate-500 text-xs">Target: {{ target }}</span>
+        <div class="flex items-center space-x-3">
+            <span class="text-slate-500 text-xs">Target: {{ target }}</span>
+            <button onclick="ws.close(); term.write('\r\n\x1b[33m[SYSTEM] Disconnected.\x1b[0m\r\n');" class="text-xs text-slate-400 hover:text-rose-400 transition-colors px-2 py-1 rounded hover:bg-white/5" title="Disconnect">
+                Disconnect
+            </button>
+        </div>
     </div>
     <div id="terminal"></div>
 
@@ -41,13 +46,12 @@
         term.open(document.getElementById('terminal'));
         fitAddon.fit();
 
-        window.onresize = () => fitAddon.fit();
+        window.addEventListener('resize', () => fitAddon.fit());
 
         // WebSocket Connection with auto-reconnect
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const sessionId = {{ session_id|tojson }};
-        const shellToken = localStorage.getItem('token');
-        const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}${shellToken ? '?token=' + encodeURIComponent(shellToken) : ''}`;
+        const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}`;
         const ws = new ReconnectingWebSocket(wsUrl, { maxRetries: 10 });
 
         ws.on('open', () => {
@@ -59,7 +63,11 @@
         });
 
         ws.on('close', () => {
-            term.write('\r\n\x1b[31m[SYSTEM] Connection closed. Reconnecting...\x1b[0m\r\n');
+            if (ws._retries >= ws._maxRetries) {
+                term.write('\r\n\x1b[31m[SYSTEM] Connection lost. Max retry attempts reached.\x1b[0m\r\n');
+            } else {
+                term.write('\r\n\x1b[33m[SYSTEM] Connection closed. Reconnecting...\x1b[0m\r\n');
+            }
         });
 
         ws.on('error', (error) => {

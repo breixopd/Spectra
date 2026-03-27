@@ -100,8 +100,7 @@ function openShell(btn, sessionId) {
 
     // Connect WebSocket
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const shellToken = localStorage.getItem('token');
-    const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}${shellToken ? '?token=' + encodeURIComponent(shellToken) : ''}`;
+    const wsUrl = `${protocol}//${window.location.host}/api/v1/shell/${sessionId}`;
 
     socket = new ReconnectingWebSocket(wsUrl, { maxRetries: 10 });
 
@@ -240,7 +239,8 @@ document.getElementById('import-paste-text')?.addEventListener('input', () => { 
 async function executeImport() {
     if (parsedTargets.length === 0) return;
     document.getElementById('import-btn').disabled = true;
-    document.getElementById('import-btn').innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Importing...';
+    document.getElementById('import-btn').innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-2"></i>Importing...';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
     let success = 0;
     for (const t of parsedTargets) {
         try {
@@ -248,7 +248,8 @@ async function executeImport() {
             if (!error && data) { success++; addTargetToGrid({ address: data.address, description: data.description, status: data.status, os: data.os }); }
         } catch {}
     }
-    document.getElementById('import-btn').innerHTML = '<i class="fa-solid fa-file-import mr-2"></i>Import All';
+    document.getElementById('import-btn').innerHTML = '<i data-lucide="file-input" class="w-4 h-4 inline-block mr-2"></i>Import All';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
     closeImportModal();
     if (success > 0) loadAttackSurface();
 }

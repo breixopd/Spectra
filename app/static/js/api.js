@@ -27,9 +27,7 @@ const spectraApi = (() => {
 
     let _activeRequests = 0;
 
-    function _getToken() {
-        return localStorage.getItem('token') || '';
-    }
+    const publicPaths = window.PUBLIC_PATHS || [];
 
     function _onLoadingChange(count) {
         const el = document.getElementById('spectra-api-loading');
@@ -43,12 +41,7 @@ const spectraApi = (() => {
      * Returns { data, response, error } — never throws.
      */
     async function request(url, options = {}) {
-        const token = _getToken();
         const headers = { ...options.headers };
-
-        if (token && !url.includes('/token')) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
 
         if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
             headers['Content-Type'] = 'application/json';
@@ -65,12 +58,10 @@ const spectraApi = (() => {
         _onLoadingChange(_activeRequests);
 
         try {
-            const response = await fetch(url, { ...options, headers });
+            const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
 
             // Handle auth failures
-            const publicPaths = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy'];
             if (response.status === 401 && !publicPaths.includes(window.location.pathname)) {
-                localStorage.removeItem('token');
                 window.location.href = '/login';
                 return { data: null, response, error: 'Unauthorized' };
             }

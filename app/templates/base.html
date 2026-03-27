@@ -20,8 +20,8 @@
     <!-- Fonts (local) -->
     <link rel="stylesheet" href="/static/vendor/css/fonts.css">
     
-    <!-- Icons (FontAwesome, local) -->
-    <link rel="stylesheet" href="/static/vendor/css/fontawesome.min.css">
+    <!-- Icons (FontAwesome, local — being migrated to Lucide) -->
+    <!-- <link rel="stylesheet" href="/static/vendor/css/fontawesome.min.css"> -->
 
     <!-- Cytoscape.js (local) -->
     <script src="/static/vendor/js/cytoscape.min.js"></script>
@@ -34,21 +34,28 @@
     {% block extra_css %}{% endblock %}
     <!-- Auth Check -->
     <script nonce="{{ request.state.csp_nonce }}">
+        // Public paths constant (shared with api.js)
+        window.PUBLIC_PATHS = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy'];
+
         // Check if user is authenticated
-        const publicPaths = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy'];
-        const token = localStorage.getItem('token');
-        
-        if (!token && !publicPaths.includes(window.location.pathname)) {
-            // Check if setup is needed
-            spectraApi.get('/api/v1/auth/setup/status')
-                .then(({ data }) => {
-                    if (!data?.is_setup) {
-                        window.location.href = '/setup';
-                    } else {
-                        window.location.href = '/login';
+        if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
+            fetch('/api/v1/auth/me', { credentials: 'same-origin' })
+                .then(r => {
+                    if (r.status === 401) {
+                        // Check if setup is needed
+                        fetch('/api/v1/auth/setup/status', { credentials: 'same-origin' })
+                            .then(r2 => r2.json())
+                            .then(data => {
+                                if (!data?.is_setup) {
+                                    window.location.href = '/setup';
+                                } else {
+                                    window.location.href = '/login';
+                                }
+                            })
+                            .catch(() => window.location.href = '/login');
                     }
                 })
-                .catch(() => window.location.href = '/login');
+                .catch(() => {});
         }
 
         function _spectraToast(msg, type) {
@@ -117,10 +124,14 @@
             _spectraConfirm(msg, null, opts);
             var inputArea = document.getElementById('spectra-gc-input-area');
             inputArea.classList.remove('hidden');
-            inputArea.innerHTML = '<input id="spectra-gc-input" type="' + (opts.inputType || 'text')
-                + '" class="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none"'
-                + ' placeholder="' + (opts.placeholder || '') + '" autocomplete="off">';
-            var inp = document.getElementById('spectra-gc-input');
+            inputArea.textContent = ''; // Clear safely
+            var inp = document.createElement('input');
+            inp.id = 'spectra-gc-input';
+            inp.type = opts.inputType || 'text';
+            inp.className = 'w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none';
+            inp.placeholder = opts.placeholder || '';
+            inp.autocomplete = 'off';
+            inputArea.appendChild(inp);
             var okBtn = document.getElementById('spectra-gc-ok');
             var newOk = okBtn.cloneNode(true);
             okBtn.parentNode.replaceChild(newOk, okBtn);
@@ -132,7 +143,7 @@
         }
 
         // Show admin nav link for admin users
-        if (token && !publicPaths.includes(window.location.pathname)) {
+        if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
             spectraApi.get('/api/admin/stats').then(r => {
                 if (!r.error) {
                     document.addEventListener('DOMContentLoaded', function() {
@@ -190,14 +201,14 @@
         </div>
     </div>
 
-    {% set is_public_page = request.path in ['/login', '/setup'] %}
+    {% set is_public_page = request.path in ['/login', '/setup', '/register', '/forgot-password', '/reset-password', '/verify-email'] %}
     <div class="flex h-full relative z-10 {% if is_public_page %}items-center justify-center{% else %}flex-col md:flex-row{% endif %}">
 
         {% if not is_public_page %}
         <!-- Mobile Header -->
         <header class="mobile-header" role="banner">
             <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
-                <i class="fa-solid fa-bars text-lg"></i>
+                <i data-lucide="menu" class="w-5 h-5"></i>
             </button>
             <div class="flex items-center">
                 <span class="text-violet-400 mr-2">{% include 'partials/shield_svg.html' %}</span>
@@ -218,56 +229,56 @@
                 </div>
                 <nav class="p-4 space-y-1" role="navigation" aria-label="Main navigation">
                     <a href="/dashboard" data-tooltip="Mission control & live assessment" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/dashboard' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-gauge text-lg mr-3 {% if request.path == '/dashboard' %}text-violet-400{% else %}group-hover:text-violet-400{% endif %} transition-colors"></i>
+                        <i data-lucide="gauge" class="w-5 h-5 mr-3 {% if request.path == '/dashboard' %}text-violet-400{% else %}group-hover:text-violet-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Dashboard</span>
                     </a>
                     <a href="/history" data-tooltip="Past assessments & results" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/history' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-clock-rotate-left text-lg mr-3 {% if request.path == '/history' %}text-blue-400{% else %}group-hover:text-blue-400{% endif %} transition-colors"></i>
+                        <i data-lucide="history" class="w-5 h-5 mr-3 {% if request.path == '/history' %}text-blue-400{% else %}group-hover:text-blue-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">History</span>
                     </a>
                     <a href="/targets" data-tooltip="Manage assessment targets" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/targets' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-bullseye text-lg mr-3 {% if request.path == '/targets' %}text-emerald-400{% else %}group-hover:text-emerald-400{% endif %} transition-colors"></i>
+                        <i data-lucide="crosshair" class="w-5 h-5 mr-3 {% if request.path == '/targets' %}text-emerald-400{% else %}group-hover:text-emerald-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Targets</span>
                     </a>
                     <a href="/reports" data-tooltip="Generated security reports" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/reports' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-file-lines text-lg mr-3 {% if request.path == '/reports' %}text-amber-400{% else %}group-hover:text-amber-400{% endif %} transition-colors"></i>
+                        <i data-lucide="file-text" class="w-5 h-5 mr-3 {% if request.path == '/reports' %}text-amber-400{% else %}group-hover:text-amber-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Reports</span>
                     </a>
                     <a href="/overseer" data-tooltip="Real-time agent monitoring" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/overseer' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-users-gear text-lg mr-3 {% if request.path == '/overseer' %}text-cyan-400{% else %}group-hover:text-cyan-400{% endif %} transition-colors"></i>
+                        <i data-lucide="users" class="w-5 h-5 mr-3 {% if request.path == '/overseer' %}text-cyan-400{% else %}group-hover:text-cyan-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Agents</span>
                     </a>
                     <a href="/toolbox" data-tooltip="Security tools & plugins" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/toolbox' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-toolbox text-lg mr-3 {% if request.path == '/toolbox' %}text-rose-400{% else %}group-hover:text-rose-400{% endif %} transition-colors"></i>
+                        <i data-lucide="wrench" class="w-5 h-5 mr-3 {% if request.path == '/toolbox' %}text-rose-400{% else %}group-hover:text-rose-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Toolbox</span>
                     </a>
                     <a href="/manual" data-feature="manual_mode" data-tooltip="Run tools manually" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/manual' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-terminal text-lg mr-3 {% if request.path == '/manual' %}text-orange-400{% else %}group-hover:text-orange-400{% endif %} transition-colors"></i>
+                        <i data-lucide="terminal" class="w-5 h-5 mr-3 {% if request.path == '/manual' %}text-orange-400{% else %}group-hover:text-orange-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Manual Mode</span>
                     </a>
                     <a href="/observability" data-tooltip="System metrics & performance" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-chart-line text-lg mr-3 {% if request.path == '/observability' %}text-teal-400{% else %}group-hover:text-teal-400{% endif %} transition-colors"></i>
+                        <i data-lucide="chart-line" class="w-5 h-5 mr-3 {% if request.path == '/observability' %}text-teal-400{% else %}group-hover:text-teal-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Observability</span>
                     </a>
                     <a href="/settings" data-tooltip="Application configuration" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/settings' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-gear text-lg mr-3 {% if request.path == '/settings' %}text-slate-200{% else %}group-hover:text-slate-200{% endif %} transition-colors"></i>
+                        <i data-lucide="settings" class="w-5 h-5 mr-3 {% if request.path == '/settings' %}text-slate-200{% else %}group-hover:text-slate-200{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Settings</span>
                     </a>
                     <a href="/admin" id="admin-nav-link" data-tooltip="User & plan management" data-tooltip-pos="right" class="hidden flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-user-shield text-lg mr-3 {% if request.path == '/admin' %}text-red-400{% else %}group-hover:text-red-400{% endif %} transition-colors"></i>
+                        <i data-lucide="shield-check" class="w-5 h-5 mr-3 {% if request.path == '/admin' %}text-red-400{% else %}group-hover:text-red-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Admin</span>
                     </a>
                     <div class="border-t border-white/5 my-2"></div>
                     <a href="/docs/api" data-tooltip="API reference & playground" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/docs/api' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-book-open text-lg mr-3 {% if request.path == '/docs/api' %}text-indigo-400{% else %}group-hover:text-indigo-400{% endif %} transition-colors"></i>
+                        <i data-lucide="book-open" class="w-5 h-5 mr-3 {% if request.path == '/docs/api' %}text-indigo-400{% else %}group-hover:text-indigo-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">API Docs</span>
                     </a>
                     <a href="/help" data-tooltip="Guides & help center" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/help' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-circle-question text-lg mr-3 {% if request.path == '/help' %}text-sky-400{% else %}group-hover:text-sky-400{% endif %} transition-colors"></i>
+                        <i data-lucide="circle-help" class="w-5 h-5 mr-3 {% if request.path == '/help' %}text-sky-400{% else %}group-hover:text-sky-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Help</span>
                     </a>
                     <a href="/profile" data-tooltip="Account & profile" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/profile' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i class="fa-solid fa-id-card text-lg mr-3 {% if request.path == '/profile' %}text-pink-400{% else %}group-hover:text-pink-400{% endif %} transition-colors"></i>
+                        <i data-lucide="id-card" class="w-5 h-5 mr-3 {% if request.path == '/profile' %}text-pink-400{% else %}group-hover:text-pink-400{% endif %} transition-colors"></i>
                         <span class="text-sm font-medium">Account</span>
                     </a>
                 </nav>
@@ -276,7 +287,7 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
                         <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-xs text-slate-400 border border-white/5">
-                            <i class="fa-solid fa-user"></i>
+                            <i data-lucide="user" class="w-4 h-4"></i>
                         </div>
                         <div class="ml-3">
                             <p class="text-xs font-medium text-white">Admin</p>
@@ -288,8 +299,8 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <a href="/changelog" class="text-xs text-slate-500 hover:text-violet-400 transition-colors cursor-pointer" title="View changelog">v{{ version }}</a>
-                        <button onclick="(async()=>{const t=localStorage.getItem('token');try{await fetch('/api/v1/auth/logout',{method:'POST',headers:{'Authorization':'Bearer '+(t||'')}});}catch(e){}localStorage.removeItem('token');localStorage.removeItem('refresh_token');window.location.href='/login';})()" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out">
-                            <i class="fa-solid fa-right-from-bracket text-xs"></i>
+                        <button onclick="(async()=>{try{await fetch('/api/v1/auth/logout',{method:'POST',credentials:'same-origin'});}catch(e){}window.location.href='/login';})()" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out">
+                            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                         </button>
                     </div>
                 </div>
@@ -306,20 +317,14 @@
     <!-- Native WebSocket (for real-time updates) -->
     {% if not is_public_page %}
     <script nonce="{{ request.state.csp_nonce }}">
-        // Initialize WebSocket connection with authentication
+        // Initialize WebSocket connection with cookie-based authentication
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsToken = localStorage.getItem('token');
-        const wsUrl = `${protocol}//${window.location.host}/ws${wsToken ? '?token=' + encodeURIComponent(wsToken) : ''}`;
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
         let socket;
         let wsReconnectAttempts = 0;
         const maxReconnectAttempts = 5;
 
         function connectWebSocket() {
-            if (!wsToken) {
-                console.warn('WebSocket: No auth token, skipping connection');
-                return;
-            }
-            
             socket = new WebSocket(wsUrl);
 
             socket.onopen = () => {
@@ -334,7 +339,6 @@
                 // Handle authentication rejection (4001)
                 if (event.code === 4001) {
                     console.error('WebSocket auth failed - redirecting to login');
-                    localStorage.removeItem('token');
                     window.location.href = '/login';
                     return;
                 }
@@ -368,8 +372,7 @@
         let systemReady = false;
 
         async function checkSystemStatus() {
-            const publicPaths = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy'];
-            if (publicPaths.includes(window.location.pathname)) return;
+            if (window.PUBLIC_PATHS.includes(window.location.pathname)) return;
 
             const statusBar = document.getElementById('global-status-bar');
             const statusMsg = document.getElementById('status-message');
@@ -484,6 +487,11 @@
     <script src="/static/js/modules/confirm.js" type="module"></script>
     <script nonce="{{ request.state.csp_nonce }}">
     function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="/static/vendor/js/lucide.min.js"></script>
+    <script nonce="{{ request.state.csp_nonce }}">
+      document.addEventListener('DOMContentLoaded', () => { if (typeof lucide !== 'undefined') lucide.createIcons(); });
     </script>
     {% block scripts %}{% endblock %}
     {% block extra_js %}{% endblock %}

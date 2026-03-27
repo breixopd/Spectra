@@ -142,7 +142,7 @@ async function loadActivity() {
         container.innerHTML = events.map(ev => `
             <div class="activity-row">
                 <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 mt-0.5">
-                    <i class="fa-solid fa-${ev.event_type === 'login' ? 'right-to-bracket' : ev.event_type === 'logout' ? 'right-from-bracket' : 'circle-info'} text-xs text-slate-400"></i>
+                    <i data-lucide="${ev.event_type === 'login' ? 'log-in' : ev.event_type === 'logout' ? 'log-out' : 'info'}" class="w-3.5 h-3.5 inline-block text-slate-400"></i>
                 </div>
                 <div class="flex-1">
                     <div class="text-sm text-white">${escapeHtml(ev.event_type || ev.action || 'Event')}</div>
@@ -150,6 +150,7 @@ async function loadActivity() {
                 </div>
             </div>
         `).join('');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (e) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Could not load activity</p>'; }
 }
 
@@ -184,28 +185,28 @@ async function loadPlan() {
             actionsHtml = `
                 <div class="flex gap-2 mt-4 pt-3 border-t border-white/5">
                     <button onclick="showAvailablePlans()" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg transition-colors">
-                        <i class="fa-solid fa-arrow-up-right-dots mr-1"></i> Change Plan
+                        <i data-lucide="arrow-up" class="w-3.5 h-3.5 inline-block mr-1"></i> Change Plan
                     </button>
                     <button onclick="openBillingPortal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg transition-colors">
-                        <i class="fa-solid fa-credit-card mr-1"></i> Manage Billing
+                        <i data-lucide="credit-card" class="w-3.5 h-3.5 inline-block mr-1"></i> Manage Billing
                     </button>
                 </div>`;
         } else if (paymentProvider === 'crypto') {
             actionsHtml = `
                 <div class="flex gap-2 mt-4 pt-3 border-t border-white/5">
                     <button onclick="showAvailablePlans()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg transition-colors">
-                        <i class="fa-brands fa-bitcoin mr-1"></i> Pay with Crypto
+                        <i data-lucide="bitcoin" class="w-3.5 h-3.5 inline-block mr-1"></i> Pay with Crypto
                     </button>
                 </div>`;
         } else if (paymentProvider === 'manual') {
             actionsHtml = `
                 <div class="mt-4 pt-3 border-t border-white/5">
-                    <p class="text-xs text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i> Your plan is managed by your administrator.</p>
+                    <p class="text-xs text-slate-500"><i data-lucide="info" class="w-3.5 h-3.5 inline-block mr-1"></i> Your plan is managed by your administrator.</p>
                 </div>`;
         } else {
             actionsHtml = `
                 <div class="mt-4 pt-3 border-t border-white/5">
-                    <p class="text-xs text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i> Contact your administrator to change your plan.</p>
+                    <p class="text-xs text-slate-500"><i data-lucide="info" class="w-3.5 h-3.5 inline-block mr-1"></i> Contact your administrator to change your plan.</p>
                 </div>`;
         }
 
@@ -241,6 +242,7 @@ async function loadPlan() {
             </div>
             <div id="available-plans" class="hidden mt-4 space-y-3"></div>
         `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
         // Store current plan id for comparison
         container.dataset.currentPlanId = currentPlanId;
     } catch (e) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Could not load plan info</p>'; }
@@ -405,7 +407,6 @@ async function deleteAccount() {
             try {
                 const { data, error } = await spectraApi.request('/api/v1/auth/account', { method: 'DELETE', body: { password: pw } });
                 if (!error) {
-                    localStorage.removeItem('token');
                     window.location.href = '/login?msg=account_deleted';
                 } else {
                     _spectraToast(error.detail || 'Failed to delete account', 'error');
@@ -426,24 +427,26 @@ async function loadMfaStatus() {
             area.innerHTML = `
                 <div class="flex items-center justify-between p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                        <i data-lucide="shield" class="w-4 h-4 inline-block text-emerald-400"></i>
                         <span class="text-sm font-medium text-emerald-400">MFA is enabled</span>
                     </div>
                     <button onclick="startDisableMfa()" class="px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg border border-rose-500/20 transition-colors">
                         Disable
                     </button>
                 </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         } else {
             area.innerHTML = `
                 <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-white/5">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-shield text-slate-500"></i>
+                        <i data-lucide="shield" class="w-4 h-4 inline-block text-slate-500"></i>
                         <span class="text-sm text-slate-400">MFA is not enabled</span>
                     </div>
                     <button onclick="startMfaSetup()" class="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors font-medium">
                         Enable MFA
                     </button>
                 </div>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     } catch (e) {
         area.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Could not load MFA status</p>';
