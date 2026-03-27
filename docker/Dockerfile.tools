@@ -38,9 +38,9 @@ ENV PATH=$PATH:/home/spectra/go/bin:/usr/local/go/bin
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"
 
-COPY requirements-tools.txt .
+COPY requirements/worker.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements-tools.txt && \
+    pip install --no-cache-dir -r worker.txt && \
     pip install --no-cache-dir dirsearch
 
 RUN mkdir -p /opt/spectra_tools

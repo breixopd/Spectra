@@ -9,6 +9,13 @@
 # Set OPENAI_API_KEY to your OpenRouter key.
 # Set OPENAI_BASE_URL to https://openrouter.ai/api/v1 (done in docker-compose).
 #
+# Fast tier:    nvidia/nemotron-3-nano-30b-a3b:free (194 tok/s, 256K ctx)
+#               google/gemma-3-12b-it:free (fallback, 32K ctx)
+# Balanced tier: nvidia/nemotron-3-super-120b-a12b:free (120B MoE, 262K ctx)
+#               z-ai/glm-4.5-air:free (fallback, 131K ctx)
+# Capable tier: minimax/minimax-m2.5:free (SWE-Bench 80.2%, 197K ctx)
+#               stepfun/step-3.5-flash:free (fallback, 256K ctx)
+#
 # To use paid models: change model_name values to e.g. "openai/gpt-4.1",
 # "anthropic/claude-sonnet-4", etc. Models are hot-swappable.
 #
@@ -26,11 +33,11 @@ routing = ["primary", "fallback"]
 
 [models.fast.providers.primary]
 type = "openai"
-model_name = "stepfun/step-2-16k:free"
+model_name = "nvidia/nemotron-3-nano-30b-a3b:free"
 
 [models.fast.providers.fallback]
 type = "openai"
-model_name = "google/gemma-3-4b-it:free"
+model_name = "google/gemma-3-12b-it:free"
 
 # Tier 2: Balanced — reasoning tasks (planning, steering, reporting)
 [models.balanced]
@@ -38,11 +45,11 @@ routing = ["primary", "fallback"]
 
 [models.balanced.providers.primary]
 type = "openai"
-model_name = "nvidia/llama-3.3-nemotron-super-49b-v1:free"
+model_name = "nvidia/nemotron-3-super-120b-a12b:free"
 
 [models.balanced.providers.fallback]
 type = "openai"
-model_name = "deepseek/deepseek-r1-0528:free"
+model_name = "z-ai/glm-4.5-air:free"
 
 # Tier 3: Capable — complex creative tasks (exploit crafting, PoC)
 [models.capable]
@@ -50,11 +57,11 @@ routing = ["primary", "fallback"]
 
 [models.capable.providers.primary]
 type = "openai"
-model_name = "nvidia/llama-3.1-nemotron-ultra-253b-v1:free"
+model_name = "minimax/minimax-m2.5:free"
 
 [models.capable.providers.fallback]
 type = "openai"
-model_name = "deepseek/deepseek-r1-0528:free"
+model_name = "stepfun/step-3.5-flash:free"
 
 # =============================================================================
 # Functions — Map Spectra tasks to model tiers

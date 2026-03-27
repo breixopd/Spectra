@@ -4,6 +4,26 @@
 version: "3.8"
 
 services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.role == app
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - redis_data:/data
+    networks:
+      - spectra-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   db:
     image: pgvector/pgvector:pg16
     deploy:
@@ -48,6 +68,8 @@ services:
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       JWT_SECRET_KEY_FILE: /run/secrets/jwt_secret
       AI_SERVICE_URL: http://ai-service:8001
+      RATE_LIMIT_STORAGE: redis://redis:6379/0
+      TENSORZERO_GATEWAY_URL: http://tensorzero:3000
       SCHEDULER_URL: http://scheduler:8002
     ports:
       - "5000:5000"
@@ -76,6 +98,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
+      TENSORZERO_GATEWAY_URL: http://tensorzero:3000
       SKIP_MIGRATIONS: "true"
     networks:
       - spectra-net
@@ -157,6 +180,26 @@ services:
     networks:
       - spectra-net
 
+  # MinIO Object Storage (S3-compatible)
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-spectra}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    networks:
+      - spectra-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.role == db
+      resources:
+        limits:
+          memory: 512M
+
   # ClickHouse (TensorZero analytics + inference storage)
   clickhouse:
     image: clickhouse/clickhouse-server:24.11-alpine
@@ -185,6 +228,7 @@ services:
   # TensorZero Gateway (AI routing, observability, optimization)
   tensorzero:
     image: tensorzero/gateway
+    command: ["--config-file", "/app/config/tensorzero.toml"]
     deploy:
       replicas: 1
       placement:
@@ -195,7 +239,7 @@ services:
     environment:
       TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
       TENSORZERO_CLICKHOUSE_URL: http://clickhouse:8123/tensorzero
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-${LLM_API_KEY:-}}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     configs:
@@ -222,6 +266,8 @@ volumes:
   caddy_data:
   caddy_config:
   clickhouse_data:
+  minio_data:
+  redis_data:
 
 secrets:
   db_password:

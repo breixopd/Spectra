@@ -17,9 +17,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY requirements-app.txt .
+COPY requirements/app.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements-app.txt
+    pip install --no-cache-dir -r app.txt
 
 # --- Runtime Stage ---
 FROM python:3.11-slim AS runtime
@@ -71,8 +71,9 @@ COPY --chown=spectra:spectra keys/ ./keys/
 COPY --chown=spectra:spectra tailwind.config.js ./tailwind.config.js
 RUN chmod +x /app/scripts/start.sh
 
-# Build Tailwind CSS (standalone binary, no Node.js required)
-RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 && \
+# Build Tailwind CSS (pin v3 standalone binary; the current stylesheet pipeline is Tailwind v3-based)
+ARG TAILWIND_VERSION=3.4.17
+RUN curl -fsSLo tailwindcss-linux-x64 https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64 && \
     chmod +x tailwindcss-linux-x64 && \
     ./tailwindcss-linux-x64 -i app/static/css/input.css -o app/static/css/output.css --minify && \
     rm tailwindcss-linux-x64

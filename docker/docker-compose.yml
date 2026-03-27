@@ -12,8 +12,8 @@ services:
     container_name: spectra-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-spectra}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-spectra_minio_dev}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set in .env}
     ports:
       - "127.0.0.1:9000:9000"
       - "127.0.0.1:9001:9001"
@@ -34,7 +34,7 @@ services:
     container_name: spectra-db
     environment:
       POSTGRES_USER: spectra
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spectra_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
       POSTGRES_DB: spectra
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -52,6 +52,22 @@ services:
     networks:
       - spectra-network
 
+  # Redis (shared rate limiting / cache primitives)
+  redis:
+    image: redis:7-alpine
+    container_name: spectra-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - spectra-network
+
   # Caddy Reverse Proxy
   caddy:
     image: caddy:2-alpine
@@ -60,7 +76,7 @@ services:
       - "${SPECTRA_PORT:-80}:80"
       - "${SPECTRA_HTTPS_PORT:-443}:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -87,6 +103,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
       ai-svc:
         condition: service_healthy
       tensorzero:
@@ -94,13 +114,15 @@ services:
     env_file:
       - ../.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?set in .env}@db:5432/spectra
       - CONNECT_BACK_HOST=spectra-app
       - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=${MINIO_ROOT_USER:-spectra}
-      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-spectra_minio_dev}
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:?set in .env}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set in .env}
       - AI_SERVICE_URL=http://ai-svc:5010
-      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+      - RATE_LIMIT_STORAGE=redis://redis:6379/0
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
     volumes:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins
@@ -132,11 +154,11 @@ services:
 
   # AI Service (LLM + RAG + Embeddings)
   ai-svc:
-    image: spectra-app:latest
+    image: spectra-ai:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
-    container_name: spectra-ai-svc
+    container_name: spectra-ai
     expose:
       - "5010"
     command: ["python", "-m", "uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
@@ -148,8 +170,11 @@ services:
     env_file:
       - ../.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
-      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?set in .env}@db:5432/spectra
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:?set in .env}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set in .env}
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
       - SKIP_MIGRATIONS=true
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
     volumes:
@@ -197,6 +222,7 @@ services:
   tensorzero:
     image: tensorzero/gateway
     container_name: spectra-tensorzero
+    command: ["--config-file", "/app/config/tensorzero.toml"]
     restart: unless-stopped
     depends_on:
       clickhouse:
@@ -206,9 +232,8 @@ services:
     environment:
       - TENSORZERO_CONFIG_FILE=/app/config/tensorzero.toml
       - TENSORZERO_CLICKHOUSE_URL=http://clickhouse:8123/tensorzero
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-${LLM_API_KEY:-}}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
@@ -225,7 +250,7 @@ services:
 
   # Scheduler (Backups, Metrics, Cleanup)
   scheduler:
-    image: spectra-app:latest
+    image: spectra-scheduler:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
@@ -239,8 +264,11 @@ services:
     env_file:
       - ../.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
-      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?set in .env}@db:5432/spectra
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:?set in .env}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set in .env}
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
       - BACKUP_ENABLED=${BACKUP_ENABLED:-false}
       - SKIP_MIGRATIONS=true
     volumes:
@@ -262,7 +290,7 @@ services:
 
   # Worker (Tool Execution via Ephemeral Sandbox Containers)
   worker:
-    image: spectra-tools:latest
+    image: spectra-worker:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile.tools
@@ -276,8 +304,11 @@ services:
     env_file:
       - ../.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:-spectra_dev}@db:5432/spectra
-      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-}
+      - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?set in .env}@db:5432/spectra
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=${MINIO_ROOT_USER:?set in .env}
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set in .env}
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
       - SKIP_MIGRATIONS=true
     volumes:
       - spectra_data:/app/data
@@ -309,3 +340,4 @@ volumes:
   caddy_config:
   minio_data:
   clickhouse_data:
+  redis_data:

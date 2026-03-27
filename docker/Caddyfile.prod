@@ -1,20 +1,15 @@
-# Spectra Production Caddyfile
-# Replace {$SPECTRA_DOMAIN} with your actual domain, or set the env var.
-# Caddy automatically provisions TLS via Let's Encrypt.
+# Spectra production Caddyfile.
+# The app owns CSP and other browser policies; Caddy terminates TLS and forwards traffic.
 
 {$SPECTRA_DOMAIN:localhost} {
-	# Security headers
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
-		X-XSS-Protection "1; mode=block"
 		Referrer-Policy strict-origin-when-cross-origin
 		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org; connect-src 'self' ws: wss:; font-src 'self';"
 		-Server
 	}
 
-	# WebSocket upgrade
 	@websocket {
 		header Connection *Upgrade*
 		header Upgrade websocket
@@ -23,7 +18,6 @@
 		reverse_proxy spectra-app:5000
 	}
 
-	# Proxy to Spectra
 	reverse_proxy spectra-app:5000 {
 		health_uri /api/health
 		health_interval 15s
