@@ -5,7 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_current_active_user
 from app.api.routers.ui import router
+from app.core.database import get_async_session
 from app.models.user import User
 
 
@@ -19,37 +21,28 @@ def _make_user(is_superuser: bool = False, username: str = "testuser") -> User:
     return user
 
 
-def _build_app(current_user: User | None = None):
-    """Build a minimal FastAPI app with the UI router and auth overrides."""
-    from app.api.dependencies import get_current_active_user
-    from app.core.rbac import require_permission
-
+def _build_app(current_user: User | None = None, db=None):
     app = FastAPI()
     app.include_router(router)
 
     if current_user is not None:
         app.dependency_overrides[get_current_active_user] = lambda: current_user
-        # Override every require_permission call to just return the user
-        for perm in ("manage_settings",):
-            dep = require_permission(perm)  # type: ignore[arg-type]
-            if current_user.is_superuser:
-                app.dependency_overrides[dep] = lambda: current_user
-
+    if db is not None:
+        app.dependency_overrides[get_async_session] = lambda: db
     return app
 
 
 class TestGetSettings:
     @patch("app.api.routers.ui.get_current_settings")
     def test_get_settings_authenticated(self, mock_get):
-        mock_get.return_value = {"ai_provider": "mock", "log_level": "DEBUG"}
-        user = _make_user(is_superuser=True)
-        app = _build_app(user)
+        mock_get.return_value = {"tensorzero_gateway_url": "http://tensorzero:3000", "log_level": "DEBUG"}
+        app = _build_app(_make_user(is_superuser=True))
         client = TestClient(app)
 
         resp = client.get("/api/settings")
 
         assert resp.status_code == 200
-        assert resp.json()["ai_provider"] == "mock"
+        assert resp.json()["tensorzero_gateway_url"] == "http://tensorzero:3000"
 
     def test_get_settings_unauthenticated(self):
         app = FastAPI()
@@ -63,83 +56,40 @@ class TestGetSettings:
 
 class TestUpdateSettings:
     @patch("app.api.routers.ui.apply_settings_update", new_callable=AsyncMock)
-    @patch("app.api.routers.ui.get_async_session")
-    def test_superuser_can_update(self, mock_session, mock_apply):
+    def test_superuser_can_update(self, mock_apply):
         mock_apply.return_value = {"status": "updated", "message": "Settings updated and saved"}
-        mock_db = AsyncMock()
-        mock_session.return_value = mock_db
-
-        user = _make_user(is_superuser=True)
-        from app.api.dependencies import get_current_active_user
-        from app.core.database import get_async_session as real_get_session
-        from app.core.rbac import Permission, require_permission
-
-        app = FastAPI()
-        app.include_router(router)
-        app.dependency_overrides[get_current_active_user] = lambda: user
-        app.dependency_overrides[real_get_session] = lambda: mock_db
-        # Override the specific permission dependency
-        dep = require_permission(Permission.MANAGE_SETTINGS)
-        app.dependency_overrides[dep] = lambda: user
-
+        app = _build_app(_make_user(is_superuser=True), AsyncMock())
         client = TestClient(app)
+
         resp = client.post("/api/settings", json={"log_level": "WARNING"})
 
         assert resp.status_code == 200
         assert resp.json()["status"] == "updated"
 
     def test_non_superuser_cannot_update(self):
-        """Non-superuser should be rejected by the permission check."""
-        user = _make_user(is_superuser=False)
-        from app.api.dependencies import get_current_active_user
-
-        app = FastAPI()
-        app.include_router(router)
-        app.dependency_overrides[get_current_active_user] = lambda: user
-
+        app = _build_app(_make_user(is_superuser=False), AsyncMock())
         client = TestClient(app)
+
         resp = client.post("/api/settings", json={"log_level": "WARNING"})
 
-        # Should fail because require_permission(MANAGE_SETTINGS) is not overridden
-        assert resp.status_code in (401, 403)
+        assert resp.status_code == 403
 
 
 class TestSettingsValidation:
     @patch("app.api.routers.ui.apply_settings_update", new_callable=AsyncMock)
-    def test_invalid_ai_provider_rejected(self, mock_apply):
-        user = _make_user(is_superuser=True)
-        from app.api.dependencies import get_current_active_user
-        from app.core.database import get_async_session as real_get_session
-        from app.core.rbac import Permission, require_permission
-
-        app = FastAPI()
-        app.include_router(router)
-        app.dependency_overrides[get_current_active_user] = lambda: user
-        app.dependency_overrides[real_get_session] = lambda: AsyncMock()
-        dep = require_permission(Permission.MANAGE_SETTINGS)
-        app.dependency_overrides[dep] = lambda: user
-
+    def test_invalid_shell_routing_mode_rejected(self, mock_apply):
+        app = _build_app(_make_user(is_superuser=True), AsyncMock())
         client = TestClient(app)
-        resp = client.post("/api/settings", json={"ai_provider": "not_a_valid_provider"})
 
-        # Pydantic validation should reject the value (pattern mismatch)
+        resp = client.post("/api/settings", json={"shell_routing_mode": "invalid"})
+
         assert resp.status_code == 422
 
     @patch("app.api.routers.ui.apply_settings_update", new_callable=AsyncMock)
     def test_invalid_log_level_rejected(self, mock_apply):
-        user = _make_user(is_superuser=True)
-        from app.api.dependencies import get_current_active_user
-        from app.core.database import get_async_session as real_get_session
-        from app.core.rbac import Permission, require_permission
-
-        app = FastAPI()
-        app.include_router(router)
-        app.dependency_overrides[get_current_active_user] = lambda: user
-        app.dependency_overrides[real_get_session] = lambda: AsyncMock()
-        dep = require_permission(Permission.MANAGE_SETTINGS)
-        app.dependency_overrides[dep] = lambda: user
-
+        app = _build_app(_make_user(is_superuser=True), AsyncMock())
         client = TestClient(app)
+
         resp = client.post("/api/settings", json={"log_level": "INVALID_LEVEL"})
 
         assert resp.status_code == 422

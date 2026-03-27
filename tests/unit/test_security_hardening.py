@@ -1,9 +1,18 @@
 """Tests for security hardening and session migration features."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+
+
+@pytest.fixture(autouse=True)
+def _mission_runtime_isolation(tmp_path):
+    with (
+        patch("app.services.mission.mission.data_path", side_effect=lambda *parts: tmp_path.joinpath(*parts)),
+        patch("app.services.mission.mission.asyncio.create_task"),
+    ):
+        yield
 from app.core.encryption import (
     _derive_fernet_key,
     decrypt_field,
@@ -47,7 +56,7 @@ class TestRBACPermissions:
     def test_operator_lacks_admin_perms(self):
         assert not has_permission("operator", Permission.MANAGE_SETTINGS)
         assert not has_permission("operator", Permission.MANAGE_USERS)
-        assert not has_permission("operator", Permission.VIEW_AUDIT_LOG)
+        assert has_permission("operator", Permission.VIEW_AUDIT_LOG)
 
     def test_viewer_has_read_only_perms(self):
         assert has_permission("viewer", Permission.VIEW_MISSIONS)

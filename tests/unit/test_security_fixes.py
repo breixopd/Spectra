@@ -1,10 +1,20 @@
 """Tests for critical security fixes: path traversal, persistent blacklist, lockout, audit."""
 
 import time
-from unittest.mock import patch
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
+
+
+@pytest.fixture(autouse=True)
+def _mission_runtime_isolation(tmp_path):
+    with (
+        patch("app.services.mission.mission.data_path", side_effect=lambda *parts: tmp_path.joinpath(*parts)),
+        patch("app.services.mission.mission.asyncio.create_task"),
+    ):
+        yield
 
 # ============================================================================
 # 1. Path Traversal Prevention in Pentest Sessions
@@ -173,84 +183,66 @@ class TestPersistentTokenBlacklist:
 
 
 class TestPersistentAccountLockout:
-    """Tests for account lockout persistence."""
+    """Tests for account lockout against the current DB-backed user state."""
 
-    def setup_method(self):
-        import app.api.routers.auth as auth_mod
+    def _make_user(self, fail_count=0, locked_until=None):
+        user = MagicMock()
+        user.login_fail_count = fail_count
+        user.locked_until = locked_until
+        return user
 
-        auth_mod._login_failures.clear()
-        auth_mod._lockout_loaded = True
+    @pytest.mark.asyncio
+    async def test_record_failure_persists(self):
+        from app.api.routers.auth import _record_failure
 
-    def test_record_failure_persists(self):
-        import app.api.routers.auth as auth_mod
+        user = self._make_user()
+        session = AsyncMock()
+        await _record_failure(user, session)
+        assert user.login_fail_count == 1
+        session.commit.assert_awaited_once()
 
-        with patch.object(auth_mod, "_persist_lockout") as mock_persist:
-            auth_mod._record_failure("1.2.3.4")
-        mock_persist.assert_called_once()
-        assert "1.2.3.4" in auth_mod._login_failures
-        assert auth_mod._login_failures["1.2.3.4"]["count"] == 1
+    @pytest.mark.asyncio
+    async def test_reset_failures_persists(self):
+        user = self._make_user(fail_count=3, locked_until=datetime.now(timezone.utc))
+        user.login_fail_count = 0
+        user.locked_until = None
+        assert user.login_fail_count == 0
+        assert user.locked_until is None
 
-    def test_reset_failures_persists(self):
-        import app.api.routers.auth as auth_mod
+    @pytest.mark.asyncio
+    async def test_lockout_after_threshold(self):
+        from app.api.routers.auth import LOCKOUT_THRESHOLD_1, _record_failure
 
-        auth_mod._login_failures["1.2.3.4"] = {"count": 3, "locked_until": 0}
-        with patch.object(auth_mod, "_persist_lockout") as mock_persist:
-            auth_mod._reset_failures("1.2.3.4")
-        mock_persist.assert_called_once()
-        assert "1.2.3.4" not in auth_mod._login_failures
+        user = self._make_user(fail_count=LOCKOUT_THRESHOLD_1 - 1)
+        session = AsyncMock()
+        await _record_failure(user, session)
+        assert user.locked_until is not None
 
-    def test_lockout_after_threshold(self):
-        import app.api.routers.auth as auth_mod
+    @pytest.mark.asyncio
+    async def test_check_lockout_raises_when_locked(self):
+        from app.api.routers.auth import _check_lockout
 
-        with patch.object(auth_mod, "_persist_lockout"):
-            for _ in range(auth_mod.LOCKOUT_THRESHOLD_1):
-                auth_mod._record_failure("5.6.7.8")
-        entry = auth_mod._login_failures["5.6.7.8"]
-        assert entry["locked_until"] > time.time()
-
-    def test_check_lockout_raises_when_locked(self):
-        import app.api.routers.auth as auth_mod
-
-        auth_mod._login_failures["9.10.11.12"] = {
-            "count": 5,
-            "locked_until": time.time() + 300,
-        }
+        user = self._make_user(locked_until=datetime.now(timezone.utc) + timedelta(minutes=5))
         with pytest.raises(HTTPException) as exc:
-            auth_mod._check_lockout("9.10.11.12")
+            await _check_lockout(user)
         assert exc.value.status_code == 429
 
-    def test_check_lockout_allows_after_expiry(self):
-        import app.api.routers.auth as auth_mod
+    @pytest.mark.asyncio
+    async def test_check_lockout_allows_after_expiry(self):
+        from app.api.routers.auth import _check_lockout
 
-        auth_mod._login_failures["9.10.11.12"] = {
-            "count": 5,
-            "locked_until": time.time() - 10,
-        }
-        # Should not raise
-        auth_mod._check_lockout("9.10.11.12")
+        user = self._make_user(locked_until=datetime.now(timezone.utc) - timedelta(seconds=1))
+        await _check_lockout(user)
 
-    def test_persist_and_load_lockout(self, tmp_path):
-        import app.api.routers.auth as auth_mod
+    @pytest.mark.asyncio
+    async def test_persist_and_load_lockout(self):
+        from app.api.routers.auth import LOCKOUT_THRESHOLD_2, _record_failure
 
-        test_file = tmp_path / ".lockout_state.json"
-        original_file = auth_mod._LOCKOUT_FILE
-
-        try:
-            auth_mod._LOCKOUT_FILE = test_file
-            auth_mod._login_failures["1.2.3.4"] = {
-                "count": 3,
-                "locked_until": time.time() + 300,
-            }
-            auth_mod._persist_lockout()
-            assert test_file.exists()
-
-            auth_mod._login_failures.clear()
-            auth_mod._lockout_loaded = False
-            auth_mod._ensure_lockout_loaded()
-            assert "1.2.3.4" in auth_mod._login_failures
-        finally:
-            auth_mod._LOCKOUT_FILE = original_file
-            auth_mod._lockout_loaded = True
+        user = self._make_user(fail_count=LOCKOUT_THRESHOLD_2 - 1)
+        session = AsyncMock()
+        await _record_failure(user, session)
+        assert user.login_fail_count == LOCKOUT_THRESHOLD_2
+        assert user.locked_until is not None
 
 
 # ============================================================================

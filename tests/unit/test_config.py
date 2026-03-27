@@ -23,11 +23,11 @@ class TestSettingsValidators:
         with pytest.raises(ValidationError, match="LOG_LEVEL"):
             Settings(LOG_LEVEL="TRACE", _env_file=None)
 
-    def test_tensorzero_gateway_url_default_empty(self):
+    def test_tensorzero_gateway_url_default(self):
         from app.core.config import Settings
 
         s = Settings(_env_file=None)
-        assert s.TENSORZERO_GATEWAY_URL == ""
+        assert s.TENSORZERO_GATEWAY_URL == "http://tensorzero:3000"
 
     def test_tensorzero_gateway_url_set(self):
         from app.core.config import Settings
@@ -125,8 +125,7 @@ class TestDefaults:
     def test_default_tensorzero_gateway_url(self):
         from app.core.config import Settings
 
-        # TENSORZERO_GATEWAY_URL defaults to empty string
-        assert Settings.model_fields["TENSORZERO_GATEWAY_URL"].default == ""
+        assert Settings.model_fields["TENSORZERO_GATEWAY_URL"].default == "http://tensorzero:3000"
 
     def test_sandbox_defaults(self):
         from app.core.config import Settings

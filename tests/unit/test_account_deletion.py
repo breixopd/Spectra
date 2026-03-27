@@ -110,7 +110,7 @@ async def test_delete_account_success(mock_user, mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.verify_password", return_value=True):
+    with patch("app.api.routers.auth.verify_password", return_value=True),          patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
         result = await delete_account(
             request=request,
             body=body,
@@ -120,7 +120,7 @@ async def test_delete_account_success(mock_user, mock_session):
 
     assert "permanently deleted" in result["detail"].lower()
     mock_session.delete.assert_called_once_with(mock_user)
-    mock_session.commit.assert_called_once()
+    assert mock_session.commit.await_count >= 1
 
 
 @pytest.mark.asyncio

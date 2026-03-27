@@ -2,6 +2,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+
+
+@pytest.fixture(autouse=True)
+def _mission_runtime_isolation(tmp_path):
+    with (
+        patch("app.services.mission.mission.data_path", side_effect=lambda *parts: tmp_path.joinpath(*parts)),
+        patch("app.services.mission.mission.asyncio.create_task"),
+    ):
+        yield
+
 from app.services.ai.agents.base import AgentContext, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
 from app.services.mission.executor import MissionExecutor

@@ -14,45 +14,51 @@ def service():
 
 
 class TestEmbeddingSingleText:
-    """Tests for EmbeddingService.embed() via LiteLLM API."""
+    """Tests for EmbeddingService.embed() via OpenAI SDK API."""
 
     @pytest.mark.asyncio
     async def test_embed_returns_list_of_floats(self, service):
         """embed() returns a list of floats when API is configured."""
-        fake_response = MagicMock()
-        fake_response.data = [{"embedding": [0.1, 0.2, 0.3]}]
+        mock_client = AsyncMock()
+        mock_embedding = MagicMock()
+        mock_embedding.embedding = [0.1, 0.2, 0.3]
+        mock_response = MagicMock()
+        mock_response.data = [mock_embedding]
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
 
         service._api_ready = True
-        service._litellm_model = "openai/test-model"
-        service._litellm_kwargs = {"api_key": "k"}
+        service._use_local = False
+        service._openai_client = mock_client
+        service._openai_model = "test-model"
 
-        with patch("litellm.aembedding", new_callable=AsyncMock, return_value=fake_response):
-            result = await service.embed("hello world")
+        result = await service.embed("hello world")
 
         assert isinstance(result, list)
         assert all(isinstance(v, float) for v in result)
         assert len(result) == 3
 
     @pytest.mark.asyncio
-    async def test_embed_calls_litellm_with_correct_args(self, service):
-        """embed() passes model and input to litellm.aembedding."""
-        fake_response = MagicMock()
-        fake_response.data = [{"embedding": [1.0]}]
+    async def test_embed_calls_openai_with_correct_args(self, service):
+        """embed() passes model and input to openai client."""
+        mock_client = AsyncMock()
+        mock_embedding = MagicMock()
+        mock_embedding.embedding = [1.0]
+        mock_response = MagicMock()
+        mock_response.data = [mock_embedding]
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
 
         service._api_ready = True
-        service._litellm_model = "openai/test-model"
-        service._litellm_kwargs = {"api_key": "k", "api_base": "http://example.com"}
+        service._use_local = False
+        service._openai_client = mock_client
+        service._openai_model = "test-model"
 
-        with patch("litellm.aembedding", new_callable=AsyncMock, return_value=fake_response) as mock_embed:
-            await service.embed("text")
+        await service.embed("text")
 
-            mock_embed.assert_called_once_with(
-                model="openai/test-model",
-                input=["text"],
-                encoding_format="float",
-                api_key="k",
-                api_base="http://example.com",
-            )
+        mock_client.embeddings.create.assert_called_once_with(
+            model="test-model",
+            input=["text"],
+            encoding_format="float",
+        )
 
 
 class TestEmbeddingBatch:
@@ -61,18 +67,21 @@ class TestEmbeddingBatch:
     @pytest.mark.asyncio
     async def test_embed_batch_returns_list_of_vectors(self, service):
         """embed_batch() returns a list of embedding lists."""
-        fake_response = MagicMock()
-        fake_response.data = [
-            {"embedding": [0.1, 0.2]},
-            {"embedding": [0.3, 0.4]},
-        ]
+        mock_client = AsyncMock()
+        mock_emb1 = MagicMock()
+        mock_emb1.embedding = [0.1, 0.2]
+        mock_emb2 = MagicMock()
+        mock_emb2.embedding = [0.3, 0.4]
+        mock_response = MagicMock()
+        mock_response.data = [mock_emb1, mock_emb2]
+        mock_client.embeddings.create = AsyncMock(return_value=mock_response)
 
         service._api_ready = True
-        service._litellm_model = "openai/test-model"
-        service._litellm_kwargs = {"api_key": "k"}
+        service._use_local = False
+        service._openai_client = mock_client
+        service._openai_model = "test-model"
 
-        with patch("litellm.aembedding", new_callable=AsyncMock, return_value=fake_response):
-            result = await service.embed_batch(["a", "b"])
+        result = await service.embed_batch(["a", "b"])
 
         assert len(result) == 2
         assert all(isinstance(row, list) for row in result)
@@ -86,9 +95,8 @@ class TestModelLoading:
     async def test_load_model_uses_local_fallback_when_no_api_key(self, service):
         """_load_model falls back to local model when no API key is available."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
+            mock_settings.EMBEDDING_MODEL = "test-model"
             await service._load_model()
         assert service._api_ready is True
         assert service._use_local is True
@@ -97,9 +105,8 @@ class TestModelLoading:
     async def test_load_model_uses_local_when_no_api_key(self, service):
         """_load_model configures local fastembed when no API key is available."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
+            mock_settings.EMBEDDING_MODEL = "test-model"
             await service._load_model()
         assert service._api_ready is True
         assert service._use_local is True
@@ -107,17 +114,21 @@ class TestModelLoading:
 
     @pytest.mark.asyncio
     async def test_load_model_configures_api_with_base_url(self, service):
-        """_load_model sets up litellm params with custom base URL."""
-        with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "tensorzero"
-            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
-            mock_settings.EMBEDDING_API_BASE_URL = ""
-            mock_settings.LLM_API_BASE_URL = "https://api.example.com/v1"
+        """_load_model sets up OpenAI client with custom base URL."""
+        with (
+            patch("app.services.ai.embeddings.settings") as mock_settings,
+            patch("openai.AsyncOpenAI") as mock_openai_cls,
+        ):
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = "sk-test"
+            mock_settings.EMBEDDING_API_BASE_URL = "https://api.example.com/v1"
+            mock_settings.EMBEDDING_MODEL = "test-model"
             await service._load_model()
         assert service._api_ready is True
-        assert service._litellm_model == "openai/test-model"
-        assert service._litellm_kwargs["api_base"] == "https://api.example.com/v1"
+        assert service._openai_model == "test-model"
+        mock_openai_cls.assert_called_once_with(
+            api_key="sk-test",
+            base_url="https://api.example.com/v1",
+        )
 
     @pytest.mark.asyncio
     async def test_load_model_skips_if_already_ready(self, service):
@@ -139,9 +150,8 @@ class TestModelLoading:
     async def test_embed_uses_local_fallback_when_no_api_key(self, service):
         """embed() falls back to local embeddings when no API key configured."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
+            mock_settings.EMBEDDING_MODEL = "test-model"
             await service._load_model()
         assert service._use_local is True
         assert service._api_ready is True
@@ -150,9 +160,8 @@ class TestModelLoading:
     async def test_embed_batch_uses_local_fallback_when_no_api_key(self, service):
         """embed_batch() falls back to local embeddings when no API key configured."""
         with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "tensorzero"
             mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
+            mock_settings.EMBEDDING_MODEL = "test-model"
             await service._load_model()
         assert service._use_local is True
         assert service._api_ready is True
@@ -165,25 +174,30 @@ class TestModelLoading:
     @pytest.mark.asyncio
     async def test_is_functional_true_after_api_init(self, service):
         """is_functional returns True after successful API init."""
-        with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "tensorzero"
-            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
+        with (
+            patch("app.services.ai.embeddings.settings") as mock_settings,
+            patch("openai.AsyncOpenAI"),
+        ):
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = "sk-test"
             mock_settings.EMBEDDING_API_BASE_URL = ""
-            mock_settings.LLM_API_BASE_URL = None
+            mock_settings.EMBEDDING_MODEL = "test-model"
             await service._load_model()
         assert service.is_functional is True
 
     @pytest.mark.asyncio
     async def test_load_model_configures_api_without_base_url(self, service):
-        """_load_model uses model name directly when no base URL."""
-        with patch("app.services.ai.embeddings.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "tensorzero"
-            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
+        """_load_model creates OpenAI client without base_url when not set."""
+        with (
+            patch("app.services.ai.embeddings.settings") as mock_settings,
+            patch("openai.AsyncOpenAI") as mock_openai_cls,
+        ):
+            mock_settings.EMBEDDING_API_KEY.get_secret_value.return_value = "sk-test"
             mock_settings.EMBEDDING_API_BASE_URL = ""
-            mock_settings.LLM_API_BASE_URL = None
+            mock_settings.EMBEDDING_MODEL = "test-model"
             await service._load_model()
         assert service._api_ready is True
-        assert service._litellm_model == "test-model"
-        assert "api_base" not in service._litellm_kwargs
+        assert service._openai_model == "test-model"
+        mock_openai_cls.assert_called_once_with(
+            api_key="sk-test",
+            base_url=None,
+        )

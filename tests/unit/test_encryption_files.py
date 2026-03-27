@@ -91,48 +91,58 @@ class TestPasswordEncryption:
 
 class TestReportEncryptionAtRest:
     @pytest.mark.asyncio
-    async def test_save_report_encrypts(self, tmp_path: Path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
+    async def test_save_report_encrypts(self, tmp_path: Path):
+        """save_report should encrypt content before passing to storage."""
+        from unittest.mock import AsyncMock, MagicMock
 
-        with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"):
+        from app.core.encryption import _derive_fernet_key
+
+        # Capture what is uploaded to storage
+        uploaded: list[bytes] = []
+
+        mock_storage = MagicMock()
+        mock_storage.upload = AsyncMock(side_effect=lambda bucket, key, data: (uploaded.append(data), f"local/{key}") and f"local/{key}")
+
+        with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"), \
+             patch("app.services.mission.report_generator.get_storage_service", return_value=mock_storage):
             from app.services.mission.report_generator import save_report
 
             path = await save_report("mission-1", "<html>report</html>")
 
-        # In local-fallback mode, StorageService writes to data/missions/
-        saved = Path(path)
-        assert saved.exists()
-        # Should be encrypted, not plaintext
-        assert saved.read_bytes() != b"<html>report</html>"
+        assert path is not None
+        assert len(uploaded) == 1
+        # Uploaded bytes should be encrypted (not plaintext)
+        assert uploaded[0] != b"<html>report</html>"
+        # Should be decryptable with the same key
+        from cryptography.fernet import Fernet
 
-        with patch("app.core.encryption._get_default_secret", return_value="test-key"):
-            from cryptography.fernet import Fernet
-
-            from app.core.encryption import _derive_fernet_key
-
-            f = Fernet(_derive_fernet_key("test-key"))
-            content = f.decrypt(saved.read_bytes())
-        assert content == b"<html>report</html>"
+        f = Fernet(_derive_fernet_key("test-key"))
+        assert f.decrypt(uploaded[0]) == b"<html>report</html>"
 
     @pytest.mark.asyncio
-    async def test_save_pdf_report_encrypts(self, tmp_path: Path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        pdf_data = b"%PDF-1.4 fake pdf content"
+    async def test_save_pdf_report_encrypts(self, tmp_path: Path):
+        """save_pdf_report should encrypt bytes before passing to storage."""
+        from unittest.mock import AsyncMock, MagicMock
 
-        with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"):
+        from app.core.encryption import _derive_fernet_key
+
+        pdf_data = b"%PDF-1.4 fake pdf content"
+        uploaded: list[bytes] = []
+
+        mock_storage = MagicMock()
+        mock_storage.upload = AsyncMock(side_effect=lambda bucket, key, data: (uploaded.append(data), f"local/{key}") and f"local/{key}")
+
+        with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"), \
+             patch("app.services.mission.report_generator.get_storage_service", return_value=mock_storage):
             from app.services.mission.report_generator import save_pdf_report
 
             path = await save_pdf_report("mission-2", pdf_data)
 
         assert path is not None
-        saved = Path(path)
-        assert saved.exists()
-        assert saved.read_bytes() != pdf_data
+        assert len(uploaded) == 1
+        assert uploaded[0] != pdf_data
 
-        with patch("app.core.encryption._get_default_secret", return_value="test-key"):
-            from cryptography.fernet import Fernet
+        from cryptography.fernet import Fernet
 
-            from app.core.encryption import _derive_fernet_key
-
-            f = Fernet(_derive_fernet_key("test-key"))
-            assert f.decrypt(saved.read_bytes()) == pdf_data
+        f = Fernet(_derive_fernet_key("test-key"))
+        assert f.decrypt(uploaded[0]) == pdf_data

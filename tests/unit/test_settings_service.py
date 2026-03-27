@@ -34,36 +34,6 @@ def _mod():
     return settings_service
 
 
-class TestPublicAiProvider:
-    """Tests for public_ai_provider()."""
-
-    def _fn(self):
-        return _mod().public_ai_provider
-
-    def test_none_defaults_to_tensorzero(self):
-        assert self._fn()(None) == "tensorzero"
-
-    def test_empty_defaults_to_tensorzero(self):
-        assert self._fn()("") == "tensorzero"
-
-    def test_ollama(self):
-        assert self._fn()("ollama") == "ollama"
-
-    def test_ollama_case_insensitive(self):
-        fn = self._fn()
-        assert fn("Ollama") == "ollama"
-        assert fn("OLLAMA") == "ollama"
-
-    def test_litellm_maps_to_tensorzero(self):
-        assert self._fn()("litellm") == "tensorzero"
-
-    def test_api_becomes_tensorzero(self):
-        assert self._fn()("api") == "tensorzero"
-
-    def test_whitespace_stripped(self):
-        assert self._fn()("  ollama  ") == "ollama"
-
-
 class TestGetSandboxStatus:
     """Tests for get_sandbox_status()."""
 
@@ -159,13 +129,10 @@ class TestApplySettingsUpdate:
     async def test_persists_and_commits(self):
         mod = _mod()
         apply_settings_update = mod.apply_settings_update
-        ai_fields = mod._AI_FIELD_NAMES
 
         data = MagicMock()
         data.model_fields_set = {"log_level"}
         data.log_level = "WARNING"
-        for f in ai_fields:
-            setattr(data, f, None)
 
         db = AsyncMock()
         db.commit = AsyncMock()
@@ -182,21 +149,3 @@ class TestApplySettingsUpdate:
         mock_upsert.assert_awaited_once()
         db.commit.assert_awaited()
         mock_hydrate.assert_awaited_once()
-
-
-class TestAiFieldNames:
-    """Verify the AI field-name frozenset contains expected fields."""
-
-    def _fields(self):
-        return _mod()._AI_FIELD_NAMES
-
-    def test_contains_core_fields(self):
-        fields = self._fields()
-        assert "ai_provider" in fields
-        assert "llm_api_key" in fields
-        assert "llm_model" in fields
-
-    def test_does_not_contain_general_fields(self):
-        fields = self._fields()
-        assert "log_level" not in fields
-        assert "fully_automated" not in fields

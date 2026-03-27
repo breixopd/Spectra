@@ -10,6 +10,15 @@ from app.core.constants import MAX_CONCURRENT_MISSIONS, MAX_REPLANS_PER_MISSION
 from app.core.optimizations import ToolResultCache
 from app.services.mission.mission import Mission
 
+
+@pytest.fixture(autouse=True)
+def _mission_runtime_isolation(tmp_path):
+    with (
+        patch("app.services.mission.mission.data_path", side_effect=lambda *parts: tmp_path.joinpath(*parts)),
+        patch("app.services.mission.mission.asyncio.create_task"),
+    ):
+        yield
+
 # --- MISSION-002: Checkpoint/Resume ---
 
 
@@ -270,7 +279,7 @@ class TestExtendedSteeringActions:
         mission = Mission("target.com", "test")
         plan = MagicMock()
         task0 = MagicMock()
-        task0.phase.value = "reconnaissance"
+        task0.phase.value = "discovery"
         task1 = MagicMock()
         task1.phase.value = "enumeration"
         plan.tasks = [task0, task1]
@@ -281,9 +290,9 @@ class TestExtendedSteeringActions:
         result = await sm.steer_mission(
             mission.id,
             "go_back",
-            phase="reconnaissance",
+            phase="discovery",
         )
-        assert "reconnaissance" in result["message"]
+        assert "discovery" in result["message"]
         assert mission.current_task_index == 0
 
     @pytest.mark.asyncio

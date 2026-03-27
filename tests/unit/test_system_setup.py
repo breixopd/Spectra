@@ -31,9 +31,7 @@ def setup_request():
             email="admin@example.com",
             password="SecurePassword123!",  # Meets complexity reqs
         ),
-        llm_provider="tensorzero",
-        llm_model="gpt-4",
-        llm_api_key="sk-test",
+        tensorzero_gateway_url="http://tensorzero:3000",
         use_custom_db=False,
     )
 
@@ -89,39 +87,15 @@ async def test_configure_system(service, setup_request, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_configure_system_persists_db_backed_profiles_and_fallbacks(service, mock_session):
+async def test_configure_system_persists_tensorzero_config(service, mock_session):
     setup_request = SystemSetupRequest(
         user=UserCreate(
             username="admin",
             email="admin@example.com",
             password="SecurePassword123!",
         ),
-        provider_profiles={
-            "default": {
-                "provider": "tensorzero",
-                "model": "gpt-4o-mini",
-                "base_url": "https://example.test/v1",
-                "api_key": "sk-primary",
-            },
-            "tier1": {
-                "provider": "ollama",
-                "model": "qwen2.5:3b",
-                "base_url": "http://ollama:11434",
-            },
-            "fallback_1": {
-                "provider": "tensorzero",
-                "model": "gpt-4.1-mini",
-                "base_url": "https://backup.test/v1",
-                "api_key": "sk-backup",
-            },
-        },
-        provider_routing={
-            "default": "default",
-            "tier1": "tier1",
-        },
-        provider_fallbacks={
-            "default": ["fallback_1"],
-        },
+        tensorzero_gateway_url="http://tensorzero:3000",
+        tensorzero_api_key="tz-key-test",
         embedding_model="all-MiniLM-L6-v2",
     )
 
@@ -130,37 +104,22 @@ async def test_configure_system_persists_db_backed_profiles_and_fallbacks(servic
     added_configs = [call.args[0] for call in mock_session.add.call_args_list if isinstance(call.args[0], SystemConfig)]
     config_map = {config.key: config for config in added_configs}
 
-    assert "AI_PROVIDER_PROFILES" in config_map
-    assert "AI_PROVIDER_ROUTING" in config_map
-    assert "AI_PROVIDER_FALLBACKS" in config_map
-    assert '"tier1": "tier1"' in config_map["AI_PROVIDER_ROUTING"].value
-    assert '"fallback_1"' in config_map["AI_PROVIDER_FALLBACKS"].value
-
-
-def test_system_setup_request_normalizes_legacy_api_provider_to_tensorzero():
-    request = SystemSetupRequest(
-        user=UserCreate(
-            username="admin",
-            email="admin@example.com",
-            password="SecurePassword123!",
-        ),
-        llm_provider="api",
-        llm_model="gpt-4o-mini",
-        llm_api_key="sk-test",
-    )
-
-    assert request.llm_provider == "tensorzero"
+    assert "TENSORZERO_GATEWAY_URL" in config_map
+    assert config_map["TENSORZERO_GATEWAY_URL"].value == "http://tensorzero:3000"
+    assert "EMBEDDING_MODEL" in config_map
 
 
 @pytest.mark.asyncio
 @patch("app.services.system.setup.json.dump")
 @patch("builtins.open", new_callable=mock_open)
+@patch("app.services.system.setup.Path.mkdir")
 @patch("app.services.system.setup.Path.exists")
-async def test_save_infra_config(mock_exists, mock_file, mock_json_dump, service):
+async def test_save_infra_config(mock_exists, mock_mkdir, mock_file, mock_json_dump, service):
     mock_exists.return_value = False
 
     service._save_infra_config({"TEST_KEY": "TEST_VAL"})
 
+    mock_mkdir.assert_called_once()
     mock_file.assert_called()
     mock_json_dump.assert_called()
 

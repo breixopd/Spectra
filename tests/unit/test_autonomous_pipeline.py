@@ -4,6 +4,17 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from unittest.mock import patch
+
+
+@pytest.fixture(autouse=True)
+def _mission_runtime_isolation(tmp_path):
+    with (
+        patch("app.services.mission.mission.data_path", side_effect=lambda *parts: tmp_path.joinpath(*parts)),
+        patch("app.services.mission.mission.asyncio.create_task"),
+    ):
+        yield
+
 from app.services.ai.agents.exploit_crafter import ExploitCrafter
 from app.services.ai.agents.tool_selector import ToolSelectorAgent
 from app.services.ai.agents.vector_generator import VectorGeneratorAgent

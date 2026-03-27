@@ -119,6 +119,14 @@ class TestBackupRotation:
 class TestKnowledgeAggregation:
     """MEM-006: Cross-mission knowledge aggregation."""
 
+    @pytest.fixture(autouse=True)
+    def _patch_data_path(self, tmp_path, monkeypatch):
+        """Redirect data_path so aggregate_knowledge() can write files."""
+        import app.services.ai.memory as _mem_mod
+
+        monkeypatch.setattr(_mem_mod, "data_path", lambda *parts: tmp_path / "/".join(str(x) for x in parts))
+        self._agg_path = tmp_path
+
     def test_aggregate_basic(self, memory):
         memory.record_tool_result("nuclei", "http", success=True, findings_count=5, finding_types=["xss", "sqli"])
         memory.record_tool_result("nuclei", "http", success=True, findings_count=3, finding_types=["sqli"])
@@ -153,10 +161,11 @@ class TestKnowledgeAggregation:
         profile = result["service_profiles"]["http"]
         assert "nmap" in profile["best_tools"]
 
-    def test_aggregate_writes_file(self, memory, tmp_path):
+    def test_aggregate_writes_file(self, memory):
         memory.record_tool_result("nmap", "http", success=True, findings_count=1)
         memory.aggregate_knowledge()
-        out = Path("data/cache/aggregated_knowledge.json")
+        # The patched data_path puts the file in tmp_path
+        out = self._agg_path / "cache" / "aggregated_knowledge.json"
         assert out.exists()
         data = json.loads(out.read_text())
         assert "service_profiles" in data
