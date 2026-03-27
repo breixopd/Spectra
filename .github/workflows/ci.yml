@@ -44,9 +44,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt numpy
+      - run: pip install -r requirements/base.txt numpy
       - name: Validate TensorZero config
-        run: python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"
+        run: |
+          python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"
       - name: Run unit tests with coverage
         run: |
           python3 -m pytest tests/unit/ -q \
@@ -108,9 +109,8 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements.txt numpy pytest-timeout
+      - run: pip install -r requirements/base.txt numpy pytest-timeout
       - name: Run integration tests
-        continue-on-error: true  # Integration tests may fail due to missing tools/services
         run: |
           python3 -m pytest tests/integration/ -v --tb=short \
             --timeout=120 \
@@ -168,7 +168,7 @@ jobs:
           cache: pip
       - run: pip install pip-audit
       - run: sudo apt-get update && sudo apt-get install -y libcairo2-dev pkg-config python3-dev
-      - run: pip install -r requirements-app.txt
+      - run: pip install -r requirements/app.txt
       # pip-audit: keep || true because transitive dependency vulns in pinned
       # packages shouldn't block CI; ignore known disputed advisories.
       - run: pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 || true

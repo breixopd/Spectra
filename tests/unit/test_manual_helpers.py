@@ -218,8 +218,10 @@ class TestReportTemplates:
         assert get_report_template("nonexistent") is None
 
     def test_generate_report_unknown_template(self, tmp_path):
+        session_file = tmp_path / "session.json"
+        session_file.write_text(json.dumps({"id": "s1", "name": "Session", "target": "127.0.0.1", "findings": [], "tools_used": [], "command_history": []}))
         with pytest.raises(ValueError, match="Unknown template"):
-            generate_report_data(tmp_path / "session.json", "bad_template")
+            generate_report_data(session_file, "bad_template")
 
     def test_generate_report_missing_session(self, tmp_path):
         with pytest.raises(FileNotFoundError):

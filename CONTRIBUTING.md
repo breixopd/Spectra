@@ -33,7 +33,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # Install dependencies
-pip install -r requirements-app.txt
+pip install -r requirements/app.txt
 
 # Copy environment file
 cp .env.example .env
@@ -83,7 +83,7 @@ uvicorn app.main:app --reload --port 5000
 
 Spectra follows a layered architecture:
 
-```
+```text
 app/
 ├── api/            # HTTP layer — FastAPI routers, Pydantic schemas
 │   ├── routers/    # One module per domain (auth, missions, tools, admin/, ...)
@@ -150,7 +150,7 @@ make format   # ruff format app/ tests/
 
 Use clear, imperative-mood messages:
 
-```
+```text
 Add sandbox heartbeat monitoring
 Fix race condition in mission steering
 Refactor admin router into submodules
@@ -160,7 +160,7 @@ Refactor admin router into submodules
 
 ### Test structure
 
-```
+```text
 tests/
 ├── unit/           # Fast, isolated tests (no DB, no network)
 ├── integration/    # Tests requiring live services (PostgreSQL, etc.)
@@ -199,7 +199,7 @@ make test-coverage
 ### Test guidelines
 
 - **pytest-asyncio**: Mode is `strict` — all async tests need `@pytest.mark.asyncio`
-- **Environment**: Tests load `.env.test` via `pytest-dotenv`. It sets the shared test `DATABASE_URL`, `AI_PROVIDER=litellm`, and `FULLY_AUTOMATED=true`.
+- **Environment**: Tests load `.env.test` via `pytest-dotenv`. It sets the shared test `DATABASE_URL`, `TENSORZERO_GATEWAY_URL`, and `FULLY_AUTOMATED=true`.
 - Write tests for behavior, not implementation details
 - Don't test what the type system already guarantees
 - Unit tests should not require Docker, databases, or network access
@@ -209,12 +209,12 @@ make test-coverage
 
 Key variables in `.env.test`:
 
-| Variable | Value | Purpose |
-|----------|-------|---------|
-| `DATABASE_URL` | `postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test` | Shared PostgreSQL test database |
-| `AI_PROVIDER` | `litellm` | Keeps test settings aligned with application routing |
-| `FULLY_AUTOMATED` | `true` | Skips human approval prompts |
-| `JWT_SECRET_KEY` | `test-secret-key` | Deterministic JWT signing |
+| Variable                 | Value                                                                   | Purpose                           |
+| ------------------------ | ----------------------------------------------------------------------- | --------------------------------- |
+| `DATABASE_URL`           | `postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test` | Shared PostgreSQL test database   |
+| `TENSORZERO_GATEWAY_URL` | `http://tensorzero:3000`                                                | TensorZero gateway for AI routing |
+| `FULLY_AUTOMATED`        | `true`                                                                  | Skips human approval prompts      |
+| `JWT_SECRET_KEY`         | `test-secret-key`                                                       | Deterministic JWT signing         |
 
 ## Pull Request Process
 

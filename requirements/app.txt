@@ -30,6 +30,7 @@ aiofiles==25.1.0
 
 # Rate Limiting
 slowapi==0.1.9
+redis[hiredis]==5.2.1
 
 # Security
 bcrypt==4.3.0
