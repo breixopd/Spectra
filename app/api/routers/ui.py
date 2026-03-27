@@ -33,6 +33,7 @@ APP_DIR = Path(__file__).resolve().parent.parent.parent
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 templates.env.globals["app_name"] = settings.APP_NAME
 templates.env.globals["version"] = __version__
+templates.env.globals["get_nav_user"] = get_ui_user
 
 
 async def _check_user_feature(user_id: str | None, feature: str) -> bool:

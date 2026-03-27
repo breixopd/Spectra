@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+{{ super() }}
+<link rel="stylesheet" href="/static/vendor/css/leaflet.css">
+{% endblock %}
+
 {% block content %}
 <style>
     #threat-map .leaflet-container, #threat-map { max-width: 100%; overflow: hidden; }
@@ -408,6 +413,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/vendor/js/cytoscape.min.js"></script>
+<script src="/static/vendor/js/leaflet.js"></script>
 <script src="/static/vendor/js/chart.umd.min.js"></script>
 {% endblock %}
 
