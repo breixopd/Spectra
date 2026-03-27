@@ -863,16 +863,14 @@ function renderAttackPaths(paths) {
 }
 
 // Listen for task/path updates via WebSocket
-const origOnSocket = window.onSocketMessage;
-window.onSocketMessage = function(data) {
-    if (origOnSocket) origOnSocket(data);
+document.addEventListener('spectra:ws-message', (event) => {
     try {
-        const msg = JSON.parse(data);
+        const msg = JSON.parse(event.detail);
         if (msg.type === 'task_tree') renderTaskTree(msg.data);
         if (msg.type === 'attack_paths') renderAttackPaths(msg.data);
         if (msg.type === 'task_update' && msg.data?.tasks) renderTaskTree(msg.data.tasks);
     } catch {}
-};
+});
 
 // Load metrics on page load
 document.addEventListener('DOMContentLoaded', () => { loadMetrics(); });

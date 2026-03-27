@@ -188,7 +188,7 @@
         <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
         
         <!-- Sidebar -->
-        <aside class="sidebar w-64 glass-sidebar flex flex-col justify-between h-full shrink-0" id="sidebar">
+        <aside class="sidebar w-64 glass-sidebar flex flex-col justify-between h-full shrink-0" id="sidebar" aria-label="Main navigation sidebar">
             <div>
                 <div class="h-16 flex items-center px-6 border-b border-white/5">
                     <span class="text-violet-400 mr-3">{% include 'partials/shield_svg.html' %}</span>
@@ -269,7 +269,7 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <a href="/changelog" class="text-xs text-slate-500 hover:text-violet-400 transition-colors cursor-pointer" title="View changelog">v{{ version }}</a>
-                        <button onclick="(async()=>{try{await fetch('/api/v1/auth/logout',{method:'POST',credentials:'same-origin'});}catch(e){}window.location.href='/login';})()" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out">
+                        <button onclick="(async()=>{try{await fetch('/api/v1/auth/logout',{method:'POST',credentials:'same-origin'});}catch(e){}window.location.href='/login';})()" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out" aria-label="Sign out">
                             <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
                         </button>
                     </div>
@@ -329,9 +329,12 @@
             };
 
             socket.onmessage = (event) => {
+                // Legacy callback support
                 if (window.onSocketMessage) {
                     window.onSocketMessage(event.data);
                 }
+                // Modern event-based API — allows multiple listeners without chaining
+                document.dispatchEvent(new CustomEvent('spectra:ws-message', { detail: event.data }));
             };
         }
 
@@ -459,7 +462,7 @@
     <script nonce="{{ request.state.csp_nonce }}">
     function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
     </script>
-    <!-- Lucide Icons -->
+    <!-- Lucide Icons — locally hosted, same-origin (SRI would add no cross-origin benefit) -->
     <script src="/static/vendor/js/lucide.min.js"></script>
     <script nonce="{{ request.state.csp_nonce }}">
       document.addEventListener('DOMContentLoaded', () => { if (typeof lucide !== 'undefined') lucide.createIcons(); });

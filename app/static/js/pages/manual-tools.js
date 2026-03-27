@@ -5,17 +5,12 @@ let selectedToolConfig = null;
 let pipelineSteps = [];
 let pipelineStepId = 0;
 
-// Tab switching
+// Tab switching — delegates to tabs.js module; kept as a function because it is
+// called programmatically from within this file (e.g. after CVE lookup, pipeline run).
 function switchManualTab(tab) {
-    document.querySelectorAll('.tab-btn-manual').forEach(b => b.classList.remove('active'));
-    document.getElementById('tab-' + tab).classList.add('active');
-    ['execute', 'pipeline', 'cve', 'checklists', 'notes', 'evidence', 'helpers'].forEach(t => {
-        const panel = document.getElementById('panel-' + t);
-        if (panel) {
-            panel.classList.toggle('hidden', tab !== t);
-            panel.classList.toggle('flex', tab === t);
-        }
-    });
+    if (window.activateTab) {
+        window.activateTab('manual-tabs', tab);
+    }
 }
 
 // Load tools
@@ -1413,6 +1408,8 @@ async function refreshWordlistOptions() {
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
+    // Activate the initial tab via tabs.js so ARIA state is correct from the start
+    if (window.activateTab) window.activateTab('manual-tabs', 'execute');
     loadTools();
     showTip();
     initRevShells();
