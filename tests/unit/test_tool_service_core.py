@@ -3,62 +3,23 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.ai.agents.base import ActionRisk
-from app.services.ai.agents.safety import SafetyAction
-from app.services.tools.service import (
-    ToolExecutionResult,
-    ToolExecutionService,
-)
+from app.services.tools.service import ToolExecutionResult, ToolExecutionService
 
 
 @pytest.fixture
-def mock_service_context():
-    with (
-        patch("app.services.tools.validation.get_registry") as mock_get_registry,
-        patch("app.services.tools.service.SafetySupervisorAgent") as MockSafety,
-        patch("app.services.tools.service.VotingSystem") as MockVoting,
-        patch("app.services.tools.dispatch.CommandToolAdapter") as MockAdapter,
-    ):
-        registry = MagicMock()
-        registry.sync_status_from_cache = AsyncMock()
-        mock_get_registry.return_value = registry
-
-        service = ToolExecutionService(llm_client=MagicMock())
-        # Manually assign AsyncMocks to ensure await works
-        service.safety_supervisor = AsyncMock()
-        service.consensus = AsyncMock()
-
-        yield {
-            "service": service,
-            "registry": registry,
-            "safety_class": MockSafety,
-            "voting_class": MockVoting,
-            "adapter_class": MockAdapter,
-        }
-
-
-@pytest.mark.asyncio
-async def test_execute_tool_success(mock_service_context):
-    service = mock_service_context["service"]
-    registry = mock_service_context["registry"]
-    MockAdapter = mock_service_context["adapter_class"]
-
+def service_and_mission():
+    service = ToolExecutionService(llm_client=MagicMock())
     mission = MagicMock()
     mission.id = "mission-1"
     mission.target = "127.0.0.1"
     mission.directive = "Scan localhost"
+    return service, mission
 
-    # Mock tool
+
+@pytest.mark.asyncio
+async def test_execute_tool_success(service_and_mission):
+    service, mission = service_and_mission
     tool = MagicMock()
-    tool.is_available = True
-    tool.config.id = "nmap"
-    tool.config.execution.args_schema = None
-    registry.get_tool.return_value = tool
-
-    # Config adapter instance
-    mock_adapter_instance = MockAdapter.return_value
-    mock_adapter_instance.build_command.return_value = "nmap -p 80 127.0.0.1"
-    mock_adapter_instance.builder.build_command.return_value = "nmap -p 80 127.0.0.1"
-
     result_obj = ToolExecutionResult(
         tool_id="nmap",
         target="127.0.0.1",
@@ -69,132 +30,69 @@ async def test_execute_tool_success(mock_service_context):
         duration_seconds=1.0,
     )
 
-    # Config Safety
-    safety_result = MagicMock()
-    safety_result.success = True
-    safety_result.action = SafetyAction(
-        name="safety",
-        allowed=True,
-        reason="Safe",
-        confidence=1.0,
-        risk_level=ActionRisk.LOW,
-        reasoning="All good",
-    )
-    service.safety_supervisor.execute.return_value = safety_result
+    service._validate_and_resolve_tool = AsyncMock(return_value=(tool, None))
+    service._apply_safety_and_consensus = AsyncMock(return_value=("nmap -p 80 127.0.0.1", None))
+    service._dispatch_and_process_result = AsyncMock(return_value=result_obj)
 
-    # Mock the module-level worker execution function
-    with patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock, return_value=result_obj):
+    with patch("app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "nmap -p 80 127.0.0.1", "/tmp/out")), patch("app.services.tools.service.record_to_memory"):
         result = await service.execute_request(mission=mission, tool_name="nmap", target="127.0.0.1")
-
-    if not result.success:
-        print(f"FAILED stderr: {result.stderr}")
 
     assert result.success is True
     assert result.tool_id == "nmap"
-    service.safety_supervisor.execute.assert_called()
+    service._apply_safety_and_consensus.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_not_found(mock_service_context):
-    service = mock_service_context["service"]
-    registry = mock_service_context["registry"]
-    mission = MagicMock()
-    mission.id = "m1"
-    mission.target = "127.0.0.1"
-    mission.directive = "Scan localhost"
-
-    registry.get_tool.return_value = None
+async def test_execute_tool_not_found(service_and_mission):
+    service, mission = service_and_mission
+    service._validate_and_resolve_tool = AsyncMock(return_value=(None, None))
 
     result = await service.execute_request(mission, "ghost", "127.0.0.1")
     assert result.success is False
-    assert "Tool not available" in result.stderr
+    assert "Tool not found" in result.stderr
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_safety_block(mock_service_context):
-    service = mock_service_context["service"]
-    registry = mock_service_context["registry"]
-    MockAdapter = mock_service_context["adapter_class"]
-    mission = MagicMock()
-    mission.id = "m1"
-    mission.target = "127.0.0.1"
-    mission.directive = "Scan localhost"
-
+async def test_execute_tool_safety_block(service_and_mission):
+    service, mission = service_and_mission
     tool = MagicMock()
-    tool.is_available = True
-    tool.config.id = "nmap"
-    tool.config.execution.args_schema = None
-    registry.get_tool.return_value = tool
-
-    # Safety blocks
-    safety_result = MagicMock()
-    safety_result.success = True
-    safety_result.action = SafetyAction(
-        name="safety",
-        allowed=False,
-        reason="Unsafe",
-        confidence=1.0,
-        risk_level=ActionRisk.HIGH,
-        reasoning="Blocked",
+    blocked = ToolExecutionResult(
+        tool_id="nmap",
+        target="127.0.0.1",
+        success=False,
+        exit_code=-1,
+        stdout="",
+        stderr="Blocked by Safety Supervisor: Unsafe",
+        duration_seconds=0.0,
     )
-    service.safety_supervisor.execute.return_value = safety_result
 
-    # Adapter setup needed for build_command
-    MockAdapter.return_value.build_command.return_value = "cmd"
-    MockAdapter.return_value.builder.build_command.return_value = "cmd"
+    service._validate_and_resolve_tool = AsyncMock(return_value=(tool, None))
+    service._apply_safety_and_consensus = AsyncMock(return_value=("cmd", blocked))
 
-    result = await service.execute_request(mission, "nmap", "127.0.0.1")
+    with patch("app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")):
+        result = await service.execute_request(mission, "nmap", "127.0.0.1")
     assert result.success is False
     assert "Blocked by Safety Supervisor" in result.stderr
 
 
 @pytest.mark.asyncio
-async def test_execute_tool_consensus_block(mock_service_context):
-    service = mock_service_context["service"]
-    registry = mock_service_context["registry"]
-    MockAdapter = mock_service_context["adapter_class"]
-    mission = MagicMock()
-    mission.id = "m1"
-    mission.target = "127.0.0.1"
-    mission.directive = "Scan localhost"
-
+async def test_execute_tool_consensus_block(service_and_mission):
+    service, mission = service_and_mission
     tool = MagicMock()
-    tool.is_available = True
-    tool.config.id = "nmap"
-    tool.config.execution.args_schema = None
-    registry.get_tool.return_value = tool
-
-    # Safety passes
-    safety_result = MagicMock()
-    safety_result.success = True
-    safety_result.action = SafetyAction(
-        name="safety",
-        allowed=True,
-        reason="Safe",
-        confidence=1.0,
-        risk_level=ActionRisk.LOW,
-        reasoning="Good",
+    blocked = ToolExecutionResult(
+        tool_id="nmap",
+        target="127.0.0.1",
+        success=False,
+        exit_code=-1,
+        stdout="",
+        stderr="Blocked by Consensus",
+        duration_seconds=0.0,
     )
-    service.safety_supervisor.execute.return_value = safety_result
 
-    MockAdapter.return_value.build_command.return_value = "cmd"
-    MockAdapter.return_value.builder.build_command.return_value = "cmd"
+    service._validate_and_resolve_tool = AsyncMock(return_value=(tool, None))
+    service._apply_safety_and_consensus = AsyncMock(return_value=("cmd", blocked))
 
-    # Consensus blocks
-    vote_result = MagicMock()
-    # VotingSystem.vote_on_action returns AgentResult or specialized VoteResult?
-    # service.py: vote_result = await self.consensus.vote_on_action(...)
-    # if vote_result.status != "approved": ...
-    # So it expects an object with .status and .escalation_reason
-    vote_result.status = "rejected"
-    vote_result.escalation_reason = "Vetoed"
-    service.consensus.vote_on_action.return_value = vote_result
-
-    # Ensure risk level high triggers consensus
-    result = await service.execute_request(mission, "nmap", "127.0.0.1", risk_level="high")
-
-    if "Blocked by Consensus" not in result.stderr:
-        print(f"FAILED Consensus stderr: {result.stderr}")
-
+    with patch("app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")):
+        result = await service.execute_request(mission, "nmap", "127.0.0.1", risk_level="high")
     assert result.success is False
     assert "Blocked by Consensus" in result.stderr

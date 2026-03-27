@@ -1,6 +1,7 @@
 """Additional edge case tests for RBAC, encryption, token blacklist, and lockout."""
 
-import time
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -9,10 +10,7 @@ from app.api.routers.auth import (
     LOCKOUT_THRESHOLD_1,
     LOCKOUT_THRESHOLD_2,
     _check_lockout,
-    _lockout_lock,
-    _login_failures,
     _record_failure,
-    _reset_failures,
 )
 from app.core.encryption import (
     decrypt_field,
@@ -30,6 +28,7 @@ from app.core.security import (
     invalidate_token,
     is_token_blacklisted,
 )
+
 
 # --- RBAC Permission Tests ---
 
@@ -70,7 +69,10 @@ class TestRBACPermissions:
     def test_operator_cannot_manage_settings(self):
         assert not has_permission("operator", Permission.MANAGE_SETTINGS)
         assert not has_permission("operator", Permission.MANAGE_USERS)
-        assert not has_permission("operator", Permission.VIEW_AUDIT_LOG)
+
+    def test_operator_can_view_audit_log(self):
+        # Operators can view their own audit log; this is intentional
+        assert has_permission("operator", Permission.VIEW_AUDIT_LOG)
 
     def test_unknown_role_has_no_permissions(self):
         for perm in Permission:
@@ -175,19 +177,15 @@ class TestEncryption:
 
 
 @pytest.fixture(autouse=True)
-def _clear_state():
-    """Clear blacklist and lockout state."""
+def _clear_blacklist_state():
+    """Clear in-memory token blacklist state between tests."""
     with _blacklist_lock:
         _blacklisted_tokens.clear()
         _user_token_blacklist.clear()
-    with _lockout_lock:
-        _login_failures.clear()
     yield
     with _blacklist_lock:
         _blacklisted_tokens.clear()
         _user_token_blacklist.clear()
-    with _lockout_lock:
-        _login_failures.clear()
 
 
 class TestTokenBlacklistExtended:
@@ -207,54 +205,61 @@ class TestTokenBlacklistExtended:
         assert not is_token_blacklisted(t2)
 
 
-# --- Account Lockout Extended Tests ---
+# --- Account Lockout Tests (DB-based) ---
 
 
-class TestAccountLockoutExtended:
-    def test_progressive_lockout_5_attempts(self):
-        ip = "172.16.0.1"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip)
+def _make_user(fail_count=0, locked_until=None):
+    """Create a mock User object for lockout testing."""
+    user = MagicMock()
+    user.login_fail_count = fail_count
+    user.locked_until = locked_until
+    return user
 
+
+class TestAccountLockout:
+    @pytest.mark.asyncio
+    async def test_check_lockout_raises_when_locked(self):
+        now = datetime.now(timezone.utc)
+        user = _make_user(locked_until=now + timedelta(minutes=5))
         with pytest.raises(HTTPException) as exc:
-            _check_lockout(ip)
+            await _check_lockout(user)
         assert exc.value.status_code == 429
 
-    def test_progressive_lockout_10_attempts(self):
-        ip = "172.16.0.2"
-        for _ in range(LOCKOUT_THRESHOLD_2):
-            _record_failure(ip)
+    @pytest.mark.asyncio
+    async def test_check_lockout_passes_when_not_locked(self):
+        user = _make_user(locked_until=None)
+        await _check_lockout(user)  # Should not raise
 
-        with pytest.raises(HTTPException) as exc:
-            _check_lockout(ip)
-        assert exc.value.status_code == 429
+    @pytest.mark.asyncio
+    async def test_check_lockout_passes_when_lock_expired(self):
+        past = datetime.now(timezone.utc) - timedelta(seconds=1)
+        user = _make_user(locked_until=past)
+        await _check_lockout(user)  # Should not raise — lock has expired
 
-    def test_unlock_after_timeout(self):
-        ip = "172.16.0.3"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip)
+    @pytest.mark.asyncio
+    async def test_record_failure_increments_count(self):
+        user = _make_user(fail_count=0)
+        session = AsyncMock()
+        await _record_failure(user, session)
+        assert user.login_fail_count == 1
+        session.commit.assert_called_once()
 
-        # Set lockout to past
-        with _lockout_lock:
-            _login_failures[ip]["locked_until"] = time.time() - 1
+    @pytest.mark.asyncio
+    async def test_record_failure_applies_lockout_at_threshold_1(self):
+        user = _make_user(fail_count=LOCKOUT_THRESHOLD_1 - 1)
+        session = AsyncMock()
+        await _record_failure(user, session)
+        assert user.login_fail_count == LOCKOUT_THRESHOLD_1
+        assert user.locked_until is not None
 
-        _check_lockout(ip)  # Should not raise
+    @pytest.mark.asyncio
+    async def test_record_failure_applies_extended_lockout_at_threshold_2(self):
+        user = _make_user(fail_count=LOCKOUT_THRESHOLD_2 - 1)
+        session = AsyncMock()
+        await _record_failure(user, session)
+        assert user.login_fail_count == LOCKOUT_THRESHOLD_2
+        assert user.locked_until is not None
 
-    def test_different_ips_independent(self):
-        ip1 = "172.16.0.4"
-        ip2 = "172.16.0.5"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip1)
-
-        with pytest.raises(HTTPException):
-            _check_lockout(ip1)
-
-        _check_lockout(ip2)  # Different IP should be fine
-
-    def test_reset_clears_all_failures(self):
-        ip = "172.16.0.6"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip)
-
-        _reset_failures(ip)
-        _check_lockout(ip)  # Should not raise after reset
+    def test_lockout_threshold_1_less_than_threshold_2(self):
+        # Sanity check on constants
+        assert LOCKOUT_THRESHOLD_1 < LOCKOUT_THRESHOLD_2

@@ -54,7 +54,7 @@ async def test_db_connectivity_success(caplog):
         return ctx
 
     with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
-        with caplog.at_level("INFO", logger="spectra.core.lifespan"):
+        with caplog.at_level("INFO"):
             from app.core.lifespan import run_startup_checks
 
             await run_startup_checks()
@@ -72,7 +72,7 @@ async def test_db_connectivity_failure(caplog):
     mock_maker.return_value = ctx
 
     with patch("app.core.lifespan.async_session_maker", side_effect=ConnectionError("refused")):
-        with caplog.at_level("WARNING", logger="spectra.core.lifespan"):
+        with caplog.at_level("WARNING"):
             from app.core.lifespan import run_startup_checks
 
             await run_startup_checks()
@@ -109,7 +109,7 @@ async def test_missing_tables_warning(caplog):
         return ctx
 
     with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
-        with caplog.at_level("WARNING", logger="spectra.core.lifespan"):
+        with caplog.at_level("WARNING"):
             from app.core.lifespan import run_startup_checks
 
             await run_startup_checks()
@@ -118,7 +118,7 @@ async def test_missing_tables_warning(caplog):
 
 
 @pytest.mark.asyncio
-async def test_disk_space_ok(caplog):
+async def test_disk_space_ok(caplog, tmp_path):
     """Sufficient disk space logs OK."""
     # Mock away DB checks to avoid side effects
     mock_session = AsyncMock()
@@ -153,17 +153,18 @@ async def test_disk_space_ok(caplog):
     fake_usage = _DiskUsage(total=10_000_000_000, used=5_000_000_000, free=5_000_000_000)
 
     with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
-        with patch("shutil.disk_usage", return_value=fake_usage):
-            with caplog.at_level("INFO", logger="spectra.core.lifespan"):
-                from app.core.lifespan import run_startup_checks
+        with patch("app.core.lifespan.data_root", return_value=tmp_path):
+            with patch("app.core.lifespan.shutil.disk_usage", return_value=fake_usage):
+                with caplog.at_level("INFO"):
+                    from app.core.lifespan import run_startup_checks
 
-                await run_startup_checks()
+                    await run_startup_checks()
 
     assert any("Disk space" in r.message and "free" in r.message for r in caplog.records)
 
 
 @pytest.mark.asyncio
-async def test_low_disk_space_warning(caplog):
+async def test_low_disk_space_warning(caplog, tmp_path):
     """Less than 100MB free triggers a warning."""
     mock_session = AsyncMock()
     mock_result = MagicMock()
@@ -197,10 +198,11 @@ async def test_low_disk_space_warning(caplog):
     fake_usage = _DiskUsage(total=10_000_000_000, used=9_947_000_000, free=53_000_000)
 
     with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
-        with patch("shutil.disk_usage", return_value=fake_usage):
-            with caplog.at_level("WARNING", logger="spectra.core.lifespan"):
-                from app.core.lifespan import run_startup_checks
+        with patch("app.core.lifespan.data_root", return_value=tmp_path):
+            with patch("app.core.lifespan.shutil.disk_usage", return_value=fake_usage):
+                with caplog.at_level("WARNING"):
+                    from app.core.lifespan import run_startup_checks
 
-                await run_startup_checks()
+                    await run_startup_checks()
 
     assert any("Low disk space" in r.message for r in caplog.records)
