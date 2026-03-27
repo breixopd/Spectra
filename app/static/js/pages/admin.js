@@ -32,13 +32,13 @@ async function toggleMaintenance() {
 }
 
 // ---- Modals ----
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-function openModal(id) { document.getElementById(id).classList.add('open'); }
+// showModal / closeModal are provided globally by modal.js (loaded in base.html)
+const showModal = (id) => window.showModal(id);
+const closeModal = (id) => window.closeModal(id);
 
 // close modal on backdrop click
 document.querySelectorAll('.modal-backdrop').forEach(m => {
-    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+    m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
 });
 
 let confirmCallback = null;
@@ -46,7 +46,7 @@ function showConfirm(title, message, action) {
     document.getElementById('confirm-title').textContent = title;
     document.getElementById('confirm-message').textContent = message;
     confirmCallback = action;
-    openModal('confirm-modal');
+    showModal('confirm-modal');
 }
 document.getElementById('confirm-action-btn').addEventListener('click', function() {
     closeModal('confirm-modal');
@@ -172,7 +172,7 @@ function openCreateUserModal() {
     document.getElementById('user-form-password').required = true;
     document.getElementById('user-form-status-group').classList.add('hidden');
     populatePlanSelect();
-    openModal('user-modal');
+    showModal('user-modal');
 }
 
 function openEditUserModal(u) {
@@ -187,7 +187,7 @@ function openEditUserModal(u) {
     document.getElementById('user-form-status-group').classList.remove('hidden');
     document.getElementById('user-form-status').value = String(u.is_active);
     populatePlanSelect(u.plan_id);
-    openModal('user-modal');
+    showModal('user-modal');
 }
 
 function populatePlanSelect(selectedId) {
@@ -304,7 +304,7 @@ function openCreatePlanModal() {
     document.getElementById('plan-form-id').value = '';
     document.getElementById('plan-form-name').disabled = false;
     document.querySelectorAll('.plan-feature-toggle').forEach(cb => { cb.checked = false; });
-    openModal('plan-modal');
+    showModal('plan-modal');
 }
 
 function openEditPlanModal(p) {
@@ -330,7 +330,7 @@ function openEditPlanModal(p) {
     document.querySelectorAll('.plan-feature-toggle').forEach(cb => {
         cb.checked = !!feats[cb.dataset.feature];
     });
-    openModal('plan-modal');
+    showModal('plan-modal');
 }
 
 document.getElementById('plan-form').addEventListener('submit', async function(e) {
@@ -624,7 +624,7 @@ function openServiceConfigModal(name) {
 
     // Reset test result
     document.getElementById('svc-test-result').classList.add('hidden');
-    openModal('service-modal');
+    showModal('service-modal');
 }
 
 async function testServiceConnection() {
@@ -721,7 +721,7 @@ function openProvisionModal() {
     document.getElementById('prov-submit-btn').disabled = false;
     document.getElementById('prov-submit-btn').innerHTML = '<i data-lucide="rocket" class="w-4 h-4 inline-block mr-1"></i> Provision';
     toggleProvAuth();
-    openModal('provision-modal');
+    showModal('provision-modal');
 }
 
 function toggleProvAuth() {
@@ -929,7 +929,7 @@ async function deployToNode(nodeId, nodeName) {
         }
         // Show logs
         document.getElementById('deploy-logs-content').textContent = (data.logs || []).join('\n');
-        openModal('deploy-logs-modal');
+        showModal('deploy-logs-modal');
         refreshNodesList();
     } catch(e) { _spectraToast('Deployment request failed', 'error'); }
     });
@@ -940,7 +940,7 @@ async function viewNodeLogs(nodeId) {
         const r = await spectraApi.get(`/api/admin/services/nodes/${nodeId}/logs`);
         const data = r.data;
         document.getElementById('deploy-logs-content').textContent = (data.logs || []).join('\n') || 'No logs available.';
-        openModal('deploy-logs-modal');
+        showModal('deploy-logs-modal');
     } catch(e) { _spectraToast('Failed to load logs', 'error'); }
 }
 
@@ -981,7 +981,7 @@ async function loadContent() {
 }
 
 function openContentModal(existingData) {
-    document.getElementById('content-modal').classList.add('open');
+    showModal('content-modal');
     document.getElementById('content-type-field').value = currentContentType;
     document.getElementById('review-fields').style.display = currentContentType === 'review' ? '' : 'none';
     document.getElementById('changelog-fields').style.display = currentContentType === 'changelog' ? '' : 'none';
@@ -1010,7 +1010,7 @@ function openContentModal(existingData) {
 }
 
 function closeContentModal() {
-    document.getElementById('content-modal').classList.remove('open');
+    closeModal('content-modal');
     document.getElementById('content-form').reset();
     document.getElementById('content-edit-id').value = '';
 }
@@ -1393,7 +1393,6 @@ spectraApi.get('/api/admin/plans').then(r => !r.error ? r.data : []).then(p => {
 
 // ---- Expose functions used by HTML onclick/onchange/onsubmit handlers ----
 window.toggleMaintenance = toggleMaintenance;
-window.closeModal = closeModal;
 window.switchSection = switchSection;
 window.openCreateUserModal = openCreateUserModal;
 window.openEditUserModal = openEditUserModal;
