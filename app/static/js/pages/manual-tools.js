@@ -317,8 +317,8 @@ async function executeManualTool() {
         status.textContent = result.success ? 'Completed' : 'Failed';
         status.className = 'text-xs ml-auto font-mono ' + (result.success ? 'text-emerald-400' : 'text-rose-400');
 
-        let out = `<span class="text-violet-400">$ ${selectedToolConfig.command} ${selectedToolConfig.args_template}</span>\n`;
-        out += `<span class="text-slate-500">Target: ${target} | Exit: ${result.exit_code} | Duration: ${dur}s</span>\n\n`;
+        let out = `<span class="text-violet-400">$ ${escapeHtml(selectedToolConfig.command)} ${escapeHtml(selectedToolConfig.args_template)}</span>\n`;
+        out += `<span class="text-slate-500">Target: ${escapeHtml(target)} | Exit: ${result.exit_code} | Duration: ${dur}s</span>\n\n`;
 
         if (result.stdout) {
             out += colorizeOutput(escapeHtml(result.stdout));

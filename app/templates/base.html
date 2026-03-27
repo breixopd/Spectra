@@ -25,6 +25,8 @@
 
     <link rel="stylesheet" href="/static/css/base.css">
     {% block extra_css %}{% endblock %}
+    <!-- Centralized API client (must load before inline auth script) -->
+    <script src="/static/js/api.js"></script>
     <!-- Auth Check -->
     <script nonce="{{ request.state.csp_nonce }}">
         // Public paths constant (shared with api.js)
@@ -120,28 +122,28 @@
             inp.focus();
         }
 
-        // Plan-gate nav items
-        if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
-            spectraApi.get('/api/v1/auth/me')
-                .then(({ data: user }) => {
-                    if (!user || !user.plan) return;
-                    const features = user.plan.features || {};
-                    document.querySelectorAll('[data-feature]').forEach(el => {
-                        const feat = el.dataset.feature;
-                        const allowed = features[feat] === true || features[feat] === undefined;
-                        if (!allowed) {
-                            el.classList.add('pointer-events-none', 'opacity-40');
-                            el.removeAttribute('href');
-                            el.setAttribute('title', `Requires a plan with ${feat.replace(/_/g, ' ')} — available on Professional and Enterprise plans`);
-                            el.style.cursor = 'not-allowed';
-                        }
-                    });
-                })
-                .catch(() => {});
-        }
+        // Plan-gate nav items (deferred to DOMContentLoaded — requires spectraApi + DOM)
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
+                spectraApi.get('/api/v1/auth/me')
+                    .then(({ data: user }) => {
+                        if (!user || !user.plan) return;
+                        const features = user.plan.features || {};
+                        document.querySelectorAll('[data-feature]').forEach(el => {
+                            const feat = el.dataset.feature;
+                            const allowed = features[feat] === true || features[feat] === undefined;
+                            if (!allowed) {
+                                el.classList.add('pointer-events-none', 'opacity-40');
+                                el.removeAttribute('href');
+                                el.setAttribute('title', `Requires a plan with ${feat.replace(/_/g, ' ')} — available on Professional and Enterprise plans`);
+                                el.style.cursor = 'not-allowed';
+                            }
+                        });
+                    })
+                    .catch(() => {});
+            }
+        });
     </script>
-    <!-- Centralized API client -->
-    <script src="/static/js/api.js"></script>
 </head>
 <body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-y-auto md:overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
 

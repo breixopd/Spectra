@@ -122,11 +122,11 @@ function showDeleteModal() {
     document.getElementById('download-before-delete-btn').onclick = () => {
         window.open(`/api/v1/missions/${currentMissionId}/report/pdf`, '_blank');
     };
-    document.getElementById('delete-mission-modal').classList.remove('hidden');
+    showModal('delete-mission-modal');
 }
 
 function hideDeleteModal() {
-    document.getElementById('delete-mission-modal').classList.add('hidden');
+    closeModal('delete-mission-modal');
 }
 
 async function confirmDeleteMission() {
@@ -140,13 +140,7 @@ async function confirmDeleteMission() {
 }
 
 function switchTab(tabName) {
-    ['logs', 'findings', 'json'].forEach(t => {
-        document.getElementById(`tab-${t}`).classList.add('hidden');
-    });
-    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-    
-    // Update buttons (simple version)
-    // In a real app, I'd toggle classes on buttons too.
+    activateTab('history-tabs', tabName);
 }
 
 // Expose functions used by HTML onclick handlers
