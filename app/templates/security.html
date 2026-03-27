@@ -4,7 +4,7 @@
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="page-header">
-        <h1><i class="fa-solid fa-shield-halved text-violet-400 mr-2"></i>Security</h1>
+        <h1><i data-lucide="shield" class="w-5 h-5 inline-block text-violet-400 mr-2"></i>Security</h1>
         <p class="page-description">How we protect your data and our commitment to security.</p>
     </div>
 
@@ -12,33 +12,33 @@
         <div class="glass-panel rounded-xl p-6 animate-fade-in-up">
             <h2 class="text-lg font-semibold text-white mb-3">Infrastructure Security</h2>
             <ul class="space-y-2 text-sm text-slate-300">
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>All data encrypted in transit (TLS 1.3) and at rest (AES-256)</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Tool execution isolated in sandboxed Docker containers</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Network-isolated assessment environments with strict egress controls</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Automated vulnerability scanning of platform dependencies</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Regular security audits and penetration testing</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>All data encrypted in transit (TLS 1.3) and at rest (AES-256)</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Tool execution isolated in sandboxed Docker containers</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Network-isolated assessment environments with strict egress controls</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Automated vulnerability scanning of platform dependencies</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Regular security audits and penetration testing</li>
             </ul>
         </div>
 
         <div class="glass-panel rounded-xl p-6 animate-fade-in-up stagger-1">
             <h2 class="text-lg font-semibold text-white mb-3">Authentication & Access</h2>
             <ul class="space-y-2 text-sm text-slate-300">
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Multi-factor authentication (TOTP)</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Bcrypt password hashing with per-user salts</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>JWT tokens with short expiry and refresh rotation</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Progressive account lockout on failed attempts</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Role-based access control (Admin, Operator, Viewer)</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Comprehensive audit logging of all security events</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Multi-factor authentication (TOTP)</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Bcrypt password hashing with per-user salts</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>JWT tokens with short expiry and refresh rotation</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Progressive account lockout on failed attempts</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Role-based access control (Admin, Operator, Viewer)</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Comprehensive audit logging of all security events</li>
             </ul>
         </div>
 
         <div class="glass-panel rounded-xl p-6 animate-fade-in-up stagger-2">
             <h2 class="text-lg font-semibold text-white mb-3">Data Protection</h2>
             <ul class="space-y-2 text-sm text-slate-300">
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Findings and assessment data stored with per-tenant isolation</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Automatic data retention policies and secure deletion</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>Bring Your Own Key (BYOK) support for AI providers</li>
-                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i>No assessment data shared with third parties</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Findings and assessment data stored with per-tenant isolation</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Automatic data retention policies and secure deletion</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>Bring Your Own Key (BYOK) support for AI providers</li>
+                <li class="flex items-start gap-2"><i data-lucide="check" class="w-3.5 h-3.5 inline-block text-emerald-400 mt-0.5"></i>No assessment data shared with third parties</li>
             </ul>
         </div>
 

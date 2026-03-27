@@ -418,10 +418,7 @@ function updateSaasMetrics(data) {
 // Auto-refresh every 10 seconds
 setInterval(() => { refreshData(); refreshTrends(); }, 10000);
 
-// Re-init icons
-if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-}
+// Lucide icons are initialized globally in base.html
 
 // Expose functions used by HTML onclick/onchange handlers
 window.refreshData = refreshData;

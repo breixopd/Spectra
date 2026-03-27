@@ -26,7 +26,7 @@
             <!-- Basic Info -->
             <div class="glass-panel p-6 rounded-xl">
                 <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-info-circle text-violet-400"></i> Basic Information
+                    <i data-lucide="info" class="w-5 h-5 inline-block text-violet-400"></i> Basic Information
                 </h3>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2">
@@ -69,7 +69,7 @@
             <!-- Execution -->
             <div class="glass-panel p-6 rounded-xl">
                 <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-terminal text-emerald-400"></i> Execution
+                    <i data-lucide="terminal" class="w-5 h-5 inline-block text-emerald-400"></i> Execution
                 </h3>
                 <div class="space-y-4">
                     <div>
@@ -93,7 +93,7 @@
             <!-- Installation -->
             <div class="glass-panel p-6 rounded-xl">
                 <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-download text-blue-400"></i> Installation
+                    <i data-lucide="download" class="w-5 h-5 inline-block text-blue-400"></i> Installation
                 </h3>
                 <div class="space-y-4">
                     <div>
@@ -112,7 +112,7 @@
                         <div id="install-cmds-container" class="space-y-2">
                             <div class="flex gap-2">
                                 <input type="text" class="install-cmd w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-sm" placeholder="Command 1">
-                                <button onclick="addInstallCmd()" class="px-3 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300" aria-label="Add installation command"><i class="fa-solid fa-plus"></i></button>
+                                <button onclick="addInstallCmd()" class="px-3 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300" aria-label="Add installation command"><i data-lucide="plus" class="w-4 h-4 inline-block"></i></button>
                             </div>
                         </div>
                     </div>
@@ -126,7 +126,7 @@
             <!-- Metadata -->
             <div class="glass-panel p-6 rounded-xl">
                 <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-tags text-amber-400"></i> Metadata
+                    <i data-lucide="tags" class="w-5 h-5 inline-block text-amber-400"></i> Metadata
                 </h3>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -164,7 +164,7 @@
             <!-- JSON Preview -->
             <div class="glass-panel p-6 rounded-xl flex-1 flex flex-col min-h-0">
                 <h3 class="text-lg font-semibold text-white mb-4 flex items-center justify-between">
-                    <span><i class="fa-solid fa-code text-slate-400 mr-2"></i> Config Preview</span>
+                    <span><i data-lucide="code" class="w-5 h-5 inline-block text-slate-400 mr-2"></i> Config Preview</span>
                     <button onclick="updatePreview()" class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-slate-300">Refresh</button>
                 </h3>
                 <div class="flex-1 relative">
@@ -175,7 +175,7 @@
             <!-- Signing Options -->
             <div class="glass-panel p-6 rounded-xl">
                 <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-key text-amber-400"></i> Plugin Signing
+                    <i data-lucide="key" class="w-5 h-5 inline-block text-amber-400"></i> Plugin Signing
                 </h3>
                 <div class="space-y-3">
                     <div class="flex items-center gap-2">
@@ -198,13 +198,13 @@
             <div class="glass-panel p-6 rounded-xl">
                 <div class="flex flex-col gap-3">
                     <button onclick="validatePlugin()" class="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-check-circle"></i> Validate Config
+                        <i data-lucide="check-circle" class="w-4 h-4 inline-block"></i> Validate Config
                     </button>
                     <button onclick="saveWithoutSigning()" class="w-full py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-medium transition-colors flex items-center justify-center gap-2 text-sm">
-                        <i class="fa-solid fa-save"></i> Save Without Signing
+                        <i data-lucide="save" class="w-4 h-4 inline-block"></i> Save Without Signing
                     </button>
                     <button onclick="signAndSave()" class="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-signature"></i> Sign & Save Plugin
+                        <i data-lucide="file-signature" class="w-4 h-4 inline-block"></i> Sign & Save Plugin
                     </button>
                 </div>
                 <div id="action-status" class="mt-4 text-center text-sm hidden"></div>

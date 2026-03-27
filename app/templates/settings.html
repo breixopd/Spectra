@@ -13,23 +13,23 @@
     <div class="md:col-span-3">
         <nav class="space-y-1" role="tablist" aria-label="Settings sections">
             <a href="#general" role="tab" aria-selected="true" aria-controls="general" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
-                <i class="fa-solid fa-sliders mr-3 text-violet-400"></i>
+                <i data-lucide="sliders-horizontal" class="w-4 h-4 inline-block mr-3 text-violet-400"></i>
                 General
             </a>
             <a href="#data-sources" role="tab" aria-selected="false" aria-controls="data-sources" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
-                <i class="fa-solid fa-download mr-3 text-slate-500"></i>
+                <i data-lucide="download" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 Data Sources
             </a>
             <a href="#system" role="tab" aria-selected="false" aria-controls="system" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
-                <i class="fa-solid fa-server mr-3 text-slate-500"></i>
+                <i data-lucide="server" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 System Status
             </a>
             <a href="#vpn" role="tab" aria-selected="false" aria-controls="vpn" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
-                <i class="fa-solid fa-shield-halved mr-3 text-slate-500"></i>
+                <i data-lucide="shield" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 VPN
             </a>
             <a href="#platform" role="tab" aria-selected="false" aria-controls="platform" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
-                <i class="fa-solid fa-globe mr-3 text-slate-500"></i>
+                <i data-lucide="globe" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 Platform
             </a>
         </nav>
@@ -145,7 +145,7 @@
         <!-- Platform Settings -->
         <div class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-globe text-sky-400"></i>
+                <i data-lucide="globe" class="w-5 h-5 inline-block text-sky-400"></i>
                 Platform
             </h2>
             <form id="platform-form" class="space-y-4">
@@ -172,7 +172,7 @@
                     </label>
                 </div>
                 <div id="platform-exposed-warning" class="hidden p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                    <p class="text-xs text-amber-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Ensure HTTPS is configured via reverse proxy (e.g. Caddy, nginx) before exposing to the internet.</p>
+                    <p class="text-xs text-amber-400"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline-block mr-1"></i> Ensure HTTPS is configured via reverse proxy (e.g. Caddy, nginx) before exposing to the internet.</p>
                 </div>
             </form>
         </div>
@@ -180,7 +180,7 @@
         <!-- Sandbox Pool Settings -->
         <div class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-box text-emerald-400"></i>
+                <i data-lucide="box" class="w-5 h-5 inline-block text-emerald-400"></i>
                 Sandbox Pool
             </h2>
             <p class="text-sm text-slate-400 mb-4">Configure per-mission ephemeral containers. Each mission spins up its own isolated sandbox running security tools.</p>
@@ -354,20 +354,20 @@
         <!-- External Services Summary -->
         <div class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                <i class="fa-solid fa-diagram-project text-sky-400"></i>
+                <i data-lucide="git-branch" class="w-5 h-5 inline-block text-sky-400"></i>
                 External Services
             </h2>
             <p class="text-sm text-slate-400 mb-4">At-a-glance view of service modes and health. Full configuration is available in the Admin Panel.</p>
 
             <div id="svc-topology-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
                 <div class="col-span-full text-center py-6 text-slate-500 text-sm">
-                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading service topology...
+                    <i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-1"></i> Loading service topology...
                 </div>
             </div>
 
             <div class="flex items-center justify-between pt-3 border-t border-white/5">
                 <a href="/admin#services" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">
-                    <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Manage in Admin Panel
+                    <i data-lucide="external-link" class="w-3.5 h-3.5 inline-block mr-1"></i> Manage in Admin Panel
                 </a>
                 <span id="svc-topology-refresh-info" class="text-xs text-slate-600"></span>
             </div>
@@ -376,7 +376,7 @@
         <!-- Data Management Section -->
         <div class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-database text-rose-400"></i>
+                <i data-lucide="database" class="w-5 h-5 inline-block text-rose-400"></i>
                 Data Management
             </h2>
             <p class="text-sm text-slate-400 mb-4">Clear stored data and caches. These actions cannot be undone.</p>
@@ -389,7 +389,7 @@
                         <p class="text-xs text-slate-500">Clear execution counts, timings, and success rates</p>
                     </div>
                     <button onclick="clearToolStats()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
-                        <i class="fa-solid fa-broom mr-1"></i> Clear Stats
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear Stats
                     </button>
                 </div>
 
@@ -400,7 +400,7 @@
                         <p class="text-xs text-slate-500">Delete all mission data, findings, and reports</p>
                     </div>
                     <button onclick="showClearMissionsConfirm()" class="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs font-medium transition-colors">
-                        <i class="fa-solid fa-trash mr-1"></i> Clear Missions
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear Missions
                     </button>
                 </div>
 
@@ -411,7 +411,7 @@
                         <p class="text-xs text-slate-500">Clear cached data (RAG embeddings, tool configs)</p>
                     </div>
                     <button onclick="clearCache()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
-                        <i class="fa-solid fa-broom mr-1"></i> Clear Cache
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear Cache
                     </button>
                 </div>
 
@@ -422,7 +422,7 @@
                         <p class="text-xs text-slate-500">Force reinstall all security tools</p>
                     </div>
                     <button onclick="reinstallTools()" class="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs font-medium transition-colors">
-                        <i class="fa-solid fa-rotate mr-1"></i> Reinstall
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i> Reinstall
                     </button>
                 </div>
             </div>
@@ -431,7 +431,7 @@
         <!-- Data Sources Section -->
         <div id="data-sources" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="data-sources">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-download text-amber-400"></i>
+                <i data-lucide="download" class="w-5 h-5 inline-block text-amber-400"></i>
                 Data Sources
             </h2>
             <p class="text-sm text-slate-400 mb-4">Update exploit intelligence and CVE databases to ensure accurate vulnerability detection.</p>
@@ -439,14 +439,14 @@
             <!-- Source Status Cards -->
             <div id="data-sources-status" class="space-y-3 mb-4">
                 <div class="animate-pulse flex items-center gap-2 text-slate-500">
-                    <i class="fa-solid fa-spinner fa-spin"></i> Loading data source status...
+                    <i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Loading data source status...
                 </div>
             </div>
 
             <!-- Download Button -->
             <div class="flex items-center gap-3 pt-3 border-t border-white/5">
                 <button id="download-sources-btn" onclick="downloadDataSources()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors">
-                    <i class="fa-solid fa-arrows-rotate mr-1"></i> Update All Sources
+                    <i data-lucide="refresh-cw" class="w-4 h-4 inline-block mr-1"></i> Update All Sources
                 </button>
                 <span id="download-sources-status" class="text-xs text-slate-500"></span>
             </div>
@@ -455,7 +455,7 @@
         <!-- VPN Management -->
         <div id="vpn" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="vpn">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                <i data-lucide="shield" class="w-5 h-5 inline-block text-emerald-400"></i>
                 VPN Management
             </h2>
 
@@ -488,7 +488,7 @@
                     </div>
                     <div class="flex justify-end">
                         <button type="submit" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs font-medium transition-colors">
-                            <i class="fa-solid fa-upload mr-1"></i> Upload
+                            <i data-lucide="upload" class="w-4 h-4 inline-block mr-1"></i> Upload
                         </button>
                     </div>
                 </form>
@@ -502,7 +502,7 @@
             <!-- Test Button -->
             <div class="mt-4 pt-3 border-t border-white/5">
                 <button onclick="testVpnConnection()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
-                    <i class="fa-solid fa-wifi mr-1"></i> Test Connection
+                    <i data-lucide="wifi" class="w-3.5 h-3.5 inline-block mr-1"></i> Test Connection
                 </button>
             </div>
         </div>
@@ -510,12 +510,12 @@
         <!-- System Status -->
         <div class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-server text-cyan-400"></i>
+                <i data-lucide="server" class="w-5 h-5 inline-block text-cyan-400"></i>
                 System Status
             </h2>
             <div id="system-status-content" class="space-y-3">
                 <div class="animate-pulse flex items-center gap-2 text-slate-500">
-                    <i class="fa-solid fa-spinner fa-spin"></i> Loading status...
+                    <i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Loading status...
                 </div>
             </div>
         </div>
@@ -528,7 +528,7 @@
     <div class="w-full h-full flex items-center justify-center">
     <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4">
         <h3 class="text-lg font-semibold text-white mb-2">
-            <i class="fa-solid fa-exclamation-triangle text-rose-400 mr-2"></i>
+            <i data-lucide="alert-triangle" class="w-5 h-5 inline-block text-rose-400 mr-2"></i>
             Confirm Delete All Missions
         </h3>
         <p class="text-slate-400 text-sm mb-4">
@@ -540,7 +540,7 @@
                 Cancel
             </button>
             <button onclick="confirmClearMissions()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
-                <i class="fa-solid fa-trash mr-1"></i> Delete All
+                <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Delete All
             </button>
         </div>
     </div>
@@ -624,8 +624,8 @@
             const { data } = await spectraApi.get('/api/v1/system/status');
             
             const dbStatus = data.database?.status === 'connected' ? 
-                '<span class="text-emerald-400"><i class="fa-solid fa-check-circle"></i> Connected</span>' :
-                '<span class="text-rose-400"><i class="fa-solid fa-times-circle"></i> Error</span>';
+                '<span class="text-emerald-400"><i data-lucide="check-circle" class="w-4 h-4 inline-block"></i> Connected</span>' :
+                '<span class="text-rose-400"><i data-lucide="x-circle" class="w-4 h-4 inline-block"></i> Error</span>';
 
             const ts = data.tool_stats || {};
             
@@ -651,6 +651,7 @@
                     </div>
                 </div>
             `;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         } catch (e) {
             container.innerHTML = '<span class="text-rose-400">Failed to load status</span>';
         }
@@ -703,7 +704,7 @@
         const btn = document.getElementById('download-sources-btn');
         const status = document.getElementById('download-sources-status');
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Downloading...';
+        btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-1"></i> Downloading...';
         status.textContent = 'This may take a minute...';
         try {
             const { data, error } = await spectraApi.post('/api/v1/system/data-sources/download');
@@ -720,7 +721,8 @@
             status.className = 'text-xs text-rose-400';
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-download mr-1"></i> Download / Update All Sources';
+            btn.innerHTML = '<i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i> Download / Update All Sources';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     }
 
@@ -836,7 +838,7 @@
 
             const modeColors = { local: 'text-emerald-400', remote: 'text-sky-400' };
             const modeBg = { local: 'bg-emerald-500/10 border-emerald-500/20', remote: 'bg-sky-500/10 border-sky-500/20' };
-            const modeIcon = { local: 'fa-house', remote: 'fa-cloud' };
+            const modeIcon = { local: 'home', remote: 'cloud' };
 
             container.innerHTML = entries.map(([name, info]) => {
                 const mode = info.mode || 'local';
@@ -851,7 +853,7 @@
                             <span class="text-sm font-medium text-white">${escapeHtml(displayName)}</span>
                         </div>
                         <span class="text-xs uppercase tracking-wider font-semibold ${modeColors[mode] || 'text-slate-400'}">
-                            <i class="fa-solid ${modeIcon[mode] || 'fa-circle-question'} mr-0.5"></i> ${escapeHtml(mode)}
+                            <i data-lucide="${modeIcon[mode] || 'circle-help'}" class="w-3.5 h-3.5 inline-block mr-0.5"></i> ${escapeHtml(mode)}
                         </span>
                     </div>
                     ${url ? `<p class="text-[11px] text-slate-500 font-mono truncate" title="${escapeHtml(url)}">${escapeHtml(url)}</p>` : '<p class="text-[11px] text-slate-600">In-process</p>'}
@@ -862,7 +864,8 @@
             const remoteCount = entries.length - localCount;
             refreshInfo.textContent = `${localCount} local, ${remoteCount} remote \u00b7 last checked ${new Date().toLocaleTimeString()}`;
         } catch {
-            container.innerHTML = '<div class="col-span-full text-center py-4 text-rose-400 text-sm"><i class="fa-solid fa-circle-exclamation mr-1"></i> Failed to load service topology</div>';
+            container.innerHTML = '<div class="col-span-full text-center py-4 text-rose-400 text-sm"><i data-lucide="alert-circle" class="w-4 h-4 inline-block mr-1"></i> Failed to load service topology</div>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     }
 

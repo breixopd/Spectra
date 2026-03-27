@@ -8,7 +8,8 @@ let currentMissionId = null;
         list.innerHTML = '';
         
         if (missions.length === 0) {
-            list.innerHTML = '<div class="empty-state"><i class="fa-solid fa-clock-rotate-left text-blue-400/40"></i><h3>No assessments yet</h3><p>Start an assessment from the Dashboard to see history here.</p></div>';
+            list.innerHTML = '<div class="empty-state"><i data-lucide="history" class="w-8 h-8 inline-block text-blue-400/40"></i><h3>No assessments yet</h3><p>Start an assessment from the Dashboard to see history here.</p></div>';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
             return;
         }
 

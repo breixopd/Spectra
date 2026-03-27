@@ -135,9 +135,9 @@ async function loadUsers() {
                     <td class="px-4 py-3"><span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
                     <td class="px-4 py-3 text-slate-500 text-xs">${formatDate(u.created_at)}</td>
                     <td class="px-4 py-3 text-right">
-                        <button onclick='openEditUserModal(${JSON.stringify(u).replace(/'/g,"&#39;")})' class="text-slate-400 hover:text-violet-400 mr-2" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-                        <button onclick="resetPassword('${u.id}','${escapeHtml(u.username)}')" class="text-slate-400 hover:text-amber-400 mr-2" title="Reset password"><i class="fa-solid fa-key"></i></button>
-                        <button onclick="deactivateUser('${u.id}','${escapeHtml(u.username)}')" class="text-slate-400 hover:text-red-400" title="Deactivate"><i class="fa-solid fa-user-slash"></i></button>
+                        <button onclick='openEditUserModal(${JSON.stringify(u).replace(/'/g,"&#39;")})' class="text-slate-400 hover:text-violet-400 mr-2" title="Edit"><i data-lucide="edit" class="w-4 h-4 inline-block"></i></button>
+                        <button onclick="resetPassword('${u.id}','${escapeHtml(u.username)}')" class="text-slate-400 hover:text-amber-400 mr-2" title="Reset password"><i data-lucide="key" class="w-4 h-4 inline-block"></i></button>
+                        <button onclick="deactivateUser('${u.id}','${escapeHtml(u.username)}')" class="text-slate-400 hover:text-red-400" title="Deactivate"><i data-lucide="user-x" class="w-4 h-4 inline-block"></i></button>
                     </td>
                 </tr>`).join('');
         }
@@ -258,7 +258,8 @@ async function loadPlans() {
 function renderPlans() {
     const grid = document.getElementById('plans-grid');
     if (!allPlans.length) {
-        grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-500"><i class="fa-solid fa-layer-group text-3xl mb-2 opacity-30"></i><p>No plans configured yet</p></div>';
+        grid.innerHTML = '<div class="col-span-full text-center py-12 text-slate-500"><i data-lucide="layers" class="w-5 h-5 inline-block mb-2 opacity-30"></i><p>No plans configured yet</p></div>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
     }
     const tierColors = { light: 'bg-sky-500/20 text-sky-300', medium: 'bg-emerald-500/20 text-emerald-300', heavy: 'bg-orange-500/20 text-orange-300', extreme: 'bg-rose-500/20 text-rose-300' };
@@ -289,8 +290,8 @@ function renderPlans() {
                 <div class="flex justify-between"><span class="text-slate-500">Sandboxes</span><span class="text-white">${p.sandbox_max_containers}</span></div>
             </div>
             <div class="flex justify-end gap-2 pt-2 border-t border-white/5">
-                <button onclick='openEditPlanModal(${JSON.stringify(p).replace(/'/g,"&#39;")})' class="text-xs text-slate-400 hover:text-violet-400 transition-colors"><i class="fa-solid fa-pen-to-square mr-1"></i>Edit</button>
-                ${p.is_active ? `<button onclick="deactivatePlan('${p.id}','${escapeHtml(p.name)}')" class="text-xs text-slate-400 hover:text-red-400 transition-colors"><i class="fa-solid fa-ban mr-1"></i>Deactivate</button>` : ''}
+                <button onclick='openEditPlanModal(${JSON.stringify(p).replace(/'/g,"&#39;")})' class="text-xs text-slate-400 hover:text-violet-400 transition-colors"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block mr-1"></i>Edit</button>
+                ${p.is_active ? `<button onclick="deactivatePlan('${p.id}','${escapeHtml(p.name)}')" class="text-xs text-slate-400 hover:text-red-400 transition-colors"><i data-lucide="ban" class="w-3.5 h-3.5 inline-block mr-1"></i>Deactivate</button>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -459,7 +460,7 @@ async function loadUsage() {
 
 // ---- Services ----
 const SERVICE_SETTINGS_MAP = {
-    sandbox: { url: 'sandbox_orchestrator_url', timeout: 'sandbox_orchestrator_timeout', apiKey: 'sandbox_orchestrator_api_key', label: 'Sandbox Orchestrator', icon: 'fa-box' },
+    sandbox: { url: 'sandbox_orchestrator_url', timeout: 'sandbox_orchestrator_timeout', apiKey: 'sandbox_orchestrator_api_key', label: 'Sandbox Orchestrator', icon: 'box' },
 };
 
 let svcTopology = {};
@@ -537,7 +538,7 @@ function renderServiceCards() {
             <div class="service-card glass-panel rounded-xl p-5">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid ${map.icon} text-violet-400"></i>
+                        <i data-lucide="${map.icon}" class="w-4 h-4 inline-block text-violet-400"></i>
                         <h3 class="text-sm font-semibold text-white">${escapeHtml(map.label)}</h3>
                     </div>
                     <span class="badge badge-${modeBadge}">${modeLabel}</span>
@@ -561,14 +562,15 @@ function renderServiceCards() {
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 pt-2 border-t border-white/5">
-                    ${mode === 'remote' ? `<button onclick="deprovisionServer('${name}')" class="text-xs text-red-400 hover:text-red-300 transition-colors"><i class="fa-solid fa-trash-can mr-1"></i>Remove Server</button>` : ''}
+                    ${mode === 'remote' ? `<button onclick="deprovisionServer('${name}')" class="text-xs text-red-400 hover:text-red-300 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i>Remove Server</button>` : ''}
                     <button onclick="openServiceConfigModal('${name}')" class="text-xs text-slate-400 hover:text-violet-400 transition-colors">
-                        <i class="fa-solid fa-gear mr-1"></i>Configure
+                        <i data-lucide="settings" class="w-3.5 h-3.5 inline-block mr-1"></i>Configure
                     </button>
                 </div>
             </div>`);
     }
     grid.innerHTML = cards.join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
     document.getElementById('svc-topology-summary').textContent =
         `${localCount} local · ${remoteCount} remote` + (disabledCount ? ` · ${disabledCount} disabled` : '');
 }
@@ -585,7 +587,8 @@ async function checkAllHealth() {
         _spectraToast('Health check complete', 'success');
     } catch(e) { _spectraToast(e.message, 'error'); }
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-heart-pulse mr-1"></i> Check All Health';
+    btn.innerHTML = '<i data-lucide="heart-pulse" class="w-4 h-4 inline-block mr-1"></i> Check All Health';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function openServiceConfigModal(name) {
@@ -650,7 +653,8 @@ async function testServiceConnection() {
         resultEl.classList.remove('hidden');
     }
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-plug mr-1"></i> Test Connection';
+    btn.innerHTML = '<i data-lucide="plug" class="w-4 h-4 inline-block mr-1"></i> Test Connection';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 document.getElementById('service-form').addEventListener('submit', async function(e) {
@@ -714,7 +718,7 @@ function openProvisionModal() {
     document.getElementById('prov-log-area').classList.add('hidden');
     document.getElementById('prov-logs').textContent = '';
     document.getElementById('prov-submit-btn').disabled = false;
-    document.getElementById('prov-submit-btn').innerHTML = '<i class="fa-solid fa-rocket mr-1"></i> Provision';
+    document.getElementById('prov-submit-btn').innerHTML = '<i data-lucide="rocket" class="w-4 h-4 inline-block mr-1"></i> Provision';
     toggleProvAuth();
     openModal('provision-modal');
 }
@@ -774,7 +778,8 @@ async function testServerConnection() {
         resultEl.classList.remove('hidden');
     }
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-plug mr-1"></i> Test Connection';
+    btn.innerHTML = '<i data-lucide="plug" class="w-4 h-4 inline-block mr-1"></i> Test Connection';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 async function provisionServer() {
@@ -808,7 +813,8 @@ async function provisionServer() {
         _spectraToast('Provisioning request failed', 'error');
     }
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-rocket mr-1"></i> Provision';
+    btn.innerHTML = '<i data-lucide="rocket" class="w-4 h-4 inline-block mr-1"></i> Provision';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function deprovisionServer(serviceType) {
@@ -898,10 +904,10 @@ async function refreshNodesList() {
                 <div class="flex items-center gap-2">
                     ${n.deployed_services ? `<span class="text-xs text-emerald-400">${(n.deployed_services.length || 0)} services</span>` : ''}
                     <button onclick="deployToNode(${n.id}, '${escapeHtml(n.name)}')" class="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs transition-colors">
-                        <i class="fa-solid fa-rocket mr-1"></i>Deploy
+                        <i data-lucide="rocket" class="w-3.5 h-3.5 inline-block mr-1"></i>Deploy
                     </button>
                     <button onclick="viewNodeLogs(${n.id})" class="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors">
-                        <i class="fa-solid fa-file-lines mr-1"></i>Logs
+                        <i data-lucide="file-text" class="w-3.5 h-3.5 inline-block mr-1"></i>Logs
                     </button>
                 </div>
             </div>
@@ -965,8 +971,8 @@ async function loadContent() {
                     <span class="text-xs ${item.is_active ? 'text-emerald-400' : 'text-slate-500'}">${item.is_active ? 'Active' : 'Inactive'}</span>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="editContent('${item.id}')" class="text-xs text-violet-400 hover:text-violet-300"><i class="fa-solid fa-pen"></i></button>
-                    <button onclick="deleteContent('${item.id}')" class="text-xs text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="editContent('${item.id}')" class="text-xs text-violet-400 hover:text-violet-300"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block"></i></button>
+                    <button onclick="deleteContent('${item.id}')" class="text-xs text-red-400 hover:text-red-300"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block"></i></button>
                 </div>
             </div>
         `).join('');
@@ -1130,11 +1136,13 @@ async function testTZConnection() {
         const { data, error } = await spectraApi.get('/api/v1/admin/tensorzero/status');
         if (error || !data?.online) {
             result.className = 'mt-3 p-3 rounded-lg text-sm bg-red-600/10 text-red-300 border border-red-500/30';
-            result.innerHTML = '<i class="fa-solid fa-circle-xmark mr-1"></i> Gateway unreachable: ' + escapeHtml(error || 'Connection failed');
+            result.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 inline-block mr-1"></i> Gateway unreachable: ' + escapeHtml(error || 'Connection failed');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         } else {
             result.className = 'mt-3 p-3 rounded-lg text-sm bg-emerald-600/10 text-emerald-300 border border-emerald-500/30';
-            result.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> Gateway online &mdash; ' +
+            result.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 inline-block mr-1"></i> Gateway online &mdash; ' +
                 (data.functions_count || 0) + ' functions, ' + (data.models_count || 0) + ' models configured';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     } catch(e) {
         result.className = 'mt-3 p-3 rounded-lg text-sm bg-red-600/10 text-red-300 border border-red-500/30';
@@ -1161,7 +1169,7 @@ async function loadBackups() {
                 <td class="px-4 py-3 text-xs text-slate-400">${b.created_at ? new Date(b.created_at).toLocaleString() : '—'}</td>
                 <td class="px-4 py-3 text-right">
                     <button onclick="restoreBackup('${b.path || b.filename}')" class="px-2.5 py-1 rounded bg-amber-600/20 text-amber-300 text-xs hover:bg-amber-600/30 transition-colors">
-                        <i class="fa-solid fa-rotate-left mr-1"></i>Restore
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i>Restore
                     </button>
                 </td>
             </tr>
@@ -1171,14 +1179,14 @@ async function loadBackups() {
 function formatBytes(b) { if(!b) return '0 B'; const k=1024,s=['B','KB','MB','GB']; const i=Math.floor(Math.log(b)/Math.log(k)); return (b/Math.pow(k,i)).toFixed(1)+' '+s[i]; }
 async function createBackup() {
     const btn = document.getElementById('backup-create-btn');
-    btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Creating...';
+    btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-1.5"></i> Creating...';
     try {
         const r = await spectraApi.post('/api/admin/backups');
         if (r.error) throw new Error(r.error);
         showConfirm('Backup created successfully', null, {title:'Success', icon:'check', confirmText:'OK', hideCancel:true});
         loadBackups();
     } catch(e) { showConfirm(e.message, null, {title:'Backup Error', icon:'triangle-exclamation', confirmText:'OK', hideCancel:true}); }
-    finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-plus mr-1.5"></i> Create Backup'; }
+    finally { btn.disabled = false; btn.innerHTML = '<i data-lucide="plus" class="w-4 h-4 inline-block mr-1.5"></i> Create Backup'; if (typeof lucide !== 'undefined') lucide.createIcons(); }
 }
 function restoreBackup(path) {
     showConfirm('Are you sure you want to restore from this backup? This will overwrite the current database.', async () => {
@@ -1201,8 +1209,9 @@ async function loadEmailConfig() {
         const d = !r.error ? r.data : {};
         const smtpHost = d.smtp_host || '';
         statusEl.innerHTML = smtpHost
-            ? `<span class="text-emerald-400"><i class="fa-solid fa-circle-check mr-1"></i> SMTP configured: ${smtpHost}</span>`
-            : '<span class="text-amber-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i> SMTP not configured — using console fallback</span>';
+            ? `<span class="text-emerald-400"><i data-lucide="check-circle" class="w-4 h-4 inline-block mr-1"></i> SMTP configured: ${smtpHost}</span>`
+            : '<span class="text-amber-400"><i data-lucide="alert-triangle" class="w-4 h-4 inline-block mr-1"></i> SMTP not configured — using console fallback</span>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch { statusEl.textContent = 'Unable to load status'; }
 
     try {
@@ -1267,7 +1276,8 @@ async function sendTestEmail(e) {
         result.textContent = err.message;
         result.classList.remove('hidden');
     } finally {
-        btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1.5"></i> Send Test';
+        btn.disabled = false; btn.innerHTML = '<i data-lucide="send" class="w-4 h-4 inline-block mr-1.5"></i> Send Test';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 }
 

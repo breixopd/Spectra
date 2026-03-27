@@ -41,7 +41,8 @@ function filterTools() {
 function renderToolPicker(tools) {
     const container = document.getElementById('tool-picker');
     if (!tools.length) {
-        container.innerHTML = '<div class="empty-state py-6"><i class="fa-solid fa-search text-slate-600 text-xl"></i><p class="text-slate-500 text-xs mt-2">No tools found</p></div>';
+        container.innerHTML = '<div class="empty-state py-6"><i data-lucide="search" class="w-6 h-6 inline-block text-slate-600"></i><p class="text-slate-500 text-xs mt-2">No tools found</p></div>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
     }
     container.innerHTML = tools.map(t => {
@@ -57,6 +58,7 @@ function renderToolPicker(tools) {
             </div>
         </div>`;
     }).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Select tool and build form
@@ -169,7 +171,8 @@ function buildForm(cfg) {
 
     const badge = document.getElementById('tool-icon-badge');
     badge.className = `w-10 h-10 rounded-lg flex items-center justify-center text-lg bg-${cfg.ui.color || 'violet'}-500/20 text-${cfg.ui.color || 'violet'}-400`;
-    badge.innerHTML = `<i class="fa-solid fa-${getIcon(cfg.ui.icon)}"></i>`;
+    badge.innerHTML = `<i data-lucide="${getIcon(cfg.ui.icon)}" class="w-5 h-5 inline-block"></i>`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
     const globalTarget = document.getElementById('global-target')?.value || '';
     document.getElementById('next-tool-suggestions').classList.add('hidden');
@@ -202,7 +205,7 @@ function buildForm(cfg) {
                         <input type="text" id="arg-${p}" list="wordlist-options" placeholder="${hint || 'Select or type wordlist path'}"
                             class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
                         <datalist id="wordlist-options"></datalist>
-                        <button type="button" onclick="refreshWordlistOptions()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs" title="Refresh wordlists"><i class="fa-solid fa-rotate"></i></button>
+        <button type="button" onclick="refreshWordlistOptions()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs" title="Refresh wordlists"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block"></i></button>
                     </div>
                 </div>`;
                 setTimeout(refreshWordlistOptions, 100);
@@ -223,16 +226,31 @@ function buildForm(cfg) {
     </div>`;
 
     container.innerHTML = html;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-function getIcon(name) {
-    const map = {
-        network:'network-wired', crosshair:'crosshairs', database:'database',
-        key:'key', shield:'shield', terminal:'terminal', bug:'bug',
-        globe:'globe', lightning:'bolt', 'folder-open':'folder-open',
-        'globe-hemisphere-west':'earth-americas', 'shield-warning':'shield-halved',
+function getIcon(category) {
+    const icons = {
+        'scanner': 'radar',
+        'recon': 'search',
+        'web': 'globe',
+        'brute': 'key',
+        'exploit': 'shield',
+        'network': 'network',
+        'infrastructure': 'server',
+        'crosshair': 'crosshair',
+        'database': 'database',
+        'terminal': 'terminal',
+        'bug': 'bug',
+        'lightning': 'zap',
+        'folder-open': 'folder-open',
+        'shield-warning': 'shield-alert',
+        'key': 'key',
+        'shield': 'shield',
+        'globe': 'globe',
+        'default': 'wrench',
     };
-    return map[name] || 'wrench';
+    return icons[category] || icons['default'];
 }
 
 // Execute tool
@@ -272,7 +290,8 @@ async function executeManualTool() {
     const btn = document.getElementById('run-btn');
     const status = document.getElementById('exec-status');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Running...';
+    btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin"></i> Running...';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
     status.textContent = 'Executing...';
 
     const outputArea = document.getElementById('output-area');
@@ -340,7 +359,8 @@ async function executeManualTool() {
         status.className = 'text-xs ml-auto font-mono text-rose-400';
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-play"></i> Run';
+        btn.innerHTML = '<i data-lucide="play" class="w-4 h-4 inline-block"></i> Run';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 }
 
@@ -365,8 +385,8 @@ function renderFindings(findings) {
 
         let actions = '';
         if (product) {
-            actions += `<button onclick="lookupCVEsFor('${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded text-xs transition-colors" title="Search CVEs for ${escapeAttr(product)}"><i class="fa-solid fa-shield-virus"></i></button>`;
-            actions += `<button onclick="runToolOn('searchsploit','${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded text-xs transition-colors" title="SearchSploit"><i class="fa-solid fa-magnifying-glass"></i></button>`;
+            actions += `<button onclick="lookupCVEsFor('${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded text-xs transition-colors" title="Search CVEs for ${escapeAttr(product)}"><i data-lucide="shield-alert" class="w-3.5 h-3.5 inline-block"></i></button>`;
+            actions += `<button onclick="runToolOn('searchsploit','${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded text-xs transition-colors" title="SearchSploit"><i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i></button>`;
         }
         if (f.port || f.portid) {
             const host = f.ip || f.host || document.getElementById('global-target')?.value || '';
@@ -374,9 +394,9 @@ function renderFindings(findings) {
             const svc = (f.service || '').toLowerCase();
             const proto = (svc.includes('ssl') || svc.includes('https') || port == 443) ? 'https' : 'http';
             const url = `${proto}://${host}:${port}`;
-            actions += `<button onclick="runToolOn('nuclei','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded text-xs transition-colors" title="Scan with Nuclei"><i class="fa-solid fa-bug"></i></button>`;
+            actions += `<button onclick="runToolOn('nuclei','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded text-xs transition-colors" title="Scan with Nuclei"><i data-lucide="bug" class="w-3.5 h-3.5 inline-block"></i></button>`;
             if (svc.includes('http')) {
-                actions += `<button onclick="runToolOn('nikto','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded text-xs transition-colors" title="Scan with Nikto"><i class="fa-solid fa-globe"></i></button>`;
+                actions += `<button onclick="runToolOn('nikto','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded text-xs transition-colors" title="Scan with Nikto"><i data-lucide="globe" class="w-3.5 h-3.5 inline-block"></i></button>`;
             }
         }
 
@@ -387,6 +407,7 @@ function renderFindings(findings) {
             <div class="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">${actions}</div>
         </div>`;
     }).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function findingKey(f) {
@@ -449,9 +470,10 @@ function showNextToolSuggestions(toolId) {
         const tool = allTools.find(t => t.id === id);
         const name = tool ? tool.name : id;
         return `<button onclick="chainToTool('${id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-xs text-slate-300 transition-colors flex items-center gap-1.5">
-            <i class="fa-solid fa-arrow-right text-violet-400"></i> ${escapeHtml(name)}
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5 inline-block text-violet-400"></i> ${escapeHtml(name)}
         </button>`;
     }).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function chainToTool(toolId) {
@@ -511,7 +533,7 @@ function addPipelineStep() {
     if (stepNum > 0) {
         const conn = document.createElement('div');
         conn.className = 'pipeline-connector shrink-0';
-        conn.innerHTML = '<i class="fa-solid fa-arrow-right"></i>';
+        conn.innerHTML = '<i data-lucide="arrow-right" class="w-3.5 h-3.5 inline-block"></i>';
         canvas.appendChild(conn);
     }
 
@@ -521,7 +543,7 @@ function addPipelineStep() {
     node.innerHTML = `
         <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-mono text-slate-500">Step ${stepNum + 1}</span>
-            <button onclick="removePipelineStep(${id})" class="text-slate-600 hover:text-rose-400 text-xs transition-colors" aria-label="Remove step"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="removePipelineStep(${id})" class="text-slate-600 hover:text-rose-400 text-xs transition-colors" aria-label="Remove step"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>
         <select onchange="updatePipelineStep(${id}, this.value)" class="w-full px-2 py-1.5 bg-black/30 border border-white/10 rounded text-sm text-white mb-2 focus:outline-none focus:border-violet-500">
             <option value="">Select tool...</option>
@@ -533,6 +555,7 @@ function addPipelineStep() {
     `;
     canvas.appendChild(node);
     pipelineSteps.push({id, toolId: '', target: ''});
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function removePipelineStep(id) {
@@ -552,7 +575,8 @@ function rebuildPipelineCanvas() {
     const canvas = document.getElementById('pipeline-canvas');
     canvas.innerHTML = '';
     if (pipelineSteps.length === 0) {
-        canvas.innerHTML = '<div class="empty-state" id="pipeline-empty"><i class="fa-solid fa-diagram-project text-violet-400/40"></i><h3>Build your pipeline</h3><p>Click "Add Step" to chain tools together.</p></div>';
+        canvas.innerHTML = '<div class="empty-state" id="pipeline-empty"><i data-lucide="git-branch" class="w-5 h-5 inline-block text-violet-400/40"></i><h3>Build your pipeline</h3><p>Click "Add Step" to chain tools together.</p></div>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
     }
     const saved = [...pipelineSteps];
@@ -576,7 +600,7 @@ async function runPipeline() {
     if (pipelineSteps.length === 0) { _spectraToast('Add at least one step', 'warning'); return; }
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Running...';
+    btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-1"></i> Running...';
     output.innerHTML = '';
 
     let previousOutput = '';
@@ -635,7 +659,8 @@ async function runPipeline() {
 
     output.innerHTML += `<span class="text-emerald-400">━━━ Pipeline complete ━━━</span>\n`;
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-play mr-1"></i> Run Pipeline';
+    btn.innerHTML = '<i data-lucide="play" class="w-4 h-4 inline-block mr-1"></i> Run Pipeline';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Smart pipeline data passing: extract the right input for the next tool from previous findings
@@ -714,7 +739,7 @@ async function searchCVEs() {
     }
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Searching...';
+    btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-1"></i> Searching...';
     results.innerHTML = '<div class="text-slate-500 text-sm text-center py-8">Searching CVE databases...</div>';
 
     try {
@@ -741,7 +766,7 @@ async function searchCVEs() {
             if (c.metasploit_modules && c.metasploit_modules.length > 0) {
                 msfHtml = `<div class="mt-2 pt-2 border-t border-white/5">
                     <div class="flex items-center gap-2 mb-1.5">
-                        <i class="fa-solid fa-skull-crossbones text-rose-400 text-xs"></i>
+                        <i data-lucide="skull" class="w-3.5 h-3.5 inline-block text-rose-400"></i>
                         <span class="text-xs font-bold text-rose-400 uppercase">Metasploit Modules</span>
                     </div>
                     <div class="space-y-1">
@@ -751,10 +776,10 @@ async function searchCVEs() {
                                 <code class="text-slate-300 font-mono truncate flex-1">${escapeHtml(m.module)}</code>
                                 <span class="text-xs text-slate-500 font-mono">${escapeHtml(m.rank || '')}</span>
                                 <button onclick="navigator.clipboard.writeText('${escapeAttr(m.module)}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-all" title="Copy module path">
-                                    <i class="fa-solid fa-copy"></i>
+                                    <i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i>
                                 </button>
                                 <button onclick="launchMetasploit('${escapeAttr(m.module)}', '${escapeAttr(cveId)}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-all" title="Use in Metasploit">
-                                    <i class="fa-solid fa-rocket"></i>
+                                    <i data-lucide="rocket" class="w-3.5 h-3.5 inline-block"></i>
                                 </button>
                             </div>
                         `).join('')}
@@ -763,7 +788,7 @@ async function searchCVEs() {
             }
 
             let exploitBadge = c.exploit_available
-                ? `<span class="px-1.5 py-0.5 rounded text-xs font-mono bg-rose-500/20 text-rose-400"><i class="fa-solid fa-skull-crossbones mr-0.5"></i> ${c.exploit_count} exploit${c.exploit_count > 1 ? 's' : ''}</span>`
+                ? `<span class="px-1.5 py-0.5 rounded text-xs font-mono bg-rose-500/20 text-rose-400"><i data-lucide="skull" class="w-3 h-3 inline-block mr-0.5"></i> ${c.exploit_count} exploit${c.exploit_count > 1 ? 's' : ''}</span>`
                 : '';
 
             return `<div class="p-3 rounded-lg bg-black/20 border border-white/5 hover:border-white/10 transition-colors">
@@ -783,7 +808,8 @@ async function searchCVEs() {
         results.innerHTML = `<div class="text-red-400 text-sm text-center py-4">Error: ${escapeHtml(e.message)}</div>`;
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass mr-1"></i> Search';
+        btn.innerHTML = '<i data-lucide="search" class="w-3.5 h-3.5 inline-block mr-1"></i> Search';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 }
 
@@ -1329,10 +1355,10 @@ async function loadWordlists() {
         if (wordlists.length) {
             html += wordlists.map(w => `
                 <div class="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-white/[0.02] hover:bg-white/[0.05] group">
-                    <i class="fa-solid fa-file-lines text-amber-400/60 shrink-0"></i>
+                    <i data-lucide="file-text" class="w-4 h-4 inline-block text-amber-400/60 shrink-0"></i>
                     <span class="text-white truncate flex-1 font-mono">${escapeHtml(w.name || w)}</span>
                     ${w.size ? `<span class="text-slate-500 text-xs shrink-0">${w.size}</span>` : ''}
-                    <button onclick="navigator.clipboard.writeText('${escapeAttr(w.path || w.name || w)}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white transition-all" title="Copy path"><i class="fa-solid fa-copy"></i></button>
+                    <button onclick="navigator.clipboard.writeText('${escapeAttr(w.path || w.name || w)}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white transition-all" title="Copy path"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></button>
                 </div>
             `).join('');
         }
@@ -1341,7 +1367,7 @@ async function loadWordlists() {
             html += '<div class="text-xs text-slate-500 uppercase font-bold mt-3 mb-1">Available for Download</div>';
             html += presets.map(p => `
                 <div class="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-white/[0.02] ${p.downloaded ? 'opacity-50' : 'hover:bg-white/[0.05]'}">
-                    <i class="fa-solid fa-cloud-arrow-down text-blue-400/60 shrink-0"></i>
+                    <i data-lucide="download" class="w-4 h-4 inline-block text-blue-400/60 shrink-0"></i>
                     <span class="text-slate-300 truncate flex-1">${escapeHtml(p.name)} <span class="text-slate-500">(${p.entries} entries)</span></span>
                     ${!p.downloaded ? `<button onclick="downloadPreset('${escapeAttr(p.id)}')" class="px-1.5 py-0.5 bg-blue-600/80 hover:bg-blue-500 text-white rounded text-xs transition-colors">Get</button>` : '<span class="text-emerald-400 text-xs">\u2713</span>'}
                 </div>
@@ -1349,6 +1375,7 @@ async function loadWordlists() {
         }
 
         document.getElementById('wordlist-list').innerHTML = html || '<div class="text-slate-500 text-xs">No wordlists found</div>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch(e) {
         document.getElementById('wordlist-list').innerHTML = '<div class="text-rose-400 text-xs">Failed to load</div>';
     }
@@ -1556,7 +1583,7 @@ function showModal(title, content, widthClass) {
     modal.innerHTML = `<div class="modal-content ${widthClass || 'max-w-3xl'} w-full">
         <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <h3 class="text-sm font-bold text-white">${escapeHtml(title)}</h3>
-            <button onclick="document.getElementById('spectra-modal').remove()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="document.getElementById('spectra-modal').remove()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>
         <div>${content}</div>
     </div>`;
@@ -1592,16 +1619,17 @@ function removeScopeTarget(idx) {
 }
 
 function renderScopeTargets() {
-    const icons = {ip:'fa-network-wired text-blue-400', domain:'fa-globe text-emerald-400', url:'fa-link text-violet-400'};
+    const icons = {ip:'network', domain:'globe', url:'link'};
     document.getElementById('scope-targets-list').innerHTML = scopeTargets.map((t, i) =>
         `<div class="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-white/[0.02]">
-            <i class="fa-solid ${icons[t.type] || 'fa-circle text-slate-400'} text-xs"></i>
+            <i data-lucide="${icons[t.type] || 'circle'}" class="w-3.5 h-3.5 inline-block ${t.type === 'ip' ? 'text-blue-400' : t.type === 'domain' ? 'text-emerald-400' : t.type === 'url' ? 'text-violet-400' : 'text-slate-400'}"></i>
             <span class="text-xs text-slate-500 uppercase w-12">${t.type}</span>
             <span class="text-white font-mono flex-1 truncate">${escapeHtml(t.value)}</span>
             <span class="text-slate-500 text-xs truncate max-w-[100px]">${escapeHtml(t.notes)}</span>
-            <button onclick="removeScopeTarget(${i})" class="text-slate-600 hover:text-rose-400 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="removeScopeTarget(${i})" class="text-slate-600 hover:text-rose-400 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>`
     ).join('') || '<div class="text-slate-500 text-xs py-1">No targets defined</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function addScopeExclusion() {
@@ -1625,13 +1653,14 @@ function removeScopeExclusion(idx) {
 function renderScopeExclusions() {
     document.getElementById('scope-exclusions-list').innerHTML = scopeExclusions.map((e, i) =>
         `<div class="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-rose-500/5">
-            <i class="fa-solid fa-ban text-rose-400 text-xs"></i>
+            <i data-lucide="ban" class="w-3.5 h-3.5 inline-block text-rose-400"></i>
             <span class="text-xs text-slate-500 uppercase w-12">${e.type}</span>
             <span class="text-rose-300 font-mono flex-1 truncate">${escapeHtml(e.value)}</span>
             <span class="text-slate-500 text-xs truncate max-w-[100px]">${escapeHtml(e.reason)}</span>
-            <button onclick="removeScopeExclusion(${i})" class="text-slate-600 hover:text-rose-400 transition-colors"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="removeScopeExclusion(${i})" class="text-slate-600 hover:text-rose-400 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>`
     ).join('') || '<div class="text-slate-500 text-xs py-1">No exclusions defined</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function saveScope() {
@@ -1700,7 +1729,7 @@ function loadChecklist() {
                 <span class="text-sm font-medium text-white">${escapeHtml(cat.name)}</span>
                 <span class="flex items-center gap-2">
                     <span class="text-xs text-slate-500">${completed}/${cat.items.length}</span>
-                    <i class="fa-solid fa-chevron-down text-xs text-slate-500 transition-transform"></i>
+                    <i data-lucide="chevron-down" class="w-3.5 h-3.5 inline-block text-slate-500 transition-transform"></i>
                 </span>
             </button>
             <div class="accordion-content${ci === 0 ? ' open' : ''}">
@@ -1714,7 +1743,7 @@ function loadChecklist() {
                             <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleChecklistItem('${method}','${key}',this)" class="mt-0.5 accent-emerald-500 shrink-0">
                             <span class="checklist-text text-xs text-slate-200 flex-1">${escapeHtml(item)}</span>
                             <div class="flex gap-1 shrink-0">${toolBadges}</div>
-                            <button onclick="toggleChecklistNotes(this)" class="text-slate-600 hover:text-slate-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Notes"><i class="fa-solid fa-note-sticky"></i></button>
+                            <button onclick="toggleChecklistNotes(this)" class="text-slate-600 hover:text-slate-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Notes"><i data-lucide="sticky-note" class="w-3.5 h-3.5 inline-block"></i></button>
                         </div>
                         <div class="checklist-notes hidden px-8 pb-1">
                             <textarea placeholder="Notes..." rows="2" class="w-full px-2 py-1 bg-slate-900/60 border border-white/10 rounded text-[11px] text-white placeholder-slate-600 focus:outline-none resize-none" oninput="saveChecklistNote('${method}','${key}-note',this.value)">${escapeHtml(checklistState[key + '-note'] || '')}</textarea>
@@ -1725,6 +1754,7 @@ function loadChecklist() {
         </div>`;
     }).join('');
     updateChecklistProgress(method);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function toggleAccordion(btn) {
@@ -1833,7 +1863,7 @@ function showNoteEditor(note) {
     // Show edit mode
     document.getElementById('note-content').classList.remove('hidden');
     document.getElementById('note-preview').classList.add('hidden');
-    document.getElementById('note-preview-toggle').innerHTML = '<i class="fa-solid fa-eye mr-1"></i>Preview';
+    document.getElementById('note-preview-toggle').innerHTML = '<i data-lucide="eye" class="w-3.5 h-3.5 inline-block mr-1"></i>Preview';
 }
 
 function onNoteEdit() {
@@ -1891,13 +1921,14 @@ function toggleNotePreview() {
     if (content.classList.contains('hidden')) {
         content.classList.remove('hidden');
         preview.classList.add('hidden');
-        toggle.innerHTML = '<i class="fa-solid fa-eye mr-1"></i>Preview';
+        toggle.innerHTML = '<i data-lucide="eye" class="w-3.5 h-3.5 inline-block mr-1"></i>Preview';
     } else {
         content.classList.add('hidden');
         preview.classList.remove('hidden');
-        toggle.innerHTML = '<i class="fa-solid fa-pen mr-1"></i>Edit';
+        toggle.innerHTML = '<i data-lucide="edit" class="w-3.5 h-3.5 inline-block mr-1"></i>Edit';
         preview.innerHTML = renderMarkdown(content.value);
     }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function renderMarkdown(text) {
@@ -1932,7 +1963,7 @@ function renderEvidenceGrid() {
         const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e.name) || e.type?.startsWith('image/');
         const thumb = isImage && e.dataUrl
             ? `<img src="${e.dataUrl}" class="w-full h-32 object-cover rounded-t-lg" alt="${escapeHtml(e.name)}">`
-            : `<div class="w-full h-32 flex items-center justify-center bg-slate-800 rounded-t-lg"><i class="fa-solid fa-file text-3xl text-slate-500"></i></div>`;
+            : `<div class="w-full h-32 flex items-center justify-center bg-slate-800 rounded-t-lg"><i data-lucide="file" class="w-8 h-8 inline-block text-slate-500"></i></div>`;
         const size = e.size ? formatFileSize(e.size) : '-';
         const ago = e.uploaded ? timeAgo(new Date(e.uploaded)) : '';
         return `<div class="evidence-card rounded-lg bg-slate-800/50 cursor-pointer" onclick="previewEvidence(${i})">
@@ -1941,9 +1972,10 @@ function renderEvidenceGrid() {
                 <div class="text-xs text-white truncate">${escapeHtml(e.name)}</div>
                 <div class="text-xs text-slate-500">${size} - ${ago}</div>
             </div>
-            <button onclick="event.stopPropagation();removeEvidence(${i})" class="absolute top-1 right-1 w-5 h-5 bg-black/50 hover:bg-rose-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="event.stopPropagation();removeEvidence(${i})" class="absolute top-1 right-1 w-5 h-5 bg-black/50 hover:bg-rose-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>`;
     }).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function uploadEvidence(input) {
@@ -2028,7 +2060,7 @@ function previewEvidence(idx) {
     const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e.name) || e.type?.startsWith('image/');
     const content = isImage
         ? `<img src="${e.dataUrl}" class="max-w-full max-h-[70vh] mx-auto block p-4">`
-        : `<div class="p-8 text-center"><i class="fa-solid fa-file text-4xl text-slate-500 mb-3"></i><p class="text-slate-300">${escapeHtml(e.name)}</p><a href="${e.dataUrl}" download="${escapeHtml(e.name)}" class="mt-3 inline-block px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm transition-colors">Download</a></div>`;
+        : `<div class="p-8 text-center"><i data-lucide="file" class="w-10 h-10 inline-block text-slate-500 mb-3"></i><p class="text-slate-300">${escapeHtml(e.name)}</p><a href="${e.dataUrl}" download="${escapeHtml(e.name)}" class="mt-3 inline-block px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm transition-colors">Download</a></div>`;
     showModal(e.name, content, 'max-w-4xl');
 }
 
@@ -2210,10 +2242,11 @@ function renderLFI() {
             <span class="${osColor} text-xs uppercase w-12 shrink-0">${p.os}</span>
             <code class="text-violet-300 font-mono flex-1 truncate">${escapeHtml(p.payload)}</code>
             <span class="text-slate-500 text-xs shrink-0 truncate max-w-[150px]">${escapeHtml(p.desc)}</span>
-            <span class="copy-btn text-slate-400 text-xs"><i class="fa-solid fa-copy"></i></span>
+            <span class="copy-btn text-slate-400 text-xs"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></span>
         </div>`;
     });
     document.getElementById('lfi-list').innerHTML = html || '<div class="text-slate-500 text-xs py-4 text-center">No payloads found</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function filterLFI() { renderLFI(); }
@@ -2275,10 +2308,11 @@ function renderSQLi() {
         html += `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs cursor-pointer" onclick="navigator.clipboard.writeText(this.querySelector('code').textContent)">
             <code class="text-rose-300 font-mono flex-1 truncate">${escapeHtml(p.payload)}</code>
             <span class="text-slate-500 text-xs shrink-0 truncate max-w-[200px]">${escapeHtml(p.desc)}</span>
-            <span class="copy-btn text-slate-400 text-xs"><i class="fa-solid fa-copy"></i></span>
+            <span class="copy-btn text-slate-400 text-xs"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></span>
         </div>`;
     });
     document.getElementById('sqli-list').innerHTML = html || '<div class="text-slate-500 text-xs py-4 text-center">No payloads found</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function filterSQLi() { renderSQLi(); }
@@ -2335,7 +2369,7 @@ function renderPrivEsc() {
         const cmds = Object.entries(b.cmds).map(([fn, cmd]) =>
             `<div class="mt-1"><span class="text-xs text-slate-500 uppercase">${fn}:</span>
             <div class="flex items-center gap-1 mt-0.5"><code class="text-[11px] text-violet-300 font-mono bg-black/30 rounded px-1.5 py-0.5 flex-1 truncate">${escapeHtml(cmd)}</code>
-            <button onclick="event.stopPropagation();navigator.clipboard.writeText('${escapeAttr(cmd)}')" class="text-slate-400 hover:text-white text-xs shrink-0 px-1"><i class="fa-solid fa-copy"></i></button></div></div>`
+            <button onclick="event.stopPropagation();navigator.clipboard.writeText('${escapeAttr(cmd)}')" class="text-slate-400 hover:text-white text-xs shrink-0 px-1"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></button></div></div>`
         ).join('');
         return `<div class="border border-white/5 rounded-lg p-3 bg-slate-800/30">
             <div class="flex items-center gap-2 mb-2">
@@ -2345,6 +2379,7 @@ function renderPrivEsc() {
             <div class="space-y-1">${cmds}</div>
         </div>`;
     }).join('') || '<div class="text-slate-500 text-xs py-4 text-center col-span-full">No binaries found</div>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function filterPrivEsc() { renderPrivEsc(); }
@@ -2410,17 +2445,18 @@ function renderADCommands() {
             return `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs">
                 <code class="text-violet-300 font-mono flex-1 truncate">${escapeHtml(resolved)}</code>
                 <span class="text-slate-500 text-xs shrink-0 truncate max-w-[180px]">${escapeHtml(c.desc)}</span>
-                <button onclick="navigator.clipboard.writeText(this.closest('.payload-row').querySelector('code').textContent)" class="copy-btn text-slate-400 hover:text-white text-xs shrink-0"><i class="fa-solid fa-copy"></i></button>
+                <button onclick="navigator.clipboard.writeText(this.closest('.payload-row').querySelector('code').textContent)" class="copy-btn text-slate-400 hover:text-white text-xs shrink-0"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></button>
             </div>`;
         }).join('');
         return `<div class="border border-white/5 rounded-lg overflow-hidden">
             <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between px-4 py-2.5 bg-slate-800/50 hover:bg-slate-800 text-left transition-colors">
                 <span class="text-xs font-medium text-white">${escapeHtml(section.name)}</span>
-                <i class="fa-solid fa-chevron-down text-xs text-slate-500 transition-transform"></i>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5 inline-block text-slate-500 transition-transform"></i>
             </button>
             <div class="accordion-content open"><div class="p-2 space-y-0.5">${cmds}</div></div>
         </div>`;
     }).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 const debouncedFilterTools = debounce(filterTools);
 const debouncedFilterHistory = debounce(filterHistory);
