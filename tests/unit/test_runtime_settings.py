@@ -5,109 +5,92 @@ import pytest
 from fastapi import FastAPI
 
 from app.services.system.runtime_settings import (
-    apply_runtime_settings,
+    GENERAL_RUNTIME_FIELD_MAP,
+    _apply_general_runtime_settings,
     hydrate_runtime_settings_from_db,
-    normalize_runtime_ai_config,
 )
 
 
-def test_normalize_runtime_ai_config_from_legacy_rows():
+def test_apply_general_runtime_settings_sets_expected_fields():
     rows = {
-        "AI_PROVIDER": "api",
-        "LLM_MODEL": "gpt-4o-mini",
-        "LLM_API_KEY": "sk-test",
-        "LLM_API_BASE_URL": "https://example.test/v1",
-        "LLM_TIER1_MODEL": "ollama/qwen2.5:3b",
-        "LLM_TIER2_MODEL": "gpt-4o-mini",
-        "OLLAMA_HOST": "http://ollama:11434",
-        "OLLAMA_MODEL": "qwen2.5:7b",
+        "TENSORZERO_GATEWAY_URL": "http://tensorzero:3000",
+        "EMBEDDING_MODEL": "text-embedding-3-small",
+        "PLATFORM_EXPOSED": "true",
+        "SANDBOX_MAX_CONTAINERS": "8",
+        "NOTIFICATION_WEBHOOK": "https://example.test/hook",
     }
 
-    runtime_ai_config = normalize_runtime_ai_config(rows)
+    with patch("app.services.system.runtime_settings.settings") as mock_settings:
+        _apply_general_runtime_settings(rows)
 
-    assert runtime_ai_config.routing == {
-        "default": "default",
-        "tier1": "tier1",
-        "tier2": "tier2",
-    }
-    assert runtime_ai_config.profiles["default"]["provider"] == "tensorzero"
-    assert runtime_ai_config.profiles["default"]["model"] == "gpt-4o-mini"
-    assert runtime_ai_config.profiles["tier1"]["provider"] == "tensorzero"
-    assert runtime_ai_config.profiles["tier1"]["model"] == "ollama/qwen2.5:3b"
-    assert runtime_ai_config.fallbacks == {}
+    assert mock_settings.TENSORZERO_GATEWAY_URL == "http://tensorzero:3000"
+    assert mock_settings.EMBEDDING_MODEL == "text-embedding-3-small"
+    assert mock_settings.PLATFORM_EXPOSED is True
+    assert mock_settings.SANDBOX_MAX_CONTAINERS == 8
+    assert mock_settings.NOTIFICATION_WEBHOOK == "https://example.test/hook"
 
 
-def test_normalize_runtime_ai_config_normalizes_structured_api_profiles():
+def test_apply_general_runtime_settings_handles_nullable_and_invalid_ints():
     rows = {
-        "AI_PROVIDER": "api",
-        "AI_PROVIDER_PROFILES": (
-            '{"default": {"provider": "api", "model": "gpt-4o-mini", '
-            '"base_url": "https://example.test/v1", "api_key": "sk-test"}}'
-        ),
-        "AI_PROVIDER_ROUTING": '{"default": "default"}',
+        "NOTIFICATION_WEBHOOK": "",
+        "SANDBOX_MAX_CONTAINERS": "not-an-int",
     }
 
-    runtime_ai_config = normalize_runtime_ai_config(rows)
+    with patch("app.services.system.runtime_settings.settings") as mock_settings:
+        mock_settings.SANDBOX_MAX_CONTAINERS = 4
+        _apply_general_runtime_settings(rows)
 
-    assert runtime_ai_config.profiles["default"]["provider"] == "tensorzero"
-    assert runtime_ai_config.profiles["default"]["model"] == "gpt-4o-mini"
-    assert runtime_ai_config.profiles["default"]["base_url"] == "https://example.test/v1"
+    assert mock_settings.NOTIFICATION_WEBHOOK is None
+    assert mock_settings.SANDBOX_MAX_CONTAINERS == 4
 
 
 @pytest.mark.asyncio
-async def test_hydrate_runtime_settings_invalidates_ai_caches():
+async def test_hydrate_runtime_settings_applies_rows_and_resets_caches():
     session = AsyncMock()
     rows = [
-        SimpleNamespace(key="AI_PROVIDER", value="api"),
-        SimpleNamespace(key="LLM_MODEL", value="gpt-4o-mini"),
-        SimpleNamespace(key="LLM_API_KEY", value="sk-test"),
-        SimpleNamespace(key="OLLAMA_ENABLED", value="false"),
+        SimpleNamespace(key="TENSORZERO_GATEWAY_URL", value="http://tensorzero:3000"),
+        SimpleNamespace(key="EMBEDDING_MODEL", value="text-embedding-3-small"),
+        SimpleNamespace(key="SANDBOX_MAX_CONTAINERS", value="5"),
     ]
     result = MagicMock()
     result.scalars.return_value.all.return_value = rows
     session.execute.return_value = result
 
     with (
-        patch(
-            "app.services.system.runtime_settings._persist_normalized_runtime_ai_config",
-            new_callable=AsyncMock,
-        ) as mock_persist,
+        patch("app.services.system.runtime_settings.settings") as mock_settings,
         patch(
             "app.services.system.runtime_settings.reset_runtime_ai_caches",
             new_callable=AsyncMock,
         ) as mock_reset,
     ):
-        runtime_ai_config = await hydrate_runtime_settings_from_db(
+        await hydrate_runtime_settings_from_db(
             session,
             persist_normalized=True,
             commit=False,
             reset_caches=True,
         )
 
-    assert runtime_ai_config.routing["default"] == "default"
-    mock_persist.assert_awaited_once()
+    assert mock_settings.TENSORZERO_GATEWAY_URL == "http://tensorzero:3000"
+    assert mock_settings.EMBEDDING_MODEL == "text-embedding-3-small"
+    assert mock_settings.SANDBOX_MAX_CONTAINERS == 5
     mock_reset.assert_awaited_once_with()
 
 
-def test_apply_runtime_settings_sets_resolved_fields():
-    rows = {
-        "AI_PROVIDER": "ollama",
-        "OLLAMA_HOST": "http://ollama:11434",
-        "OLLAMA_MODEL": "qwen2.5:7b",
-        "EMBEDDING_MODEL": "text-embedding-3-small",
-    }
-    runtime_ai_config = normalize_runtime_ai_config(rows)
+@pytest.mark.asyncio
+async def test_hydrate_runtime_settings_commits_when_requested():
+    session = AsyncMock()
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = []
+    session.execute.return_value = result
 
-    with patch("app.services.system.runtime_settings.settings") as mock_settings:
-        mock_settings.OLLAMA_HOST = "http://default"
-        mock_settings.OLLAMA_MODEL = "fallback"
-        mock_settings.LLM_MODEL = "fallback-model"
-        apply_runtime_settings(rows, runtime_ai_config)
+    await hydrate_runtime_settings_from_db(
+        session,
+        persist_normalized=True,
+        commit=True,
+        reset_caches=False,
+    )
 
-    assert mock_settings.AI_PROVIDER == "tensorzero"
-    assert mock_settings.AI_PROVIDER_ROUTING == {"default": "default"}
-    assert mock_settings.OLLAMA_MODEL == "qwen2.5:7b"
-    assert mock_settings.EMBEDDING_MODEL == "text-embedding-3-small"
+    session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -157,6 +140,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("app.services.ai.embeddings.EmbeddingService", FakeEmbeddingService))
         stack.enter_context(patch("app.core.bridge.EventWebSocketBridge", return_value=FakeBridge()))
         stack.enter_context(patch("app.core.lifespan.run_startup_checks", new_callable=AsyncMock))
+        stack.enter_context(patch("app.core.lifespan._validate_production_secrets"))
         stack.enter_context(patch("app.core.lifespan.seed_default_plans", new_callable=AsyncMock))
         stack.enter_context(
             patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
@@ -188,9 +172,6 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
 
 
 def test_sandbox_settings_in_general_runtime_field_map():
-    """Sandbox keys are present in GENERAL_RUNTIME_FIELD_MAP with correct types."""
-    from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
-
     assert "SANDBOX_MAX_CONTAINERS" in GENERAL_RUNTIME_FIELD_MAP
     assert "SANDBOX_MEMORY_LIMIT" in GENERAL_RUNTIME_FIELD_MAP
     assert "SANDBOX_CPU_SHARES" in GENERAL_RUNTIME_FIELD_MAP
@@ -202,19 +183,7 @@ def test_sandbox_settings_in_general_runtime_field_map():
 
 
 class TestGeneralRuntimeFieldMapIncludes:
-    """GENERAL_RUNTIME_FIELD_MAP includes all sandbox entries."""
-
-    def test_field_map_has_original_sandbox_keys(self):
-        from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
-
-        assert "SANDBOX_MAX_CONTAINERS" in GENERAL_RUNTIME_FIELD_MAP
-        assert "SANDBOX_MEMORY_LIMIT" in GENERAL_RUNTIME_FIELD_MAP
-        assert "SANDBOX_CPU_SHARES" in GENERAL_RUNTIME_FIELD_MAP
-        assert "SANDBOX_MAX_LIFETIME" in GENERAL_RUNTIME_FIELD_MAP
-
     def test_field_map_has_new_sandbox_keys(self):
-        from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
-
         new_keys = [
             "SANDBOX_RESOURCE_TIERS",
             "SANDBOX_NETWORK_ISOLATION",
@@ -233,8 +202,6 @@ class TestGeneralRuntimeFieldMapIncludes:
             assert key in GENERAL_RUNTIME_FIELD_MAP, f"Missing key: {key}"
 
     def test_field_map_types_correct(self):
-        from app.services.system.runtime_settings import GENERAL_RUNTIME_FIELD_MAP
-
         type_checks = {
             "SANDBOX_NETWORK_ISOLATION": "bool",
             "SANDBOX_OOM_ESCALATION_ENABLED": "bool",

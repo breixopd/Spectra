@@ -1,7 +1,8 @@
 """Tests for security features: lockout, token blacklist, websocket auth, settings RBAC."""
 
+from datetime import datetime, timedelta, timezone
 import time
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -11,10 +12,7 @@ from app.api.routers.auth import (
     LOCKOUT_THRESHOLD_1,
     LOCKOUT_THRESHOLD_2,
     _check_lockout,
-    _lockout_lock,
-    _login_failures,
     _record_failure,
-    _reset_failures,
 )
 from app.core.security import (
     _blacklist_lock,
@@ -28,12 +26,9 @@ from app.core.security import (
 )
 from app.core.websocket import ConnectionManager
 
-# --- Fixtures ---
-
 
 @pytest.fixture(autouse=True)
 def _clear_blacklist():
-    """Clear token blacklist state before each test."""
     with _blacklist_lock:
         _blacklisted_tokens.clear()
         _user_token_blacklist.clear()
@@ -41,29 +36,14 @@ def _clear_blacklist():
     with _blacklist_lock:
         _blacklisted_tokens.clear()
         _user_token_blacklist.clear()
-
-
-@pytest.fixture(autouse=True)
-def _clear_lockout():
-    """Clear lockout state before each test."""
-    with _lockout_lock:
-        _login_failures.clear()
-    yield
-    with _lockout_lock:
-        _login_failures.clear()
-
-
-# --- Token Blacklist Tests ---
 
 
 class TestTokenBlacklist:
     def test_invalidate_token_blocks_decode(self):
         token = create_access_token(data={"sub": "testuser"})
-        # Token is valid before blacklisting
         payload = decode_token(token)
         assert payload["sub"] == "testuser"
 
-        # Blacklist and verify it throws
         invalidate_token(token)
         assert is_token_blacklisted(token) is True
         with pytest.raises(JWTError, match="revoked"):
@@ -77,10 +57,9 @@ class TestTokenBlacklist:
 
     def test_invalidate_all_user_tokens(self):
         token = create_access_token(data={"sub": "victimuser"})
-        # Valid before invalidation
         assert is_token_blacklisted(token) is False
 
-        time.sleep(0.1)  # Ensure timestamp difference
+        time.sleep(0.1)
         invalidate_all_user_tokens("victimuser")
 
         assert is_token_blacklisted(token) is True
@@ -89,67 +68,49 @@ class TestTokenBlacklist:
 
     def test_new_token_after_user_invalidation_works(self):
         invalidate_all_user_tokens("someuser")
-        time.sleep(1.1)  # Must exceed +1s boundary used by invalidation
+        time.sleep(1.1)
         new_token = create_access_token(data={"sub": "someuser"})
         assert is_token_blacklisted(new_token) is False
         payload = decode_token(new_token)
         assert payload["sub"] == "someuser"
 
 
-# --- Account Lockout Tests ---
-
-
 class TestAccountLockout:
-    def test_no_lockout_initially(self):
-        # Should not raise
-        _check_lockout("192.168.1.1")
+    def _make_user(self, fail_count=0, locked_until=None):
+        user = MagicMock()
+        user.login_fail_count = fail_count
+        user.locked_until = locked_until
+        return user
 
-    def test_lockout_after_threshold_1(self):
-        ip = "10.0.0.1"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip)
+    @pytest.mark.asyncio
+    async def test_no_lockout_initially(self):
+        user = self._make_user()
+        await _check_lockout(user)
+
+    @pytest.mark.asyncio
+    async def test_lockout_after_threshold_1(self):
+        user = self._make_user(fail_count=LOCKOUT_THRESHOLD_1 - 1)
+        session = AsyncMock()
+        await _record_failure(user, session)
 
         with pytest.raises(HTTPException) as exc_info:
-            _check_lockout(ip)
+            await _check_lockout(user)
         assert exc_info.value.status_code == 429
 
-    def test_lockout_after_threshold_2(self):
-        ip = "10.0.0.2"
-        for _ in range(LOCKOUT_THRESHOLD_2):
-            _record_failure(ip)
+    @pytest.mark.asyncio
+    async def test_lockout_after_threshold_2(self):
+        user = self._make_user(fail_count=LOCKOUT_THRESHOLD_2 - 1)
+        session = AsyncMock()
+        await _record_failure(user, session)
 
         with pytest.raises(HTTPException) as exc_info:
-            _check_lockout(ip)
+            await _check_lockout(user)
         assert exc_info.value.status_code == 429
 
-    def test_reset_clears_lockout(self):
-        ip = "10.0.0.3"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip)
-
-        # Locked
-        with pytest.raises(HTTPException):
-            _check_lockout(ip)
-
-        # Reset
-        _reset_failures(ip)
-        # Should not raise after reset
-        _check_lockout(ip)
-
-    def test_lockout_expires(self):
-        ip = "10.0.0.4"
-        for _ in range(LOCKOUT_THRESHOLD_1):
-            _record_failure(ip)
-
-        # Manually set locked_until to the past
-        with _lockout_lock:
-            _login_failures[ip]["locked_until"] = time.time() - 1
-
-        # Should not raise — lockout expired
-        _check_lockout(ip)
-
-
-# --- WebSocket Auth Tests ---
+    @pytest.mark.asyncio
+    async def test_lockout_expires(self):
+        user = self._make_user(locked_until=datetime.now(timezone.utc) - timedelta(seconds=1))
+        await _check_lockout(user)
 
 
 class TestWebSocketAuth:
@@ -209,23 +170,15 @@ class TestWebSocketAuth:
         ws.close.assert_awaited_once()
 
 
-# --- Settings RBAC Tests ---
-
-
 class TestSettingsRBAC:
     def test_settings_endpoint_has_superuser_dependency(self):
-        """Verify the settings POST endpoint requires superuser auth."""
         import inspect
 
         from app.api.routers.ui import update_settings
 
         sig = inspect.signature(update_settings)
         param_names = list(sig.parameters.keys())
-        # Should have _current_user parameter (the superuser dep)
         assert "_current_user" in param_names
-
-
-# --- RAG Functional Guard Tests ---
 
 
 class TestRAGFunctionalGuard:
@@ -259,9 +212,6 @@ class TestRAGFunctionalGuard:
         svc._table_ready = True
         results = await svc.search("test query")
         assert results == []
-
-
-# --- Audit Log Model Tests ---
 
 
 class TestAuditLogModel:

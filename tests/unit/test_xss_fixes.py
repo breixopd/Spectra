@@ -6,6 +6,7 @@ from pathlib import Path
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "app" / "templates"
 DASHBOARD = TEMPLATES_DIR / "dashboard.html"
 BASE = TEMPLATES_DIR / "base.html"
+DASHBOARD_JS = Path(__file__).resolve().parents[2] / "app" / "static" / "js" / "dashboard.js"
 
 # Templates that previously had duplicate escapeHtml
 PREVIOUSLY_DUPLICATED = [
@@ -49,11 +50,11 @@ class TestDashboardXssFix:
             "Dashboard must not use inline onclick with JSON.stringify (XSS risk)"
 
     def test_uses_data_attribute(self):
-        content = DASHBOARD.read_text()
+        content = DASHBOARD_JS.read_text()
         assert "data-task-id" in content, \
             "Dashboard task tree must use data attributes for task identification"
 
     def test_uses_event_delegation(self):
-        content = DASHBOARD.read_text()
-        assert "addEventListener('click'" in content or 'addEventListener("click"' in content, \
+        content = DASHBOARD_JS.read_text()
+        assert "task-tree-content" in content and ("addEventListener('click'" in content or 'addEventListener("click"' in content), \
             "Dashboard must use event delegation for task tree clicks"

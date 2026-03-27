@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.paths import data_path
+
 
 class TestStorageServiceInit:
     """StorageService initialization and mode selection."""
@@ -164,7 +166,7 @@ class TestLocalPathMapping:
 
             svc = svc_mod.StorageService()
             path = svc._local_path("spectra-missions", "test/file.txt")
-            assert path == Path("data/missions/test/file.txt")
+            assert path == data_path("missions") / "test/file.txt"
 
     def test_unknown_bucket_uses_data_prefix(self):
         with patch("app.services.storage.service.settings") as mock_settings:
@@ -177,7 +179,7 @@ class TestLocalPathMapping:
 
             svc = svc_mod.StorageService()
             path = svc._local_path("custom-bucket", "key.dat")
-            assert path == Path("data/custom-bucket/key.dat")
+            assert path == data_path("custom-bucket") / "key.dat"
 
 
 class TestStorageServiceS3Mode:

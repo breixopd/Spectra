@@ -190,22 +190,12 @@ class TestToolSelectorExecution:
             required_capability=None,
         )
 
-        # Mock registry to return available tools
         with patch("app.services.ai.agents.tool_selector.get_registry") as mock_registry:
             mock_tool = MagicMock()
             mock_tool.is_available = True
             mock_tool.config.id = "nmap"
             mock_tool.config.metadata.capabilities = [ToolCapability.PORT_SCAN]
-            mock_tool.config.metadata.ai_description = "Port scanner"
-            mock_tool.config.metadata.use_cases = ["Discovery"]
-            mock_tool.config.metadata.limitations = []
             mock_tool.config.metadata.risk_level = RiskLevel.LOW
-            mock_tool.config.metadata.prerequisites = []
-            mock_tool.config.metadata.tags = ["network"]
-            mock_tool.config.metadata.categories = ["DISCOVERY"]
-            mock_tool.config.get_ai_summary.return_value = (
-                "**Nmap** (nmap)\nCategory: discovery\nDescription: Port scanner"
-            )
             mock_tool.config.execution.min_timeout = 60
             mock_tool.config.execution.timeout = 300
 
@@ -214,10 +204,27 @@ class TestToolSelectorExecution:
             registry_instance.list_tools.return_value = [mock_tool]
             registry_instance.sync_status_from_cache = AsyncMock()
 
-            result = await agent.execute(context, input_data)
+            with patch.object(
+                agent,
+                "_select_with_llm",
+                new=AsyncMock(
+                    return_value=ToolSelectorOutput(
+                        tool_name="nmap",
+                        target="192.168.1.1",
+                        tool_args={"ports": "1-65535"},
+                        reasoning="Full port scan needed",
+                        confidence=0.9,
+                        action_type="run_tool",
+                        risk_level=ActionRisk.LOW,
+                        estimated_duration=300,
+                    )
+                ),
+            ):
+                result = await agent.execute(context, input_data)
 
         assert result.success is True
         assert result.action is not None
+        assert result.action.tool_name == "nmap"
 
     @pytest.mark.asyncio
     async def test_execute_with_no_available_tools(self, context):

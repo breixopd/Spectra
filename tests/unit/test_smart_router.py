@@ -1,16 +1,15 @@
-"""Tests for the LiteLLM Smart Router."""
+"""Tests for the TensorZero smart router."""
 
-import sys
-import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 
 from app.services.ai.agents.base import ROLE_TASK_MAP, AgentRole
 from app.services.ai.router import (
     TASK_TIERS,
-    LiteLLMRouter,
-    build_model_config_from_settings,
+    TensorZeroRouter,
+    close_smart_router,
     create_smart_router,
     get_smart_router,
 )
@@ -33,151 +32,75 @@ class TestTaskTiers:
         assert TASK_TIERS["post_exploitation"] == 3
 
 
-class TestLiteLLMRouter:
+class TestTensorZeroRouter:
     def test_init_defaults(self):
-        router = LiteLLMRouter()
-        assert router._default_model == "openai/gpt-4o-mini"
-        assert router._router is None
+        with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.TENSORZERO_GATEWAY_URL = "http://tensorzero:3000"
+            router = TensorZeroRouter()
+        assert router._gateway_url == "http://tensorzero:3000"
+        assert router._client is None
 
-    def test_configure_task_models(self):
-        router = LiteLLMRouter()
-        router.configure_task_models(
-            tier1_model="ollama/qwen2.5:3b",
-            tier2_model="gpt-4o-mini",
-            tier3_model="gpt-4o",
-        )
-        assert router._task_model_map[1] == "ollama/qwen2.5:3b"
-        assert router._task_model_map[2] == "gpt-4o-mini"
-        assert router._task_model_map[3] == "gpt-4o"
-
-    def test_get_model_for_task_default(self):
-        router = LiteLLMRouter(default_model="gpt-4o-mini")
-        assert router._get_model_for_task(None) == "gpt-4o-mini"
-        assert router._get_model_for_task("unknown_task") == "gpt-4o-mini"
-
-    def test_get_model_for_task_with_tiers(self):
-        router = LiteLLMRouter(default_model="default")
-        router.configure_task_models(
-            tier1_model="cheap",
-            tier3_model="expensive",
-        )
-        assert router._get_model_for_task("scope") == "cheap"
-        assert router._get_model_for_task("planning") == "default"
-        assert router._get_model_for_task("exploit_crafting") == "expensive"
+    def test_get_function_for_task(self):
+        router = TensorZeroRouter(gateway_url="http://tensorzero:3000")
+        assert router._get_function_for_task(None) == "default"
+        assert router._get_function_for_task("unknown") == "default"
+        assert router._get_function_for_task("scope") == "scope"
+        assert router._get_function_for_task("exploit_crafting") == "exploit_crafting"
 
     @pytest.mark.asyncio
-    async def test_generate_direct_litellm(self):
-        """Test generation through the configured LiteLLM router instance."""
-        router = LiteLLMRouter(default_model="gpt-4o-mini")
+    async def test_generate_success(self):
+        router = TensorZeroRouter(gateway_url="http://tensorzero:3000")
+        mock_client = MagicMock()
+        mock_client.is_closed = False
+        mock_client.post = AsyncMock(return_value=MagicMock(
+            raise_for_status=MagicMock(),
+            json=MagicMock(return_value={
+                "content": [{"type": "text", "text": "test response"}],
+                "usage": {"input_tokens": 10, "output_tokens": 20},
+                "variant_name": "fast-primary",
+                "inference_id": "inf-123",
+                "episode_id": "ep-123",
+            }),
+        ))
+        router._client = mock_client
 
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = "test response"
-        mock_response.usage = MagicMock()
-        mock_response.usage.prompt_tokens = 10
-        mock_response.usage.completion_tokens = 20
-        mock_response.usage.total_tokens = 30
-
-        router._router = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
-        result = await router.generate("hello")
+        result = await router.generate("hello", task_type="tool_selection")
         assert result.content == "test response"
+        assert result.provider == "tensorzero"
         assert result.usage["total_tokens"] == 30
-
-    @pytest.mark.asyncio
-    async def test_generate_with_task_type(self):
-        """Test that task_type selects the right model."""
-        router = LiteLLMRouter(default_model="default-model")
-        router.configure_task_models(tier1_model="cheap-model")
-
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = "ok"
-        mock_response.usage = MagicMock()
-        mock_response.usage.prompt_tokens = 5
-        mock_response.usage.completion_tokens = 5
-        mock_response.usage.total_tokens = 10
-
-        router._router = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
-        await router.generate("select a tool", task_type="tool_selection")
-        call_args = router._router.acompletion.call_args
-        assert call_args.kwargs["model"] == "cheap-model"
+        assert result.model == "tool_selection/fast-primary"
+        assert result.raw["inference_id"] == "inf-123"
+        call = mock_client.post.call_args
+        assert call.args[0] == "/inference"
+        assert call.kwargs["json"]["function_name"] == "tool_selection"
 
     @pytest.mark.asyncio
     async def test_health_check_success(self):
-        router = LiteLLMRouter()
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = "pong"
-        mock_response.usage = MagicMock()
-        mock_response.usage.prompt_tokens = 1
-        mock_response.usage.completion_tokens = 1
-        mock_response.usage.total_tokens = 2
-
-        router._router = types.SimpleNamespace(acompletion=AsyncMock(return_value=mock_response))
+        router = TensorZeroRouter(gateway_url="http://tensorzero:3000")
+        mock_client = MagicMock()
+        mock_client.is_closed = False
+        mock_client.get = AsyncMock(return_value=MagicMock(status_code=200))
+        router._client = mock_client
         assert await router.health_check() is True
 
     @pytest.mark.asyncio
     async def test_health_check_failure(self):
-        router = LiteLLMRouter()
-        router._router = types.SimpleNamespace(acompletion=AsyncMock(side_effect=RuntimeError("down")))
+        router = TensorZeroRouter(gateway_url="http://tensorzero:3000")
+        mock_client = MagicMock()
+        mock_client.is_closed = False
+        mock_client.get = AsyncMock(side_effect=httpx.ConnectError("down"))
+        router._client = mock_client
         assert await router.health_check() is False
 
     @pytest.mark.asyncio
     async def test_close(self):
-        router = LiteLLMRouter()
+        router = TensorZeroRouter(gateway_url="http://tensorzero:3000")
+        mock_client = MagicMock(is_closed=False)
+        mock_client.aclose = AsyncMock()
+        router._client = mock_client
         await router.close()
-        assert router._router is None
-
-
-class TestBuildModelConfig:
-    def test_legacy_api_provider_normalizes_to_unified_cloud_router(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER_PROFILES = {}
-            mock_settings.AI_PROVIDER_ROUTING = {}
-            mock_settings.AI_PROVIDER_FALLBACKS = {}
-            mock_settings.AI_PROVIDER = "api"
-            mock_settings.LLM_API_KEY = MagicMock()
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-test"
-            mock_settings.LLM_MODEL = "gpt-4o"
-            mock_settings.LLM_API_BASE_URL = None
-            mock_settings.OLLAMA_ENABLED = False
-
-            configs, fallbacks, default = build_model_config_from_settings()
-            assert len(configs) == 1
-            assert configs[0]["model_name"] == "default"
-            assert configs[0]["litellm_params"]["model"] == "gpt-4o"
-            assert default == "default"
-            assert fallbacks == []
-
-    def test_ollama_without_implicit_cloud_fallback(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER_PROFILES = {}
-            mock_settings.AI_PROVIDER_ROUTING = {}
-            mock_settings.AI_PROVIDER_FALLBACKS = {}
-            mock_settings.AI_PROVIDER = "ollama"
-            mock_settings.OLLAMA_HOST = "http://localhost:11434"
-            mock_settings.OLLAMA_MODEL = "qwen2.5:3b"
-            mock_settings.LLM_API_KEY = MagicMock()
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-fallback"
-            mock_settings.LLM_MODEL = "gpt-4o-mini"
-            mock_settings.LLM_API_BASE_URL = None
-
-            configs, fallbacks, default = build_model_config_from_settings()
-            assert len(configs) == 1
-            assert default == "default"
-            assert fallbacks == []
-
-    def test_no_api_key(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER_PROFILES = {}
-            mock_settings.AI_PROVIDER_ROUTING = {}
-            mock_settings.AI_PROVIDER_FALLBACKS = {}
-            mock_settings.AI_PROVIDER = "api"
-            mock_settings.LLM_API_KEY = MagicMock()
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-
-            configs, fallbacks, default = build_model_config_from_settings()
-            assert len(configs) == 0
+        mock_client.aclose.assert_awaited_once()
+        assert router._client is None
 
 
 class TestSingleton:
@@ -193,16 +116,39 @@ class TestSingleton:
             mock_create.assert_called_once()
         mod._smart_router = None
 
+    @pytest.mark.asyncio
+    async def test_close_smart_router(self):
+        import app.services.ai.router as mod
+
+        mock_router = MagicMock()
+        mock_router.close = AsyncMock()
+        mod._smart_router = mock_router
+        await close_smart_router()
+        mock_router.close.assert_awaited_once()
+        assert mod._smart_router is None
+
+
+class TestCreateSmartRouter:
+    def test_create_requires_gateway_url(self):
+        with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.TENSORZERO_GATEWAY_URL = ""
+            with pytest.raises(ValueError, match="TENSORZERO_GATEWAY_URL"):
+                create_smart_router()
+
+    def test_create_router_success(self):
+        with patch("app.services.ai.router.settings") as mock_settings:
+            mock_settings.TENSORZERO_GATEWAY_URL = "http://tensorzero:3000"
+            router = create_smart_router()
+        assert isinstance(router, TensorZeroRouter)
+        assert router._gateway_url == "http://tensorzero:3000"
+
 
 class TestRoleTaskMap:
-    """Tests that every AgentRole has a task mapping."""
-
     def test_all_roles_mapped(self):
         for role in AgentRole:
             assert role in ROLE_TASK_MAP, f"AgentRole.{role.name} missing from ROLE_TASK_MAP"
 
     def test_mapped_task_types_in_tiers(self):
-        """Every task_type in ROLE_TASK_MAP should exist in TASK_TIERS."""
         for role, task_type in ROLE_TASK_MAP.items():
             assert task_type in TASK_TIERS, f"ROLE_TASK_MAP[{role.name}] = '{task_type}' not in TASK_TIERS"
 
@@ -217,114 +163,3 @@ class TestRoleTaskMap:
     def test_reporter_is_tier2(self):
         task = ROLE_TASK_MAP[AgentRole.REPORTER]
         assert TASK_TIERS[task] == 2
-
-
-class TestCreateSmartRouterTierWiring:
-    """Tests that create_smart_router wires tier models from settings."""
-
-    def test_tier_models_wired(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER_PROFILES = {}
-            mock_settings.AI_PROVIDER_ROUTING = {}
-            mock_settings.AI_PROVIDER_FALLBACKS = {}
-            mock_settings.AI_PROVIDER = "ollama"
-            mock_settings.OLLAMA_HOST = "http://localhost:11434"
-            mock_settings.OLLAMA_MODEL = "qwen2.5:7b"
-            mock_settings.LLM_API_KEY = MagicMock()
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_TIMEOUT = 600.0
-            mock_settings.LLM_TIER1_MODEL = "ollama/qwen2.5:3b"
-            mock_settings.LLM_TIER2_MODEL = ""
-            mock_settings.LLM_TIER3_MODEL = "ollama/qwen2.5:14b"
-
-            router = create_smart_router()
-
-        assert isinstance(router, LiteLLMRouter)
-        assert router._task_model_map[1] == "ollama/qwen2.5:3b"
-        assert 2 not in router._task_model_map
-        assert router._task_model_map[3] == "ollama/qwen2.5:14b"
-
-    def test_no_tier_models_no_map(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER_PROFILES = {}
-            mock_settings.AI_PROVIDER_ROUTING = {}
-            mock_settings.AI_PROVIDER_FALLBACKS = {}
-            mock_settings.AI_PROVIDER = "ollama"
-            mock_settings.OLLAMA_HOST = "http://localhost:11434"
-            mock_settings.OLLAMA_MODEL = "qwen2.5:7b"
-            mock_settings.LLM_API_KEY = MagicMock()
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_TIMEOUT = 600.0
-            mock_settings.LLM_TIER1_MODEL = ""
-            mock_settings.LLM_TIER2_MODEL = ""
-            mock_settings.LLM_TIER3_MODEL = ""
-
-            router = create_smart_router()
-
-        assert isinstance(router, LiteLLMRouter)
-
-    def test_profile_based_routing_uses_profile_names(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "api"
-            mock_settings.LLM_TIMEOUT = 600.0
-            mock_settings.AI_PROVIDER_PROFILES = {
-                "default": {
-                    "provider": "api",
-                    "model": "gpt-4o-mini",
-                    "api_key": "sk-test",
-                    "base_url": "https://example.test/v1",
-                },
-                "research": {
-                    "provider": "ollama",
-                    "model": "qwen2.5:7b",
-                    "base_url": "http://ollama:11434",
-                },
-            }
-            mock_settings.AI_PROVIDER_ROUTING = {
-                "default": "default",
-                "tier1": "research",
-            }
-            mock_settings.AI_PROVIDER_FALLBACKS = {"tier1": ["default"]}
-
-            configs, fallbacks, default = build_model_config_from_settings()
-            router = create_smart_router()
-
-        assert {config["model_name"] for config in configs} == {"default", "research"}
-        default_config = next(config for config in configs if config["model_name"] == "default")
-        assert default_config["litellm_params"]["model"] == "openai/gpt-4o-mini"
-        assert fallbacks == [{"research": ["default"]}]
-        assert default == "default"
-        assert isinstance(router, LiteLLMRouter)
-        assert router._task_model_map[1] == "research"
-        assert 2 not in router._task_model_map
-
-
-class TestLiteLLMProvider:
-    """Tests for the litellm provider in build_model_config_from_settings."""
-
-    def test_litellm_provider_basic(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "tensorzero"
-            mock_settings.LLM_MODEL = "ollama/qwen2.5:7b"
-            mock_settings.LLM_API_KEY = MagicMock()
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = ""
-            mock_settings.LLM_API_BASE_URL = None
-
-            configs, fallbacks, default = build_model_config_from_settings()
-
-        assert len(configs) == 1
-        assert configs[0]["litellm_params"]["model"] == "ollama/qwen2.5:7b"
-        assert "api_key" not in configs[0]["litellm_params"]
-        assert default == "default"
-
-    def test_litellm_provider_with_api_key(self):
-        with patch("app.services.ai.router.settings") as mock_settings:
-            mock_settings.AI_PROVIDER = "tensorzero"
-            mock_settings.LLM_MODEL = "anthropic/claude-3-haiku"
-            mock_settings.LLM_API_KEY = MagicMock()
-            mock_settings.LLM_API_KEY.get_secret_value.return_value = "sk-ant-test"
-            mock_settings.LLM_API_BASE_URL = None
-
-            configs, _, _ = build_model_config_from_settings()
-
-        assert configs[0]["litellm_params"]["api_key"] == "sk-ant-test"
