@@ -27,6 +27,7 @@ class Permission(StrEnum):
     MANAGE_USERS = "manage_users"
     VIEW_AUDIT_LOG = "view_audit_log"
     SHELL_ACCESS = "shell_access"
+    ROLLBACK_OWN_ACTIONS = "rollback_own_actions"
 
 
 ROLE_PERMISSIONS: dict[str, set[Permission]] = {
@@ -42,6 +43,7 @@ ROLE_PERMISSIONS: dict[str, set[Permission]] = {
         Permission.USE_TOOLS,
         Permission.VIEW_REPORTS,
         Permission.SHELL_ACCESS,
+        Permission.VIEW_AUDIT_LOG,
     },
     "viewer": {
         Permission.VIEW_MISSIONS,

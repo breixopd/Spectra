@@ -16,6 +16,7 @@ from .audit import router as audit_router
 from .content import router as content_router
 from .email import router as email_router
 from .plans import router as plans_router
+from .rollback import router as rollback_router
 from .servers import router as servers_router
 from .settings import router as settings_router
 from .tensorzero import router as tensorzero_router
@@ -30,3 +31,4 @@ router.include_router(content_router)
 router.include_router(email_router)
 router.include_router(settings_router)
 router.include_router(tensorzero_router)
+router.include_router(rollback_router)

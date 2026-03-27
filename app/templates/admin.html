@@ -69,6 +69,9 @@
             <a href="#" data-section="backups" role="tab" aria-selected="false" aria-controls="section-backups" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="archive" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Backups
             </a>
+            <a href="#" data-section="rollback" role="tab" aria-selected="false" aria-controls="section-rollback" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                <i data-lucide="rotate-ccw" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Rollback
+            </a>
             <a href="/settings" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium hover:bg-white/5">
                 <i data-lucide="settings" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> System Settings
             </a>
@@ -659,6 +662,22 @@
                         <button id="audit-next" class="px-2.5 py-1 rounded text-xs text-slate-400 hover:bg-white/5 disabled:opacity-30" disabled>Next</button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Rollback -->
+        <div id="section-rollback" class="section-panel space-y-4" role="tabpanel" aria-labelledby="tab-rollback">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Revertible Actions</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Roll back recent operator actions. This list shows pending actions that have not yet been reversed.</p>
+                </div>
+                <button onclick="loadRollbackSnapshots()" class="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors flex items-center gap-1.5">
+                    <i data-lucide="refresh-cw" class="w-3 h-3 inline-block"></i> Refresh
+                </button>
+            </div>
+            <div id="rollback-list" class="space-y-2">
+                <div class="text-sm text-slate-500 text-center py-8">Loading...</div>
             </div>
         </div>
 
