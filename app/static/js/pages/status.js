@@ -10,11 +10,11 @@ async function loadStatus() {
     }
 
     const services = [
-        { name: 'API Server', key: 'api', icon: 'fa-server' },
-        { name: 'Database', key: 'database', icon: 'fa-database' },
-        { name: 'AI Service', key: 'ai', icon: 'fa-brain' },
-        { name: 'Worker', key: 'worker', icon: 'fa-gears' },
-        { name: 'Scheduler', key: 'scheduler', icon: 'fa-clock' },
+        { name: 'API Server', key: 'api', icon: 'server' },
+        { name: 'Database', key: 'database', icon: 'database' },
+        { name: 'AI Service', key: 'ai', icon: 'brain' },
+        { name: 'Worker', key: 'worker', icon: 'cog' },
+        { name: 'Scheduler', key: 'scheduler', icon: 'clock' },
     ];
 
     const list = document.getElementById('services-list');
@@ -30,12 +30,14 @@ async function loadStatus() {
         return `
         <div class="flex items-center justify-between p-3 rounded-lg bg-black/20 border border-white/5">
             <div class="flex items-center gap-3">
-                <i class="fa-solid ${svc.icon} ${color} w-5 text-center"></i>
+                <i data-lucide="${svc.icon}" class="w-5 h-5 ${color}"></i>
                 <span class="text-sm text-white font-medium">${svc.name}</span>
             </div>
             <span class="px-2 py-0.5 rounded text-xs font-semibold ${color} ${bg}">${label}</span>
         </div>`;
     }).join('');
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
     const overall = document.getElementById('overall-status');
     if (allHealthy) {

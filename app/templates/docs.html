@@ -33,7 +33,7 @@
         </div>
         <div class="relative w-full sm:w-72">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <i class="fa-solid fa-magnifying-glass text-slate-500 text-sm"></i>
+                <i data-lucide="search" class="w-4 h-4 inline-block text-slate-500"></i>
             </div>
             <input type="text" id="docs-search" placeholder="Search endpoints..."
                 class="block w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all">
@@ -45,11 +45,11 @@
         <div class="md:col-span-3 lg:col-span-2 doc-sidebar overflow-y-auto">
             <nav id="docs-sidebar" class="space-y-1">
                 <button onclick="showAllGroups()" class="group-btn active w-full text-left flex items-center px-3 py-2 rounded-lg text-sm font-medium" data-group="all">
-                    <i class="fa-solid fa-layer-group mr-2 text-violet-400 w-4 text-center"></i> All Endpoints
+                    <i data-lucide="layers" class="w-4 h-4 inline-block mr-2 text-violet-400 text-center"></i> All Endpoints
                 </button>
                 {% for group, endpoints in route_groups.items() %}
                 <button onclick="filterGroup('{{ group }}')" class="group-btn w-full text-left flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium" data-group="{{ group }}">
-                    <i class="fa-solid fa-folder mr-2 text-slate-500 w-4 text-center"></i>
+                    <i data-lucide="folder" class="w-4 h-4 inline-block mr-2 text-slate-500 text-center"></i>
                     <span class="capitalize">{{ group | replace("_", " ") }}</span>
                     <span class="ml-auto text-xs text-slate-600">{{ endpoints | length }}</span>
                 </button>
@@ -74,7 +74,7 @@
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <span class="text-xs text-slate-600 font-mono">{{ endpoint.name }}</span>
-                        <i class="fa-solid fa-chevron-down text-slate-600 text-xs transition-transform endpoint-chevron"></i>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 inline-block text-slate-600 transition-transform endpoint-chevron"></i>
                     </div>
                 </div>
 
@@ -91,7 +91,7 @@
                     <div>
                         <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Authentication</h4>
                         <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-lock text-amber-400 text-xs"></i>
+                            <i data-lucide="lock" class="w-3.5 h-3.5 inline-block text-amber-400"></i>
                             <span class="text-xs text-slate-300">Bearer token required</span>
                         </div>
                     </div>
@@ -150,7 +150,7 @@ const data = await response.json();</code></pre>
                     <!-- Try It -->
                     <div>
                         <button onclick="toggleTryIt(this)" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">
-                            <i class="fa-solid fa-play mr-1.5"></i> Try It
+                            <i data-lucide="play" class="w-4 h-4 inline-block mr-1.5"></i> Try It
                         </button>
                         <div class="try-panel mt-3">
                             <div class="space-y-2">
@@ -167,7 +167,7 @@ const data = await response.json();</code></pre>
                                 </div>
                                 {% endif %}
                                 <button onclick="executeTryIt(this, '{{ method }}', '{{ endpoint.path }}')" class="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded text-xs font-medium transition-colors">
-                                    <i class="fa-solid fa-paper-plane mr-1"></i> Send Request
+                                    <i data-lucide="send" class="w-4 h-4 inline-block mr-1"></i> Send Request
                                 </button>
                             </div>
                             <div class="try-response mt-3 hidden">
@@ -186,7 +186,7 @@ const data = await response.json();</code></pre>
             {% endfor %}
 
             <div id="no-results" class="hidden text-center py-12 text-slate-500">
-                <i class="fa-solid fa-magnifying-glass text-3xl mb-3 opacity-40"></i>
+                <i data-lucide="search" class="w-8 h-8 inline-block mb-3 opacity-40"></i>
                 <p class="text-sm">No endpoints match your search</p>
             </div>
         </div>
@@ -264,11 +264,11 @@ const data = await response.json();</code></pre>
         const outputEl = panel.querySelector('.try-output');
 
         const finalPath = pathOverride ? pathOverride.value : path;
-        const token = localStorage.getItem('token');
 
         const opts = {
             method: method,
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
         };
 
         if (bodyEl && bodyEl.value.trim()) {
@@ -276,7 +276,7 @@ const data = await response.json();</code></pre>
         }
 
         btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner spinner mr-1"></i> Sending...';
+        btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-1"></i> Sending...';
 
         try {
             const res = await fetch(finalPath, opts);
@@ -299,7 +299,8 @@ const data = await response.json();</code></pre>
         }
 
         btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-1"></i> Send Request';
+        btn.innerHTML = '<i data-lucide="send" class="w-4 h-4 inline-block mr-1"></i> Send Request';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 </script>
 {% endblock %}

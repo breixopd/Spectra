@@ -5,7 +5,7 @@
     <div class="glass-panel p-8 rounded-2xl w-full max-w-4xl mx-auto max-h-[88vh] overflow-y-auto animate-fade-in-up shadow-2xl shadow-violet-500/5">
         <div class="text-center mb-8">
             <div class="w-16 h-16 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center mx-auto mb-4">
-                <i class="fa-solid fa-shield-halved text-3xl"></i>
+                <i data-lucide="shield" class="w-10 h-10 inline-block"></i>
             </div>
             <h1 class="text-2xl font-bold text-white">System Setup</h1>
             <p class="text-gray-400 mt-2">Create the admin account, pick one default AI profile, and keep advanced routing optional.</p>
@@ -14,7 +14,7 @@
         <form id="setup-form" class="space-y-6" role="form" aria-label="System setup">
             <div class="space-y-4 border-b border-white/10 pb-6">
                 <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-user"></i> Admin Account
+                    <i data-lucide="user" class="w-5 h-5 inline-block"></i> Admin Account
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -39,7 +39,7 @@
 
             <div class="space-y-4 border-b border-white/10 pb-6">
                 <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-globe"></i> Platform Configuration
+                    <i data-lucide="globe" class="w-5 h-5 inline-block"></i> Platform Configuration
                 </h2>
                 <p class="text-xs text-gray-400">Configure how users access your Spectra instance.</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -76,7 +76,7 @@
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-microchip"></i> AI Gateway
+                            <i data-lucide="cpu" class="w-5 h-5 inline-block"></i> AI Gateway
                         </h2>
                         <p class="text-sm text-gray-400 mt-1">All AI inference routes through the TensorZero gateway. Set the provider API key in the TensorZero container's environment.</p>
                     </div>
@@ -133,11 +133,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Primary Model</label>
-                            <input type="text" id="ai-fast-primary" value="stepfun/step-2-16k:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-fast-primary" value="nvidia/nemotron-3-nano-30b-a3b:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Fallback Model</label>
-                            <input type="text" id="ai-fast-fallback" value="google/gemma-3-4b-it:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-fast-fallback" value="google/gemma-3-12b-it:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
                         </div>
                     </div>
 
@@ -145,11 +145,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Primary Model</label>
-                            <input type="text" id="ai-balanced-primary" value="nvidia/llama-3.3-nemotron-super-49b-v1:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-balanced-primary" value="nvidia/nemotron-3-super-120b-a12b:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Fallback Model</label>
-                            <input type="text" id="ai-balanced-fallback" value="deepseek/deepseek-r1-0528:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-balanced-fallback" value="z-ai/glm-4.5-air:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
                         </div>
                     </div>
 
@@ -157,11 +157,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Primary Model</label>
-                            <input type="text" id="ai-capable-primary" value="nvidia/llama-3.1-nemotron-ultra-253b-v1:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-capable-primary" value="minimax/minimax-m2.5:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">Fallback Model</label>
-                            <input type="text" id="ai-capable-fallback" value="deepseek/deepseek-r1-0528:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
+                            <input type="text" id="ai-capable-fallback" value="stepfun/step-3.5-flash:free" class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono focus:border-violet-500 focus:outline-none">
                         </div>
                     </div>
                 </div>
@@ -170,7 +170,7 @@
             <div class="space-y-4">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-                        <i class="fa-solid fa-gear"></i> Infrastructure (Advanced)
+                        <i data-lucide="settings" class="w-5 h-5 inline-block"></i> Infrastructure (Advanced)
                     </h2>
                     <button type="button" id="toggle-infra" class="text-sm text-violet-400 hover:text-violet-300">
                         Show Options
@@ -351,6 +351,7 @@
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'X-Requested-With': 'XMLHttpRequest',
                 },
+                credentials: 'same-origin',
                 body: new URLSearchParams({
                     username: payload.user.username,
                     password: payload.user.password,
@@ -358,11 +359,6 @@
             });
 
             if (loginResponse.ok) {
-                const tokenData = await loginResponse.json();
-                localStorage.setItem('token', tokenData.access_token);
-                if (tokenData.refresh_token) {
-                    localStorage.setItem('refresh_token', tokenData.refresh_token);
-                }
                 window.location.href = '/dashboard';
                 return;
             }
