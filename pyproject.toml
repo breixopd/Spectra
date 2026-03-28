@@ -80,6 +80,7 @@ addopts = [
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::ResourceWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
     "ignore:coroutine.*was never awaited:RuntimeWarning",
     "ignore:Enable tracemalloc.*:RuntimeWarning",
 ]

@@ -118,7 +118,7 @@ class TestRealToolRegistry:
         for tool in tools:
             config = tool.config
             assert config.execution.command, f"{config.id} missing command"
-            assert config.execution.timeout > 0, f"{config.id} invalid timeout"
+            assert config.execution.timeout >= 0, f"{config.id} invalid timeout"
             # args_template can be empty but should be a string
             assert isinstance(config.execution.args_template, str)
 

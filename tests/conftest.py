@@ -25,12 +25,18 @@ def cleanup_test_logs():
 
 
 def _is_live_test(item: pytest.Item) -> bool:
-    """Check if a test is marked as live (no mocking)."""
-    # Check for 'live' marker
+    """Check if a test should bypass unit-test mocking.
+
+    Returns True for tests marked @pytest.mark.live, files named
+    ``test_live*``, and anything under the ``tests/integration/``
+    directory (integration tests manage their own fixtures).
+    """
     if item.get_closest_marker("live"):
         return True
-    # Check if in a live test file
-    if "test_live" in str(item.fspath):
+    fspath = str(item.fspath)
+    if "test_live" in fspath:
+        return True
+    if "/integration/" in fspath or "\\integration\\" in fspath:
         return True
     return False
 
@@ -104,6 +110,8 @@ def mock_websocket_for_unit_tests(request):
         "periodic_cleanup_loop",
         "load_embeddings_with_status",
         "_initialize_services.<locals>.load_embeddings_with_status",
+        "_initialize_services.<locals>._init_exploit_db",
+        "_init_exploit_db",
         "_keepalive",
         "AsyncMockMixin._execute_mock_call",
         "sandbox_watchdog_loop",
