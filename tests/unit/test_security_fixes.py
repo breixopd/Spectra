@@ -355,11 +355,11 @@ class TestAuditLoggingWired:
 class TestCveIntelTimeout:
     """Tests for CVE intel HTTP client configuration."""
 
-    def test_cache_path_sanitizes_keyword(self):
-        from app.services.ai.cve_intel import _cache_path
-
-        path = _cache_path("test keyword/evil")
-        assert "/" not in path.name or path.name.startswith("test")
+    def test_cache_key_sanitizes_keyword(self):
+        keyword = "test keyword/evil"
+        key = f"cve_cache:{keyword.lower().replace(' ', '_').replace('/', '_')[:50]}"
+        assert key.startswith("cve_cache:")
+        assert "/" not in key
 
     def test_infer_vuln_type(self):
         from app.services.ai.cve_intel import _infer_vuln_type

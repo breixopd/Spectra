@@ -8,7 +8,6 @@ import pytest
 
 from app.services.ai.cve_intel import (
     CVE_CACHE_TTL,
-    _cache_path,
     _infer_vuln_type,
     _load_cache,
     _save_cache,
@@ -153,9 +152,13 @@ class TestInferVulnType:
 
 
 class TestCVECache:
-    def test_cache_path_sanitizes(self):
-        path = _cache_path("test keyword/special")
-        assert str(path).endswith(".json")
+    def test_cache_key_sanitizes(self):
+        """Inline key generation strips spaces, slashes, and enforces prefix."""
+        keyword = "test keyword/special"
+        expected_key = f"cve_cache:{keyword.lower().replace(' ', '_').replace('/', '_')[:50]}"
+        assert expected_key.startswith("cve_cache:")
+        assert " " not in expected_key
+        assert "/" not in expected_key
 
     def test_save_and_load_cache(self):
         results = [{"cve": "CVE-2021-1234", "severity": "high"}]

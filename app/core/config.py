@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     EMBEDDING_API_KEY: SecretStr = Field(default=SecretStr(""), description="API key for embedding provider")
     EMBEDDING_API_BASE_URL: str = Field(default="", description="Base URL for embedding API")
 
+    #: Whether to auto-initialize exploit database at startup (background task).
+    EXPLOIT_DB_AUTO_INIT: bool = True
+
     # --- Platform Settings ---
     PLATFORM_DOMAIN: str = ""  # Public domain (e.g., "spectra.example.com")
     PLATFORM_BASE_URL: str = ""  # Full base URL (e.g., "https://spectra.example.com")

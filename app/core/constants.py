@@ -205,3 +205,15 @@ EXPLOIT_DB_REFRESH_INTERVAL: int = 604800
 
 #: Cache TTL for EPSS scores (24 hours in seconds).
 EPSS_CACHE_TTL: int = 86400
+
+#: NVD API v2.0 base URL.
+NVD_API_BASE_URL: str = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+
+#: Seconds to wait between NVD requests (5 req/30s without API key).
+NVD_RATE_LIMIT_DELAY: float = 6.5
+
+#: Cache TTL for NVD CVE results (24 hours in seconds).
+CVE_CACHE_TTL: int = 86400
+
+#: HTTP client timeout for external data downloads (seconds).
+EXTERNAL_HTTP_TIMEOUT: float = 30.0

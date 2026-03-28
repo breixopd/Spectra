@@ -8,10 +8,20 @@ The mocking fixtures here only apply to unit tests.
 """
 
 import asyncio
+import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+
+
+@pytest.fixture(autouse=True, scope="session")
+def cleanup_test_logs():
+    """Clean up test log files before and after the test session."""
+    log_path = "logs/spectra_testing.log"
+    yield
+    if os.path.exists(log_path):
+        os.remove(log_path)
 
 
 def _is_live_test(item: pytest.Item) -> bool:
@@ -258,6 +268,23 @@ async def mission_manager(mock_websocket_for_unit_tests, mock_database_for_unit_
     manager._agents_initialized = True
 
     yield manager
+
+
+@pytest.fixture(autouse=True)
+def reset_service_singletons():
+    """Reset service singletons and caches between tests to prevent state leakage."""
+    yield
+    try:
+        import app.services.ai.exploit_db as _edb_mod
+        _edb_mod._instance = None
+    except Exception:
+        pass
+    try:
+        import app.services.ai.cve_intel as _cve_mod
+        _cve_mod._cve_knowledge_base = None
+        _cve_mod._last_nvd_request = 0.0
+    except Exception:
+        pass
 
 
 @pytest.fixture

@@ -15,6 +15,13 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, Field
 
+from app.core.constants import (
+    CISA_KEV_URL,
+    CVE_CACHE_TTL,
+    EPSS_API_URL,
+    EXTERNAL_HTTP_TIMEOUT,
+    NVD_API_BASE_URL,
+)
 from app.services.ai.agents.base import (
     ActionRisk,
     Agent,
@@ -27,13 +34,6 @@ from app.services.ai.agents.registry import register_agent
 
 logger = logging.getLogger(__name__)
 
-_KEV_TTL_SECONDS = 86_400  # 24 hours
-
-_NVD_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-_EPSS_BASE = "https://api.first.org/data/v1/epss"
-_KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
-
-_HTTP_TIMEOUT = 30.0
 _NVD_DELAY_NO_KEY = 6.0
 _NVD_DELAY_WITH_KEY = 0.6
 
@@ -156,7 +156,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
             headers["apiKey"] = api_key
 
         results: list[dict[str, Any]] = []
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=EXTERNAL_HTTP_TIMEOUT) as client:
             for i, cve_id in enumerate(cve_ids):
                 if i > 0:
                     await asyncio.sleep(delay)
@@ -167,7 +167,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
                     continue
 
                 try:
-                    resp = await client.get(_NVD_BASE, params=params, headers=headers)
+                    resp = await client.get(NVD_API_BASE_URL, params=params, headers=headers)
                     resp.raise_for_status()
                     data = resp.json()
                 except httpx.HTTPError as exc:
@@ -217,12 +217,12 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
         if cached is not None:
             return cached
 
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=EXTERNAL_HTTP_TIMEOUT) as client:
             try:
-                resp = await client.get(_KEV_URL)
+                resp = await client.get(CISA_KEV_URL)
                 resp.raise_for_status()
                 data = resp.json()
-                await db._cache_set("recon_kev_catalog", data, _KEV_TTL_SECONDS)
+                await db._cache_set("recon_kev_catalog", data, CVE_CACHE_TTL)
                 return data
             except httpx.HTTPError as exc:
                 logger.warning("Failed to fetch CISA KEV: %s", exc)
@@ -261,9 +261,9 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
             logger.warning("Sanitizer blocked EPSS query")
             return []
 
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=EXTERNAL_HTTP_TIMEOUT) as client:
             try:
-                resp = await client.get(_EPSS_BASE, params=params)
+                resp = await client.get(EPSS_API_URL, params=params)
                 resp.raise_for_status()
                 data = resp.json()
             except httpx.HTTPError as exc:
