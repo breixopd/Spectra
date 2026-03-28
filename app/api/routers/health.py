@@ -15,6 +15,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings as _get_settings
 from app.core.database import get_async_session
 from app.version import __version__
 
@@ -22,7 +23,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-DATA_DIR = "/app/data"
+def _data_dir() -> str:
+    return str(_get_settings().DATA_ROOT)
 
 
 @router.get(
@@ -124,7 +126,7 @@ async def health_check(
 
         # Disk space for data directory
         try:
-            usage = shutil.disk_usage(DATA_DIR)
+            usage = shutil.disk_usage(_data_dir())
             free_gb = round(usage.free / (1024**3), 2)
             total_gb = round(usage.total / (1024**3), 2)
             used_pct = round(usage.used / usage.total * 100, 1)

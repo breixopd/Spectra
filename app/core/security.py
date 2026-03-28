@@ -22,6 +22,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from jwt.exceptions import InvalidTokenError as JWTError
 
 from app.core.config import settings
+from app.core.constants import JWT_BLACKLIST_MAX_SIZE
 
 __all__ = [
     "create_access_token",
@@ -180,7 +181,6 @@ def _get_token_expiry(token: str) -> float:
         return _time.time() + 3600
 
 
-_MAX_BLACKLIST_SIZE = 10000
 
 
 def invalidate_token(token: str) -> None:
@@ -188,7 +188,7 @@ def invalidate_token(token: str) -> None:
     _ensure_blacklist_loaded()
     expiry = _get_token_expiry(token)
     with _blacklist_lock:
-        if len(_blacklisted_tokens) >= _MAX_BLACKLIST_SIZE:
+        if len(_blacklisted_tokens) >= JWT_BLACKLIST_MAX_SIZE:
             _cleanup_expired()
         _blacklisted_tokens[_token_hash(token)] = expiry
         _persist_blacklist()

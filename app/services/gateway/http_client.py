@@ -8,12 +8,11 @@ from typing import Any
 
 import aiohttp
 
-from app.core.constants import HTTP_CLIENT_MAX_RETRIES
+from app.core.constants import HTTP_CLIENT_MAX_RETRIES, HTTP_CLIENT_RETRY_BACKOFF
 
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = HTTP_CLIENT_MAX_RETRIES
-RETRY_BACKOFF_BASE = 0.5  # seconds
 
 
 class GatewayClient:
@@ -56,17 +55,17 @@ class GatewayClient:
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict:
         url = f"{self.base_url}{path}"
         last_error: BaseException | None = None
-        for attempt in range(MAX_RETRIES):
+        for attempt in range(HTTP_CLIENT_MAX_RETRIES):
             try:
                 return await self._do_request(method, url, **kwargs)
             except (aiohttp.ClientConnectionError, TimeoutError) as e:
                 last_error = e
-                if attempt < MAX_RETRIES - 1:
-                    wait = RETRY_BACKOFF_BASE * (2**attempt)
+                if attempt < HTTP_CLIENT_MAX_RETRIES - 1:
+                    wait = HTTP_CLIENT_RETRY_BACKOFF * (2**attempt)
                     logger.warning(
                         "Gateway request failed (attempt %d/%d), retrying in %.1fs: %s",
                         attempt + 1,
-                        MAX_RETRIES,
+                        HTTP_CLIENT_MAX_RETRIES,
                         wait,
                         e,
                     )

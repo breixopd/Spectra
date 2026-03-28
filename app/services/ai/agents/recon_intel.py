@@ -21,6 +21,8 @@ from app.core.constants import (
     EPSS_API_URL,
     EXTERNAL_HTTP_TIMEOUT,
     NVD_API_BASE_URL,
+    NVD_RATE_LIMIT_DELAY,
+    NVD_RATE_LIMIT_DELAY_WITH_KEY,
 )
 from app.services.ai.agents.base import (
     ActionRisk,
@@ -33,9 +35,6 @@ from app.services.ai.agents.base import (
 from app.services.ai.agents.registry import register_agent
 
 logger = logging.getLogger(__name__)
-
-_NVD_DELAY_NO_KEY = 6.0
-_NVD_DELAY_WITH_KEY = 0.6
 
 # ---------------------------------------------------------------------------
 # Privacy sanitizer
@@ -150,7 +149,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
         from app.core.config import settings
 
         api_key: str | None = getattr(settings, "NVD_API_KEY", None)
-        delay = _NVD_DELAY_WITH_KEY if api_key else _NVD_DELAY_NO_KEY
+        delay = NVD_RATE_LIMIT_DELAY_WITH_KEY if api_key else NVD_RATE_LIMIT_DELAY
         headers: dict[str, str] = {}
         if api_key:
             headers["apiKey"] = api_key

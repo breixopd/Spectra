@@ -14,6 +14,8 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+from app.core.constants import PBKDF2_SALT_LENGTH
+
 logger = logging.getLogger(__name__)
 
 #: Field name substrings that indicate sensitive data.
@@ -113,8 +115,6 @@ def decrypt_file(file_path: Path, key: str | None = None) -> bytes:
 # Password-based encryption for exports
 # ---------------------------------------------------------------------------
 
-_SALT_LENGTH = 16
-
 
 def _derive_key_from_password(password: str, salt: bytes) -> bytes:
     """Derive a Fernet key from a password using PBKDF2."""
@@ -132,13 +132,13 @@ def encrypt_data_with_password(data: bytes, password: str) -> bytes:
 
     Returns ``salt (16 bytes) || ciphertext``.
     """
-    salt = os.urandom(_SALT_LENGTH)
+    salt = os.urandom(PBKDF2_SALT_LENGTH)
     f = Fernet(_derive_key_from_password(password, salt))
     return salt + f.encrypt(data)
 
 
 def decrypt_data_with_password(blob: bytes, password: str) -> bytes:
     """Decrypt a blob produced by :func:`encrypt_data_with_password`."""
-    salt, ciphertext = blob[:_SALT_LENGTH], blob[_SALT_LENGTH:]
+    salt, ciphertext = blob[:PBKDF2_SALT_LENGTH], blob[PBKDF2_SALT_LENGTH:]
     f = Fernet(_derive_key_from_password(password, salt))
     return f.decrypt(ciphertext)

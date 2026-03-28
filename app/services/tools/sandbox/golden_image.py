@@ -10,10 +10,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.core.constants import SANDBOX_BASE_IMAGE
+
 logger = logging.getLogger(__name__)
 
-# Base image for the golden build (same as Dockerfile.tools)
-BASE_IMAGE = "kalilinux/kali-rolling:latest"
 
 
 class GoldenImageBuilder:
@@ -120,7 +120,7 @@ class GoldenImageBuilder:
                 custom_commands.extend(commands)
 
         lines = [
-            f"FROM {BASE_IMAGE}",
+            f"FROM {SANDBOX_BASE_IMAGE}",
             "",
             'LABEL org.opencontainers.image.title="Spectra Tools (Golden)"',
             'LABEL org.opencontainers.image.description="Auto-built security tools image"',

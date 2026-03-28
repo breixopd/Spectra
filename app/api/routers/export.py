@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.core.constants import MAX_EXPORT_ROWS
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
 from app.models.exploit import Exploit
@@ -62,7 +63,6 @@ _COLUMNS: dict[str, list[str]] = {
 
 _VALID_ENTITIES = frozenset(_ENTITY_MODELS.keys())
 _VALID_FORMATS = frozenset({"json", "csv"})
-_MAX_EXPORT_ROWS = 10_000
 
 
 def _sanitize_csv_value(val: object) -> str:
@@ -134,7 +134,7 @@ async def export_data(
             raise HTTPException(status_code=422, detail=f"Invalid date_to: {date_to}")
         stmt = stmt.where(date_col <= to_dt)
 
-    stmt = stmt.limit(_MAX_EXPORT_ROWS)
+    stmt = stmt.limit(MAX_EXPORT_ROWS)
     result = await db.execute(stmt)
     rows = result.scalars().all()
 
