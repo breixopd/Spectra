@@ -56,6 +56,7 @@ async def client():
     app.dependency_overrides[get_current_active_user] = lambda: user
 
     mock_session = AsyncMock()
+    mock_session.add = MagicMock()  # sync method — avoid AsyncMock coroutine warning
 
     async def _get_session():
         yield mock_session

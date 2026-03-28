@@ -200,9 +200,6 @@ def format_feature_label(key: str) -> str:
     return FEATURE_LABELS.get(key, key.replace("_", " ").title())
 
 
-#: Exploit database cache directory.
-EXPLOIT_DB_CACHE_DIR: str = "data/cache/exploit_db"
-
 #: Refresh interval for exploit database (7 days in seconds).
 EXPLOIT_DB_REFRESH_INTERVAL: int = 604800
 

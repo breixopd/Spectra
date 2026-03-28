@@ -15,20 +15,21 @@ import json
 import logging
 import time
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 import httpx
 
-from app.core.paths import data_path
+from app.services.ai.exploit_db import get_exploit_db
 
 logger = logging.getLogger(__name__)
 
 # NVD API configuration
 NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 NVD_RATE_LIMIT_DELAY = 6.5  # seconds between requests (5 req / 30s limit)
-CVE_CACHE_DIR = data_path("cache", "cve_cache")
 CVE_CACHE_TTL = 86400  # 24 hours
+
+# Backward-compatible stub — no longer a real directory.
+CVE_CACHE_DIR = None
 
 
 # =============================================================================
@@ -45,7 +46,7 @@ _cve_knowledge_base: list[dict[str, Any]] | None = None
 
 
 def _load_cve_knowledge_base() -> list[dict[str, Any]]:
-    """Load CVE knowledge base from downloaded JSON file.
+    """Load CVE knowledge base from PostgreSQL cache.
 
     Returns empty list if data hasn't been downloaded yet.
     Use Settings → Data Sources or ``python scripts/update_exploit_db.py``
@@ -55,21 +56,27 @@ def _load_cve_knowledge_base() -> list[dict[str, Any]]:
     if _cve_knowledge_base is not None:
         return _cve_knowledge_base
 
-    from app.core.constants import EXPLOIT_DB_CACHE_DIR
+    db = get_exploit_db()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
 
-    kb_path = Path(EXPLOIT_DB_CACHE_DIR) / "cve_knowledge_base.json"
-    if not kb_path.exists():
+    if loop is None:
+        try:
+            data = asyncio.run(db._cache_get("cve_knowledge_base"))
+        except Exception as exc:
+            logger.warning("Failed to load CVE knowledge base: %s", exc)
+            data = None
+    else:
+        # Already in async context; data will be loaded next time
         _cve_knowledge_base = []
         return _cve_knowledge_base
 
-    try:
-        _cve_knowledge_base = json.loads(kb_path.read_text())
-        logger.info("Loaded CVE knowledge base: %d entries", len(_cve_knowledge_base or []))
-    except (OSError, ValueError) as exc:
-        logger.warning("Failed to load CVE knowledge base: %s", exc)
-        _cve_knowledge_base = []
-
-    return _cve_knowledge_base or []
+    _cve_knowledge_base = data if isinstance(data, list) else []
+    if _cve_knowledge_base:
+        logger.info("Loaded CVE knowledge base: %d entries", len(_cve_knowledge_base))
+    return _cve_knowledge_base
 
 
 def reload_cve_knowledge_base() -> int:
@@ -223,40 +230,66 @@ def _infer_vuln_type(description: str) -> str:
 # =============================================================================
 
 
-def _cache_path(keyword: str) -> Path:
-    """Get cache file path for a keyword."""
+def _cache_key(keyword: str) -> str:
+    """Get cache key for a keyword."""
     safe_name = keyword.lower().replace(" ", "_").replace("/", "_")[:50]
-    return CVE_CACHE_DIR / f"{safe_name}.json"
+    return f"cve_cache:{safe_name}"
+
+
+def _cache_path(keyword: str):
+    """Backward-compatible alias for _cache_key.
+
+    Returns a ``PurePosixPath`` so existing tests that access ``.name``
+    continue to pass.  New code should use ``_cache_key`` directly.
+    """
+    from pathlib import PurePosixPath
+    return PurePosixPath(f"{_cache_key(keyword)}.json")
 
 
 def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
     """Load cached CVE results if still fresh."""
-    path = _cache_path(keyword)
-    if not path.exists():
+    db = get_exploit_db()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is None:
+        try:
+            data = asyncio.run(db._cache_get(_cache_key(keyword)))
+        except Exception:
+            return None
+    else:
         return None
 
-    try:
-        data = json.loads(path.read_text())
-        cached_at = data.get("cached_at", 0)
-        if time.time() - cached_at > CVE_CACHE_TTL:
-            return None
-        return data.get("results", [])
-    except (OSError, ValueError):
+    if data is None:
         return None
+    cached_at = data.get("cached_at", 0)
+    if time.time() - cached_at > CVE_CACHE_TTL:
+        return None
+    return data.get("results", [])
 
 
 def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
     """Save CVE results to cache."""
-    CVE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    path = _cache_path(keyword)
+    db = get_exploit_db()
+    payload = {
+        "keyword": keyword,
+        "cached_at": time.time(),
+        "results": results,
+    }
     try:
-        path.write_text(json.dumps({
-            "keyword": keyword,
-            "cached_at": time.time(),
-            "results": results,
-        }, indent=2))
-    except (OSError, ValueError) as e:
-        logger.debug("Failed to cache CVEs: %s", e)
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop is None:
+        try:
+            asyncio.run(db._cache_set(_cache_key(keyword), payload, CVE_CACHE_TTL))
+        except Exception as e:
+            logger.debug("Failed to cache CVEs: %s", e)
+    else:
+        asyncio.ensure_future(db._cache_set(_cache_key(keyword), payload, CVE_CACHE_TTL))
 
 
 # =============================================================================

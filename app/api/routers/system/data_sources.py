@@ -23,7 +23,7 @@ async def get_data_source_status(
     from app.services.ai.exploit_db import get_exploit_db
 
     db = get_exploit_db()
-    return db.data_status()
+    return await db.data_status()
 
 
 @router.post("/data-sources/download")
@@ -34,10 +34,6 @@ async def download_data_sources(
 
     Refreshes MSF modules, CISA KEV, and the CVE knowledge base.
     """
-    import json as _json
-    from pathlib import Path as _Path
-
-    from app.core.constants import EXPLOIT_DB_CACHE_DIR
     from app.services.ai.exploit_db import get_exploit_db
 
     db = get_exploit_db()
@@ -46,10 +42,7 @@ async def download_data_sources(
     try:
         from scripts.update_exploit_db import _CVE_KNOWLEDGE_BASE
 
-        cache_dir = _Path(EXPLOIT_DB_CACHE_DIR)
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        kb_path = cache_dir / "cve_knowledge_base.json"
-        kb_path.write_text(_json.dumps(_CVE_KNOWLEDGE_BASE, indent=2))
+        await db._cache_set("cve_knowledge_base", _CVE_KNOWLEDGE_BASE)
         kb_count = len(_CVE_KNOWLEDGE_BASE)
     except (OSError, ValueError) as exc:
         logger.warning("Failed to write CVE knowledge base: %s", exc)

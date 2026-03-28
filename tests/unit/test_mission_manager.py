@@ -4,12 +4,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 
+def _safe_create_task(coro, **kwargs):
+    """Mock create_task that closes coroutines to avoid RuntimeWarning."""
+    if asyncio.iscoroutine(coro):
+        coro.close()
+    return MagicMock()
+
 
 @pytest.fixture(autouse=True)
 def _mission_runtime_isolation(tmp_path):
     with (
         patch("app.services.mission.mission.data_path", side_effect=lambda *parts: tmp_path.joinpath(*parts)),
-        patch("app.services.mission.mission.asyncio.create_task"),
+        patch("app.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
 
@@ -32,6 +38,9 @@ def mock_manager_context():
         patch("app.services.mission.manager.execution.MissionController") as MockController,
         patch("app.services.mission.manager.execution.ScopeAgent") as MockScope,
         patch("app.services.mission.manager.execution.index_to_rag", new_callable=AsyncMock) as mock_index_to_rag,
+        patch("app.services.mission.manager.execution.run_debrief", new_callable=AsyncMock),
+        patch("app.services.mission.manager.execution.generate_html_report", new_callable=AsyncMock),
+        patch("app.services.mission.manager.execution.record_mission_lessons"),
         patch("app.services.mission.manager.execution.VotingSystem") as MockVoting,
         patch("app.services.mission.manager.lifecycle.MissionRepository") as MockRepo,
         patch(
@@ -66,6 +75,10 @@ def mock_manager_context():
         mock_state_store_session.return_value = mock_session_ctx
         mock_quota_session.return_value = mock_session_ctx
         mock_session.get = AsyncMock(return_value=None)
+        mock_session.add = MagicMock()  # sync method — avoid AsyncMock coroutine
+
+        # Default return for resolve_ip to avoid AsyncMock dict access
+        mock_resolve_ip.return_value = {"city": "Unknown", "country": "Unknown"}
 
         # session.begin() returns a transaction context manager
         mock_transaction_ctx = MagicMock()
@@ -112,7 +125,7 @@ async def test_start_mission(mock_manager_context):
 
     resolve_ip.return_value = {"city": "Test City", "country": "Test Country"}
 
-    with patch("app.services.mission.manager.asyncio.create_task") as mock_create_task:
+    with patch("app.services.mission.manager.asyncio.create_task", side_effect=_safe_create_task) as mock_create_task:
         mission_id = await manager.start_mission("127.0.0.1", "test directive")
 
         assert mission_id in manager.active_missions

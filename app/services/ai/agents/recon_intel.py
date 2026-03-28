@@ -16,7 +16,6 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, Field
 
-from app.core.paths import data_path
 from app.services.ai.agents.base import (
     ActionRisk,
     Agent,
@@ -29,8 +28,6 @@ from app.services.ai.agents.registry import register_agent
 
 logger = logging.getLogger(__name__)
 
-_CACHE_DIR = data_path("cache")
-_KEV_CACHE_PATH = _CACHE_DIR / "cisa_kev.json"
 _KEV_TTL_SECONDS = 86_400  # 24 hours
 
 _NVD_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
@@ -211,33 +208,25 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
     # ------------------------------------------------------------------
 
     async def _query_cisa_kev(self) -> dict[str, Any]:
-        """Load CISA KEV catalog, caching locally for 24h."""
-        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        """Load CISA KEV catalog, caching in PostgreSQL for 24h."""
+        from app.services.ai.exploit_db import get_exploit_db
 
-        # Check local cache freshness
-        if _KEV_CACHE_PATH.exists():
-            age = time.time() - _KEV_CACHE_PATH.stat().st_mtime
-            if age < _KEV_TTL_SECONDS:
-                try:
-                    return json.loads(_KEV_CACHE_PATH.read_text())
-                except (json.JSONDecodeError, OSError):
-                    pass  # stale / corrupt — re-fetch
+        db = get_exploit_db()
+
+        # Check PostgreSQL cache
+        cached = await db._cache_get("recon_kev_catalog")
+        if cached is not None:
+            return cached
 
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
             try:
                 resp = await client.get(_KEV_URL)
                 resp.raise_for_status()
                 data = resp.json()
-                _KEV_CACHE_PATH.write_text(json.dumps(data))
+                await db._cache_set("recon_kev_catalog", data, _KEV_TTL_SECONDS)
                 return data
             except httpx.HTTPError as exc:
                 logger.warning("Failed to fetch CISA KEV: %s", exc)
-                # Fall back to stale cache if available
-                if _KEV_CACHE_PATH.exists():
-                    try:
-                        return json.loads(_KEV_CACHE_PATH.read_text())
-                    except (json.JSONDecodeError, OSError):
-                        pass
                 return {}
 
     async def _check_kev(self, cve_ids: list[str]) -> list[dict[str, Any]]:

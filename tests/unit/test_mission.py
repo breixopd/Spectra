@@ -2,7 +2,8 @@
 Tests for the Mission class and attack surface tracking.
 """
 
-from unittest.mock import patch
+import asyncio
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -13,11 +14,18 @@ from app.models.attack_surface import (
 from app.services.mission.mission import Mission
 
 
+def _safe_create_task(coro, **kwargs):
+    """Mock create_task that closes coroutines to avoid RuntimeWarning."""
+    if asyncio.iscoroutine(coro):
+        coro.close()
+    return MagicMock()
+
+
 @pytest.fixture(autouse=True)
 def _mission_runtime_isolation(tmp_path):
     with (
         patch("app.services.mission.mission.data_path", side_effect=lambda *parts: tmp_path.joinpath(*parts)),
-        patch("app.services.mission.mission.asyncio.create_task"),
+        patch("app.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
 
