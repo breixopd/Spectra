@@ -167,7 +167,7 @@ User enters target + directive
 
 ### Layer 1: Persistent Memory (`memory.py`)
 
-Stored as JSON files in `data/cache/`:
+**Learning data** is stored as JSON files in `data/cache/`:
 
 - **tool_lessons.json** — which tools produced findings for which services
 - **exploit_lessons.json** — successful exploit chains with CVEs
@@ -175,6 +175,8 @@ Stored as JSON files in `data/cache/`:
 - **false_positives.json** — noisy template IDs to skip
 
 Debrief lessons are auto-saved after every mission by the `DebriefAgent`.
+
+**Exploit intelligence** (Metasploit modules, CISA KEV catalog, Exploit-DB entries, CVE knowledge base) is cached in PostgreSQL via the `CacheEntry` model (`app/services/ai/exploit_db.py`). At startup, the database is auto-initialized in the background if cached data is present. First-time setup requires an admin download via **Settings → Data Sources** or `scripts/update_exploit_db.py`.
 
 ### Layer 2: Playbook Engine (`playbook.py`)
 

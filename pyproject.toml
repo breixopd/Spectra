@@ -55,6 +55,7 @@ markers = [
     "integration: integration test",
     "slow: slow-running test",
     "live: live test (real DB and LLM, no mocking)",
+    "network: test that requires outbound network access",
     "ui: browser UI test (Playwright)",
     "property: property-based test (hypothesis)",
 ]
@@ -78,7 +79,9 @@ addopts = [
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
+    "ignore::ResourceWarning",
     "ignore:coroutine.*was never awaited:RuntimeWarning",
+    "ignore:Enable tracemalloc.*:RuntimeWarning",
 ]
 pythonpath = ["."]
 asyncio_mode = "strict"

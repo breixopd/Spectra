@@ -291,6 +291,25 @@ async def _initialize_services() -> None:
     except (OSError, RuntimeError, ImportError) as e:
         logger.warning("Failed to trigger embedding preloading: %s", e)
 
+    # Initialize exploit database in background (loads from DB cache or downloads)
+    if settings.EXPLOIT_DB_AUTO_INIT:
+        try:
+            from app.services.ai.exploit_db import get_exploit_db
+
+            async def _init_exploit_db() -> None:
+                try:
+                    db = get_exploit_db()
+                    if not db._initialized:
+                        await db.initialize()
+                        logger.info("[OK] Exploit database initialized")
+                except (OSError, RuntimeError) as e:
+                    logger.warning("Exploit database initialization failed (data will load on demand): %s", e)
+
+            asyncio.create_task(_init_exploit_db())
+            logger.info("Triggered exploit database initialization")
+        except (ImportError, OSError) as e:
+            logger.warning("Failed to trigger exploit database init: %s", e)
+
     await set_system_status("initializing", "Loading tool plugins...")
 
     # Initialize tool registry and load plugins

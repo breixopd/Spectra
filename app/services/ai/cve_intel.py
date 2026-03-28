@@ -18,17 +18,10 @@ from typing import Any
 
 import httpx
 
+from app.core.constants import CVE_CACHE_TTL, EXTERNAL_HTTP_TIMEOUT, NVD_API_BASE_URL, NVD_RATE_LIMIT_DELAY
 from app.services.ai.exploit_db import get_exploit_db
 
 logger = logging.getLogger(__name__)
-
-# NVD API configuration
-NVD_API_BASE = "https://services.nvd.nist.gov/rest/json/cves/2.0"
-NVD_RATE_LIMIT_DELAY = 6.5  # seconds between requests (5 req / 30s limit)
-CVE_CACHE_TTL = 86400  # 24 hours
-
-# Backward-compatible stub — no longer a real directory.
-CVE_CACHE_DIR = None
 
 
 # =============================================================================
@@ -122,9 +115,9 @@ async def fetch_cves_from_nvd(
             "resultsPerPage": min(max_results, 50),
         }
 
-        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0)) as client:
+        async with httpx.AsyncClient(timeout=EXTERNAL_HTTP_TIMEOUT) as client:
             _last_nvd_request = time.time()
-            response = await client.get(NVD_API_BASE, params=params)
+            response = await client.get(NVD_API_BASE_URL, params=params)
 
             if response.status_code == 403:
                 logger.warning("NVD API rate limited, using cached/builtin data")
@@ -229,25 +222,10 @@ def _infer_vuln_type(description: str) -> str:
 # =============================================================================
 
 
-def _cache_key(keyword: str) -> str:
-    """Get cache key for a keyword."""
-    safe_name = keyword.lower().replace(" ", "_").replace("/", "_")[:50]
-    return f"cve_cache:{safe_name}"
-
-
-def _cache_path(keyword: str):
-    """Backward-compatible alias for _cache_key.
-
-    Returns a ``PurePosixPath`` so existing tests that access ``.name``
-    continue to pass.  New code should use ``_cache_key`` directly.
-    """
-    from pathlib import PurePosixPath
-    return PurePosixPath(f"{_cache_key(keyword)}.json")
-
-
 def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
     """Load cached CVE results if still fresh."""
     db = get_exploit_db()
+    cache_key = f"cve_cache:{keyword.lower().replace(' ', '_').replace('/', '_')[:50]}"
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
@@ -255,7 +233,7 @@ def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
 
     if loop is None:
         try:
-            data = asyncio.run(db._cache_get(_cache_key(keyword)))
+            data = asyncio.run(db._cache_get(cache_key))
         except Exception:
             return None
     else:
@@ -272,6 +250,7 @@ def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
 def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
     """Save CVE results to cache."""
     db = get_exploit_db()
+    cache_key = f"cve_cache:{keyword.lower().replace(' ', '_').replace('/', '_')[:50]}"
     payload = {
         "keyword": keyword,
         "cached_at": time.time(),
@@ -284,11 +263,11 @@ def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
 
     if loop is None:
         try:
-            asyncio.run(db._cache_set(_cache_key(keyword), payload, CVE_CACHE_TTL))
+            asyncio.run(db._cache_set(cache_key, payload, CVE_CACHE_TTL))
         except Exception as e:
             logger.debug("Failed to cache CVEs: %s", e)
     else:
-        asyncio.ensure_future(db._cache_set(_cache_key(keyword), payload, CVE_CACHE_TTL))
+        asyncio.create_task(db._cache_set(cache_key, payload, CVE_CACHE_TTL))
 
 
 # =============================================================================
