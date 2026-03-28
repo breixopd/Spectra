@@ -69,7 +69,7 @@ run_in_docker() {
         -v "$PROJECT_ROOT/pytest.ini:/app/pytest.ini:ro" \
         -v "$PROJECT_ROOT/.env.test:/app/.env.test:ro" \
         -v "$PROJECT_ROOT/alembic:/app/alembic:ro" \
-        -v "$PROJECT_ROOT/alembic.ini:/app/alembic.ini:ro" \
+        -v "$PROJECT_ROOT/config/alembic.ini:/app/config/alembic.ini:ro" \
         -v "$PROJECT_ROOT/plugins:/app/plugins:ro" \
         -v "$PROJECT_ROOT/data:/app/data" \
         --entrypoint sh "$IMAGE" \

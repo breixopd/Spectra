@@ -38,7 +38,7 @@ services:
     volumes:
       - ../app:/app/app:ro
       - ../alembic:/app/alembic:ro
-      - ../alembic.ini:/app/alembic.ini:ro
+      - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins
       - ../tests:/app/tests:ro
     extra_hosts:
@@ -164,7 +164,7 @@ services:
       - ../tests:/app/tests:ro
       - ../pytest.ini:/app/pytest.ini:ro
       - ../alembic:/app/alembic:ro
-      - ../alembic.ini:/app/alembic.ini:ro
+      - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins:ro
     depends_on:
       db:
@@ -196,7 +196,7 @@ services:
       - ../tests:/app/tests:ro
       - ../pytest.ini:/app/pytest.ini:ro
       - ../alembic:/app/alembic:ro
-      - ../alembic.ini:/app/alembic.ini:ro
+      - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins:ro
     depends_on:
       db:

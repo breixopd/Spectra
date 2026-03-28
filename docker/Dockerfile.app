@@ -65,17 +65,17 @@ RUN useradd --create-home --shell /bin/bash spectra && \
 COPY --chown=spectra:spectra scripts/ ./scripts/
 COPY --chown=spectra:spectra app/ ./app/
 COPY --chown=spectra:spectra alembic/ ./alembic/
-COPY --chown=spectra:spectra alembic.ini ./alembic.ini
+COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
 COPY --chown=spectra:spectra plugins/ ./plugins/
 COPY --chown=spectra:spectra keys/ ./keys/
-COPY --chown=spectra:spectra tailwind.config.js ./tailwind.config.js
+COPY --chown=spectra:spectra config/tailwind.config.js ./config/tailwind.config.js
 RUN chmod +x /app/scripts/start.sh
 
 # Build Tailwind CSS (pin v3 standalone binary; the current stylesheet pipeline is Tailwind v3-based)
 ARG TAILWIND_VERSION=3.4.17
 RUN curl -fsSLo tailwindcss-linux-x64 https://github.com/tailwindlabs/tailwindcss/releases/download/v${TAILWIND_VERSION}/tailwindcss-linux-x64 && \
     chmod +x tailwindcss-linux-x64 && \
-    ./tailwindcss-linux-x64 -i app/static/css/input.css -o app/static/css/output.css --minify && \
+    ./tailwindcss-linux-x64 -i app/static/css/input.css -o app/static/css/output.css --minify -c config/tailwind.config.js && \
     rm tailwindcss-linux-x64
 
 EXPOSE 5000
