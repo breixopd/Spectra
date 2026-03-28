@@ -52,7 +52,6 @@ jobs:
         run: |
           python3 -m pytest tests/unit/ -q \
             --cov=app \
-            --cov-config=.coveragerc \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
             --cov-fail-under=60

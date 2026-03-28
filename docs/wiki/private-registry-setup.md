@@ -207,7 +207,7 @@ In Docker builds, pass the config at build time:
 
 ```dockerfile
 COPY pip.conf /etc/pip.conf
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements/base.txt
 ```
 
 ### 2.3 Creating Packages from Spectra Shared Libraries
@@ -267,7 +267,7 @@ twine upload \
 pip install spectra-common --extra-index-url https://pypi.yourdomain.com/simple/
 ```
 
-In `requirements.txt`:
+In `requirements/base.txt`:
 
 ```
 --extra-index-url https://pypi.yourdomain.com/simple/

@@ -168,7 +168,7 @@ Interactive API docs are available at `/docs` (Swagger UI) and `/redoc`.
 
 ```bash
 # Install dependencies
-pip install -r requirements-app.txt
+pip install -r requirements/app.txt
 
 # Set up environment
 cp .env.example .env

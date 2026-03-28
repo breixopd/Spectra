@@ -81,13 +81,12 @@ jobs:
 
       # ── Run tests before release ──────────────────────────────
       - name: Install dependencies
-        run: pip install -r requirements.txt numpy
+        run: pip install -r requirements/base.txt numpy
 
       - name: Run unit tests with coverage
         run: |
           python3 -m pytest tests/unit/ -q \
             --cov=app \
-            --cov-config=.coveragerc \
             --cov-report=term-missing \
             --cov-fail-under=60
         env:

@@ -66,7 +66,7 @@ run_in_docker() {
         -e PLUGIN_SAFE_MODE=false \
         -v "$PROJECT_ROOT/app:/app/app:ro" \
         -v "$PROJECT_ROOT/tests:/app/tests:ro" \
-        -v "$PROJECT_ROOT/pytest.ini:/app/pytest.ini:ro" \
+        -v "$PROJECT_ROOT/pyproject.toml:/app/pyproject.toml:ro" \
         -v "$PROJECT_ROOT/.env.test:/app/.env.test:ro" \
         -v "$PROJECT_ROOT/alembic:/app/alembic:ro" \
         -v "$PROJECT_ROOT/config/alembic.ini:/app/config/alembic.ini:ro" \
