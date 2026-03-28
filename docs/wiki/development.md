@@ -64,7 +64,7 @@ docker run --rm \
   -v "$PWD/pytest.ini:/app/pytest.ini:ro" \
   -v "$PWD/.env.test:/app/.env.test:ro" \
   -v "$PWD/alembic:/app/alembic:ro" \
-  -v "$PWD/alembic.ini:/app/alembic.ini:ro" \
+  -v "$PWD/config/alembic.ini:/app/config/alembic.ini:ro" \
   -v "$PWD/plugins:/app/plugins:ro" \
   -v "$PWD/data:/app/data" \
   --entrypoint sh spectra-tools-test \
