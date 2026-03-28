@@ -162,7 +162,7 @@ services:
       - ../.env.test:/app/.env.test:ro
       - ../app:/app/app:ro
       - ../tests:/app/tests:ro
-      - ../pytest.ini:/app/pytest.ini:ro
+      - ../pyproject.toml:/app/pyproject.toml:ro
       - ../alembic:/app/alembic:ro
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins:ro
@@ -194,7 +194,7 @@ services:
       - ../.env.test:/app/.env.test:ro
       - ../app:/app/app:ro
       - ../tests:/app/tests:ro
-      - ../pytest.ini:/app/pytest.ini:ro
+      - ../pyproject.toml:/app/pyproject.toml:ro
       - ../alembic:/app/alembic:ro
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins:ro

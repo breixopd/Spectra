@@ -150,7 +150,7 @@ services:
           path: ../app
           target: /app/app
         - action: rebuild
-          path: ../requirements-app.txt
+          path: ../requirements/app.txt
 
   # AI Service (LLM + RAG + Embeddings)
   ai-svc:

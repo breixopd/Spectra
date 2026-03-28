@@ -61,7 +61,7 @@ docker run --rm \
   -e PLUGIN_SAFE_MODE=false \
   -v "$PWD/app:/app/app:ro" \
   -v "$PWD/tests:/app/tests:ro" \
-  -v "$PWD/pytest.ini:/app/pytest.ini:ro" \
+  -v "$PWD/pyproject.toml:/app/pyproject.toml:ro" \
   -v "$PWD/.env.test:/app/.env.test:ro" \
   -v "$PWD/alembic:/app/alembic:ro" \
   -v "$PWD/config/alembic.ini:/app/config/alembic.ini:ro" \
@@ -110,7 +110,7 @@ docker compose -f docker/docker-compose.test.yml --profile targets up -d
 
 ### Test Configuration
 
-- `.env.test` is loaded by `pytest-dotenv` via `pytest.ini`
+- `.env.test` is loaded by `pytest-dotenv` via `pyproject.toml`
 - `pytest-asyncio` mode is `strict` — all async tests need `@pytest.mark.asyncio`
 - `DATABASE_URL` is configured via `.env.test` for the shared test database
 - `TENSORZERO_GATEWAY_URL` points to the TensorZero gateway for LLM routing

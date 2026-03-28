@@ -156,9 +156,9 @@ class GoldenImageBuilder:
                 'ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"',
                 "",
                 "# Python dependencies",
-                "COPY requirements-tools.txt .",
+                "COPY requirements/worker.txt .",
                 "RUN pip install --no-cache-dir --upgrade pip && \\",
-                "    pip install --no-cache-dir -r requirements-tools.txt",
+                "    pip install --no-cache-dir -r worker.txt",
                 "",
             ]
         )
@@ -223,7 +223,7 @@ class GoldenImageBuilder:
             logger.info("Building golden image %s from %d plugins...", temp_tag, len(plugins))
 
             # Write Dockerfile to temp dir and build
-            # The build context needs to include requirements-tools.txt, app/, and plugins/
+            # The build context needs to include requirements/worker.txt, app/, and plugins/
             project_root = Path(plugins_dir).resolve().parent
 
             def _do_build() -> tuple[Any, list[str]]:
