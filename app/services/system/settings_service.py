@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import SettingsUpdate
 from app.core.config import settings
-from app.services.system.runtime_ai_config import apply_ai_settings
 from app.services.system.runtime_settings import (
     hydrate_runtime_settings_from_db,
     upsert_system_config_values,
