@@ -119,7 +119,7 @@ docker compose -f docker/docker-compose.yml up -d
 
 ### 3. Access the dashboard
 
-Open http://localhost:5000 — on first run you'll be redirected to `/setup` to create your admin account.
+Open <http://localhost:5000> — on first run you'll be redirected to `/setup` to create your admin account.
 
 ### 4. Configure AI provider
 

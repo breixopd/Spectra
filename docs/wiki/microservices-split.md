@@ -107,6 +107,7 @@ Direct service-to-service calls use HTTP with a shared secret for authentication
 ```
 
 Configuration:
+
 ```bash
 SERVICE_AUTH_SECRET=<shared-secret>   # Same value on all services
 AI_SERVICE_URL=http://ai-svc:5010    # Core API → AI Service
