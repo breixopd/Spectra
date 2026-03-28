@@ -1,5 +1,6 @@
 """Edge-case tests for the webhook service: failed delivery, signature verification, deduplication."""
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -189,7 +190,11 @@ async def test_fire_does_not_duplicate_delivery_to_same_hook():
 
     with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
         with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
-            mock_task.side_effect = lambda coro: coro
+            def _close_coro(coro):
+                if asyncio.iscoroutine(coro):
+                    coro.close()
+                return MagicMock()
+            mock_task.side_effect = _close_coro
             await svc.fire("mission.completed", {"id": "m-1"})
 
     assert mock_task.call_count == 1
@@ -229,7 +234,11 @@ async def test_fire_multiple_hooks_each_get_one_delivery():
 
     with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
         with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
-            mock_task.side_effect = lambda coro: coro
+            def _close_coro(coro):
+                if asyncio.iscoroutine(coro):
+                    coro.close()
+                return MagicMock()
+            mock_task.side_effect = _close_coro
             await svc.fire("mission.completed", {"id": "m-1"})
 
     assert mock_task.call_count == 2

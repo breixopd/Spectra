@@ -48,6 +48,7 @@ def _build_app(override_user: MagicMock | None = None) -> FastAPI:
 def _mock_session():
     """Return an AsyncMock posing as an AsyncSession."""
     session = AsyncMock()
+    session.add = MagicMock()  # sync method — avoid AsyncMock coroutine warning
     return session
 
 

@@ -239,9 +239,12 @@ class TestTargetCreationSetsUserId:
         fake_target.created_at = MagicMock()
         fake_target.created_at.isoformat.return_value = "2026-01-01T00:00:00"
 
+        mock_db.add = MagicMock()  # session.add is sync
+
         with (
             patch("app.api.routers.targets.check_target_limit", new_callable=AsyncMock),
             patch("app.api.routers.targets.TargetRepository") as MockRepo,
+            patch("app.api.routers.targets.audit_log_event", new_callable=AsyncMock),
         ):
             repo_instance = AsyncMock()
             MockRepo.return_value = repo_instance

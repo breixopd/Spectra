@@ -48,6 +48,7 @@ class TestVerifyPasswordResetToken:
 def _mock_async_session():
     """Build a mock async session context usable by Depends."""
     session = AsyncMock()
+    session.add = MagicMock()  # sync method — avoid AsyncMock coroutine warning
     session.commit = AsyncMock()
     return session
 

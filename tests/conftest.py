@@ -88,21 +88,59 @@ def mock_websocket_for_unit_tests(request):
     # Also mock create_task to handle cases in sync tests
     original_create_task = asyncio.create_task
 
+    # Background function names that must never run as real tasks in unit tests.
+    _BACKGROUND_CORO_NAMES = frozenset({
+        "cache_cleanup_loop",
+        "periodic_cleanup_loop",
+        "load_embeddings_with_status",
+        "_initialize_services.<locals>.load_embeddings_with_status",
+        "_keepalive",
+        "AsyncMockMixin._execute_mock_call",
+        "sandbox_watchdog_loop",
+        "warm_pool_maintain_loop",
+        "run_startup_tasks",
+    })
+
     def safe_create_task(coro, **kwargs):
-        """Wrap create_task to handle mock coroutines safely."""
+        """Wrap create_task: close known background coroutines, schedule the rest."""
+        if asyncio.iscoroutine(coro):
+            name = getattr(coro, "__qualname__", "") or ""
+            if any(bg in name for bg in _BACKGROUND_CORO_NAMES):
+                # Use throw(GeneratorExit) instead of close() to suppress
+                # Python 3.12 "coroutine never awaited" warnings.
+                try:
+                    coro.throw(GeneratorExit)
+                except (GeneratorExit, StopIteration):
+                    pass
+                except Exception:
+                    pass
+                return MagicMock()
         try:
             asyncio.get_running_loop()
             return original_create_task(coro, **kwargs)
         except RuntimeError:
-            # No running loop - we're in sync context
-            # Just consume the coroutine to avoid warnings
             if asyncio.iscoroutine(coro):
                 coro.close()
             return MagicMock()
 
-    with patch("app.core.websocket.manager.broadcast", mock_broadcast):
-        with patch("asyncio.create_task", safe_create_task):
-            yield
+    mock_broadcast_event = AsyncMock(return_value=None)
+
+    mock_emit_sync = MagicMock()
+    mock_cache_loop = AsyncMock(return_value=None)
+    mock_periodic_loop = AsyncMock(return_value=None)
+    mock_lifespan_create_task = MagicMock(return_value=None)
+
+    with (
+        patch("app.core.websocket.manager.broadcast", mock_broadcast),
+        patch("app.core.websocket.manager.broadcast_event", mock_broadcast_event),
+        patch("app.core.events.EventBus.emit_sync", mock_emit_sync),
+        patch("app.core.background_tasks.cache_cleanup_loop", mock_cache_loop),
+        patch("app.core.background_tasks.periodic_cleanup_loop", mock_periodic_loop),
+        patch("app.core.lifespan.asyncio.create_task", mock_lifespan_create_task),
+        patch("app.api.routers.shell.asyncio.create_task", mock_lifespan_create_task),
+        patch("asyncio.create_task", safe_create_task),
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)

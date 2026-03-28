@@ -63,6 +63,7 @@ async def client():
     app.dependency_overrides[get_current_active_user] = lambda: user
 
     mock_session = AsyncMock()
+    mock_session.add = MagicMock()  # sync method
     mock_session.commit = AsyncMock()
 
     async def _get_session():
@@ -82,6 +83,7 @@ async def unauth_client():
     from app.core.database import get_async_session
 
     mock_session = AsyncMock()
+    mock_session.add = MagicMock()  # sync method
 
     async def _get_session():
         yield mock_session

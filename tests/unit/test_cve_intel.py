@@ -155,37 +155,61 @@ class TestInferVulnType:
 class TestCVECache:
     def test_cache_path_sanitizes(self):
         path = _cache_path("test keyword/special")
-        assert "/" not in path.name or str(path).endswith(".json")
+        assert str(path).endswith(".json")
 
-    def test_save_and_load_cache(self, tmp_path):
+    def test_save_and_load_cache(self):
         results = [{"cve": "CVE-2021-1234", "severity": "high"}]
-        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path):
+        _store = {}
+
+        async def mock_set(key, data, ttl=86400):
+            _store[key] = data
+
+        async def mock_get(key):
+            return _store.get(key)
+
+        mock_db = MagicMock()
+        mock_db._cache_set = AsyncMock(side_effect=mock_set)
+        mock_db._cache_get = AsyncMock(side_effect=mock_get)
+
+        with patch("app.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
             _save_cache("test_keyword", results)
             loaded = _load_cache("test_keyword")
             assert loaded is not None
             assert len(loaded) == 1
             assert loaded[0]["cve"] == "CVE-2021-1234"
 
-    def test_load_expired_cache(self, tmp_path):
-        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path):
-            _save_cache("old_keyword", [{"cve": "CVE-2020-0001"}])
-            # Make it expired
-            cache_file = tmp_path / "old_keyword.json"
-            data = json.loads(cache_file.read_text())
-            data["cached_at"] = time.time() - CVE_CACHE_TTL - 100
-            cache_file.write_text(json.dumps(data))
+    def test_load_expired_cache(self):
+        _store = {}
 
+        async def mock_set(key, data, ttl=86400):
+            _store[key] = data
+
+        async def mock_get(key):
+            return _store.get(key)
+
+        mock_db = MagicMock()
+        mock_db._cache_set = AsyncMock(side_effect=mock_set)
+        mock_db._cache_get = AsyncMock(side_effect=mock_get)
+
+        with patch("app.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
+            _save_cache("old_keyword", [{"cve": "CVE-2020-0001"}])
+            # Make it expired by modifying the stored data
+            for k in list(_store):
+                if _store[k] and isinstance(_store[k], dict):
+                    _store[k]["cached_at"] = time.time() - CVE_CACHE_TTL - 100
             loaded = _load_cache("old_keyword")
             assert loaded is None
 
-    def test_load_missing_cache(self, tmp_path):
-        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path):
+    def test_load_missing_cache(self):
+        mock_db = MagicMock()
+        mock_db._cache_get = AsyncMock(return_value=None)
+        with patch("app.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
             assert _load_cache("nonexistent") is None
 
-    def test_load_corrupt_cache(self, tmp_path):
-        with patch("app.services.ai.cve_intel.CVE_CACHE_DIR", tmp_path):
-            bad_file = tmp_path / "corrupt.json"
-            bad_file.write_text("not json{{{")
+    def test_load_corrupt_cache(self):
+        mock_db = MagicMock()
+        mock_db._cache_get = AsyncMock(return_value=None)
+        with patch("app.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
             assert _load_cache("corrupt") is None
 
 

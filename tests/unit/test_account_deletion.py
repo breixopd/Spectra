@@ -43,6 +43,7 @@ def mock_user():
 @pytest.fixture
 def mock_session():
     session = AsyncMock()
+    session.add = MagicMock()  # sync method — avoid AsyncMock coroutine warning
     execute_result = MagicMock()
     execute_result.scalar_one_or_none.return_value = None
     session.execute.return_value = execute_result
