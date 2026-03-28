@@ -17,6 +17,15 @@ from typing import TYPE_CHECKING, Any
 
 # Keep these imports in *this* module's namespace so that existing tests
 # (which ``patch("app.services.tools.service.<Name>")`` ) keep working.
+from app.core.constants import (
+    TOOL_DEFAULT_TIMEOUT,
+    TOOL_INSTALL_TIMEOUT,
+    TOOL_JOB_BUFFER_TIMEOUT,
+    TOOL_MAX_CONCURRENCY,
+    TOOL_MAX_RETRIES,
+    TOOL_MAX_STDERR_CHARS,
+    TOOL_MAX_STDOUT_CHARS,
+)
 from app.services.ai.agents.base import AgentContext, ToolAction  # noqa: F401
 from app.services.ai.agents.safety import SafetySupervisorAgent  # noqa: F401
 from app.services.ai.consensus import VotingSystem  # noqa: F401
@@ -79,14 +88,14 @@ class ToolExecutionService:
     by delegating to focused helper modules.
     """
 
-    # --- Tuneable constants ---------------------------------------------------
-    DEFAULT_TIMEOUT = 300  # seconds
-    JOB_BUFFER_TIMEOUT = 60  # extra seconds on top of tool timeout
-    MAX_STDOUT_CHARS = 3000
-    MAX_STDERR_CHARS = 500
-    INSTALL_TIMEOUT = 600  # seconds
-    MAX_CONCURRENCY = 5
-    MAX_RETRIES = 2
+    # --- Tuneable constants (defined in app.core.constants) ------------------
+    DEFAULT_TIMEOUT = TOOL_DEFAULT_TIMEOUT
+    JOB_BUFFER_TIMEOUT = TOOL_JOB_BUFFER_TIMEOUT
+    MAX_STDOUT_CHARS = TOOL_MAX_STDOUT_CHARS
+    MAX_STDERR_CHARS = TOOL_MAX_STDERR_CHARS
+    INSTALL_TIMEOUT = TOOL_INSTALL_TIMEOUT
+    MAX_CONCURRENCY = TOOL_MAX_CONCURRENCY
+    MAX_RETRIES = TOOL_MAX_RETRIES
 
     @staticmethod
     def _get_queue_name(mission_id: str) -> str:

@@ -11,11 +11,10 @@ import logging
 import aiohttp
 from typing_extensions import TypedDict
 
+from app.core.constants import GEOIP_API_URL, GEOIP_TIMEOUT
+
 logger = logging.getLogger(__name__)
 
-# API configuration
-GEOIP_API_URL = "https://ipwho.is"
-GEOIP_TIMEOUT = 5  # seconds
 
 
 class GeoLocation(TypedDict):

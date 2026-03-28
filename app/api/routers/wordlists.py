@@ -17,6 +17,15 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user
+from app.core.constants import (
+    SECLISTS_COMMON_PASSWORDS_URL,
+    SECLISTS_COMMON_WEB_URL,
+    SECLISTS_SUBDOMAINS_TOP5000_URL,
+    SECLISTS_TOP_USERNAMES_URL,
+)
+from app.core.constants import (
+    WORDLISTS_DIR as WORDLISTS_DIR_STR,
+)
 from app.core.database import get_async_session
 from app.models.user import User
 
@@ -24,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/wordlists", tags=["Wordlists"])
 
-WORDLISTS_DIR = Path("wordlists")
+WORDLISTS_DIR = Path(WORDLISTS_DIR_STR)
 
 
 def _user_wordlists_dir(user: User) -> Path:
@@ -38,28 +47,28 @@ PRESET_WORDLISTS = {
     "common-web-paths": {
         "name": "Common Web Paths",
         "description": "Most common web directory and file paths (~4,600 entries)",
-        "url": "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt",
+        "url": SECLISTS_COMMON_WEB_URL,
         "category": "web",
         "tool_hint": "gobuster, ffuf, dirsearch, feroxbuster",
     },
     "top-usernames": {
         "name": "Top Usernames",
         "description": "Common usernames for brute-force testing (~8,900 entries)",
-        "url": "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Usernames/top-usernames-shortlist.txt",
+        "url": SECLISTS_TOP_USERNAMES_URL,
         "category": "auth",
         "tool_hint": "hydra",
     },
     "common-passwords": {
         "name": "Common Passwords",
         "description": "Top 1000 most common passwords",
-        "url": "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Common-Credentials/top-1000.txt",
+        "url": SECLISTS_COMMON_PASSWORDS_URL,
         "category": "auth",
         "tool_hint": "hydra",
     },
     "subdomains-top5000": {
         "name": "Subdomains Top 5000",
         "description": "Top 5000 subdomains for DNS enumeration",
-        "url": "https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-5000.txt",
+        "url": SECLISTS_SUBDOMAINS_TOP5000_URL,
         "category": "dns",
         "tool_hint": "subfinder, amass, gobuster dns",
     },

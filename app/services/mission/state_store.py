@@ -8,24 +8,23 @@ from typing import Any
 
 from sqlalchemy import delete, select
 
+from app.core.constants import MISSION_STATE_KEY_PREFIX, MISSION_STATE_TTL_MINUTES
 from app.core.database import async_session_maker
 from app.models.infrastructure import SystemCache
 
 logger = logging.getLogger(__name__)
 
 # Key patterns
-_KEY_PREFIX = "mission_state:"
-_DEFAULT_TTL_MINUTES = 120  # Auto-cleanup abandoned missions after 2 hours
 
 
 class MissionStateStore:
     """Persist active mission state to PostgreSQL for horizontal scaling."""
 
-    def __init__(self, ttl_minutes: int = _DEFAULT_TTL_MINUTES):
+    def __init__(self, ttl_minutes: int = MISSION_STATE_TTL_MINUTES):
         self.ttl_minutes = ttl_minutes
 
     def _key(self, mission_id: str) -> str:
-        return f"{_KEY_PREFIX}{mission_id}"
+        return f"{MISSION_STATE_KEY_PREFIX}{mission_id}"
 
     async def register(self, mission_id: str, state: dict[str, Any]) -> None:
         """Register a new active mission in the store."""
@@ -87,7 +86,7 @@ class MissionStateStore:
         async with async_session_maker() as session:
             result = await session.execute(
                 select(SystemCache).where(
-                    SystemCache.key.like(f"{_KEY_PREFIX}%"),
+                    SystemCache.key.like(f"{MISSION_STATE_KEY_PREFIX}%"),
                     (SystemCache.expires_at.is_(None)) | (SystemCache.expires_at >= now),
                 )
             )
@@ -110,7 +109,7 @@ class MissionStateStore:
         async with async_session_maker() as session:
             result = await session.execute(
                 delete(SystemCache).where(
-                    SystemCache.key.like(f"{_KEY_PREFIX}%"),
+                    SystemCache.key.like(f"{MISSION_STATE_KEY_PREFIX}%"),
                     SystemCache.expires_at < now,
                 )
             )

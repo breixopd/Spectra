@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import settings
+from app.core.constants import CACHE_CLEANUP_INTERVAL, SYSTEM_CLEANUP_INTERVAL
 from app.core.database import async_session_maker
 
 if TYPE_CHECKING:
@@ -21,18 +22,15 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_CACHE_CLEANUP_INTERVAL = 600
-_SYSTEM_CLEANUP_INTERVAL = 3600
-
 
 async def cache_cleanup_loop() -> None:
     """Periodically purge expired cache entries."""
     from app.core.cache import get_cache
 
-    logger.info("Cache cleanup task started (interval=%ds)", _CACHE_CLEANUP_INTERVAL)
+    logger.info("Cache cleanup task started (interval=%ds)", CACHE_CLEANUP_INTERVAL)
     while True:
         try:
-            await asyncio.sleep(_CACHE_CLEANUP_INTERVAL)
+            await asyncio.sleep(CACHE_CLEANUP_INTERVAL)
             cache = get_cache()
             if cache:
                 removed = await cache.purge_expired()
@@ -47,10 +45,10 @@ async def cache_cleanup_loop() -> None:
 
 async def periodic_cleanup_loop() -> None:
     """Periodically run system maintenance cleanup tasks."""
-    logger.info("System cleanup task started (interval=%ds)", _SYSTEM_CLEANUP_INTERVAL)
+    logger.info("System cleanup task started (interval=%ds)", SYSTEM_CLEANUP_INTERVAL)
     while True:
         try:
-            await asyncio.sleep(_SYSTEM_CLEANUP_INTERVAL)
+            await asyncio.sleep(SYSTEM_CLEANUP_INTERVAL)
             from app.worker.cleanup_jobs import run_all_cleanup
             await run_all_cleanup()
         except asyncio.CancelledError:

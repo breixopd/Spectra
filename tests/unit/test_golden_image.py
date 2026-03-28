@@ -73,7 +73,8 @@ class TestGoldenImageBuilder:
         assert len(plugins) == 0
 
     def test_generate_dockerfile_contains_base_image(self, tmp_path):
-        from app.services.tools.sandbox.golden_image import BASE_IMAGE, GoldenImageBuilder
+        from app.core.constants import SANDBOX_BASE_IMAGE as BASE_IMAGE
+        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
 
         plugins = [
             {

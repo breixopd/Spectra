@@ -21,6 +21,7 @@ from app.api.dependencies import check_resource_owner, get_current_active_user
 from app.api.schemas import FindingResponse, PaginatedResponse
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
+from app.core.constants import MAX_BULK_FINDINGS
 from app.core.database import get_async_session
 from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
@@ -32,7 +33,6 @@ from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 
-MAX_BULK_SIZE = 100
 
 router = APIRouter(prefix="/findings", tags=["Findings"])
 
@@ -691,7 +691,7 @@ async def retest_finding(
 class BulkUpdateRequest(BaseModel):
     """Request body for bulk-updating findings."""
 
-    finding_ids: list[str] = Field(..., max_length=MAX_BULK_SIZE)
+    finding_ids: list[str] = Field(..., max_length=MAX_BULK_FINDINGS)
     update: FindingUpdate
 
 
@@ -713,10 +713,10 @@ async def bulk_update_findings(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Bulk update multiple findings. Max 100 per request."""
-    if len(request.finding_ids) > MAX_BULK_SIZE:
+    if len(request.finding_ids) > MAX_BULK_FINDINGS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Maximum {MAX_BULK_SIZE} findings per batch",
+            detail=f"Maximum {MAX_BULK_FINDINGS} findings per batch",
         )
 
     repo = FindingRepository(db)

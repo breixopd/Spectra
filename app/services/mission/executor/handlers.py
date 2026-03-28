@@ -47,7 +47,7 @@ PHASE_TRANSITION_RULES: dict[str, dict[str, Any]] = {
     },
 }
 
-MAX_CHAIN_DEPTH = 10  # Prevent infinite chaining
+from app.core.constants import MAX_CHAIN_DEPTH
 
 if TYPE_CHECKING:
     from app.services.ai.agents.base import BaseAgent

@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket
 from sqlalchemy import select
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user, validate_websocket_token
+from app.core.constants import WS_KEEPALIVE_INTERVAL
 from app.core.database import async_session_maker
 from app.core.rate_limit import limiter
 from app.models.audit_log import AuditEventType
@@ -25,14 +26,12 @@ from app.services.system.audit import log_event as audit_log_event
 router = APIRouter(prefix="/shell", tags=["Shell"])
 logger = logging.getLogger(__name__)
 
-KEEPALIVE_INTERVAL = 30  # seconds
-
 
 async def _keepalive(websocket: WebSocket) -> None:
     """Send periodic pings to keep the WebSocket connection alive."""
     try:
         while True:
-            await asyncio.sleep(KEEPALIVE_INTERVAL)
+            await asyncio.sleep(WS_KEEPALIVE_INTERVAL)
             await websocket.send_json({"type": "ping"})
     except OSError:
         pass
