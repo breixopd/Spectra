@@ -91,6 +91,7 @@ docker compose -f docker/docker-compose.yml up -d
 ```
 
 This starts all services as separate containers with health checks:
+
 - `spectra-app` — Core API + Web UI
 - `spectra-ai-svc` — AI/LLM service
 - `spectra-scheduler` — Background tasks
@@ -212,6 +213,7 @@ Caddy automatically provisions a Let's Encrypt certificate. Cloudflare proxies t
 ## Production: Docker Compose
 
 The main Compose file (`docker/docker-compose.yml`) is pre-configured with:
+
 - Resource limits on all containers
 - MinIO for S3 storage (internal only, no exposed ports)
 - Caddy reverse proxy
