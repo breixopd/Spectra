@@ -5,8 +5,8 @@ Handles user login, setup, and token generation.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Annotated, TYPE_CHECKING
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -65,7 +65,7 @@ LOCKOUT_DURATION_2 = 1800 # 30 minutes
 
 async def _check_lockout(user: "User") -> None:
     """Raise 429 if the user account is currently locked."""
-    if user.locked_until and user.locked_until > datetime.now(timezone.utc):
+    if user.locked_until and user.locked_until > datetime.now(UTC):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Account temporarily locked due to too many failed attempts",
@@ -78,9 +78,9 @@ async def _record_failure(user: "User", session: "AsyncSession") -> None:
     count = user.login_fail_count
 
     if count >= LOCKOUT_THRESHOLD_2:
-        user.locked_until = datetime.now(timezone.utc) + timedelta(seconds=LOCKOUT_DURATION_2)
+        user.locked_until = datetime.now(UTC) + timedelta(seconds=LOCKOUT_DURATION_2)
     elif count >= LOCKOUT_THRESHOLD_1:
-        user.locked_until = datetime.now(timezone.utc) + timedelta(seconds=LOCKOUT_DURATION_1)
+        user.locked_until = datetime.now(UTC) + timedelta(seconds=LOCKOUT_DURATION_1)
 
     await session.commit()
 
@@ -635,7 +635,7 @@ async def change_password(
         raise HTTPException(400, "Current password is incorrect")
 
     user.hashed_password = get_password_hash(body.new_password)
-    user.invalidated_before = datetime.now(timezone.utc)
+    user.invalidated_before = datetime.now(UTC)
     await session.commit()
 
     await audit_log_event(
@@ -738,7 +738,7 @@ async def reset_password(
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     user.hashed_password = get_password_hash(body.new_password)
-    user.invalidated_before = datetime.now(timezone.utc)
+    user.invalidated_before = datetime.now(UTC)
     await session.commit()
 
     await audit_log_event(

@@ -11,7 +11,6 @@ Agents get real CVE data instead of hallucinating IDs.
 """
 
 import asyncio
-import json
 import logging
 import time
 from datetime import datetime

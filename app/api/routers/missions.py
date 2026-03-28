@@ -72,7 +72,7 @@ async def get_missions_summary(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get aggregated mission summary with finding counts — single query, no N+1."""
-    from sqlalchemy import func, select
+    from sqlalchemy import select
 
     from app.models.mission import Mission
 
@@ -865,7 +865,6 @@ async def submit_mission_feedback(
     await db.commit()
 
     try:
-        from app.services.ai.feedback import send_quality_score
         score = (feedback.rating - 1) / 4.0
         logger.info("Mission %s feedback: %d stars (score=%.2f)", mission_id, feedback.rating, score)
     except Exception:
