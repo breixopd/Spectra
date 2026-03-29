@@ -278,8 +278,9 @@ function initASGraph() {
 
 async function loadAttackSurface() {
     try {
-        const { data: targets, error } = await spectraApi.get('/api/v1/targets');
+        const { data, error } = await spectraApi.get('/api/v1/targets');
         if (error) return;
+        const targets = data?.items || [];
         if (targets.length === 0) return;
         if (!asCy) initASGraph();
         asCy.elements().remove();

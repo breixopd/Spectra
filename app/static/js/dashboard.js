@@ -525,9 +525,9 @@ document.addEventListener('DOMContentLoaded', () => {
     addTerminalLine('Dashboard ready.', 'success');
 
     // Check for active mission and initialize graph with its data
-    spectraApi.get('/api/v1/missions?status=running&limit=1')
-        .then(({ data: missions }) => {
-            missions = missions || [];
+    spectraApi.get('/api/v1/missions?status=running&page=1&per_page=1')
+        .then(({ data }) => {
+            const missions = data?.items || [];
             const mission = Array.isArray(missions) && missions.length > 0 ? missions[0] : null;
             if (mission && mission.id) {
                 currentMissionId = mission.id;
