@@ -59,6 +59,16 @@ done
 
 # ── Supplementary checks (best-effort) ──────────────────────────
 
+# Derive base URL from the primary URL (strip path)
+BASE_URL=$(echo "$URL" | sed 's|/api/health.*||')
+
+# Public status endpoint — verifies public API routes work
+if curl -sf --max-time 10 "${BASE_URL}/api/v1/system/public-status" > /dev/null 2>&1; then
+    echo "Supplementary check passed: public-status"
+else
+    echo "WARN: /api/v1/system/public-status did not respond (non-critical)"
+fi
+
 REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
 
 # Redis: check if reachable via docker container
@@ -76,6 +86,35 @@ if docker ps -q -f "name=spectra-db" 2>/dev/null | grep -q .; then
         echo "Supplementary check passed: PostgreSQL (pg_isready)"
     else
         echo "WARN: PostgreSQL container exists but is not ready"
+    fi
+fi
+
+# ── Deep checks (opt-in) ─────────────────────────────────────────
+
+if [ "${HEALTH_CHECK_FULL:-0}" = "1" ]; then
+    echo "Running full deep health checks..."
+
+    # AI service direct check (if AI_SERVICE_URL is set)
+    if [ -n "${AI_SERVICE_URL:-}" ]; then
+        if curl -sf --max-time 10 "${AI_SERVICE_URL}/health" > /dev/null 2>&1; then
+            echo "Deep check passed: AI service (${AI_SERVICE_URL})"
+        else
+            echo "WARN: AI service not responding at ${AI_SERVICE_URL}"
+        fi
+    fi
+
+    # Worker status via app proxy
+    if curl -sf --max-time 10 "${BASE_URL}/api/v1/worker/status" > /dev/null 2>&1; then
+        echo "Deep check passed: worker status proxy"
+    else
+        echo "WARN: Worker status endpoint did not respond"
+    fi
+
+    # Storage health via app proxy
+    if curl -sf --max-time 10 "${BASE_URL}/api/v1/system/storage-health" > /dev/null 2>&1; then
+        echo "Deep check passed: storage health"
+    else
+        echo "WARN: Storage health endpoint did not respond"
     fi
 fi
 

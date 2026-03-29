@@ -296,7 +296,7 @@ async def list_backups(
 
 
 class RestoreRequest(BaseModel):
-    backup_path: str
+    backup_id: str
 
 
 @router.post("/api/admin/backups/restore")
@@ -305,11 +305,11 @@ async def restore_backup(
     body: RestoreRequest,
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
-    """Restore database from a backup file."""
+    """Restore database from an S3 backup."""
     from app.services.infrastructure.backup import BackupService
 
     svc = BackupService()
-    result = await svc.restore_backup(body.backup_path)
+    result = await svc.restore_backup(body.backup_id)
 
     async with async_session_maker() as session:
         await audit_log_event(
