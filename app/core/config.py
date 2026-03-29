@@ -130,6 +130,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     # Security
     SECRET_KEY: SecretStr = SecretStr("change-me-in-production")  # Overridden by get_settings()
+    ENCRYPTION_KEY: str = ""  # Separate key for data encryption (MFA secrets, BYOK credentials). Falls back to JWT_SECRET_KEY.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
