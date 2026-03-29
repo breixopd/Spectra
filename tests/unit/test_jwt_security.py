@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import Response
 from starlette.requests import Request
 
 from app.core.security import (
@@ -59,6 +60,14 @@ def _mock_async_session_maker_with_user(user):
     mock_ctx.__aenter__ = AsyncMock(return_value=mock_session)
     mock_ctx.__aexit__ = AsyncMock(return_value=False)
     return MagicMock(return_value=mock_ctx)
+
+
+def _set_cookie_headers(response: Response) -> list[str]:
+    return [
+        value.decode("latin-1")
+        for key, value in response.raw_headers
+        if key.lower() == b"set-cookie"
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -270,25 +279,41 @@ async def test_validate_websocket_token_rejects_user_invalidated_before():
 
 
 def test_login_response_sets_httponly_secure_cookie():
-    """The login endpoint sets cookie with httponly, secure, samesite=strict."""
-    import inspect
+    """The auth helper writes both cookies with secure, strict headers."""
+    from app.api.routers.auth import (
+        ACCESS_COOKIE_KEY,
+        REFRESH_COOKIE_KEY,
+        _set_auth_cookies,
+    )
 
-    from app.api.routers.auth import _set_auth_cookies
+    response = Response()
+    _set_auth_cookies(response, "access-token", "refresh-token")
 
-    source = inspect.getsource(_set_auth_cookies)
-    assert "httponly=True" in source
-    assert "secure=True" in source
-    assert 'AUTH_COOKIE_SAMESITE = "strict"' in source or 'samesite=AUTH_COOKIE_SAMESITE' in source
+    headers = _set_cookie_headers(response)
+    assert len(headers) == 2
+    assert any(header.startswith(f"{ACCESS_COOKIE_KEY}=access-token") for header in headers)
+    assert any(header.startswith(f"{REFRESH_COOKIE_KEY}=refresh-token") for header in headers)
+    assert all("HttpOnly" in header for header in headers)
+    assert all("Secure" in header for header in headers)
+    assert all("samesite=strict" in header.lower() for header in headers)
 
 
 def test_logout_deletes_cookie_with_secure_flags():
-    """The logout endpoint deletes the cookie with httponly + secure flags."""
-    import inspect
+    """The auth helper clears both cookies with secure deletion headers."""
+    from app.api.routers.auth import (
+        ACCESS_COOKIE_PATH,
+        REFRESH_COOKIE_PATH,
+        _clear_auth_cookies,
+    )
 
-    from app.api.routers.auth import _clear_auth_cookies
+    response = Response()
+    _clear_auth_cookies(response)
 
-    source = inspect.getsource(_clear_auth_cookies)
-    assert "delete_cookie" in source
-    assert "httponly=True" in source
-    assert "secure=True" in source
-    assert 'AUTH_COOKIE_SAMESITE = "strict"' in source or 'samesite=AUTH_COOKIE_SAMESITE' in source
+    headers = _set_cookie_headers(response)
+    assert len(headers) == 2
+    assert any(f"Path={ACCESS_COOKIE_PATH}" in header for header in headers)
+    assert any(f"Path={REFRESH_COOKIE_PATH}" in header for header in headers)
+    assert all("Max-Age=0" in header for header in headers)
+    assert all("HttpOnly" in header for header in headers)
+    assert all("Secure" in header for header in headers)
+    assert all("samesite=strict" in header.lower() for header in headers)

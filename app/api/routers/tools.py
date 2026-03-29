@@ -116,6 +116,64 @@ def _cached_logs(payload: dict[str, str | list[str] | None]) -> list[str]:
     return [str(item) for item in logs if isinstance(item, str)]
 
 
+def _cached_text(
+    payload: dict[str, str | list[str] | None],
+    key: str,
+) -> str | None:
+    return str(payload.get(key) or "") or None
+
+
+async def _sync_registry_status_from_cache(registry: ToolRegistry) -> None:
+    try:
+        await registry.sync_status_from_cache()
+    except (OSError, ConnectionError, RuntimeError) as e:
+        logger.debug("Tool status sync failed: %s", e)
+
+
+def _get_tool_or_404(registry: ToolRegistry, tool_id: str) -> RegisteredTool:
+    tool = registry.get_tool(tool_id)
+    if not tool:
+        raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
+    return tool
+
+
+def _queue_background_job(
+    background_tasks: BackgroundTasks,
+    job_name: str,
+    *,
+    success_log: str,
+    failure_log: str,
+    **job_kwargs,
+) -> None:
+    async def _enqueue() -> None:
+        try:
+            from app.core.queue import PostgresJobQueue
+
+            queue = PostgresJobQueue()
+            await queue.enqueue_job(job_name, **job_kwargs)
+            logger.info(success_log)
+        except (OSError, RuntimeError, ConnectionError) as e:
+            logger.error("%s: %s", failure_log, e)
+
+    background_tasks.add_task(_enqueue)
+
+
+async def _write_tool_audit_event(
+    event_type: AuditEventType,
+    user_id: str,
+    request: Request,
+    details: dict[str, object],
+) -> None:
+    async with async_session_maker() as session:
+        await audit_log_event(
+            session,
+            event_type,
+            user_id=user_id,
+            details=details,
+            request=request,
+        )
+
+
 # --- Endpoints ---
 
 
@@ -284,11 +342,7 @@ async def list_tools(
 
     Optionally filter by category or status.
     """
-    # Sync tool status from cache (set by tools container worker)
-    try:
-        await registry.sync_status_from_cache()
-    except (OSError, ConnectionError, RuntimeError) as e:
-        logger.debug("Tool status sync failed: %s", e)
+    await _sync_registry_status_from_cache(registry)
 
     tools = registry.list_tools()
 
@@ -323,15 +377,8 @@ async def get_tool(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Get detailed information about a specific tool."""
-    try:
-        await registry.sync_status_from_cache()
-    except (OSError, ConnectionError, RuntimeError) as e:
-        logger.debug("Tool status sync failed: %s", e)
-
-    tool = registry.get_tool(tool_id)
-
-    if not tool:
-        raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
+    await _sync_registry_status_from_cache(registry)
+    tool = _get_tool_or_404(registry, tool_id)
 
     cached_status = await _get_cached_status(tool_id)
 
@@ -350,11 +397,11 @@ async def get_tool(
         timeout=tool.config.execution.timeout,
         icon=tool.config.ui.icon,
         color=tool.config.ui.color,
-        status_message=str(cached_status.get("message") or "") or None,
-        status_phase=str(cached_status.get("phase") or "") or None,
-        last_updated=str(cached_status.get("last_updated") or "") or None,
+        status_message=_cached_text(cached_status, "message"),
+        status_phase=_cached_text(cached_status, "phase"),
+        last_updated=_cached_text(cached_status, "last_updated"),
         install_logs=_cached_logs(cached_status),
-        last_output=str(cached_status.get("last_output") or "") or None,
+        last_output=_cached_text(cached_status, "last_output"),
     )
 
 
@@ -365,9 +412,7 @@ async def get_tool_execution_config(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Get full execution configuration for building a manual execution form."""
-    tool = registry.get_tool(tool_id)
-    if not tool:
-        raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
+    tool = _get_tool_or_404(registry, tool_id)
 
     config = tool.config
 
@@ -444,19 +489,13 @@ async def upload_plugin(
     # Add to registry
     try:
         tool = await registry.add_plugin(data)
-
-        # Queue background installation in the tools container
-        async def _trigger_install():
-            try:
-                from app.core.queue import PostgresJobQueue
-
-                queue = PostgresJobQueue()
-                await queue.enqueue_job("install_tool_job", tool_id=tool.config.id)
-                logger.info("Queued background install for %s", tool.config.id)
-            except (OSError, RuntimeError, ConnectionError) as e:
-                logger.error("Failed to queue install for %s: %s", tool.config.id, e)
-
-        background_tasks.add_task(_trigger_install)
+        _queue_background_job(
+            background_tasks,
+            "install_tool_job",
+            success_log=f"Queued background install for {tool.config.id}",
+            failure_log=f"Failed to queue install for {tool.config.id}",
+            tool_id=tool.config.id,
+        )
 
         return PluginUploadResponse(
             success=True,
@@ -483,27 +522,20 @@ async def install_all_tools(
 
     This is useful for initial setup or reinstalling all tools.
     """
+    _queue_background_job(
+        background_tasks,
+        "install_all_tools_job",
+        success_log="Queued install_all_tools job",
+        failure_log="Failed to queue install_all_tools",
+        force=force,
+    )
 
-    async def _install():
-        try:
-            from app.core.queue import PostgresJobQueue
-
-            queue = PostgresJobQueue()
-            await queue.enqueue_job("install_all_tools_job", force=force)
-            logger.info("Queued install_all_tools job")
-        except (OSError, RuntimeError, ConnectionError) as e:
-            logger.error("Failed to queue install_all_tools: %s", e)
-
-    background_tasks.add_task(_install)
-
-    async with async_session_maker() as session:
-        await audit_log_event(
-            session,
-            AuditEventType.TOOL_INSTALLED,
-            user_id=str(_current_user.id),
-            details={"action": "install_all"},
-            request=request,
-        )
+    await _write_tool_audit_event(
+        AuditEventType.TOOL_INSTALLED,
+        str(_current_user.id),
+        request,
+        {"action": "install_all"},
+    )
 
     return ToolQueueResponse(
         success=True,
@@ -527,10 +559,7 @@ async def install_tool(
     This queues the installation in the tools container and returns immediately.
     Check the tool's status via GET /tools/{tool_id} for progress.
     """
-    tool = registry.get_tool(tool_id)
-
-    if not tool:
-        raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
+    tool = _get_tool_or_404(registry, tool_id)
 
     if tool.status == ToolStatus.READY:
         return InstallToolResponse(
@@ -548,27 +577,20 @@ async def install_tool(
             message="Tool installation already in progress",
         )
 
-    # Queue installation via job queue worker in tools container
-    async def _install():
-        try:
-            from app.core.queue import PostgresJobQueue
+    _queue_background_job(
+        background_tasks,
+        "install_tool_job",
+        success_log=f"Queued install job for {tool_id}",
+        failure_log=f"Failed to queue install for {tool_id}",
+        tool_id=tool_id,
+    )
 
-            queue = PostgresJobQueue()
-            await queue.enqueue_job("install_tool_job", tool_id=tool_id)
-            logger.info("Queued install job for %s", tool_id)
-        except (OSError, RuntimeError, ConnectionError) as e:
-            logger.error("Failed to queue install for %s: %s", tool_id, e)
-
-    background_tasks.add_task(_install)
-
-    async with async_session_maker() as session:
-        await audit_log_event(
-            session,
-            AuditEventType.TOOL_INSTALLED,
-            user_id=str(_current_user.id),
-            details={"tool_id": tool_id},
-            request=request,
-        )
+    await _write_tool_audit_event(
+        AuditEventType.TOOL_INSTALLED,
+        str(_current_user.id),
+        request,
+        {"tool_id": tool_id},
+    )
 
     return InstallToolResponse(
         success=True,
@@ -590,14 +612,12 @@ async def enable_tool(
     """Enable a plugin for platform use."""
     tool = await registry.set_enabled(tool_id, True)
 
-    async with async_session_maker() as session:
-        await audit_log_event(
-            session,
-            AuditEventType.TOOL_ENABLED,
-            user_id=str(_current_user.id),
-            details={"tool_id": tool_id},
-            request=request,
-        )
+    await _write_tool_audit_event(
+        AuditEventType.TOOL_ENABLED,
+        str(_current_user.id),
+        request,
+        {"tool_id": tool_id},
+    )
 
     return InstallToolResponse(
         success=True,
@@ -619,14 +639,12 @@ async def disable_tool(
     """Disable a plugin so it is hidden from platform execution paths."""
     tool = await registry.set_enabled(tool_id, False)
 
-    async with async_session_maker() as session:
-        await audit_log_event(
-            session,
-            AuditEventType.TOOL_DISABLED,
-            user_id=str(_current_user.id),
-            details={"tool_id": tool_id},
-            request=request,
-        )
+    await _write_tool_audit_event(
+        AuditEventType.TOOL_DISABLED,
+        str(_current_user.id),
+        request,
+        {"tool_id": tool_id},
+    )
 
     return InstallToolResponse(
         success=True,
@@ -651,14 +669,12 @@ async def remove_tool(
     if not success:
         raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
 
-    async with async_session_maker() as session:
-        await audit_log_event(
-            session,
-            AuditEventType.TOOL_REMOVED,
-            user_id=str(_current_user.id),
-            details={"tool_id": tool_id},
-            request=request,
-        )
+    await _write_tool_audit_event(
+        AuditEventType.TOOL_REMOVED,
+        str(_current_user.id),
+        request,
+        {"tool_id": tool_id},
+    )
 
     return ToolRemoveResponse(success=True, message=f"Tool '{tool_id}' removed")
 
@@ -694,9 +710,7 @@ async def test_tool(
     Useful for debugging tool configuration and output parsing.
     Returns raw stdout/stderr, exit code, parsed findings, and execution details.
     """
-    tool = registry.get_tool(tool_id)
-    if not tool:
-        raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
+    tool = _get_tool_or_404(registry, tool_id)
 
     try:
         from app.core.queue import Job, PostgresJobQueue
@@ -717,14 +731,12 @@ async def test_tool(
         job = Job(job_id)
         result = await job.result(timeout=timeout or 300)
 
-        async with async_session_maker() as session:
-            await audit_log_event(
-                session,
-                AuditEventType.TOOL_EXECUTED,
-                user_id=str(_current_user.id),
-                details={"tool_id": tool_id},
-                request=request,
-            )
+        await _write_tool_audit_event(
+            AuditEventType.TOOL_EXECUTED,
+            str(_current_user.id),
+            request,
+            {"tool_id": tool_id},
+        )
 
         # Return detailed result for debugging
         return TestExecutionResponse(
@@ -763,9 +775,7 @@ async def get_tool_stats(
     """
     from app.core.cache import get_cache
 
-    tool = registry.get_tool(tool_id)
-    if not tool:
-        raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
+    _get_tool_or_404(registry, tool_id)
 
     cache = get_cache()
     if not cache:
@@ -779,11 +789,11 @@ async def get_tool_stats(
         if not stats or not isinstance(stats, dict):
             return ToolStatsResponse(
                 tool_id=tool_id,
-                status=str(status_payload.get("status") or "") or None,
-                status_message=str(status_payload.get("message") or "") or None,
-                last_updated=str(status_payload.get("last_updated") or "") or None,
+                status=_cached_text(status_payload, "status"),
+                status_message=_cached_text(status_payload, "message"),
+                last_updated=_cached_text(status_payload, "last_updated"),
                 install_logs=_cached_logs(status_payload),
-                error=str(status_payload.get("error") or "") or None,
+                error=_cached_text(status_payload, "error"),
             )
 
         return ToolStatsResponse(
@@ -793,11 +803,11 @@ async def get_tool_stats(
             fail_count=int(stats.get("fail_count", 0)),
             last_run=stats.get("last_run"),
             last_duration=float(stats["last_duration"]) if stats.get("last_duration") else None,
-            status=str(status_payload.get("status") or "") or None,
-            status_message=str(status_payload.get("message") or "") or None,
-            last_updated=str(status_payload.get("last_updated") or "") or None,
+            status=_cached_text(status_payload, "status"),
+            status_message=_cached_text(status_payload, "message"),
+            last_updated=_cached_text(status_payload, "last_updated"),
             install_logs=_cached_logs(status_payload),
-            error=str(status_payload.get("error") or "") or None,
+            error=_cached_text(status_payload, "error"),
         )
     except (OSError, RuntimeError, KeyError, ValueError) as e:
         logger.error("Failed to get stats for %s: %s", tool_id, e)
