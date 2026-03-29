@@ -1,0 +1,393 @@
+"""Unit tests for the scheduler service."""
+
+from __future__ import annotations
+
+import asyncio
+import sys
+from datetime import UTC, datetime
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from tests.helpers import make_module
+
+
+class _AwaitableTask:
+    def __init__(self, exc: BaseException | None = None):
+        self._exc = exc
+        self.cancel = MagicMock()
+
+    def __await__(self):
+        async def _inner():
+            if self._exc is not None:
+                raise self._exc
+            return None
+
+        return _inner().__await__()
+
+
+@pytest.mark.asyncio
+async def test_start_schedules_expected_background_tasks():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    tasks: list[MagicMock] = []
+    scheduled_loops: list[str] = []
+
+    def fake_create_task(coro):
+        scheduled_loops.append(coro.cr_code.co_name)
+        coro.close()
+        task = MagicMock()
+        tasks.append(task)
+        return task
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(scheduler_service.asyncio, "create_task", fake_create_task)
+        mp.setattr(scheduler_service.asyncio, "gather", AsyncMock(return_value=None))
+        await service.start()
+
+    assert service.running is True
+    assert set(scheduled_loops) >= {
+        "_sandbox_watchdog",
+        "_quota_reset",
+        "_metrics_collector",
+        "_health_reporter",
+        "_backup_scheduler",
+    }
+    assert service.tasks == tasks
+
+
+@pytest.mark.asyncio
+async def test_stop_cancels_all_running_tasks():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    service.tasks = [MagicMock(), MagicMock()]
+
+    await service.stop()
+
+    assert service.running is False
+    service.tasks[0].cancel.assert_called_once()
+    service.tasks[1].cancel.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_sandbox_watchdog_loop_runs_single_iteration():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    watchdog = AsyncMock(side_effect=lambda: setattr(service, "running", False))
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.background_tasks",
+            make_module("app.core.background_tasks", sandbox_watchdog_loop=watchdog),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        await service._sandbox_watchdog()
+
+    watchdog.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_sandbox_watchdog_loop_handles_errors_and_continues():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    watchdog = AsyncMock(side_effect=ValueError("watchdog failed"))
+
+    async def stop_after_sleep(seconds):
+        service.running = False
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.background_tasks",
+            make_module("app.core.background_tasks", sandbox_watchdog_loop=watchdog),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
+        await service._sandbox_watchdog()
+
+    watchdog.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_quota_reset_runs_single_iteration():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    tracker = SimpleNamespace(
+        reset_daily_counters=AsyncMock(side_effect=lambda: setattr(service, "running", False))
+    )
+
+    class _FakeDateTime:
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 3, 29, 23, 15, tzinfo=UTC)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.services.billing.usage_tracker",
+            make_module("app.services.billing.usage_tracker", UsageTracker=lambda: tracker),
+        )
+        mp.setattr(scheduler_service, "datetime", _FakeDateTime)
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        await service._quota_reset()
+
+    tracker.reset_daily_counters.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_quota_reset_handles_reset_errors():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+
+    async def reset_daily_counters():
+        service.running = False
+        raise RuntimeError("quota failed")
+
+    tracker = SimpleNamespace(reset_daily_counters=AsyncMock(side_effect=reset_daily_counters))
+
+    class _FakeDateTime:
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 3, 29, 23, 15, tzinfo=UTC)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.services.billing.usage_tracker",
+            make_module("app.services.billing.usage_tracker", UsageTracker=lambda: tracker),
+        )
+        mp.setattr(scheduler_service, "datetime", _FakeDateTime)
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        await service._quota_reset()
+
+    tracker.reset_daily_counters.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_metrics_collector_runs_single_iteration():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    store = SimpleNamespace(collect=AsyncMock(side_effect=lambda: setattr(service, "running", False)))
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.metrics_store",
+            make_module("app.core.metrics_store", get_metrics_store=lambda: store),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        await service._metrics_collector()
+
+    store.collect.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_metrics_collector_handles_collection_errors():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+
+    async def collect():
+        service.running = False
+        raise RuntimeError("collect failed")
+
+    store = SimpleNamespace(collect=AsyncMock(side_effect=collect))
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.metrics_store",
+            make_module("app.core.metrics_store", get_metrics_store=lambda: store),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        await service._metrics_collector()
+
+    store.collect.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_health_reporter_runs_single_iteration():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    cache = SimpleNamespace(set=AsyncMock(side_effect=lambda *args, **kwargs: setattr(service, "running", False)))
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.cache",
+            make_module("app.core.cache", get_cache=lambda: cache),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        await service._health_reporter()
+
+    cache.set.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_health_reporter_swallows_cache_errors():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    cache = SimpleNamespace(set=AsyncMock(side_effect=OSError("cache down")))
+
+    async def stop_after_sleep(seconds):
+        service.running = False
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.cache",
+            make_module("app.core.cache", get_cache=lambda: cache),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
+        await service._health_reporter()
+
+    cache.set.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_backup_scheduler_runs_single_iteration():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    settings = SimpleNamespace(BACKUP_ENABLED=True, BACKUP_SCHEDULE_HOURS=0)
+    backup_service = SimpleNamespace(create_backup=AsyncMock(side_effect=lambda: setattr(service, "running", False) or {"status": "ok"}))
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.config",
+            make_module("app.core.config", get_settings=lambda: settings),
+        )
+        mp.setitem(
+            sys.modules,
+            "app.services.infrastructure.backup",
+            make_module("app.services.infrastructure.backup", BackupService=lambda: backup_service),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        await service._backup_scheduler()
+
+    backup_service.create_backup.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_backup_scheduler_skips_work_when_backups_disabled():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    settings = SimpleNamespace(BACKUP_ENABLED=False, BACKUP_SCHEDULE_HOURS=1)
+    sleep_calls: list[int] = []
+
+    async def record_sleep(seconds):
+        sleep_calls.append(seconds)
+        service.running = False
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.config",
+            make_module("app.core.config", get_settings=lambda: settings),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=record_sleep))
+        await service._backup_scheduler()
+
+    assert 3600 in sleep_calls
+
+
+@pytest.mark.asyncio
+async def test_backup_scheduler_handles_backup_errors():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    settings = SimpleNamespace(BACKUP_ENABLED=True, BACKUP_SCHEDULE_HOURS=0)
+
+    async def create_backup():
+        service.running = False
+        raise RuntimeError("backup failed")
+
+    backup_service = SimpleNamespace(create_backup=AsyncMock(side_effect=create_backup))
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.config",
+            make_module("app.core.config", get_settings=lambda: settings),
+        )
+        mp.setitem(
+            sys.modules,
+            "app.services.infrastructure.backup",
+            make_module("app.services.infrastructure.backup", BackupService=lambda: backup_service),
+        )
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock())
+        await service._backup_scheduler()
+
+    backup_service.create_backup.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_health_reports_scheduler_running_state():
+    from app import scheduler_service
+
+    scheduler_service._scheduler_instance = SimpleNamespace(running=True)
+    assert await scheduler_service.health() == {"status": "healthy", "service": "scheduler"}
+
+    scheduler_service._scheduler_instance = None
+    assert await scheduler_service.health() == {"status": "starting", "service": "scheduler"}
+
+
+@pytest.mark.asyncio
+async def test_lifespan_starts_and_stops_scheduler_service():
+    from app import scheduler_service
+
+    service = SimpleNamespace(start=AsyncMock(), stop=AsyncMock(), running=True)
+    task = _AwaitableTask(exc=asyncio.CancelledError())
+
+    def fake_create_task(coro):
+        coro.close()
+        return task
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(scheduler_service, "SchedulerService", lambda: service)
+        mp.setattr(scheduler_service.asyncio, "create_task", fake_create_task)
+        async with scheduler_service.lifespan(scheduler_service.app):
+            assert scheduler_service._scheduler_instance is service
+
+    service.stop.assert_awaited_once()
+    task.cancel.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_main_registers_signal_handlers_and_starts_scheduler():
+    from app import scheduler_service
+
+    service = SimpleNamespace(start=AsyncMock(), stop=AsyncMock())
+    loop = SimpleNamespace(add_signal_handler=MagicMock())
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(scheduler_service, "SchedulerService", lambda: service)
+        mp.setattr(scheduler_service.asyncio, "get_event_loop", lambda: loop)
+        await scheduler_service.main()
+
+    assert loop.add_signal_handler.call_count == 2
+    service.start.assert_awaited_once()

@@ -23,7 +23,7 @@ from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.constants import MAX_BULK_FINDINGS
 from app.core.database import get_async_session
-from app.core.rate_limit import limiter
+from app.core.rate_limit import RateLimits, limiter
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.finding import FindingStatus, Severity
@@ -140,7 +140,7 @@ async def create_finding(
     summary="List findings",
     description="Retrieve all findings with optional severity and status filters.",
 )
-@limiter.limit("60/minute")
+@limiter.limit(RateLimits.FINDINGS_LIST)
 async def list_findings(
     request: Request = None,
     page: int = Query(default=1, ge=1, description="Page number"),
@@ -235,7 +235,7 @@ async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> lis
     summary="Export findings as CSV",
     description="Export all findings as a CSV file. Optionally encrypt with a password.",
 )
-@limiter.limit("60/minute")
+@limiter.limit(RateLimits.FINDINGS_EXPORT)
 async def export_findings_csv(
     request: Request = None,
     encrypted: bool = Query(False),
@@ -290,7 +290,7 @@ async def export_findings_csv(
     summary="Export findings as JSON",
     description="Export all findings as a JSON file. Optionally encrypt with a password.",
 )
-@limiter.limit("60/minute")
+@limiter.limit(RateLimits.FINDINGS_EXPORT)
 async def export_findings_json(
     request: Request = None,
     encrypted: bool = Query(False),

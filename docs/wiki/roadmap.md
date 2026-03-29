@@ -28,7 +28,7 @@ See [Sandboxes](sandboxes.md) for full documentation.
 **Status**: Implemented.
 
 - MinIO/S3 integration for mission artifacts, sessions, knowledge base, and backups
-- Local filesystem fallback when `S3_ENDPOINT_URL` is empty
+- S3-compatible object storage required for mission artifacts, sessions, knowledge, and backups
 - Four dedicated buckets: missions, sessions, knowledge, backups
 
 See [Configuration](configuration.md) for S3 settings.

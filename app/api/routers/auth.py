@@ -6,7 +6,7 @@ Handles user login, setup, and token generation.
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -52,18 +52,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
-
-
 # --- Account Lockout (DB-backed) ---
 LOCKOUT_THRESHOLD_1 = 5   # failures before first lockout
 LOCKOUT_DURATION_1 = 300  # 5 minutes
 LOCKOUT_THRESHOLD_2 = 10  # failures before extended lockout
 LOCKOUT_DURATION_2 = 1800 # 30 minutes
+ACCESS_COOKIE_KEY = "access_token"
+REFRESH_COOKIE_KEY = "refresh_token"
+ACCESS_COOKIE_PATH = "/"
+REFRESH_COOKIE_PATH = "/api/v1/auth/refresh"
+AUTH_COOKIE_SAMESITE = "strict"
+REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
 
 
-async def _check_lockout(user: "User") -> None:
+async def _check_lockout(user: User) -> None:
     """Raise 429 if the user account is currently locked."""
     if user.locked_until and user.locked_until > datetime.now(UTC):
         raise HTTPException(
@@ -72,7 +74,7 @@ async def _check_lockout(user: "User") -> None:
         )
 
 
-async def _record_failure(user: "User", session: "AsyncSession") -> None:
+async def _record_failure(user: User, session: AsyncSession) -> None:
     """Record a failed login attempt and apply lockout if threshold reached."""
     user.login_fail_count = (user.login_fail_count or 0) + 1
     count = user.login_fail_count
@@ -85,12 +87,59 @@ async def _record_failure(user: "User", session: "AsyncSession") -> None:
     await session.commit()
 
 
-async def _record_success(user: "User", session: "AsyncSession") -> None:
+async def _record_success(user: User, session: AsyncSession) -> None:
     """Clear lockout state on successful login."""
     if user.login_fail_count or user.locked_until:
         user.login_fail_count = 0
         user.locked_until = None
         await session.commit()
+
+
+def _create_auth_token_pair(user: User) -> tuple[str, str]:
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role, "is_superuser": user.is_superuser},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    refresh_token = create_refresh_token(data={"sub": user.username})
+    return access_token, refresh_token
+
+
+def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+    response.set_cookie(
+        key=ACCESS_COOKIE_KEY,
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite=AUTH_COOKIE_SAMESITE,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path=ACCESS_COOKIE_PATH,
+    )
+    response.set_cookie(
+        key=REFRESH_COOKIE_KEY,
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite=AUTH_COOKIE_SAMESITE,
+        max_age=REFRESH_TOKEN_MAX_AGE,
+        path=REFRESH_COOKIE_PATH,
+    )
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    response.delete_cookie(
+        key=ACCESS_COOKIE_KEY,
+        path=ACCESS_COOKIE_PATH,
+        httponly=True,
+        secure=True,
+        samesite=AUTH_COOKIE_SAMESITE,
+    )
+    response.delete_cookie(
+        key=REFRESH_COOKIE_KEY,
+        path=REFRESH_COOKIE_PATH,
+        httponly=True,
+        secure=True,
+        samesite=AUTH_COOKIE_SAMESITE,
+    )
 
 
 @router.post(
@@ -188,15 +237,7 @@ async def login_for_access_token(
             "mfa_required": True,
         }
 
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username, "role": user.role, "is_superuser": user.is_superuser},
-        expires_delta=access_token_expires,
-    )
-
-    refresh_token = create_refresh_token(
-        data={"sub": user.username},
-    )
+    access_token, refresh_token = _create_auth_token_pair(user)
 
     # Emit successful login event
     await events.emit(
@@ -218,25 +259,7 @@ async def login_for_access_token(
 
     await _record_success(user, session)
 
-    # Set HttpOnly cookie for browser-based auth
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=7 * 24 * 60 * 60,  # 7 days
-        path="/api/v1/auth/refresh",
-    )
+    _set_auth_cookies(response, access_token, refresh_token)
 
     return {
         "access_token": access_token,
@@ -246,7 +269,7 @@ async def login_for_access_token(
 
 
 @router.post("/refresh", response_model=Token)
-@limiter.limit("5/minute")
+@limiter.limit(RateLimits.TOKEN_REFRESH)
 async def refresh_token(
     request: Request,
     response: Response,
@@ -258,14 +281,14 @@ async def refresh_token(
     Accepts the refresh token from an HttpOnly cookie (browser) or request body (API clients).
     """
     # Cookie takes precedence (browser clients); fall back to body (API clients)
-    refresh_token = request.cookies.get("refresh_token") or body_refresh_token
-    if not refresh_token:
+    provided_refresh_token = request.cookies.get(REFRESH_COOKIE_KEY) or body_refresh_token
+    if not provided_refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token required",
         )
     try:
-        payload = decode_token(refresh_token)
+        payload = decode_token(provided_refresh_token)
         if payload.get("type") != "refresh":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -303,36 +326,8 @@ async def refresh_token(
                 detail="Session invalidated",
             )
 
-    # Create new access token
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username, "role": user.role, "is_superuser": user.is_superuser},
-        expires_delta=access_token_expires,
-    )
-
-    # Rotate refresh token
-    new_refresh_token = create_refresh_token(
-        data={"sub": user.username},
-    )
-
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=new_refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=7 * 24 * 60 * 60,  # 7 days
-        path="/api/v1/auth/refresh",
-    )
+    access_token, new_refresh_token = _create_auth_token_pair(user)
+    _set_auth_cookies(response, access_token, new_refresh_token)
 
     return Token(
         access_token=access_token,
@@ -421,14 +416,7 @@ async def logout(request: Request, response: Response, session: AsyncSession = D
             user.invalidated_before = datetime.now(UTC)
             await session.commit()
 
-    response.delete_cookie(key="access_token", path="/", httponly=True, secure=True, samesite="strict")
-    response.delete_cookie(
-        key="refresh_token",
-        path="/api/v1/auth/refresh",
-        httponly=True,
-        secure=True,
-        samesite="strict",
-    )
+    _clear_auth_cookies(response)
     return {"detail": "Successfully logged out"}
 
 
@@ -526,31 +514,8 @@ async def mfa_verify_login(
     # Invalidate the partial MFA token
     invalidate_token(token)
 
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username, "role": user.role, "is_superuser": user.is_superuser},
-        expires_delta=access_token_expires,
-    )
-    refresh_token = create_refresh_token(data={"sub": user.username})
-
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        path="/",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=7 * 24 * 60 * 60,  # 7 days
-        path="/api/v1/auth/refresh",
-    )
+    access_token, refresh_token = _create_auth_token_pair(user)
+    _set_auth_cookies(response, access_token, refresh_token)
 
     return {
         "access_token": access_token,
@@ -679,7 +644,7 @@ class UpdateProfileRequest(BaseModel):
 
 
 @router.put("/me", tags=["Auth"])
-@limiter.limit("5/minute")
+@limiter.limit(RateLimits.PROFILE_UPDATE)
 async def update_profile(
     request: Request,
     body: UpdateProfileRequest,
@@ -717,7 +682,7 @@ async def update_profile(
 
 
 @router.post("/change-password", tags=["Auth"])
-@limiter.limit("5/minute")
+@limiter.limit(RateLimits.PASSWORD_CHANGE)
 async def change_password(
     request: Request,
     body: ChangePasswordRequest,
@@ -743,7 +708,7 @@ async def change_password(
 
 
 @router.delete("/account", tags=["Auth"])
-@limiter.limit("2/hour")
+@limiter.limit(RateLimits.ACCOUNT_DELETE)
 async def delete_account(
     request: Request,
     body: DeleteAccountRequest,
@@ -793,7 +758,7 @@ async def delete_account(
 
 
 @router.post("/forgot-password", status_code=204)
-@limiter.limit("3/minute")
+@limiter.limit(RateLimits.FORGOT_PASSWORD)
 async def forgot_password(
     request: Request,
     body: ForgotPasswordRequest,
@@ -813,7 +778,7 @@ async def forgot_password(
 
 
 @router.post("/reset-password")
-@limiter.limit("5/minute")
+@limiter.limit(RateLimits.RESET_PASSWORD)
 async def reset_password(
     request: Request,
     body: ResetPasswordRequest,

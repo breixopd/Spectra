@@ -122,6 +122,12 @@ class TestDefaults:
         s = Settings(_env_file=None)
         assert s.APP_NAME == "Spectra"
 
+    def test_default_rate_limit_storage_is_redis(self):
+        from app.core.config import Settings
+
+        s = Settings(_env_file=None)
+        assert s.RATE_LIMIT_STORAGE == "redis://redis:6379/0"
+
     def test_default_tensorzero_gateway_url(self):
         from app.core.config import Settings
 

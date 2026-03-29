@@ -30,7 +30,7 @@ from app.api.schemas import (
     StatusResponse,
 )
 from app.core.database import get_async_session
-from app.core.rate_limit import limiter
+from app.core.rate_limit import RateLimits, limiter
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
@@ -200,7 +200,7 @@ async def get_attack_coverage(
     summary="Start mission",
     description="Create and start a new security assessment mission against specified targets.",
 )
-@limiter.limit("5/minute")
+@limiter.limit(RateLimits.MISSION_START)
 async def start_mission(
     request: Request,
     response: Response,
@@ -619,7 +619,7 @@ async def delete_mission(
     summary="Stop mission",
     description="Stop a running mission. The mission must be in an active state.",
 )
-@limiter.limit("10/minute")
+@limiter.limit(RateLimits.MISSION_CONTROL)
 async def stop_mission(
     request: Request,
     response: Response,
@@ -642,7 +642,7 @@ async def stop_mission(
     summary="Pause mission",
     description="Pause a running mission. It can be resumed later.",
 )
-@limiter.limit("10/minute")
+@limiter.limit(RateLimits.MISSION_CONTROL)
 async def pause_mission(
     request: Request,
     response: Response,
@@ -665,7 +665,7 @@ async def pause_mission(
     summary="Resume mission",
     description="Resume a previously paused mission from where it left off.",
 )
-@limiter.limit("10/minute")
+@limiter.limit(RateLimits.MISSION_CONTROL)
 async def resume_mission(
     request: Request,
     response: Response,
@@ -740,7 +740,7 @@ async def diff_missions(
 
 
 @router.post("/{mission_id}/steer")
-@limiter.limit("30/minute")
+@limiter.limit(RateLimits.MISSION_STEER)
 async def steer_mission(
     request: Request,
     response: Response,

@@ -60,6 +60,8 @@ class Settings(BaseSettings):
         return v
 
     # --- Database (PostgreSQL) ---
+    # Primary persistent store, PostgreSQL-backed app cache, job queue, and
+    # LISTEN/NOTIFY backbone.
     DATABASE_URL: SecretStr = SecretStr(
         "postgresql+asyncpg://spectra:spectra@db:5432/spectra"
     )
@@ -145,9 +147,14 @@ class Settings(BaseSettings):
     FULLY_AUTOMATED: bool = True  # Global fallback: skip ALL human approval
 
     # Rate limiting storage backend.
-    # "memory://" for single-instance deployments (default).
-    # For multi-instance, use "redis://host:6379" or Caddy's rate_limit module.
-    RATE_LIMIT_STORAGE: str = "memory://"
+    # PostgreSQL remains the persistent state store, PostgreSQL-backed app
+    # cache, job queue, and LISTEN/NOTIFY backbone; it does not share
+    # rate-limit counters.
+    # Deployment default is Redis so counters stay shared across app replicas.
+    # Use "memory://" mainly for tests or intentionally ephemeral local runs.
+    # Use Caddy's rate_limit module only if you intentionally want rate
+    # limiting to live entirely at the reverse proxy edge.
+    RATE_LIMIT_STORAGE: str = "redis://redis:6379/0"
 
     @field_validator("FULLY_AUTOMATED")
     @classmethod

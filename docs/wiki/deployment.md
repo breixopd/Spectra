@@ -14,7 +14,8 @@ Current runtime contract: Docker Compose and Docker Swarm use the same internal 
 
 | Service | Image | Purpose |
 |---------|-------|---------|
-| **db** | `pgvector/pgvector:pg16` | PostgreSQL + pgvector (data, cache, queues, RAG) |
+| **db** | `pgvector/pgvector:pg16` | PostgreSQL + pgvector (persistent state, PostgreSQL-backed app cache, job queue, LISTEN/NOTIFY backbone, RAG) |
+| **redis** | `redis:7-alpine` | Shared distributed rate-limiting backend |
 | **caddy** | `caddy:2-alpine` | Reverse proxy — TLS, security headers, WebSocket |
 | **app** | `ghcr.io/breixopd14/spectra-app` | FastAPI backend (internal port 5000) |
 | **ai-svc** | `ghcr.io/breixopd14/spectra-ai-svc` | AI/LLM service (internal port 5010) |
@@ -22,7 +23,9 @@ Current runtime contract: Docker Compose and Docker Swarm use the same internal 
 | **worker** | `ghcr.io/breixopd14/spectra-worker` | Tool execution (internal port 5012) |
 | **minio** | `minio/minio` | Self-hosted S3-compatible object storage (required unless external S3 is configured) |
 
-All inter-service communication uses PostgreSQL (job queue, pub/sub via NOTIFY/LISTEN) and HTTP with `SERVICE_AUTH_SECRET`. Redis is used for rate limiting and caching.
+All inter-service communication uses PostgreSQL as the persistent state store, PostgreSQL-backed app cache, job queue, and `NOTIFY`/`LISTEN` backbone, plus HTTP with `SERVICE_AUTH_SECRET`. Redis is the shared distributed rate-limiting backend.
+
+`RATE_LIMIT_STORAGE=memory://` is acceptable for tests or intentionally ephemeral local runs, but it is not the normal deployment recommendation. Keep Redis as the shared distributed rate-limiting backend for deployments. Use Caddy rate limiting only if you intentionally want rate limiting to live entirely at the edge.
 
 Swarm supports `_FILE` secret environment variables such as `POSTGRES_PASSWORD_FILE`, `SERVICE_AUTH_SECRET_FILE`, and `JWT_SECRET_KEY_FILE` while keeping the same internal hostnames and ports as Compose.
 

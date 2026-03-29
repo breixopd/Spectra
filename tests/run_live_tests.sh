@@ -15,6 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_BASE="docker/docker-compose.test.yml"
 ENV_LIVE="$PROJECT_DIR/.env.live"
+OPS_TEST_FILE="tests/integration/test_ops_scripts_live.py"
 
 cd "$PROJECT_DIR"
 
@@ -50,6 +51,12 @@ echo "=== Spectra Live Integration Tests ==="
 echo "  Mode:     $([ "$TARGETS_ONLY" = true ] && echo 'targets-only' || echo 'full (LLM)')"
 echo ""
 
+export OPS_DB_NAME="spectra_test"
+export OPS_DB_USER="spectra"
+export OPS_MINIO_URL="http://127.0.0.1:19000"
+export OPS_MINIO_ROOT_USER="spectra"
+export OPS_MINIO_ROOT_PASSWORD="spectra_test_minio"
+
 cleanup() {
     echo ""
     echo "=== Collecting logs ==="
@@ -63,9 +70,9 @@ trap cleanup EXIT
 # ── Step 1: Start all services (including targets via profile) ─
 echo "Starting Spectra services and vulnerable targets..."
 if [ "$TARGETS_ONLY" = true ]; then
-    $COMPOSE up -d --build db app tools vuln-web vuln-ssh vuln-network
+    $COMPOSE up -d --build db minio app tools vuln-web vuln-ssh vuln-network
 else
-    $COMPOSE up -d --build db tools metasploitable dvwa app vuln-web vuln-ssh vuln-network
+    $COMPOSE up -d --build db minio tools metasploitable dvwa app vuln-web vuln-ssh vuln-network
 fi
 
 # ── Step 2: Wait for health checks ──────────────────────────
@@ -110,6 +117,22 @@ else
         "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && \
          python3 -m pytest tests/integration/test_live_targets.py tests/integration/test_live_scan.py -v --timeout=600 --tb=short"
 fi
+
+OPS_DB_CONTAINER="$($COMPOSE ps -q db)"
+OPS_APP_CONTAINER="$($COMPOSE ps -q app)"
+OPS_MINIO_CONTAINER="$($COMPOSE ps -q minio)"
+export OPS_DB_CONTAINER OPS_APP_CONTAINER OPS_MINIO_CONTAINER
+
+echo ""
+echo "Preparing S3 buckets for read-only ops smoke tests..."
+MINIO_CONTAINER="${OPS_MINIO_CONTAINER}" \
+MINIO_URL="${OPS_MINIO_URL}" \
+MINIO_ROOT_USER="${OPS_MINIO_ROOT_USER}" \
+MINIO_ROOT_PASSWORD="${OPS_MINIO_ROOT_PASSWORD}" \
+./scripts/ops/s3_management.sh create-buckets >/dev/null
+
+echo "Running live ops smoke tests..."
+python3 -m pytest "${OPS_TEST_FILE}" -v -m live --tb=short --override-ini=addopts=
 
 # ── Step 4: Collect results ──────────────────────────────────
 echo ""

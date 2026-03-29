@@ -28,7 +28,8 @@ services:
       retries: 3
     restart: unless-stopped
 
-  # PostgreSQL (with pgvector for RAG)
+  # PostgreSQL (persistent state, PostgreSQL-backed app cache, job queue,
+  # LISTEN/NOTIFY backbone, pgvector/RAG)
   db:
     image: pgvector/pgvector:pg16
     container_name: spectra-db
@@ -52,7 +53,7 @@ services:
     networks:
       - spectra-network
 
-  # Redis (shared rate limiting / cache primitives)
+  # Redis (shared distributed rate-limiting backend)
   redis:
     image: redis:7-alpine
     container_name: spectra-redis
@@ -121,6 +122,9 @@ services:
       - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set in .env}
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+      # Deployment default: shared Redis-backed rate limiting.
+      # Use memory:// mainly for tests or intentionally ephemeral local runs.
+      # Move limits to Caddy only if you intentionally want edge-only limiting.
       - RATE_LIMIT_STORAGE=redis://redis:6379/0
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
     volumes:

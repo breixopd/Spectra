@@ -6,6 +6,7 @@ set -euo pipefail
 DB_CONTAINER="${DB_CONTAINER:-spectra-db}"
 DB_USER="${DB_USER:-spectra}"
 DB_NAME="${DB_NAME:-spectra}"
+WORKER_CONTAINER="${WORKER_CONTAINER:-spectra-worker}"
 
 run_sql() {
     docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -c "$1"
@@ -69,10 +70,10 @@ case "${1:-}" in
         ;;
     worker-health)
         echo "Worker container status:"
-        docker inspect --format='{{.State.Status}} (health: {{.State.Health.Status}})' spectra-worker 2>/dev/null || echo "Worker container not found"
+        docker inspect --format='{{.State.Status}} (health: {{.State.Health.Status}})' "${WORKER_CONTAINER}" 2>/dev/null || echo "Worker container not found"
         echo ""
         echo "Worker process list:"
-        docker exec spectra-worker ps aux 2>/dev/null || echo "Cannot reach worker container"
+        docker exec "${WORKER_CONTAINER}" ps aux 2>/dev/null || echo "Cannot reach worker container"
         ;;
     *)
         usage
