@@ -14,6 +14,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.services.mission.output_model import get_mission_findings
+
 logger = logging.getLogger(__name__)
 
 
@@ -53,11 +55,7 @@ def _extract_services(mission: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _extract_findings(mission: dict[str, Any]) -> list[dict[str, Any]]:
     """Pull the findings list out of a mission dict."""
-    findings = mission.get("findings") or []
-    if not findings:
-        summary = mission.get("summary") or {}
-        findings = summary.get("findings") or []
-    return findings
+    return get_mission_findings(mission)
 
 
 def _extract_vulns(mission: dict[str, Any]) -> list[dict[str, Any]]:

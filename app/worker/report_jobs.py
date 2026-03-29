@@ -7,6 +7,7 @@ import logging
 from sqlalchemy import select
 
 from app.models.mission import Mission
+from app.services.mission.output_model import get_reporter_findings
 
 logger = logging.getLogger(__name__)
 
@@ -27,20 +28,7 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
         if not mission:
             raise ValueError(f"Mission {mission_id} not found")
 
-        if mission.summary:
-            findings = [
-                {
-                    "title": f.get("title", ""),
-                    "severity": f.get("severity", "info"),
-                    "description": f.get("description", ""),
-                    "source": f.get("source", ""),
-                    "confirmed": f.get("confirmed", False),
-                    "tool_name": f.get("tool_name", ""),
-                }
-                for f in mission.summary.get("findings", [])
-            ]
-        else:
-            findings = []
+        findings = get_reporter_findings(mission)
 
     target = getattr(mission, "target", "unknown")
     directive = getattr(mission, "directive", "")
@@ -76,17 +64,7 @@ async def generate_executive_summary(mission_id: str) -> str:
         if not mission:
             raise ValueError(f"Mission {mission_id} not found")
 
-        if mission.summary:
-            findings = [
-                {
-                    "title": f.get("title", ""),
-                    "severity": f.get("severity", "info"),
-                    "description": f.get("description", ""),
-                }
-                for f in mission.summary.get("findings", [])
-            ]
-        else:
-            findings = []
+        findings = get_reporter_findings(mission)
 
     target = getattr(mission, "target", "unknown")
     directive = getattr(mission, "directive", "")
