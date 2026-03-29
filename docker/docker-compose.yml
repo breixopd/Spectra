@@ -93,7 +93,7 @@ services:
 
   # Spectra API (FastAPI)
   app:
-    image: spectra-app:latest
+    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
@@ -154,7 +154,7 @@ services:
 
   # AI Service (LLM + RAG + Embeddings)
   ai-svc:
-    image: spectra-ai:latest
+    image: ${REGISTRY:-}spectra-ai-svc:${VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
@@ -250,7 +250,7 @@ services:
 
   # Scheduler (Backups, Metrics, Cleanup)
   scheduler:
-    image: spectra-scheduler:latest
+    image: ${REGISTRY:-}spectra-scheduler:${VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
@@ -290,7 +290,7 @@ services:
 
   # Worker (Tool Execution via Ephemeral Sandbox Containers)
   worker:
-    image: spectra-worker:latest
+    image: ${REGISTRY:-}spectra-worker:${VERSION:-latest}
     build:
       context: ..
       dockerfile: docker/Dockerfile.tools

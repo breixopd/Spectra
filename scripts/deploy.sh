@@ -7,7 +7,7 @@
 #   - Lock file to prevent concurrent deploys
 #   - Pre-deploy health check against current running version
 #   - Database backup via pg_dump before migration
-#   - Blue-green deployment: start new, health check, swap, stop old
+#   - In-place rolling restart: pull new images, restart containers, health check
 #   - Post-deploy health check with exponential backoff
 #   - Automatic rollback on failure
 #   - Deploy notification via webhooks (optional)
@@ -215,7 +215,7 @@ deploy() {
     log "Pulling images for version: $VERSION"
     VERSION="$VERSION" docker compose -f "$COMPOSE_FILE" pull
 
-    # Blue-green: bring up new containers alongside old
+    # In-place restart: pull new images and recreate containers
     log "Starting new containers..."
     VERSION="$VERSION" docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
 

@@ -7,8 +7,9 @@ Loads configuration from environment variables and .env files.
 import logging
 import os
 from functools import lru_cache
+from pathlib import Path
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,23 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def load_file_secrets(cls, values: dict) -> dict:
+        """Support Docker Swarm _FILE env vars that point to secret files."""
+        file_mappings = {
+            "JWT_SECRET_KEY_FILE": "JWT_SECRET_KEY",
+            "DATABASE_URL_FILE": "DATABASE_URL",
+            "SERVICE_AUTH_SECRET_FILE": "SERVICE_AUTH_SECRET",
+        }
+        for file_var, target_var in file_mappings.items():
+            file_path = os.environ.get(file_var) or values.get(file_var)
+            if file_path:
+                secret_file = Path(file_path)
+                if secret_file.is_file():
+                    values[target_var] = secret_file.read_text().strip()
+        return values
 
     # --- Application ---
     APP_NAME: str = "Spectra"
