@@ -1,7 +1,6 @@
 # docker/docker-compose.swarm.yml
 # Docker Swarm stack for multi-host deployment
 # Usage: docker stack deploy -c docker-compose.swarm.yml spectra
-version: "3.8"
 
 services:
   redis:
@@ -67,10 +66,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       JWT_SECRET_KEY_FILE: /run/secrets/jwt_secret
-      AI_SERVICE_URL: http://ai-service:8001
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-spectra}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      AI_SERVICE_URL: http://ai-svc:5010
       RATE_LIMIT_STORAGE: redis://redis:6379/0
       TENSORZERO_GATEWAY_URL: http://tensorzero:3000
-      SCHEDULER_URL: http://scheduler:8002
+      SCHEDULER_URL: http://scheduler:5011
     ports:
       - "5000:5000"
     networks:
@@ -85,9 +87,9 @@ services:
       - jwt_secret
       - db_password
 
-  ai-service:
-    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:-latest}
-    command: ["python", "-m", "uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "8001"]
+  ai-svc:
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-ai-svc:${VERSION:-latest}
+    command: ["python", "-m", "uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
     deploy:
       replicas: 1
       placement:
@@ -98,12 +100,15 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-spectra}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       TENSORZERO_GATEWAY_URL: http://tensorzero:3000
       SKIP_MIGRATIONS: "true"
     networks:
       - spectra-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -111,8 +116,8 @@ services:
       - service_auth
 
   scheduler:
-    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:-latest}
-    command: ["python", "-m", "uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "8002"]
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-scheduler:${VERSION:-latest}
+    command: ["python", "-m", "uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "5011"]
     deploy:
       replicas: 1
       placement:
@@ -123,12 +128,15 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-spectra}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       BACKUP_ENABLED: "true"
       SKIP_MIGRATIONS: "true"
     networks:
       - spectra-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -137,7 +145,7 @@ services:
 
   worker:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-worker:${VERSION:-latest}
-    command: ["python", "-m", "uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "8003"]
+    command: ["python", "-m", "uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "5012"]
     deploy:
       replicas: 2
       placement:
@@ -148,13 +156,16 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-spectra}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       SKIP_MIGRATIONS: "true"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - spectra-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
       interval: 30s
       timeout: 10s
       retries: 3
