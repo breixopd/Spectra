@@ -67,6 +67,23 @@ async def get_safety_stats(
         return {"allowed": 0, "blocked": 0, "flagged": 0}
 
 
+@router.get("/public-status", summary="Public system status")
+async def get_public_system_status(
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Anonymous-safe system status for the public status page."""
+    db_healthy = True
+    try:
+        await session.execute(text("SELECT 1"))
+    except Exception:
+        db_healthy = False
+
+    return {
+        "status": "operational" if db_healthy else "degraded",
+        "database": {"status": "healthy" if db_healthy else "unhealthy"},
+    }
+
+
 @router.get("/status", response_model=SystemStatusResponse)
 async def get_system_status(
     db: AsyncSession = Depends(get_async_session),

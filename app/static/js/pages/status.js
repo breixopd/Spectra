@@ -3,7 +3,7 @@
  */
 
 async function loadStatus() {
-    const { data, error } = await spectraApi.get('/api/v1/system/status');
+    const { data, error } = await spectraApi.get('/api/v1/system/public-status');
     if (error) {
         document.getElementById('services-list').innerHTML = '<p class="text-sm text-rose-400">Failed to load status</p>';
         return;

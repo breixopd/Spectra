@@ -42,7 +42,7 @@ async def api_client():
 async def auth_token(api_client: httpx.AsyncClient):
     """Get authentication token (creates user if needed)."""
     # Check if setup is needed
-    setup_response = await api_client.get(f"{API_BASE_URL}/api/auth/setup/status")
+    setup_response = await api_client.get(f"{API_BASE_URL}/api/v1/auth/setup/status")
 
     if setup_response.status_code == 200:
         is_setup = setup_response.json().get("is_setup", False)
@@ -50,12 +50,14 @@ async def auth_token(api_client: httpx.AsyncClient):
         if not is_setup:
             # Create admin user
             setup_data = {
-                "username": "admin",
-                "email": "admin@spectra.local",
-                "password": "AdminPass123!",
+                "user": {
+                    "username": "admin",
+                    "email": "admin@spectra.local",
+                    "password": "AdminPass123!",
+                }
             }
             response = await api_client.post(
-                f"{API_BASE_URL}/api/auth/setup",
+                f"{API_BASE_URL}/api/v1/auth/setup",
                 json=setup_data,
             )
             if response.status_code not in (200, 201):
