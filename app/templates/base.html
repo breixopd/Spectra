@@ -27,7 +27,7 @@
     <!-- Auth Check -->
     <script nonce="{{ request.state.csp_nonce }}">
         // Public paths constant (shared with api.js)
-        window.PUBLIC_PATHS = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy'];
+        window.PUBLIC_PATHS = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy', '/legal/cookies', '/security', '/changelog'];
 
         // Check if user is authenticated
         if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
@@ -164,7 +164,7 @@
         </div>
     </div>
 
-    {% set is_public_page = request.path in ['/login', '/setup', '/register', '/forgot-password', '/reset-password', '/verify-email'] %}
+    {% set is_public_page = is_public_page|default(request.path in ['/login', '/setup', '/register', '/forgot-password', '/reset-password', '/verify-email', '/status', '/security', '/changelog', '/legal/terms', '/legal/privacy', '/legal/cookies']) %}
     <div class="flex h-full relative z-10 {% if is_public_page %}items-center justify-center{% else %}flex-col md:flex-row{% endif %}">
 
         {% if not is_public_page %}

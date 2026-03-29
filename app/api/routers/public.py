@@ -60,6 +60,20 @@ def _get_user_from_cookie(request: Request) -> dict | None:
         return None
 
 
+def _extract_legal_html(raw: object) -> object:
+    """Extract HTML content from admin-managed legal JSON envelope."""
+    if isinstance(raw, dict) and "html" in raw:
+        return raw["html"]
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict) and "html" in parsed:
+                return parsed["html"]
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return raw
+
+
 # ---------------------------------------------------------------------------
 # Page routes
 # ---------------------------------------------------------------------------
@@ -147,6 +161,7 @@ async def status_page(request: Request):
     return templates.TemplateResponse("status.html", {
         "request": request,
         "app_name": settings.APP_NAME,
+        "is_public_page": True,
     })
 
 
@@ -155,6 +170,7 @@ async def security_page(request: Request):
     return templates.TemplateResponse("security.html", {
         "request": request,
         "app_name": settings.APP_NAME,
+        "is_public_page": True,
     })
 
 
@@ -174,10 +190,10 @@ async def legal_terms(request: Request):
             )
             row = result.fetchone()
             if row:
-                content_override = row[0]
+                content_override = _extract_legal_html(row[0])
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal terms", exc_info=True)
-    return templates.TemplateResponse("legal/terms.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
+    return templates.TemplateResponse("legal/terms.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override, "is_public_page": True})
 
 
 @router.get("/legal/privacy", response_class=HTMLResponse, include_in_schema=False)
@@ -190,10 +206,10 @@ async def legal_privacy(request: Request):
             )
             row = result.fetchone()
             if row:
-                content_override = row[0]
+                content_override = _extract_legal_html(row[0])
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal privacy", exc_info=True)
-    return templates.TemplateResponse("legal/privacy.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
+    return templates.TemplateResponse("legal/privacy.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override, "is_public_page": True})
 
 
 @router.get("/legal/cookies", response_class=HTMLResponse, include_in_schema=False)
@@ -206,26 +222,35 @@ async def legal_cookies(request: Request):
             )
             row = result.fetchone()
             if row:
-                content_override = row[0]
+                content_override = _extract_legal_html(row[0])
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal cookies", exc_info=True)
-    return templates.TemplateResponse("legal/cookie.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override})
+    return templates.TemplateResponse("legal/cookie.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override, "is_public_page": True})
 
 
 @router.get("/register", response_class=HTMLResponse, include_in_schema=False)
 async def register_page(request: Request):
     if _get_user_from_cookie(request):
         return RedirectResponse(url="/dashboard", status_code=302)
+    # Block registration until setup is complete (a superuser exists)
+    async with async_session_maker() as session:
+        superuser_exists = await session.execute(select(User.id).where(User.is_superuser.is_(True)).limit(1))
+        if not superuser_exists.scalar_one_or_none():
+            return RedirectResponse(url="/setup", status_code=302)
     return templates.TemplateResponse("register.html", {"request": request})
 
 
 @router.get("/forgot-password", response_class=HTMLResponse, include_in_schema=False)
 async def forgot_password_page(request: Request):
+    if _get_user_from_cookie(request):
+        return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse("forgot_password.html", {"request": request})
 
 
 @router.get("/reset-password", response_class=HTMLResponse, include_in_schema=False)
 async def reset_password_page(request: Request):
+    if _get_user_from_cookie(request):
+        return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse("reset_password.html", {"request": request})
 
 
@@ -250,7 +275,7 @@ async def changelog_page(request: Request):
         logger.debug("Failed to load changelog", exc_info=True)
     return templates.TemplateResponse(
         "changelog.html",
-        {"request": request, "app_name": settings.APP_NAME, "changelogs": changelogs, "version": __version__},
+        {"request": request, "app_name": settings.APP_NAME, "changelogs": changelogs, "version": __version__, "is_public_page": True},
     )
 
 
@@ -329,6 +354,14 @@ class ResetPasswordRequest(BaseModel):
 async def register_user(request: Request, body: RegisterRequest):
     """Self-register a new user account with the default plan."""
     async with async_session_maker() as session:
+        # Block registration until setup is complete (a superuser exists)
+        superuser_check = await session.execute(select(User.id).where(User.is_superuser.is_(True)).limit(1))
+        if not superuser_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Registration is not available until system setup is complete.",
+            )
+
         # Check uniqueness
         existing = await session.execute(
             select(User.id).where((User.username == body.username) | (User.email == body.email))
