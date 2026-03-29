@@ -38,6 +38,10 @@ def _make_app_with(*middlewares) -> FastAPI:
     async def submit(request: Request):
         return {"received": True}
 
+    @app.post("/api/submit")
+    async def api_submit(request: Request):
+        return {"received": True}
+
     for mw in middlewares:
         if isinstance(mw, tuple):
             app.add_middleware(mw[0], **mw[1])
@@ -153,6 +157,43 @@ class TestSecurityHeadersMiddleware:
                     headers={"Origin": "http://evil.example.com"},
                 )
             assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_cookie_authenticated_api_post_requires_csrf(self, client):
+        resp = await client.post(
+            "/api/submit",
+            cookies={"access_token": "cookie-auth", "csrf_token": "csrf-value"},
+        )
+        assert resp.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_cookie_authenticated_api_post_passes_with_valid_csrf(self, client):
+        resp = await client.post(
+            "/api/submit",
+            cookies={"access_token": "cookie-auth", "csrf_token": "csrf-value"},
+            headers={"x-csrf-token": "csrf-value"},
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"received": True}
+
+    @pytest.mark.asyncio
+    async def test_bearer_authenticated_api_post_skips_csrf(self, client):
+        resp = await client.post(
+            "/api/submit",
+            headers={"Authorization": "Bearer test-token"},
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"received": True}
+
+    @pytest.mark.asyncio
+    async def test_api_key_authenticated_api_post_skips_csrf_with_access_cookie(self, client):
+        resp = await client.post(
+            "/api/submit",
+            headers={"x-api-key": "test-key"},
+            cookies={"access_token": "cookie-auth"},
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"received": True}
 
 
 # =========================================================================
