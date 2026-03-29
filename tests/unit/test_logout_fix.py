@@ -11,11 +11,12 @@ class TestLogoutButton:
     def test_logout_posts_to_versioned_api(self):
         content = BASE_TEMPLATE.read_text()
         assert "/api/v1/auth/logout" in content
-        assert "method:'POST'" in content or 'method:"POST"' in content
+        assert "spectraApi.post('/api/v1/auth/logout')" in content
 
-    def test_logout_uses_same_origin_credentials(self):
+    def test_logout_uses_spectra_api_client(self):
+        """spectraApi handles credentials and CSRF automatically."""
         content = BASE_TEMPLATE.read_text()
-        assert "credentials:'same-origin'" in content or 'credentials:"same-origin"' in content
+        assert "spectraApi.post('/api/v1/auth/logout')" in content
 
     def test_logout_does_not_read_cookie_manually(self):
         content = BASE_TEMPLATE.read_text()

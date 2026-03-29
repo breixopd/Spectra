@@ -36,7 +36,11 @@ def get_ui_user(request: Request) -> dict | None:
         if is_token_blacklisted(token):
             return None
         payload = decode_token(token)
-        if payload and payload.get("sub"):
+        if not payload or payload.get("type") != "access":
+            return None
+        if payload.get("mfa_pending"):
+            return None
+        if payload.get("sub"):
             return payload
     except (OSError, RuntimeError, ValueError):
         logger.debug("UI token decode failed", exc_info=True)
@@ -291,6 +295,10 @@ async def validate_websocket_token(token: str | None) -> User | None:
 
     try:
         payload = decode_token(token)
+        if payload.get("type") != "access":
+            return None
+        if payload.get("mfa_pending"):
+            return None
         username: str | None = payload.get("sub")
         if username is None:
             return None
@@ -303,7 +311,14 @@ async def validate_websocket_token(token: str | None) -> User | None:
         result = await session.execute(stmt)
         user = result.scalar_one_or_none()
 
-        if user and user.is_active:
-            return user
+        if not user or not user.is_active:
+            return None
+
+        if user.invalidated_before:
+            token_iat = payload.get("iat")
+            if token_iat and datetime.fromtimestamp(token_iat, tz=UTC) < user.invalidated_before:
+                return None
+
+        return user
 
     return None

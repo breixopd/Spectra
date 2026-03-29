@@ -277,6 +277,15 @@ async def refresh_token(
             detail="User not found or inactive",
         )
 
+    # Reject refresh tokens issued before invalidation (password change, logout-all, etc.)
+    if user.invalidated_before:
+        token_iat = payload.get("iat")
+        if token_iat and datetime.fromtimestamp(token_iat, tz=UTC) < user.invalidated_before:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session invalidated",
+            )
+
     # Create new access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -349,12 +358,15 @@ async def check_setup_status(
 async def logout(request: Request, response: Response):
     """Logout by blacklisting the current access token and clearing cookie."""
     auth_header = request.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    else:
+        token = request.cookies.get("access_token")
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing bearer token",
         )
-    token = auth_header[7:]
     try:
         decode_token(token)  # Validate token is still valid
     except JWTError:
