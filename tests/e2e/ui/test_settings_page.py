@@ -6,7 +6,7 @@ from playwright.sync_api import Page, expect
 def test_settings_page_renders(authenticated_page: Page, app_url: str):
     """Settings page should render with key sections."""
     authenticated_page.goto(f"{app_url}/settings")
-    expect(authenticated_page.locator("text=Quick Setup")).to_be_visible(timeout=10000)
+    expect(authenticated_page.locator("text=System Settings")).to_be_visible(timeout=10000)
     expect(authenticated_page.locator("text=Platform")).to_be_visible()
     expect(authenticated_page.locator("text=Data Management")).to_be_visible()
 

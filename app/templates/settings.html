@@ -551,6 +551,7 @@
 {% block scripts %}
 <script type="module" src="/static/js/settings.js"></script>
 <script>
+    function clearToolStats() {
         _spectraConfirm('Clear all tool statistics?', async () => {
         try {
             const { data, error } = await spectraApi.post('/api/v1/system/clear/tools');

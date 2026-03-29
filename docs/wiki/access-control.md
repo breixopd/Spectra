@@ -115,7 +115,7 @@ Plans are **admin-configured** via Admin Panel > Plans. Below are the recommende
 | Plugin Creator | `/toolbox/create` | **Admin only** | Create new tool plugins |
 | Reports | `/reports` | All | Report browser and export |
 | Admin Panel | `/admin` | **Admin only** | User management, plans, settings |
-| Settings | `/admin` (Services tab) | **Admin only** | AI, storage, system config |
+| Settings | `/settings` | All authenticated | AI, storage, system config |
 
 ### API Endpoints Summary
 
