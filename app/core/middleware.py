@@ -40,8 +40,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if request.method in ("POST", "PUT", "DELETE", "PATCH"):
             auth_header = request.headers.get("authorization", "")
             api_key = request.headers.get("x-api-key", "")
-            is_api = request.url.path.startswith("/api/")
-            if not is_api and not auth_header and not api_key:
+            access_token = request.cookies.get("access_token")
+            if not auth_header and not api_key and access_token:
                 csrf_cookie = request.cookies.get("csrf_token")
                 csrf_header = request.headers.get("x-csrf-token")
                 if not csrf_cookie or not csrf_header or not secrets.compare_digest(csrf_cookie, csrf_header):

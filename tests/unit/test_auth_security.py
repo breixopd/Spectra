@@ -142,7 +142,7 @@ class TestLogoutRevokesRefreshToken:
             await refresh_endpoint.__wrapped__(
                 request=request,
                 response=response,
-                refresh_token=rt,
+                body_refresh_token=rt,
                 session=session,
             )
 
