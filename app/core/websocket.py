@@ -267,6 +267,62 @@ class ConnectionManager:
 
         await self.broadcast_to_room(room_id, json.dumps(data))
 
+    async def broadcast_to_user(self, user_id: str, message: str) -> None:
+        """Send a message to all connections belonging to a specific user."""
+        async with self._lock:
+            connections = list(self._user_connections.get(user_id, set()))
+
+        dead: list[WebSocket] = []
+        for ws in connections:
+            try:
+                if ws.client_state == WebSocketState.CONNECTED:
+                    await ws.send_text(message)
+                else:
+                    dead.append(ws)
+            except (OSError, RuntimeError, ConnectionError):
+                dead.append(ws)
+
+        if dead:
+            async with self._lock:
+                user_conns = self._user_connections.get(user_id)
+                if user_conns:
+                    for ws in dead:
+                        user_conns.discard(ws)
+                    if not user_conns:
+                        del self._user_connections[user_id]
+                for ws in dead:
+                    self._connections.discard(ws)
+
+    async def broadcast_to_user_json(self, user_id: str, data: dict[str, Any]) -> None:
+        """Send typed JSON to all connections belonging to a specific user."""
+        import json
+
+        await self.broadcast_to_user(user_id, json.dumps(data))
+
+    async def broadcast_to_user_event(self, user_id: str, event_type: str, data: Any) -> None:
+        """Broadcast a typed event message to a specific user's connections."""
+        import json
+        from datetime import date, datetime
+        from enum import Enum
+        from uuid import UUID
+
+        def json_serializer(obj: Any) -> Any:
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            if isinstance(obj, (UUID, Enum)):
+                return str(obj)
+            if hasattr(obj, "model_dump"):
+                return obj.model_dump()
+            if hasattr(obj, "dict"):
+                return obj.dict()
+            raise TypeError(f"Type {type(obj)} not serializable")
+
+        try:
+            message = json.dumps({"type": event_type, "data": data}, default=json_serializer)
+            await self.broadcast_to_user(user_id, message)
+        except (ValueError, TypeError) as e:
+            logger.error("Failed to serialize user event %s: %s", event_type, e)
+
     def connection_count(self) -> int:
         """
         Get the number of active connections.
