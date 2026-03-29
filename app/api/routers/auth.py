@@ -507,6 +507,26 @@ async def mfa_verify_login(
     }
 
 
+@router.post("/mfa/cancel", status_code=204, tags=["MFA"])
+@limiter.limit(RateLimits.LOGIN)
+async def cancel_mfa(request: Request):
+    """Cancel MFA login and invalidate the pending token."""
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return Response(status_code=204)
+
+    token = auth_header[7:]
+    try:
+        payload = decode_token(token)
+    except (JWTError, Exception):
+        return Response(status_code=204)
+
+    if payload.get("mfa_pending"):
+        invalidate_token(token)
+
+    return Response(status_code=204)
+
+
 @router.post("/mfa/disable", tags=["MFA"])
 async def mfa_disable(
     request: Request,

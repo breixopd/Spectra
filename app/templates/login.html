@@ -123,6 +123,12 @@
     }
 
     function showLoginForm() {
+        if (mfaTempToken) {
+            fetch('/api/v1/auth/mfa/cancel', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + mfaTempToken }
+            }).catch(() => {});
+        }
         mfaTempToken = null;
         mfaStep.classList.add('hidden');
         mfaErrorMsg.classList.add('hidden');

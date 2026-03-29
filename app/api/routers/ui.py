@@ -184,8 +184,11 @@ async def toolbox_page(request: Request):
 @router.get("/manual", response_class=HTMLResponse)
 async def manual_tools_page(request: Request):
     """Serve the manual tools execution page."""
-    if not get_ui_user(request):
+    user_payload = get_ui_user(request)
+    if not user_payload:
         return RedirectResponse(url="/login", status_code=303)
+    if not await _check_user_feature(user_payload.get("sub"), "manual_mode"):
+        return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse(
         "manual_tools.html",
         {"request": request, "title": f"{settings.APP_NAME} | Manual Tools"},

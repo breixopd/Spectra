@@ -133,7 +133,7 @@ Plans are **admin-configured** via Admin Panel > Plans. Below are the recommende
 | Plugins/Tools | 8 CRUD + validate | Read: All, Write: **Admin** | N/A | N/A |
 | Admin | 20+ user/plan/settings | **Admin only** | N/A | N/A |
 | Auth | 4 login/logout/refresh | Public (login), Auth (others) | N/A | N/A |
-| Public | 6 register/reset/plans | Public | N/A | Rate limited |
+| Public | 4 register/plans/verify | Public | N/A | Rate limited |
 
 ---
 
@@ -143,8 +143,6 @@ Plans are **admin-configured** via Admin Panel > Plans. Below are the recommende
 |----------|-------|-------|
 | `POST /api/auth/token` (login) | 5/minute | Per IP |
 | `POST /api/public/register` | 3/minute | Per IP |
-| `POST /api/public/forgot-password` | 5/minute | Per IP |
-| `POST /api/public/reset-password` | 5/minute | Per IP |
 | `POST /api/missions/` (start) | 5/minute | Per user |
 | `POST /setup` (initial setup) | 3/minute | Per IP |
 

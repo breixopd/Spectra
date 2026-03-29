@@ -132,50 +132,6 @@ class TestRegisterEndpoint:
 
 
 @pytest.mark.asyncio
-class TestForgotPassword:
-    async def test_forgot_password_always_returns_success(self):
-        from app.api.routers.public import ForgotPasswordRequest, forgot_password
-
-        user_result = MagicMock()
-        user_result.scalar_one_or_none.return_value = None
-        maker, _ = _mock_session_ctx([user_result])
-
-        body = ForgotPasswordRequest(email="nobody@example.com")
-        with patch("app.api.routers.public.async_session_maker", maker):
-            result = await forgot_password.__wrapped__(_fake_request(), body)
-        assert "reset link" in result["detail"].lower()
-
-
-@pytest.mark.asyncio
-class TestResetPassword:
-    async def test_reset_password_invalid_token(self):
-        from fastapi import HTTPException
-
-        from app.api.routers.public import ResetPasswordRequest, reset_password
-
-        body = ResetPasswordRequest(token="bad-token", new_password="NewStr0ng!")
-        with (
-            patch("app.api.routers.public.decode_token", side_effect=Exception("bad")),
-            pytest.raises(HTTPException) as exc_info,
-        ):
-            await reset_password.__wrapped__(_fake_request(), body)
-        assert exc_info.value.status_code == 400
-
-    async def test_reset_password_wrong_type(self):
-        from fastapi import HTTPException
-
-        from app.api.routers.public import ResetPasswordRequest, reset_password
-
-        body = ResetPasswordRequest(token="tok", new_password="NewStr0ng!")
-        with (
-            patch("app.api.routers.public.decode_token", return_value={"type": "access", "sub": "user1"}),
-            pytest.raises(HTTPException) as exc_info,
-        ):
-            await reset_password.__wrapped__(_fake_request(), body)
-        assert exc_info.value.status_code == 400
-
-
-@pytest.mark.asyncio
 class TestPublicPlans:
     async def test_list_plans_empty(self, client):
         plan_result = MagicMock()

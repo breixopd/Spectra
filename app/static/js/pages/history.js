@@ -100,11 +100,28 @@ async function loadMissionDetails(id) {
             // JSON
             document.getElementById('detail-json').innerText = JSON.stringify(mission, null, 2);
             
-            // Findings (Need to parse from logs or add to API response)
-            // The MissionResponse schema currently only has id, target, status, logs.
-            // I should update the schema to include findings and directive.
+            // Findings
             const findingsContainer = document.getElementById('tab-findings');
-            findingsContainer.innerHTML = '<div class="text-slate-500 italic">Findings data not in API response yet.</div>';
+            if (mission.findings && mission.findings.length > 0) {
+                const severityColors = {
+                    'critical': 'red', 'high': 'orange', 'medium': 'yellow', 'low': 'blue', 'info': 'slate'
+                };
+                findingsContainer.innerHTML = mission.findings.map(f => {
+                    const sev = (f.severity || 'info').toLowerCase();
+                    const color = severityColors[sev] || 'slate';
+                    return `<div class="p-3 rounded-lg bg-white/5 border border-white/5 mb-2">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-medium text-slate-200">${escapeHtml(f.title || 'Untitled Finding')}</span>
+                            <span class="px-2 py-0.5 text-xs rounded bg-${color}-500/20 text-${color}-400">${sev.toUpperCase()}</span>
+                        </div>
+                        ${f.description ? `<p class="text-sm text-slate-400 mt-1">${escapeHtml(f.description)}</p>` : ''}
+                        ${f.tool_source ? `<span class="text-xs text-slate-500">Source: ${escapeHtml(f.tool_source)}</span>` : ''}
+                        ${f.cve_id ? ` <span class="text-xs text-cyan-500">${escapeHtml(f.cve_id)}</span>` : ''}
+                    </div>`;
+                }).join('');
+            } else {
+                findingsContainer.innerHTML = '<div class="text-slate-600 italic">No findings recorded for this mission.</div>';
+            }
 
     // Show feedback section for completed missions
     const feedbackSection = document.getElementById('mission-feedback-section');
