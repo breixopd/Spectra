@@ -162,11 +162,18 @@ async def get_cache_stats(
 @router.get("/events")
 async def get_events(
     limit: int = Query(default=API_MAX_PAGE_SIZE, ge=1, le=OBSERVABILITY_MAX_RESULTS, description="Max events to return"),
+    offset: int = Query(default=0, ge=0, description="Skip this many events (cursor-based catch-up after reconnect)"),
+    since: float | None = Query(default=None, description="Unix timestamp — only return events after this time"),
     event_type: str | None = Query(default=None, max_length=50, description="Filter by event type"),
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
-    """Get recent events."""
-    return [e.to_dict() for e in events.get_history(event_type=event_type, limit=min(limit, OBSERVABILITY_MAX_RESULTS))]
+    """Get recent events. Use since/offset for catch-up after WebSocket reconnect."""
+    return [e.to_dict() for e in events.get_history(
+        event_type=event_type,
+        limit=min(limit, OBSERVABILITY_MAX_RESULTS),
+        since=since,
+        offset=offset,
+    )]
 
 
 @router.get("/events/stats")
