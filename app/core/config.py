@@ -266,9 +266,9 @@ class Settings(BaseSettings):
 
 
     # --- Object Storage (S3/MinIO) ---
-    # When S3_ENDPOINT_URL is set, all file storage (missions, sessions,
-    # knowledge, backups) uses S3-compatible object storage.  When empty,
-    # files are stored on the local filesystem under DATA_ROOT.
+    # S3-compatible object storage (MinIO or AWS S3) is required.
+    # Set S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY before starting.
+    # Spectra will refuse to start without a working S3 configuration.
     S3_ENDPOINT_URL: str = ""  # MinIO/S3 endpoint (e.g., http://minio:9000)
     S3_ACCESS_KEY: SecretStr = SecretStr("")  # Required when S3_ENDPOINT_URL is set
     S3_SECRET_KEY: SecretStr = SecretStr("")  # Required when S3_ENDPOINT_URL is set

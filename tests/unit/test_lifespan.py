@@ -130,7 +130,7 @@ class TestLifespanContextManager:
 
         # Mock all lazy imports used during startup
         mock_storage = MagicMock()
-        mock_storage.is_s3 = False
+        mock_storage.is_s3 = True
 
         with (
             patch("app.services.storage.get_storage_service", return_value=mock_storage),

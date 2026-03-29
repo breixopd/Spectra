@@ -111,9 +111,14 @@ async def test_run_all_cleanup_calls_all_functions():
     mock_pool.available = True
     mock_pool.cleanup_all = AsyncMock(return_value=2)
 
+    mock_storage = MagicMock()
+    mock_storage.list_objects = AsyncMock(return_value=[])
+    mock_storage.delete = AsyncMock(return_value=True)
+
     with (
         patch("app.core.database.async_session_maker", return_value=ctx),
         patch("app.services.tools.sandbox.get_sandbox_pool", return_value=mock_pool),
+        patch("app.services.storage.get_storage_service", return_value=mock_storage),
     ):
         results = await run_all_cleanup()
 
