@@ -213,13 +213,28 @@ class EventBus:
         self,
         event_type: EventType | str | None = None,
         limit: int = 100,
+        since: float | None = None,
+        offset: int = 0,
     ) -> list[Event]:
-        """Get recent events, optionally filtered by type."""
+        """Get recent events, optionally filtered by type and timestamp.
+
+        Args:
+            event_type: Filter by event type name.
+            limit: Maximum number of events to return.
+            since: Unix timestamp — only return events after this time.
+            offset: Skip this many matching events (for cursor-based pagination).
+        """
         events = list(self._event_history)
 
         if event_type:
             event_name = event_type.value if isinstance(event_type, EventType) else event_type
             events = [e for e in events if e.type.value == event_name]
+
+        if since is not None:
+            events = [e for e in events if e.timestamp > since]
+
+        if offset:
+            events = events[offset:]
 
         return events[-limit:]
 
