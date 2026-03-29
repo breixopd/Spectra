@@ -8,6 +8,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.paths import data_path
+
 import app.services.ai.llm as llm_module
 from app.api.schemas import SystemSetupRequest
 from app.core.config import settings
@@ -81,8 +83,7 @@ class SystemSetupService:
             from cryptography.hazmat.primitives import serialization
             from cryptography.hazmat.primitives.asymmetric import ed25519
 
-            keys_dir = Path("keys")
-            keys_dir.mkdir(parents=True, exist_ok=True)
+            keys_dir = data_path("keys")
 
             private_key_path = keys_dir / "plugin_signing.pem"
             public_key_path = keys_dir / "plugin_signing.pub"
@@ -90,6 +91,8 @@ class SystemSetupService:
             if private_key_path.exists() and public_key_path.exists():
                 logger.info("Signing keys already exist")
                 return
+
+            keys_dir.mkdir(parents=True, exist_ok=True)
 
             logger.info("Generating new Ed25519 signing keys...")
             private_key = ed25519.Ed25519PrivateKey.generate()

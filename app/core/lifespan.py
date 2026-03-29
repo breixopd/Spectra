@@ -173,7 +173,18 @@ async def _initialize_database(app: FastAPI) -> None:
     from app.services.storage import get_storage_service
 
     storage = get_storage_service()
-    logger.info("[OK] Storage service initialized (mode: %s)", "s3" if storage.is_s3 else "local")
+    logger.info("[OK] Storage service initialized (mode: s3)")
+
+    # Verify S3 connectivity at startup
+    storage_health = await storage.health_check()
+    if storage_health["status"] != "healthy":
+        logger.error(
+            "[FAIL] S3 storage is unreachable: %s. "
+            "Configure S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY.",
+            storage_health.get("error", "unknown"),
+        )
+    else:
+        logger.info("[OK] S3 storage healthy (endpoint=%s)", storage_health.get("endpoint"))
 
     cache = CacheService()
     set_cache(cache)

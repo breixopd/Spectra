@@ -59,14 +59,11 @@ def prepare_output_directory(mission_id: str, run_id: str) -> Path:
 
 
 async def persist_output_directory(mission_id: str, output_dir: str | Path) -> None:
-    """Persist transient scan artifacts to storage when S3-backed storage is enabled."""
+    """Persist transient scan artifacts to S3 storage."""
     from app.core.config import settings
     from app.services.storage import get_storage_service
 
     storage = get_storage_service()
-    if not storage.is_s3:
-        return
-
     root = Path(output_dir)
     if not root.exists():
         return
@@ -88,12 +85,7 @@ def cleanup_output_directory(output_dir: str | Path) -> None:
 
 
 def cleanup_mission_workspace(mission_id: str) -> None:
-    """Delete the local mission workspace when storage of record is S3."""
-    from app.services.storage import get_storage_service
-
-    storage = get_storage_service()
-    if not storage.is_s3:
-        return
+    """Delete the local mission workspace after artifacts have been uploaded to S3."""
     workspace = data_path("missions", mission_id)
     if workspace.exists():
         shutil.rmtree(workspace, ignore_errors=True)
