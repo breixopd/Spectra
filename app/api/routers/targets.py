@@ -30,6 +30,43 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/targets", tags=["Targets"])
 
 
+def _target_to_response(target) -> TargetResponse:
+    return TargetResponse(
+        id=target.id,
+        address=target.address,
+        description=target.description,
+        status=target.status,
+        os=target.os,
+        created_at=target.created_at.isoformat(),
+    )
+
+
+def _target_scope_filters(current_user: User) -> dict[str, str]:
+    if current_user.is_superuser:
+        return {}
+    return {"user_id": str(current_user.id)}
+
+
+def _target_audit_details(target) -> dict[str, str]:
+    return {"target_id": target.id, "address": target.address}
+
+
+async def _get_target_or_404(repo: TargetRepository, target_id: str):
+    target = await repo.get_by_id(target_id)
+    if not target:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target not found",
+        )
+    return target
+
+
+async def _get_owned_target_or_404(repo: TargetRepository, target_id: str, current_user: User):
+    target = await _get_target_or_404(repo, target_id)
+    check_resource_owner(target, current_user, "target")
+    return target
+
+
 # --- Endpoints ---
 
 
@@ -108,31 +145,18 @@ async def list_targets(
     Pagination: max 100 items per page.
     """
     repo = TargetRepository(db)
-
-    # User isolation
-    filters: dict = {}
-    if not _current_user.is_superuser:
-        filters["user_id"] = str(_current_user.id)
+    filters = _target_scope_filters(_current_user)
 
     total = await repo.count(**filters)
     skip = (page - 1) * per_page
+    limit = min(per_page, MAX_PAGE_SIZE)
 
     if filters:
-        targets = await repo.find_many_by(skip=skip, limit=min(per_page, MAX_PAGE_SIZE), **filters)
+        targets = await repo.find_many_by(skip=skip, limit=limit, **filters)
     else:
-        targets = await repo.get_all(skip=skip, limit=min(per_page, MAX_PAGE_SIZE))
+        targets = await repo.get_all(skip=skip, limit=limit)
 
-    items = [
-        TargetResponse(
-            id=t.id,
-            address=t.address,
-            description=t.description,
-            status=t.status,
-            os=t.os,
-            created_at=t.created_at.isoformat(),
-        )
-        for t in targets
-    ]
+    items = [_target_to_response(target) for target in targets]
     return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
@@ -149,23 +173,8 @@ async def get_target(
 ) -> TargetResponse:
     """Get a target by ID."""
     repo = TargetRepository(db)
-    target = await repo.get_by_id(target_id)
-
-    if not target:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Target not found",
-        )
-    check_resource_owner(target, _current_user, "target")
-
-    return TargetResponse(
-        id=target.id,
-        address=target.address,
-        description=target.description,
-        status=target.status,
-        os=target.os,
-        created_at=target.created_at.isoformat(),
-    )
+    target = await _get_owned_target_or_404(repo, target_id, _current_user)
+    return _target_to_response(target)
 
 
 @router.delete(
@@ -182,14 +191,8 @@ async def delete_target(
 ) -> None:
     """Delete a target."""
     repo = TargetRepository(db)
-    target = await repo.get_by_id(target_id)
-    if not target:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Target not found",
-        )
-    check_resource_owner(target, _current_user, "target")
-    details = {"target_id": target.id, "address": target.address}
+    target = await _get_owned_target_or_404(repo, target_id, _current_user)
+    details = _target_audit_details(target)
     await repo.delete(target_id)
     await db.commit()
     await audit_log_event(
@@ -216,15 +219,7 @@ async def update_target(
 ) -> TargetResponse:
     """Update a target."""
     repo = TargetRepository(db)
-
-    # Verify ownership first
-    existing = await repo.get_by_id(target_id)
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Target not found",
-        )
-    check_resource_owner(existing, _current_user, "target")
+    await _get_owned_target_or_404(repo, target_id, _current_user)
 
     # Filter out None values
     update_data = target_in.model_dump(exclude_unset=True)
@@ -246,14 +241,7 @@ async def update_target(
         request=request,
     )
 
-    return TargetResponse(
-        id=updated_target.id,
-        address=updated_target.address,
-        description=updated_target.description,
-        status=updated_target.status,
-        os=updated_target.os,
-        created_at=updated_target.created_at.isoformat(),
-    )
+    return _target_to_response(updated_target)
 
 
 @router.get(
@@ -268,15 +256,8 @@ async def get_target_findings(
     _current_user: User = Depends(get_current_active_user),
 ) -> list[FindingResponse]:
     """Get all findings for a specific target."""
-    # Verify target exists and user owns it
     target_repo = TargetRepository(db)
-    target = await target_repo.get_by_id(target_id)
-    if not target:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Target not found",
-        )
-    check_resource_owner(target, _current_user, "target")
+    await _get_owned_target_or_404(target_repo, target_id, _current_user)
 
     finding_repo = FindingRepository(db)
     findings = await finding_repo.find_many_by(target_id=target_id)
