@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -22,7 +21,6 @@ from app.core.database import async_session_maker
 from app.core.rate_limit import limiter
 from app.core.security import (
     JWTError,
-    create_access_token,
     decode_token,
     get_password_hash,
 )
@@ -335,20 +333,6 @@ class RegisterRequest(BaseModel):
         return _validate_password_strength(v)
 
 
-class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
-
-
-class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str = Field(min_length=8, max_length=128)
-
-    @field_validator("new_password")
-    @classmethod
-    def validate_password(cls, v: str) -> str:
-        return _validate_password_strength(v)
-
-
 @router.post("/api/public/register", tags=["Public"], status_code=201)
 @limiter.limit("3/minute")
 async def register_user(request: Request, body: RegisterRequest):
@@ -485,6 +469,13 @@ async def verify_email_page(request: Request, token: str = ""):
                 "message": "Account not found.",
             })
 
+        if user.email_verified:
+            return templates.TemplateResponse("verify_email.html", {
+                "request": request,
+                "success": True,
+                "message": "Email already verified. You can log in.",
+            })
+
         user.email_verified = True
         await session.commit()
 
@@ -493,76 +484,3 @@ async def verify_email_page(request: Request, token: str = ""):
         "success": True,
         "message": "Email verified! You can now log in.",
     })
-
-
-@router.post("/api/public/forgot-password", tags=["Public"])
-@limiter.limit("5/minute")
-async def forgot_password(request: Request, body: ForgotPasswordRequest):
-    """Request a password reset token. In production this sends an email."""
-    async with async_session_maker() as session:
-        result = await session.execute(select(User).where(User.email == body.email))
-        user = result.scalar_one_or_none()
-
-    # Always return success to prevent user enumeration
-    if user:
-        token = create_access_token(
-            data={"sub": user.username, "type": "password_reset"},
-            expires_delta=timedelta(minutes=30),
-        )
-        # Send password reset email (fire-and-forget)
-        try:
-            from app.services.email import EmailService
-
-            email_svc = EmailService()
-            base_url = settings.PLATFORM_BASE_URL or "http://localhost:5000"
-            await email_svc.send_template(
-                to=user.email,
-                template_name="password_reset",
-                subject="Spectra \u2014 Password Reset",
-                username=user.username,
-                reset_url=f"{base_url}/reset-password?token={token}",
-            )
-        except (OSError, RuntimeError, ConnectionError):
-            logger.exception("Failed to send password reset email for %s", user.username)
-
-    return {"detail": "If an account with that email exists, a reset link has been sent."}
-
-
-@router.post("/api/public/reset-password", tags=["Public"])
-@limiter.limit("5/minute")
-async def reset_password(request: Request, body: ResetPasswordRequest):
-    """Reset password using a valid reset token."""
-    try:
-        payload = decode_token(body.token)
-    except (JWTError, Exception) as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset token.",
-        ) from exc
-
-    if payload.get("type") != "password_reset":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid token type.",
-        )
-
-    username = payload.get("sub")
-    if not username:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid token.",
-        )
-
-    async with async_session_maker() as session:
-        result = await session.execute(select(User).where(User.username == username))
-        user = result.scalar_one_or_none()
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid token.",
-            )
-
-        user.hashed_password = get_password_hash(body.new_password)
-        await session.commit()
-
-    return {"detail": "Password has been reset. You can now sign in."}
