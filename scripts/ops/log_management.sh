@@ -17,24 +17,60 @@ Commands:
 EOF
 }
 
-SERVICES="spectra-app spectra-worker spectra-scheduler spectra-ai-svc spectra-db spectra-caddy spectra-minio"
+SERVICES=(app worker scheduler ai-svc db caddy minio)
+
+_container_name_for_service() {
+    local service="${1}"
+
+    case "${service}" in
+        app)
+            printf '%s\n' 'spectra-app'
+            ;;
+        worker)
+            printf '%s\n' 'spectra-worker'
+            ;;
+        scheduler)
+            printf '%s\n' 'spectra-scheduler'
+            ;;
+        ai-svc)
+            printf '%s\n' 'spectra-ai'
+            ;;
+        db)
+            printf '%s\n' 'spectra-db'
+            ;;
+        caddy)
+            printf '%s\n' 'spectra-caddy'
+            ;;
+        minio)
+            printf '%s\n' 'spectra-minio'
+            ;;
+        *)
+            echo "Unknown service: ${service}" >&2
+            echo "Valid services: ${SERVICES[*]}" >&2
+            exit 1
+            ;;
+    esac
+}
 
 case "${1:-}" in
     tail)
         SVC="${2:-app}"
-        docker logs -f --tail 100 "spectra-${SVC}" 2>&1
+        CONTAINER_NAME="$(_container_name_for_service "${SVC}")"
+        docker logs -f --tail 100 "${CONTAINER_NAME}" 2>&1
         ;;
     errors)
         SVC="${2:-}"
-        if [[ -n "$SVC" ]]; then
-            echo "=== Errors in spectra-${SVC} ==="
-            docker logs "spectra-${SVC}" 2>&1 | grep -i "error\|exception\|traceback\|critical" | tail -50
+        if [[ -n "${SVC}" ]]; then
+            CONTAINER_NAME="$(_container_name_for_service "${SVC}")"
+            echo "=== Errors in ${CONTAINER_NAME} ==="
+            docker logs "${CONTAINER_NAME}" 2>&1 | grep -i "error\|exception\|traceback\|critical" | tail -50
         else
-            for svc in $SERVICES; do
-                COUNT=$(docker logs "$svc" 2>&1 | grep -ci "error\|exception\|critical" || true)
-                if [[ "$COUNT" -gt 0 ]]; then
-                    echo "=== $svc ($COUNT errors) ==="
-                    docker logs "$svc" 2>&1 | grep -i "error\|exception\|critical" | tail -10
+            for svc in "${SERVICES[@]}"; do
+                CONTAINER_NAME="$(_container_name_for_service "${svc}")"
+                COUNT=$(docker logs "${CONTAINER_NAME}" 2>&1 | grep -ci "error\|exception\|critical" || true)
+                if [[ "${COUNT}" -gt 0 ]]; then
+                    echo "=== ${CONTAINER_NAME} (${COUNT} errors) ==="
+                    docker logs "${CONTAINER_NAME}" 2>&1 | grep -i "error\|exception\|critical" | tail -10
                     echo ""
                 fi
             done
@@ -43,23 +79,25 @@ case "${1:-}" in
     export)
         [[ -z "${2:-}" ]] && echo "Usage: $0 export <directory>" && exit 1
         EXPORT_DIR="$2"
-        mkdir -p "$EXPORT_DIR"
+        mkdir -p "${EXPORT_DIR}"
         TIMESTAMP=$(date -u '+%Y%m%d_%H%M%S')
-        for svc in $SERVICES; do
-            docker logs "$svc" > "$EXPORT_DIR/${svc}_${TIMESTAMP}.log" 2>&1 || true
+        for svc in "${SERVICES[@]}"; do
+            CONTAINER_NAME="$(_container_name_for_service "${svc}")"
+            docker logs "${CONTAINER_NAME}" > "${EXPORT_DIR}/${CONTAINER_NAME}_${TIMESTAMP}.log" 2>&1 || true
         done
-        echo "Logs exported to $EXPORT_DIR/"
-        ls -lh "$EXPORT_DIR/"
+        echo "Logs exported to ${EXPORT_DIR}/"
+        ls -lh "${EXPORT_DIR}/"
         ;;
     sizes)
         echo "Container log sizes:"
-        for svc in $SERVICES; do
-            LOG_FILE=$(docker inspect --format='{{.LogPath}}' "$svc" 2>/dev/null || echo "N/A")
-            if [[ "$LOG_FILE" != "N/A" && -f "$LOG_FILE" ]]; then
-                SIZE=$(du -h "$LOG_FILE" | cut -f1)
-                echo "  $svc: $SIZE"
+        for svc in "${SERVICES[@]}"; do
+            CONTAINER_NAME="$(_container_name_for_service "${svc}")"
+            LOG_FILE=$(docker inspect --format='{{.LogPath}}' "${CONTAINER_NAME}" 2>/dev/null || echo "N/A")
+            if [[ "${LOG_FILE}" != "N/A" && -f "${LOG_FILE}" ]]; then
+                SIZE=$(du -h "${LOG_FILE}" | cut -f1)
+                echo "  ${CONTAINER_NAME}: ${SIZE}"
             else
-                echo "  $svc: unknown"
+                echo "  ${CONTAINER_NAME}: unknown"
             fi
         done
         ;;

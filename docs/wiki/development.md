@@ -31,6 +31,17 @@ docker compose up -d
 
 The tools container auto-installs security tools on first boot.
 
+### Local Ops Scripts
+
+For local admin and troubleshooting work, run the helper scripts from `scripts/ops/` against your Compose containers:
+
+- `scripts/ops/backup_restore.sh` for S3-native backup create/list/restore/verify
+- `scripts/ops/db_maintenance.sh` for PostgreSQL maintenance and sizing checks
+- `scripts/ops/incident_response.sh` and `scripts/ops/user_management.sh` for session, user, and emergency admin tasks
+- `scripts/ops/worker_management.sh`, `scripts/ops/log_management.sh`, and `scripts/ops/s3_management.sh` for queue, log, and object-storage operations
+
+They default to the standard `spectra-*` container names, which matches the local Docker Compose setup.
+
 ---
 
 ## Testing

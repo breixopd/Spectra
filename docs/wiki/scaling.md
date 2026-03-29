@@ -4,7 +4,7 @@
 
 ---
 
-Guide to scaling Spectra across multiple servers — server pools, S3 storage, sandbox workers, and health monitoring.
+Guide to scaling Spectra across multiple servers — server pools, required S3-compatible storage, sandbox workers, and health monitoring.
 
 ## Single-Server Mode (Default)
 
@@ -97,13 +97,11 @@ SANDBOX_ORCHESTRATOR_API_KEY=sk-sandbox-key
 
 ## S3-Compatible Storage
 
-### Phased Adoption
+S3/MinIO is now required in every deployment mode.
 
-| Phase | Method | When |
-|-------|--------|------|
-| **1. Local volumes** | Shared Docker volume (`spectra_data`) | Single-server default |
-| **2. NFS** | NFS mount for `data/missions/` | 2-3 servers, zero code changes |
-| **3. S3/MinIO** | S3-compatible object storage | Full multi-node deployment |
+- There is no local filesystem fallback for missions, pentest sessions, knowledge assets, or backups.
+- Single-host deployments can use the bundled MinIO service; multi-host deployments can use MinIO or any external S3-compatible endpoint.
+- Automated backups are S3-native and stored in `S3_BUCKET_BACKUPS` when `BACKUP_ENABLED=true`.
 
 ### MinIO Setup (Self-Hosted)
 
@@ -161,6 +159,8 @@ Works with any S3-compatible provider: AWS S3, Cloudflare R2, DigitalOcean Space
 | `spectra-sessions` | Pentest session data |
 | `spectra-knowledge` | Knowledge base documents, CVE data |
 | `spectra-backups` | Database backups |
+
+The backup service reads and writes directly from S3. Use `scripts/ops/backup_restore.sh` for manual create/list/restore/verify operations when you need operator-driven backups.
 
 ---
 
@@ -247,7 +247,7 @@ Available via the observability endpoints:
 
 ### 1. Single-Server (Default)
 
-All services on one host. No gateway URLs set.
+All services on one host with bundled MinIO or an external S3 endpoint. No gateway URLs set.
 
 ### 2. Split Tools
 

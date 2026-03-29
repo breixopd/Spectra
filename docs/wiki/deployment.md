@@ -8,6 +8,8 @@
 
 This page covers CI/CD pipeline configuration and versioning.
 
+Current runtime contract: Docker Compose and Docker Swarm use the same internal service names and ports for the microservices split (`ai-svc:5010`, `scheduler:5011`, `worker:5012`). S3-compatible storage is required for missions, sessions, knowledge, and backups; use bundled MinIO or point to an external S3 endpoint.
+
 ## Services
 
 | Service | Image | Purpose |
@@ -15,12 +17,14 @@ This page covers CI/CD pipeline configuration and versioning.
 | **db** | `pgvector/pgvector:pg16` | PostgreSQL + pgvector (data, cache, queues, RAG) |
 | **caddy** | `caddy:2-alpine` | Reverse proxy — TLS, security headers, WebSocket |
 | **app** | `ghcr.io/breixopd14/spectra-app` | FastAPI backend (internal port 5000) |
-| **ai-svc** | `ghcr.io/breixopd14/spectra-app` | AI/LLM service (internal port 5010) |
-| **scheduler** | `ghcr.io/breixopd14/spectra-app` | Background tasks (internal port 5011) |
+| **ai-svc** | `ghcr.io/breixopd14/spectra-ai-svc` | AI/LLM service (internal port 5010) |
+| **scheduler** | `ghcr.io/breixopd14/spectra-scheduler` | Background tasks (internal port 5011) |
 | **worker** | `ghcr.io/breixopd14/spectra-worker` | Tool execution (internal port 5012) |
-| **minio** | `minio/minio` | S3-compatible object storage (optional) |
+| **minio** | `minio/minio` | Self-hosted S3-compatible object storage (required unless external S3 is configured) |
 
 All inter-service communication uses PostgreSQL (job queue, pub/sub via NOTIFY/LISTEN) and HTTP with `SERVICE_AUTH_SECRET`. Redis is used for rate limiting and caching.
+
+Swarm supports `_FILE` secret environment variables such as `POSTGRES_PASSWORD_FILE`, `SERVICE_AUTH_SECRET_FILE`, and `JWT_SECRET_KEY_FILE` while keeping the same internal hostnames and ports as Compose.
 
 > **Tip:** Set `REGISTRY` and `VERSION` environment variables to control image sources.
 > Local dev uses `spectra-app:latest` by default; production can set
@@ -68,6 +72,7 @@ Triggered on every push/PR to `main` or `develop`.
 | **lint** | `ruff check` on app code |
 | **test** | Containerized validation (`docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner`) |
 | **security** | Bandit security scan (HIGH severity gate) |
+| **docker-build** | Builds runtime images and validates both Compose and Swarm config with `.env.example` |
 | **deps** | Dependency audit |
 
 ### `release.yml` — Build, Push & Deploy
