@@ -11,6 +11,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
+from app.core.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 from app.core.rbac import Permission, require_permission
 from app.models.user import User
 
@@ -69,7 +70,7 @@ async def tz_status(
 @router.get("/api/v1/admin/tensorzero/inferences")
 async def tz_inferences(
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(API_DEFAULT_PAGE_SIZE, ge=1, le=API_MAX_PAGE_SIZE),
 ):
     """Get recent inferences from TensorZero."""
     base = _tz_url()

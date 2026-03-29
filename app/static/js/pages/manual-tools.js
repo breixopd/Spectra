@@ -1754,12 +1754,6 @@ function loadChecklist() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-function toggleAccordion(btn) {
-    const content = btn.nextElementSibling;
-    content.classList.toggle('open');
-    btn.querySelector('i').classList.toggle('rotate-180');
-}
-
 function toggleChecklistItem(method, key, checkbox) {
     const stateKey = 'spectra_checklist_' + method;
     checklistState[key] = checkbox.checked;
