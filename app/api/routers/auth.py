@@ -228,6 +228,15 @@ async def login_for_access_token(
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=7 * 24 * 60 * 60,  # 7 days
+        path="/api/v1/auth/refresh",
+    )
 
     return {
         "access_token": access_token,
@@ -241,12 +250,20 @@ async def login_for_access_token(
 async def refresh_token(
     request: Request,
     response: Response,
-    refresh_token: str = Body(..., embed=True),
     session: AsyncSession = Depends(get_async_session),
+    body_refresh_token: str | None = Body(default=None, embed=True, alias="refresh_token"),
 ):
     """
     Refresh access token using a valid refresh token.
+    Accepts the refresh token from an HttpOnly cookie (browser) or request body (API clients).
     """
+    # Cookie takes precedence (browser clients); fall back to body (API clients)
+    refresh_token = request.cookies.get("refresh_token") or body_refresh_token
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token required",
+        )
     try:
         payload = decode_token(refresh_token)
         if payload.get("type") != "refresh":
@@ -296,6 +313,25 @@ async def refresh_token(
     # Rotate refresh token
     new_refresh_token = create_refresh_token(
         data={"sub": user.username},
+    )
+
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=7 * 24 * 60 * 60,  # 7 days
+        path="/api/v1/auth/refresh",
     )
 
     return Token(
@@ -386,6 +422,13 @@ async def logout(request: Request, response: Response, session: AsyncSession = D
             await session.commit()
 
     response.delete_cookie(key="access_token", path="/", httponly=True, secure=True, samesite="strict")
+    response.delete_cookie(
+        key="refresh_token",
+        path="/api/v1/auth/refresh",
+        httponly=True,
+        secure=True,
+        samesite="strict",
+    )
     return {"detail": "Successfully logged out"}
 
 
@@ -498,6 +541,15 @@ async def mfa_verify_login(
         samesite="strict",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=7 * 24 * 60 * 60,  # 7 days
+        path="/api/v1/auth/refresh",
     )
 
     return {
