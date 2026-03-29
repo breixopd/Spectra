@@ -452,12 +452,21 @@ def get_password_hash(password: str) -> str:
 # --- MFA / TOTP Helpers ---
 
 
+def _get_encryption_key() -> bytes:
+    """Get the encryption key, separate from JWT signing.
+
+    Uses ENCRYPTION_KEY when set, falling back to JWT_SECRET_KEY
+    for backward compatibility with existing encrypted data.
+    """
+    key = settings.ENCRYPTION_KEY or settings.JWT_SECRET_KEY.get_secret_value()
+    # Derive a proper Fernet key from the secret
+    derived = hashlib.sha256(key.encode("utf-8")).digest()
+    return base64.urlsafe_b64encode(derived)
+
+
 def _get_fernet() -> Fernet:
-    """Derive a Fernet key from JWT_SECRET_KEY."""
-    key_bytes = settings.JWT_SECRET_KEY.get_secret_value().encode("utf-8")
-    # Fernet requires a 32-byte url-safe base64-encoded key
-    derived = hashlib.sha256(key_bytes).digest()
-    return Fernet(base64.urlsafe_b64encode(derived))
+    """Derive a Fernet instance from the encryption key."""
+    return Fernet(_get_encryption_key())
 
 
 def encrypt_mfa_secret(secret: str) -> str:
