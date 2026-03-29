@@ -10,7 +10,7 @@ from playwright.sync_api import Page, expect
 
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 ADMIN_USERNAME = os.environ.get("APP_ADMIN_USER", "admin")
-ADMIN_PASSWORD = os.environ.get("APP_ADMIN_PASSWORD", "Spectra2026")
+ADMIN_PASSWORD = os.environ.get("APP_ADMIN_PASSWORD", "TestPassword123!")
 ALLOWED_APP_URL_SCHEMES = {"http", "https"}
 
 
