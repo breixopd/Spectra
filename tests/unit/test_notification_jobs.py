@@ -83,30 +83,24 @@ async def test_send_webhook_blocks_unsafe_url():
 
 @pytest.mark.asyncio
 async def test_send_mission_completion_notification_finds_and_notifies():
-    from app.models.finding import Finding
     from app.worker.notification_jobs import send_mission_completion_notification
 
     mock_mission = MagicMock()
     mock_mission.id = "mission-1"
     mock_mission.target = "10.0.0.1"
-
-    mock_finding = MagicMock()
-    mock_finding.severity = "critical"
+    mock_mission.summary = {
+        "findings": [
+            {"title": "Test Finding", "severity": "critical", "description": "desc"},
+        ]
+    }
 
     mission_result = MagicMock()
     mission_result.scalar_one_or_none.return_value = mock_mission
 
-    findings_result = MagicMock()
-    findings_result.scalars.return_value.all.return_value = [mock_finding]
-
     session = AsyncMock()
-    session.execute = AsyncMock(side_effect=[mission_result, findings_result])
+    session.execute = AsyncMock(return_value=mission_result)
 
-    # Finding model lacks mission_id; patch it for this worker code path
-    with (
-        patch("app.services.notifications.notify_mission_completed", new_callable=AsyncMock) as mock_notify,
-        patch.object(Finding, "mission_id", create=True, new_callable=lambda: MagicMock()),
-    ):
+    with patch("app.services.notifications.notify_mission_completed", new_callable=AsyncMock) as mock_notify:
         await send_mission_completion_notification("mission-1", session)
 
     mock_notify.assert_awaited_once_with("10.0.0.1", 1, 1)

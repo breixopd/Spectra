@@ -6,6 +6,8 @@ import logging
 
 from sqlalchemy import select
 
+from app.models.mission import Mission
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,8 +17,6 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
     Returns the path/URL where the report was saved.
     """
     from app.core.database import async_session_maker
-    from app.models.finding import Finding
-    from app.models.mission import Mission
     from app.services.ai.agents.base import AgentContext
     from app.services.ai.agents.reporter import ReporterAgent, ReporterInput
     from app.services.ai.llm import get_global_llm_client
@@ -27,18 +27,20 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
         if not mission:
             raise ValueError(f"Mission {mission_id} not found")
 
-        findings_result = await session.execute(select(Finding).where(Finding.mission_id == mission_id))
-        findings = [
-            {
-                "title": getattr(f, "title", ""),
-                "severity": getattr(f, "severity", "info"),
-                "description": getattr(f, "description", ""),
-                "source": getattr(f, "source", ""),
-                "confirmed": getattr(f, "confirmed", False),
-                "tool_name": getattr(f, "tool_name", ""),
-            }
-            for f in findings_result.scalars().all()
-        ]
+        if mission.summary:
+            findings = [
+                {
+                    "title": f.get("title", ""),
+                    "severity": f.get("severity", "info"),
+                    "description": f.get("description", ""),
+                    "source": f.get("source", ""),
+                    "confirmed": f.get("confirmed", False),
+                    "tool_name": f.get("tool_name", ""),
+                }
+                for f in mission.summary.get("findings", [])
+            ]
+        else:
+            findings = []
 
     target = getattr(mission, "target", "unknown")
     directive = getattr(mission, "directive", "")
@@ -64,8 +66,6 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
 async def generate_executive_summary(mission_id: str) -> str:
     """Generate an executive summary for a mission."""
     from app.core.database import async_session_maker
-    from app.models.finding import Finding
-    from app.models.mission import Mission
     from app.services.ai.agents.base import AgentContext
     from app.services.ai.agents.reporter import ReporterAgent, ReporterInput
     from app.services.ai.llm import get_global_llm_client
@@ -76,15 +76,17 @@ async def generate_executive_summary(mission_id: str) -> str:
         if not mission:
             raise ValueError(f"Mission {mission_id} not found")
 
-        findings_result = await session.execute(select(Finding).where(Finding.mission_id == mission_id))
-        findings = [
-            {
-                "title": getattr(f, "title", ""),
-                "severity": getattr(f, "severity", "info"),
-                "description": getattr(f, "description", ""),
-            }
-            for f in findings_result.scalars().all()
-        ]
+        if mission.summary:
+            findings = [
+                {
+                    "title": f.get("title", ""),
+                    "severity": f.get("severity", "info"),
+                    "description": f.get("description", ""),
+                }
+                for f in mission.summary.get("findings", [])
+            ]
+        else:
+            findings = []
 
     target = getattr(mission, "target", "unknown")
     directive = getattr(mission, "directive", "")

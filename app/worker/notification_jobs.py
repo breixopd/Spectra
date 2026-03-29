@@ -42,13 +42,13 @@ async def send_mission_completion_notification(mission_id: str, session) -> None
         logger.warning("Mission %s not found for notification", mission_id)
         return
 
-    # Count findings
-    from app.models.finding import Finding
-
-    findings_result = await session.execute(select(Finding).where(Finding.mission_id == mission_id))
-    findings = list(findings_result.scalars().all())
-    total = len(findings)
-    critical = sum(1 for f in findings if getattr(f, "severity", "").lower() == "critical")
+    # Count findings from mission summary
+    if mission.summary:
+        findings_data = mission.summary.get("findings", [])
+    else:
+        findings_data = []
+    total = len(findings_data)
+    critical = sum(1 for f in findings_data if f.get("severity", "").lower() == "critical")
 
     target = getattr(mission, "target", "unknown")
     await notify_mission_completed(target, total, critical)
