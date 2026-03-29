@@ -299,3 +299,32 @@ def reset_service_singletons():
 def test_target_ip():
     """Return a test target IP."""
     return "192.168.1.100"
+
+
+@pytest.fixture(autouse=True)
+def mock_storage_for_unit_tests(request):
+    """Mock the storage service for unit tests.
+
+    S3 is required in production but unit tests should not need a running S3.
+    Live/integration tests bypass this fixture.
+    """
+    if _is_live_test(request.node):
+        yield
+        return
+
+    mock_storage = MagicMock()
+    mock_storage.is_s3 = True
+    mock_storage.upload = AsyncMock(return_value="s3://bucket/key")
+    mock_storage.upload_file = AsyncMock(return_value="s3://bucket/key")
+    mock_storage.download = AsyncMock(return_value=b"")
+    mock_storage.download_file = AsyncMock(return_value="/tmp/file")
+    mock_storage.delete = AsyncMock(return_value=True)
+    mock_storage.exists = AsyncMock(return_value=False)
+    mock_storage.list_objects = AsyncMock(return_value=[])
+    mock_storage.get_presigned_url = AsyncMock(return_value=None)
+    mock_storage.copy = AsyncMock(return_value=True)
+    mock_storage.health_check = AsyncMock(return_value={"status": "healthy", "mode": "s3"})
+    mock_storage.close = AsyncMock()
+
+    with patch("app.services.storage.service._storage_service", mock_storage):
+        yield mock_storage
