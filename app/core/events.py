@@ -231,7 +231,8 @@ class EventBus:
             events = [e for e in events if e.type.value == event_name]
 
         if since is not None:
-            events = [e for e in events if e.timestamp > since]
+            since_dt = datetime.fromtimestamp(since)
+            events = [e for e in events if e.timestamp > since_dt]
 
         if offset:
             events = events[offset:]
