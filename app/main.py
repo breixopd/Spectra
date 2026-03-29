@@ -284,14 +284,19 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
     """
     from app.api.dependencies import validate_websocket_token
 
-    # Validate authentication
-    user = await validate_websocket_token(token)
+    # Validate authentication: prefer query-param token, fall back to cookie
+    ws_token = token
+    if not ws_token:
+        ws_token = websocket.cookies.get("access_token")
+    user = await validate_websocket_token(ws_token)
     if not user:
         await websocket.close(code=4001, reason="Authentication required")
         logger.warning("WebSocket connection rejected: invalid or missing token")
         return
 
     await manager.connect(websocket, require_auth=False)
+    # Auto-join user-specific room for scoped event delivery
+    await manager.join_room(websocket, f"user:{user.id}")
     logger.debug("WebSocket connected for user: %s", user.username)
 
     # Rate limiting state

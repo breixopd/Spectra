@@ -188,8 +188,13 @@ class Mission:
         self._broadcast("log", entry)
 
     def _broadcast(self, msg_type: str, data: Any) -> None:
-        """Broadcast a message to WebSocket clients."""
-        asyncio.create_task(ws_manager.broadcast_event(msg_type, data))
+        """Broadcast a message to the owning user's WebSocket connections."""
+        if self.user_id:
+            asyncio.create_task(
+                ws_manager.broadcast_to_user_event(self.user_id, msg_type, data)
+            )
+        else:
+            asyncio.create_task(ws_manager.broadcast_event(msg_type, data))
 
     # --- Attack Surface Management ---
 
