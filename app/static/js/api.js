@@ -36,6 +36,35 @@ const spectraApi = (() => {
         }
     }
 
+    let _refreshing = false;
+    let _refreshQueue = [];
+
+    async function _attemptTokenRefresh() {
+        // Prevent concurrent refresh loops — queue callers until the in-flight refresh resolves
+        if (_refreshing) {
+            return new Promise(resolve => _refreshQueue.push(resolve));
+        }
+        _refreshing = true;
+        try {
+            const res = await fetch('/api/v1/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({}),  // cookie carries the refresh token
+            });
+            const ok = res.status === 200;
+            _refreshQueue.forEach(resolve => resolve(ok));
+            _refreshQueue = [];
+            return ok;
+        } catch {
+            _refreshQueue.forEach(resolve => resolve(false));
+            _refreshQueue = [];
+            return false;
+        } finally {
+            _refreshing = false;
+        }
+    }
+
     /**
      * Core request method.
      * Returns { data, response, error } — never throws.
@@ -61,7 +90,14 @@ const spectraApi = (() => {
             const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
 
             // Handle auth failures
-            if (response.status === 401 && !publicPaths.includes(window.location.pathname)) {
+            if (response.status === 401 && !publicPaths.includes(window.location.pathname) && !options._isRetry) {
+                // Attempt silent token refresh before redirecting
+                const refreshed = await _attemptTokenRefresh();
+                if (refreshed) {
+                    _activeRequests--;
+                    _onLoadingChange(_activeRequests);
+                    return request(url, { ...options, _isRetry: true });
+                }
                 window.location.href = '/login';
                 return { data: null, response, error: 'Unauthorized' };
             }
