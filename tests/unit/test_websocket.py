@@ -284,7 +284,7 @@ class TestShellKeepalive:
         mock_ws.send_json = AsyncMock()
 
         mock_session = AsyncMock()
-        mock_session.mission_id = None
+        mock_session.mission_id = "mission-1"
         mock_session.connect_websocket = AsyncMock()
         mock_session.disconnect_websocket = AsyncMock()
 
@@ -292,6 +292,9 @@ class TestShellKeepalive:
         mock_user.id = "u-1"
         mock_user.username = "tester"
         mock_user.is_superuser = False
+
+        mock_mission = MagicMock()
+        mock_mission.user_id = "u-1"
 
         # Track create_task calls and capture the cancel calls
         mock_task = MagicMock()
@@ -307,6 +310,9 @@ class TestShellKeepalive:
         ):
             mock_mgr.get_session = AsyncMock(return_value=mock_session)
             mock_db = AsyncMock()
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none.return_value = mock_mission
+            mock_db.execute = AsyncMock(return_value=mock_result)
             mock_session_maker.return_value.__aenter__ = AsyncMock(return_value=mock_db)
             mock_session_maker.return_value.__aexit__ = AsyncMock(return_value=False)
 

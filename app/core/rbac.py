@@ -22,6 +22,7 @@ class Permission(StrEnum):
     VIEW_TARGETS = "view_targets"
     MANAGE_TARGETS = "manage_targets"
     USE_TOOLS = "use_tools"
+    MANAGE_TOOLS = "manage_tools"
     VIEW_REPORTS = "view_reports"
     MANAGE_SETTINGS = "manage_settings"
     MANAGE_USERS = "manage_users"

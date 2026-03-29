@@ -7,14 +7,16 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_superuser
-from app.core.database import get_async_session
+from app.core.database import async_session_maker, get_async_session
+from app.models.audit_log import AuditEventType
 from app.models.mission import Mission
 from app.models.user import User
+from app.services.system.audit import log_event as audit_log_event
 
 from .schemas import (
     ClearMissionsRequest,
@@ -33,6 +35,7 @@ router = APIRouter()
 
 @router.post("/clear/tools", response_model=ClearResponse)
 async def clear_tool_statistics(
+    request: Request,
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """Clear tool statistics and status from cache. Requires superuser."""
@@ -58,6 +61,15 @@ async def clear_tool_statistics(
 
         logger.info("Cleared %d tool statistic keys from cache", cleared_count)
 
+        async with async_session_maker() as session:
+            await audit_log_event(
+                session,
+                AuditEventType.DATA_CLEARED,
+                user_id=str(_current_user.id),
+                details={"type": "tool_stats"},
+                request=request,
+            )
+
         return ClearResponse(
             success=True,
             message=f"Cleared {cleared_count} tool statistic entries",
@@ -80,21 +92,22 @@ async def clear_tool_statistics(
 
 @router.post("/clear/missions", response_model=ClearResponse)
 async def clear_missions(
-    request: ClearMissionsRequest,
+    request: Request,
+    body: ClearMissionsRequest,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_superuser),
 ) -> ClearResponse:
     """Clear all missions from the database. Requires superuser."""
-    if not request.confirm:
+    if not body.confirm:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Confirmation required. Set 'confirm' to true to proceed.",
         )
 
     try:
-        if request.status_filter:
-            stmt = delete(Mission).where(Mission.status == request.status_filter)
-            filter_msg = f" with status '{request.status_filter}'"
+        if body.status_filter:
+            stmt = delete(Mission).where(Mission.status == body.status_filter)
+            filter_msg = f" with status '{body.status_filter}'"
         else:
             stmt = delete(Mission)
             filter_msg = ""
@@ -114,6 +127,14 @@ async def clear_missions(
             deleted_count,
             filter_msg,
             cache_cleared,
+        )
+
+        await audit_log_event(
+            db,
+            AuditEventType.DATA_CLEARED,
+            user_id=str(_current_user.id),
+            details={"type": "missions", "cleared_count": deleted_count},
+            request=request,
         )
 
         return ClearResponse(
@@ -140,6 +161,7 @@ async def clear_missions(
 
 @router.post("/clear/cache", response_model=ClearResponse)
 async def clear_cache(
+    request: Request,
     pattern: str = Query(
         default="cache:*",
         description="Cache key pattern to clear (default: cache:*)",
@@ -167,6 +189,15 @@ async def clear_cache(
         logger.info(
             "Cleared %d cache keys matching pattern '%s'", cleared_count, pattern
         )
+
+        async with async_session_maker() as session:
+            await audit_log_event(
+                session,
+                AuditEventType.CACHE_CLEARED,
+                user_id=str(_current_user.id),
+                details={},
+                request=request,
+            )
 
         return ClearResponse(
             success=True,

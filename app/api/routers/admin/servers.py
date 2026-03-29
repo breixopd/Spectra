@@ -8,7 +8,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_async_session
+from app.core.database import async_session_maker, get_async_session
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
@@ -263,13 +263,25 @@ async def check_all_server_health(
 
 @router.post("/api/admin/backups")
 async def create_backup(
+    request: Request,
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Create a database backup."""
     from app.services.infrastructure.backup import BackupService
 
     svc = BackupService()
-    return await svc.create_backup()
+    result = await svc.create_backup()
+
+    async with async_session_maker() as session:
+        await audit_log_event(
+            session,
+            AuditEventType.BACKUP_CREATED,
+            user_id=str(_perm.id),
+            details={},
+            request=request,
+        )
+
+    return result
 
 
 @router.get("/api/admin/backups")
@@ -289,6 +301,7 @@ class RestoreRequest(BaseModel):
 
 @router.post("/api/admin/backups/restore")
 async def restore_backup(
+    request: Request,
     body: RestoreRequest,
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
@@ -296,7 +309,18 @@ async def restore_backup(
     from app.services.infrastructure.backup import BackupService
 
     svc = BackupService()
-    return await svc.restore_backup(body.backup_path)
+    result = await svc.restore_backup(body.backup_path)
+
+    async with async_session_maker() as session:
+        await audit_log_event(
+            session,
+            AuditEventType.BACKUP_RESTORED,
+            user_id=str(_perm.id),
+            details={},
+            request=request,
+        )
+
+    return result
 
 
 # --- Service Monitoring & Deployment ---
