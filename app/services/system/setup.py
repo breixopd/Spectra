@@ -163,6 +163,19 @@ class SystemSetupService:
 
         await upsert_system_config_values(self.session, config_values)
 
+        # Persist setup metadata
+        setup_meta: dict[str, tuple[str, bool]] = {}
+        if setup_in.allow_registration is not None:
+            setup_meta["ALLOW_REGISTRATION"] = (str(setup_in.allow_registration).lower(), False)
+        if setup_in.platform_base_url:
+            setup_meta["PLATFORM_BASE_URL"] = (setup_in.platform_base_url, False)
+        if setup_in.app_name:
+            setup_meta["APP_NAME"] = (setup_in.app_name, False)
+        if setup_in.contact_email:
+            setup_meta["CONTACT_EMAIL"] = (setup_in.contact_email, False)
+        if setup_meta:
+            await upsert_system_config_values(self.session, setup_meta)
+
     async def _handle_infrastructure_changes(
         self, setup_in: SystemSetupRequest
     ) -> None:

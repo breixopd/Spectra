@@ -93,11 +93,13 @@ class TestRegisterEndpoint:
         """Call register_user directly to bypass slowapi decorator."""
         from app.api.routers.public import RegisterRequest, register_user
 
+        superuser_result = MagicMock()
+        superuser_result.scalar_one_or_none.return_value = "admin-id"
         uniq = MagicMock()
         uniq.scalar_one_or_none.return_value = None
         plan = MagicMock()
         plan.scalar_one_or_none.return_value = None
-        maker, _ = _mock_session_ctx([uniq, plan])
+        maker, _ = _mock_session_ctx([superuser_result, uniq, plan])
 
         body = RegisterRequest(username="newuser", email="new@example.com", password="StrongP4ss!")
         with patch("app.api.routers.public.async_session_maker", maker):
@@ -109,9 +111,11 @@ class TestRegisterEndpoint:
 
         from app.api.routers.public import RegisterRequest, register_user
 
+        superuser_result = MagicMock()
+        superuser_result.scalar_one_or_none.return_value = "admin-id"
         uniq = MagicMock()
         uniq.scalar_one_or_none.return_value = "existing-id"
-        maker, _ = _mock_session_ctx([uniq])
+        maker, _ = _mock_session_ctx([superuser_result, uniq])
 
         body = RegisterRequest(username="taken", email="taken@example.com", password="StrongP4ss!")
         with patch("app.api.routers.public.async_session_maker", maker), pytest.raises(HTTPException) as exc_info:

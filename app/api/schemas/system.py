@@ -48,6 +48,11 @@ class SystemSetupRequest(BaseModel):
     s3_secret_key: str | None = None
     # Optional AI model configuration
     ai_models: dict | None = None
+    # Setup metadata
+    allow_registration: bool | None = True
+    platform_base_url: str | None = None
+    app_name: str | None = None
+    contact_email: str | None = None
 
 
 class SettingsUpdate(BaseModel):
