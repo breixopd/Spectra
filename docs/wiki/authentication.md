@@ -4,7 +4,7 @@
 
 ---
 
-Spectra's authentication system: JWT tokens, password management, rate limiting, RBAC, and API keys.
+Spectra's authentication system: JWT tokens, browser session cookies, password management, rate limiting, RBAC, and API keys.
 
 ## JWT Authentication
 
@@ -22,9 +22,22 @@ All tokens use HS256 signing with `JWT_SECRET_KEY`.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `POST /api/auth/token` | Login | Returns access + refresh tokens |
-| `POST /api/auth/refresh` | Refresh | Exchange refresh token for new access token |
-| `POST /api/auth/logout` | Logout | Invalidates the current token |
+| `POST /api/v1/auth/token` | Login | Returns access + refresh tokens and sets browser session cookies |
+| `POST /api/v1/auth/refresh` | Refresh | Rotates the refresh token and issues a new access token |
+| `POST /api/v1/auth/logout` | Logout | Invalidates the current session and clears auth cookies |
+
+The canonical auth routes live under `/api/v1/auth/*`. Backward-compatible `/api/auth/*` routes are still mounted for older clients.
+
+### Browser Session Flow
+
+Browser auth is same-origin and cookie-based:
+
+1. `POST /api/v1/auth/token` sets `access_token` and `refresh_token` as HttpOnly cookies.
+2. Browser API calls send cookies automatically; normal same-origin UI traffic does not need a bearer header.
+3. On `401`, the frontend attempts a silent refresh via `POST /api/v1/auth/refresh` and retries the original request.
+4. Cookie-authenticated `POST`/`PUT`/`PATCH`/`DELETE` requests must include `X-CSRF-Token` matching the `csrf_token` cookie.
+5. Bearer-token and `X-API-Key` clients remain supported and do not require CSRF.
+6. WebSockets accept `?token=<access_token>` and fall back to the `access_token` cookie when the query parameter is absent.
 
 ### Token Blacklist
 
@@ -41,10 +54,10 @@ Tokens are invalidated via a persistent blacklist stored in the `cache_entries` 
 
 ## Password Reset Flow
 
-1. User submits email to `POST /api/auth/forgot-password`
+1. User submits email to `POST /api/v1/auth/forgot-password`
 2. Server generates a time-limited password reset token (1 hour expiry)
 3. Token is sent to the user's email (when email service is configured)
-4. User submits new password + token to `POST /api/auth/reset-password`
+4. User submits new password + token to `POST /api/v1/auth/reset-password`
 5. Token is verified, password is updated
 
 The `forgot-password` endpoint always returns `204 No Content` regardless of whether the email exists, preventing user enumeration.
@@ -53,8 +66,8 @@ The `forgot-password` endpoint always returns `204 No Content` regardless of whe
 
 | Endpoint | Rate Limit | Description |
 |----------|------------|-------------|
-| `POST /api/auth/forgot-password` | 3/minute | Request password reset |
-| `POST /api/auth/reset-password` | 5/minute | Submit new password with token |
+| `POST /api/v1/auth/forgot-password` | 3/minute | Request password reset |
+| `POST /api/v1/auth/reset-password` | 5/minute | Submit new password with token |
 | `GET /forgot-password` | — | Web UI form |
 | `GET /reset-password` | — | Web UI form |
 
@@ -113,7 +126,8 @@ Three roles with hierarchical permissions:
 
 ### Endpoint Protection
 
-- Most endpoints require `Authorization: Bearer <token>`
+- Browser UI and same-origin API calls authenticate with the `access_token` cookie
+- Non-browser clients can use `Authorization: Bearer <token>`
 - Public endpoints: `/api/health`, `/api/v1/auth/setup`, `/api/v1/auth/setup/status`, `/api/public/*`
 - Admin-only endpoints: `/api/admin/*`, `/system/services/*`, server provisioning
 - Role checks enforced at the router level via `get_current_active_user` dependency
@@ -129,6 +143,8 @@ API keys are used for server-to-server communication in the gateway system:
 - Keys are validated on the receiving end before processing requests
 
 API keys are distinct from JWT tokens and are intended for programmatic/service access only.
+
+Because API-key clients authenticate by header instead of browser cookie, they are not subject to CSRF validation.
 
 ---
 

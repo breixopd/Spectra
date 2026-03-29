@@ -6,6 +6,8 @@
 
 Complete guide for deploying Spectra in production — from single-server Docker Compose to multi-host Docker Swarm with Cloudflare and Caddy.
 
+S3-compatible object storage is part of the runtime contract. Missions, pentest sessions, knowledge assets, and backups are stored in S3/MinIO; there is no local filesystem fallback.
+
 ## Prerequisites
 
 - Linux server(s) with Docker Engine 24.0+ and Docker Compose v2.20+
@@ -20,12 +22,12 @@ Spectra runs as microservices, all deployed via Docker:
 | Service | Container | Port | Purpose | Replicas |
 |---------|-----------|------|---------|----------|
 | **app** | `spectra-app` | 5000 | Web UI + REST API | 1–3 |
-| **ai-service** | `spectra-ai-svc` | 5010 | LLM routing, embeddings, RAG | 1 |
+| **ai-svc** | `spectra-ai` | 5010 | LLM routing, embeddings, RAG | 1 |
 | **scheduler** | `spectra-scheduler` | 5011 | Background jobs, backups, metrics, sandbox watchdog | 1 |
 | **worker** | `spectra-worker` | 5012 | Tool execution (manages ephemeral sandbox containers) | 1–3 |
 | **db** | `spectra-db` | 5432 | PostgreSQL + pgvector (data, cache, job queue, pub/sub) | 1 |
 | **caddy** | `spectra-caddy` | 80/443 | Reverse proxy — TLS, security headers | 1 |
-| **minio** | `spectra-minio` | 9000 | S3-compatible object storage (optional) | 1 |
+| **minio** | `spectra-minio` | 9000 | Self-hosted S3-compatible object storage (required unless you point to external S3) | 0–1 |
 
 ### Inter-Service Communication
 
@@ -72,12 +74,12 @@ TENSORZERO_GATEWAY_URL=http://tensorzero:3000
 FULLY_AUTOMATED=false
 PLUGIN_SAFE_MODE=true
 
-# --- S3/MinIO (optional) ---
-# MINIO_ROOT_USER=spectra
-# MINIO_ROOT_PASSWORD=<generate with: openssl rand -hex 16>
-# S3_ENDPOINT_URL=http://minio:9000
-# S3_ACCESS_KEY=spectra
-# S3_SECRET_KEY=<same as MINIO_ROOT_PASSWORD>
+# --- Required S3/MinIO ---
+MINIO_ROOT_USER=spectra
+MINIO_ROOT_PASSWORD=<generate with: openssl rand -hex 16>
+S3_ENDPOINT_URL=http://minio:9000
+S3_ACCESS_KEY=spectra
+S3_SECRET_KEY=<same as MINIO_ROOT_PASSWORD>
 EOF
 ```
 
@@ -93,7 +95,7 @@ docker compose -f docker/docker-compose.yml up -d
 This starts all services as separate containers with health checks:
 
 - `spectra-app` — Core API + Web UI
-- `spectra-ai-svc` — AI/LLM service
+- `spectra-ai` — AI/LLM service
 - `spectra-scheduler` — Background tasks
 - `spectra-worker` — Tool execution
 - `spectra-db` — PostgreSQL
@@ -116,6 +118,28 @@ curl -f http://localhost:5000/api/health
 # Tail logs
 docker compose -f docker/docker-compose.yml logs -f app
 ```
+
+---
+
+## Operations Runbooks
+
+Operational helper scripts live in `scripts/ops/` and default to the standard `spectra-*` container names. Use them from the repo root for common day-2 tasks.
+
+| Script | Use |
+|--------|-----|
+| `scripts/ops/backup_restore.sh` | Create, list, restore, and verify S3-native database backups |
+| `scripts/ops/db_maintenance.sh` | Run `VACUUM`, `ANALYZE`, `REINDEX`, and inspect PostgreSQL stats/sizes |
+| `scripts/ops/incident_response.sh` | Invalidate sessions, lock users, cancel missions, and apply emergency lockdown |
+| `scripts/ops/user_management.sh` | Inspect users, create admins, change roles, reset passwords, and disable MFA |
+| `scripts/ops/worker_management.sh` | Inspect queue health, review failed/dead-letter jobs, retry work, and purge old entries |
+| `scripts/ops/s3_management.sh` | Check MinIO/S3 health, create required buckets, list objects, and review usage |
+| `scripts/ops/log_management.sh` | Tail service logs, extract recent errors, export logs, and inspect log sizes |
+
+### Backups
+
+- `scripts/ops/backup_restore.sh` supports `create`, `list`, `restore <backup_id>`, and `verify <backup_id>`.
+- Backups are S3-native and stored in `S3_BUCKET_BACKUPS` (also exposed as `BACKUP_S3_BUCKET`).
+- When `BACKUP_ENABLED=true`, the scheduler service creates recurring backups every `BACKUP_SCHEDULE_HOURS`.
 
 ---
 
@@ -261,6 +285,8 @@ Docker Swarm is built into Docker Engine — no extra software to install. Use i
 
 A pre-built Swarm stack is at `docker/docker-compose.swarm.yml`.
 
+Swarm now mirrors the Compose runtime contract: `ai-svc` on `5010`, `scheduler` on `5011`, and `worker` on `5012`. The stack also supports `_FILE` secret environment variables such as `POSTGRES_PASSWORD_FILE`, `SERVICE_AUTH_SECRET_FILE`, and `JWT_SECRET_KEY_FILE`.
+
 ### 1. Initialize Swarm
 
 ```bash
@@ -328,7 +354,7 @@ The `docker-compose.swarm.yml` defines these services with placement constraints
 |---------|-----------|----------|---------|
 | `db` | `node.labels.role == db` | 1 | `db_password` |
 | `app` | `node.labels.role == app` | 2 | `db_password`, `service_auth`, `jwt_secret` |
-| `ai-service` | `node.labels.role == ai` | 1 | `service_auth` |
+| `ai-svc` | `node.labels.role == ai` | 1 | `service_auth` |
 | `scheduler` | `node.labels.role == app` | 1 | `service_auth` |
 | `worker` | `node.labels.role == worker` | 2 | `service_auth` |
 | `caddy` | `node.labels.role == app` | 1 | — (uses config) |
@@ -472,7 +498,7 @@ The scheduler service handles automated backups:
 BACKUP_ENABLED=true
 BACKUP_SCHEDULE_HOURS=24
 BACKUP_RETENTION_COUNT=10
-BACKUP_S3_BUCKET=spectra-backups    # Optional: upload to S3/MinIO
+BACKUP_S3_BUCKET=spectra-backups    # Required S3 bucket for automated backups
 ```
 
 ### Manual Backup via Admin API

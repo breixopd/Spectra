@@ -12,11 +12,32 @@ Spectra's security model — authentication, authorization, encryption, network 
 
 - Algorithm: HS256 (configurable via `JWT_ALGORITHM`)
 - Token lifetime: 24 hours default (`ACCESS_TOKEN_EXPIRE_MINUTES=1440`)
-- Tokens issued via `POST /api/auth/token` with username/password
-- Refresh via `POST /api/auth/refresh`
-- Invalidation via `POST /api/auth/logout` (revokes access and refresh tokens via `invalidated_before`)
+- Tokens issued via `POST /api/v1/auth/token` with username/password
+- Refresh via `POST /api/v1/auth/refresh`
+- Invalidation via `POST /api/v1/auth/logout` (revokes access and refresh tokens via `invalidated_before`)
 - MFA cancel via `POST /api/v1/auth/mfa/cancel` (invalidates pending MFA tokens)
 - Rate-limited with IP-based lockout after repeated failures
+
+### Browser Sessions
+
+- Browser login sets `access_token` and `refresh_token` as HttpOnly cookies.
+- The `refresh_token` cookie is scoped to `/api/v1/auth/refresh`; the `access_token` cookie is scoped to `/`.
+- Same-origin browser API calls use cookies, not bearer headers.
+- The frontend attempts a silent refresh through `POST /api/v1/auth/refresh` before redirecting the browser back to `/login`.
+- Cookie-authenticated mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`) must send `X-CSRF-Token` matching the `csrf_token` cookie.
+
+### Bearer Tokens and API Keys
+
+- Bearer JWTs remain supported for CLI and programmatic clients.
+- `Authorization: Bearer <token>` takes precedence over cookie auth when both are present.
+- `X-API-Key` remains supported for gateway and service-to-service calls.
+- CSRF validation is skipped for bearer and API-key requests because they do not rely on the browser cookie session.
+
+### WebSocket Authentication
+
+- `/ws` and shell WebSockets accept `?token=<access JWT>`.
+- If no query token is supplied, the server falls back to the `access_token` cookie.
+- Missing or invalid credentials cause the socket to close with an authentication failure.
 
 ### Initial Setup
 
@@ -44,7 +65,8 @@ Role-based access control with three tiers:
 
 ### Endpoint Protection
 
-- Most endpoints require authentication (`Authorization: Bearer <token>`)
+- Browser UI/API requests can authenticate via the `access_token` cookie
+- Programmatic clients can authenticate with `Authorization: Bearer <token>` or `X-API-Key`
 - Public endpoints: `/api/health`, `/api/v1/auth/setup`, `/api/v1/auth/setup/status`
 - Admin-only endpoints: `/api/admin/*`, `/api/v1/system/*`, server provisioning
 - Superuser checks enforced at the router level
@@ -69,6 +91,7 @@ Role-based access control with three tiers:
 ### Transport Security
 
 - **Production**: Caddy provides TLS termination with auto-provisioned Let's Encrypt certificates
+- **Browser sessions**: `access_token` and `refresh_token` cookies are always `HttpOnly`, `SameSite=Strict`, and `Secure`; the separate non-HttpOnly `csrf_token` cookie uses `Secure` outside DEBUG and relaxes only for local HTTP development
 - **HSTS**: Strict-Transport-Security header with 63072000s max-age and preload
 - **Database**: `sslmode=require` recommended for production DATABASE_URL
 - **S3/MinIO**: TLS for all object storage traffic in production
@@ -158,7 +181,6 @@ Critical decisions pass through quality gates with multi-model validation:
 - App Docker socket mount is read-only
 - `no-new-privileges` applied to app and worker containers
 - Worker retains `NET_ADMIN`/`NET_RAW` for VPN/sandbox networking only
-
 
 ## Container Hardening
 

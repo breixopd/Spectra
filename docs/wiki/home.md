@@ -34,6 +34,7 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 ## Quick Links
 
 - **First time?** Start with [Development](development.md) for local setup, or [Deployment Guide](deployment-guide.md) for production.
+- **Operating Spectra?** See [Deployment Guide](deployment-guide.md) for runbooks, backups, incident response, and the `scripts/ops/*` toolkit.
 - **Configuring settings?** See [Configuration](configuration.md) for all environment variables.
 - **Adding a tool?** See [Plugins](plugins.md) for the JSON plugin schema.
 - **Scaling out?** See [Scaling](scaling.md) for multi-server setup.
