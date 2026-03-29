@@ -33,7 +33,7 @@ All services communicate using:
 
 - **PostgreSQL** for persistent state, job queue (`SELECT ... FOR UPDATE SKIP LOCKED`), and pub/sub (`NOTIFY`/`LISTEN`)
 - **HTTP + shared secret** (`X-Service-Auth` header) for direct service-to-service API calls
-- **No Redis, no external message broker** — PostgreSQL handles everything
+- **Redis** for rate limiting (session store), **PostgreSQL** for persistent state and job queue
 
 ### Sandbox Containers
 
@@ -556,9 +556,9 @@ All services expose health endpoints:
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/observability/stats` | Overall system metrics |
-| `GET /api/observability/metrics` | Prometheus-compatible metrics |
-| `GET /api/observability/services/health` | Per-service health |
+| `GET /api/v1/observability/stats` | Overall system metrics |
+| `GET /api/v1/observability/metrics` | Prometheus-compatible metrics |
+| `GET /api/v1/observability/services/health` | Per-service health |
 | `GET /system/services/topology` | Service topology — local vs remote |
 
 ### Admin Dashboard

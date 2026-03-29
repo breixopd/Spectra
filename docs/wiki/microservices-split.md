@@ -6,7 +6,7 @@
 
 ## Current Architecture
 
-Spectra runs as four independently deployable services sharing a PostgreSQL database. All services use the same codebase (`spectra-app` image) with different entry points.
+Spectra runs as four independently deployable services sharing a PostgreSQL database. Each service has its own image (`spectra-app`, `spectra-ai-svc`, `spectra-scheduler`, `spectra-worker`) sharing the same codebase but deployed independently.
 
 ### Implemented Services
 

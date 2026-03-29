@@ -14,18 +14,20 @@ Spectra's security model — authentication, authorization, encryption, network 
 - Token lifetime: 24 hours default (`ACCESS_TOKEN_EXPIRE_MINUTES=1440`)
 - Tokens issued via `POST /api/auth/token` with username/password
 - Refresh via `POST /api/auth/refresh`
-- Invalidation via `POST /api/auth/logout`
+- Invalidation via `POST /api/auth/logout` (revokes access and refresh tokens via `invalidated_before`)
+- MFA cancel via `POST /api/v1/auth/mfa/cancel` (invalidates pending MFA tokens)
 - Rate-limited with IP-based lockout after repeated failures
 
 ### Initial Setup
 
-- `POST /api/auth/setup` creates the first admin account
+- `POST /api/v1/auth/setup` creates the first admin account
 - Only callable once (before any users exist)
 - After setup, redirects to normal login flow
 
 ### Secret Key Management
 
-- `JWT_SECRET_KEY`: Required for production. Auto-generated if empty (sessions invalidate on restart).
+- `JWT_SECRET_KEY`: Required for production. Auto-generated if empty (sessions invalidate on restart). Used **only** for signing tokens.
+- `ENCRYPTION_KEY`: Separate encryption key for MFA TOTP secrets and credential storage. Defaults to `JWT_SECRET_KEY` if not set — set explicitly to isolate key domains.
 - `SECRET_KEY`: General application secret. Auto-generated if using default value.
 
 ---
@@ -43,8 +45,8 @@ Role-based access control with three tiers:
 ### Endpoint Protection
 
 - Most endpoints require authentication (`Authorization: Bearer <token>`)
-- Public endpoints: `/api/health`, `/api/auth/setup`, `/api/auth/setup/status`
-- Admin-only endpoints: `/api/admin/*`, `/system/services/*`, server provisioning
+- Public endpoints: `/api/health`, `/api/v1/auth/setup`, `/api/v1/auth/setup/status`
+- Admin-only endpoints: `/api/admin/*`, `/api/v1/system/*`, server provisioning
 - Superuser checks enforced at the router level
 
 ---
@@ -147,7 +149,23 @@ Critical decisions pass through quality gates with multi-model validation:
 - Server provisioning: all SSH commands logged
 - Mission events: start, stop, pause, resume, steer, findings
 - Infrastructure changes: server pool modifications
-- Available via `GET /api/system/audit-log`
+- Available via `GET /api/v1/system/audit-log`
+
+
+## Container Hardening
+
+- App service runs with read-only root filesystem (tmpfs `/tmp`)
+- App Docker socket mount is read-only
+- `no-new-privileges` applied to app and worker containers
+- Worker retains `NET_ADMIN`/`NET_RAW` for VPN/sandbox networking only
+
+
+## Container Hardening
+
+- App service runs with read-only root filesystem (tmpfs `/tmp`)
+- App Docker socket mount is read-only
+- `no-new-privileges` applied to app and worker containers
+- Worker retains `NET_ADMIN`/`NET_RAW` for VPN/sandbox networking only
 
 ---
 
@@ -173,6 +191,8 @@ Key configuration for security hardening:
 | Setting | Default | Recommendation |
 | --------- | --------- | ---------------- |
 | `JWT_SECRET_KEY` | Auto-generated | Set a strong random value in production |
+| `ENCRYPTION_KEY` | `''` (falls back to JWT key) | Set explicitly to separate signing and encryption key domains |
+| `ENCRYPTION_KEY` | `''` (falls back to JWT key) | Set explicitly to separate signing and encryption key domains |
 | `PLUGIN_SAFE_MODE` | `true` | Keep enabled in production |
 | `FULLY_AUTOMATED` | `true` | Set `false` for human-in-the-loop |
 | `REQUIRE_APPROVAL` | `false` | Enable for high-security environments |

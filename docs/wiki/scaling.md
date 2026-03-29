@@ -237,9 +237,9 @@ Available via the observability endpoints:
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/observability/stats` | Overall system metrics |
-| `GET /api/observability/metrics` | Prometheus-style metrics |
-| `GET /api/observability/services/health` | Per-service health |
+| `GET /api/v1/observability/stats` | Overall system metrics |
+| `GET /api/v1/observability/metrics` | Prometheus-style metrics |
+| `GET /api/v1/observability/services/health` | Per-service health |
 
 ---
 

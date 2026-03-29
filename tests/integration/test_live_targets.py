@@ -121,11 +121,11 @@ class TestAPISmoke:
         assert resp.status_code in (401, 403)
 
     def test_system_status(self, client, auth_headers):
-        resp = client.get("/api/system/status", headers=auth_headers)
+        resp = client.get("/api/v1/system/status", headers=auth_headers)
         assert resp.status_code == 200
 
     def test_observability_stats(self, client, auth_headers):
-        resp = client.get("/api/observability/stats", headers=auth_headers)
+        resp = client.get("/api/v1/observability/stats", headers=auth_headers)
         assert resp.status_code == 200
 
 
@@ -556,27 +556,27 @@ class TestObservability:
     """Test monitoring and observability endpoints."""
 
     def test_metrics(self, client, auth_headers):
-        resp = client.get("/api/observability/metrics", headers=auth_headers)
+        resp = client.get("/api/v1/observability/metrics", headers=auth_headers)
         assert resp.status_code == 200
 
     def test_events(self, client, auth_headers):
-        resp = client.get("/api/observability/events", headers=auth_headers)
+        resp = client.get("/api/v1/observability/events", headers=auth_headers)
         assert resp.status_code == 200
 
     def test_circuit_breakers(self, client, auth_headers):
-        resp = client.get("/api/observability/circuit-breakers", headers=auth_headers)
+        resp = client.get("/api/v1/observability/circuit-breakers", headers=auth_headers)
         assert resp.status_code == 200
 
     def test_cache_stats(self, client, auth_headers):
-        resp = client.get("/api/observability/cache/stats", headers=auth_headers)
+        resp = client.get("/api/v1/observability/cache/stats", headers=auth_headers)
         assert resp.status_code == 200
 
     def test_service_health(self, client, auth_headers):
-        resp = client.get("/api/observability/services/health", headers=auth_headers)
+        resp = client.get("/api/v1/observability/services/health", headers=auth_headers)
         assert resp.status_code == 200
 
     def test_audit_log(self, client, auth_headers):
-        resp = client.get("/api/system/audit-log", headers=auth_headers)
+        resp = client.get("/api/v1/system/audit-log", headers=auth_headers)
         assert resp.status_code == 200
         # Should have at least the login events from our auth
         data = resp.json()
@@ -663,7 +663,7 @@ class TestSecurity:
             "/api/findings",
             "/api/targets",
             "/api/settings",
-            "/api/system/audit-log",
+            "/api/v1/system/audit-log",
         ]
         for endpoint in sensitive:
             resp = client.get(endpoint)
