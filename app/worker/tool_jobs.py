@@ -29,6 +29,70 @@ from .helpers import (
 logger = logging.getLogger(__name__)
 
 
+async def _ensure_available_tool(registry: Any, tool_id: str, target: str) -> tuple[Any | None, dict[str, Any] | None]:
+    tool = registry.get_tool(tool_id)
+    if not tool:
+        return None, _error_result(tool_id, target, f"Tool not found: {tool_id}")
+
+    if tool.is_available:
+        return tool, None
+
+    logger.info("Tool %s not installed, attempting install...", tool_id)
+    install_result = await install_tool_job(tool_id)
+    if not install_result.get("success"):
+        return None, _error_result(
+            tool_id,
+            target,
+            f"Tool installation failed: {install_result.get('error', 'Unknown error')}",
+        )
+
+    tool = registry.get_tool(tool_id)
+    if not tool or not tool.is_available:
+        return None, _error_result(tool_id, target, "Tool still not available after install")
+
+    return tool, None
+
+
+def _resolve_output_dir(tool_id: str, output_dir: str | None) -> str:
+    if output_dir:
+        return output_dir
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_id = f"{tool_id}_{timestamp}_{uuid.uuid4().hex[:4]}"
+    return f"/tmp/spectra_tool_outputs/{run_id}"
+
+
+def _calculate_effective_timeout(target: str, requested_timeout: int | None, execution: Any) -> int:
+    effective_timeout = requested_timeout or execution.timeout
+
+    if "/" in target:
+        try:
+            network = ipaddress.ip_network(target, strict=False)
+            host_count = min(network.num_addresses, MAX_HOSTS_DEFAULT)
+            effective_timeout = max(effective_timeout, execution.timeout_per_host * host_count)
+        except ValueError:
+            logger.debug(
+                "Target '%s' is not a valid IP network; skipping dynamic timeout adjustment",
+                target,
+            )
+
+    effective_timeout = min(effective_timeout, execution.max_timeout)
+    return max(effective_timeout, execution.min_timeout)
+
+
+def _resolve_output_file(tool_id: str, output_dir: str, args_template: str) -> str | None:
+    if "{output_file}" not in args_template:
+        return None
+    return str(Path(output_dir) / f"{tool_id}_output")
+
+
+def _status_sync_callback(tool_id: str):
+    async def progress_callback(update: dict[str, Any]) -> None:
+        await _sync_tool_status(tool_id, update)
+
+    return progress_callback
+
+
 @with_retry()
 async def execute_tool_job(
     tool_id: str,
@@ -45,34 +109,13 @@ async def execute_tool_job(
     logger.info("Executing tool %s against %s", tool_id, target)
 
     registry = get_registry()
-    tool = registry.get_tool(tool_id)
+    tool, error_result = await _ensure_available_tool(registry, tool_id, target)
+    if error_result is not None:
+        return error_result
 
-    if not tool:
-        return _error_result(tool_id, target, f"Tool not found: {tool_id}")
-
-    # Auto-install if not available
-    if not tool.is_available:
-        logger.info("Tool %s not installed, attempting install...", tool_id)
-        install_result = await install_tool_job(tool_id)
-        if not install_result.get("success"):
-            return _error_result(
-                tool_id,
-                target,
-                f"Tool installation failed: {install_result.get('error', 'Unknown error')}",
-            )
-        tool = registry.get_tool(tool_id)
-        if not tool or not tool.is_available:
-            return _error_result(tool_id, target, "Tool still not available after install")
-
-    # Setup output directory
-    if not output_dir:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        run_id = f"{tool_id}_{timestamp}_{uuid.uuid4().hex[:4]}"
-        output_dir = f"/tmp/spectra_tool_outputs/{run_id}"
-
+    output_dir = _resolve_output_dir(tool_id, output_dir)
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # Build command
     config = tool.config
     builder = CommandBuilder(config)
     parser = OutputParser(config)
@@ -89,21 +132,7 @@ async def execute_tool_job(
     except ValueError as e:
         return _error_result(tool_id, target, f"Command build failed: {e}")
 
-    # Calculate timeout
-    effective_timeout = timeout or config.execution.timeout
-    if "/" in target:  # CIDR range
-        try:
-            network = ipaddress.ip_network(target, strict=False)
-            host_count = min(network.num_addresses, MAX_HOSTS_DEFAULT)
-            effective_timeout = max(effective_timeout, config.execution.timeout_per_host * host_count)
-        except ValueError:
-            logger.debug(
-                "Target '%s' is not a valid IP network; skipping dynamic timeout adjustment",
-                target,
-            )
-
-    effective_timeout = min(effective_timeout, config.execution.max_timeout)
-    effective_timeout = max(effective_timeout, config.execution.min_timeout)
+    effective_timeout = _calculate_effective_timeout(target, timeout, config.execution)
 
     # Execute command with timeout
     import time
@@ -122,10 +151,7 @@ async def execute_tool_job(
         success = False
         stderr = (stderr or "") + f"\n[Spectra] Command timed out after {effective_timeout}s"
 
-    # Parse output
-    output_file = None
-    if "{output_file}" in config.execution.args_template:
-        output_file = str(Path(output_dir) / f"{tool_id}_output")
+    output_file = _resolve_output_file(tool_id, output_dir, config.execution.args_template)
 
     parsed_findings = []
     if stdout or (output_file and Path(output_file).exists()):
@@ -166,10 +192,7 @@ async def install_tool_job(
     logger.info("Installing tool: %s", tool_id)
     installer = ToolInstaller()
 
-    async def progress_callback(update: dict[str, Any]) -> None:
-        await _sync_tool_status(tool_id, update)
-
-    result = await installer.install(tool_id, progress_callback=progress_callback)
+    result = await installer.install(tool_id, progress_callback=_status_sync_callback(tool_id))
 
     await _sync_tool_status(tool_id, result)
     return result
@@ -185,10 +208,7 @@ async def uninstall_tool_job(
     logger.info("Uninstalling tool: %s", tool_id)
     installer = ToolInstaller()
 
-    async def progress_callback(update: dict[str, Any]) -> None:
-        await _sync_tool_status(tool_id, update)
-
-    result = await installer.uninstall(tool_id, progress_callback=progress_callback)
+    result = await installer.uninstall(tool_id, progress_callback=_status_sync_callback(tool_id))
 
     await _sync_tool_status(
         tool_id,

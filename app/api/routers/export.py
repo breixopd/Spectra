@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_active_user
 from app.core.constants import MAX_EXPORT_ROWS
 from app.core.database import get_async_session
-from app.core.rate_limit import limiter
+from app.core.rate_limit import RateLimits, limiter
 from app.models.exploit import Exploit
 from app.models.finding import Finding
 from app.models.mission import Mission
@@ -89,7 +89,7 @@ def _row_to_dict(row: Any, columns: list[str]) -> dict[str, Any]:
     summary="Export data",
     description="Export entity data as JSON or CSV. Supports date range and status filters.",
 )
-@limiter.limit("10/minute")
+@limiter.limit(RateLimits.EXPORT_DATA)
 async def export_data(
     request: Request,
     entity_type: str,

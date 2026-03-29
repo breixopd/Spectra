@@ -70,6 +70,8 @@ Any model supported by fastembed can be used with the `local/` prefix, e.g. `loc
 
 ## Database (PostgreSQL)
 
+PostgreSQL is the primary persistent state store, PostgreSQL-backed app cache, job queue, and `LISTEN`/`NOTIFY` backbone.
+
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `DATABASE_URL` | SecretStr | `"postgresql+asyncpg://spectra:spectra@db:5432/spectra"` | Async database connection URL |
@@ -79,9 +81,19 @@ Any model supported by fastembed can be used with the `local/` prefix, e.g. `loc
 
 ---
 
+## Rate Limiting
+
+Rate limiting lives in the application layer. PostgreSQL is the persistent state store, PostgreSQL-backed app cache, job queue, and `LISTEN`/`NOTIFY` backbone. Redis is the shared distributed rate-limiting backend.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `RATE_LIMIT_STORAGE` | str | `"redis://redis:6379/0"` | Rate-limit backend. The deployment default is Redis so counters stay shared across app replicas. `memory://` is mainly for tests or intentionally ephemeral local runs. Use Caddy rate limiting instead only if you intentionally want rate limiting to live entirely at the edge. |
+
+---
+
 ## Object Storage (S3/MinIO)
 
-S3-compatible object storage for mission data, sessions, knowledge base, and backups. When empty, falls back to local filesystem.
+S3-compatible object storage is required for mission data, sessions, knowledge base, and backups. Use the bundled MinIO service or an external S3-compatible provider; there is no local filesystem fallback.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|

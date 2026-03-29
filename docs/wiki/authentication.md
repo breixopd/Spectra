@@ -88,7 +88,7 @@ Lockout state is persisted to `data/auth/.lockout_state.json` and survives appli
 
 ## Rate Limiting
 
-Rate limiting uses `slowapi` with in-memory storage. Limits are applied per-user (authenticated) or per-IP (unauthenticated).
+Rate limiting uses `slowapi`. PostgreSQL remains the persistent state store, PostgreSQL-backed app cache, job queue, and `LISTEN`/`NOTIFY` backbone. Redis is the shared distributed rate-limiting backend. `RATE_LIMIT_STORAGE=memory://` is acceptable for tests or intentionally ephemeral local runs, but it is not the normal deployment recommendation. Limits are applied per-user (authenticated) or per-IP (unauthenticated).
 
 ### Rate Limit Presets
 
@@ -96,10 +96,10 @@ Rate limiting uses `slowapi` with in-memory storage. Limits are applied per-user
 |-------------------|-------|----------|
 | Login | 5/minute | `RateLimits.LOGIN` |
 | Setup | 3/minute | `RateLimits.SETUP` |
-| Token refresh | 10/minute | `RateLimits.TOKEN_REFRESH` |
-| Forgot password | 3/minute | (inline) |
-| Reset password | 5/minute | (inline) |
-| Mission start | 10/minute | `RateLimits.MISSION_START` |
+| Token refresh | 5/minute | `RateLimits.TOKEN_REFRESH` |
+| Forgot password | 3/minute | `RateLimits.FORGOT_PASSWORD` |
+| Reset password | 5/minute | `RateLimits.RESET_PASSWORD` |
+| Mission start | 5/minute | `RateLimits.MISSION_START` |
 | Mission steer | 30/minute | `RateLimits.MISSION_STEER` |
 | Tool list | 60/minute | `RateLimits.TOOL_LIST` |
 | Tool execute | 20/minute | `RateLimits.TOOL_EXECUTE` |
@@ -110,7 +110,7 @@ Rate limiting uses `slowapi` with in-memory storage. Limits are applied per-user
 
 Rate limit headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`) are included in responses.
 
-> **Scaling note**: The default in-memory rate limiter is per-process. In multi-instance deployments, rate limit state is shared across instances via the PostgreSQL database — no external store needed.
+> **Deployment note**: Keep Redis as the shared distributed rate-limiting backend for normal deployments. `RATE_LIMIT_STORAGE=memory://` is mainly for tests or intentionally ephemeral local runs. PostgreSQL does not share rate-limit state across replicas. Use Caddy rate limiting only if you intentionally want all limits enforced at the edge.
 
 ---
 

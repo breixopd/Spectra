@@ -47,7 +47,7 @@ from app.api.schemas import (
 )
 from app.core.config import settings
 from app.core.database import async_session_maker
-from app.core.rate_limit import limiter
+from app.core.rate_limit import RateLimits, limiter
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
@@ -408,7 +408,7 @@ async def get_tool_execution_config(
 
 
 @router.post("/upload", response_model=PluginUploadResponse)
-@limiter.limit("5/minute")
+@limiter.limit(RateLimits.TOOL_UPLOAD)
 async def upload_plugin(
     request: Request,
     response: Response,
@@ -470,7 +470,7 @@ async def upload_plugin(
 
 
 @router.post("/install-all", response_model=ToolQueueResponse)
-@limiter.limit("2/minute")
+@limiter.limit(RateLimits.TOOL_INSTALL_ALL)
 async def install_all_tools(
     request: Request,
     response: Response,
@@ -512,7 +512,7 @@ async def install_all_tools(
 
 
 @router.post("/{tool_id}/install", response_model=InstallToolResponse)
-@limiter.limit("5/minute")
+@limiter.limit(RateLimits.TOOL_INSTALL)
 async def install_tool(
     request: Request,
     response: Response,
@@ -579,7 +579,7 @@ async def install_tool(
 
 
 @router.post("/{tool_id}/enable", response_model=InstallToolResponse)
-@limiter.limit("10/minute")
+@limiter.limit(RateLimits.TOOL_MANAGE)
 async def enable_tool(
     request: Request,
     response: Response,
@@ -608,7 +608,7 @@ async def enable_tool(
 
 
 @router.post("/{tool_id}/disable", response_model=InstallToolResponse)
-@limiter.limit("10/minute")
+@limiter.limit(RateLimits.TOOL_MANAGE)
 async def disable_tool(
     request: Request,
     response: Response,
@@ -637,7 +637,7 @@ async def disable_tool(
 
 
 @router.delete("/{tool_id}", response_model=ToolRemoveResponse)
-@limiter.limit("5/minute")
+@limiter.limit(RateLimits.TOOL_REMOVE)
 async def remove_tool(
     request: Request,
     response: Response,
@@ -677,7 +677,7 @@ async def get_tools_for_ai(
 
 
 @router.post("/{tool_id}/test", response_model=TestExecutionResponse)
-@limiter.limit("10/minute")
+@limiter.limit(RateLimits.TOOL_TEST)
 async def test_tool(
     request: Request,
     response: Response,

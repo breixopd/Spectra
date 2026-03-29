@@ -18,7 +18,7 @@ from sqlalchemy import select, text
 
 from app.core.config import settings
 from app.core.database import async_session_maker
-from app.core.rate_limit import limiter
+from app.core.rate_limit import RateLimits, limiter
 from app.core.security import (
     JWTError,
     decode_token,
@@ -334,7 +334,7 @@ class RegisterRequest(BaseModel):
 
 
 @router.post("/api/public/register", tags=["Public"], status_code=201)
-@limiter.limit("3/minute")
+@limiter.limit(RateLimits.PUBLIC_REGISTER)
 async def register_user(request: Request, body: RegisterRequest):
     """Self-register a new user account with the default plan."""
     async with async_session_maker() as session:

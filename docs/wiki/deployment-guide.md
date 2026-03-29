@@ -25,7 +25,8 @@ Spectra runs as microservices, all deployed via Docker:
 | **ai-svc** | `spectra-ai` | 5010 | LLM routing, embeddings, RAG | 1 |
 | **scheduler** | `spectra-scheduler` | 5011 | Background jobs, backups, metrics, sandbox watchdog | 1 |
 | **worker** | `spectra-worker` | 5012 | Tool execution (manages ephemeral sandbox containers) | 1–3 |
-| **db** | `spectra-db` | 5432 | PostgreSQL + pgvector (data, cache, job queue, pub/sub) | 1 |
+| **db** | `spectra-db` | 5432 | PostgreSQL + pgvector (persistent state, PostgreSQL-backed app cache, job queue, LISTEN/NOTIFY backbone) | 1 |
+| **redis** | `spectra-redis` | 6379 | Shared distributed rate-limiting backend | 1 |
 | **caddy** | `spectra-caddy` | 80/443 | Reverse proxy — TLS, security headers | 1 |
 | **minio** | `spectra-minio` | 9000 | Self-hosted S3-compatible object storage (required unless you point to external S3) | 0–1 |
 
@@ -33,9 +34,11 @@ Spectra runs as microservices, all deployed via Docker:
 
 All services communicate using:
 
-- **PostgreSQL** for persistent state, job queue (`SELECT ... FOR UPDATE SKIP LOCKED`), and pub/sub (`NOTIFY`/`LISTEN`)
+- **PostgreSQL** for persistent state, PostgreSQL-backed app cache, job queue (`SELECT ... FOR UPDATE SKIP LOCKED`), and pub/sub (`NOTIFY`/`LISTEN`)
 - **HTTP + shared secret** (`X-Service-Auth` header) for direct service-to-service API calls
-- **Redis** for rate limiting (session store), **PostgreSQL** for persistent state and job queue
+- **Redis** as the shared distributed rate-limiting backend
+
+`RATE_LIMIT_STORAGE=memory://` is acceptable for tests or intentionally ephemeral local runs, but it is not the normal deployment recommendation. Keep Redis so rate-limit counters stay shared across app replicas. Use Caddy rate limiting only if you intentionally want all rate limiting to live at the edge.
 
 ### Sandbox Containers
 
@@ -438,7 +441,7 @@ docker compose up -d --scale app=3
 docker service scale spectra_app=3
 ```
 
-Rate limiting and WebSocket events are coordinated via PostgreSQL — no external state store needed. Each app instance uses the shared database for rate limit state.
+PostgreSQL still carries persistent state, the PostgreSQL-backed app cache, the job queue, and WebSocket event flow via `LISTEN`/`NOTIFY`. Redis remains the shared distributed rate-limiting backend across app replicas.
 
 ### Worker Replicas
 

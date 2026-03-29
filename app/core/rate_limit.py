@@ -59,11 +59,15 @@ def get_user_identifier(request: Request) -> str:
     return get_client_identifier(request)
 
 
-# Create limiter instance
-# Storage is configurable via RATE_LIMIT_STORAGE setting.
-# Default "memory://" is fine for single-instance deployments.
-# For multi-instance behind a load balancer, set RATE_LIMIT_STORAGE to
-# "redis://host:6379" or use Caddy's rate_limit module at the reverse proxy.
+# Create limiter instance.
+# Storage is configurable via RATE_LIMIT_STORAGE.
+# PostgreSQL remains the persistent state store, PostgreSQL-backed app cache,
+# job queue, and LISTEN/NOTIFY backbone; it does not coordinate rate-limit
+# state.
+# Deployment default is Redis so counters stay shared across app replicas.
+# Use "memory://" mainly for tests or intentionally ephemeral local runs.
+# Use Caddy's rate_limit module only if you intentionally want rate limiting
+# to live entirely at the reverse proxy edge.
 from app.core.config import settings as _rl_settings
 from app.core.constants import API_RATE_LIMIT
 
@@ -84,16 +88,34 @@ class RateLimits:
     # Authentication endpoints - strict limits
     LOGIN = "5/minute"
     SETUP = "3/minute"
-    TOKEN_REFRESH = "10/minute"
+    TOKEN_REFRESH = "5/minute"
+    PROFILE_UPDATE = "5/minute"
+    PASSWORD_CHANGE = "5/minute"
+    ACCOUNT_DELETE = "2/hour"
+    FORGOT_PASSWORD = "3/minute"
+    RESET_PASSWORD = "5/minute"
+    PUBLIC_REGISTER = "3/minute"
 
     # Mission operations - moderate limits
-    MISSION_START = "10/minute"
+    MISSION_START = "5/minute"
+    MISSION_CONTROL = "10/minute"
     MISSION_STEER = "30/minute"
 
     # Tool operations - relaxed for automation
     TOOL_LIST = "60/minute"
     TOOL_EXECUTE = "20/minute"
     TOOL_UPLOAD = "5/minute"
+    TOOL_INSTALL_ALL = "2/minute"
+    TOOL_INSTALL = "5/minute"
+    TOOL_MANAGE = "10/minute"
+    TOOL_REMOVE = "5/minute"
+    TOOL_TEST = "10/minute"
+
+    # Export and read-heavy endpoints
+    FINDINGS_LIST = "60/minute"
+    FINDINGS_EXPORT = "60/minute"
+    EXPORT_DATA = "10/minute"
+    SHELL_SESSIONS = "30/minute"
 
     # API general - default
     API_DEFAULT = API_RATE_LIMIT

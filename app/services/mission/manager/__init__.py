@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Coroutine
 
+from app.core.constants import MAX_CONCURRENT_MISSIONS
 from app.services.mission.mission import Mission
 
 from . import execution, lifecycle, steering
@@ -40,9 +41,14 @@ class MissionManager:
         self._agents_initialized = False
 
         # Concurrent mission isolation
-        from app.core.constants import MAX_CONCURRENT_MISSIONS
         self._global_semaphore = asyncio.Semaphore(MAX_CONCURRENT_MISSIONS)
         self._mission_llm_semaphores: dict[str, asyncio.Semaphore] = {}
+
+    def _set_mission_llm_semaphore(self, mission_id: str) -> None:
+        self._mission_llm_semaphores[mission_id] = asyncio.Semaphore(1)
+
+    def _schedule_mission_task(self, coroutine: Coroutine[Any, Any, None]) -> None:
+        asyncio.create_task(coroutine)
 
     async def _ensure_agents(self) -> None:
         """Initialize agents."""
@@ -59,8 +65,12 @@ class MissionManager:
     # --- Public API ---
 
     async def start_mission(
-        self, target: str, directive: str, requirements: str | None = None,
-        vpn_config: str | None = None, user_id: str | None = None,
+        self,
+        target: str,
+        directive: str,
+        requirements: str | None = None,
+        vpn_config: str | None = None,
+        user_id: str | None = None,
         requires_approval: bool = False,
     ) -> str:
         """
@@ -78,13 +88,20 @@ class MissionManager:
         """
         await self._ensure_agents()
 
-        mission = await self.lifecycle.start_mission(target, directive, requirements, vpn_config=vpn_config, user_id=user_id, requires_approval=requires_approval)
+        mission = await self.lifecycle.start_mission(
+            target,
+            directive,
+            requirements,
+            vpn_config=vpn_config,
+            user_id=user_id,
+            requires_approval=requires_approval,
+        )
 
         # Create per-mission LLM semaphore (max 1 concurrent LLM call)
-        self._mission_llm_semaphores[mission.id] = asyncio.Semaphore(1)
+        self._set_mission_llm_semaphore(mission.id)
 
         # Start execution loop in background with global concurrency limit
-        asyncio.create_task(self._run_mission_with_limit(mission))
+        self._schedule_mission_task(self._run_mission_with_limit(mission))
 
         return mission.id
 
@@ -111,9 +128,7 @@ class MissionManager:
         except ValueError:
             return None
 
-        import asyncio
-
-        asyncio.create_task(self.execution.run_mission_loop(mission))
+        self._schedule_mission_task(self.execution.run_mission_loop(mission))
         return mission.id
 
     async def get_mission(self, mission_id: str) -> Mission | None:

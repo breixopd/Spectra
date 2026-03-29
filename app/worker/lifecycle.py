@@ -13,11 +13,53 @@ from .helpers import _is_tool_installed, _sync_tool_status
 logger = logging.getLogger(__name__)
 
 
-async def startup() -> None:
-    """Worker startup hook."""
+def _log_startup_banner() -> None:
     logger.info("=" * 60)
     logger.info("Spectra PostgreSQL Worker starting in tools container...")
     logger.info("=" * 60)
+
+
+async def _sync_detected_tool_status(tool: object) -> bool:
+    tool_id = tool.config.id
+    is_installed = _is_tool_installed(tool)
+    tool.status = ToolStatus.READY if is_installed else ToolStatus.PENDING
+
+    await _sync_tool_status(tool_id, {"status": tool.status.value})
+
+    if is_installed:
+        logger.info("Tool %s already installed", tool_id)
+
+    return is_installed
+
+
+def _install_progress_callback(tool_id: str):
+    async def progress_callback(update: dict[str, str]) -> None:
+        await _sync_tool_status(tool_id, update)
+
+    return progress_callback
+
+
+async def _sync_install_result(tool_id: str, result: dict[str, object]) -> None:
+    if result.get("success"):
+        logger.info("[OK] Installed %s", tool_id)
+    else:
+        logger.warning("[FAIL] Failed to install %s: %s", tool_id, result.get("error"))
+
+    await _sync_tool_status(tool_id, result)
+
+
+async def _sync_install_failure(tool_id: str, error: Exception, *, unexpected: bool = False) -> None:
+    if unexpected:
+        logger.error("Unexpected error installing %s: %s", tool_id, error)
+    else:
+        logger.error("Error installing %s: %s", tool_id, error)
+
+    await _sync_tool_status(tool_id, {"status": "failed", "error": str(error)})
+
+
+async def startup() -> None:
+    """Worker startup hook."""
+    _log_startup_banner()
 
     try:
         from app.services.tools.registry import initialize_registry
@@ -37,57 +79,29 @@ async def startup() -> None:
 
 async def _auto_install_pending() -> None:
     """Auto-install pending tools on startup."""
+    from app.services.tools.installer import ToolInstaller
     from app.services.tools.registry import get_registry
 
     registry = get_registry()
-    tools = registry.list_tools()
-
     pending = []
-    for tool in tools:
-        is_installed = _is_tool_installed(tool)
-        tool.status = ToolStatus.READY if is_installed else ToolStatus.PENDING
-
-        await _sync_tool_status(
-            tool.config.id,
-            {"status": tool.status.value},
-        )
-
-        if not is_installed:
+    for tool in registry.list_tools():
+        if not await _sync_detected_tool_status(tool):
             pending.append(tool.config.id)
-        else:
-            logger.info("Tool %s already installed", tool.config.id)
 
     if pending:
         logger.info("Auto-installing %d tools: %s", len(pending), pending)
+        installer = ToolInstaller()
         for tool_id in pending:
             try:
-                from app.services.tools.installer import ToolInstaller
-
-                installer = ToolInstaller()
-
-                async def progress_callback(update: dict, current_tool_id: str = tool_id) -> None:
-                    await _sync_tool_status(current_tool_id, update)
-
-                result = await installer.install(tool_id, progress_callback=progress_callback)
-
-                if result.get("success"):
-                    logger.info("[OK] Installed %s", tool_id)
-                else:
-                    logger.warning("[FAIL] Failed to install %s: %s", tool_id, result.get("error"))
-
-                await _sync_tool_status(tool_id, result)
+                result = await installer.install(
+                    tool_id,
+                    progress_callback=_install_progress_callback(tool_id),
+                )
+                await _sync_install_result(tool_id, result)
             except (OSError, RuntimeError, ValueError) as e:
-                logger.error("Error installing %s: %s", tool_id, e)
-                await _sync_tool_status(
-                    tool_id,
-                    {"status": "failed", "error": str(e)},
-                )
+                await _sync_install_failure(tool_id, e)
             except Exception as e:  # noqa: BLE001 – unknown plugin errors must not crash worker
-                logger.error("Unexpected error installing %s: %s", tool_id, e)
-                await _sync_tool_status(
-                    tool_id,
-                    {"status": "failed", "error": str(e)},
-                )
+                await _sync_install_failure(tool_id, e, unexpected=True)
 
 
 async def shutdown() -> None:

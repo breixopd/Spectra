@@ -15,7 +15,7 @@ from sqlalchemy import select
 from app.api.dependencies import check_feature_allowed, get_current_active_user, validate_websocket_token
 from app.core.constants import WS_KEEPALIVE_INTERVAL
 from app.core.database import async_session_maker
-from app.core.rate_limit import limiter
+from app.core.rate_limit import RateLimits, limiter
 from app.models.audit_log import AuditEventType
 from app.models.finding import Finding
 from app.models.mission import Mission
@@ -103,7 +103,7 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
 
 
 @router.get("/sessions")
-@limiter.limit("30/minute")
+@limiter.limit(RateLimits.SHELL_SESSIONS)
 async def list_sessions(request: Request, _current_user: User = Depends(get_current_active_user)):
     """List active shell sessions (scoped to the user's missions)."""
     all_sessions = shell_manager.list_sessions()

@@ -23,6 +23,22 @@ services:
     networks:
       - spectra_test
 
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: spectra
+      MINIO_ROOT_PASSWORD: spectra_test_minio
+    ports:
+      - "19000:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - spectra_test
+
   app:
     build:
       context: ..
@@ -32,6 +48,9 @@ services:
     environment:
       # Override database for container network
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=spectra
+      - S3_SECRET_KEY=spectra_test_minio
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
@@ -46,6 +65,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     networks:
       spectra_test:
         aliases:
@@ -59,6 +80,9 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=spectra
+      - S3_SECRET_KEY=spectra_test_minio
     volumes:
       - ../plugins:/app/plugins
       - ../app:/app/app:ro
@@ -107,6 +131,9 @@ services:
     environment:
       # Override for test environment
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=spectra
+      - S3_SECRET_KEY=spectra_test_minio
       - TEST_TARGET_IP=172.21.0.5
       - TEST_TARGET_URL=http://172.21.0.5
       - METASPLOITABLE_AVAILABLE=true
@@ -123,6 +150,8 @@ services:
       - "host.docker.internal:host-gateway"
     depends_on:
       db:
+        condition: service_healthy
+      minio:
         condition: service_healthy
       metasploitable:
         condition: service_started
@@ -155,6 +184,9 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=spectra
+      - S3_SECRET_KEY=spectra_test_minio
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
@@ -187,6 +219,9 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=spectra
+      - S3_SECRET_KEY=spectra_test_minio
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false

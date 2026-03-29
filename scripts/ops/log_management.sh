@@ -24,25 +24,25 @@ _container_name_for_service() {
 
     case "${service}" in
         app)
-            printf '%s\n' 'spectra-app'
+            printf '%s\n' "${APP_CONTAINER:-spectra-app}"
             ;;
         worker)
-            printf '%s\n' 'spectra-worker'
+            printf '%s\n' "${WORKER_CONTAINER:-spectra-worker}"
             ;;
         scheduler)
-            printf '%s\n' 'spectra-scheduler'
+            printf '%s\n' "${SCHEDULER_CONTAINER:-spectra-scheduler}"
             ;;
         ai-svc)
-            printf '%s\n' 'spectra-ai'
+            printf '%s\n' "${AI_CONTAINER:-spectra-ai}"
             ;;
         db)
-            printf '%s\n' 'spectra-db'
+            printf '%s\n' "${DB_CONTAINER:-spectra-db}"
             ;;
         caddy)
-            printf '%s\n' 'spectra-caddy'
+            printf '%s\n' "${CADDY_CONTAINER:-spectra-caddy}"
             ;;
         minio)
-            printf '%s\n' 'spectra-minio'
+            printf '%s\n' "${MINIO_CONTAINER:-spectra-minio}"
             ;;
         *)
             echo "Unknown service: ${service}" >&2
