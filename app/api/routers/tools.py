@@ -46,9 +46,12 @@ from app.api.schemas import (
     ValidationResponse,
 )
 from app.core.config import settings
+from app.core.database import async_session_maker
 from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
+from app.models.audit_log import AuditEventType
 from app.models.user import User
+from app.services.system.audit import log_event as audit_log_event
 from app.services.tools.models import (
     RegisteredTool,
     ToolCategory,
@@ -473,7 +476,7 @@ async def install_all_tools(
     response: Response,
     background_tasks: BackgroundTasks,
     force: bool = Query(False, description="Reinstall even if already installed"),
-    _current_user: User = require_permission(Permission.USE_TOOLS),
+    _current_user: User = Depends(get_current_superuser),
 ):
     """
     Queue installation of all tools via the tools container.
@@ -493,6 +496,15 @@ async def install_all_tools(
 
     background_tasks.add_task(_install)
 
+    async with async_session_maker() as session:
+        await audit_log_event(
+            session,
+            AuditEventType.TOOL_INSTALLED,
+            user_id=str(_current_user.id),
+            details={"action": "install_all"},
+            request=request,
+        )
+
     return ToolQueueResponse(
         success=True,
         message="Tool installation queued. Check /api/system/status for progress.",
@@ -507,7 +519,7 @@ async def install_tool(
     tool_id: str,
     background_tasks: BackgroundTasks,
     registry: ToolRegistry = Depends(get_tool_registry),
-    _current_user: User = require_permission(Permission.USE_TOOLS),
+    _current_user: User = Depends(get_current_superuser),
 ):
     """
     Install a tool via the tools container worker.
@@ -549,6 +561,15 @@ async def install_tool(
 
     background_tasks.add_task(_install)
 
+    async with async_session_maker() as session:
+        await audit_log_event(
+            session,
+            AuditEventType.TOOL_INSTALLED,
+            user_id=str(_current_user.id),
+            details={"tool_id": tool_id},
+            request=request,
+        )
+
     return InstallToolResponse(
         success=True,
         tool_id=tool_id,
@@ -568,6 +589,16 @@ async def enable_tool(
 ):
     """Enable a plugin for platform use."""
     tool = await registry.set_enabled(tool_id, True)
+
+    async with async_session_maker() as session:
+        await audit_log_event(
+            session,
+            AuditEventType.TOOL_ENABLED,
+            user_id=str(_current_user.id),
+            details={"tool_id": tool_id},
+            request=request,
+        )
+
     return InstallToolResponse(
         success=True,
         tool_id=tool_id,
@@ -587,6 +618,16 @@ async def disable_tool(
 ):
     """Disable a plugin so it is hidden from platform execution paths."""
     tool = await registry.set_enabled(tool_id, False)
+
+    async with async_session_maker() as session:
+        await audit_log_event(
+            session,
+            AuditEventType.TOOL_DISABLED,
+            user_id=str(_current_user.id),
+            details={"tool_id": tool_id},
+            request=request,
+        )
+
     return InstallToolResponse(
         success=True,
         tool_id=tool_id,
@@ -602,13 +643,22 @@ async def remove_tool(
     response: Response,
     tool_id: str,
     registry: ToolRegistry = Depends(get_tool_registry),
-    _current_user: User = require_permission(Permission.USE_TOOLS),
+    _current_user: User = Depends(get_current_superuser),
 ):
     """Remove a tool plugin from the registry."""
     success = await registry.remove_plugin(tool_id)
 
     if not success:
         raise HTTPException(status_code=404, detail=f"Tool not found: {tool_id}")
+
+    async with async_session_maker() as session:
+        await audit_log_event(
+            session,
+            AuditEventType.TOOL_REMOVED,
+            user_id=str(_current_user.id),
+            details={"tool_id": tool_id},
+            request=request,
+        )
 
     return ToolRemoveResponse(success=True, message=f"Tool '{tool_id}' removed")
 
@@ -666,6 +716,15 @@ async def test_tool(
         # Wait for result with timeout
         job = Job(job_id)
         result = await job.result(timeout=timeout or 300)
+
+        async with async_session_maker() as session:
+            await audit_log_event(
+                session,
+                AuditEventType.TOOL_EXECUTED,
+                user_id=str(_current_user.id),
+                details={"tool_id": tool_id},
+                request=request,
+            )
 
         # Return detailed result for debugging
         return TestExecutionResponse(

@@ -71,11 +71,14 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
         return
 
     # Verify the user owns the mission associated with this shell session
-    if session.mission_id and not user.is_superuser:
+    if not user.is_superuser:
+        if not session.mission_id:
+            await websocket.close(code=4003, reason="Not authorized for this session")
+            return
         async with async_session_maker() as db:
             result = await db.execute(select(Mission).where(Mission.id == session.mission_id))
             mission = result.scalar_one_or_none()
-            if mission and mission.user_id and mission.user_id != str(user.id):
+            if not mission or not mission.user_id or mission.user_id != str(user.id):
                 await websocket.close(code=4003, reason="Not authorized for this session")
                 return
 

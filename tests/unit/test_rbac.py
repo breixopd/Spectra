@@ -18,6 +18,7 @@ class TestPermissionEnum:
             "view_targets",
             "manage_targets",
             "use_tools",
+            "manage_tools",
             "view_reports",
             "manage_settings",
             "manage_users",
