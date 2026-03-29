@@ -145,7 +145,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(
             patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
         )
-        stack.enter_context(patch("app.services.storage.get_storage_service", return_value=MagicMock(is_s3=True)))
+        stack.enter_context(patch("app.services.storage.get_storage_service", return_value=MagicMock(is_s3=True, health_check=AsyncMock(return_value={"status": "healthy", "endpoint": "http://minio:9000"}))))
         stack.enter_context(
             patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock())
         )

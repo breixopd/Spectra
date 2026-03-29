@@ -130,8 +130,8 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
                 action=report,
             )
 
-        except (OSError, RuntimeError, ValueError, TimeoutError) as e:
-            logger.error("Report generation failed: %s", e)
+        except Exception as e:
+            logger.exception("Report generation failed for mission %s: %s", context.mission_id, e)
             return AgentResult(
                 success=False,
                 error=str(e),
