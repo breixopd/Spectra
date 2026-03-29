@@ -239,7 +239,11 @@ jobs:
             set -e
             cd ~/spectra
 
+            export REGISTRY=ghcr.io/breixopd14/
             export VERSION=${{ needs.release.outputs.version }}
+
+            # Login to GHCR for the pull
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             # Pull latest images
             docker compose -f docker/docker-compose.yml pull
