@@ -134,3 +134,22 @@ class UsageTracker:
             )
 
             return (current < max_allowed, current, max_allowed)
+
+    async def reset_daily_counters(self) -> None:
+        """Reset daily usage counters for all users."""
+        try:
+            async with async_session_maker() as session:
+                from sqlalchemy import update
+
+                stmt = update(UsageRecord).where(
+                    UsageRecord.period_type == "daily"
+                ).values(
+                    api_requests=0,
+                    missions_started=0,
+                    sandbox_minutes=0,
+                    llm_tokens_used=0,
+                )
+                await session.execute(stmt)
+                await session.commit()
+        except Exception as e:
+            logger.error("Failed to reset daily counters: %s", e)

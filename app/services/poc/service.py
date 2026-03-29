@@ -13,7 +13,7 @@ from app.services.ai.consensus import QualityGate, VotingSystem
 from app.services.ai.llm import LLMClient
 from app.services.poc.models import POCMetadata, POCRequest, POCResult
 from app.services.shell.session_manager import shell_manager
-from app.services.tools.service import ToolExecutionService
+from app.services.tools.service import StandaloneMissionAdapter, ToolExecutionService
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +75,9 @@ class POCService:
                 )
 
             # 4. Execute via Worker
+            mission_adapter = StandaloneMissionAdapter(target=request.target)
             exec_result = await self.tool_service.execute_custom_script(
-                mission=None,  # We might need to pass mission if available, adapted context
+                mission=mission_adapter,
                 script_content=poc_output.code_content,
                 language=poc_output.language,
                 target=request.target,

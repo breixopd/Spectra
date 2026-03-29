@@ -61,11 +61,12 @@ def sanitize_tool_output(output: str) -> str:
 class StandaloneMissionAdapter:
     """Adapts a standalone execution to the Mission interface."""
 
-    def __init__(self, target: str, job_id: str | None = None):
+    def __init__(self, target: str, job_id: str | None = None, user_id: str | None = None):
         import uuid as _uuid
 
         self.id = job_id or str(_uuid.uuid4())
         self.target = target
+        self.user_id = user_id or "__standalone__"
         self.directive = f"Execute tool against {target}"
         self.findings: list[dict[str, Any]] = []
         self.tool_runs: list[str] = []

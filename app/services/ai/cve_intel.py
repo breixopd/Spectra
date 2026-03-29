@@ -38,7 +38,7 @@ _cve_knowledge_base: list[dict[str, Any]] | None = None
 
 
 def _load_cve_knowledge_base() -> list[dict[str, Any]]:
-    """Load CVE knowledge base from PostgreSQL cache.
+    """Load CVE knowledge base from PostgreSQL cache (sync version).
 
     Returns empty list if data hasn't been downloaded yet.
     Use Settings → Data Sources or ``python scripts/update_exploit_db.py``
@@ -60,10 +60,29 @@ def _load_cve_knowledge_base() -> list[dict[str, Any]]:
         except Exception as exc:
             logger.warning("Failed to load CVE knowledge base: %s", exc)
             data = None
+        _cve_knowledge_base = data if isinstance(data, list) else []
+        if _cve_knowledge_base:
+            logger.info("Loaded CVE knowledge base: %d entries", len(_cve_knowledge_base))
     else:
-        # Already in async context; data will be loaded next time
-        _cve_knowledge_base = []
+        # In async context — return whatever is cached without blocking.
+        # Callers in async context should use _load_cve_knowledge_base_async().
+        return _cve_knowledge_base or []
+
+    return _cve_knowledge_base
+
+
+async def _load_cve_knowledge_base_async() -> list[dict[str, Any]]:
+    """Load CVE knowledge base from PostgreSQL cache (async version)."""
+    global _cve_knowledge_base
+    if _cve_knowledge_base is not None:
         return _cve_knowledge_base
+
+    db = get_exploit_db()
+    try:
+        data = await db._cache_get("cve_knowledge_base")
+    except Exception as exc:
+        logger.warning("Failed to load CVE knowledge base: %s", exc)
+        data = None
 
     _cve_knowledge_base = data if isinstance(data, list) else []
     if _cve_knowledge_base:
@@ -374,7 +393,8 @@ async def lookup_cves_live(
     Merges results, deduplicates by CVE ID, and sorts by relevance.
     Falls back to builtin-only if NVD is unreachable.
     """
-    # Start with builtin results
+    # Start with builtin results — ensure async loading first
+    await _load_cve_knowledge_base_async()
     builtin = lookup_cves(product=product, version=version, service=service)
     builtin_ids = {c["cve"] for c in builtin}
 
