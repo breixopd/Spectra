@@ -2,8 +2,9 @@ let currentMissionId = null;
 
 // Load missions on start
 (async () => {
-    const { data: missions, error } = await spectraApi.get('/api/v1/missions');
+    const { data, error } = await spectraApi.get('/api/v1/missions?page=1&per_page=100');
     if (error) return;
+        const missions = data?.items || [];
         const list = document.getElementById('mission-list');
         list.innerHTML = '';
         

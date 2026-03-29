@@ -761,3 +761,142 @@ async def reset_password(
     )
 
     return {"message": "Password reset successfully"}
+
+
+# --- API Keys ---
+
+
+@router.get("/api-keys", summary="List API keys")
+async def list_api_keys(
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """List current user's active API keys."""
+    from app.models.plan import ApiKey
+
+    stmt = (
+        select(ApiKey)
+        .where(ApiKey.user_id == str(user.id), ApiKey.is_active == True)  # noqa: E712
+        .order_by(ApiKey.created_at.desc())
+    )
+    result = await session.execute(stmt)
+    keys = result.scalars().all()
+    return [
+        {
+            "id": str(k.id),
+            "name": k.name,
+            "prefix": k.key_prefix,
+            "scopes": k.scopes,
+            "created_at": k.created_at.isoformat() if k.created_at else None,
+            "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+            "expires_at": k.expires_at.isoformat() if k.expires_at else None,
+        }
+        for k in keys
+    ]
+
+
+@router.post("/api-keys", summary="Create API key", status_code=201)
+async def create_api_key(
+    request: Request,
+    body: dict = Body(...),
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Create a new API key for the current user."""
+    import hashlib
+    import secrets
+
+    from app.models.plan import ApiKey
+
+    name = body.get("name", "Unnamed Key")
+    scopes = body.get("scopes", [])
+
+    raw_key = f"sk_{secrets.token_urlsafe(32)}"
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    key_prefix = raw_key[:10]
+
+    api_key = ApiKey(
+        user_id=str(user.id),
+        name=name,
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+        scopes=scopes,
+        is_active=True,
+    )
+    session.add(api_key)
+    await session.commit()
+    await session.refresh(api_key)
+
+    await audit_log_event(
+        session,
+        AuditEventType.API_KEY_CREATED,
+        user_id=str(user.id),
+        details={"key_name": name},
+        request=request,
+    )
+
+    return {"id": str(api_key.id), "name": name, "key": raw_key, "prefix": key_prefix}
+
+
+@router.delete("/api-keys/{key_id}", summary="Revoke API key")
+async def revoke_api_key(
+    key_id: str,
+    request: Request,
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Revoke an API key belonging to the current user."""
+    from app.models.plan import ApiKey
+
+    stmt = select(ApiKey).where(
+        ApiKey.id == key_id, ApiKey.user_id == str(user.id)
+    )
+    result = await session.execute(stmt)
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+
+    api_key.is_active = False
+    await session.commit()
+
+    await audit_log_event(
+        session,
+        AuditEventType.API_KEY_REVOKED,
+        user_id=str(user.id),
+        details={"key_name": api_key.name},
+        request=request,
+    )
+
+    return {"detail": "API key revoked"}
+
+
+# --- Activity Log ---
+
+
+@router.get("/activity", summary="Get recent activity")
+async def get_user_activity(
+    limit: int = 20,
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Return recent audit log entries for the current user."""
+    from app.models.audit_log import AuditLog
+
+    stmt = (
+        select(AuditLog)
+        .where(AuditLog.user_id == str(user.id))
+        .order_by(AuditLog.created_at.desc())
+        .limit(min(limit, 100))
+    )
+    result = await session.execute(stmt)
+    logs = result.scalars().all()
+    return [
+        {
+            "id": str(entry.id),
+            "event_type": entry.event_type,
+            "details": entry.details,
+            "ip_address": entry.ip_address,
+            "created_at": entry.created_at.isoformat() if entry.created_at else None,
+        }
+        for entry in logs
+    ]

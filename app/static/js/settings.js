@@ -400,9 +400,9 @@ function hideClearMissionsConfirm() {
 async function confirmClearMissions() {
     hideClearMissionsConfirm();
     try {
-        const { data, error } = await spectraApi.post('/api/v1/system/clear/missions?confirm=true');
+        const { data, error } = await spectraApi.post('/api/v1/system/clear/missions', { confirm: true });
         if (!error) {
-            _spectraToast(`Deleted ${data.deleted_count || 0} missions`, 'success');
+            _spectraToast(`Deleted ${data.cleared_count || 0} missions`, 'success');
         } else {
             _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
         }
@@ -447,7 +447,7 @@ async function loadSystemStatus() {
     try {
         const { data } = await spectraApi.get('/api/v1/system/status');
         
-        const dbStatus = data.database?.status === 'connected' ? 
+        const dbStatus = data.database?.status === 'healthy' ? 
             '<span class="text-emerald-400"><i data-lucide="check-circle" class="w-4 h-4 inline-block"></i> Connected</span>' :
             '<span class="text-rose-400"><i data-lucide="x-circle" class="w-4 h-4 inline-block"></i> Error</span>';
 
@@ -650,7 +650,7 @@ async function loadServiceTopology() {
     const container = document.getElementById('svc-topology-cards');
     const refreshInfo = document.getElementById('svc-topology-refresh-info');
     try {
-        const { data: topology, error } = await spectraApi.get('/system/services/topology');
+        const { data: topology, error } = await spectraApi.get('/api/v1/system/services/topology');
         if (error) throw new Error('Failed to fetch topology');
         const entries = Object.entries(topology);
 

@@ -474,8 +474,8 @@ async function loadServices() {
     grid.innerHTML = '<div class="col-span-full flex justify-center py-12"><span class="svc-spinner" style="width:24px;height:24px;"></span></div>';
     try {
         const [topoRes, healthRes, settingsRes] = await Promise.all([
-            spectraApi.get('/system/services/topology'),
-            spectraApi.get('/system/services/health'),
+            spectraApi.get('/api/v1/system/services/topology'),
+            spectraApi.get('/api/v1/system/services/health'),
             spectraApi.get('/api/settings'),
         ]);
         if (!topoRes.error) svcTopology = topoRes.data;
@@ -581,7 +581,7 @@ async function checkAllHealth() {
     btn.disabled = true;
     btn.innerHTML = '<span class="svc-spinner"></span> Checking…';
     try {
-        const r = await spectraApi.get('/system/services/health');
+        const r = await spectraApi.get('/api/v1/system/services/health');
         if (r.error) throw new Error(r.error);
         svcHealth = r.data;
         renderServiceCards();
@@ -634,7 +634,7 @@ async function testServiceConnection() {
     btn.innerHTML = '<span class="svc-spinner"></span> Testing…';
     resultEl.classList.add('hidden');
     try {
-        const r = await spectraApi.get('/system/services/health');
+        const r = await spectraApi.get('/api/v1/system/services/health');
         if (r.error) throw new Error(r.error);
         const allHealth = r.data;
         const name = document.getElementById('service-form-name').value;
@@ -702,7 +702,7 @@ document.getElementById('svc-auto-refresh').addEventListener('change', function(
     if (this.checked) {
         svcAutoRefreshTimer = setInterval(async () => {
             try {
-                const r = await spectraApi.get('/system/services/health');
+                const r = await spectraApi.get('/api/v1/system/services/health');
                 if (!r.error) { svcHealth = r.data; renderServiceCards(); }
             } catch(e) { /* silent */ }
         }, 60000);

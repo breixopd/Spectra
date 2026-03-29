@@ -123,7 +123,8 @@ function downloadReportPDF(id) { viewReport(id).then(() => printReport()); }
 async function openNewReportModal() {
     const sel = document.getElementById('report-mission-select');
     sel.innerHTML = '<option value="">Select a mission...</option>';
-    const { data: missionsList } = await spectraApi.get('/api/v1/missions');
+    const { data } = await spectraApi.get('/api/v1/missions');
+    const missionsList = data?.items || [];
     if (missionsList) { missionsList.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = `${m.target||'Unknown'} (${m.status})`; sel.appendChild(o); }); }
     document.getElementById('new-report-modal').classList.remove('hidden');
 }
@@ -133,7 +134,7 @@ async function generateReport() {
     const mid = document.getElementById('report-mission-select').value;
     if (!mid) { _spectraToast('Select a mission', 'warning'); return; }
     const tpl = document.getElementById('report-template-select').value;
-    await spectraApi.post('/api/v1/reports/generate', {mission_id:mid,template:tpl});
+    await spectraApi.post('/api/v1/helpers/reports/generate', {mission_id:mid,template:tpl});
     closeNewReportModal();
     viewReport(mid);
 }
