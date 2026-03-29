@@ -355,7 +355,7 @@ async def check_setup_status(
     summary="Logout",
     description="Invalidate the current access token and clear the auth cookie.",
 )
-async def logout(request: Request, response: Response):
+async def logout(request: Request, response: Response, session: AsyncSession = Depends(get_async_session)):
     """Logout by blacklisting the current access token and clearing cookie."""
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
@@ -368,13 +368,23 @@ async def logout(request: Request, response: Response):
             detail="Missing bearer token",
         )
     try:
-        decode_token(token)  # Validate token is still valid
+        payload = decode_token(token)  # Validate token is still valid
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         )
     invalidate_token(token)
+
+    # Invalidate all tokens issued before now (covers refresh tokens too)
+    username = payload.get("sub")
+    if username:
+        result = await session.execute(select(User).where(User.username == username))
+        user = result.scalar_one_or_none()
+        if user:
+            user.invalidated_before = datetime.now(UTC)
+            await session.commit()
+
     response.delete_cookie(key="access_token", path="/", httponly=True, secure=True, samesite="strict")
     return {"detail": "Successfully logged out"}
 

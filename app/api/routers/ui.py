@@ -91,6 +91,9 @@ async def login_page(request: Request):
         if not result.scalar_one_or_none():
             return RedirectResponse(url="/setup")
 
+    if get_ui_user(request):
+        return RedirectResponse(url="/dashboard", status_code=302)
+
     return templates.TemplateResponse(
         "login.html",
         {"request": request, "title": f"{settings.APP_NAME} | Login"},

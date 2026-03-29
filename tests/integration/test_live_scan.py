@@ -31,7 +31,7 @@ def auth_headers():
     """Authenticate against the running Spectra instance."""
     with httpx.Client(base_url=SPECTRA_URL, timeout=30) as client:
         status = client.get("/api/auth/setup/status")
-        if status.status_code == 200 and not status.json().get("setup_complete"):
+        if status.status_code == 200 and not status.json().get("is_setup"):
             client.post(
                 "/api/auth/setup",
                 json={

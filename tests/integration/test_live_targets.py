@@ -42,7 +42,7 @@ def auth_headers():
     with httpx.Client(base_url=SPECTRA_URL, timeout=30) as client:
         # Check if setup is needed (no users yet)
         status_resp = client.get("/api/auth/setup/status")
-        if status_resp.status_code == 200 and not status_resp.json().get("setup_complete"):
+        if status_resp.status_code == 200 and not status_resp.json().get("is_setup"):
             # Run first-time setup: create admin + configure LLM from env
             setup_payload = {
                 "user": {

@@ -39,7 +39,11 @@ async def _keepalive(websocket: WebSocket) -> None:
 
 @router.websocket("/{session_id}")
 async def shell_websocket(websocket: WebSocket, session_id: str, token: str | None = Query(default=None)):
-    user = await validate_websocket_token(token)
+    # Prefer query-param token, fall back to cookie
+    ws_token = token
+    if not ws_token:
+        ws_token = websocket.cookies.get("access_token")
+    user = await validate_websocket_token(ws_token)
     if not user:
         await websocket.close(code=4001, reason="Authentication required")
         return
