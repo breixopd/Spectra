@@ -298,6 +298,22 @@ async def api_docs_page(request: Request):
         group = parts[2] if len(parts) > 2 else "general"
         groups.setdefault(group, []).append(r)
 
+    # Role-based filtering: hide admin/system routes from non-admin users
+    user_role = user.get("role", "")
+    is_admin = user_role == "admin" or user.get("is_superuser")
+    if not is_admin:
+        # Remove the admin group entirely
+        groups.pop("admin", None)
+        # Remove admin/system/observability routes from other groups
+        _admin_segments = {"/admin/", "/system/", "/observability/"}
+        for grp in list(groups):
+            groups[grp] = [
+                r for r in groups[grp]
+                if not any(seg in r["path"] for seg in _admin_segments)
+            ]
+            if not groups[grp]:
+                del groups[grp]
+
     return templates.TemplateResponse(
         "docs.html",
         {

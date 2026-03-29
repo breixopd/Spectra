@@ -12,6 +12,7 @@ from typing_extensions import TypedDict
 
 from app.core.cache import get_cache
 from app.core.circuit_breaker import circuit_breakers
+from app.core.constants import API_MAX_PAGE_SIZE, OBSERVABILITY_MAX_RESULTS
 from app.core.events import events
 from app.core.rbac import Permission, require_permission
 from app.core.telemetry import telemetry
@@ -57,9 +58,9 @@ async def get_observability_stats(
     return {
         "overview": telemetry.get_overview_stats(),
         "services": telemetry.get_service_health(),
-        "traces": telemetry.get_traces(limit=100),
+        "traces": telemetry.get_traces(limit=API_MAX_PAGE_SIZE),
         "circuit_breakers": circuit_breakers.get_all_stats(),
-        "events": [e.to_dict() for e in events.get_history(limit=100)],
+        "events": [e.to_dict() for e in events.get_history(limit=API_MAX_PAGE_SIZE)],
         "cache": cache_stats,
         "cache_available": cache_available,
     }
@@ -67,12 +68,12 @@ async def get_observability_stats(
 
 @router.get("/traces")
 async def get_traces(
-    limit: int = Query(default=100, ge=1, le=500, description="Max traces to return"),
+    limit: int = Query(default=API_MAX_PAGE_SIZE, ge=1, le=OBSERVABILITY_MAX_RESULTS, description="Max traces to return"),
     status: str | None = Query(default=None, pattern="^(ok|error)$", description="Filter by status"),
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get recent traces with optional filtering."""
-    return telemetry.get_traces(limit=min(limit, 500), status=status)
+    return telemetry.get_traces(limit=min(limit, OBSERVABILITY_MAX_RESULTS), status=status)
 
 
 @router.get("/traces/{trace_id}")
@@ -160,12 +161,12 @@ async def get_cache_stats(
 
 @router.get("/events")
 async def get_events(
-    limit: int = Query(default=100, ge=1, le=500, description="Max events to return"),
+    limit: int = Query(default=API_MAX_PAGE_SIZE, ge=1, le=OBSERVABILITY_MAX_RESULTS, description="Max events to return"),
     event_type: str | None = Query(default=None, max_length=50, description="Filter by event type"),
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
     """Get recent events."""
-    return [e.to_dict() for e in events.get_history(event_type=event_type, limit=min(limit, 500))]
+    return [e.to_dict() for e in events.get_history(event_type=event_type, limit=min(limit, OBSERVABILITY_MAX_RESULTS))]
 
 
 @router.get("/events/stats")

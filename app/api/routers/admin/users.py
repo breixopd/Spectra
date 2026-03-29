@@ -20,6 +20,7 @@ from app.api.schemas import (
     UserAdminResponse,
 )
 from app.core.config import settings
+from app.core.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
 from app.core.security import get_password_hash
@@ -67,7 +68,7 @@ async def admin_page(request: Request):
 @router.get("/api/admin/users")
 async def list_users(
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(API_DEFAULT_PAGE_SIZE, ge=1, le=API_MAX_PAGE_SIZE),
     search: str | None = Query(None, max_length=100),
     role: str | None = Query(None, pattern="^(admin|operator|viewer)$"),
     is_active: bool | None = Query(None),

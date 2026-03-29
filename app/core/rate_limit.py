@@ -65,10 +65,11 @@ def get_user_identifier(request: Request) -> str:
 # For multi-instance behind a load balancer, set RATE_LIMIT_STORAGE to
 # "redis://host:6379" or use Caddy's rate_limit module at the reverse proxy.
 from app.core.config import settings as _rl_settings
+from app.core.constants import API_RATE_LIMIT
 
 limiter = Limiter(
     key_func=get_user_identifier,
-    default_limits=["100/minute"],  # Default: 100 requests per minute
+    default_limits=[API_RATE_LIMIT],
     headers_enabled=True,  # Add rate limit headers to responses
     storage_uri=_rl_settings.RATE_LIMIT_STORAGE,
 )
@@ -95,7 +96,7 @@ class RateLimits:
     TOOL_UPLOAD = "5/minute"
 
     # API general - default
-    API_DEFAULT = "100/minute"
+    API_DEFAULT = API_RATE_LIMIT
     API_HEAVY = "30/minute"
 
     # WebSocket - connection limits

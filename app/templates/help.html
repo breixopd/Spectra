@@ -395,13 +395,5 @@
             document.getElementById('section-' + section).classList.add('active');
         });
     });
-
-    // Accordion
-    function toggleAccordion(btn) {
-        const body = btn.nextElementSibling;
-        const icon = btn.querySelector('.accordion-icon');
-        body.classList.toggle('open');
-        icon.style.transform = body.classList.contains('open') ? 'rotate(90deg)' : '';
-    }
 </script>
 {% endblock %}
