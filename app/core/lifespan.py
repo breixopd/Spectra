@@ -213,8 +213,11 @@ async def _initialize_sandbox() -> None:
             if orphans:
                 logger.info("[OK] Cleaned %d orphaned sandbox containers", orphans)
             logger.info("[OK] Sandbox pool initialized")
-            asyncio.create_task(sandbox_watchdog_loop())
-            logger.info("[OK] Sandbox watchdog started")
+            if settings.SCHEDULER_ENABLED:
+                asyncio.create_task(sandbox_watchdog_loop())
+                logger.info("[OK] Sandbox watchdog started")
+            else:
+                logger.info("[SKIP] Sandbox watchdog deferred to dedicated scheduler")
 
             # Initialize warm pool manager
             if settings.SANDBOX_WARM_POOL_ENABLED:
@@ -337,11 +340,13 @@ async def _initialize_services() -> None:
     # Trigger background setup tasks (including tool installation)
     asyncio.create_task(run_startup_tasks())
 
-    # Start periodic cache cleanup
-    asyncio.create_task(cache_cleanup_loop())
-
-    # Start periodic system cleanup (sessions, old jobs, orphaned sandboxes)
-    asyncio.create_task(periodic_cleanup_loop())
+    # Start periodic maintenance loops (skipped when a dedicated scheduler runs)
+    if settings.SCHEDULER_ENABLED:
+        asyncio.create_task(cache_cleanup_loop())
+        asyncio.create_task(periodic_cleanup_loop())
+        logger.info("[OK] Maintenance loops started (cache cleanup, periodic cleanup)")
+    else:
+        logger.info("[SKIP] Maintenance loops deferred to dedicated scheduler")
 
     # Start metrics snapshot store
     from app.core.metrics_store import get_metrics_store

@@ -36,16 +36,30 @@ class StorageService:
     """
 
     def __init__(self) -> None:
+        # Backend selection: S3 mode is activated when S3_ENDPOINT_URL is set.
+        # Otherwise, all operations use the local filesystem under DATA_ROOT.
         self._s3_enabled = bool(settings.S3_ENDPOINT_URL)
         self._session: Any = None
         self._buckets_ensured: set[str] = set()
         self._client_error: type[Exception] = Exception
         if self._s3_enabled:
+            if not settings.S3_ACCESS_KEY.get_secret_value():
+                logger.warning("Storage: S3 mode enabled but S3_ACCESS_KEY is empty")
+            if not settings.S3_SECRET_KEY.get_secret_value():
+                logger.warning("Storage: S3 mode enabled but S3_SECRET_KEY is empty")
             _aioboto3, self._boto_config_cls, self._client_error = _import_s3_deps()
             self._session = _aioboto3.Session()
-            logger.info("Storage: S3 mode (endpoint=%s)", settings.S3_ENDPOINT_URL)
+            logger.info(
+                "Storage: S3 mode (endpoint=%s, region=%s, buckets=[%s, %s, %s, %s])",
+                settings.S3_ENDPOINT_URL,
+                settings.S3_REGION,
+                settings.S3_BUCKET_MISSIONS,
+                settings.S3_BUCKET_SESSIONS,
+                settings.S3_BUCKET_KNOWLEDGE,
+                settings.S3_BUCKET_BACKUPS,
+            )
         else:
-            logger.info("Storage: local filesystem mode")
+            logger.info("Storage: local filesystem mode (data_root=%s)", settings.DATA_ROOT)
 
     @property
     def is_s3(self) -> bool:

@@ -110,6 +110,11 @@ class Settings(BaseSettings):
     MAINTENANCE_MODE: bool = False
     MAINTENANCE_MESSAGE: str = "We're performing scheduled maintenance. Please check back shortly."
 
+    # --- Scheduler ---
+    # Set False when running a dedicated scheduler service to prevent duplicate
+    # maintenance tasks (sandbox watchdog, cache cleanup, periodic cleanup).
+    SCHEDULER_ENABLED: bool = True
+
     # --- Request Limits ---
     MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 10 MB
 
@@ -261,9 +266,12 @@ class Settings(BaseSettings):
 
 
     # --- Object Storage (S3/MinIO) ---
+    # When S3_ENDPOINT_URL is set, all file storage (missions, sessions,
+    # knowledge, backups) uses S3-compatible object storage.  When empty,
+    # files are stored on the local filesystem under DATA_ROOT.
     S3_ENDPOINT_URL: str = ""  # MinIO/S3 endpoint (e.g., http://minio:9000)
-    S3_ACCESS_KEY: SecretStr = SecretStr("")
-    S3_SECRET_KEY: SecretStr = SecretStr("")
+    S3_ACCESS_KEY: SecretStr = SecretStr("")  # Required when S3_ENDPOINT_URL is set
+    S3_SECRET_KEY: SecretStr = SecretStr("")  # Required when S3_ENDPOINT_URL is set
     S3_REGION: str = "us-east-1"
     S3_BUCKET_MISSIONS: str = "spectra-missions"
     S3_BUCKET_SESSIONS: str = "spectra-sessions"
