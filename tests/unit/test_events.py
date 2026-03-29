@@ -1,5 +1,7 @@
 """Tests for app.core.events module."""
 
+import asyncio
+
 import pytest
 
 from app.core.events import Event, EventBus, EventType
@@ -162,6 +164,35 @@ class TestEventBus:
         await bus.emit(EventType.MISSION_CREATED, source="test")
 
         assert len(received) == 1
+
+
+    @pytest.mark.asyncio
+    async def test_get_history_since_filters_old_events(self, bus):
+        """Events before the since timestamp should be excluded."""
+        import time
+        from datetime import datetime
+
+        await bus.emit(EventType.LOGIN_SUCCESS, source="test", info="old")
+        old_ts = time.time()
+        # Small sleep to ensure timestamp separation
+        await asyncio.sleep(0.05)
+        await bus.emit(EventType.LOGIN_SUCCESS, source="test", info="new")
+
+        history = bus.get_history(since=old_ts)
+        assert len(history) == 1
+        assert history[0].data["info"] == "new"
+
+    @pytest.mark.asyncio
+    async def test_get_history_offset_skips_events(self, bus):
+        """Offset should skip the first N matching events."""
+        await bus.emit(EventType.LOGIN_SUCCESS, source="test", idx=0)
+        await bus.emit(EventType.LOGIN_SUCCESS, source="test", idx=1)
+        await bus.emit(EventType.LOGIN_SUCCESS, source="test", idx=2)
+
+        history = bus.get_history(offset=1)
+        assert len(history) == 2
+        assert history[0].data["idx"] == 1
+        assert history[1].data["idx"] == 2
 
 
 class TestOnEventDecorator:

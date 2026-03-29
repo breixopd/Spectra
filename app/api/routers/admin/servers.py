@@ -296,7 +296,7 @@ async def list_backups(
 
 
 class RestoreRequest(BaseModel):
-    backup_id: str
+    backup_id: str = Field(..., pattern=r"^backup_\d{8}_\d{6}$")
 
 
 @router.post("/api/admin/backups/restore")

@@ -276,8 +276,7 @@ class Settings(BaseSettings):
     S3_BUCKET_MISSIONS: str = "spectra-missions"
     S3_BUCKET_SESSIONS: str = "spectra-sessions"
     S3_BUCKET_KNOWLEDGE: str = "spectra-knowledge"
-    # NOTE: Backup service is not yet implemented. These config keys are reserved
-    # for a future automated backup feature. Do not remove — existing deployments may have these set.
+    # Used by BackupService (app/services/infrastructure/backup.py) for automated backups
     S3_BUCKET_BACKUPS: str = "spectra-backups"
 
     # --- Backup ---
@@ -285,8 +284,7 @@ class Settings(BaseSettings):
     BACKUP_SCHEDULE_HOURS: int = Field(default=24, description="Backup interval in hours")
     BACKUP_RETENTION_COUNT: int = Field(default=10, description="Number of backups to retain")
     AUDIT_LOG_RETENTION_DAYS: int = Field(default=365, description="Days to retain audit log entries (0 = keep forever)")
-    # NOTE: Backup service is not yet implemented. BACKUP_S3_BUCKET is a duplicate of S3_BUCKET_BACKUPS
-    # and both are reserved for the future automated backup feature.
+    # Alias for S3_BUCKET_BACKUPS — used by BackupService (app/services/infrastructure/backup.py)
     BACKUP_S3_BUCKET: str = Field(default="spectra-backups", description="S3 bucket for backups")
 
     # --- Billing / Stripe ---
