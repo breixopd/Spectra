@@ -150,6 +150,7 @@ class MissionLifecycleManager:
                         mission.id,
                         status=mission.status,
                         logs=mission.logs,
+                        # Mission.summary is the persisted authoritative mission-output read model for API, report, and notification consumers.
                         summary=mission.to_dict(),
                         attack_surface=mission.attack_surface.model_dump(),
                     )

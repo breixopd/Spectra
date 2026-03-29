@@ -194,6 +194,22 @@ class TestCompareMissions:
         diff = compare_missions(old, new)
         assert len(diff["resolved_findings"]) == 1
 
+    def test_top_level_findings_preserved_when_summary_has_no_findings(self):
+        old = {
+            "findings": [{"name": "top-level", "host": "10.0.0.1", "port": 443}],
+            "summary": {"current_phase": "done"},
+        }
+        new = {
+            "findings": [],
+            "summary": {"current_phase": "done"},
+        }
+
+        diff = compare_missions(old, new)
+
+        assert diff["new_findings"] == []
+        assert len(diff["resolved_findings"]) == 1
+        assert diff["resolved_findings"][0]["name"] == "top-level"
+
 
 # ---------------------------------------------------------------------------
 # generate_diff_report

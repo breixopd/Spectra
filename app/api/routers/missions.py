@@ -36,6 +36,11 @@ from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.repositories.mission import MissionRepository
 from app.services.mission import mission_manager
+from app.services.mission.output_model import (
+    get_mission_finding_counts,
+    get_mission_findings as get_mission_output_findings,
+    get_mission_summary_dict,
+)
 from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
@@ -88,14 +93,7 @@ async def get_missions_summary(
     totals = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0, "total": 0}
 
     for m in db_missions:
-        raw_findings = m.summary.get("findings", []) if m.summary else []
-        counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
-        for f in raw_findings:
-            if isinstance(f, dict):
-                sev = (f.get("severity") or "info").lower()
-                if sev in counts:
-                    counts[sev] += 1
-        total_findings = sum(counts.values())
+        counts = get_mission_finding_counts(m)
 
         missions.append({
             "id": str(m.id),
@@ -104,11 +102,11 @@ async def get_missions_summary(
             "status": m.status,
             "created_at": m.created_at.isoformat() if m.created_at else None,
             "updated_at": m.updated_at.isoformat() if m.updated_at else None,
-            "findings": {**counts, "total": total_findings},
+            "findings": counts,
         })
         for sev in ("critical", "high", "medium", "low", "info"):
             totals[sev] += counts[sev]
-        totals["total"] += total_findings
+        totals["total"] += counts["total"]
 
     return {"missions": missions, "totals": totals, "count": len(missions)}
 
@@ -352,10 +350,10 @@ async def list_missions(
             id=m.id,
             target=m.target,
             status=m.status,
-            current_phase=m.summary.get("current_phase") if m.summary else None,
+            current_phase=get_mission_summary_dict(m).get("current_phase"),
             logs=m.logs or [],
             directive=m.directive,
-            findings=m.summary.get("findings", []) if m.summary else [],
+            findings=get_mission_output_findings(m),
         )
         for m in missions
     ]
@@ -387,13 +385,14 @@ async def download_pdf_report(
             if isinstance(allowed, list) and "pdf" not in allowed:
                 raise HTTPException(403, "PDF export not available on your plan")
 
+    summary = get_mission_summary_dict(mission)
     mission_data = {
         "id": mission.id,
         "target": mission.target,
         "status": mission.status,
-        "findings": mission.summary.get("findings", []) if mission.summary else [],
+        "findings": get_mission_output_findings(mission),
         "logs": mission.logs or [],
-        "tools_run": mission.summary.get("tools_run", []) if mission.summary else [],
+        "tools_run": summary.get("tools_run", []),
         "attack_surface": mission.attack_surface or {},
     }
 
@@ -438,7 +437,7 @@ async def export_mission_json(
             if isinstance(allowed, list) and "json" not in allowed:
                 raise HTTPException(403, "JSON export not available on your plan")
 
-    summary = mission.summary or {}
+    summary = get_mission_summary_dict(mission)
     export_data = {
         "mission": {
             "id": mission.id,
@@ -447,7 +446,7 @@ async def export_mission_json(
             "directive": mission.directive,
             "created_at": mission.created_at.isoformat() if mission.created_at else None,
         },
-        "findings": summary.get("findings", []),
+        "findings": get_mission_output_findings(mission),
         "tools_used": summary.get("tools_run", []),
         "timeline": summary.get("timeline", []),
         "attack_surface": mission.attack_surface or {},
@@ -485,7 +484,7 @@ async def get_mission_findings(
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
     check_resource_owner(mission, _current_user, "mission")
-    raw_findings = mission.summary.get("findings", []) if mission.summary else []
+    raw_findings = get_mission_output_findings(mission)
     return [
         MissionFindingSummary(
             id=str(i),
@@ -549,17 +548,16 @@ async def get_mission(
     if not db_mission:
         raise HTTPException(status_code=404, detail="Mission not found")
     check_resource_owner(db_mission, _current_user, "mission")
+    summary = get_mission_summary_dict(db_mission)
 
     return MissionResponse(
         id=db_mission.id,
         target=db_mission.target,
         status=db_mission.status,
-        current_phase=db_mission.summary.get("current_phase")
-        if db_mission.summary
-        else None,
+        current_phase=summary.get("current_phase"),
         logs=db_mission.logs or [],
         directive=db_mission.directive,
-        findings=db_mission.summary.get("findings", []) if db_mission.summary else [],
+        findings=get_mission_output_findings(db_mission),
     )
 
 
@@ -717,17 +715,17 @@ async def diff_missions(
         "id": old_db.id,
         "target": old_db.target,
         "status": old_db.status,
-        "findings": (old_db.summary or {}).get("findings", []),
+        "findings": get_mission_output_findings(old_db),
         "attack_surface": old_db.attack_surface or {},
-        "summary": old_db.summary or {},
+        "summary": get_mission_summary_dict(old_db),
     }
     new_dict = {
         "id": new_db.id,
         "target": new_db.target,
         "status": new_db.status,
-        "findings": (new_db.summary or {}).get("findings", []),
+        "findings": get_mission_output_findings(new_db),
         "attack_surface": new_db.attack_surface or {},
-        "summary": new_db.summary or {},
+        "summary": get_mission_summary_dict(new_db),
     }
 
     diff = compare_missions(old_dict, new_dict)

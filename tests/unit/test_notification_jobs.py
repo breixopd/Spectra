@@ -107,6 +107,33 @@ async def test_send_mission_completion_notification_finds_and_notifies():
 
 
 @pytest.mark.asyncio
+async def test_send_mission_completion_notification_normalizes_severity_counts():
+    from app.worker.notification_jobs import send_mission_completion_notification
+
+    mock_mission = MagicMock()
+    mock_mission.id = "mission-2"
+    mock_mission.target = "10.0.0.2"
+    mock_mission.summary = {
+        "findings": [
+            {"title": "Critical Finding", "severity": "CRITICAL"},
+            {"title": "Missing Severity", "severity": None},
+            {"title": "Unknown Severity", "severity": "unexpected"},
+        ]
+    }
+
+    mission_result = MagicMock()
+    mission_result.scalar_one_or_none.return_value = mock_mission
+
+    session = AsyncMock()
+    session.execute = AsyncMock(return_value=mission_result)
+
+    with patch("app.services.notifications.notify_mission_completed", new_callable=AsyncMock) as mock_notify:
+        await send_mission_completion_notification("mission-2", session)
+
+    mock_notify.assert_awaited_once_with("10.0.0.2", 3, 1)
+
+
+@pytest.mark.asyncio
 async def test_send_mission_completion_notification_missing_mission():
     from app.worker.notification_jobs import send_mission_completion_notification
 
