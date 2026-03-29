@@ -15,7 +15,7 @@ All API endpoints are prefixed with `/api`.
 
 ## Authentication
 
-Most endpoints require a JWT token (exceptions: `/api/health`, `/api/auth/setup`, `/api/auth/setup/status`).
+Most endpoints require a JWT token (exceptions: `/api/health`, `/api/v1/auth/setup`, `/api/v1/auth/setup/status`).
 
 - **Header:** `Authorization: Bearer <token>`
 - **Obtaining a Token:** `POST /api/auth/token` with username and password.
@@ -37,8 +37,8 @@ Most endpoints require a JWT token (exceptions: `/api/health`, `/api/auth/setup`
 | POST | `/api/auth/token` | Login — returns JWT access + refresh tokens |
 | POST | `/api/auth/refresh` | Refresh an expired access token |
 | POST | `/api/auth/logout` | Invalidate current token |
-| POST | `/api/auth/setup` | Create initial admin account (only before any users exist) |
-| GET | `/api/auth/setup/status` | Check if setup has been completed |
+| POST | `/api/v1/auth/setup` | Create initial admin account (only before any users exist) |
+| GET | `/api/v1/auth/setup/status` | Check if setup has been completed |
 
 ### POST `/api/auth/token`
 
@@ -187,17 +187,17 @@ See [Plugins](plugins.md) for the plugin JSON schema.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/system/status` | System health, DB state, tool install progress |
-| GET | `/api/system/safety-stats` | Safety supervisor statistics |
-| GET | `/api/system/audit-log` | Audit log entries |
-| GET | `/api/system/data-sources` | Available data sources (CVE DBs, etc.) |
-| POST | `/api/system/data-sources/download` | Download/update a data source |
-| POST | `/api/system/clear/tools` | Clear tool cache |
-| POST | `/api/system/clear/missions` | Clear all missions |
-| POST | `/api/system/clear/cache` | Clear application cache |
-| POST | `/api/system/operations/add` | Register a background operation |
-| POST | `/api/system/operations/remove` | Remove a background operation |
-| POST | `/api/system/operations/update-progress` | Update operation progress |
+| GET | `/api/v1/system/status` | System health, DB state, tool install progress |
+| GET | `/api/v1/system/safety-stats` | Safety supervisor statistics |
+| GET | `/api/v1/system/audit-log` | Audit log entries |
+| GET | `/api/v1/system/data-sources` | Available data sources (CVE DBs, etc.) |
+| POST | `/api/v1/system/data-sources/download` | Download/update a data source |
+| POST | `/api/v1/system/clear/tools` | Clear tool cache |
+| POST | `/api/v1/system/clear/missions` | Clear all missions |
+| POST | `/api/v1/system/clear/cache` | Clear application cache |
+| POST | `/api/v1/system/operations/add` | Register a background operation |
+| POST | `/api/v1/system/operations/remove` | Remove a background operation |
+| POST | `/api/v1/system/operations/update-progress` | Update operation progress |
 
 ---
 
@@ -271,18 +271,18 @@ Valid `service_type` values: `sandbox_worker`, `db`, `storage`.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/observability/stats` | Overall system metrics |
-| GET | `/api/observability/metrics` | Prometheus-style metrics |
-| GET | `/api/observability/traces` | Request traces |
-| GET | `/api/observability/traces/{id}` | Trace details |
-| GET | `/api/observability/slow-operations` | Slow operation report |
-| GET | `/api/observability/errors` | Error log |
-| GET | `/api/observability/services/health` | Per-service health |
-| GET | `/api/observability/circuit-breakers` | Circuit breaker states |
-| POST | `/api/observability/circuit-breakers/reset` | Reset circuit breakers |
-| GET | `/api/observability/cache/stats` | Cache hit/miss stats |
-| GET | `/api/observability/events` | Event stream |
-| GET | `/api/observability/events/stats` | Event statistics |
+| GET | `/api/v1/observability/stats` | Overall system metrics |
+| GET | `/api/v1/observability/metrics` | Prometheus-style metrics |
+| GET | `/api/v1/observability/traces` | Request traces |
+| GET | `/api/v1/observability/traces/{id}` | Trace details |
+| GET | `/api/v1/observability/slow-operations` | Slow operation report |
+| GET | `/api/v1/observability/errors` | Error log |
+| GET | `/api/v1/observability/services/health` | Per-service health |
+| GET | `/api/v1/observability/circuit-breakers` | Circuit breaker states |
+| POST | `/api/v1/observability/circuit-breakers/reset` | Reset circuit breakers |
+| GET | `/api/v1/observability/cache/stats` | Cache hit/miss stats |
+| GET | `/api/v1/observability/events` | Event stream |
+| GET | `/api/v1/observability/events/stats` | Event statistics |
 
 ---
 

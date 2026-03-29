@@ -114,7 +114,7 @@ Three roles with hierarchical permissions:
 ### Endpoint Protection
 
 - Most endpoints require `Authorization: Bearer <token>`
-- Public endpoints: `/api/health`, `/api/auth/setup`, `/api/auth/setup/status`, `/api/public/*`
+- Public endpoints: `/api/health`, `/api/v1/auth/setup`, `/api/v1/auth/setup/status`, `/api/public/*`
 - Admin-only endpoints: `/api/admin/*`, `/system/services/*`, server provisioning
 - Role checks enforced at the router level via `get_current_active_user` dependency
 
@@ -134,7 +134,7 @@ API keys are distinct from JWT tokens and are intended for programmatic/service 
 
 ## Initial Setup
 
-The first admin account is created via `POST /api/auth/setup` (or the `/setup` web UI):
+The first admin account is created via `POST /api/v1/auth/setup` (or the `/setup` web UI):
 
 1. Only callable when no users exist in the database
 2. Creates an admin user with the provided credentials

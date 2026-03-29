@@ -26,6 +26,7 @@ AI provider, model, API keys, and routing settings are configured through the **
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `JWT_SECRET_KEY` | SecretStr | `""` | Secret key for JWT tokens. Auto-generated if empty or placeholder. Set for stable sessions across restarts |
+| `ENCRYPTION_KEY` | str | `""` | Separate key for encrypting MFA TOTP secrets and credentials. Falls back to `JWT_SECRET_KEY` if not set. Set explicitly to isolate signing and encryption key domains |
 | `JWT_ALGORITHM` | str | `"HS256"` | JWT signing algorithm |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | int | `1440` | Token lifetime in minutes (default: 24 hours) |
 
@@ -227,3 +228,12 @@ Some settings can be changed at runtime through the web UI (Admin panel → Sett
 - `PLATFORM_DOMAIN`, `PLATFORM_BASE_URL`, `PLATFORM_EXPOSED`
 
 AI/LLM settings are managed through the database-backed `SystemConfig` and are not saved to the runtime file.
+
+---
+
+## Deployment Mode
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `SCHEDULER_ENABLED` | bool | `true` | Set `false` when running a dedicated scheduler service to prevent maintenance loops from running twice in the main app |
+| `ENCRYPTION_KEY` | str | `""` | See Security section above |
