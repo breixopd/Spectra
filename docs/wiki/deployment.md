@@ -17,10 +17,14 @@ This page covers CI/CD pipeline configuration and versioning.
 | **app** | `ghcr.io/breixopd14/spectra-app` | FastAPI backend (internal port 5000) |
 | **ai-svc** | `ghcr.io/breixopd14/spectra-app` | AI/LLM service (internal port 5010) |
 | **scheduler** | `ghcr.io/breixopd14/spectra-app` | Background tasks (internal port 5011) |
-| **worker** | `ghcr.io/breixopd14/spectra-app` | Tool execution (internal port 5012) |
+| **worker** | `ghcr.io/breixopd14/spectra-worker` | Tool execution (internal port 5012) |
 | **minio** | `minio/minio` | S3-compatible object storage (optional) |
 
-All inter-service communication uses PostgreSQL (job queue, pub/sub via NOTIFY/LISTEN) and HTTP with `SERVICE_AUTH_SECRET`. No Redis or external message broker.
+All inter-service communication uses PostgreSQL (job queue, pub/sub via NOTIFY/LISTEN) and HTTP with `SERVICE_AUTH_SECRET`. Redis is used for rate limiting and caching.
+
+> **Tip:** Set `REGISTRY` and `VERSION` environment variables to control image sources.
+> Local dev uses `spectra-app:latest` by default; production can set
+> `REGISTRY=ghcr.io/breixopd14/` and `VERSION=2026.03.13` to pull release images.
 
 ## Versioning
 
@@ -47,7 +51,7 @@ cd docker && docker compose up -d
 cd docker && docker compose up -d
 ```
 
-- **Dev UI:** http://localhost:5000
+- **Dev UI:** `http://localhost:5000`
 - Create your admin account at `/setup`
 - Configure your AI provider through the web UI
 

@@ -37,18 +37,46 @@ if [ -z "$URL" ]; then
     usage
 fi
 
+# ── Primary health check (required) ─────────────────────────────
+
+FAILED=0
+
 for i in $(seq 0 "$MAX_RETRIES"); do
     if curl -sf --max-time 10 "$URL" > /dev/null 2>&1; then
         echo "Health check passed: $URL (attempt $((i + 1)))"
-        exit 0
+        break
     fi
 
     if [ "$i" -lt "$MAX_RETRIES" ]; then
         WAIT=$(( INITIAL_WAIT * (2 ** i) ))
         echo "Health check failed (attempt $((i + 1))/$((MAX_RETRIES + 1))), retrying in ${WAIT}s..."
         sleep "$WAIT"
+    else
+        echo "Health check FAILED after $((MAX_RETRIES + 1)) attempts: $URL"
+        FAILED=1
     fi
 done
 
-echo "Health check FAILED after $((MAX_RETRIES + 1)) attempts: $URL"
-exit 1
+# ── Supplementary checks (best-effort) ──────────────────────────
+
+REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
+
+# Redis: check if reachable via docker container
+if docker ps -q -f "name=spectra-redis" 2>/dev/null | grep -q .; then
+    if docker exec spectra-redis redis-cli ping 2>/dev/null | grep -q PONG; then
+        echo "Supplementary check passed: Redis (PONG)"
+    else
+        echo "WARN: Redis container exists but is not responding"
+    fi
+fi
+
+# Database: check via docker container
+if docker ps -q -f "name=spectra-db" 2>/dev/null | grep -q .; then
+    if docker exec spectra-db pg_isready -U spectra -d spectra > /dev/null 2>&1; then
+        echo "Supplementary check passed: PostgreSQL (pg_isready)"
+    else
+        echo "WARN: PostgreSQL container exists but is not ready"
+    fi
+fi
+
+exit $FAILED

@@ -119,6 +119,14 @@ main() {
 
     # Restart with target version (or current)
     local version_arg="${TARGET_VERSION:-latest}"
+
+    if [[ -z "$version_arg" || "$version_arg" == "latest" ]]; then
+        log "ERROR: Cannot rollback — no pinned version found. Set VERSION explicitly."
+        log "Usage: $(basename "$0") <version>  (e.g. 2026.03.11)"
+        notify "FAILED" "Cannot rollback — no pinned version"
+        exit 1
+    fi
+
     log "Starting containers with version: $version_arg"
 
     if [ -n "$TARGET_VERSION" ]; then
