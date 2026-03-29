@@ -74,6 +74,84 @@ class FindingDetailResponse(FindingResponse):
     evidence: dict | None = None
 
 
+_FINDING_RESPONSE = FindingDetailResponse
+
+
+def _finding_to_response(finding) -> FindingDetailResponse:
+    return _FINDING_RESPONSE(
+        id=finding.id,
+        target_id=finding.target_id,
+        title=finding.title,
+        description=finding.description,
+        severity=finding.severity.value,
+        status=finding.status.value,
+        cvss_score=finding.cvss_score,
+        cve_id=finding.cve_id,
+        tool_source=finding.tool_source,
+        evidence=finding.evidence,
+        created_at=finding.created_at.isoformat(),
+    )
+
+
+def _finding_filters(
+    current_user: User,
+    *,
+    severity: Severity | None = None,
+    status_filter: FindingStatus | None = None,
+) -> dict[str, object]:
+    filters: dict[str, object] = {}
+    if not current_user.is_superuser:
+        filters["user_id"] = str(current_user.id)
+    if severity is not None:
+        filters["severity"] = severity
+    if status_filter is not None:
+        filters["status"] = status_filter
+    return filters
+
+
+def _finding_update_audit_details(finding, changed_fields: list[str]) -> dict[str, object]:
+    return {
+        "finding_id": finding.id,
+        "target_id": finding.target_id,
+        "changed_fields": changed_fields,
+    }
+
+
+def _finding_status_audit_details(finding, action: str) -> dict[str, str]:
+    return {
+        "finding_id": finding.id,
+        "target_id": finding.target_id,
+        "status": finding.status.value,
+        "action": action,
+    }
+
+
+async def _get_finding_or_404(repo: FindingRepository, finding_id: str):
+    finding = await repo.get_by_id(finding_id)
+    if not finding:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Finding not found",
+        )
+    return finding
+
+
+async def _get_owned_finding_or_404(repo: FindingRepository, finding_id: str, current_user: User):
+    finding = await _get_finding_or_404(repo, finding_id)
+    check_resource_owner(finding, current_user, "finding")
+    return finding
+
+
+async def _update_owned_finding_status(
+    repo: FindingRepository,
+    finding_id: str,
+    current_user: User,
+    new_status: FindingStatus,
+):
+    await _get_owned_finding_or_404(repo, finding_id, current_user)
+    return await repo.update(finding_id, status=new_status)
+
+
 # --- Endpoints ---
 
 
@@ -119,19 +197,7 @@ async def create_finding(
         request=request,
     )
 
-    return FindingDetailResponse(
-        id=finding.id,
-        target_id=finding.target_id,
-        title=finding.title,
-        description=finding.description,
-        severity=finding.severity.value,
-        status=finding.status.value,
-        cvss_score=finding.cvss_score,
-        cve_id=finding.cve_id,
-        tool_source=finding.tool_source,
-        evidence=finding.evidence,
-        created_at=finding.created_at.isoformat(),
-    )
+    return _finding_to_response(finding)
 
 
 @router.get(
@@ -160,16 +226,7 @@ async def list_findings(
     Pagination: max 100 items per page.
     """
     repo = FindingRepository(db)
-
-    # Build filter kwargs
-    filters: dict = {}
-    # User isolation
-    if not _current_user.is_superuser:
-        filters["user_id"] = str(_current_user.id)
-    if severity:
-        filters["severity"] = severity
-    if status_filter:
-        filters["status"] = status_filter
+    filters = _finding_filters(_current_user, severity=severity, status_filter=status_filter)
 
     total = await repo.count(**filters)
     skip = (page - 1) * per_page
@@ -179,22 +236,7 @@ async def list_findings(
     else:
         findings = await repo.get_all(skip=skip, limit=per_page)
 
-    items = [
-        FindingDetailResponse(
-            id=f.id,
-            target_id=f.target_id,
-            title=f.title,
-            description=f.description,
-            severity=f.severity.value,
-            status=f.status.value,
-            cvss_score=f.cvss_score,
-            cve_id=f.cve_id,
-            tool_source=f.tool_source,
-            evidence=f.evidence,
-            created_at=f.created_at.isoformat(),
-        )
-        for f in findings
-    ]
+    items = [_finding_to_response(finding) for finding in findings]
     return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
@@ -350,28 +392,8 @@ async def get_finding(
 ) -> FindingDetailResponse:
     """Get a finding by ID."""
     repo = FindingRepository(db)
-    finding = await repo.get_by_id(finding_id)
-
-    if not finding:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
-    check_resource_owner(finding, _current_user, "finding")
-
-    return FindingDetailResponse(
-        id=finding.id,
-        target_id=finding.target_id,
-        title=finding.title,
-        description=finding.description,
-        severity=finding.severity.value,
-        status=finding.status.value,
-        cvss_score=finding.cvss_score,
-        cve_id=finding.cve_id,
-        tool_source=finding.tool_source,
-        evidence=finding.evidence,
-        created_at=finding.created_at.isoformat(),
-    )
+    finding = await _get_owned_finding_or_404(repo, finding_id, _current_user)
+    return _finding_to_response(finding)
 
 
 @router.patch(
@@ -389,14 +411,7 @@ async def update_finding(
 ) -> FindingDetailResponse:
     """Update a finding."""
     repo = FindingRepository(db)
-
-    existing = await repo.get_by_id(finding_id)
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
-    check_resource_owner(existing, _current_user, "finding")
+    await _get_owned_finding_or_404(repo, finding_id, _current_user)
 
     # Filter out None values
     update_data = finding_in.model_dump(exclude_unset=True)
@@ -414,23 +429,11 @@ async def update_finding(
         db,
         AuditEventType.FINDING_UPDATED,
         user_id=str(_current_user.id),
-        details={"finding_id": updated.id, "target_id": updated.target_id, "changed_fields": sorted(update_data.keys())},
+        details=_finding_update_audit_details(updated, sorted(update_data.keys())),
         request=request,
     )
 
-    return FindingDetailResponse(
-        id=updated.id,
-        target_id=updated.target_id,
-        title=updated.title,
-        description=updated.description,
-        severity=updated.severity.value,
-        status=updated.status.value,
-        cvss_score=updated.cvss_score,
-        cve_id=updated.cve_id,
-        tool_source=updated.tool_source,
-        evidence=updated.evidence,
-        created_at=updated.created_at.isoformat(),
-    )
+    return _finding_to_response(updated)
 
 
 @router.delete(
@@ -447,14 +450,7 @@ async def delete_finding(
 ) -> None:
     """Delete a finding."""
     repo = FindingRepository(db)
-
-    existing = await repo.get_by_id(finding_id)
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
-    check_resource_owner(existing, _current_user, "finding")
+    existing = await _get_owned_finding_or_404(repo, finding_id, _current_user)
 
     details = {"finding_id": existing.id, "target_id": existing.target_id, "title": existing.title, "severity": existing.severity.value}
     await repo.delete(finding_id)
@@ -482,16 +478,7 @@ async def verify_finding(
 ) -> FindingDetailResponse:
     """Mark a finding as verified."""
     repo = FindingRepository(db)
-
-    existing = await repo.get_by_id(finding_id)
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
-    check_resource_owner(existing, _current_user, "finding")
-
-    updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
+    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.VERIFIED)
     await db.commit()
     if not updated:
         raise HTTPException(
@@ -502,23 +489,11 @@ async def verify_finding(
         db,
         AuditEventType.FINDING_UPDATED,
         user_id=str(_current_user.id),
-        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "verify"},
+        details=_finding_status_audit_details(updated, "verify"),
         request=request,
     )
 
-    return FindingDetailResponse(
-        id=updated.id,
-        target_id=updated.target_id,
-        title=updated.title,
-        description=updated.description,
-        severity=updated.severity.value,
-        status=updated.status.value,
-        cvss_score=updated.cvss_score,
-        cve_id=updated.cve_id,
-        tool_source=updated.tool_source,
-        evidence=updated.evidence,
-        created_at=updated.created_at.isoformat(),
-    )
+    return _finding_to_response(updated)
 
 
 @router.post(
@@ -535,16 +510,7 @@ async def mark_false_positive(
 ) -> FindingDetailResponse:
     """Mark a finding as a false positive."""
     repo = FindingRepository(db)
-
-    existing = await repo.get_by_id(finding_id)
-    if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Finding not found",
-        )
-    check_resource_owner(existing, _current_user, "finding")
-
-    updated = await repo.update(finding_id, status=FindingStatus.FALSE_POSITIVE)
+    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.FALSE_POSITIVE)
     await db.commit()
     if not updated:
         raise HTTPException(
@@ -555,44 +521,11 @@ async def mark_false_positive(
         db,
         AuditEventType.FINDING_UPDATED,
         user_id=str(_current_user.id),
-        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "mark_false_positive"},
+        details=_finding_status_audit_details(updated, "mark_false_positive"),
         request=request,
     )
 
-    return FindingDetailResponse(
-        id=updated.id,
-        target_id=updated.target_id,
-        title=updated.title,
-        description=updated.description,
-        severity=updated.severity.value,
-        status=updated.status.value,
-        cvss_score=updated.cvss_score,
-        cve_id=updated.cve_id,
-        tool_source=updated.tool_source,
-        evidence=updated.evidence,
-        created_at=updated.created_at.isoformat(),
-    )
-
-
-# --- Status Transition Helpers ---
-
-_FINDING_RESPONSE = FindingDetailResponse
-
-
-def _finding_to_response(f) -> FindingDetailResponse:
-    return _FINDING_RESPONSE(
-        id=f.id,
-        target_id=f.target_id,
-        title=f.title,
-        description=f.description,
-        severity=f.severity.value,
-        status=f.status.value,
-        cvss_score=f.cvss_score,
-        cve_id=f.cve_id,
-        tool_source=f.tool_source,
-        evidence=f.evidence,
-        created_at=f.created_at.isoformat(),
-    )
+    return _finding_to_response(updated)
 
 
 @router.post(
@@ -609,17 +542,13 @@ async def confirm_finding(
 ) -> FindingDetailResponse:
     """Mark a finding as confirmed/verified."""
     repo = FindingRepository(db)
-    existing = await repo.get_by_id(finding_id)
-    if not existing:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
-    check_resource_owner(existing, _current_user, "finding")
-    updated = await repo.update(finding_id, status=FindingStatus.VERIFIED)
+    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.VERIFIED)
     await db.commit()
     await audit_log_event(
         db,
         AuditEventType.FINDING_UPDATED,
         user_id=str(_current_user.id),
-        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "confirm"},
+        details=_finding_status_audit_details(updated, "confirm"),
         request=request,
     )
     return _finding_to_response(updated)
@@ -639,17 +568,13 @@ async def dismiss_finding(
 ):
     """Dismiss a finding."""
     repo = FindingRepository(db)
-    existing = await repo.get_by_id(finding_id)
-    if not existing:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
-    check_resource_owner(existing, _current_user, "finding")
-    updated = await repo.update(finding_id, status=FindingStatus.DISMISSED)
+    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.DISMISSED)
     await db.commit()
     await audit_log_event(
         db,
         AuditEventType.FINDING_UPDATED,
         user_id=str(_current_user.id),
-        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "dismiss"},
+        details=_finding_status_audit_details(updated, "dismiss"),
         request=request,
     )
     return _finding_to_response(updated)
@@ -669,17 +594,13 @@ async def retest_finding(
 ):
     """Request retest for a finding."""
     repo = FindingRepository(db)
-    existing = await repo.get_by_id(finding_id)
-    if not existing:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
-    check_resource_owner(existing, _current_user, "finding")
-    updated = await repo.update(finding_id, status=FindingStatus.RETEST_PENDING)
+    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.RETEST_PENDING)
     await db.commit()
     await audit_log_event(
         db,
         AuditEventType.FINDING_UPDATED,
         user_id=str(_current_user.id),
-        details={"finding_id": updated.id, "target_id": updated.target_id, "status": updated.status.value, "action": "retest"},
+        details=_finding_status_audit_details(updated, "retest"),
         request=request,
     )
     return _finding_to_response(updated)
@@ -729,10 +650,10 @@ async def bulk_update_findings(
 
     updated_count = 0
     for fid in request.finding_ids:
-        existing = await repo.get_by_id(fid)
-        if not existing:
+        finding = await repo.get_by_id(fid)
+        if not finding:
             continue
-        check_resource_owner(existing, _current_user, "finding")
+        check_resource_owner(finding, _current_user, "finding")
         result = await repo.update(fid, **update_data)
         if result:
             updated_count += 1
