@@ -156,7 +156,7 @@ jobs:
       - name: Validate Docker Compose
         run: docker compose --env-file .env.example -f docker/docker-compose.yml config --quiet
       - name: Validate Swarm compose
-        run: docker compose -f docker/docker-compose.swarm.yml config --quiet
+        run: docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet
 
   deps:
     name: Dependency Audit
