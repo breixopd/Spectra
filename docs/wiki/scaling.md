@@ -1,6 +1,6 @@
 # Scaling
 
-[← Wiki Home](home.md) | [Architecture](architecture.md) | [Configuration](configuration.md) | [API Reference](api-reference.md)
+[← Wiki Home](home.md) | [Operations](operations.md) | [Architecture](architecture.md) | [Configuration](configuration.md) | [API Reference](api-reference.md)
 
 ---
 
@@ -160,7 +160,7 @@ Works with any S3-compatible provider: AWS S3, Cloudflare R2, DigitalOcean Space
 | `spectra-knowledge` | Knowledge base documents, CVE data |
 | `spectra-backups` | Database backups |
 
-The backup service reads and writes directly from S3. Use `scripts/ops/backup_restore.sh` for manual create/list/restore/verify operations when you need operator-driven backups.
+The backup service reads and writes directly from S3. Use [Operations](operations.md) for the canonical backup, restore, storage health, and logging runbook entry points.
 
 ---
 
@@ -230,6 +230,8 @@ See [API Reference](api-reference.md) for request/response schemas.
 ### Automatic Health Checks
 
 The `ServerPoolManager` periodically health-checks all registered nodes (default: every 30 seconds). Unhealthy nodes are excluded from load balancing until they recover.
+
+For the operator triage flow after a health check fails, use [Operations](operations.md).
 
 ### Monitoring Metrics
 
