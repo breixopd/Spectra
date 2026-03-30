@@ -18,24 +18,48 @@
 		header Connection *Upgrade*
 		header Upgrade websocket
 	}
-	handle @websocket {
-		reverse_proxy spectra-app:5000
-	}
-
-	reverse_proxy spectra-app:5000 {
-		health_uri /api/health
-		health_interval 10s
-		health_timeout 5s
-
-		transport http {
-			read_timeout 300s
-			write_timeout 300s
-			dial_timeout 10s
+	route {
+		handle @websocket {
+			reverse_proxy spectra-app:5000
 		}
 
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
+		# Thin IP-based edge guard for public auth traffic only.
+		# Redis-backed application limits remain the primary policy layer.
+		rate_limit {
+			zone public_auth {
+				match {
+					path_regexp public_auth ^(?:/(?:login|setup|forgot-password|reset-password)|/api(?:/v1)?/auth/(?:token|refresh|setup|forgot-password|reset-password|mfa/(?:verify|cancel)))$
+				}
+				key {remote_host}
+				events 30
+				window 1m
+			}
+
+			zone public_register {
+				match {
+					path_regexp public_register ^(?:/register|/api/public/register)$
+				}
+				key {remote_host}
+				events 30
+				window 1m
+			}
+		}
+
+		reverse_proxy spectra-app:5000 {
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
+
+			transport http {
+				read_timeout 300s
+				write_timeout 300s
+				dial_timeout 10s
+			}
+
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
 	}
 
 	log {

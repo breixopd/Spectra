@@ -173,7 +173,7 @@ services:
       - service_auth
 
   caddy:
-    image: caddy:2-alpine
+    image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-caddy:${VERSION:-latest}
     deploy:
       replicas: 1
       placement:

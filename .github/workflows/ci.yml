@@ -144,6 +144,12 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
+          file: docker/Dockerfile.caddy
+          push: false
+          load: false
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
           file: docker/Dockerfile.app
           push: false
           load: false

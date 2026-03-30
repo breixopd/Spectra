@@ -20,6 +20,7 @@ env:
   AI_IMAGE: ghcr.io/breixopd14/spectra-ai-svc
   SCHEDULER_IMAGE: ghcr.io/breixopd14/spectra-scheduler
   WORKER_IMAGE: ghcr.io/breixopd14/spectra-worker
+  CADDY_IMAGE: ghcr.io/breixopd14/spectra-caddy
 
 jobs:
   release:
@@ -148,6 +149,21 @@ jobs:
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
           build-args: |
             BUILD_VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push caddy image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.caddy
+          push: true
+          tags: |
+            ${{ env.CADDY_IMAGE }}:latest
+            ${{ env.CADDY_IMAGE }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
