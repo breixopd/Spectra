@@ -58,6 +58,7 @@ markers = [
     "live: live test (real DB and LLM, no mocking)",
     "network: test that requires outbound network access",
     "performance: moderate-concurrency latency or throughput smoke test",
+    "soak: longer-running mixed-traffic stability test against the live Docker stack",
     "ui: browser UI test (Playwright)",
     "property: property-based test (hypothesis)",
 ]
