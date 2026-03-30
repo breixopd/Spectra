@@ -39,6 +39,140 @@ templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
 templates.env.globals["app_name"] = settings.APP_NAME
 templates.env.globals["version"] = __version__
 
+UserBeforeState = dict[str, str | bool | None]
+UserAuditDetail = str | bool | None | list[str]
+UserAuditEvent = tuple[AuditEventType, dict[str, UserAuditDetail]]
+
+
+def _to_user_admin_response(user: User) -> UserAdminResponse:
+    return UserAdminResponse(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        role=user.role,
+        is_active=user.is_active,
+        is_superuser=user.is_superuser,
+        plan_id=user.plan_id,
+        created_at=user.created_at.isoformat(),
+        updated_at=user.updated_at.isoformat(),
+    )
+
+
+async def _get_user_or_404(session: AsyncSession, user_id: str) -> User:
+    user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+def _plan_id_value(plan_id: object | None) -> str | None:
+    return str(plan_id) if plan_id else None
+
+
+def _build_user_before_state(user: User) -> UserBeforeState:
+    return {
+        "is_active": user.is_active,
+        "role": user.role,
+        "is_superuser": user.is_superuser,
+        "plan_id": _plan_id_value(user.plan_id),
+        "email": user.email,
+    }
+
+
+def _has_reversible_user_update(body: AdminUserUpdate, user: User) -> bool:
+    return any(
+        [
+            body.is_active is not None and body.is_active != user.is_active,
+            body.role is not None and body.role != user.role,
+            body.plan_id is not None,
+        ]
+    )
+
+
+def _record_user_change(
+    *,
+    changed_fields: list[str],
+    audit_events: list[UserAuditEvent],
+    field_name: str,
+    before: str | bool | None,
+    after: str | bool | None,
+    event_type: AuditEventType | None = None,
+    details: dict[str, UserAuditDetail] | None = None,
+) -> None:
+    if before == after:
+        return
+
+    changed_fields.append(field_name)
+    if event_type and details is not None:
+        audit_events.append((event_type, details))
+
+
+def _build_user_update_audit_events(before_state: UserBeforeState, user: User) -> list[UserAuditEvent]:
+    changed_fields: list[str] = []
+    audit_events: list[UserAuditEvent] = []
+    current_plan_id = _plan_id_value(user.plan_id)
+
+    _record_user_change(
+        changed_fields=changed_fields,
+        audit_events=audit_events,
+        field_name="role",
+        before=before_state["role"],
+        after=user.role,
+        event_type=AuditEventType.USER_ROLE_CHANGED,
+        details={
+            "target_user": user.username,
+            "old_role": before_state["role"],
+            "new_role": user.role,
+        },
+    )
+    _record_user_change(
+        changed_fields=changed_fields,
+        audit_events=audit_events,
+        field_name="is_active",
+        before=before_state["is_active"],
+        after=user.is_active,
+        event_type=AuditEventType.USER_STATUS_CHANGED,
+        details={
+            "target_user": user.username,
+            "old_is_active": before_state["is_active"],
+            "new_is_active": user.is_active,
+        },
+    )
+    _record_user_change(
+        changed_fields=changed_fields,
+        audit_events=audit_events,
+        field_name="plan_id",
+        before=before_state["plan_id"],
+        after=current_plan_id,
+        event_type=AuditEventType.PLAN_CHANGED,
+        details={
+            "target_user": user.username,
+            "old_plan_id": before_state["plan_id"],
+            "new_plan_id": current_plan_id,
+        },
+    )
+    _record_user_change(
+        changed_fields=changed_fields,
+        audit_events=audit_events,
+        field_name="email",
+        before=before_state["email"],
+        after=user.email,
+    )
+
+    if not audit_events or "email" in changed_fields:
+        audit_events.append(
+            (
+                AuditEventType.SETTINGS_CHANGED,
+                {
+                    "action": "user_updated",
+                    "target_user": user.username,
+                    "changed_fields": changed_fields,
+                },
+            )
+        )
+
+    return audit_events
+
 
 @router.get("/admin", response_class=HTMLResponse, include_in_schema=False)
 async def admin_page(request: Request):
@@ -97,20 +231,7 @@ async def list_users(
     stmt = stmt.order_by(User.created_at.desc()).offset(offset).limit(per_page)
     rows = (await session.execute(stmt)).scalars().all()
 
-    items = [
-        UserAdminResponse(
-            id=u.id,
-            username=u.username,
-            email=u.email,
-            role=u.role,
-            is_active=u.is_active,
-            is_superuser=u.is_superuser,
-            plan_id=u.plan_id,
-            created_at=u.created_at.isoformat(),
-            updated_at=u.updated_at.isoformat(),
-        )
-        for u in rows
-    ]
+    items = [_to_user_admin_response(user) for user in rows]
     return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
@@ -120,20 +241,7 @@ async def get_user(
     _user: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> UserAdminResponse:
-    row = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
-    if not row:
-        raise HTTPException(status_code=404, detail="User not found")
-    return UserAdminResponse(
-        id=row.id,
-        username=row.username,
-        email=row.email,
-        role=row.role,
-        is_active=row.is_active,
-        is_superuser=row.is_superuser,
-        plan_id=row.plan_id,
-        created_at=row.created_at.isoformat(),
-        updated_at=row.updated_at.isoformat(),
-    )
+    return _to_user_admin_response(await _get_user_or_404(session, user_id))
 
 
 @router.post("/api/admin/users", status_code=status.HTTP_201_CREATED)
@@ -172,17 +280,7 @@ async def create_user(
     )
     await session.commit()
 
-    return UserAdminResponse(
-        id=user.id,
-        username=user.username,
-        email=user.email,
-        role=user.role,
-        is_active=user.is_active,
-        is_superuser=user.is_superuser,
-        plan_id=user.plan_id,
-        created_at=user.created_at.isoformat(),
-        updated_at=user.updated_at.isoformat(),
-    )
+    return _to_user_admin_response(user)
 
 
 @router.put("/api/admin/users/{user_id}")
@@ -193,24 +291,10 @@ async def update_user(
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> UserAdminResponse:
-    row = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
-    if not row:
-        raise HTTPException(status_code=404, detail="User not found")
+    row = await _get_user_or_404(session, user_id)
 
-    # Capture before-state for rollback if reversible fields are changing
-    before_state = {
-        "is_active": row.is_active,
-        "role": row.role,
-        "is_superuser": row.is_superuser,
-        "plan_id": str(row.plan_id) if row.plan_id else None,
-        "email": row.email,
-    }
-    reversible_change = any([
-        body.is_active is not None and body.is_active != row.is_active,
-        body.role is not None and body.role != row.role,
-        body.plan_id is not None,
-    ])
-    if reversible_change:
+    before_state = _build_user_before_state(row)
+    if _has_reversible_user_update(body, row):
         await create_snapshot(
             session,
             actor_user_id=str(admin.id),
@@ -238,61 +322,7 @@ async def update_user(
     await session.commit()
     await session.refresh(row)
 
-    audit_events: list[tuple[AuditEventType, dict[str, str | bool | None | list[str]]]] = []
-    changed_fields: list[str] = []
-
-    if before_state["role"] != row.role:
-        changed_fields.append("role")
-        audit_events.append(
-            (
-                AuditEventType.USER_ROLE_CHANGED,
-                {
-                    "target_user": row.username,
-                    "old_role": before_state["role"],
-                    "new_role": row.role,
-                },
-            )
-        )
-    if before_state["is_active"] != row.is_active:
-        changed_fields.append("is_active")
-        audit_events.append(
-            (
-                AuditEventType.USER_STATUS_CHANGED,
-                {
-                    "target_user": row.username,
-                    "old_is_active": before_state["is_active"],
-                    "new_is_active": row.is_active,
-                },
-            )
-        )
-    if before_state["plan_id"] != (str(row.plan_id) if row.plan_id else None):
-        changed_fields.append("plan_id")
-        audit_events.append(
-            (
-                AuditEventType.PLAN_CHANGED,
-                {
-                    "target_user": row.username,
-                    "old_plan_id": before_state["plan_id"],
-                    "new_plan_id": str(row.plan_id) if row.plan_id else None,
-                },
-            )
-        )
-    if before_state["email"] != row.email:
-        changed_fields.append("email")
-
-    if not audit_events or "email" in changed_fields:
-        audit_events.append(
-            (
-                AuditEventType.SETTINGS_CHANGED,
-                {
-                    "action": "user_updated",
-                    "target_user": row.username,
-                    "changed_fields": changed_fields,
-                },
-            )
-        )
-
-    for event_type, details in audit_events:
+    for event_type, details in _build_user_update_audit_events(before_state, row):
         await audit_log_event(
             session,
             event_type,
@@ -301,17 +331,7 @@ async def update_user(
             request=request,
         )
 
-    return UserAdminResponse(
-        id=row.id,
-        username=row.username,
-        email=row.email,
-        role=row.role,
-        is_active=row.is_active,
-        is_superuser=row.is_superuser,
-        plan_id=row.plan_id,
-        created_at=row.created_at.isoformat(),
-        updated_at=row.updated_at.isoformat(),
-    )
+    return _to_user_admin_response(row)
 
 
 @router.delete("/api/admin/users/{user_id}", status_code=status.HTTP_200_OK)
@@ -321,9 +341,7 @@ async def deactivate_user(
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
-    row = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
-    if not row:
-        raise HTTPException(status_code=404, detail="User not found")
+    row = await _get_user_or_404(session, user_id)
     if row.id == admin.id:
         raise HTTPException(status_code=400, detail="Cannot deactivate yourself")
 
@@ -346,9 +364,7 @@ async def reset_password(
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
-    row = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
-    if not row:
-        raise HTTPException(status_code=404, detail="User not found")
+    row = await _get_user_or_404(session, user_id)
 
     temp_password = secrets.token_urlsafe(16)
     row.hashed_password = get_password_hash(temp_password)
@@ -371,11 +387,7 @@ async def purge_user(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Hard delete a user and all their data. Admin only."""
-    stmt = select(User).where(User.id == user_id)
-    result = await session.execute(stmt)
-    target_user = result.scalar_one_or_none()
-    if not target_user:
-        raise HTTPException(404, "User not found")
+    target_user = await _get_user_or_404(session, user_id)
 
     if target_user.is_superuser and str(target_user.id) == str(admin.id):
         raise HTTPException(400, "Cannot purge your own superuser account")
