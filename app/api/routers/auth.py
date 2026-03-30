@@ -63,6 +63,7 @@ ACCESS_COOKIE_PATH = "/"
 REFRESH_COOKIE_PATH = "/api/v1/auth/refresh"
 AUTH_COOKIE_SAMESITE = "strict"
 REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
+DUMMY_PASSWORD_HASH = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCJzFhWMu"
 
 
 async def _check_lockout(user: User) -> None:
@@ -142,6 +143,101 @@ def _clear_auth_cookies(response: Response) -> None:
     )
 
 
+def _token_response_payload(
+    access_token: str,
+    refresh_token: str | None,
+) -> dict[str, str | None]:
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+
+def _mfa_pending_response(mfa_token: str) -> dict[str, str | None | bool]:
+    return {
+        **_token_response_payload(mfa_token, None),
+        "mfa_required": True,
+    }
+
+
+def _extract_bearer_token(
+    request: Request,
+    *,
+    cookie_key: str | None = None,
+) -> str | None:
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:]
+    if cookie_key:
+        return request.cookies.get(cookie_key)
+    return None
+
+
+def _extract_refresh_token(
+    request: Request,
+    body_refresh_token: str | None,
+) -> str | None:
+    return request.cookies.get(REFRESH_COOKIE_KEY) or body_refresh_token
+
+
+async def _get_user_by_username(
+    session: AsyncSession,
+    username: str,
+) -> User | None:
+    result = await session.execute(select(User).where(User.username == username))
+    return result.scalar_one_or_none()
+
+
+def _decode_token_or_http_error(token: str, detail: str) -> dict[str, object]:
+    try:
+        return decode_token(token)
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=detail,
+        )
+
+
+def _validate_refresh_token_payload(
+    refresh_token: str,
+) -> tuple[dict[str, object], str]:
+    try:
+        payload = decode_token(refresh_token)
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type",
+        )
+
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token subject",
+        )
+
+    return payload, username
+
+
+def _raise_if_token_invalidated(user: User, payload: dict[str, object]) -> None:
+    if not user.invalidated_before:
+        return
+
+    token_iat = payload.get("iat")
+    if token_iat and datetime.fromtimestamp(token_iat, tz=UTC) < user.invalidated_before:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session invalidated",
+        )
+
+
 @router.post(
     "/token",
     response_model=Token,
@@ -161,11 +257,7 @@ async def login_for_access_token(
     Rate limited to 5 attempts per minute per IP address.
     """
     client_ip = request.client.host if request.client else "unknown"
-
-    # Find user
-    stmt = select(User).where(User.username == form_data.username)
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
+    user = await _get_user_by_username(session, form_data.username)
 
     # Check account lockout after user lookup (user-based, not IP-based)
     # If user doesn't exist, skip lockout to avoid user enumeration
@@ -173,9 +265,8 @@ async def login_for_access_token(
         await _check_lockout(user)
 
     # Always verify password even if user doesn't exist (timing-safe)
-    dummy_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCJzFhWMu"
     password_valid = verify_password(
-        form_data.password, user.hashed_password if user else dummy_hash
+        form_data.password, user.hashed_password if user else DUMMY_PASSWORD_HASH
     )
 
     if not user or not password_valid:
@@ -230,12 +321,7 @@ async def login_for_access_token(
             expires_delta=timedelta(minutes=5),
         )
         await _record_success(user, session)
-        return {
-            "access_token": mfa_token,
-            "refresh_token": None,
-            "token_type": "bearer",
-            "mfa_required": True,
-        }
+        return _mfa_pending_response(mfa_token)
 
     access_token, refresh_token = _create_auth_token_pair(user)
 
@@ -261,11 +347,7 @@ async def login_for_access_token(
 
     _set_auth_cookies(response, access_token, refresh_token)
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
+    return _token_response_payload(access_token, refresh_token)
 
 
 @router.post("/refresh", response_model=Token)
@@ -280,36 +362,16 @@ async def refresh_token(
     Refresh access token using a valid refresh token.
     Accepts the refresh token from an HttpOnly cookie (browser) or request body (API clients).
     """
-    # Cookie takes precedence (browser clients); fall back to body (API clients)
-    provided_refresh_token = request.cookies.get(REFRESH_COOKIE_KEY) or body_refresh_token
+    provided_refresh_token = _extract_refresh_token(request, body_refresh_token)
     if not provided_refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token required",
         )
-    try:
-        payload = decode_token(provided_refresh_token)
-        if payload.get("type") != "refresh":
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token type",
-            )
-        username = payload.get("sub")
-        if not username:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token subject",
-            )
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
-        )
+    payload, username = _validate_refresh_token_payload(provided_refresh_token)
 
     # Check if user exists and is active
-    stmt = select(User).where(User.username == username)
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
+    user = await _get_user_by_username(session, username)
 
     if not user or not user.is_active:
         raise HTTPException(
@@ -317,14 +379,7 @@ async def refresh_token(
             detail="User not found or inactive",
         )
 
-    # Reject refresh tokens issued before invalidation (password change, logout-all, etc.)
-    if user.invalidated_before:
-        token_iat = payload.get("iat")
-        if token_iat and datetime.fromtimestamp(token_iat, tz=UTC) < user.invalidated_before:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Session invalidated",
-            )
+    _raise_if_token_invalidated(user, payload)
 
     access_token, new_refresh_token = _create_auth_token_pair(user)
     _set_auth_cookies(response, access_token, new_refresh_token)
@@ -388,30 +443,19 @@ async def check_setup_status(
 )
 async def logout(request: Request, response: Response, session: AsyncSession = Depends(get_async_session)):
     """Logout by blacklisting the current access token and clearing cookie."""
-    auth_header = request.headers.get("authorization", "")
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-    else:
-        token = request.cookies.get("access_token")
+    token = _extract_bearer_token(request, cookie_key=ACCESS_COOKIE_KEY)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing bearer token",
         )
-    try:
-        payload = decode_token(token)  # Validate token is still valid
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
+    payload = _decode_token_or_http_error(token, "Invalid token")
     invalidate_token(token)
 
     # Invalidate all tokens issued before now (covers refresh tokens too)
     username = payload.get("sub")
     if username:
-        result = await session.execute(select(User).where(User.username == username))
-        user = result.scalar_one_or_none()
+        user = await _get_user_by_username(session, username)
         if user:
             user.invalidated_before = datetime.now(UTC)
             await session.commit()
@@ -483,15 +527,11 @@ async def mfa_verify_login(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Complete MFA login by verifying TOTP code with the partial MFA token."""
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
+    token = _extract_bearer_token(request)
+    if not token:
         raise HTTPException(status_code=401, detail="Missing bearer token")
 
-    token = auth_header[7:]
-    try:
-        payload = decode_token(token)
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired MFA token")
+    payload = _decode_token_or_http_error(token, "Invalid or expired MFA token")
 
     if not payload.get("mfa_pending"):
         raise HTTPException(status_code=400, detail="Token is not an MFA pending token")
@@ -500,9 +540,7 @@ async def mfa_verify_login(
     if not username:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-    stmt = select(User).where(User.username == username)
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
+    user = await _get_user_by_username(session, username)
 
     if not user or not user.is_active or not user.mfa_enabled or not user.mfa_secret:
         raise HTTPException(status_code=401, detail="Invalid MFA state")
@@ -517,22 +555,16 @@ async def mfa_verify_login(
     access_token, refresh_token = _create_auth_token_pair(user)
     _set_auth_cookies(response, access_token, refresh_token)
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
+    return _token_response_payload(access_token, refresh_token)
 
 
 @router.post("/mfa/cancel", status_code=204, tags=["MFA"])
 @limiter.limit(RateLimits.LOGIN)
 async def cancel_mfa(request: Request):
     """Cancel MFA login and invalidate the pending token."""
-    auth_header = request.headers.get("authorization", "")
-    if not auth_header.startswith("Bearer "):
+    token = _extract_bearer_token(request)
+    if not token:
         return Response(status_code=204)
-
-    token = auth_header[7:]
     try:
         payload = decode_token(token)
     except (JWTError, Exception):
