@@ -93,7 +93,13 @@ def _to_summary(t: RegisteredTool) -> ToolSummary:
     )
 
 
+def _validate_tool_config_schema(config: dict) -> ToolConfig:
+    """Return a parsed tool config after schema validation succeeds."""
+    return ToolConfig.model_validate(config)
+
+
 async def _get_cached_status(tool_id: str) -> dict[str, str | list[str] | None]:
+    """Read cached status data for a tool, ignoring cache transport failures."""
     from app.core.cache import get_cache
 
     cache = get_cache()
@@ -110,6 +116,7 @@ async def _get_cached_status(tool_id: str) -> dict[str, str | list[str] | None]:
 
 
 def _cached_logs(payload: dict[str, str | list[str] | None]) -> list[str]:
+    """Normalize cached log payloads to a plain string list."""
     logs = payload.get("logs")
     if not isinstance(logs, list):
         return []
@@ -120,10 +127,38 @@ def _cached_text(
     payload: dict[str, str | list[str] | None],
     key: str,
 ) -> str | None:
+    """Return a cached scalar field as non-empty text."""
     return str(payload.get(key) or "") or None
 
 
+def _tool_detail_status_fields(
+    payload: dict[str, str | list[str] | None],
+) -> dict[str, str | list[str] | None]:
+    """Map cached status fields onto the tool detail response shape."""
+    return {
+        "status_message": _cached_text(payload, "message"),
+        "status_phase": _cached_text(payload, "phase"),
+        "last_updated": _cached_text(payload, "last_updated"),
+        "install_logs": _cached_logs(payload),
+        "last_output": _cached_text(payload, "last_output"),
+    }
+
+
+def _tool_stats_status_fields(
+    payload: dict[str, str | list[str] | None],
+) -> dict[str, str | list[str] | None]:
+    """Map cached status fields onto the tool stats response shape."""
+    return {
+        "status": _cached_text(payload, "status"),
+        "status_message": _cached_text(payload, "message"),
+        "last_updated": _cached_text(payload, "last_updated"),
+        "install_logs": _cached_logs(payload),
+        "error": _cached_text(payload, "error"),
+    }
+
+
 async def _sync_registry_status_from_cache(registry: ToolRegistry) -> None:
+    """Refresh in-memory tool status from cache when available."""
     try:
         await registry.sync_status_from_cache()
     except (OSError, ConnectionError, RuntimeError) as e:
@@ -145,6 +180,7 @@ def _queue_background_job(
     failure_log: str,
     **job_kwargs,
 ) -> None:
+    """Queue a worker job and log enqueue failures without failing the request."""
     async def _enqueue() -> None:
         try:
             from app.core.queue import PostgresJobQueue
@@ -158,12 +194,27 @@ def _queue_background_job(
     background_tasks.add_task(_enqueue)
 
 
+def _build_install_response(
+    tool_id: str,
+    status: ToolStatus | str,
+    message: str,
+) -> InstallToolResponse:
+    """Build the common response payload used by tool management routes."""
+    return InstallToolResponse(
+        success=True,
+        tool_id=tool_id,
+        status=status.value if isinstance(status, ToolStatus) else status,
+        message=message,
+    )
+
+
 async def _write_tool_audit_event(
     event_type: AuditEventType,
     user_id: str,
     request: Request,
     details: dict[str, object],
 ) -> None:
+    """Persist a tool-related audit record."""
     async with async_session_maker() as session:
         await audit_log_event(
             session,
@@ -172,6 +223,49 @@ async def _write_tool_audit_event(
             details=details,
             request=request,
         )
+
+
+async def _queue_tool_job_with_audit(
+    background_tasks: BackgroundTasks,
+    job_name: str,
+    *,
+    success_log: str,
+    failure_log: str,
+    event_type: AuditEventType,
+    user_id: str,
+    request: Request,
+    audit_details: dict[str, object],
+    **job_kwargs,
+) -> None:
+    """Queue a background tool job and record the matching audit event."""
+    _queue_background_job(
+        background_tasks,
+        job_name,
+        success_log=success_log,
+        failure_log=failure_log,
+        **job_kwargs,
+    )
+    await _write_tool_audit_event(event_type, user_id, request, audit_details)
+
+
+async def _set_tool_enabled(
+    registry: ToolRegistry,
+    tool_id: str,
+    enabled: bool,
+    event_type: AuditEventType,
+    request: Request,
+    current_user: User,
+) -> InstallToolResponse:
+    """Persist enabled state, audit the change, and shape the standard response."""
+    tool = await registry.set_enabled(tool_id, enabled)
+    await _write_tool_audit_event(
+        event_type,
+        str(current_user.id),
+        request,
+        {"tool_id": tool_id},
+    )
+    action = "enabled" if enabled else "disabled"
+    return _build_install_response(tool_id, tool.status, f"Tool '{tool.config.name}' {action}")
 
 
 # --- Endpoints ---
@@ -188,11 +282,7 @@ async def validate_plugin_config(
     Does NOT check signature (as this is for pre-signing validation).
     """
     try:
-        # Temporarily disable safe mode to validate schema only
-        # Or better, use pydantic validation directly
-        ToolConfig.model_validate(config)
-
-        tool_config = ToolConfig.model_validate(config)
+        tool_config = _validate_tool_config_schema(config)
         registry.validator._validate_commands(tool_config)
 
         return ValidationResponse(valid=True, message="Plugin configuration is valid")
@@ -381,6 +471,7 @@ async def get_tool(
     tool = _get_tool_or_404(registry, tool_id)
 
     cached_status = await _get_cached_status(tool_id)
+    status_fields = _tool_detail_status_fields(cached_status)
 
     return ToolDetailResponse(
         id=tool.config.id,
@@ -397,11 +488,7 @@ async def get_tool(
         timeout=tool.config.execution.timeout,
         icon=tool.config.ui.icon,
         color=tool.config.ui.color,
-        status_message=_cached_text(cached_status, "message"),
-        status_phase=_cached_text(cached_status, "phase"),
-        last_updated=_cached_text(cached_status, "last_updated"),
-        install_logs=_cached_logs(cached_status),
-        last_output=_cached_text(cached_status, "last_output"),
+        **status_fields,
     )
 
 
@@ -522,19 +609,16 @@ async def install_all_tools(
 
     This is useful for initial setup or reinstalling all tools.
     """
-    _queue_background_job(
+    await _queue_tool_job_with_audit(
         background_tasks,
         "install_all_tools_job",
         success_log="Queued install_all_tools job",
         failure_log="Failed to queue install_all_tools",
+        event_type=AuditEventType.TOOL_INSTALLED,
+        user_id=str(_current_user.id),
+        request=request,
+        audit_details={"action": "install_all"},
         force=force,
-    )
-
-    await _write_tool_audit_event(
-        AuditEventType.TOOL_INSTALLED,
-        str(_current_user.id),
-        request,
-        {"action": "install_all"},
     )
 
     return ToolQueueResponse(
@@ -562,42 +646,24 @@ async def install_tool(
     tool = _get_tool_or_404(registry, tool_id)
 
     if tool.status == ToolStatus.READY:
-        return InstallToolResponse(
-            success=True,
-            tool_id=tool_id,
-            status=tool.status,
-            message="Tool is already installed",
-        )
+        return _build_install_response(tool_id, tool.status, "Tool is already installed")
 
     if tool.status == ToolStatus.INSTALLING:
-        return InstallToolResponse(
-            success=True,
-            tool_id=tool_id,
-            status=tool.status,
-            message="Tool installation already in progress",
-        )
+        return _build_install_response(tool_id, tool.status, "Tool installation already in progress")
 
-    _queue_background_job(
+    await _queue_tool_job_with_audit(
         background_tasks,
         "install_tool_job",
         success_log=f"Queued install job for {tool_id}",
         failure_log=f"Failed to queue install for {tool_id}",
+        event_type=AuditEventType.TOOL_INSTALLED,
+        user_id=str(_current_user.id),
+        request=request,
+        audit_details={"tool_id": tool_id},
         tool_id=tool_id,
     )
 
-    await _write_tool_audit_event(
-        AuditEventType.TOOL_INSTALLED,
-        str(_current_user.id),
-        request,
-        {"tool_id": tool_id},
-    )
-
-    return InstallToolResponse(
-        success=True,
-        tool_id=tool_id,
-        status=ToolStatus.INSTALLING,
-        message="Installation queued in tools container",
-    )
+    return _build_install_response(tool_id, ToolStatus.INSTALLING, "Installation queued in tools container")
 
 
 @router.post("/{tool_id}/enable", response_model=InstallToolResponse)
@@ -610,20 +676,13 @@ async def enable_tool(
     _current_user: User = Depends(get_current_superuser),
 ):
     """Enable a plugin for platform use."""
-    tool = await registry.set_enabled(tool_id, True)
-
-    await _write_tool_audit_event(
+    return await _set_tool_enabled(
+        registry,
+        tool_id,
+        True,
         AuditEventType.TOOL_ENABLED,
-        str(_current_user.id),
         request,
-        {"tool_id": tool_id},
-    )
-
-    return InstallToolResponse(
-        success=True,
-        tool_id=tool_id,
-        status=tool.status.value,
-        message=f"Tool '{tool.config.name}' enabled",
+        _current_user,
     )
 
 
@@ -637,20 +696,13 @@ async def disable_tool(
     _current_user: User = Depends(get_current_superuser),
 ):
     """Disable a plugin so it is hidden from platform execution paths."""
-    tool = await registry.set_enabled(tool_id, False)
-
-    await _write_tool_audit_event(
+    return await _set_tool_enabled(
+        registry,
+        tool_id,
+        False,
         AuditEventType.TOOL_DISABLED,
-        str(_current_user.id),
         request,
-        {"tool_id": tool_id},
-    )
-
-    return InstallToolResponse(
-        success=True,
-        tool_id=tool_id,
-        status=tool.status.value,
-        message=f"Tool '{tool.config.name}' disabled",
+        _current_user,
     )
 
 
@@ -785,16 +837,10 @@ async def get_tool_stats(
         key = f"spectra:tool_stats:{tool_id}"
         stats = await cache.get(key)
         status_payload = await _get_cached_status(tool_id)
+        status_fields = _tool_stats_status_fields(status_payload)
 
         if not stats or not isinstance(stats, dict):
-            return ToolStatsResponse(
-                tool_id=tool_id,
-                status=_cached_text(status_payload, "status"),
-                status_message=_cached_text(status_payload, "message"),
-                last_updated=_cached_text(status_payload, "last_updated"),
-                install_logs=_cached_logs(status_payload),
-                error=_cached_text(status_payload, "error"),
-            )
+            return ToolStatsResponse(tool_id=tool_id, **status_fields)
 
         return ToolStatsResponse(
             tool_id=tool_id,
@@ -803,11 +849,7 @@ async def get_tool_stats(
             fail_count=int(stats.get("fail_count", 0)),
             last_run=stats.get("last_run"),
             last_duration=float(stats["last_duration"]) if stats.get("last_duration") else None,
-            status=_cached_text(status_payload, "status"),
-            status_message=_cached_text(status_payload, "message"),
-            last_updated=_cached_text(status_payload, "last_updated"),
-            install_logs=_cached_logs(status_payload),
-            error=_cached_text(status_payload, "error"),
+            **status_fields,
         )
     except (OSError, RuntimeError, KeyError, ValueError) as e:
         logger.error("Failed to get stats for %s: %s", tool_id, e)
