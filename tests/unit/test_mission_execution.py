@@ -1,10 +1,15 @@
 """Tests for MissionExecutionManager."""
 
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.core.constants import MISSION_TIMEOUT_SECONDS
+from app.services.ai.agents.base import AgentContext
+from app.services.ai.agents.mission_controller import AssessmentPhase, MissionPlan, Task
 from app.services.mission.manager.execution import MissionExecutionManager
+from app.services.mission.manager.helpers import _execute_task, execute_mission_tasks
 
 
 @pytest.fixture
@@ -197,3 +202,169 @@ class TestPlanningPhase:
 
         with pytest.raises(RuntimeError, match="Mission controller not initialized"):
             await execution_manager._run_planning_phase(mission, context)
+
+
+class TestTaskExecutionHelpers:
+    @pytest.mark.asyncio
+    async def test_execute_mission_tasks_stops_before_running_tasks(self):
+        mission = MagicMock()
+        mission.plan = MissionPlan(
+            tasks=[
+                Task(
+                    task_id="t1",
+                    description="enumerate target",
+                    agent_type="agent1",
+                    phase=AssessmentPhase.DISCOVERY,
+                )
+            ]
+        )
+        mission.findings = []
+        mission.skipped_phases = set()
+        mission.is_stopped.return_value = True
+        mission.wait_if_paused = AsyncMock()
+        mission.log = MagicMock()
+
+        context = AgentContext(
+            mission_id="mission-1",
+            session_id="session-1",
+            target="10.0.0.1",
+            mission="test",
+        )
+        executor = MagicMock()
+        executor.execute_task = AsyncMock()
+        lifecycle = MagicMock()
+        lifecycle.update_db_status = AsyncMock()
+        lifecycle.save_checkpoint = AsyncMock()
+
+        await execute_mission_tasks(
+            mission,
+            context,
+            executor,
+            None,
+            None,
+            MagicMock(),
+            lifecycle,
+        )
+
+        executor.execute_task.assert_not_awaited()
+        mission.wait_if_paused.assert_not_awaited()
+        mission.log.assert_any_call("Mission stopped by user")
+
+    @pytest.mark.asyncio
+    async def test_execute_mission_tasks_times_out_before_running_tasks(self):
+        mission = MagicMock()
+        mission.plan = MissionPlan(
+            tasks=[
+                Task(
+                    task_id="t1",
+                    description="enumerate target",
+                    agent_type="agent1",
+                    phase=AssessmentPhase.DISCOVERY,
+                )
+            ]
+        )
+        mission.findings = []
+        mission.skipped_phases = set()
+        mission.is_stopped.return_value = False
+        mission.wait_if_paused = AsyncMock()
+        mission.log = MagicMock()
+        mission.set_status = MagicMock()
+        mission._start_wall_time = time.time() - MISSION_TIMEOUT_SECONDS - 1
+
+        context = AgentContext(
+            mission_id="mission-1",
+            session_id="session-1",
+            target="10.0.0.1",
+            mission="test",
+        )
+        executor = MagicMock()
+        executor.execute_task = AsyncMock()
+        lifecycle = MagicMock()
+        lifecycle.update_db_status = AsyncMock()
+        lifecycle.save_checkpoint = AsyncMock()
+
+        await execute_mission_tasks(
+            mission,
+            context,
+            executor,
+            None,
+            None,
+            MagicMock(),
+            lifecycle,
+        )
+
+        executor.execute_task.assert_not_awaited()
+        mission.set_status.assert_called_once_with("timed_out")
+        assert any(
+            "[TIMEOUT] Mission timed out after" in call.args[0]
+            for call in mission.log.call_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_task_copies_context_for_parallel_tasks(self):
+        task = Task(
+            task_id="t1",
+            description="exploit target",
+            agent_type="agent1",
+            phase=AssessmentPhase.EXPLOITATION,
+        )
+        mission = MagicMock()
+        mission.plan = MissionPlan(tasks=[task])
+        mission.log = MagicMock()
+        executor = MagicMock()
+        executor.execute_task = AsyncMock()
+        context = AgentContext(
+            mission_id="mission-1",
+            session_id="session-1",
+            target="10.0.0.1",
+            mission="test",
+            phase=AssessmentPhase.DISCOVERY.value,
+        )
+
+        await _execute_task(
+            mission,
+            executor,
+            0,
+            task,
+            context,
+            copy_context=True,
+        )
+
+        passed_context = executor.execute_task.await_args.args[2]
+        assert passed_context is not context
+        assert passed_context.phase == AssessmentPhase.EXPLOITATION.value
+        assert context.phase == AssessmentPhase.DISCOVERY.value
+
+    @pytest.mark.asyncio
+    async def test_execute_task_mutates_shared_context_for_dependent_tasks(self):
+        task = Task(
+            task_id="t1",
+            description="write report",
+            agent_type="agent1",
+            phase=AssessmentPhase.REPORTING,
+        )
+        mission = MagicMock()
+        mission.plan = MissionPlan(tasks=[task])
+        mission.log = MagicMock()
+        executor = MagicMock()
+        executor.execute_task = AsyncMock()
+        context = AgentContext(
+            mission_id="mission-1",
+            session_id="session-1",
+            target="10.0.0.1",
+            mission="test",
+            phase=AssessmentPhase.DISCOVERY.value,
+        )
+
+        await _execute_task(
+            mission,
+            executor,
+            0,
+            task,
+            context,
+            copy_context=False,
+        )
+
+        passed_context = executor.execute_task.await_args.args[2]
+        assert passed_context is context
+        assert context.phase == AssessmentPhase.REPORTING.value
