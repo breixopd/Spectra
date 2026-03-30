@@ -5,6 +5,7 @@ Uses sys.modules pre-population to break the circular import chain
 """
 
 import sys
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -149,3 +150,58 @@ class TestApplySettingsUpdate:
         mock_upsert.assert_awaited_once()
         db.commit.assert_awaited()
         mock_hydrate.assert_awaited_once()
+
+
+class TestGetCurrentSettings:
+    """Tests for get_current_settings()."""
+
+    def test_includes_expected_computed_fields(self):
+        mod = _mod()
+        settings_stub = SimpleNamespace(
+            TENSORZERO_GATEWAY_URL="http://tensorzero:3000",
+            TENSORZERO_API_KEY="configured",
+            LLM_TIMEOUT=600,
+            LOG_LEVEL="INFO",
+            PLUGIN_SAFE_MODE=True,
+            CONNECT_BACK_HOST="teamserver.local",
+            REQUIRE_APPROVAL=False,
+            FULLY_AUTOMATED=False,
+            NOTIFICATION_WEBHOOK=None,
+            PLATFORM_DOMAIN="spectra.local",
+            PLATFORM_BASE_URL="https://spectra.local",
+            PLATFORM_EXPOSED=True,
+            SANDBOX_MAX_CONTAINERS=10,
+            SANDBOX_MEMORY_LIMIT="2g",
+            SANDBOX_CPU_SHARES=512,
+            SANDBOX_MAX_LIFETIME=7200,
+            SANDBOX_RESOURCE_TIERS='{"default": {}}',
+            SANDBOX_NETWORK_ISOLATION=True,
+            SANDBOX_IDLE_TIMEOUT=600,
+            SANDBOX_HEARTBEAT_INTERVAL=30,
+            SANDBOX_PER_USER_LIMIT=3,
+            SANDBOX_DEFAULT_PRIORITY=5,
+            SANDBOX_OOM_ESCALATION_ENABLED=True,
+            SANDBOX_WARM_POOL_ENABLED=False,
+            SANDBOX_WARM_POOL_SIZE=2,
+            SANDBOX_AUTO_BUILD_IMAGE=True,
+            SANDBOX_IMAGE_SCAN_ENABLED=True,
+            SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL=False,
+            SANDBOX_ORCHESTRATOR_URL="http://sandbox-orchestrator",
+            SANDBOX_ORCHESTRATOR_TIMEOUT=15,
+            S3_ENDPOINT_URL="",
+            S3_REGION="us-east-1",
+            EMBEDDING_MODEL="all-MiniLM-L6-v2",
+            EMBEDDING_API_BASE_URL=None,
+        )
+
+        with (
+            patch.object(mod, "settings", settings_stub),
+            patch.object(mod, "get_sandbox_status", return_value={"available": True, "message": "Docker connected"}),
+        ):
+            result = mod.get_current_settings()
+
+        assert result["tensorzero_api_key_configured"] is True
+        assert result["notification_webhook"] == ""
+        assert result["sandbox_available"] == {"available": True, "message": "Docker connected"}
+        assert result["s3_configured"] is False
+        assert result["embedding_api_base_url"] is None
