@@ -184,15 +184,23 @@ uvicorn app.main:app --reload --port 5000
 ### Running tests
 
 ```bash
-# Unit tests (containerized, recommended)
-docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
-
-# Or run directly with pytest
+# General unit tests
 pytest tests/unit/ -q
 
-# Integration tests (requires live services)
+# Targeted settings/router/setup validation
+docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
+
+# Non-live integration tests
+python3 -m pytest tests/integration/ -v --tb=short --timeout=120 -k "not live and not e2e"
+
+# Integration tests in Docker (may require live services)
+./scripts/test.sh integration
+
+# Live integration tests (requires live services)
 ./tests/run_live_tests.sh
 ```
+
+For the full test matrix and release-gate guidance, see [Testing Strategy](docs/wiki/testing-strategy.md).
 
 ### Linting
 
@@ -219,6 +227,7 @@ Full documentation is in the [Wiki](docs/wiki/home.md):
 | Worker System    | [docs/wiki/worker-system.md](docs/wiki/worker-system.md)       |
 | Deployment Guide | [docs/wiki/deployment-guide.md](docs/wiki/deployment-guide.md) |
 | Development      | [docs/wiki/development.md](docs/wiki/development.md)           |
+| Testing Strategy | [docs/wiki/testing-strategy.md](docs/wiki/testing-strategy.md) |
 | Roadmap          | [docs/wiki/roadmap.md](docs/wiki/roadmap.md)                   |
 
 ## Contributing

@@ -1,6 +1,6 @@
 # Spectra Documentation Wiki
 
-[Architecture](architecture.md) | [Configuration](configuration.md) | [Deployment](deployment.md) | [Scaling](scaling.md) | [API Reference](api-reference.md) | [Development](development.md)
+[Architecture](architecture.md) | [Configuration](configuration.md) | [Deployment](deployment.md) | [Scaling](scaling.md) | [API Reference](api-reference.md) | [Development](development.md) | [Testing Strategy](testing-strategy.md)
 
 ---
 
@@ -24,8 +24,8 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 | [Authentication](authentication.md) | JWT tokens, password reset, rate limiting, RBAC roles, API keys |
 | [Worker System](worker-system.md) | Background jobs, dead-letter queue, cleanup, notifications, reports |
 | [Development](development.md) | Local setup, testing, code structure, contributing |
+| [Testing Strategy](testing-strategy.md) | Platform-wide verification layers, change matrix, release gate, and known testing gaps |
 | [Access Control](access-control.md) | Roles, permissions, admin boundaries, approval flows |
-| [Authentication](authentication.md) | JWT tokens, password reset, API keys, anti-enumeration controls |
 | [Private Registry Setup](private-registry-setup.md) | GHCR/private registry authentication and deployment setup |
 | [Shell Sessions](shell-sessions.md) | Interactive shell session handling and audit trail |
 | [Plan Tiers](plan-tiers.md) | Subscription plan limits, quotas, and feature gating |
@@ -34,6 +34,7 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 ## Quick Links
 
 - **First time?** Start with [Development](development.md) for local setup, or [Deployment Guide](deployment-guide.md) for production.
+- **Planning verification?** See [Testing Strategy](testing-strategy.md) for the platform-wide test matrix and release gate.
 - **Operating Spectra?** See [Deployment Guide](deployment-guide.md) for runbooks, backups, incident response, and the `scripts/ops/*` toolkit.
 - **Configuring settings?** See [Configuration](configuration.md) for all environment variables.
 - **Adding a tool?** See [Plugins](plugins.md) for the JSON plugin schema.

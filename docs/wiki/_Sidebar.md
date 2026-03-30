@@ -5,6 +5,7 @@
 - [Deployment](deployment.md)
 - [Configuration](configuration.md)
 - [Development](development.md)
+- [Testing Strategy](testing-strategy.md)
 - [Architecture](architecture.md)
 - [Microservices Split](microservices-split.md)
 - [Scaling](scaling.md)

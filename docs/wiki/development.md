@@ -46,7 +46,9 @@ They default to the standard `spectra-*` container names, which matches the loca
 
 ## Testing
 
-All tests run in Docker containers — no host Python environment required.
+Docker/containerized test paths are the default for CI-grade verification, and targeted local pytest commands are also supported for faster developer iteration.
+
+For the platform-wide verification matrix, release gate, and gaps between current automation and required future harnesses, see [Testing Strategy](testing-strategy.md).
 
 ### Settings/Router/Setup Validation
 
@@ -60,7 +62,7 @@ Runs: `test_runtime_settings.py`, `test_system_setup.py`, `test_smart_router.py`
 
 ### Containerized Fallback
 
-If the shared Compose test stack hits a network/subnet conflict:
+If the shared Compose test stack hits a network/subnet conflict, this fallback provides a containerized full unit suite run rather than the targeted settings/router/setup suite:
 
 ```bash
 docker build -f docker/Dockerfile.tools -t spectra-tools-test .
@@ -82,9 +84,23 @@ docker run --rm \
   -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx && python3 -m pytest tests/unit/ -q --override-ini=addopts="
 ```
 
+### Non-live integration tests
+
+Run non-live integration tests locally with this selector:
+
+```bash
+python3 -m pytest tests/integration/ -v --tb=short --timeout=120 -k "not live and not e2e"
+```
+
+For the Docker integration wrapper, which may require live services depending on the covered paths:
+
+```bash
+./scripts/test.sh integration
+```
+
 ### Live Integration Tests
 
-Require live services (PostgreSQL, LLM, tools container):
+Use the explicit live integration harness when you need real-service coverage (PostgreSQL, LLM, tools container):
 
 ```bash
 ./tests/run_live_tests.sh
