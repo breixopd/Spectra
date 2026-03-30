@@ -1,11 +1,14 @@
 """Tests for worker retry logic and helpers."""
 
 import asyncio
+import sys
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.worker.helpers import with_retry
+from tests.helpers import make_module
 
 
 class TestWithRetry:
@@ -73,3 +76,41 @@ class TestWithRetry:
             with pytest.raises(RuntimeError):
                 await job()
         assert sleep_calls == [2.0, 4.0, 8.0]  # 2^1, 2^2, 2^3 (last attempt doesn't sleep)
+
+
+class TestToolStatusHelpers:
+    @pytest.mark.asyncio
+    async def test_sync_tool_status_preserves_existing_fields_and_appends_log(self):
+        from app.worker.helpers import _sync_tool_status
+
+        cache = SimpleNamespace(
+            get=AsyncMock(
+                return_value={
+                    "message": "existing message",
+                    "phase": "existing phase",
+                    "command": "existing command",
+                    "last_output": "existing output",
+                    "logs": ["old log"],
+                }
+            ),
+            set=AsyncMock(),
+        )
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setitem(
+                sys.modules,
+                "app.core.cache",
+                make_module("app.core.cache", CacheService=lambda: cache),
+            )
+            await _sync_tool_status("demo-tool", {"status": "running", "log_entry": "started"})
+
+        key, payload = cache.set.await_args.args
+        assert key == "spectra:tool_status:demo-tool"
+        assert payload["status"] == "running"
+        assert payload["message"] == "existing message"
+        assert payload["phase"] == "existing phase"
+        assert payload["command"] == "existing command"
+        assert payload["last_output"] == "existing output"
+        assert payload["logs"][0] == "old log"
+        assert payload["logs"][1].endswith("started")
+        assert cache.set.await_args.kwargs["ttl"] == 3600

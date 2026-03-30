@@ -28,11 +28,18 @@ from app.core.security import (
 # ---------------------------------------------------------------------------
 
 
-def _make_request(headers: dict | None = None, path: str = "/") -> Request:
+def _make_request(
+    headers: dict | None = None,
+    path: str = "/",
+    cookies: dict[str, str] | None = None,
+) -> Request:
     """Build a minimal Starlette Request."""
     raw_headers = [
         (k.lower().encode(), v.encode()) for k, v in (headers or {}).items()
     ]
+    if cookies:
+        cookie_header = "; ".join(f"{key}={value}" for key, value in cookies.items())
+        raw_headers.append((b"cookie", cookie_header.encode()))
     scope = {
         "type": "http",
         "method": "POST",
@@ -121,6 +128,25 @@ class TestLogoutRevokesRefreshToken:
         await logout(request=request, response=response, session=session)
 
         assert is_token_blacklisted(token)
+
+    @pytest.mark.asyncio
+    async def test_logout_uses_access_token_cookie_when_bearer_missing(self):
+        from app.api.routers.auth import logout
+
+        token = create_access_token({"sub": "user-logout-cookie"})
+        user = MagicMock()
+        user.username = "user-logout-cookie"
+        user.invalidated_before = None
+
+        session = _mock_session_for_user(user)
+        request = _make_request(cookies={"access_token": token})
+        response = MagicMock()
+        response.delete_cookie = MagicMock()
+
+        await logout(request=request, response=response, session=session)
+
+        assert is_token_blacklisted(token)
+        session.commit.assert_awaited()
 
     @pytest.mark.asyncio
     async def test_refresh_rejected_when_issued_before_invalidation(self):

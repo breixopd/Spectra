@@ -15,6 +15,7 @@ from typing import Any
 from app.core.constants import HTTP_CLIENT_MAX_RETRIES
 
 logger = logging.getLogger(__name__)
+TOOLS_PATH_PREFIX = "/opt/spectra_tools"
 
 
 def with_retry(max_retries: int = HTTP_CLIENT_MAX_RETRIES, backoff_base: float = 2.0, max_backoff: float = 60.0):
@@ -87,36 +88,52 @@ def _is_tool_installed(tool) -> bool:
     return False
 
 
+def _build_process_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["DEBIAN_FRONTEND"] = "noninteractive"
+    env["PATH"] = f"{TOOLS_PATH_PREFIX}:{env.get('PATH', '')}"
+    return env
+
+
+def _decode_process_output(output: bytes) -> str:
+    return output.decode("utf-8", errors="replace")
+
+
+async def _start_process(
+    command: str | list[str],
+    cwd: str | None,
+    env: dict[str, str],
+):
+    if isinstance(command, list):
+        return await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=cwd,
+            env=env,
+            start_new_session=True,
+        )
+
+    return await asyncio.create_subprocess_shell(
+        command,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        cwd=cwd,
+        env=env,
+        start_new_session=True,
+    )
+
+
 async def _run_command(
     command: str | list[str],
     timeout: int,
     cwd: str | None = None,
 ) -> tuple[int, str, str]:
     """Run a shell command with timeout."""
-    env = os.environ.copy()
-    env["DEBIAN_FRONTEND"] = "noninteractive"
-    # Ensure /opt/spectra_tools is in PATH
-    env["PATH"] = f"/opt/spectra_tools:{env.get('PATH', '')}"
+    env = _build_process_env()
 
     try:
-        if isinstance(command, list):
-            proc = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=cwd,
-                env=env,
-                start_new_session=True,
-            )
-        else:
-            proc = await asyncio.create_subprocess_shell(
-                command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                cwd=cwd,
-                env=env,
-                start_new_session=True,
-            )
+        proc = await _start_process(command, cwd, env)
     except (OSError, ValueError) as e:
         logger.error("Failed to start process: %s", e)
         return (-1, "", str(e))
@@ -128,8 +145,8 @@ async def _run_command(
         )
         return (
             proc.returncode or 0,
-            stdout_bytes.decode("utf-8", errors="replace"),
-            stderr_bytes.decode("utf-8", errors="replace"),
+            _decode_process_output(stdout_bytes),
+            _decode_process_output(stderr_bytes),
         )
     except TimeoutError:
         try:
@@ -171,6 +188,38 @@ async def _track_tool_stats(
         logger.warning("Failed to track tool stats for %s: %s", tool_id, e)
 
 
+def _status_field(
+    result: dict[str, Any],
+    existing: dict[str, Any],
+    key: str,
+) -> str:
+    return str(result.get(key) or existing.get(key) or "")
+
+
+def _merge_status_logs(existing_logs: Any, log_entry: Any) -> list[str]:
+    logs = existing_logs if isinstance(existing_logs, list) else []
+    if isinstance(log_entry, str) and log_entry.strip():
+        return [*logs, f"{datetime.now().isoformat()} {log_entry.strip()}"][-40:]
+    return logs
+
+
+def _build_tool_status_payload(
+    existing: dict[str, Any],
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "status": str(result.get("status") or "unknown"),
+        "last_updated": datetime.now().isoformat(),
+        "error": str(result.get("error") or ""),
+        "message": _status_field(result, existing, "message"),
+        "phase": _status_field(result, existing, "phase"),
+        "command": _status_field(result, existing, "command"),
+        "last_output": _status_field(result, existing, "last_output"),
+        "command_index": result.get("command_index"),
+        "logs": _merge_status_logs(existing.get("logs"), result.get("log_entry")),
+    }
+
+
 async def _sync_tool_status(
     tool_id: str,
     result: dict[str, Any],
@@ -184,32 +233,8 @@ async def _sync_tool_status(
     if not isinstance(existing, dict):
         existing = {}
 
-    status = str(result.get("status") or "unknown")
-    error = str(result.get("error") or "")
-    message = str(result.get("message") or existing.get("message") or "")
-    phase = str(result.get("phase") or existing.get("phase") or "")
-    command = str(result.get("command") or existing.get("command") or "")
-    last_output = str(result.get("last_output") or existing.get("last_output") or "")
-
-    logs = existing.get("logs")
-    if not isinstance(logs, list):
-        logs = []
-    log_entry = result.get("log_entry")
-    if isinstance(log_entry, str) and log_entry.strip():
-        logs = [*logs, f"{datetime.now().isoformat()} {log_entry.strip()}"][-40:]
-
     await cache.set(
         key,
-        {
-            "status": status,
-            "last_updated": datetime.now().isoformat(),
-            "error": error,
-            "message": message,
-            "phase": phase,
-            "command": command,
-            "last_output": last_output,
-            "command_index": result.get("command_index"),
-            "logs": logs,
-        },
+        _build_tool_status_payload(existing, result),
         ttl=3600,  # 1 hour
     )
