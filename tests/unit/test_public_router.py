@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from httpx import ASGITransport, AsyncClient
 from starlette.responses import HTMLResponse
 
@@ -103,7 +103,7 @@ class TestRegisterEndpoint:
 
         body = RegisterRequest(username="newuser", email="new@example.com", password="StrongP4ss!")
         with patch("app.api.routers.public.async_session_maker", maker):
-            result = await register_user.__wrapped__(_fake_request(), body)
+            result = await register_user.__wrapped__(_fake_request(), body, Response())
         assert "created" in result["detail"].lower()
 
     async def test_register_duplicate(self):
@@ -119,8 +119,16 @@ class TestRegisterEndpoint:
 
         body = RegisterRequest(username="taken", email="taken@example.com", password="StrongP4ss!")
         with patch("app.api.routers.public.async_session_maker", maker), pytest.raises(HTTPException) as exc_info:
-            await register_user.__wrapped__(_fake_request(), body)
+            await register_user.__wrapped__(_fake_request(), body, Response())
         assert exc_info.value.status_code == 409
+
+    async def test_register_invalid_payload_returns_422(self, client):
+        resp = await client.post(
+            "/api/public/register",
+            json={"username": "short", "email": "invalid"},
+        )
+
+        assert resp.status_code == 422
 
     async def test_register_weak_password_validation(self):
         from pydantic import ValidationError

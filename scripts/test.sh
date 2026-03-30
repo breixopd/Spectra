@@ -7,6 +7,8 @@
 #   ./scripts/test.sh integration  # Run integration tests
 #   ./scripts/test.sh all          # Run all tests
 #   ./scripts/test.sh coverage     # Run with coverage report
+#   ./scripts/test.sh load         # Run burst/load tests with the test stack
+#   ./scripts/test.sh performance  # Run performance smoke tests with the test stack
 #   ./scripts/test.sh file <path>  # Run a specific test file
 #
 # Environment:
@@ -35,6 +37,8 @@ usage() {
     echo "  integration   Run integration tests (requires live services)"
     echo "  all           Run all tests"
     echo "  coverage      Run unit tests with coverage report"
+    echo "  load          Run load/rate-limit tests via the Docker test stack"
+    echo "  performance   Run performance smoke tests via the Docker test stack"
     echo "  file <path>   Run a specific test file"
     echo "  compose       Run full test stack via docker-compose"
     echo ""
@@ -76,6 +80,13 @@ run_in_docker() {
         -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx pytest-cov 2>/dev/null && python3 -m pytest ${pytest_args[*]}"
 }
 
+run_stack_harness() {
+    local mode="${1}"
+    shift || true
+
+    "$PROJECT_ROOT/tests/run_load_tests.sh" "${mode}" "$@"
+}
+
 CMD="${1:-unit}"
 
 case "$CMD" in
@@ -95,6 +106,12 @@ case "$CMD" in
             --override-ini=addopts= \
             --cov=app --cov-report=term-missing --cov-report=html:reports/coverage
         echo -e "${GREEN}Coverage report: reports/coverage/index.html${NC}"
+        ;;
+    load)
+        run_stack_harness load "${@:2}"
+        ;;
+    performance)
+        run_stack_harness performance "${@:2}"
         ;;
     file)
         if [[ -z "${2:-}" ]]; then

@@ -4,8 +4,13 @@ Validates that the http middleware in app.main rejects oversized
 requests with 413 and passes normal-sized requests through.
 """
 
+from unittest.mock import MagicMock
+
+import json
+
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 
 
@@ -61,3 +66,28 @@ async def test_configurable_limit():
     assert hasattr(settings, "MAX_REQUEST_BODY_SIZE")
     assert isinstance(settings.MAX_REQUEST_BODY_SIZE, int)
     assert settings.MAX_REQUEST_BODY_SIZE > 0
+
+
+@pytest.mark.asyncio
+async def test_api_429_handler_preserves_non_slowapi_detail_and_headers():
+    """Non-SlowAPI 429 responses should keep their original detail and headers."""
+    from app.main import _make_error_handler
+
+    request = MagicMock()
+    request.url.path = "/api/test"
+
+    handler = _make_error_handler(429, "Too many requests", "errors/429.html")
+    exc = HTTPException(
+        status_code=429,
+        detail={"detail": "Hourly API limit reached: 100/100", "error_code": "RATE_LIMITED", "status": 429},
+        headers={"Retry-After": "1800"},
+    )
+
+    response = await handler(request, exc)
+
+    assert response.status_code == 429
+    assert response.headers.get("Retry-After") == "1800"
+    assert response.headers.get("X-RateLimit-Limit") is None
+    assert json.loads(response.body) == {
+        "detail": {"detail": "Hourly API limit reached: 100/100", "error_code": "RATE_LIMITED", "status": 429}
+    }

@@ -129,6 +129,20 @@ async def rate_limit_exceeded_handler(
     request: Request,
     exc: RateLimitExceeded,
 ) -> Response:
+    return _build_rate_limit_exceeded_response(request, exc)
+
+
+def rate_limit_exceeded_handler_sync(
+    request: Request,
+    exc: RateLimitExceeded,
+) -> Response:
+    return _build_rate_limit_exceeded_response(request, exc)
+
+
+def _build_rate_limit_exceeded_response(
+    request: Request,
+    exc: RateLimitExceeded,
+) -> Response:
     """
     Custom handler for rate limit exceeded errors.
 
@@ -201,6 +215,7 @@ __all__ = [
     "get_client_identifier",
     "get_user_identifier",
     "rate_limit_exceeded_handler",
+    "rate_limit_exceeded_handler_sync",
     "limit_login",
     "limit_mission",
     "limit_tool",

@@ -91,8 +91,10 @@ Start here:
 
 - [Wiki Home](docs/wiki/home.md)
 - [Deployment Guide](docs/wiki/deployment-guide.md)
+- [Operations](docs/wiki/operations.md)
 - [Configuration](docs/wiki/configuration.md)
 - [Development](docs/wiki/development.md)
+- [Ops Script Index](scripts/ops/README.md)
 - [Microservices Split Notes](docs/wiki/microservices-split.md)
 
 ## Quick Start
@@ -198,9 +200,13 @@ python3 -m pytest tests/integration/ -v --tb=short --timeout=120 -k "not live an
 
 # Live integration tests (requires live services)
 ./tests/run_live_tests.sh
+
+# Burst/load and performance smoke harnesses
+./tests/run_load_tests.sh load
+./tests/run_load_tests.sh performance
 ```
 
-For the full test matrix and release-gate guidance, see [Testing Strategy](docs/wiki/testing-strategy.md).
+For the full test matrix and release-gate guidance, see [Testing Strategy](docs/wiki/testing-strategy.md). The new first-pass harness covers direct app burst limits, real Caddy edge throttling, moderate-concurrency route latency, and PostgreSQL-backed queue drain throughput.
 
 ### Linting
 
@@ -216,6 +222,7 @@ Full documentation is in the [Wiki](docs/wiki/home.md):
 | ---------------- | -------------------------------------------------------------- |
 | Architecture     | [docs/wiki/architecture.md](docs/wiki/architecture.md)         |
 | Configuration    | [docs/wiki/configuration.md](docs/wiki/configuration.md)       |
+| Operations       | [docs/wiki/operations.md](docs/wiki/operations.md)             |
 | Deployment       | [docs/wiki/deployment.md](docs/wiki/deployment.md)             |
 | Scaling          | [docs/wiki/scaling.md](docs/wiki/scaling.md)                   |
 | API Reference    | [docs/wiki/api-reference.md](docs/wiki/api-reference.md)       |
@@ -228,6 +235,7 @@ Full documentation is in the [Wiki](docs/wiki/home.md):
 | Deployment Guide | [docs/wiki/deployment-guide.md](docs/wiki/deployment-guide.md) |
 | Development      | [docs/wiki/development.md](docs/wiki/development.md)           |
 | Testing Strategy | [docs/wiki/testing-strategy.md](docs/wiki/testing-strategy.md) |
+| Ops Script Index | [scripts/ops/README.md](scripts/ops/README.md)                 |
 | Roadmap          | [docs/wiki/roadmap.md](docs/wiki/roadmap.md)                   |
 
 ## Contributing

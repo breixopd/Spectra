@@ -1,0 +1,79 @@
+# Spectra reverse proxy used by the Docker test stack.
+# Keeps the production routing shape, but lowers selected edge thresholds
+# so the burst harness can verify proxy-layer 429 behavior quickly.
+
+{
+	auto_https off
+	admin off
+}
+
+:80 {
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+
+	route {
+		handle @websocket {
+			reverse_proxy app:5000
+		}
+
+		rate_limit {
+			zone setup_status_edge {
+				match {
+					path /api/auth/setup/status /api/v1/auth/setup/status
+				}
+				key {remote_host}
+				events 10
+				window 1m
+			}
+
+			zone public_auth {
+				match {
+					path_regexp public_auth ^(?:/(?:login|setup|forgot-password|reset-password)|/api(?:/v1)?/auth/(?:token|refresh|setup|forgot-password|reset-password|mfa/(?:verify|cancel)))$
+				}
+				key {remote_host}
+				events 25
+				window 1m
+			}
+
+			zone public_register {
+				match {
+					path_regexp public_register ^(?:/register|/api/public/register)$
+				}
+				key {remote_host}
+				events 10
+				window 1m
+			}
+		}
+
+		reverse_proxy app:5000 {
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
+
+			transport http {
+				read_timeout 300s
+				write_timeout 300s
+				dial_timeout 10s
+			}
+
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	log {
+		output stdout
+		format console
+		level INFO
+	}
+}

@@ -316,6 +316,30 @@ async def test_rate_limit_exceeded_handler_body_structure():
     assert body["retry_after_seconds"] == 60
 
 
+@pytest.mark.asyncio
+async def test_main_api_429_handler_delegates_rate_limit_exceeded():
+    """The app-level 429 handler must preserve SlowAPI's structured response."""
+    import json
+
+    from app.main import _make_error_handler
+
+    request = MagicMock()
+    request.url.path = "/api/auth/token"
+    request.client.host = "127.0.0.1"
+    request.headers.get.return_value = None
+
+    exc = _make_rate_limit_exc("5/minute")
+
+    with patch("app.core.rate_limit.events"):
+        response = await _make_error_handler(429, "Too many requests", "errors/429.html")(request, exc)
+
+    body = json.loads(response.body.decode())
+    assert response.status_code == 429
+    assert response.headers.get("Retry-After") == "60"
+    assert body["error"] == "RATE_LIMIT_EXCEEDED"
+    assert body["retry_after_seconds"] == 60
+
+
 # ---------------------------------------------------------------------------
 # slowapi limiter config
 # ---------------------------------------------------------------------------

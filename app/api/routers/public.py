@@ -4,14 +4,12 @@ Public routes — landing page, pricing, self-service auth.
 These routes do NOT require authentication.
 """
 
-from __future__ import annotations
-
 import json
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select, text
@@ -442,8 +440,9 @@ def _verify_email_template_response(request: Request, *, success: bool, message:
 
 @router.post("/api/public/register", tags=["Public"], status_code=201)
 @limiter.limit(RateLimits.PUBLIC_REGISTER)
-async def register_user(request: Request, body: RegisterRequest):
+async def register_user(request: Request, body: RegisterRequest, response: Response):
     """Self-register a new user account with the default plan."""
+    _ = response
     email_verification_required = _registration_requires_email_verification()
 
     async with async_session_maker() as session:

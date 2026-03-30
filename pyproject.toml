@@ -53,9 +53,11 @@ markers = [
     "asyncio: async test requiring asyncio event loop",
     "e2e: end-to-end test",
     "integration: integration test",
+    "load: burst/load/rate-limit harness against the live Docker test stack",
     "slow: slow-running test",
     "live: live test (real DB and LLM, no mocking)",
     "network: test that requires outbound network access",
+    "performance: moderate-concurrency latency or throughput smoke test",
     "ui: browser UI test (Playwright)",
     "property: property-based test (hypothesis)",
 ]
