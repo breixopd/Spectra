@@ -60,6 +60,79 @@ async def _get_prefs(user_id: str, session: AsyncSession) -> UserPreferences | N
     return result.scalar_one_or_none()
 
 
+def _filter_byok_updates(updates: dict) -> dict:
+    return {key: value for key, value in updates.items() if key in BYOK_FIELDS and value is not None}
+
+
+async def _require_byok_feature_if_needed(
+    user: User,
+    session: AsyncSession,
+    byok_updates: dict,
+) -> None:
+    if byok_updates:
+        await check_feature_allowed(user, session, "byok")
+
+
+async def _load_or_create_prefs(user_id: str, session: AsyncSession) -> UserPreferences:
+    prefs = await _get_prefs(user_id, session)
+    if prefs is None:
+        prefs = UserPreferences(user_id=user_id)
+        session.add(prefs)
+    return prefs
+
+
+def _encrypt_byok_secrets(updates: dict) -> None:
+    if updates.get("llm_api_key"):
+        updates["llm_api_key"] = encrypt_byok_key(updates["llm_api_key"])
+    if updates.get("embedding_api_key"):
+        updates["embedding_api_key"] = encrypt_byok_key(updates["embedding_api_key"])
+
+
+def _apply_allowed_settings_fields(prefs: UserPreferences, updates: dict) -> None:
+    for key, value in updates.items():
+        if key in ALLOWED_SETTINGS_FIELDS:
+            setattr(prefs, key, value)
+
+
+async def _audit_with_swallow(
+    session: AsyncSession,
+    event_type: AuditEventType,
+    user_id: str,
+    details: dict,
+    request: Request,
+) -> None:
+    try:
+        await audit_log_event(
+            session,
+            event_type,
+            user_id=user_id,
+            details=details,
+            request=request,
+        )
+    except OSError:
+        pass
+
+
+async def _commit_and_audit_with_swallow(
+    session: AsyncSession,
+    event_type: AuditEventType,
+    user_id: str,
+    details: dict,
+    request: Request,
+    prefs: UserPreferences | None = None,
+) -> None:
+    await session.commit()
+    if prefs is not None:
+        await session.refresh(prefs)
+    await _audit_with_swallow(
+        session,
+        event_type,
+        user_id=user_id,
+        details=details,
+        request=request,
+    )
+
+
 @router.get("", response_model=UserSettingsResponse)
 async def get_user_settings(
     user: User = Depends(get_current_active_user),
@@ -85,39 +158,23 @@ async def update_user_settings(
     if not updates:
         raise HTTPException(status_code=422, detail="No fields provided")
 
-    # Enforce BYOK plan gate
-    byok_data = {k: v for k, v in updates.items() if k in BYOK_FIELDS and v is not None}
-    if byok_data:
-        await check_feature_allowed(user, session, "byok")
+    byok_updates = _filter_byok_updates(updates)
+    await _require_byok_feature_if_needed(user, session, byok_updates)
 
-    prefs = await _get_prefs(str(user.id), session)
-    if prefs is None:
-        prefs = UserPreferences(user_id=str(user.id))
-        session.add(prefs)
+    user_id = str(user.id)
+    prefs = await _load_or_create_prefs(user_id, session)
+    _encrypt_byok_secrets(updates)
+    _apply_allowed_settings_fields(prefs, updates)
 
-    # Encrypt BYOK API keys before storing
-    if "llm_api_key" in updates and updates["llm_api_key"]:
-        updates["llm_api_key"] = encrypt_byok_key(updates["llm_api_key"])
-    if "embedding_api_key" in updates and updates["embedding_api_key"]:
-        updates["embedding_api_key"] = encrypt_byok_key(updates["embedding_api_key"])
-
-    for key, value in updates.items():
-        if key in ALLOWED_SETTINGS_FIELDS:
-            setattr(prefs, key, value)
-
-    await session.commit()
-    await session.refresh(prefs)
-
-    try:
-        event_type = AuditEventType.BYOK_CHANGED if byok_data else AuditEventType.SETTINGS_CHANGED
-        await audit_log_event(
-            session, event_type,
-            user_id=str(user.id),
-            details={"action": "settings_updated", "fields": list(updates.keys())},
-            request=request,
-        )
-    except OSError:
-        pass  # Audit failure shouldn't block the operation
+    event_type = AuditEventType.BYOK_CHANGED if byok_updates else AuditEventType.SETTINGS_CHANGED
+    await _commit_and_audit_with_swallow(
+        session,
+        event_type,
+        user_id=user_id,
+        details={"action": "settings_updated", "fields": list(updates.keys())},
+        request=request,
+        prefs=prefs,
+    )
 
     return _prefs_to_response(prefs)
 
@@ -129,23 +186,20 @@ async def clear_byok(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Clear all BYOK fields from the user's preferences."""
-    prefs = await _get_prefs(str(user.id), session)
+    user_id = str(user.id)
+    prefs = await _get_prefs(user_id, session)
     if prefs is None:
         return {"detail": "No BYOK configuration to clear"}
 
     for field in BYOK_FIELDS:
         setattr(prefs, field, None)
 
-    await session.commit()
-
-    try:
-        await audit_log_event(
-            session, AuditEventType.BYOK_CHANGED,
-            user_id=str(user.id),
-            details={"action": "byok_cleared"},
-            request=request,
-        )
-    except OSError:
-        pass
+    await _commit_and_audit_with_swallow(
+        session,
+        AuditEventType.BYOK_CHANGED,
+        user_id=user_id,
+        details={"action": "byok_cleared"},
+        request=request,
+    )
 
     return {"detail": "BYOK configuration cleared"}
