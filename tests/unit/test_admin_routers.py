@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.routers.admin.plans import router as plans_router
 from app.api.routers.admin.users import router as users_router
+from app.models.audit_log import AuditEventType
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -156,6 +157,44 @@ class TestUpdateUserRole:
                 resp = await ac.put("/api/admin/users/uid-2", json={"role": "viewer"})
 
         assert resp.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_update_email_logs_settings_changed_without_snapshot(self):
+        admin = _make_user("admin")
+        app = _build_app(admin)
+
+        target = _make_user("operator", user_id="uid-2")
+        mock_sess = _mock_session()
+
+        mock_lookup = MagicMock()
+        mock_lookup.scalar_one_or_none.return_value = target
+        mock_duplicate = MagicMock()
+        mock_duplicate.scalar_one_or_none.return_value = None
+
+        mock_sess.execute = AsyncMock(side_effect=[mock_lookup, mock_duplicate])
+        mock_sess.commit = AsyncMock()
+        mock_sess.refresh = AsyncMock()
+
+        from app.core.database import get_async_session
+
+        app.dependency_overrides[get_async_session] = lambda: mock_sess
+
+        with (
+            patch("app.api.routers.admin.users.audit_log_event", new_callable=AsyncMock) as audit_mock,
+            patch("app.api.routers.admin.users.create_snapshot", new_callable=AsyncMock) as snapshot_mock,
+        ):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                resp = await ac.put("/api/admin/users/uid-2", json={"email": "updated@test.com"})
+
+        assert resp.status_code == 200
+        snapshot_mock.assert_not_awaited()
+        audit_mock.assert_awaited_once()
+        assert audit_mock.await_args.args[1] == AuditEventType.SETTINGS_CHANGED
+        assert audit_mock.await_args.kwargs["details"] == {
+            "action": "user_updated",
+            "target_user": target.username,
+            "changed_fields": ["email"],
+        }
 
 
 # ---------------------------------------------------------------------------
