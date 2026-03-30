@@ -1,6 +1,6 @@
 # Deployment Guide
 
-[← Wiki Home](home.md) | [Configuration](configuration.md) | [Scaling](scaling.md) | [Security](security.md)
+[← Wiki Home](home.md) | [Operations](operations.md) | [Configuration](configuration.md) | [Scaling](scaling.md) | [Security](security.md)
 
 ---
 
@@ -126,23 +126,13 @@ docker compose -f docker/docker-compose.yml logs -f app
 
 ## Operations Runbooks
 
-Operational helper scripts live in `scripts/ops/` and default to the standard `spectra-*` container names. Use them from the repo root for common day-2 tasks.
+Deployment bootstrap and first verification stay on this page. For ongoing runbooks, use [Operations](operations.md) as the canonical owner and [scripts/ops/README.md](../../scripts/ops/README.md) for the local script catalog.
 
-| Script | Use |
-|--------|-----|
-| `scripts/ops/backup_restore.sh` | Create, list, restore, and verify S3-native database backups |
-| `scripts/ops/db_maintenance.sh` | Run `VACUUM`, `ANALYZE`, `REINDEX`, and inspect PostgreSQL stats/sizes |
-| `scripts/ops/incident_response.sh` | Invalidate sessions, lock users, cancel missions, and apply emergency lockdown |
-| `scripts/ops/user_management.sh` | Inspect users, create admins, change roles, reset passwords, and disable MFA |
-| `scripts/ops/worker_management.sh` | Inspect queue health, review failed/dead-letter jobs, retry work, and purge old entries |
-| `scripts/ops/s3_management.sh` | Check MinIO/S3 health, create required buckets, list objects, and review usage |
-| `scripts/ops/log_management.sh` | Tail service logs, extract recent errors, export logs, and inspect log sizes |
+After the stack is up:
 
-### Backups
-
-- `scripts/ops/backup_restore.sh` supports `create`, `list`, `restore <backup_id>`, and `verify <backup_id>`.
-- Backups are S3-native and stored in `S3_BUCKET_BACKUPS` (also exposed as `BACKUP_S3_BUCKET`).
-- When `BACKUP_ENABLED=true`, the scheduler service creates recurring backups every `BACKUP_SCHEDULE_HOURS`.
+- Run `./scripts/health_check.sh http://<host>/api/health` for the first operator smoke check.
+- Confirm backup visibility with `scripts/ops/backup_restore.sh list` once storage is configured.
+- Use [Deployment](deployment.md#rollback) for version rollback mechanics if the rollout needs to be reversed.
 
 ---
 

@@ -2,6 +2,7 @@
 
 - [Home](home.md)
 - [Deployment Guide](deployment-guide.md)
+- [Operations](operations.md)
 - [Deployment](deployment.md)
 - [Configuration](configuration.md)
 - [Development](development.md)

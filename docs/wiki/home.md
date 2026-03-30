@@ -1,6 +1,6 @@
 # Spectra Documentation Wiki
 
-[Architecture](architecture.md) | [Configuration](configuration.md) | [Deployment](deployment.md) | [Scaling](scaling.md) | [API Reference](api-reference.md) | [Development](development.md) | [Testing Strategy](testing-strategy.md)
+[Architecture](architecture.md) | [Configuration](configuration.md) | [Operations](operations.md) | [Deployment](deployment.md) | [Scaling](scaling.md) | [API Reference](api-reference.md) | [Development](development.md) | [Testing Strategy](testing-strategy.md)
 
 ---
 
@@ -13,6 +13,7 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 | [Architecture](architecture.md) | System design — 12 AI agents, MAKER framework, execution pipeline, learning system |
 | [Configuration](configuration.md) | All environment variables and settings organized by section |
 | [Deployment Guide](deployment-guide.md) | **Start here** — Docker Compose, Cloudflare, Docker Swarm, Caddy, backups, monitoring |
+| [Operations](operations.md) | Canonical day-2 runbook index — health triage, backups, queue repair, incidents, logging |
 | [Deployment](deployment.md) | CI/CD pipeline, versioning, rollback procedures |
 | [Microservices](microservices-split.md) | Service architecture — app, AI, scheduler, worker, inter-service communication |
 | [Scaling](scaling.md) | Multi-server scaling — server pools, S3 storage, read replicas |
@@ -35,7 +36,7 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 
 - **First time?** Start with [Development](development.md) for local setup, or [Deployment Guide](deployment-guide.md) for production.
 - **Planning verification?** See [Testing Strategy](testing-strategy.md) for the platform-wide test matrix and release gate.
-- **Operating Spectra?** See [Deployment Guide](deployment-guide.md) for runbooks, backups, incident response, and the `scripts/ops/*` toolkit.
+- **Operating Spectra?** See [Operations](operations.md) for the canonical runbook index and [scripts/ops/README.md](../../scripts/ops/README.md) for the local script catalog.
 - **Configuring settings?** See [Configuration](configuration.md) for all environment variables.
 - **Adding a tool?** See [Plugins](plugins.md) for the JSON plugin schema.
 - **Scaling out?** See [Scaling](scaling.md) for multi-server setup.

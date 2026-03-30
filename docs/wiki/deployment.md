@@ -1,10 +1,10 @@
 # Deployment
 
-[← Wiki Home](home.md) | [Deployment Guide](deployment-guide.md) | [Configuration](configuration.md) | [Scaling](scaling.md)
+[← Wiki Home](home.md) | [Operations](operations.md) | [Deployment Guide](deployment-guide.md) | [Configuration](configuration.md) | [Scaling](scaling.md)
 
 ---
 
-> **See [Deployment Guide](deployment-guide.md) for the complete production deployment guide** — Docker Compose, Cloudflare, Docker Swarm, Portainer, scaling, backups, and monitoring.
+> **See [Deployment Guide](deployment-guide.md) for the complete production deployment guide** — Docker Compose, Cloudflare, Docker Swarm, Portainer, scaling, backups, and monitoring. Use [Operations](operations.md) for day-2 runbooks and post-deploy incident handling.
 
 This page covers CI/CD pipeline configuration and versioning.
 
@@ -100,6 +100,8 @@ Triggered by **manual dispatch** or pushing a tag matching `v*`.
 ---
 
 ## Rollback
+
+Use this section for rollback mechanics. For the broader operator workflow around validation, logs, backups, and queue cleanup before or after a rollback, see [Operations](operations.md).
 
 ### Manual Rollback
 
