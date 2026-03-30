@@ -22,7 +22,19 @@
 
 	route {
 		handle @websocket {
-			reverse_proxy app:5000
+			reverse_proxy app:5000 app-replica:5000 {
+				lb_policy round_robin
+
+				transport http {
+					read_timeout 300s
+					write_timeout 300s
+					dial_timeout 10s
+				}
+
+				header_up X-Real-IP {remote_host}
+				header_up X-Forwarded-For {remote_host}
+				header_up X-Forwarded-Proto {scheme}
+			}
 		}
 
 		rate_limit {
@@ -54,7 +66,8 @@
 			}
 		}
 
-		reverse_proxy app:5000 {
+		reverse_proxy app:5000 app-replica:5000 {
+			lb_policy round_robin
 			health_uri /api/health
 			health_interval 10s
 			health_timeout 5s

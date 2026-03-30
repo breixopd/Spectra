@@ -48,8 +48,8 @@ Covered subsystems include:
 | Deployment/config validation | Docker image builds, compose validity, TensorZero config parsing, deploy health checks | CI docker-build job, `docker compose ... config --quiet`, release health checks | Implemented |
 | Security/static analysis | Lint, code safety checks, dependency audit | `ruff check app/`, `bandit -r app/ -c pyproject.toml --severity-level high --confidence-level high`, and the dependency-audit command noted below | Implemented |
 | Performance/benchmark tests | Hot-path latency and throughput for core services and queries | `./tests/run_load_tests.sh performance` or `make test-performance` | Implemented, first pass |
-| Burst/load/rate-limit tests | Auth burst resistance, registration burst, queue/tool concurrency, rate-limit enforcement at edge and app layers | `./tests/run_load_tests.sh load` or `make test-load` | Implemented, first pass |
-| Soak/stability tests | Long-running stability, leak detection, churn handling, retry behavior over time | No committed soak runner or CI job | Missing harness |
+| Burst/load/rate-limit tests | Auth burst resistance, password reset bursts, WebSocket churn, worker/tool concurrency, and rate-limit enforcement at edge and app layers | `./tests/run_load_tests.sh load` or `make test-load` | Implemented, expanded first pass |
+| Soak/stability tests | Long-running stability, leak detection, churn handling, retry behavior over time | `./tests/run_load_tests.sh soak` or `make test-soak` | Implemented, first pass |
 | Backup/restore and disaster recovery verification | Backup creation, backup verification, restore safety, rollback path | `scripts/ops/backup_restore.sh`, release pre-deploy backup, rollback workflow | Partial; restore drills are not automated end-to-end |
 
 ## Environments
@@ -75,6 +75,7 @@ Use the real commands already present in this repo.
 | Full containerized test stack | `./scripts/test.sh compose` |
 | Load and burst harness | `./tests/run_load_tests.sh load` |
 | Performance smoke harness | `./tests/run_load_tests.sh performance` |
+| Soak and stability harness | `./tests/run_load_tests.sh soak` |
 | Targeted settings/router/setup validation | `docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner` |
 | Live integration tests | `./tests/run_live_tests.sh` |
 | Live target-only tests | `./tests/run_live_tests.sh --targets` |
@@ -116,14 +117,14 @@ These checks should be treated as platform-wide requirements even where the repo
 
 | Workload | What to prove | Current state | What should exist next |
 | --- | --- | --- | --- |
-| Auth burst and password spray resistance | Login and reset endpoints return expected 429 behavior, preserve `Retry-After` and rate-limit headers, and do not degrade other traffic | First-pass direct-app burst coverage exists for `/api/auth/token` against Redis-backed app limits | Add reset-flow coverage and multi-IP assertions |
-| Public registration burst | Public setup or registration-related routes remain bounded and fail safely under burst traffic | First-pass direct-app burst coverage exists for `/api/public/register` after setup completion | Add more public flows and recovery-window assertions |
-| WebSocket and session churn | Reconnect storms, repeated login/logout, and message bursts do not leak memory or leave stale session state | WebSocket rate limiting exists; no churn harness | A churn test that opens and closes many sessions and records memory, reconnect, and error rates |
+| Auth burst and password spray resistance | Login and reset endpoints return expected 429 behavior, preserve `Retry-After` and rate-limit headers, and do not degrade other traffic | Direct-app burst coverage exists for `/api/auth/token`, `/api/auth/forgot-password`, and `/api/auth/reset-password`, plus opt-in app recovery-window checks | Add distributed-client assertions and more account-lockout-specific checks |
+| Public registration burst | Public setup or registration-related routes remain bounded and fail safely under burst traffic | First-pass direct-app burst coverage exists for `/api/public/register` after setup completion | Add more public flows and distributed-client assertions |
+| WebSocket and session churn | Reconnect storms, repeated login/logout, and message bursts do not leak memory or leave stale session state | First-pass churn coverage now repeatedly connects to `/ws`, validates ping/pong, and asserts per-connection burst errors keep the socket alive | Add longer memory-leak-oriented churn runs and authenticated multi-user fan-out checks |
 | Queue throughput | Jobs enqueue, dispatch, retry, and drain at an acceptable rate without backlog explosion | First-pass `PostgresJobQueue` throughput coverage exists via the performance-marked queue integration test | Add retry, dead-letter, and backlog-growth profiling |
-| Tool execution concurrency | Multiple missions and tool runs behave correctly under concurrent worker load | Live tests exercise real tools functionally; no concurrency harness | A concurrent tool-execution suite across worker replicas and sandbox capacity |
+| Tool execution concurrency | Multiple missions and tool runs behave correctly under concurrent worker load | First-pass concurrent tool execution coverage now hits the real worker-backed `/api/tools/{tool}/test` path against the Docker test stack | Add worker-replica and sandbox-saturation benchmarks |
 | DB and query hot paths | Auth, mission listing, findings, audit logs, and vector-backed lookups stay within expected latency bounds | No committed benchmark suite | Targeted query benchmarks and query-plan review for hot endpoints |
-| Caddy edge rate-limit behavior | Public routes are throttled correctly at the edge and recover cleanly after the limit window | First-pass burst coverage is real in the Docker test stack via dedicated test Caddy config and proxied `/api/auth/setup/status` assertions | Add more routes and recovery-window validation |
-| App-level Redis-backed rate-limit behavior | Counters stay shared across replicas and return correct headers and retry windows | First-pass burst coverage is real in the Docker test stack with Redis-backed `/api/auth/token` and `/api/public/register` assertions | Add multi-replica and distributed-client coverage |
+| Caddy edge rate-limit behavior | Public routes are throttled correctly at the edge and recover cleanly after the limit window | First-pass burst coverage is real in the Docker test stack via dedicated test Caddy config and proxied `/api/auth/setup/status` assertions, with opt-in recovery-window checks in the same bucket | Add more public-route edge buckets and distributed-client assertions |
+| App-level Redis-backed rate-limit behavior | Counters stay shared across replicas and return correct headers and retry windows | Direct-app Redis-backed burst coverage exists for `/api/auth/token`, `/api/public/register`, `/api/auth/forgot-password`, and `/api/auth/reset-password`, plus shared-state assertions across `app` and `app-replica` | Add more distributed-client and authenticated per-user bucket coverage |
 | Memory and CPU ceilings for `app`, `worker`, `scheduler`, and `ai-svc` | Services remain inside declared ceilings or fail predictably and observably under stress | Local compose defines limits for `app` and `ai-svc`; committed `worker` and `scheduler` ceilings are not yet consistently codified | Codified ceilings for all long-running services plus benchmark and soak runs that record RSS, CPU, queue depth, and restart behavior |
 
 Platform-wide rule: if a change materially alters concurrency, retries, session handling, proxying, or resource usage, single-request correctness is not enough. The change is not done until either an automated burst/benchmark harness exists or equivalent manual evidence is recorded for the release.
@@ -149,9 +150,9 @@ Fail the release if a required item is skipped, if a needed harness does not exi
 
 The current repo already has strong unit, integration, live, UI, config, and release-health coverage. It now also has a practical first-pass load and performance harness, but it still does not contain all the automation needed for full platform verification.
 
-- First-pass burst/load coverage now exists for direct app login, direct public registration, and real Caddy edge throttling in the Docker test stack.
+- First-pass burst/load coverage now exists for direct app login, password reset flows, direct public registration, real Caddy edge throttling, WebSocket churn and message bursts, shared Redis-backed replica limits, and concurrent worker-backed tool execution in the Docker test stack.
 - First-pass performance smoke coverage now exists for `/api/health`, `/api/auth/setup/status`, `/api/auth/me`, and PostgreSQL-backed queue drain throughput.
-- No committed soak or stability runner exists for multi-hour verification.
+- A first-pass mixed-traffic soak runner now exists for configurable stability checks against the same Docker test stack.
 - No standalone API contract or OpenAPI breaking-change gate is committed today.
 - Backup creation and backup verification are scriptable, but scheduled automated restore drills are not part of CI.
 - A dedicated staging workflow is not committed; teams with a staging environment should treat release validation there as mandatory for high-risk changes.
@@ -159,7 +160,7 @@ The current repo already has strong unit, integration, live, UI, config, and rel
 
 Recommended next additions:
 
-- expand `tests/performance/` beyond the current smoke thresholds into query and worker-replica benchmarks
-- expand `tests/load/` into password reset, WebSocket churn, multi-replica Redis, and concurrent tool execution scenarios
+- expand `tests/performance/` beyond the current smoke thresholds into query, cache, and worker-replica benchmarks
+- expand the new load and soak suites into distributed-client, retry/dead-letter, and longer memory-pressure scenarios
 - add an automated non-production restore drill for migration-bearing releases
 - add a staging validation runbook or workflow that mirrors the release gate

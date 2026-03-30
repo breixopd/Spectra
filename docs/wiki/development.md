@@ -52,10 +52,11 @@ docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
 ```
 
 Runs: `test_runtime_settings.py`, `test_system_setup.py`, `test_smart_router.py`, `test_settings_runtime_api.py`, `test_settings_templates.py`.
+It still joins the same `spectra_test` Compose network as `docker-compose.test.yml`; the savings here are avoiding the full live stack, not bypassing the fixed test subnet.
 
 ### Containerized Fallback
 
-If the shared Compose test stack hits a network/subnet conflict, this fallback provides a containerized full unit suite run rather than the targeted settings/router/setup suite:
+If the Compose test network itself conflicts on your machine, this fallback provides a containerized full unit suite run outside that fixed subnet instead of the targeted settings/router/setup suite:
 
 ```bash
 docker build -f docker/Dockerfile.tools -t spectra-tools-test .
@@ -118,12 +119,16 @@ First-pass load and performance coverage runs against the Docker test stack with
 # Performance smoke coverage, including queue throughput
 ./tests/run_load_tests.sh performance
 
+# Mixed-traffic soak/stability coverage
+./tests/run_load_tests.sh soak
+
 # Makefile wrappers
 make test-load
 make test-performance
+make test-soak
 ```
 
-This batch covers direct app login burst behavior, direct public registration burst behavior, real Caddy edge throttling, moderate-concurrency latency smoke for core routes, and PostgreSQL-backed queue drain throughput. Soak, WebSocket churn, and multi-replica rate-limit validation remain out of scope.
+The committed harness now covers direct app login and password-reset bursts, direct public registration burst behavior, real Caddy edge throttling with opt-in recovery checks, WebSocket churn and per-connection burst handling, Redis-backed multi-replica login limit sharing, concurrent worker-backed tool execution, moderate-concurrency latency smoke for core routes, PostgreSQL-backed queue drain throughput, and a first-pass mixed-traffic soak runner. Query benchmarks, queue retry and dead-letter profiling, and resource-ceiling automation still remain outside this batch.
 
 ### Test Targets
 

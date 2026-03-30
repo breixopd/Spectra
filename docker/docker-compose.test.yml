@@ -87,6 +87,43 @@ services:
         aliases:
           - spectra-ui-app
 
+  app-replica:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    env_file:
+      - ../.env.test
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=spectra
+      - S3_SECRET_KEY=spectra_test_minio
+      - TEST_TARGET_IP=metasploitable
+      - TEST_TARGET_URL=http://metasploitable
+      - PLUGIN_SAFE_MODE=false
+      - RATE_LIMIT_STORAGE=redis://redis:6379/0
+    ports:
+      - "15001:5000"
+    volumes:
+      - ../app:/app/app:ro
+      - ../alembic:/app/alembic:ro
+      - ../config/alembic.ini:/app/config/alembic.ini:ro
+      - ../plugins:/app/plugins
+      - ../tests:/app/tests:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      spectra_test:
+        aliases:
+          - spectra-ui-app-replica
+
   caddy:
     build:
       context: ..
@@ -97,6 +134,8 @@ services:
       - ./Caddyfile.test:/etc/caddy/Caddyfile:ro
     depends_on:
       app:
+        condition: service_healthy
+      app-replica:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/api/health || exit 1"]
@@ -158,7 +197,7 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        pip install -q pytest pytest-asyncio pytest-dotenv httpx aiohttp aiosqlite &&
+        pip install -q pytest pytest-asyncio pytest-dotenv httpx aiohttp aiosqlite websockets &&
         python3 -m pytest tests/ -v --tb=short -x
     env_file:
       - ../.env.test
@@ -192,7 +231,7 @@ services:
       dvwa:
         condition: service_started
       tools:
-        condition: service_started
+        condition: service_healthy
     networks:
       - spectra_test
 
@@ -204,9 +243,9 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        pip install -q pytest pytest-asyncio pytest-dotenv httpx &&
-        python3 -m pytest tests/load tests/performance tests/integration/test_queue.py
-        -m "load or performance" -q --override-ini=addopts=
+        pip install -q pytest pytest-asyncio pytest-dotenv httpx redis websockets &&
+        python3 -m pytest tests/load tests/performance tests/soak tests/integration/test_queue.py
+        -m "load or performance or soak" -q --override-ini=addopts=
     env_file:
       - ../.env.test
     environment:
@@ -216,7 +255,9 @@ services:
       - S3_SECRET_KEY=spectra_test_minio
       - RATE_LIMIT_STORAGE=redis://redis:6379/0
       - LOAD_TEST_APP_URL=http://app:5000
+      - LOAD_TEST_APP_REPLICA_URL=http://app-replica:5000
       - LOAD_TEST_CADDY_URL=http://caddy
+      - LOAD_TEST_RESET_RATE_LIMIT_STATE=1
       - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
     volumes:
@@ -236,13 +277,17 @@ services:
         condition: service_healthy
       app:
         condition: service_healthy
+      app-replica:
+        condition: service_healthy
       caddy:
+        condition: service_healthy
+      tools:
         condition: service_healthy
     networks:
       - spectra_test
 
   # Targeted settings/setup/router validation that stays containerized without
-  # depending on the fixed test subnet or the full live test stack.
+  # requiring the full live test stack, while still joining the compose test network.
   settings-test-runner:
     build:
       context: ..

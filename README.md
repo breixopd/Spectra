@@ -204,9 +204,12 @@ python3 -m pytest tests/integration/ -v --tb=short --timeout=120 -k "not live an
 # Burst/load and performance smoke harnesses
 ./tests/run_load_tests.sh load
 ./tests/run_load_tests.sh performance
+
+# Mixed-traffic soak/stability harness
+./tests/run_load_tests.sh soak
 ```
 
-For the full test matrix and release-gate guidance, see [Testing Strategy](docs/wiki/testing-strategy.md). The new first-pass harness covers direct app burst limits, real Caddy edge throttling, moderate-concurrency route latency, and PostgreSQL-backed queue drain throughput.
+For the full test matrix and release-gate guidance, see [Testing Strategy](docs/wiki/testing-strategy.md). The committed live harness now covers direct app login and password-reset bursts, real Caddy edge throttling with opt-in recovery checks, WebSocket churn and message bursts, Redis-backed multi-replica limit sharing, concurrent worker-backed tool execution, moderate-concurrency route latency, PostgreSQL-backed queue drain throughput, and a first-pass mixed-traffic soak runner. Query benchmarks, queue retry and dead-letter profiling, and resource-ceiling automation still remain separate work.
 
 ### Linting
 

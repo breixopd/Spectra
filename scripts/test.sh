@@ -9,6 +9,7 @@
 #   ./scripts/test.sh coverage     # Run with coverage report
 #   ./scripts/test.sh load         # Run burst/load tests with the test stack
 #   ./scripts/test.sh performance  # Run performance smoke tests with the test stack
+#   ./scripts/test.sh soak         # Run soak/stability tests with the test stack
 #   ./scripts/test.sh file <path>  # Run a specific test file
 #
 # Environment:
@@ -39,6 +40,7 @@ usage() {
     echo "  coverage      Run unit tests with coverage report"
     echo "  load          Run load/rate-limit tests via the Docker test stack"
     echo "  performance   Run performance smoke tests via the Docker test stack"
+    echo "  soak          Run soak/stability tests via the Docker test stack"
     echo "  file <path>   Run a specific test file"
     echo "  compose       Run full test stack via docker-compose"
     echo ""
@@ -112,6 +114,9 @@ case "$CMD" in
         ;;
     performance)
         run_stack_harness performance "${@:2}"
+        ;;
+    soak)
+        run_stack_harness soak "${@:2}"
         ;;
     file)
         if [[ -z "${2:-}" ]]; then

@@ -8,11 +8,12 @@ COMPOSE_FILE="${PROJECT_DIR}/docker/docker-compose.test.yml"
 KEEP_STACK="${KEEP_STACK:-0}"
 
 usage() {
-    echo "Usage: ${0} [load|performance|all] [-- <extra pytest args>]"
+    echo "Usage: ${0} [load|performance|soak|all] [-- <extra pytest args>]"
     echo ""
     echo "Examples:"
     echo "  ${0} load"
     echo "  ${0} performance -- -k auth_me"
+    echo "  ${0} soak -- -k mixed"
     echo "  KEEP_STACK=1 ${0} all"
 }
 
@@ -73,9 +74,13 @@ case "${MODE}" in
         MARK_EXPR="performance"
         TEST_TARGETS=(tests/performance tests/integration/test_queue.py)
         ;;
+    soak)
+        MARK_EXPR="soak"
+        TEST_TARGETS=(tests/soak)
+        ;;
     all)
-        MARK_EXPR="load or performance"
-        TEST_TARGETS=(tests/load tests/performance tests/integration/test_queue.py)
+        MARK_EXPR="load or performance or soak"
+        TEST_TARGETS=(tests/load tests/performance tests/soak tests/integration/test_queue.py)
         ;;
     *)
         echo "ERROR: unknown mode '${MODE}'" >&2
@@ -87,13 +92,17 @@ esac
 trap cleanup EXIT
 
 echo "Starting the Docker test stack for ${MODE} validation"
-docker compose -f "${COMPOSE_FILE}" up -d --build db minio redis app caddy >/dev/null
+docker compose -f "${COMPOSE_FILE}" up -d --build db minio redis app app-replica caddy tools >/dev/null
 
 wait_for_service_health app 60
+wait_for_service_health app-replica 60
 wait_for_service_health caddy 60
+wait_for_service_health tools 60
 
 export LOAD_TEST_APP_URL="${LOAD_TEST_APP_URL:-http://127.0.0.1:15000}"
+export LOAD_TEST_APP_REPLICA_URL="${LOAD_TEST_APP_REPLICA_URL:-http://127.0.0.1:15001}"
 export LOAD_TEST_CADDY_URL="${LOAD_TEST_CADDY_URL:-http://127.0.0.1:15080}"
+export LOAD_TEST_RESET_RATE_LIMIT_STATE="${LOAD_TEST_RESET_RATE_LIMIT_STATE:-1}"
 
 printf -v PYTEST_CMD '%q ' \
     python3 -m pytest \
@@ -105,4 +114,4 @@ printf -v PYTEST_CMD '%q ' \
 
 echo "Running ${MODE} tests through the dedicated runner service"
 docker compose -f "${COMPOSE_FILE}" run --rm --no-deps --entrypoint sh load-test-runner -c \
-    "pip install -q pytest pytest-asyncio pytest-dotenv httpx && ${PYTEST_CMD}"
+    "pip install -q pytest pytest-asyncio pytest-dotenv httpx redis websockets && ${PYTEST_CMD}"
