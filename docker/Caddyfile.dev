@@ -6,13 +6,46 @@
 # Caddy auto-provisions TLS via Let's Encrypt when a real domain is used.
 
 :80 {
-	reverse_proxy spectra-app:5000
-
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
+	}
+
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+
+	route {
+		handle @websocket {
+			reverse_proxy spectra-app:5000
+		}
+
+		# Thin IP-based edge guard for public auth traffic only.
+		# Redis-backed application limits remain the primary policy layer.
+		rate_limit {
+			zone public_auth {
+				match {
+					path_regexp public_auth ^(?:/(?:login|setup|forgot-password|reset-password)|/api(?:/v1)?/auth/(?:token|refresh|setup|forgot-password|reset-password|mfa/(?:verify|cancel)))$
+				}
+				key {remote_host}
+				events 30
+				window 1m
+			}
+
+			zone public_register {
+				match {
+					path_regexp public_register ^(?:/register|/api/public/register)$
+				}
+				key {remote_host}
+				events 30
+				window 1m
+			}
+		}
+
+		reverse_proxy spectra-app:5000
 	}
 
 	log {
