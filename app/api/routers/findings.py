@@ -272,6 +272,90 @@ async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> lis
     return list(await repo.get_all(skip=0, limit=10_000))
 
 
+def _finding_to_export_dict(finding) -> dict[str, object]:
+    return {
+        "id": finding.id,
+        "severity": finding.severity.value,
+        "title": finding.title,
+        "description": finding.description,
+        "tool_source": finding.tool_source,
+        "target_id": finding.target_id,
+        "cve_id": finding.cve_id,
+        "cvss_score": finding.cvss_score,
+        "created_at": finding.created_at.isoformat() if finding.created_at else None,
+    }
+
+
+def _require_export_password(password: str | None) -> str:
+    if not password:
+        raise HTTPException(
+            status_code=400,
+            detail="X-Export-Password header required when encrypted=true",
+        )
+    return password
+
+
+def _build_export_response(
+    payload: bytes,
+    *,
+    encrypted: bool,
+    password: str | None,
+    filename: str,
+    media_type: str,
+) -> FastAPIResponse:
+    response_media_type = media_type
+    response_filename = filename
+
+    if encrypted:
+        from app.core.encryption import encrypt_data_with_password
+
+        payload = encrypt_data_with_password(
+            payload,
+            _require_export_password(password),
+        )
+        response_media_type = "application/octet-stream"
+        response_filename = f"{filename}.enc"
+
+    return FastAPIResponse(
+        content=payload,
+        media_type=response_media_type,
+        headers={"Content-Disposition": f"attachment; filename={response_filename}"},
+    )
+
+
+async def _update_finding_status_response(
+    repo: FindingRepository,
+    db: AsyncSession,
+    finding_id: str,
+    current_user: User,
+    new_status: FindingStatus,
+    action: str,
+    request: Request | None,
+    *,
+    ensure_updated: bool = False,
+) -> FindingDetailResponse:
+    updated = await _update_owned_finding_status(
+        repo,
+        finding_id,
+        current_user,
+        new_status,
+    )
+    await db.commit()
+    if ensure_updated and not updated:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Update failed unexpectedly",
+        )
+    await audit_log_event(
+        db,
+        AuditEventType.FINDING_UPDATED,
+        user_id=str(current_user.id),
+        details=_finding_status_audit_details(updated, action),
+        request=request,
+    )
+    return _finding_to_response(updated)
+
+
 @router.get(
     "/export/csv",
     summary="Export findings as CSV",
@@ -291,39 +375,16 @@ async def export_findings_csv(
     buf = StringIO()
     writer = csv.writer(buf)
     writer.writerow(_CSV_COLUMNS)
-    for f in findings:
-        writer.writerow(
-            [
-                _sanitize_csv_value(f.id),
-                _sanitize_csv_value(f.severity.value),
-                _sanitize_csv_value(f.title),
-                _sanitize_csv_value(f.description or ""),
-                _sanitize_csv_value(f.tool_source),
-                _sanitize_csv_value(f.target_id),
-                _sanitize_csv_value(f.cve_id or ""),
-                _sanitize_csv_value(f.cvss_score if f.cvss_score is not None else ""),
-                _sanitize_csv_value(f.created_at.isoformat() if f.created_at else ""),
-            ]
-        )
+    for finding in findings:
+        export_data = _finding_to_export_dict(finding)
+        writer.writerow([_sanitize_csv_value(export_data[column]) for column in _CSV_COLUMNS])
 
-    payload = buf.getvalue().encode()
-
-    if encrypted:
-        if not password:
-            raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
-        from app.core.encryption import encrypt_data_with_password
-
-        payload = encrypt_data_with_password(payload, password)
-        return FastAPIResponse(
-            content=payload,
-            media_type="application/octet-stream",
-            headers={"Content-Disposition": "attachment; filename=spectra_findings.csv.enc"},
-        )
-
-    return FastAPIResponse(
-        content=payload,
+    return _build_export_response(
+        buf.getvalue().encode(),
+        encrypted=encrypted,
+        password=password,
+        filename="spectra_findings.csv",
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=spectra_findings.csv"},
     )
 
 
@@ -343,39 +404,17 @@ async def export_findings_json(
     """Export all findings as JSON."""
     findings = await _fetch_all_findings(db, _current_user)
 
-    data = [
-        {
-            "id": f.id,
-            "severity": f.severity.value,
-            "title": f.title,
-            "description": f.description,
-            "tool_source": f.tool_source,
-            "target_id": f.target_id,
-            "cve_id": f.cve_id,
-            "cvss_score": f.cvss_score,
-            "created_at": f.created_at.isoformat() if f.created_at else None,
-        }
-        for f in findings
-    ]
+    payload = json.dumps(
+        [_finding_to_export_dict(finding) for finding in findings],
+        indent=2,
+    ).encode()
 
-    payload = json.dumps(data, indent=2).encode()
-
-    if encrypted:
-        if not password:
-            raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
-        from app.core.encryption import encrypt_data_with_password
-
-        payload = encrypt_data_with_password(payload, password)
-        return FastAPIResponse(
-            content=payload,
-            media_type="application/octet-stream",
-            headers={"Content-Disposition": "attachment; filename=spectra_findings.json.enc"},
-        )
-
-    return FastAPIResponse(
-        content=payload,
+    return _build_export_response(
+        payload,
+        encrypted=encrypted,
+        password=password,
+        filename="spectra_findings.json",
         media_type="application/json",
-        headers={"Content-Disposition": "attachment; filename=spectra_findings.json"},
     )
 
 
@@ -478,22 +517,16 @@ async def verify_finding(
 ) -> FindingDetailResponse:
     """Mark a finding as verified."""
     repo = FindingRepository(db)
-    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.VERIFIED)
-    await db.commit()
-    if not updated:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Update failed unexpectedly",
-        )
-    await audit_log_event(
+    return await _update_finding_status_response(
+        repo,
         db,
-        AuditEventType.FINDING_UPDATED,
-        user_id=str(_current_user.id),
-        details=_finding_status_audit_details(updated, "verify"),
-        request=request,
+        finding_id,
+        _current_user,
+        FindingStatus.VERIFIED,
+        "verify",
+        request,
+        ensure_updated=True,
     )
-
-    return _finding_to_response(updated)
 
 
 @router.post(
@@ -510,22 +543,16 @@ async def mark_false_positive(
 ) -> FindingDetailResponse:
     """Mark a finding as a false positive."""
     repo = FindingRepository(db)
-    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.FALSE_POSITIVE)
-    await db.commit()
-    if not updated:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Update failed unexpectedly",
-        )
-    await audit_log_event(
+    return await _update_finding_status_response(
+        repo,
         db,
-        AuditEventType.FINDING_UPDATED,
-        user_id=str(_current_user.id),
-        details=_finding_status_audit_details(updated, "mark_false_positive"),
-        request=request,
+        finding_id,
+        _current_user,
+        FindingStatus.FALSE_POSITIVE,
+        "mark_false_positive",
+        request,
+        ensure_updated=True,
     )
-
-    return _finding_to_response(updated)
 
 
 @router.post(
@@ -542,16 +569,15 @@ async def confirm_finding(
 ) -> FindingDetailResponse:
     """Mark a finding as confirmed/verified."""
     repo = FindingRepository(db)
-    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.VERIFIED)
-    await db.commit()
-    await audit_log_event(
+    return await _update_finding_status_response(
+        repo,
         db,
-        AuditEventType.FINDING_UPDATED,
-        user_id=str(_current_user.id),
-        details=_finding_status_audit_details(updated, "confirm"),
-        request=request,
+        finding_id,
+        _current_user,
+        FindingStatus.VERIFIED,
+        "confirm",
+        request,
     )
-    return _finding_to_response(updated)
 
 
 @router.post(
@@ -568,16 +594,15 @@ async def dismiss_finding(
 ):
     """Dismiss a finding."""
     repo = FindingRepository(db)
-    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.DISMISSED)
-    await db.commit()
-    await audit_log_event(
+    return await _update_finding_status_response(
+        repo,
         db,
-        AuditEventType.FINDING_UPDATED,
-        user_id=str(_current_user.id),
-        details=_finding_status_audit_details(updated, "dismiss"),
-        request=request,
+        finding_id,
+        _current_user,
+        FindingStatus.DISMISSED,
+        "dismiss",
+        request,
     )
-    return _finding_to_response(updated)
 
 
 @router.post(
@@ -594,16 +619,15 @@ async def retest_finding(
 ):
     """Request retest for a finding."""
     repo = FindingRepository(db)
-    updated = await _update_owned_finding_status(repo, finding_id, _current_user, FindingStatus.RETEST_PENDING)
-    await db.commit()
-    await audit_log_event(
+    return await _update_finding_status_response(
+        repo,
         db,
-        AuditEventType.FINDING_UPDATED,
-        user_id=str(_current_user.id),
-        details=_finding_status_audit_details(updated, "retest"),
-        request=request,
+        finding_id,
+        _current_user,
+        FindingStatus.RETEST_PENDING,
+        "retest",
+        request,
     )
-    return _finding_to_response(updated)
 
 
 # --- Bulk Operations ---

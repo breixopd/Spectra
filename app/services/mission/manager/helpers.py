@@ -310,6 +310,55 @@ def _require_executor(executor: MissionExecutor | None) -> MissionExecutor:
     return executor
 
 
+def _mission_stop_requested(mission: Mission) -> bool:
+    if not mission.is_stopped():
+        return False
+    mission.log("Mission stopped by user")
+    return True
+
+
+def _mission_timed_out(mission: Mission) -> bool:
+    elapsed = time.time() - getattr(mission, '_start_wall_time', time.time())
+    if elapsed <= MISSION_TIMEOUT_SECONDS:
+        return False
+    mission.log(
+        f"[TIMEOUT] Mission timed out after {int(elapsed)}s "
+        f"(limit: {MISSION_TIMEOUT_SECONDS}s)"
+    )
+    mission.set_status("timed_out")
+    return True
+
+
+def _task_execution_context(
+    context: AgentContext,
+    task: Any,
+    *,
+    copy_context: bool,
+) -> AgentContext:
+    if copy_context:
+        return _copy_task_context(context, task.phase.value)
+    context.phase = task.phase.value
+    return context
+
+
+async def _execute_task(
+    mission: Mission,
+    executor: MissionExecutor | None,
+    index: int,
+    task: Any,
+    context: AgentContext,
+    *,
+    copy_context: bool,
+) -> None:
+    _log_task_start(mission, index, task)
+    task_context = _task_execution_context(
+        context,
+        task,
+        copy_context=copy_context,
+    )
+    await _require_executor(executor).execute_task(mission, task, task_context)
+
+
 async def _handle_successful_task(
     mission: Mission,
     context: AgentContext,
@@ -343,6 +392,46 @@ async def _handle_successful_task(
     return last_findings_count, last_adaptation_index
 
 
+async def _handle_task_execution_result(
+    mission: Mission,
+    task: Any,
+    result: Exception | None,
+    context: AgentContext,
+    mission_controller: MissionController | None,
+    consensus: VotingSystem | None,
+    steering: MissionSteeringManager,
+    lifecycle: MissionLifecycleManager,
+    completed_task_ids: set[str],
+    last_findings_count: int,
+    last_adaptation_index: int,
+    effective_index: int,
+) -> tuple[int, int]:
+    if result is not None:
+        await handle_task_failure(
+            mission,
+            task,
+            str(result),
+            context,
+            mission_controller,
+            consensus,
+            steering,
+        )
+        await lifecycle.update_db_status(mission)
+        return last_findings_count, last_adaptation_index
+
+    completed_task_ids.add(task.task_id)
+    return await _handle_successful_task(
+        mission,
+        context,
+        mission_controller,
+        steering,
+        lifecycle,
+        last_findings_count,
+        last_adaptation_index,
+        effective_index,
+    )
+
+
 async def execute_mission_tasks(
     mission: Mission,
     context: AgentContext,
@@ -367,17 +456,10 @@ async def execute_mission_tasks(
     global_task_counter = 0
 
     for phase, indexed_tasks in phase_groups.items():
-        if mission.is_stopped():
-            mission.log("Mission stopped by user")
+        if _mission_stop_requested(mission):
             break
 
-        elapsed = time.time() - getattr(mission, '_start_wall_time', time.time())
-        if elapsed > MISSION_TIMEOUT_SECONDS:
-            mission.log(
-                f"[TIMEOUT] Mission timed out after {int(elapsed)}s "
-                f"(limit: {MISSION_TIMEOUT_SECONDS}s)"
-            )
-            mission.set_status("timed_out")
+        if _mission_timed_out(mission):
             break
 
         await mission.wait_if_paused()
@@ -400,12 +482,13 @@ async def execute_mission_tasks(
                 task: Any,
                 _context: AgentContext = context,
             ) -> None:
-                _log_task_start(mission, idx, task)
-                task_context = _copy_task_context(_context, task.phase.value)
-                await _require_executor(executor).execute_task(
+                await _execute_task(
                     mission,
+                    executor,
+                    idx,
                     task,
-                    task_context,
+                    _context,
+                    copy_context=True,
                 )
 
             results = await asyncio.gather(
@@ -413,58 +496,60 @@ async def execute_mission_tasks(
                 return_exceptions=True,
             )
 
-            for position, ((idx, task), result) in enumerate(
+            for position, ((_, task), result) in enumerate(
                 zip(independent, results, strict=False)
             ):
-                if isinstance(result, Exception):
-                    await handle_task_failure(
-                        mission, task, str(result), context,
-                        mission_controller, consensus, steering,
-                    )
-                    await lifecycle.update_db_status(mission)
-                else:
-                    completed_task_ids.add(task.task_id)
-                    effective_idx = global_task_counter + position
-                    last_findings_count, last_adaptation_index = await _handle_successful_task(
-                        mission,
-                        context,
-                        mission_controller,
-                        steering,
-                        lifecycle,
-                        last_findings_count,
-                        last_adaptation_index,
-                        effective_idx,
-                    )
-
-        for position, (idx, task) in enumerate(dependent):
-            if mission.is_stopped():
-                mission.log("Mission stopped by user")
-                break
-
-            await mission.wait_if_paused()
-
-            _log_task_start(mission, idx, task)
-            context.phase = task.phase.value
-
-            try:
-                await _require_executor(executor).execute_task(mission, task, context)
-                completed_task_ids.add(task.task_id)
-                effective_idx = global_task_counter + len(independent) + position
-                last_findings_count, last_adaptation_index = await _handle_successful_task(
+                task_result = result if isinstance(result, Exception) else None
+                effective_idx = global_task_counter + position
+                last_findings_count, last_adaptation_index = await _handle_task_execution_result(
                     mission,
+                    task,
+                    task_result,
                     context,
                     mission_controller,
+                    consensus,
                     steering,
                     lifecycle,
+                    completed_task_ids,
                     last_findings_count,
                     last_adaptation_index,
                     effective_idx,
                 )
-            except (OSError, RuntimeError, ValueError) as e:
-                await handle_task_failure(
-                    mission, task, str(e), context,
-                    mission_controller, consensus, steering,
+
+        for position, (idx, task) in enumerate(dependent):
+            if _mission_stop_requested(mission):
+                break
+
+            await mission.wait_if_paused()
+            effective_idx = global_task_counter + len(independent) + position
+
+            try:
+                await _execute_task(
+                    mission,
+                    executor,
+                    idx,
+                    task,
+                    context,
+                    copy_context=False,
                 )
-                await lifecycle.update_db_status(mission)
+            except (OSError, RuntimeError, ValueError) as e:
+                result: Exception | None = e
+            else:
+                result = None
+
+            last_findings_count, last_adaptation_index = await _handle_task_execution_result(
+                mission,
+                task,
+                result,
+                context,
+                mission_controller,
+                consensus,
+                steering,
+                lifecycle,
+                completed_task_ids,
+                last_findings_count,
+                last_adaptation_index,
+                effective_idx,
+            )
 
         global_task_counter += len(indexed_tasks)

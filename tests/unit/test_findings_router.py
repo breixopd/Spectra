@@ -1,6 +1,8 @@
 """Tests for the findings API router."""
 
+import csv
 from datetime import datetime
+from io import StringIO
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -287,6 +289,113 @@ class TestDeleteFinding:
             resp = await ac.delete("/api/v1/findings/bad-id")
 
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Export and status helper paths
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestFindingExportsAndStatusPaths:
+    async def test_export_csv_preserves_zero_cvss_score(self, client):
+        ac, _session, _user = client
+        from app.repositories.finding import FindingRepository
+
+        finding = _fake_finding(cvss_score=0.0)
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(FindingRepository, "find_many_by", AsyncMock(return_value=[finding]))
+            resp = await ac.get("/api/v1/findings/export/csv")
+
+        assert resp.status_code == 200
+        rows = list(csv.DictReader(StringIO(resp.text)))
+        assert rows[0]["cvss_score"] == "0.0"
+
+    async def test_export_csv_encrypted_requires_password_header(self, client):
+        ac, _session, _user = client
+        from app.repositories.finding import FindingRepository
+
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(FindingRepository, "find_many_by", AsyncMock(return_value=[]))
+            resp = await ac.get("/api/v1/findings/export/csv?encrypted=true")
+
+        assert resp.status_code == 400
+        assert resp.json()["detail"] == "X-Export-Password header required when encrypted=true"
+
+    async def test_export_json_sets_media_type_and_filename(self, client):
+        ac, _session, _user = client
+        from app.repositories.finding import FindingRepository
+
+        finding = _fake_finding()
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(FindingRepository, "find_many_by", AsyncMock(return_value=[finding]))
+            resp = await ac.get("/api/v1/findings/export/json")
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("application/json")
+        assert resp.headers["content-disposition"] == "attachment; filename=spectra_findings.json"
+        assert resp.json()[0]["id"] == finding.id
+
+    async def test_export_json_encrypted_sets_encrypted_headers(self, client):
+        ac, _session, _user = client
+        from app.repositories.finding import FindingRepository
+
+        with pytest.MonkeyPatch.context() as mp:
+            encrypt = MagicMock(return_value=b"encrypted-payload")
+            mp.setattr(FindingRepository, "find_many_by", AsyncMock(return_value=[]))
+            mp.setattr("app.core.encryption.encrypt_data_with_password", encrypt)
+            resp = await ac.get(
+                "/api/v1/findings/export/json?encrypted=true",
+                headers={"X-Export-Password": "secret-pass"},
+            )
+
+        assert resp.status_code == 200
+        assert resp.content == b"encrypted-payload"
+        assert resp.headers["content-type"].startswith("application/octet-stream")
+        assert resp.headers["content-disposition"] == "attachment; filename=spectra_findings.json.enc"
+        encrypt.assert_called_once()
+
+    async def test_verify_finding_returns_explicit_500_when_update_is_falsy(self, client):
+        ac, _session, _user = client
+        from app.repositories.finding import FindingRepository
+
+        finding = _fake_finding()
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=finding))
+            mp.setattr(FindingRepository, "update", AsyncMock(return_value=None))
+            resp = await ac.post("/api/v1/findings/f-1/verify")
+
+        assert resp.status_code == 500
+        assert resp.json()["detail"] == "Update failed unexpectedly"
+
+    async def test_confirm_finding_keeps_generic_500_when_update_is_falsy(self):
+        app = _make_app()
+        from app.api.dependencies import get_current_active_user
+        from app.core.database import get_async_session
+        from app.repositories.finding import FindingRepository
+
+        user = _fake_user()
+        app.dependency_overrides[get_current_active_user] = lambda: user
+
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+
+        async def _get_session():
+            yield mock_session
+
+        app.dependency_overrides[get_async_session] = _get_session
+
+        finding = _fake_finding()
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            with pytest.MonkeyPatch.context() as mp:
+                mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=finding))
+                mp.setattr(FindingRepository, "update", AsyncMock(return_value=None))
+                resp = await ac.post("/api/v1/findings/f-1/confirm")
+
+        assert resp.status_code == 500
+        assert resp.text == "Internal Server Error"
 
 
 # ---------------------------------------------------------------------------
