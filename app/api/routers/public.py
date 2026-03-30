@@ -333,53 +333,124 @@ class RegisterRequest(BaseModel):
         return _validate_password_strength(v)
 
 
-@router.post("/api/public/register", tags=["Public"], status_code=201)
-@limiter.limit(RateLimits.PUBLIC_REGISTER)
-async def register_user(request: Request, body: RegisterRequest):
-    """Self-register a new user account with the default plan."""
-    async with async_session_maker() as session:
-        # Block registration until setup is complete (a superuser exists)
-        superuser_check = await session.execute(select(User.id).where(User.is_superuser.is_(True)).limit(1))
-        if not superuser_check.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Registration is not available until system setup is complete.",
-            )
+def _registration_requires_email_verification() -> bool:
+    return settings.smtp_configured or settings.EMAIL_VERIFICATION_ENABLED
 
-        # Check uniqueness
-        existing = await session.execute(
-            select(User.id).where((User.username == body.username) | (User.email == body.email))
+
+async def _ensure_registration_setup_complete(session) -> None:
+    superuser_check = await session.execute(select(User.id).where(User.is_superuser.is_(True)).limit(1))
+    if not superuser_check.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registration is not available until system setup is complete.",
         )
-        if existing.scalar_one_or_none() is not None:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Username or email already exists.",
-            )
 
-        # Find default plan
-        default_plan = await session.execute(select(Plan).where(Plan.is_default.is_(True)).limit(1))
-        plan = default_plan.scalar_one_or_none()
 
-        user = User(
-            username=body.username,
-            email=body.email,
-            hashed_password=get_password_hash(body.password),
-            is_active=True,
-            is_superuser=False,
-            role="operator",
-            plan_id=plan.id if plan else None,
+async def _ensure_registration_is_unique(session, username: str, email: str) -> None:
+    existing = await session.execute(select(User.id).where((User.username == username) | (User.email == email)))
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username or email already exists.",
         )
-        session.add(user)
-        await session.flush()
 
-        # Create matching Subscription row if a plan was assigned
-        if plan:
-            subscription = Subscription(
+
+async def _get_default_registration_plan(session) -> Plan | None:
+    default_plan = await session.execute(select(Plan).where(Plan.is_default.is_(True)).limit(1))
+    return default_plan.scalar_one_or_none()
+
+
+async def _create_registered_user(session, body: RegisterRequest, plan: Plan | None) -> User:
+    user = User(
+        username=body.username,
+        email=body.email,
+        hashed_password=get_password_hash(body.password),
+        is_active=True,
+        is_superuser=False,
+        role="operator",
+        plan_id=plan.id if plan else None,
+    )
+    session.add(user)
+    await session.flush()
+
+    if plan:
+        session.add(
+            Subscription(
                 user_id=user.id,
                 plan_id=plan.id,
                 status="active",
             )
-            session.add(subscription)
+        )
+
+    return user
+
+
+async def _send_registration_verification_email(request: Request, username: str, email: str, user_id: str) -> None:
+    try:
+        from app.core.security import create_email_verification_token
+        from app.services.email import EmailService
+
+        token = create_email_verification_token(user_id)
+        base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/")
+        verify_url = f"{base_url}/verify-email?token={token}"
+
+        email_svc = EmailService()
+        await email_svc.send_template(
+            to=email,
+            template_name="email_verification",
+            subject="Verify your Spectra account",
+            username=username,
+            verify_url=verify_url,
+        )
+    except (OSError, RuntimeError, ConnectionError):
+        logger.exception("Failed to send verification email to %s", username)
+
+
+async def _send_registration_welcome_email(username: str, email: str) -> None:
+    try:
+        from app.services.email import EmailService
+
+        email_svc = EmailService()
+        base_url = settings.PLATFORM_BASE_URL or "http://localhost:5000"
+        await email_svc.send_template(
+            to=email,
+            template_name="welcome",
+            subject="Welcome to Spectra",
+            username=username,
+            login_url=f"{base_url}/login",
+        )
+    except (OSError, RuntimeError, ConnectionError):
+        logger.exception("Failed to send welcome email to %s", username)
+
+
+def _registration_detail_message(email_verification_required: bool) -> str:
+    if email_verification_required:
+        return "Account created. Please check your email to verify your account before signing in."
+    return "Account created successfully. You can now sign in."
+
+
+def _verify_email_template_response(request: Request, *, success: bool, message: str):
+    return templates.TemplateResponse(
+        "verify_email.html",
+        {
+            "request": request,
+            "success": success,
+            "message": message,
+        },
+    )
+
+
+@router.post("/api/public/register", tags=["Public"], status_code=201)
+@limiter.limit(RateLimits.PUBLIC_REGISTER)
+async def register_user(request: Request, body: RegisterRequest):
+    """Self-register a new user account with the default plan."""
+    email_verification_required = _registration_requires_email_verification()
+
+    async with async_session_maker() as session:
+        await _ensure_registration_setup_complete(session)
+        await _ensure_registration_is_unique(session, body.username, body.email)
+        plan = await _get_default_registration_plan(session)
+        user = await _create_registered_user(session, body, plan)
 
         await session.commit()
 
@@ -393,50 +464,13 @@ async def register_user(request: Request, body: RegisterRequest):
             request=request,
         )
 
-        # Auto-detect: if SMTP is configured, require email verification
-        if settings.smtp_configured or settings.EMAIL_VERIFICATION_ENABLED:
+        if email_verification_required:
             user.email_verified = False
             await session.commit()
+            await _send_registration_verification_email(request, body.username, body.email, str(user.id))
 
-            # Send verification email
-            try:
-                from app.core.security import create_email_verification_token
-                from app.services.email import EmailService
-
-                token = create_email_verification_token(str(user.id))
-                base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/")
-                verify_url = f"{base_url}/verify-email?token={token}"
-
-                email_svc = EmailService()
-                await email_svc.send_template(
-                    to=body.email,
-                    template_name="email_verification",
-                    subject="Verify your Spectra account",
-                    username=body.username,
-                    verify_url=verify_url,
-                )
-            except (OSError, RuntimeError, ConnectionError):
-                logger.exception("Failed to send verification email to %s", body.username)
-
-    # Send welcome email (fire-and-forget — don't block registration)
-    try:
-        from app.services.email import EmailService
-
-        email_svc = EmailService()
-        base_url = settings.PLATFORM_BASE_URL or "http://localhost:5000"
-        await email_svc.send_template(
-            to=body.email,
-            template_name="welcome",
-            subject="Welcome to Spectra",
-            username=body.username,
-            login_url=f"{base_url}/login",
-        )
-    except (OSError, RuntimeError, ConnectionError):
-        logger.exception("Failed to send welcome email to %s", body.username)
-
-    if settings.smtp_configured or settings.EMAIL_VERIFICATION_ENABLED:
-        return {"detail": "Account created. Please check your email to verify your account before signing in."}
-    return {"detail": "Account created successfully. You can now sign in."}
+    await _send_registration_welcome_email(body.username, body.email)
+    return {"detail": _registration_detail_message(email_verification_required)}
 
 
 @router.get("/verify-email", response_class=HTMLResponse, include_in_schema=False)
@@ -445,42 +479,30 @@ async def verify_email_page(request: Request, token: str = ""):
     from app.core.security import verify_email_verification_token
 
     if not token:
-        return templates.TemplateResponse("verify_email.html", {
-            "request": request,
-            "success": False,
-            "message": "Missing verification token.",
-        })
+        return _verify_email_template_response(request, success=False, message="Missing verification token.")
 
     user_id = verify_email_verification_token(token)
     if not user_id:
-        return templates.TemplateResponse("verify_email.html", {
-            "request": request,
-            "success": False,
-            "message": "Invalid or expired verification link. Please register again.",
-        })
+        return _verify_email_template_response(
+            request,
+            success=False,
+            message="Invalid or expired verification link. Please register again.",
+        )
 
     async with async_session_maker() as session:
         result = await session.execute(select(User).where(User.id == user_id))
         user = result.scalar_one_or_none()
         if not user:
-            return templates.TemplateResponse("verify_email.html", {
-                "request": request,
-                "success": False,
-                "message": "Account not found.",
-            })
+            return _verify_email_template_response(request, success=False, message="Account not found.")
 
         if user.email_verified:
-            return templates.TemplateResponse("verify_email.html", {
-                "request": request,
-                "success": True,
-                "message": "Email already verified. You can log in.",
-            })
+            return _verify_email_template_response(
+                request,
+                success=True,
+                message="Email already verified. You can log in.",
+            )
 
         user.email_verified = True
         await session.commit()
 
-    return templates.TemplateResponse("verify_email.html", {
-        "request": request,
-        "success": True,
-        "message": "Email verified! You can now log in.",
-    })
+    return _verify_email_template_response(request, success=True, message="Email verified! You can now log in.")
