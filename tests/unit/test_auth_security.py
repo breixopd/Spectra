@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 from starlette.requests import Request
 
 from app.core.security import (
@@ -336,7 +336,7 @@ class TestPreSetupRegistrationBlocked:
 
         with patch("app.api.routers.public.async_session_maker", maker):
             with pytest.raises(HTTPException) as exc:
-                await register_user.__wrapped__(request, body)
+                await register_user.__wrapped__(request, body, Response())
 
         assert exc.value.status_code == 403
 
@@ -367,7 +367,7 @@ class TestPreSetupRegistrationBlocked:
             patch("app.api.routers.public.async_session_maker", maker),
             patch("app.services.system.audit.log_event", AsyncMock()),
         ):
-            result = await register_user.__wrapped__(request, body)
+            result = await register_user.__wrapped__(request, body, Response())
 
         assert "created" in result["detail"].lower()
 

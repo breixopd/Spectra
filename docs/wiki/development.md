@@ -1,6 +1,6 @@
 # Development
 
-[← Wiki Home](home.md) | [Architecture](architecture.md) | [Plugins](plugins.md)
+[← Wiki Home](home.md) | [Operations](operations.md) | [Architecture](architecture.md) | [Plugins](plugins.md)
 
 ---
 
@@ -33,14 +33,7 @@ The tools container auto-installs security tools on first boot.
 
 ### Local Ops Scripts
 
-For local admin and troubleshooting work, run the helper scripts from `scripts/ops/` against your Compose containers:
-
-- `scripts/ops/backup_restore.sh` for S3-native backup create/list/restore/verify
-- `scripts/ops/db_maintenance.sh` for PostgreSQL maintenance and sizing checks
-- `scripts/ops/incident_response.sh` and `scripts/ops/user_management.sh` for session, user, and emergency admin tasks
-- `scripts/ops/worker_management.sh`, `scripts/ops/log_management.sh`, and `scripts/ops/s3_management.sh` for queue, log, and object-storage operations
-
-They default to the standard `spectra-*` container names, which matches the local Docker Compose setup.
+For local admin and troubleshooting work, use [Operations](operations.md) as the canonical runbook owner and [scripts/ops/README.md](../../scripts/ops/README.md) for the script-by-script index. The helper scripts default to the standard `spectra-*` container names, which matches the local Docker Compose setup.
 
 ---
 
@@ -113,6 +106,24 @@ Browser-based tests via Playwright:
 ```bash
 ./tests/run_ui_tests.sh
 ```
+
+### Load And Performance Harnesses
+
+First-pass load and performance coverage runs against the Docker test stack with a real Redis-backed app limiter and a dedicated Caddy test proxy.
+
+```bash
+# Burst and rate-limit coverage
+./tests/run_load_tests.sh load
+
+# Performance smoke coverage, including queue throughput
+./tests/run_load_tests.sh performance
+
+# Makefile wrappers
+make test-load
+make test-performance
+```
+
+This batch covers direct app login burst behavior, direct public registration burst behavior, real Caddy edge throttling, moderate-concurrency latency smoke for core routes, and PostgreSQL-backed queue drain throughput. Soak, WebSocket churn, and multi-replica rate-limit validation remain out of scope.
 
 ### Test Targets
 

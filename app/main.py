@@ -48,7 +48,10 @@ from app.core.exceptions import SpectraError, get_status_code_for_exception
 from app.core.lifespan import lifespan
 from app.core.logging_config import CorrelationIdMiddleware, configure_logging
 from app.core.middleware import SecurityHeadersMiddleware
-from app.core.rate_limit import limiter, rate_limit_exceeded_handler
+from app.core.rate_limit import (
+    limiter,
+    rate_limit_exceeded_handler_sync,
+)
 from app.core.telemetry_middleware import TelemetryMiddleware
 from app.core.websocket import manager
 from app.version import __version__
@@ -89,7 +92,8 @@ app = FastAPI(
 
 # --- Rate Limiting ---
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore
+app.state.limiter._rate_limit_exceeded_handler = rate_limit_exceeded_handler_sync
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_sync)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
 
 
@@ -211,6 +215,16 @@ def _make_error_handler(status_code: int, default_detail: str, template: str, lo
     async def handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
         if log:
             logger.exception("Internal server error: %s", exc)
+        if status_code == 429 and request.url.path.startswith("/api/"):
+            if isinstance(exc, RateLimitExceeded):
+                return rate_limit_exceeded_handler_sync(request, exc)
+            detail = getattr(exc, "detail", default_detail)
+            exc_headers = getattr(exc, "headers", None)
+            return JSONResponse(
+                {"detail": detail},
+                status_code=429,
+                headers=exc_headers,
+            )
         if _wants_html(request):
             return HTMLResponse(
                 content=_error_templates.get_template(template).render(),

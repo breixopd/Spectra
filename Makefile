@@ -2,6 +2,7 @@
 # All test targets run inside Docker containers.
 
 .PHONY: test test-unit test-integration test-all test-coverage test-compose \
+	test-load test-performance \
        lint format check clean docker-build docker-up docker-down \
        deploy rollback deploy-check help css-build css-watch
 
@@ -27,6 +28,12 @@ test-coverage: ## Run unit tests with coverage report
 
 test-compose: ## Run full test stack via docker-compose
 	@./scripts/test.sh compose
+
+test-load: ## Run the load/rate-limit harness in Docker
+	@./scripts/test.sh load
+
+test-performance: ## Run the performance smoke harness in Docker
+	@./scripts/test.sh performance
 
 lint: ## Run ruff linter on app/
 	@ruff check app/

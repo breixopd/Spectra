@@ -23,6 +23,16 @@ services:
     networks:
       - spectra_test
 
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - spectra_test
+
   minio:
     image: minio/minio:latest
     command: server /data --console-address ':9001'
@@ -54,6 +64,9 @@ services:
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
+      - RATE_LIMIT_STORAGE=redis://redis:6379/0
+    ports:
+      - "15000:5000"
     volumes:
       - ../app:/app/app:ro
       - ../alembic:/app/alembic:ro
@@ -67,10 +80,31 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       spectra_test:
         aliases:
           - spectra-ui-app
+
+  caddy:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.caddy
+    ports:
+      - "15080:80"
+    volumes:
+      - ./Caddyfile.test:/etc/caddy/Caddyfile:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/api/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - spectra_test
 
   tools:
     build:
@@ -159,6 +193,51 @@ services:
         condition: service_started
       tools:
         condition: service_started
+    networks:
+      - spectra_test
+
+  load-test-runner:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    user: root
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        pip install -q pytest pytest-asyncio pytest-dotenv httpx &&
+        python3 -m pytest tests/load tests/performance tests/integration/test_queue.py
+        -m "load or performance" -q --override-ini=addopts=
+    env_file:
+      - ../.env.test
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY=spectra
+      - S3_SECRET_KEY=spectra_test_minio
+      - RATE_LIMIT_STORAGE=redis://redis:6379/0
+      - LOAD_TEST_APP_URL=http://app:5000
+      - LOAD_TEST_CADDY_URL=http://caddy
+      - FULLY_AUTOMATED=true
+      - PLUGIN_SAFE_MODE=false
+    volumes:
+      - ../.env.test:/app/.env.test:ro
+      - ../app:/app/app:ro
+      - ../tests:/app/tests:ro
+      - ../pyproject.toml:/app/pyproject.toml:ro
+      - ../alembic:/app/alembic:ro
+      - ../config/alembic.ini:/app/config/alembic.ini:ro
+      - ../plugins:/app/plugins:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+      caddy:
+        condition: service_healthy
     networks:
       - spectra_test
 
