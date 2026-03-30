@@ -268,6 +268,32 @@ class TestUpdateUserSettings:
                 await update_user_settings(body=body, request=request, user=user, session=session)
         check_mock.assert_not_called()
 
+    async def test_audit_oserror_does_not_block_update(self):
+        from app.api.schemas.user_settings import UserSettingsUpdate
+        from app.api.routers.user_settings import update_user_settings
+
+        user = _make_user()
+        request = _make_request()
+        prefs = _make_prefs(timezone="UTC")
+        session = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = prefs
+        session.execute = AsyncMock(return_value=result_mock)
+        session.refresh = AsyncMock()
+
+        body = UserSettingsUpdate(timezone="Europe/London")
+
+        with patch(
+            "app.api.routers.user_settings.audit_log_event",
+            new_callable=AsyncMock,
+            side_effect=OSError("audit unavailable"),
+        ):
+            resp = await update_user_settings(body=body, request=request, user=user, session=session)
+
+        assert resp.timezone == "Europe/London"
+        session.commit.assert_awaited_once()
+        session.refresh.assert_awaited_once_with(prefs)
+
 
 # ---------------------------------------------------------------------------
 # DELETE /api/v1/user/settings/byok
@@ -309,6 +335,27 @@ class TestClearByok:
 
         resp = await clear_byok(request=request, user=user, session=session)
         assert "No BYOK" in resp["detail"]
+
+    async def test_audit_oserror_does_not_block_clear(self):
+        from app.api.routers.user_settings import clear_byok
+
+        user = _make_user()
+        request = _make_request()
+        prefs = _make_prefs(llm_api_key="sk-x", embedding_api_key="sk-e")
+        session = AsyncMock()
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = prefs
+        session.execute = AsyncMock(return_value=result_mock)
+
+        with patch(
+            "app.api.routers.user_settings.audit_log_event",
+            new_callable=AsyncMock,
+            side_effect=OSError("audit unavailable"),
+        ):
+            resp = await clear_byok(request=request, user=user, session=session)
+
+        assert resp["detail"] == "BYOK configuration cleared"
+        session.commit.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
