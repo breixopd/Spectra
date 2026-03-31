@@ -24,6 +24,8 @@ GeneralDbFieldSpec = tuple[str, str, str, bool]
 SettingsSnapshotSpec = tuple[str, str, Callable[[Any], Any] | None]
 
 _GENERAL_DB_FIELD_SPECS: tuple[GeneralDbFieldSpec, ...] = (
+    ("maintenance_mode", "MAINTENANCE_MODE", "bool", False),
+    ("maintenance_message", "MAINTENANCE_MESSAGE", "str", False),
     ("log_level", "LOG_LEVEL", "str", False),
     ("plugin_safe_mode", "PLUGIN_SAFE_MODE", "bool", False),
     ("connect_back_host", "CONNECT_BACK_HOST", "str", False),
@@ -66,6 +68,8 @@ _SETTINGS_SNAPSHOT_FIELDS_BEFORE_SANDBOX_STATUS: tuple[SettingsSnapshotSpec, ...
     ("tensorzero_gateway_url", "TENSORZERO_GATEWAY_URL", None),
     ("tensorzero_api_key_configured", "TENSORZERO_API_KEY", bool),
     ("llm_timeout", "LLM_TIMEOUT", None),
+    ("maintenance_mode", "MAINTENANCE_MODE", None),
+    ("maintenance_message", "MAINTENANCE_MESSAGE", None),
     ("log_level", "LOG_LEVEL", None),
     ("plugin_safe_mode", "PLUGIN_SAFE_MODE", None),
     ("connect_back_host", "CONNECT_BACK_HOST", None),

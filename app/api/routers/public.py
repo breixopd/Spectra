@@ -343,73 +343,45 @@ def _registration_requires_email_verification() -> bool:
     return settings.smtp_configured or settings.EMAIL_VERIFICATION_ENABLED
 
 
-async def _ensure_registration_setup_complete(session) -> None:
-    superuser_check = await session.execute(select(User.id).where(User.is_superuser.is_(True)).limit(1))
-    if not superuser_check.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Registration is not available until system setup is complete.",
-        )
+def _public_base_url(request: Request | None) -> str:
+    if settings.PLATFORM_BASE_URL:
+        return settings.PLATFORM_BASE_URL.rstrip("/")
+    if request is not None:
+        return str(request.base_url).rstrip("/")
+    return "http://localhost:5000"
 
 
-async def _ensure_registration_is_unique(session, username: str, email: str) -> None:
-    existing = await session.execute(select(User.id).where((User.username == username) | (User.email == email)))
-    if existing.scalar_one_or_none() is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username or email already exists.",
-        )
+def _build_email_verification_url(request: Request | None, user_id: str) -> str | None:
+    if request is None and not settings.PLATFORM_BASE_URL:
+        return None
+
+    from app.core.security import create_email_verification_token
+
+    token = create_email_verification_token(user_id)
+    base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/")
+    return f"{base_url}/verify-email?token={token}"
 
 
-async def _get_default_registration_plan(session) -> Plan | None:
-    default_plan = await session.execute(select(Plan).where(Plan.is_default.is_(True)).limit(1))
-    return default_plan.scalar_one_or_none()
-
-
-async def _create_registered_user(session, body: RegisterRequest, plan: Plan | None) -> User:
-    user = User(
-        username=body.username,
-        email=body.email,
-        hashed_password=get_password_hash(body.password),
-        is_active=True,
-        is_superuser=False,
-        role="operator",
-        plan_id=plan.id if plan else None,
-    )
-    session.add(user)
-    await session.flush()
-
-    if plan:
-        session.add(
-            Subscription(
-                user_id=user.id,
-                plan_id=plan.id,
-                status="active",
-            )
-        )
-
-    return user
-
-
-async def _send_registration_verification_email(request: Request, username: str, email: str, user_id: str) -> None:
+async def _send_registration_verification_email(request: Request, username: str, email: str, user_id: str) -> bool:
     try:
-        from app.core.security import create_email_verification_token
         from app.services.email import EmailService
 
-        token = create_email_verification_token(user_id)
-        base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/")
-        verify_url = f"{base_url}/verify-email?token={token}"
+        verify_url = _build_email_verification_url(request, user_id)
+        if not verify_url:
+            return False
 
         email_svc = EmailService()
-        await email_svc.send_template(
+        sent = await email_svc.send_template(
             to=email,
             template_name="email_verification",
             subject="Verify your Spectra account",
             username=username,
             verify_url=verify_url,
         )
+        return bool(sent)
     except (OSError, RuntimeError, ConnectionError):
         logger.exception("Failed to send verification email to %s", username)
+        return False
 
 
 async def _send_registration_welcome_email(username: str, email: str) -> None:
@@ -502,14 +474,26 @@ async def verify_email_page(request: Request, token: str = ""):
         if not user:
             return _verify_email_template_response(request, success=False, message="Account not found.")
 
-        if user.email_verified:
+        was_verified = bool(user.email_verified)
+        was_active = bool(user.is_active)
+
+        if was_verified and was_active:
             return _verify_email_template_response(
                 request,
                 success=True,
                 message="Email already verified. You can log in.",
             )
 
-        user.email_verified = True
+        if not was_verified:
+            user.email_verified = True
+        if not was_active:
+            user.is_active = True
         await session.commit()
 
-    return _verify_email_template_response(request, success=True, message="Email verified! You can now log in.")
+    message = "Email verified! You can now log in."
+    if was_verified and not was_active:
+        message = "Email already verified. Your account is now active. You can log in."
+    elif not was_active:
+        message = "Email verified and account activated. You can now log in."
+
+    return _verify_email_template_response(request, success=True, message=message)
