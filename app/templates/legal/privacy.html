@@ -5,14 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy — {{ app_name }}</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
     <meta name="robots" content="noindex, follow">
     <link rel="stylesheet" href="/static/css/legal.css">
 </head>
-<body>
+<body class="legal-page">
 <nav>
     <a href="/" class="nav-logo">
         {% include 'partials/shield_svg.html' %}
-        {{ app_name }}
+        <span class="nav-logo-text">{{ app_name }}</span>
     </a>
     <a href="/" class="nav-back">&larr; Back to Home</a>
 </nav>
@@ -138,6 +139,7 @@
     {% endif %}
 </div>
 
+{% include 'partials/_cookie_consent.html' %}
 <footer>&copy; 2026 {{ app_name }}. All rights reserved.</footer>
 </body>
 </html>

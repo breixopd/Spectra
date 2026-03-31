@@ -79,6 +79,56 @@ class TestLandingPage:
         assert resp.status_code == 200
 
 
+    async def test_landing_template_adds_nonce_to_json_ld_script(self):
+        from app.api.routers.public import templates
+
+        request = Request(
+            {
+                "type": "http",
+                "http_version": "1.1",
+                "method": "GET",
+                "scheme": "https",
+                "path": "/",
+                "raw_path": b"/",
+                "query_string": b"",
+                "headers": [],
+                "client": ("127.0.0.1", 12345),
+                "server": ("testserver", 443),
+                "root_path": "",
+            }
+        )
+        request.state.csp_nonce = "landing-nonce"
+
+        html = templates.get_template("landing.html").render(
+            request=request,
+            plans=[],
+            version="1.0.0",
+            app_name="Spectra",
+            stats={
+                "total_findings": "0",
+                "total_missions": "0",
+                "uptime": "99.9%",
+                "total_tools": "0",
+            },
+            reviews=[],
+        )
+
+        assert '<script nonce="landing-nonce" type="application/ld+json">' in html
+
+    async def test_extract_legal_html_sanitizes_and_preserves_safe_legal_markup(self):
+        from app.api.routers.public import _extract_legal_html
+
+        html = _extract_legal_html({
+            "html": "<section><h2>Cookies</h2><table><tr><th scope=\"col\">Cookie</th></tr><tr><td colspan=\"2\">session</td></tr></table><script>alert(1)</script></section>",
+        })
+
+        assert "<section>" in html
+        assert "<table>" in html
+        assert 'scope="col"' in html
+        assert 'colspan="2"' in html
+        assert "<script" not in html
+
+
 @pytest.mark.asyncio
 class TestPricingRedirect:
     async def test_pricing_redirects(self, client):

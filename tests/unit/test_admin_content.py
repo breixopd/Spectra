@@ -146,6 +146,37 @@ class TestCreateContent:
         assert resp.status_code == 201
 
 
+    async def test_create_legal_content_preserves_safe_legal_markup(self):
+        app = _make_app()
+        mock_session = AsyncMock()
+        mock_session.refresh = AsyncMock()
+        captured = {}
+
+        def _capture_add(item):
+            captured["item"] = item
+            item.id = "c-legal"
+
+        mock_session.add = _capture_add
+        _override_deps(app, _fake_user(), mock_session)
+
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post("/api/admin/content", json={
+                "content_type": "legal_cookies",
+                "title": "Cookie Policy",
+                "content": {
+                    "html": "<section><h2>Cookies</h2><table><tr><th scope=\"col\">Cookie</th></tr><tr><td colspan=\"2\">session</td></tr></table><script>alert(1)</script></section>",
+                },
+            })
+        assert resp.status_code == 201
+        stored_html = captured["item"].content["html"]
+        assert "<section>" in stored_html
+        assert "<table>" in stored_html
+        assert 'scope="col"' in stored_html
+        assert 'colspan="2"' in stored_html
+        assert "<script" not in stored_html
+
+
 @pytest.mark.asyncio
 class TestUpdateContent:
     async def test_update_existing(self):

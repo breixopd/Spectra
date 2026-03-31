@@ -21,17 +21,17 @@
     <meta property="og:description" content="Deploy intelligent agents that plan, execute, and report on penetration tests with real-time monitoring and comprehensive findings.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.url.scheme }}://{{ request.url.netloc }}/">
-    <meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.svg">
+    <meta property="og:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.png">
     <meta property="og:site_name" content="{{ app_name }}">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ app_name }} — Autonomous Security Assessment Platform">
     <meta name="twitter:description" content="AI-driven penetration testing and vulnerability scanning with real-time monitoring.">
-    <meta name="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.svg">
+    <meta name="twitter:image" content="{{ request.url.scheme }}://{{ request.url.netloc }}/static/og-image.png">
 
     <!-- Structured Data -->
-    <script type="application/ld+json">
+    <script nonce="{{ request.state.csp_nonce }}" type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
@@ -79,20 +79,19 @@
     <div class="hero-grid"></div>
     <div class="hero-content">
         <h1>
-            Autonomous<br>
-            <span class="gradient">Security Assessment</span><br>
-            Platform
+            Run security assessments<br>
+            <span class="gradient">faster, with clear reports</span>
         </h1>
         <p>
-            Deploy intelligent agents that plan, execute, and report on penetration tests
-            with real-time monitoring and comprehensive findings — from reconnaissance to exploitation.
+            Set a target, choose the scope, and let {{ app_name }} handle the recon, testing, and reporting work.
+            Your team can watch progress live and review the findings in one place.
         </p>
         <div class="hero-actions">
             <a href="/register" class="btn-primary">
                 Get Started
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </a>
-            <a href="#features" class="btn-secondary">See How It Works</a>
+            <a href="/register?demo=true" class="btn-secondary">Request Demo</a>
         </div>
 
         <!-- Dashboard preview — miniature of the real UI -->
@@ -307,7 +306,7 @@
             {% endif %}
         {% endfor %}
 
-        <div class="pricing-table-wrap reveal">
+        <div class="pricing-table-wrap reveal overflow-x-auto">
             <table class="pricing-table">
                 <thead>
                     <tr>
@@ -416,6 +415,10 @@
     </div>
 </section>
 
+<div id="sticky-cta" class="fixed bottom-0 left-0 right-0 bg-slate-950/95 border-t border-white/10 p-4 md:hidden z-50" style="display:none;">
+    <a href="/register" class="block w-full text-center bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-3 font-semibold transition-colors">Get Started Free</a>
+</div>
+
 <!-- ====== TESTIMONIALS ====== -->
 <section id="testimonials">
     <div class="section-inner" style="text-align:center;">
@@ -490,7 +493,7 @@
                 </svg>
                 <span style="font-weight:700;font-size:1.125rem;color:#fff;">{{ app_name }}</span>
             </div>
-            <p>AI-driven autonomous security assessments. From reconnaissance to exploitation, in a single platform.</p>
+            <p>Security testing, evidence, and reports in one place.</p>
         </div>
         <div class="footer-col">
             <h4>Product</h4>
