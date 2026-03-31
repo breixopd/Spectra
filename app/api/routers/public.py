@@ -24,6 +24,7 @@ from app.core.security import (
 )
 from app.models.plan import Plan, Subscription
 from app.models.user import User
+from app.utils.html_sanitization import sanitize_legal_html
 from app.version import __version__
 
 logger = logging.getLogger(__name__)
@@ -56,18 +57,25 @@ def _get_user_from_cookie(request: Request) -> dict | None:
         return None
 
 
+templates.env.globals["get_nav_user"] = _get_user_from_cookie
+
 def _extract_legal_html(raw: object) -> object:
     """Extract HTML content from admin-managed legal JSON envelope."""
+    html: object = None
     if isinstance(raw, dict) and "html" in raw:
-        return raw["html"]
-    if isinstance(raw, str):
+        html = raw["html"]
+    elif isinstance(raw, str):
         try:
             parsed = json.loads(raw)
             if isinstance(parsed, dict) and "html" in parsed:
-                return parsed["html"]
+                html = parsed["html"]
         except (json.JSONDecodeError, ValueError):
-            pass
-    return raw
+            html = raw
+    else:
+        html = raw
+    if isinstance(html, str):
+        return sanitize_legal_html(html)
+    return html
 
 
 # ---------------------------------------------------------------------------

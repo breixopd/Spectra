@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import logging
 
+import nh3
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -13,10 +15,63 @@ from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
 from app.models.infrastructure import SystemContent
 from app.models.user import User
+from app.utils.html_sanitization import is_legal_content_type, sanitize_legal_html
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Admin - Content"])
+
+SAFE_CONTENT_TAGS = {
+    "a",
+    "b",
+    "blockquote",
+    "br",
+    "code",
+    "em",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "hr",
+    "i",
+    "li",
+    "ol",
+    "p",
+    "pre",
+    "strong",
+    "u",
+    "ul",
+}
+SAFE_CONTENT_ATTRIBUTES = {
+    "a": {"href", "target", "title"},
+}
+
+
+def _sanitize_html_fragment(html: str) -> str:
+    return nh3.clean(
+        html,
+        tags=SAFE_CONTENT_TAGS,
+        attributes=SAFE_CONTENT_ATTRIBUTES,
+        url_schemes={"http", "https", "mailto"},
+        link_rel="noopener noreferrer nofollow",
+    )
+
+
+def _sanitize_content_value(value, sanitizer: Callable[[str], str] = _sanitize_html_fragment):
+    if isinstance(value, dict):
+        return {key: _sanitize_content_value(item, sanitizer) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_content_value(item, sanitizer) for item in value]
+    if isinstance(value, str):
+        return sanitizer(value)
+    return value
+
+
+def _sanitize_managed_content(content_type: str, value):
+    sanitizer = sanitize_legal_html if is_legal_content_type(content_type) else _sanitize_html_fragment
+    return _sanitize_content_value(value, sanitizer)
 
 
 class ContentCreate(BaseModel):
@@ -69,7 +124,7 @@ async def create_content(
     item = SystemContent(
         content_type=body.content_type,
         title=body.title,
-        content=body.content,
+        content=_sanitize_managed_content(body.content_type, body.content),
         is_active=body.is_active,
         sort_order=body.sort_order,
     )
@@ -93,7 +148,7 @@ async def update_content(
     if body.title is not None:
         item.title = body.title
     if body.content is not None:
-        item.content = body.content
+        item.content = _sanitize_managed_content(item.content_type, body.content)
     if body.is_active is not None:
         item.is_active = body.is_active
     if body.sort_order is not None:
