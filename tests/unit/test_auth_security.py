@@ -395,11 +395,13 @@ class TestEmailVerifyIdempotency:
 
         user = MagicMock()
         user.email_verified = True
+        user.is_active = True
 
         db_result = MagicMock()
         db_result.scalar_one_or_none.return_value = user
         mock_session = AsyncMock()
         mock_session.execute = AsyncMock(return_value=db_result)
+        mock_session.commit = AsyncMock()
 
         class _MockCtx:
             async def __aenter__(self_inner):
@@ -419,9 +421,10 @@ class TestEmailVerifyIdempotency:
         call_context = mock_tmpl.TemplateResponse.call_args[0][1]
         assert call_context["success"] is True
         assert "already" in call_context["message"].lower()
+        mock_session.commit.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_verify_fresh_email_sets_verified_flag(self):
+    async def test_verify_fresh_email_sets_verified_flag_and_activates_user(self):
         from app.api.routers.public import verify_email_page
 
         scope = {
@@ -435,6 +438,7 @@ class TestEmailVerifyIdempotency:
 
         user = MagicMock()
         user.email_verified = False
+        user.is_active = False
 
         db_result = MagicMock()
         db_result.scalar_one_or_none.return_value = user
@@ -458,4 +462,47 @@ class TestEmailVerifyIdempotency:
             await verify_email_page(request, token="fresh-token")
 
         assert user.email_verified is True
+        assert user.is_active is True
+        mock_session.commit.assert_awaited()
+
+    @pytest.mark.asyncio
+    async def test_verify_already_verified_inactive_user_reactivates_account(self):
+        from app.api.routers.public import verify_email_page
+
+        scope = {
+            "type": "http",
+            "method": "GET",
+            "path": "/verify-email",
+            "headers": [],
+            "query_string": b"",
+        }
+        request = Request(scope)
+
+        user = MagicMock()
+        user.email_verified = True
+        user.is_active = False
+
+        db_result = MagicMock()
+        db_result.scalar_one_or_none.return_value = user
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=db_result)
+        mock_session.commit = AsyncMock()
+
+        class _MockCtx:
+            async def __aenter__(self_inner):
+                return mock_session
+
+            async def __aexit__(self_inner, *a):
+                pass
+
+        with (
+            patch("app.core.security.verify_email_verification_token", return_value="user-id-456"),
+            patch("app.api.routers.public.async_session_maker", return_value=_MockCtx()),
+            patch("app.api.routers.public.templates") as mock_tmpl,
+        ):
+            mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
+            await verify_email_page(request, token="inactive-token")
+
+        assert user.email_verified is True
+        assert user.is_active is True
         mock_session.commit.assert_awaited()

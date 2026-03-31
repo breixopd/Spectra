@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -195,6 +195,89 @@ class TestUpdateUserRole:
             "target_user": target.username,
             "changed_fields": ["email"],
         }
+
+
+class TestCreateUser:
+    @pytest.mark.asyncio
+    async def test_create_user_returns_activation_url_when_delivery_fails_and_starts_inactive(self):
+        import app.api.routers.admin.users as users_module
+
+        admin = _make_user("admin")
+        app = _build_app(admin)
+        mock_sess = _mock_session()
+
+        duplicate_check = MagicMock()
+        duplicate_check.scalar_one_or_none.return_value = None
+        mock_sess.execute = AsyncMock(return_value=duplicate_check)
+        mock_sess.flush = AsyncMock()
+        mock_sess.commit = AsyncMock()
+
+        created = {}
+
+        def add_user(user):
+            user.id = "uid-new"
+            user.created_at = datetime(2025, 1, 1, tzinfo=UTC)
+            user.updated_at = datetime(2025, 1, 1, tzinfo=UTC)
+            created["user"] = user
+
+        mock_sess.add = MagicMock(side_effect=add_user)
+        mock_sess.refresh = AsyncMock()
+
+        from app.core.database import get_async_session
+
+        app.dependency_overrides[get_async_session] = lambda: mock_sess
+
+        with (
+            patch("app.api.routers.admin.users.audit_log_event", new_callable=AsyncMock),
+            patch.object(type(users_module.settings), "smtp_configured", new_callable=PropertyMock, return_value=True),
+            patch("app.api.routers.public._send_registration_verification_email", new=AsyncMock(return_value=False)) as send_mock,
+            patch("app.api.routers.public._build_email_verification_url", return_value="http://test/verify-email?token=abc123"),
+        ):
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                resp = await ac.post(
+                    "/api/admin/users",
+                    json={
+                        "username": "pending-user",
+                        "email": "pending@example.com",
+                        "password": "StrongPass1",
+                        "role": "operator",
+                    },
+                )
+
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["activation_url"] == "http://test/verify-email?token=abc123"
+        assert created["user"].is_active is False
+        assert created["user"].email_verified is False
+        send_mock.assert_awaited_once()
+
+
+class TestPendingActivationGuard:
+    @pytest.mark.asyncio
+    async def test_update_user_cannot_activate_before_verification(self):
+        admin = _make_user("admin")
+        app = _build_app(admin)
+
+        target = _make_user("operator", user_id="uid-2")
+        target.is_active = False
+        target.email_verified = False
+
+        mock_sess = _mock_session()
+        lookup = MagicMock()
+        lookup.scalar_one_or_none.return_value = target
+        mock_sess.execute = AsyncMock(return_value=lookup)
+
+        from app.core.database import get_async_session
+
+        app.dependency_overrides[get_async_session] = lambda: mock_sess
+
+        with patch("app.api.routers.admin.users.create_snapshot", new_callable=AsyncMock) as snapshot_mock:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+                resp = await ac.put("/api/admin/users/uid-2", json={"is_active": True})
+
+        assert resp.status_code == 400
+        assert "activation" in resp.json()["detail"].lower()
+        snapshot_mock.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

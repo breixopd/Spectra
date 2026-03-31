@@ -15,6 +15,43 @@ function formatDateTime(iso) {
 let usersPage = 1, usersPerPage = 20;
 let auditPage = 1, auditPerPage = 50;
 let allPlans = [];
+let currentUsers = [];
+
+const USER_ROLE_BADGE_CLASSES = {
+    admin: 'badge-admin',
+    operator: 'badge-operator',
+    viewer: 'badge-viewer'
+};
+
+function getUserRoleBadgeClass(role) {
+    return USER_ROLE_BADGE_CLASSES[String(role || 'viewer').toLowerCase()] || USER_ROLE_BADGE_CLASSES.viewer;
+}
+
+function getUserRoleLabel(role) {
+    return escapeHtml(String(role || 'viewer'));
+}
+
+let statsErrorVisible = false;
+
+function resetDashboardStats(message) {
+    ['stat-total-users', 'stat-active-users', 'stat-total-plans', 'stat-total-missions'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '—';
+    });
+
+    const rb = document.getElementById('roles-breakdown');
+    if (rb) {
+        rb.innerHTML = `
+            <div class="rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+                <p class="text-sm font-medium text-rose-300">Dashboard stats are unavailable.</p>
+                <p class="mt-1 text-xs text-slate-400">${escapeHtml(message)}</p>
+            </div>`;
+    }
+}
+
+function clearDashboardStatsError() {
+    statsErrorVisible = false;
+}
 
 // ---- Maintenance Mode Toggle ----
 async function toggleMaintenance() {
@@ -23,7 +60,9 @@ async function toggleMaintenance() {
     const currentlyActive = btn.dataset.active === 'true';
     const newState = !currentlyActive;
     try {
-        const { error } = await spectraApi.put('/api/admin/settings', { MAINTENANCE_MODE: newState, ...(msg ? { MAINTENANCE_MESSAGE: msg } : {}) });
+        const payload = { MAINTENANCE_MODE: newState };
+        if (msg) payload.MAINTENANCE_MESSAGE = msg;
+        const { error } = await spectraApi.put('/api/admin/settings', payload);
         if (error) throw new Error(error);
         location.reload();
     } catch (e) {
@@ -58,13 +97,15 @@ function switchSection(name) {
     document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
     const target = document.getElementById('section-' + name);
     if (target) target.classList.add('active');
-    document.querySelectorAll('.admin-sidebar a[data-section]').forEach(a => {
+    document.querySelectorAll('.admin-sidebar [data-section]').forEach(a => {
         a.classList.remove('active');
         a.classList.add('text-slate-400');
         a.setAttribute('aria-selected', 'false');
     });
-    const link = document.querySelector(`.admin-sidebar a[data-section="${name}"]`);
+    const link = document.querySelector(`.admin-sidebar [data-section="${name}"]`);
     if (link) { link.classList.add('active'); link.classList.remove('text-slate-400'); link.setAttribute('aria-selected', 'true'); }
+
+    if (history.replaceState) history.replaceState(null, '', '#' + name);
 
     if (name === 'dashboard') loadStats();
     if (name === 'users') loadUsers();
@@ -80,15 +121,24 @@ function switchSection(name) {
     if (name === 'tensorzero') { loadTZStatus(); loadTZInferences(); loadTZFunctionStats(); }
 }
 
-document.querySelectorAll('.admin-sidebar a[data-section]').forEach(a => {
+document.querySelectorAll('.admin-sidebar [data-section]').forEach(a => {
     a.addEventListener('click', e => { e.preventDefault(); switchSection(a.dataset.section); });
 });
+
+// Restore section from URL hash
+(function() {
+    const hash = window.location.hash.slice(1);
+    if (hash && document.getElementById('section-' + hash)) {
+        switchSection(hash);
+    }
+})();
 
 // ---- Dashboard ----
 async function loadStats() {
     try {
         const { data: d, error } = await spectraApi.get('/api/admin/stats');
         if (error) throw new Error(error);
+        clearDashboardStatsError();
         document.getElementById('stat-total-users').textContent = d.total_users;
         document.getElementById('stat-active-users').textContent = d.active_users;
         document.getElementById('stat-total-plans').textContent = d.total_plans;
@@ -99,16 +149,29 @@ async function loadStats() {
         const total = d.total_users || 1;
         for (const [role, count] of Object.entries(d.role_counts || {})) {
             const pct = Math.round(count / total * 100);
+            const roleBadgeClass = getUserRoleBadgeClass(role);
+            const roleLabel = getUserRoleLabel(role);
             rb.innerHTML += `
                 <div class="flex items-center justify-between text-sm">
-                    <span class="badge badge-${escapeHtml(role)}">${escapeHtml(role)}</span>
+                    <span class="badge ${roleBadgeClass}">${roleLabel}</span>
                     <span class="text-slate-400">${count} (${pct}%)</span>
                 </div>
                 <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
                     <div class="h-full rounded-full ${role === 'admin' ? 'bg-red-500' : role === 'operator' ? 'bg-blue-500' : 'bg-slate-500'}" style="width:${pct}%"></div>
                 </div>`;
         }
-    } catch(e) { console.error(e); }
+        if (!Object.keys(d.role_counts || {}).length) {
+            rb.innerHTML = '<p class="text-sm text-slate-500">No role distribution data available.</p>';
+        }
+    } catch(e) {
+        console.error(e);
+        const message = e.message || 'Could not load dashboard stats.';
+        resetDashboardStats(message);
+        if (!statsErrorVisible && typeof _spectraToast === 'function') {
+            _spectraToast(`Failed to load dashboard stats: ${message}`, 'error');
+            statsErrorVisible = true;
+        }
+    }
 }
 
 // ---- Users ----
@@ -125,22 +188,27 @@ async function loadUsers() {
         const { data: d, error } = await spectraApi.get('/api/admin/users?' + params);
         if (error) throw new Error(error);
         const tbody = document.getElementById('users-tbody');
-        if (!d.items.length) {
+        currentUsers = Array.isArray(d.items) ? d.items : [];
+        if (!currentUsers.length) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-500">No users found</td></tr>';
         } else {
-            tbody.innerHTML = d.items.map(u => `
+            tbody.innerHTML = currentUsers.map((u, index) => {
+                const roleBadgeClass = getUserRoleBadgeClass(u.role);
+                const roleLabel = getUserRoleLabel(u.role);
+                return `
                 <tr class="border-b border-white/5">
                     <td class="px-4 py-3"><span class="font-medium text-white">${escapeHtml(u.username)}</span></td>
                     <td class="px-4 py-3 text-slate-400">${escapeHtml(u.email)}</td>
-                    <td class="px-4 py-3"><span class="badge badge-${u.role}">${u.role}</span></td>
+                    <td class="px-4 py-3"><span class="badge ${roleBadgeClass}">${roleLabel}</span></td>
                     <td class="px-4 py-3"><span class="badge ${u.is_active ? 'badge-active' : 'badge-inactive'}">${u.is_active ? 'Active' : 'Inactive'}</span></td>
                     <td class="px-4 py-3 text-slate-500 text-xs">${formatDate(u.created_at)}</td>
                     <td class="px-4 py-3 text-right">
-                        <button onclick='openEditUserModal(${JSON.stringify(u).replace(/'/g,"&#39;")})' class="text-slate-400 hover:text-violet-400 mr-2" title="Edit"><i data-lucide="edit" class="w-4 h-4 inline-block"></i></button>
-                        <button onclick="resetPassword('${u.id}','${escapeHtml(u.username)}')" class="text-slate-400 hover:text-amber-400 mr-2" title="Reset password"><i data-lucide="key" class="w-4 h-4 inline-block"></i></button>
-                        <button onclick="deactivateUser('${u.id}','${escapeHtml(u.username)}')" class="text-slate-400 hover:text-red-400" title="Deactivate"><i data-lucide="user-x" class="w-4 h-4 inline-block"></i></button>
+                        <button type="button" data-user-action="edit" data-user-index="${index}" class="text-slate-400 hover:text-violet-400 mr-2" title="Edit"><i data-lucide="edit" class="w-4 h-4 inline-block"></i></button>
+                        <button type="button" data-user-action="reset" data-user-index="${index}" class="text-slate-400 hover:text-amber-400 mr-2" title="Reset password"><i data-lucide="key" class="w-4 h-4 inline-block"></i></button>
+                        <button type="button" data-user-action="deactivate" data-user-index="${index}" class="text-slate-400 hover:text-red-400" title="Deactivate"><i data-lucide="user-x" class="w-4 h-4 inline-block"></i></button>
                     </td>
-                </tr>`).join('');
+                </tr>`;
+            }).join('');
         }
 
         const totalPages = Math.ceil(d.total / d.per_page) || 1;
@@ -153,6 +221,26 @@ async function loadUsers() {
 
 document.getElementById('users-prev').addEventListener('click', () => { usersPage--; loadUsers(); });
 document.getElementById('users-next').addEventListener('click', () => { usersPage++; loadUsers(); });
+document.getElementById('users-tbody').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-user-action][data-user-index]');
+    if (!button) return;
+
+    const index = Number.parseInt(button.dataset.userIndex, 10);
+    const user = Number.isInteger(index) ? currentUsers[index] : null;
+    if (!user) return;
+
+    switch (button.dataset.userAction) {
+        case 'edit':
+            openEditUserModal(user);
+            break;
+        case 'reset':
+            resetPassword(user.id, user.username);
+            break;
+        case 'deactivate':
+            deactivateUser(user.id, user.username);
+            break;
+    }
+});
 
 let userSearchTimeout;
 document.getElementById('user-search').addEventListener('input', () => {
@@ -217,21 +305,25 @@ document.getElementById('user-form').addEventListener('submit', async function(e
 
     try {
         const url = isEdit ? `/api/admin/users/${id}` : '/api/admin/users';
-        const { error } = isEdit ? await spectraApi.put(url, body) : await spectraApi.post(url, body);
+        const { data, error } = isEdit ? await spectraApi.put(url, body) : await spectraApi.post(url, body);
         if (error) throw new Error(error);
-        _spectraToast(isEdit ? 'User updated' : 'User created', 'success');
+        let successMessage = isEdit ? 'User updated' : 'User created';
+        if (!isEdit && data?.activation_url) {
+            successMessage = `User created. Share the activation link manually: ${data.activation_url}`;
+        }
+        _spectraToast(successMessage, 'success');
         closeModal('user-modal');
         loadUsers();
     } catch(e) { _spectraToast(e.message, 'error'); }
 });
 
 function resetPassword(userId, username) {
-    showConfirm('Reset Password', `Generate a new temporary password for ${username}?`, async () => {
+    showConfirm('Reset Password', `Send a password reset email to ${username}?`, async () => {
         try {
-            const { data: d, error } = await spectraApi.post(`/api/admin/users/${userId}/reset-password`);
+            const { data, error } = await spectraApi.post(`/api/admin/users/${userId}/reset-password`);
             if (error) throw new Error(error);
-            _spectraToast(`Temp password: ${d.temporary_password}`, 'success');
-        } catch(e) { _spectraToast('Password reset failed', 'error'); }
+            _spectraToast(data?.detail || 'Password reset email sent', 'success');
+        } catch(e) { _spectraToast(e.message || 'Password reset failed', 'error'); }
     });
 }
 
@@ -1208,9 +1300,9 @@ async function loadEmailConfig() {
     try {
         const r = await spectraApi.get('/api/admin/stats');
         const d = !r.error ? r.data : {};
-        const smtpHost = d.smtp_host || '';
-        statusEl.innerHTML = smtpHost
-            ? `<span class="text-emerald-400"><i data-lucide="check-circle" class="w-4 h-4 inline-block mr-1"></i> SMTP configured: ${smtpHost}</span>`
+        const smtpConfigured = Boolean(d.smtp_configured);
+        statusEl.innerHTML = smtpConfigured
+            ? '<span class="text-emerald-400"><i data-lucide="check-circle" class="w-4 h-4 inline-block mr-1"></i> SMTP configured</span>'
             : '<span class="text-amber-400"><i data-lucide="alert-triangle" class="w-4 h-4 inline-block mr-1"></i> SMTP not configured — using console fallback</span>';
         if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch { statusEl.textContent = 'Unable to load status'; }
@@ -1432,3 +1524,25 @@ window.loadTZInferences = loadTZInferences;
 window.loadTZFunctionStats = loadTZFunctionStats;
 window.loadRollbackSnapshots = loadRollbackSnapshots;
 window.performRollback = performRollback;
+
+function exportAuditLogsCSV() {
+    const rows = document.querySelectorAll('#audit-tbody tr');
+    if (!rows.length) { _spectraToast('No audit log entries to export', 'error'); return; }
+    const csvLines = ['Time,Event,Details,IP'];
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 4) {
+            const line = Array.from(cells).map(c => '"' + (c.textContent || '').trim().replace(/"/g, '""') + '"').join(',');
+            csvLines.push(line);
+        }
+    });
+    const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'audit-logs-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    _spectraToast('Audit logs exported');
+}
+window.exportAuditLogsCSV = exportAuditLogsCSV;

@@ -58,6 +58,8 @@ class SystemSetupRequest(BaseModel):
 class SettingsUpdate(BaseModel):
     """Schema for settings updates with optional partial fields."""
 
+    model_config = ConfigDict(extra="forbid")
+
     # AI Gateway (TensorZero)
     tensorzero_gateway_url: str | None = None
     tensorzero_api_key: str | None = None
@@ -107,6 +109,10 @@ class SettingsUpdate(BaseModel):
     s3_secret_key: str | None = None
     s3_region: str | None = None
 
+    # Maintenance
+    maintenance_mode: bool | None = None
+    maintenance_message: str | None = None
+
     @field_validator("sandbox_resource_tiers")
     @classmethod
     def validate_resource_tiers(cls, value: str | None) -> str | None:
@@ -132,6 +138,19 @@ class SettingsUpdate(BaseModel):
         return value
 
 
+class AdminSettingsUpdate(SettingsUpdate):
+    """Admin settings payload that preserves the existing uppercase API contract."""
+
+    model_config = ConfigDict(
+        alias_generator=str.upper,
+        extra="forbid",
+        populate_by_name=False,
+    )
+
+    def to_settings_update(self) -> SettingsUpdate:
+        return SettingsUpdate.model_validate(self.model_dump(exclude_unset=True))
+
+
 class LLMTestRequest(BaseModel):
     """Schema for testing LLM connection via TensorZero gateway."""
 
@@ -155,6 +174,12 @@ class UserAdminResponse(BaseModel):
     updated_at: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AdminUserCreateResponse(UserAdminResponse):
+    """Admin create-user response, including a manual activation fallback."""
+
+    activation_url: str | None = None
 
 
 class AdminUserCreate(BaseModel):
