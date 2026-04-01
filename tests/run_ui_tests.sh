@@ -2,14 +2,24 @@
 set -euo pipefail
 
 COMPOSE_FILE="docker/docker-compose.test.yml"
+export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
+export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
 
 echo "=== Spectra UI Tests ==="
 echo "Starting test environment..."
 
 cd "$(dirname "$0")/.."
 
-# Start services
-docker compose -f "$COMPOSE_FILE" up -d --force-recreate db app
+# Start prerequisites and bootstrap Garage before app startup
+docker compose -f "$COMPOSE_FILE" up -d --force-recreate db redis garage
+
+GARAGE_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q garage)"
+GARAGE_CONTAINER="$GARAGE_CONTAINER" \
+GARAGE_ACCESS_KEY="$GARAGE_ACCESS_KEY" \
+GARAGE_SECRET_KEY="$GARAGE_SECRET_KEY" \
+bash ./docker/garage-init.sh
+
+docker compose -f "$COMPOSE_FILE" up -d --force-recreate app
 
 # Wait for app to be ready
 echo "Waiting for app to be ready..."

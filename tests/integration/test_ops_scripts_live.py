@@ -118,12 +118,12 @@ def test_safe_ops_scripts_smoke(ops_env: dict[str, str], script_path: str, args:
         assert "Backups in S3:" in output
         assert "No backups found." in output or "s3://" in output
     elif label == "s3-health":
-        assert "MinIO health:" in output
+        assert "Garage health:" in output
         assert "OK" in output
     elif label == "log-sizes":
         assert "Container log sizes:" in output
         assert ops_env["APP_CONTAINER"] in output
         assert ops_env["DB_CONTAINER"] in output
-        assert ops_env["MINIO_CONTAINER"] in output
+        assert ops_env["GARAGE_CONTAINER"] in output
     else:
         raise AssertionError(f"Unhandled smoke test label: {label}")

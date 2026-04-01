@@ -3,6 +3,11 @@ data_dir = "/var/lib/garage/data"
 db_engine = "sqlite"
 replication_factor = 1
 
+# Static dev/test RPC settings keep fresh volumes self-contained.
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "garage:3901"
+rpc_secret = "6a5c2e0bf5147d39c1a8e2f4b6973c10d4e8f2a16b9c5d7e3041af6c8e2b7d9f"
+
 [s3_api]
 api_bind_addr = "[::]:3900"
 s3_region = "us-east-1"
@@ -14,7 +19,3 @@ root_domain = ".web.garage.localhost"
 
 [admin]
 api_bind_addr = "[::]:3903"
-
-[rpc]
-bind_addr = "[::]:3901"
-secret_file = "/var/lib/garage/meta/rpc_secret"

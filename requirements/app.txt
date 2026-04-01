@@ -16,8 +16,7 @@ alembic==1.18.4
 
 # AI / LLM
 openai==2.26.0
-# litellm removed — replaced by TensorZero
-tensorzero==2025.3.0
+tensorzero==2025.6.0
 httpx==0.28.1
 fastembed==0.4.0
 

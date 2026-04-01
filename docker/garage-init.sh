@@ -4,11 +4,19 @@
 set -euo pipefail
 
 GARAGE_CONTAINER="${GARAGE_CONTAINER:-spectra-garage}"
-GARAGE_ADMIN="http://localhost:3903"
 BUCKETS=(spectra-missions spectra-sessions spectra-knowledge spectra-backups)
+KEY_NAME="spectra-app"
 
 garage_exec() {
     docker exec "${GARAGE_CONTAINER}" /garage "$@"
+}
+
+key_info() {
+    garage_exec key info "$1" --show-secret 2>/dev/null || true
+}
+
+key_field() {
+    printf '%s\n' "$1" | awk -F': ' -v field="$2" '$1 == field { sub(/^[[:space:]]+/, "", $2); print $2; exit }'
 }
 
 echo "=== Garage S3 Bootstrap ==="
@@ -16,7 +24,7 @@ echo "=== Garage S3 Bootstrap ==="
 # ── Step 1: Wait for Garage to be healthy ──
 echo "Waiting for Garage to be healthy..."
 for i in $(seq 1 30); do
-    if docker exec "${GARAGE_CONTAINER}" wget -qO- http://localhost:3903/health >/dev/null 2>&1; then
+    if garage_exec status >/dev/null 2>&1; then
         echo "  Garage is healthy (attempt ${i})"
         break
     fi
@@ -29,42 +37,78 @@ done
 
 # ── Step 2: Get node ID and assign layout ──
 echo "Assigning layout..."
-NODE_ID="$(garage_exec node id 2>/dev/null | head -1 | awk '{print $1}')"
+NODE_ID="$(garage_exec status 2>/dev/null | awk '/^[0-9a-f]{16}[[:space:]]/ { print $1; exit }')"
 if [ -z "${NODE_ID}" ]; then
     echo "ERROR: Could not determine Garage node ID" >&2
     exit 1
 fi
-garage_exec layout assign -z dc1 -c 1G "${NODE_ID}" 2>/dev/null || true
+garage_exec layout assign -z dc1 -c 1G "${NODE_ID}" >/dev/null 2>&1 || true
 
 # ── Step 3: Apply layout ──
 echo "Applying layout..."
-garage_exec layout apply --version 1 2>/dev/null || echo "  Layout already applied or version conflict (non-fatal)"
+for i in $(seq 1 30); do
+    if garage_exec layout apply --version 1 >/dev/null 2>&1 || garage_exec key list >/dev/null 2>&1; then
+        echo "  Layout is ready (attempt ${i})"
+        break
+    fi
+    if [ "${i}" -eq 30 ]; then
+        echo "ERROR: Garage layout did not become ready in time" >&2
+        exit 1
+    fi
+    sleep 2
+done
 
 # ── Step 4: Create access key ──
-echo "Creating access key..."
-KEY_OUTPUT="$(garage_exec key create spectra-app 2>/dev/null || true)"
-if echo "${KEY_OUTPUT}" | grep -q "Key name: spectra-app"; then
-    ACCESS_KEY="$(echo "${KEY_OUTPUT}" | grep 'Key ID:' | awk '{print $NF}')"
-    SECRET_KEY="$(echo "${KEY_OUTPUT}" | grep 'Secret key:' | awk '{print $NF}')"
+if [ -n "${GARAGE_ACCESS_KEY:-}" ] && [ -n "${GARAGE_SECRET_KEY:-}" ]; then
+    echo "Importing configured access key..."
+    ACCESS_KEY="${GARAGE_ACCESS_KEY}"
+    SECRET_KEY="${GARAGE_SECRET_KEY}"
+    KEY_OUTPUT="$(key_info "${ACCESS_KEY}")"
+    if [ -n "${KEY_OUTPUT}" ]; then
+        if [ "$(key_field "${KEY_OUTPUT}" "Secret key")" != "${SECRET_KEY}" ]; then
+            echo "ERROR: Garage access key ${ACCESS_KEY} already exists with a different secret" >&2
+            exit 1
+        fi
+        echo "  Access key ${ACCESS_KEY} already exists"
+    else
+        KEY_OUTPUT="$(key_info "${KEY_NAME}")"
+        if [ -n "${KEY_OUTPUT}" ]; then
+            if [ "$(key_field "${KEY_OUTPUT}" "Key ID")" != "${ACCESS_KEY}" ] || [ "$(key_field "${KEY_OUTPUT}" "Secret key")" != "${SECRET_KEY}" ]; then
+                echo "ERROR: Key ${KEY_NAME} already exists with different credentials" >&2
+                exit 1
+            fi
+            echo "  Key ${KEY_NAME} already matches configured credentials"
+        else
+            garage_exec key import --yes -n "${KEY_NAME}" "${ACCESS_KEY}" "${SECRET_KEY}" >/dev/null
+            echo "  Imported configured access key ${ACCESS_KEY}"
+        fi
+    fi
 else
-    echo "  Key 'spectra-app' may already exist, retrieving info..."
-    KEY_OUTPUT="$(garage_exec key info spectra-app 2>/dev/null)"
-    ACCESS_KEY="$(echo "${KEY_OUTPUT}" | grep 'Key ID:' | awk '{print $NF}')"
-    SECRET_KEY="$(echo "${KEY_OUTPUT}" | grep 'Secret key:' | awk '{print $NF}')"
+    echo "Creating access key..."
+    KEY_OUTPUT="$(garage_exec key create "${KEY_NAME}" 2>/dev/null || true)"
+    if printf '%s\n' "${KEY_OUTPUT}" | grep -q "Key name: ${KEY_NAME}"; then
+        ACCESS_KEY="$(key_field "${KEY_OUTPUT}" "Key ID")"
+        SECRET_KEY="$(key_field "${KEY_OUTPUT}" "Secret key")"
+    else
+        echo "  Key '${KEY_NAME}' may already exist, retrieving info..."
+        KEY_OUTPUT="$(key_info "${KEY_NAME}")"
+        ACCESS_KEY="$(key_field "${KEY_OUTPUT}" "Key ID")"
+        SECRET_KEY="$(key_field "${KEY_OUTPUT}" "Secret key")"
+    fi
 fi
 
 # ── Step 5: Create buckets ──
 echo "Creating buckets..."
 for bucket in "${BUCKETS[@]}"; do
-    garage_exec bucket create "${bucket}" 2>/dev/null || echo "  ${bucket} already exists"
+    garage_exec bucket create "${bucket}" >/dev/null 2>&1 || echo "  ${bucket} already exists"
     echo "  ✓ ${bucket}"
 done
 
 # ── Step 6: Grant key permissions on all buckets ──
 echo "Granting permissions..."
 for bucket in "${BUCKETS[@]}"; do
-    garage_exec bucket allow --read --write --owner "${bucket}" --key spectra-app 2>/dev/null || true
-    echo "  ✓ ${bucket} → spectra-app"
+    garage_exec bucket allow --read --write --owner "${bucket}" --key "${ACCESS_KEY}" >/dev/null 2>&1 || true
+    echo "  ✓ ${bucket} → ${ACCESS_KEY}"
 done
 
 # ── Step 7: Output credentials for .env ──
