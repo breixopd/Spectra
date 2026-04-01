@@ -4,6 +4,7 @@ from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.encryption import EncryptedString
 from app.models.base import Base
 from app.models.infrastructure import JSONBType
 
@@ -26,10 +27,10 @@ class UserPreferences(Base):
     )
 
     # --- BYOK (Bring Your Own Key) ---
-    llm_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    llm_api_key: Mapped[str | None] = mapped_column(EncryptedString, nullable=True)
     llm_api_base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     llm_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    embedding_api_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    embedding_api_key: Mapped[str | None] = mapped_column(EncryptedString, nullable=True)
     embedding_api_base_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
 

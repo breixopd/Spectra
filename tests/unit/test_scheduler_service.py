@@ -349,8 +349,8 @@ async def test_backup_scheduler_handles_backup_errors():
 async def test_health_reports_scheduler_running_state():
     from app import scheduler_service
 
-    scheduler_service._scheduler_instance = SimpleNamespace(running=True)
-    assert await scheduler_service.health() == {"status": "healthy", "service": "scheduler"}
+    scheduler_service._scheduler_instance = SimpleNamespace(running=True, health=lambda: {"status": "healthy", "tasks": {}, "running": True})
+    assert await scheduler_service.health() == {"status": "healthy", "tasks": {}, "running": True, "service": "scheduler"}
 
     scheduler_service._scheduler_instance = None
     assert await scheduler_service.health() == {"status": "starting", "service": "scheduler"}

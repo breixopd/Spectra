@@ -241,10 +241,9 @@ class TestUpdateUserSettings:
 
         with patch("app.api.routers.user_settings.check_feature_allowed", new_callable=AsyncMock):
             with patch("app.api.routers.user_settings.audit_log_event", new_callable=AsyncMock):
-                with patch("app.api.routers.user_settings.encrypt_byok_key", side_effect=lambda k: f"enc:{k}"):
-                    await update_user_settings(body=body, request=request, user=user, session=session)
-        # Key should be encrypted now
-        assert prefs.llm_api_key == "enc:sk-allowed-key"
+                await update_user_settings(body=body, request=request, user=user, session=session)
+        # Key is stored as plaintext in the model; EncryptedString TypeDecorator encrypts at DB flush
+        assert prefs.llm_api_key == "sk-allowed-key"
         assert prefs.llm_model == "gpt-4o"
 
     async def test_non_byok_fields_dont_trigger_check(self):

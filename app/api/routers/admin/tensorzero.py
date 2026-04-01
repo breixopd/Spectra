@@ -28,7 +28,7 @@ _CONFIG_PATH = Path(__file__).resolve().parents[4] / "config" / "tensorzero.toml
 
 router = APIRouter()
 
-_TOML_SAFE_VALUE_RE = re.compile(r"^[a-zA-Z0-9._/-]+$")
+_TOML_SAFE_VALUE_RE = re.compile(r"^[a-zA-Z0-9._/:+-]+$")
 
 
 def _validate_toml_value(value: str, field_name: str) -> str:

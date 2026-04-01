@@ -10,16 +10,16 @@ Welcome to the Spectra documentation wiki. Spectra is a Multi-Agent System (MAS)
 
 | Page | Description |
 |------|-------------|
-| [Architecture](architecture.md) | System design — 12 AI agents, MAKER framework, execution pipeline, learning system |
+| [Architecture](architecture.md) | System design — 12 AI agents, MAKER framework, execution pipeline, learning system, microservices |
 | [Configuration](configuration.md) | All environment variables and settings organized by section |
-| [Deployment Guide](deployment-guide.md) | **Start here** — Docker Compose, Cloudflare, Docker Swarm, Caddy, backups, monitoring |
+| [Deployment Guide](deployment-guide.md) | **Start here** — Docker Compose, Cloudflare, Docker Swarm, CI/CD, rollback, private registry |
 | [Operations](operations.md) | Canonical day-2 runbook index — health triage, backups, queue repair, incidents, logging |
 | [Scaling](scaling.md) | Multi-server scaling — server pools, S3 storage, read replicas |
 | [API Reference](api-reference.md) | REST API endpoints — missions, findings, tools, admin |
 | [Plugins](plugins.md) | Tool plugin system — JSON schema, signing, installation methods |
 | [Pentest Workflow](pentest-workflow.md) | PTES methodology, quality gates, exploitation strategy |
-| [Sandboxes](sandboxes.md) | Per-mission ephemeral containers, isolation, resource tiers |
-| [Security](security.md) | Authentication, RBAC, encryption, network isolation, audit logging |
+| [Sandboxes](sandboxes.md) | Per-mission ephemeral containers, isolation, resource tiers, shell sessions |
+| [Security](security.md) | Authentication, RBAC, plan tiers, rate limiting, encryption, audit logging |
 | [Worker System](worker-system.md) | Background jobs, dead-letter queue, cleanup, notifications, reports |
 | [Development](development.md) | Local setup, testing, code structure, contributing |
 | [Testing Strategy](testing-strategy.md) | Platform-wide verification layers, change matrix, release gate, and known testing gaps |

@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import check_feature_allowed, get_current_active_user
 from app.api.schemas.user_settings import UserSettingsResponse, UserSettingsUpdate
 from app.core.database import get_async_session
-from app.core.security import encrypt_byok_key
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.models.user_preferences import UserPreferences
@@ -79,13 +78,6 @@ async def _load_or_create_prefs(user_id: str, session: AsyncSession) -> UserPref
         prefs = UserPreferences(user_id=user_id)
         session.add(prefs)
     return prefs
-
-
-def _encrypt_byok_secrets(updates: dict) -> None:
-    if updates.get("llm_api_key"):
-        updates["llm_api_key"] = encrypt_byok_key(updates["llm_api_key"])
-    if updates.get("embedding_api_key"):
-        updates["embedding_api_key"] = encrypt_byok_key(updates["embedding_api_key"])
 
 
 def _apply_allowed_settings_fields(prefs: UserPreferences, updates: dict) -> None:
@@ -163,7 +155,6 @@ async def update_user_settings(
 
     user_id = str(user.id)
     prefs = await _load_or_create_prefs(user_id, session)
-    _encrypt_byok_secrets(updates)
     _apply_allowed_settings_fields(prefs, updates)
 
     event_type = AuditEventType.BYOK_CHANGED if byok_updates else AuditEventType.SETTINGS_CHANGED

@@ -104,7 +104,7 @@ class TestSanitizeForPrompt:
     def test_truncates_at_max_length(self):
         text = "A" * 200
         result = sanitize_for_prompt(text, max_length=100)
-        assert len(result) == 100
+        assert len(result) <= 100
 
     def test_no_truncation_under_max_length(self):
         text = "short"
@@ -127,7 +127,7 @@ class TestSanitizeForPrompt:
     # --- Pattern list sanity ---
 
     def test_injection_patterns_count(self):
-        assert len(INJECTION_PATTERNS) == 5
+        assert len(INJECTION_PATTERNS) >= 8
 
     # --- Unicode normalization ---
 

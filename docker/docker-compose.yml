@@ -66,6 +66,10 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     networks:
       - spectra-network
 
@@ -102,8 +106,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.app
     container_name: spectra-app
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     depends_on:
       db:
         condition: service_healthy
@@ -216,6 +220,7 @@ services:
       - CLICKHOUSE_DB=tensorzero
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
     healthcheck:
       test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
       interval: 10s
@@ -326,7 +331,7 @@ services:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins
       - spectra_tools_data:/opt/spectra_tools
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
       interval: 10s

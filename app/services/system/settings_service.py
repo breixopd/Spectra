@@ -121,7 +121,7 @@ def _convert_general_db_value(value: Any, conversion: str) -> str | None:
 def _build_settings_snapshot(fields: tuple[SettingsSnapshotSpec, ...]) -> dict[str, Any]:
     snapshot: dict[str, Any] = {}
     for response_key, settings_attr, transform in fields:
-        value = getattr(settings, settings_attr)
+        value = getattr(settings, settings_attr, None)
         snapshot[response_key] = transform(value) if transform else value
     return snapshot
 

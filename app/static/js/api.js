@@ -39,6 +39,12 @@ const spectraApi = (() => {
         }
     }
 
+    function _clearSpectraLocalStorage() {
+        Object.keys(localStorage)
+            .filter(key => key.startsWith('spectra_'))
+            .forEach(key => localStorage.removeItem(key));
+    }
+
     function _onLoadingChange(count) {
         const el = document.getElementById('spectra-api-loading');
         if (el) {
@@ -96,8 +102,10 @@ const spectraApi = (() => {
         _activeRequests++;
         _onLoadingChange(_activeRequests);
 
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 30000);
         try {
-            const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
+            const response = await fetch(url, { ...options, headers, credentials: 'same-origin', signal: controller.signal });
 
             // Handle auth failures
             if (response.status === 401 && !publicPaths.includes(window.location.pathname) && !options._isRetry) {
@@ -108,6 +116,7 @@ const spectraApi = (() => {
                     _onLoadingChange(_activeRequests);
                     return request(url, { ...options, _isRetry: true });
                 }
+                _clearSpectraLocalStorage();
                 window.location.href = '/login';
                 return { data: null, response, error: 'Unauthorized' };
             }
@@ -136,8 +145,10 @@ const spectraApi = (() => {
 
             return { data, response, error: null };
         } catch (err) {
-            return { data: null, response: null, error: err.message || 'Network error' };
+            const message = err && err.name === 'AbortError' ? 'Request timed out' : (err.message || 'Network error');
+            return { data: null, response: null, error: message };
         } finally {
+            window.clearTimeout(timeoutId);
             _activeRequests--;
             _onLoadingChange(_activeRequests);
         }
@@ -168,3 +179,11 @@ const spectraApi = (() => {
         },
     };
 })();
+
+window.clearSpectraLocalStorage = function() {
+    try {
+        Object.keys(localStorage)
+            .filter(key => key.startsWith('spectra_'))
+            .forEach(key => localStorage.removeItem(key));
+    } catch (_) {}
+};

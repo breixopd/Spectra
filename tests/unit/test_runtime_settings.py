@@ -137,15 +137,26 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         mock_hydrate = stack.enter_context(
             patch("app.core.lifespan.hydrate_runtime_settings_from_db", new_callable=AsyncMock)
         )
+        stack.enter_context(patch("app.services.storage.close_storage_service", new_callable=AsyncMock))
         stack.enter_context(patch("app.services.ai.embeddings.EmbeddingService", FakeEmbeddingService))
         stack.enter_context(patch("app.core.bridge.EventWebSocketBridge", return_value=FakeBridge()))
         stack.enter_context(patch("app.core.lifespan.run_startup_checks", new_callable=AsyncMock))
         stack.enter_context(patch("app.core.lifespan._validate_production_secrets"))
+        stack.enter_context(patch("app.core.lifespan._validate_rate_limit_storage"))
         stack.enter_context(patch("app.core.lifespan.seed_default_plans", new_callable=AsyncMock))
         stack.enter_context(
             patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
         )
-        stack.enter_context(patch("app.services.storage.get_storage_service", return_value=MagicMock(is_s3=True, health_check=AsyncMock(return_value={"status": "healthy", "endpoint": "http://garage:3900"}))))
+        stack.enter_context(
+            patch(
+                "app.services.storage.get_storage_service",
+                return_value=MagicMock(
+                    is_s3=True,
+                    start=AsyncMock(),
+                    health_check=AsyncMock(return_value={"status": "healthy", "endpoint": "http://garage:3900"}),
+                ),
+            )
+        )
         stack.enter_context(
             patch("app.services.gateway.service_registry.get_service_registry", return_value=MagicMock())
         )

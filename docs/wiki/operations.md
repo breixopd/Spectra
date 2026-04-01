@@ -36,7 +36,7 @@ Canonical operator-facing runbook index for day-2 work. Use this page for health
 | `scripts/ops/backup_restore.sh create` | Operator-driven backup outside the scheduler cadence | Mutating |
 | `scripts/ops/backup_restore.sh restore <backup_id>` | Restore the database from an S3 backup after explicit confirmation | Destructive and confirmation-required |
 | [Deployment Guide](deployment-guide.md) | Runtime storage requirements, bootstrap, and post-deploy verification | Reference |
-| [Deployment Guide](deployment-guide.md#rollback) | Version rollback mechanics and database downgrade path | Reference |
+| [Deployment](deployment.md#rollback) | Version rollback mechanics and database downgrade path | Reference |
 
 - Automated backups are created by the scheduler when `BACKUP_ENABLED=true`.
 - Backups are stored in `S3_BUCKET_BACKUPS`; there is no local filesystem fallback.
@@ -84,6 +84,6 @@ Some destructive commands prompt for confirmation, but not all disruptive action
 
 - For the full local script inventory, see [scripts/ops/README.md](../../scripts/ops/README.md).
 - For deployment and bootstrap steps, see [Deployment Guide](deployment-guide.md).
-- For CI/CD versioning and rollback mechanics, see [Deployment Guide](deployment-guide.md#ci-cd-pipeline).
+- For CI/CD versioning and rollback mechanics, see [Deployment](deployment.md).
 - For queue internals, see [Worker System](worker-system.md).
 - For the platform-wide testing strategy, see [Testing Strategy](testing-strategy.md).

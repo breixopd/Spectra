@@ -25,14 +25,20 @@ Spectra runs as microservices, all deployed via Docker:
 | **ai-svc** | `spectra-ai` | 5010 | LLM routing, embeddings, RAG | 1 |
 | **scheduler** | `spectra-scheduler` | 5011 | Background jobs, backups, metrics, sandbox watchdog | 1 |
 | **worker** | `spectra-worker` | 5012 | Tool execution (manages ephemeral sandbox containers) | 1–3 |
-| **db** | `spectra-db` | 5432 | PostgreSQL + pgvector | 1 |
-| **redis** | `spectra-redis` | 6379 | Rate-limiting backend | 1 |
+| **db** | `spectra-db` | 5432 | PostgreSQL + pgvector (persistent state, PostgreSQL-backed app cache, job queue, LISTEN/NOTIFY backbone) | 1 |
+| **redis** | `spectra-redis` | 6379 | Shared distributed rate-limiting backend | 1 |
 | **caddy** | `spectra-caddy` | 80/443 | Reverse proxy — TLS, security headers | 1 |
 | **garage** | `spectra-garage` | 3900 | Self-hosted S3-compatible object storage (required unless you point to external S3) | 0–1 |
 
 ### Inter-Service Communication
 
-All services communicate using PostgreSQL (state, cache, job queue, pub/sub), HTTP with `SERVICE_AUTH_SECRET`, and Redis for rate-limiting. See [Architecture](architecture.md#inter-service-communication) for details.
+All services communicate using:
+
+- **PostgreSQL** for persistent state, PostgreSQL-backed app cache, job queue (`SELECT ... FOR UPDATE SKIP LOCKED`), and pub/sub (`NOTIFY`/`LISTEN`)
+- **HTTP + shared secret** (`X-Service-Auth` header) for direct service-to-service API calls
+- **Redis** as the shared distributed rate-limiting backend
+
+`RATE_LIMIT_STORAGE=memory://` is acceptable for tests or intentionally ephemeral local runs, but it is not the normal deployment recommendation. Keep Redis so rate-limit counters stay shared across app replicas. Use Caddy rate limiting only if you intentionally want all rate limiting to live at the edge.
 
 ### Sandbox Containers
 
@@ -126,7 +132,7 @@ After the stack is up:
 
 - Run `./scripts/health_check.sh http://<host>/api/health` for the first operator smoke check.
 - Confirm backup visibility with `scripts/ops/backup_restore.sh list` once storage is configured.
-- Use the [Rollback](#rollback) section below if the rollout needs to be reversed.
+- Use [Deployment](deployment.md#rollback) for version rollback mechanics if the rollout needs to be reversed.
 
 ---
 
@@ -415,7 +421,62 @@ Portainer provides:
 
 ## Scaling
 
-For scaling app replicas, workers, database read replicas, and multi-server deployments, see the [Scaling Guide](scaling.md).
+### App Replicas
+
+```bash
+# Docker Compose:
+docker compose up -d --scale app=3
+
+# Docker Swarm:
+docker service scale spectra_app=3
+```
+
+PostgreSQL still carries persistent state, the PostgreSQL-backed app cache, the job queue, and WebSocket event flow via `LISTEN`/`NOTIFY`. Redis remains the shared distributed rate-limiting backend across app replicas.
+
+### Worker Replicas
+
+```bash
+# Docker Swarm:
+docker service scale spectra_worker=4
+```
+
+Each worker pulls jobs from the PostgreSQL queue using `SELECT ... FOR UPDATE SKIP LOCKED` — no coordination needed. Multiple workers can process jobs in parallel without conflicts.
+
+### Database Read Replicas
+
+For read-heavy deployments, add PostgreSQL streaming replicas:
+
+```bash
+# On the replica node, create a base backup from the primary:
+pg_basebackup -h <PRIMARY_HOST> -U replicator -D /var/lib/postgresql/data -Fp -Xs -R
+```
+
+Configure the app to use read replicas:
+
+```bash
+# In .env:
+DATABASE_REPLICA_URL=postgresql+asyncpg://spectra:pass@replica-host:5432/spectra
+```
+
+Or register replicas via the admin API:
+
+```bash
+curl -X POST /api/admin/servers \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "service_type": "db",
+    "name": "db-replica-1",
+    "url": "postgresql+asyncpg://spectra:pass@replica-host:5432/spectra",
+    "is_primary": false,
+    "weight": 1
+  }'
+```
+
+For managed databases with built-in replication (AWS RDS, Supabase, Neon), point `DATABASE_URL` at the managed instance:
+
+```bash
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/spectra?sslmode=require
+```
 
 ---
 
@@ -476,17 +537,17 @@ Mission data storage is configurable:
 | Method | Config | Best For |
 |--------|--------|----------|
 | **Local** (default) | `data/missions/` directory | Single-server deployments |
-| **S3-compatible** | `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Multi-server, durability |
+| **S3/MinIO** | `S3_ENDPOINT_URL`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | Multi-server, durability |
 
-S3-compatible storage support is **built-in** — set the environment variables and it works. Compatible with any S3 provider: AWS S3, Cloudflare R2, DigitalOcean Spaces, Garage, etc.
+S3/MinIO support is **built-in** — set the environment variables and it works. Compatible with any S3 provider: AWS S3, Cloudflare R2, DigitalOcean Spaces, MinIO, etc.
 
-For multi-server deployments, use S3-compatible storage so all nodes access the same data:
+For multi-server deployments, use S3/MinIO so all nodes access the same data:
 
 ```bash
-# Self-hosted Garage (included in docker-compose.yml):
-S3_ENDPOINT_URL=http://garage:3900
+# Self-hosted MinIO (included in docker-compose.yml):
+S3_ENDPOINT_URL=http://minio:9000
 S3_ACCESS_KEY=spectra
-S3_SECRET_KEY=your-garage-password
+S3_SECRET_KEY=your-minio-password
 
 # Cloud S3:
 S3_ENDPOINT_URL=https://s3.amazonaws.com

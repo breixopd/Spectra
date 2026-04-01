@@ -173,8 +173,11 @@ class TestPersistentTokenBlacklist:
         import app.core.security as sec
 
         sec._blacklist_loaded = False
-        sec._ensure_blacklist_loaded()
+        fake_loop = MagicMock()
+        with patch.object(sec.asyncio, "get_running_loop", return_value=fake_loop):
+            sec._ensure_blacklist_loaded()
         assert sec._blacklist_loaded is True
+        fake_loop.create_task.assert_called_once()
 
     def test_invalidate_all_user_tokens_persists(self):
         import app.core.security as sec

@@ -78,13 +78,14 @@ class TestMissionOwnerCheck:
         # Should not raise
         check_resource_owner(mission, admin, "mission")
 
-    async def test_mission_without_user_id_accessible(self):
+    async def test_mission_without_user_id_denied(self):
         from app.api.dependencies import check_resource_owner
 
         mission = MagicMock(user_id=None)
         user = _make_user("user-1")
-        # Legacy missions without user_id should not block
-        check_resource_owner(mission, user, "mission")
+        with pytest.raises(HTTPException) as exc_info:
+            check_resource_owner(mission, user, "mission")
+        assert exc_info.value.status_code == 403
 
 
 # ---------------------------------------------------------------------------
@@ -119,12 +120,14 @@ class TestTargetOwnerCheck:
         admin = _make_user("admin-1", is_superuser=True)
         check_resource_owner(target, admin, "target")
 
-    async def test_target_without_user_id_accessible(self):
+    async def test_target_without_user_id_denied(self):
         from app.api.dependencies import check_resource_owner
 
         target = MagicMock(user_id=None)
         user = _make_user("user-1")
-        check_resource_owner(target, user, "target")
+        with pytest.raises(HTTPException) as exc_info:
+            check_resource_owner(target, user, "target")
+        assert exc_info.value.status_code == 403
 
 
 # ---------------------------------------------------------------------------

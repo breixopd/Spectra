@@ -68,7 +68,7 @@ notify() {
     local status="$1" message="$2"
     if [ -n "$DEPLOY_WEBHOOK_URL" ]; then
         local payload
-        payload=$(printf '{"text":"[Spectra Deploy] %s: %s (version: %s)"}' "$status" "$message" "$VERSION")
+        payload=$(python3 -c "import json,sys; print(json.dumps({'text': '[Spectra Deploy] ' + sys.argv[1] + ': ' + sys.argv[2] + ' (version: ' + sys.argv[3] + ')'}))" "$status" "$message" "$VERSION")
         curl -sf --max-time 10 -X POST -H 'Content-Type: application/json' \
             -d "$payload" "$DEPLOY_WEBHOOK_URL" > /dev/null 2>&1 || true
     fi

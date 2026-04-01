@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 
 from pydantic import SecretStr
@@ -14,6 +15,30 @@ from app.core.database import async_session_maker
 from app.models.config import SystemConfig
 
 logger = logging.getLogger(__name__)
+
+_FERNET_TOKEN_PREFIX = "gAAAAA"
+
+
+def _encrypt_config_value(value: str) -> str:
+    """Encrypt a secret config value using the app encryption key."""
+    if not value or value.startswith(_FERNET_TOKEN_PREFIX):
+        return value
+    try:
+        from app.core.encryption import _get_default_secret, encrypt_field
+        return encrypt_field(value, _get_default_secret())
+    except Exception:
+        return value
+
+
+def _decrypt_config_value(value: str) -> str:
+    """Decrypt a secret config value; return raw value if decryption fails."""
+    if not value:
+        return value
+    try:
+        from app.core.encryption import _get_default_secret, decrypt_field
+        return decrypt_field(value, _get_default_secret())
+    except Exception:
+        return value  # legacy unencrypted value — return as-is
 
 
 def _as_bool(value: str | bool | None) -> bool:
@@ -95,11 +120,14 @@ async def get_runtime_setting_value(key: str) -> str | int | bool | None:
     try:
         async with async_session_maker() as session:
             result = await session.execute(
-                select(SystemConfig.value).where(SystemConfig.key == key)
+                select(SystemConfig).where(SystemConfig.key == key)
             )
-            row = result.scalar_one_or_none()
-            if row is None:
+            obj = result.scalar_one_or_none()
+            if inspect.isawaitable(obj):
+                obj = await obj
+            if obj is None:
                 return getattr(settings, key, None)
+            row = _decrypt_config_value(obj.value or "") if getattr(obj, "is_secret", False) else (obj.value or "")
             if field_type == "bool":
                 return _as_bool(row)
             if field_type == "int":
@@ -163,13 +191,14 @@ async def upsert_system_config_values(
     values: dict[str, tuple[str, bool]],
 ) -> None:
     for key, (value, is_secret) in values.items():
+        stored = _encrypt_config_value(value) if is_secret else value
         result = await session.execute(select(SystemConfig).where(SystemConfig.key == key))
         existing = result.scalar_one_or_none()
         if existing:
-            existing.value = value
+            existing.value = stored
             existing.is_secret = is_secret
         else:
-            session.add(SystemConfig(key=key, value=value, is_secret=is_secret))
+            session.add(SystemConfig(key=key, value=stored, is_secret=is_secret))
 
 
 async def reset_runtime_ai_caches(preload: bool = False) -> None:
@@ -213,7 +242,14 @@ async def hydrate_runtime_settings_from_db(
     assert session is not None
     result = await session.execute(select(SystemConfig))
     rows = result.scalars().all()
-    row_map = {row.key: row.value or "" for row in rows}
+    row_map = {
+        row.key: (
+            _decrypt_config_value(row.value or "")
+            if getattr(row, "is_secret", False)
+            else (row.value or "")
+        )
+        for row in rows
+    }
 
     _apply_general_runtime_settings(row_map)
 

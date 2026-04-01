@@ -257,7 +257,7 @@ class TestDatabasePoolValidation:
         from app.core.config import Settings
 
         s = Settings(_env_file=None)
-        assert s.PLATFORM_DOMAIN == ""
+        assert s.PLATFORM_DOMAIN == "localhost"
         assert s.PLATFORM_EXPOSED is False
 
 

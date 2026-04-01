@@ -142,7 +142,8 @@ class UsageTracker:
                 from sqlalchemy import update
 
                 stmt = update(UsageRecord).where(
-                    UsageRecord.period_type == "daily"
+                    UsageRecord.period_type == "daily",
+                    UsageRecord.period_start == _period_start("daily"),
                 ).values(
                     api_requests=0,
                     missions_started=0,

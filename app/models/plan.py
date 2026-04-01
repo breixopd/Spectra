@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -90,6 +90,9 @@ class UsageRecord(Base):
     """Tracks API/resource usage per user per period."""
 
     __tablename__ = "usage_records"
+    __table_args__ = (
+        Index("ix_usage_records_user_period", "user_id", "period_start", "period_type"),
+    )
 
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)

@@ -316,7 +316,7 @@ class TestShellKeepalive:
             mock_session_maker.return_value.__aenter__ = AsyncMock(return_value=mock_db)
             mock_session_maker.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            await shell_websocket(mock_ws, "sess-1", token="valid")
+            await shell_websocket(mock_ws, "123e4567-e89b-12d3-a456-426614174000", token="valid")
 
             # A keepalive task was created
             assert mock_ct.called

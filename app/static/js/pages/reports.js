@@ -76,10 +76,10 @@ function renderReports() {
                 ${r.totalFindings === 0 ? '<span class="text-xs text-slate-600">No findings</span>' : ''}
             </div>
             <div class="flex items-center gap-2 mt-auto pt-2 border-t border-white/5">
-                <button onclick="viewReport('${r.id}')" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors text-center"><i data-lucide="eye" class="w-3.5 h-3.5 inline-block mr-1 text-violet-400"></i>View</button>
-                <button onclick="downloadReportHTML('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Download HTML"><i data-lucide="file-code" class="w-3.5 h-3.5 inline-block text-blue-400"></i></button>
-                <button onclick="downloadReportPDF('${r.id}')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Print / PDF"><i data-lucide="file-text" class="w-3.5 h-3.5 inline-block text-rose-400"></i></button>
-                <button onclick="showDeleteMissionModal('${r.id}', '${escapeHtml(r.target || 'Unknown')}')" class="px-3 py-2 bg-slate-800 hover:bg-rose-900/50 rounded text-xs text-white transition-colors" title="Delete Mission"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block text-rose-400"></i></button>
+                <button type="button" data-report-action="view" data-report-id="${escapeHtml(String(r.id || ''))}" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors text-center"><i data-lucide="eye" class="w-3.5 h-3.5 inline-block mr-1 text-violet-400"></i>View</button>
+                <button type="button" data-report-action="html" data-report-id="${escapeHtml(String(r.id || ''))}" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Download HTML"><i data-lucide="file-code" class="w-3.5 h-3.5 inline-block text-blue-400"></i></button>
+                <button type="button" data-report-action="pdf" data-report-id="${escapeHtml(String(r.id || ''))}" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs text-white transition-colors" title="Print / PDF"><i data-lucide="file-text" class="w-3.5 h-3.5 inline-block text-rose-400"></i></button>
+                <button type="button" data-report-action="delete" data-report-id="${escapeHtml(String(r.id || ''))}" data-report-target="${escapeHtml(String(r.target || 'Unknown'))}" class="px-3 py-2 bg-slate-800 hover:bg-rose-900/50 rounded text-xs text-white transition-colors" title="Delete Mission"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block text-rose-400"></i></button>
             </div>
         </div>`;
     }).join('');
@@ -187,3 +187,26 @@ window.showDeleteMissionModal = showDeleteMissionModal;
 window.handleDeleteMissionModalCancel = hideDeleteMissionModal;
 window.handleDeleteMissionModalConfirm = confirmDeleteMission;
 window.goToPage = goToPage;
+
+
+document.getElementById('reports-grid')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-report-action][data-report-id]');
+    if (!button) return;
+    const reportId = button.dataset.reportId;
+    switch (button.dataset.reportAction) {
+        case 'view':
+            viewReport(reportId);
+            break;
+        case 'html':
+            downloadReportHTML(reportId);
+            break;
+        case 'pdf':
+            downloadReportPDF(reportId);
+            break;
+        case 'delete':
+            showDeleteMissionModal(reportId, button.dataset.reportTarget || 'Unknown');
+            break;
+        default:
+            break;
+    }
+});

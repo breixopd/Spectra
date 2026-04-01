@@ -134,13 +134,8 @@ class TestUsageTrackerRecord:
         mock_record.assert_awaited_once_with("u-1", "api_requests", 1)
 
     async def test_record_increments_existing(self):
-        existing_record = MagicMock()
-        existing_record.api_requests = 5
-
         mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_record
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.execute = AsyncMock()
         mock_session.commit = AsyncMock()
         mock_session.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session.__aexit__ = AsyncMock(return_value=False)
@@ -157,7 +152,8 @@ class TestUsageTrackerRecord:
             tracker = UsageTracker()
             await tracker.record("u-1", "api_requests", 3)
 
-        assert existing_record.api_requests == 8
+        mock_session.execute.assert_awaited_once()
+        mock_session.commit.assert_awaited_once()
 
     async def test_record_unknown_metric_raises(self):
         from app.services.billing.usage_tracker import UsageTracker

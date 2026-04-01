@@ -45,6 +45,7 @@ class Target(Base):
         SQLEnum(TargetStatus),
         default=TargetStatus.PENDING,
         nullable=False,
+        index=True,
     )
     os: Mapped[str | None] = mapped_column(String(100), nullable=True)
 

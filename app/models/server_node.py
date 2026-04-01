@@ -36,7 +36,7 @@ class ServerNode(Base):
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     # SSH deployment fields
-    ssh_user: Mapped[str] = mapped_column(String(100), default="root", server_default="root", nullable=False)
+    ssh_user: Mapped[str] = mapped_column(String(100), default="ubuntu", server_default="ubuntu", nullable=False)
     ssh_port: Mapped[int] = mapped_column(Integer, default=22, server_default="22", nullable=False)
     ssh_key_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     deployed_services: Mapped[dict | None] = mapped_column("deployed_services", JSON, nullable=True)

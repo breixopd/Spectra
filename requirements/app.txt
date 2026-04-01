@@ -17,9 +17,9 @@ alembic==1.18.4
 # AI / LLM
 openai==2.26.0
 # litellm removed — replaced by TensorZero
-tensorzero>=2025.3.0
+tensorzero==2025.3.0
 httpx==0.28.1
-fastembed>=0.4.0
+fastembed==0.4.0
 
 # Web & Templates
 jinja2==3.1.6
@@ -50,14 +50,14 @@ orjson==3.11.7
 json-repair==0.58.5
 
 # S3/MinIO
-aioboto3>=12.0.0
+aioboto3==12.0.0
 
 # Docker SDK (sandbox container management)
-docker>=7.0.0
+docker==7.0.0
 
 # PDF report generation
-xhtml2pdf>=0.2.16
+xhtml2pdf==0.2.16
 blinker==1.9.0
 
 # Email (SMTP provider)
-aiosmtplib>=3.0.0
+aiosmtplib==3.0.0
