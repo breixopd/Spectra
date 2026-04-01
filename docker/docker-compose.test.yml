@@ -42,7 +42,7 @@ services:
     ports:
       - "19000:3900"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3903/health || exit 1"]
+      test: ["CMD", "/garage", "status"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -59,8 +59,8 @@ services:
       # Override database for container network
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
-      - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_garage
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
@@ -96,8 +96,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
-      - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_garage
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
@@ -154,8 +154,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
-      - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_garage
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
     volumes:
       - ../plugins:/app/plugins
       - ../app:/app/app:ro
@@ -205,8 +205,8 @@ services:
       # Override for test environment
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
-      - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_garage
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TEST_TARGET_IP=172.21.0.5
       - TEST_TARGET_URL=http://172.21.0.5
       - METASPLOITABLE_AVAILABLE=true
@@ -251,8 +251,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
-      - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_garage
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - RATE_LIMIT_STORAGE=redis://redis:6379/0
       - LOAD_TEST_APP_URL=http://app:5000
       - LOAD_TEST_APP_REPLICA_URL=http://app-replica:5000
@@ -309,8 +309,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
-      - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_garage
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
@@ -344,8 +344,8 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
-      - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_garage
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
@@ -473,3 +473,7 @@ networks:
       config:
         - subnet: 172.21.0.0/24
           gateway: 172.21.0.1
+
+volumes:
+  garage_meta:
+  garage_data:

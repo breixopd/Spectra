@@ -54,8 +54,25 @@ echo ""
 export OPS_DB_NAME="spectra_test"
 export OPS_DB_USER="spectra"
 export OPS_GARAGE_ADMIN_URL="http://127.0.0.1:3903"
-export OPS_GARAGE_ACCESS_KEY="spectra"
-export OPS_GARAGE_SECRET_KEY="spectra_test_garage"
+export REDACTED_SECRET_ace410934cec
+export OREDACTED_SECRET_9044371ec359
+export GARAGE_ACCESS_KEY="${OPS_GARAGE_ACCESS_KEY}"
+export GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY}"
+
+bootstrap_garage() {
+    local garage_container=""
+
+    garage_container="$($COMPOSE ps -q garage)"
+    if [ -z "$garage_container" ]; then
+        echo "ERROR: could not resolve Garage container id" >&2
+        exit 1
+    fi
+
+    GARAGE_CONTAINER="$garage_container" \
+    GARAGE_ACCESS_KEY="$OPS_GARAGE_ACCESS_KEY" \
+    GARAGE_SECRET_KEY="$OPS_GARAGE_SECRET_KEY" \
+    bash ./docker/garage-init.sh
+}
 
 cleanup() {
     echo ""
@@ -70,23 +87,27 @@ trap cleanup EXIT
 # ── Step 1: Start all services (including targets via profile) ─
 echo "Starting Spectra services and vulnerable targets..."
 if [ "$TARGETS_ONLY" = true ]; then
-    $COMPOSE up -d --build db garage app tools vuln-web vuln-ssh vuln-network
+    $COMPOSE up -d --build db redis garage vuln-web vuln-ssh vuln-network
 else
-    $COMPOSE up -d --build db garage tools metasploitable dvwa app vuln-web vuln-ssh vuln-network
+    $COMPOSE up -d --build db redis garage metasploitable dvwa vuln-web vuln-ssh vuln-network
 fi
+
+bootstrap_garage
+
+$COMPOSE up -d --build app app-replica caddy tools
 
 # ── Step 2: Wait for health checks ──────────────────────────
 echo "Waiting for app to be ready..."
 for i in $(seq 1 90); do
-    if curl -sf http://localhost:5000/api/health > /dev/null 2>&1; then
+    if curl -sf http://localhost:15000/api/health > /dev/null 2>&1; then
         echo "App is ready (attempt $i)!"
         break
     fi
     sleep 2
 done
 
-curl -sf http://localhost:5000/api/health > /dev/null || {
-    echo "ERROR: test app did not become ready at http://localhost:5000"
+curl -sf http://localhost:15000/api/health > /dev/null || {
+    echo "ERROR: test app did not become ready at http://localhost:15000"
     $COMPOSE logs --tail=40 app
     exit 1
 }
@@ -120,15 +141,15 @@ fi
 
 OPS_DB_CONTAINER="$($COMPOSE ps -q db)"
 OPS_APP_CONTAINER="$($COMPOSE ps -q app)"
-OPS_MINIO_CONTAINER="$($COMPOSE ps -q minio)"
-export OPS_DB_CONTAINER OPS_APP_CONTAINER OPS_MINIO_CONTAINER
+OPS_GARAGE_CONTAINER="$($COMPOSE ps -q garage)"
+export OPS_DB_CONTAINER OPS_APP_CONTAINER OPS_GARAGE_CONTAINER
 
 echo ""
 echo "Preparing S3 buckets for read-only ops smoke tests..."
-MINIO_CONTAINER="${OPS_MINIO_CONTAINER}" \
-MINIO_URL="${OPS_MINIO_URL}" \
-MINIO_ROOT_USER="${OPS_MINIO_ROOT_USER}" \
-MINIO_ROOT_PASSWORD="${OPS_MINIO_ROOT_PASSWORD}" \
+GARAGE_CONTAINER="${OPS_GARAGE_CONTAINER}" \
+GARAGE_ADMIN_URL="${OPS_GARAGE_ADMIN_URL}" \
+GARAGE_ACCESS_KEY="${OPS_GARAGE_ACCESS_KEY}" \
+GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY}" \
 ./scripts/ops/s3_management.sh create-buckets >/dev/null
 
 echo "Running live ops smoke tests..."

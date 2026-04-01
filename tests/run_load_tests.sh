@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "${SCRIPT_DIR}")"
 COMPOSE_FILE="${PROJECT_DIR}/docker/docker-compose.test.yml"
 KEEP_STACK="${KEEP_STACK:-0}"
+export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
+export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
 
 usage() {
     echo "Usage: ${0} [load|performance|soak|all] [-- <extra pytest args>]"
@@ -53,6 +55,21 @@ cleanup() {
     docker compose -f "${COMPOSE_FILE}" down -v --remove-orphans >/dev/null 2>&1 || true
 }
 
+bootstrap_garage() {
+    local garage_container=""
+
+    garage_container="$(docker compose -f "${COMPOSE_FILE}" ps -q garage)"
+    if [[ -z "${garage_container}" ]]; then
+        echo "ERROR: could not resolve Garage container id" >&2
+        return 1
+    fi
+
+    GARAGE_CONTAINER="${garage_container}" \
+    GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY}" \
+    GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY}" \
+    bash "${PROJECT_DIR}/docker/garage-init.sh"
+}
+
 MODE="${1:-all}"
 if [[ "${MODE}" == "-h" || "${MODE}" == "--help" ]]; then
     usage
@@ -92,7 +109,11 @@ esac
 trap cleanup EXIT
 
 echo "Starting the Docker test stack for ${MODE} validation"
-docker compose -f "${COMPOSE_FILE}" up -d --build db garage redis app app-replica caddy tools >/dev/null
+docker compose -f "${COMPOSE_FILE}" up -d --build db garage redis >/dev/null
+
+bootstrap_garage
+
+docker compose -f "${COMPOSE_FILE}" up -d --build app app-replica caddy tools >/dev/null
 
 wait_for_service_health app 60
 wait_for_service_health app-replica 60
