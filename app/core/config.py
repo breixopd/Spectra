@@ -132,6 +132,13 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
+    @field_validator("CORS_ORIGINS")
+    @classmethod
+    def validate_cors_origins(cls, v: list[str]) -> list[str]:
+        if any(origin.strip() == "*" for origin in v):
+            raise ValueError("CORS_ORIGINS cannot contain '*' entries")
+        return v
+
     # --- JWT Authentication ---
     JWT_SECRET_KEY: SecretStr = SecretStr("")  # Must be set via env var or generated
     JWT_ALGORITHM: str = "HS256"

@@ -3,11 +3,22 @@ let currentData = {};
 // Tab switching
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+            b.tabIndex = -1;
+        });
+        document.querySelectorAll('.tab-content').forEach(c => {
+            c.classList.remove('active');
+            c.hidden = true;
+        });
+
         btn.classList.add('active');
-        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        btn.tabIndex = 0;
+        const panel = document.getElementById(`tab-${btn.dataset.tab}`);
+        panel.classList.add('active');
+        panel.hidden = false;
     });
 });
 

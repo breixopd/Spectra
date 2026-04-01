@@ -14,7 +14,7 @@ from io import StringIO
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import Response as FastAPIResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_resource_owner, get_current_active_user
@@ -45,20 +45,34 @@ class FindingCreate(BaseModel):
 
     target_id: str = Field(..., description="ID of the target")
     title: str = Field(..., max_length=500)
-    description: str | None = None
+    description: str | None = Field(None, max_length=50000)
     severity: Severity = Severity.INFO
     status: FindingStatus = FindingStatus.POTENTIAL
     cvss_score: float | None = Field(None, ge=0.0, le=10.0)
     cve_id: str | None = Field(None, max_length=20)
     tool_source: str = Field(..., max_length=100)
-    evidence: dict | None = None
+    evidence: dict[str, str] | None = None
+
+    @field_validator("evidence")
+    @classmethod
+    def validate_evidence(cls, value: dict[str, str] | None) -> dict[str, str] | None:
+        if value is None:
+            return None
+        if len(value) > 25:
+            raise ValueError("Evidence may contain at most 25 entries")
+        for key, item in value.items():
+            if len(key) > 100:
+                raise ValueError("Evidence keys must be 100 characters or fewer")
+            if len(item) > 5000:
+                raise ValueError("Evidence values must be 5000 characters or fewer")
+        return value
 
 
 class FindingUpdate(BaseModel):
     """Schema for updating a finding."""
 
     title: str | None = Field(None, max_length=500)
-    description: str | None = None
+    description: str | None = Field(None, max_length=50000)
     severity: Severity | None = None
     status: FindingStatus | None = None
     cvss_score: float | None = Field(None, ge=0.0, le=10.0)
@@ -71,7 +85,7 @@ class FindingDetailResponse(FindingResponse):
     target_id: str
     cvss_score: float | None = None
     cve_id: str | None = None
-    evidence: dict | None = None
+    evidence: dict[str, str] | None = None
 
 
 _FINDING_RESPONSE = FindingDetailResponse

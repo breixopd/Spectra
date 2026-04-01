@@ -19,7 +19,11 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+    class StrEnum(str, __import__("enum").Enum):
+        pass
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field

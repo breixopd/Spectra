@@ -1,5 +1,7 @@
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 
 from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, TypeDecorator, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID

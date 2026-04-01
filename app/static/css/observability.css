@@ -1,3 +1,5 @@
+@import url('/static/css/dark-theme-tokens.css');
+
 /* observability.css — Observability page styles extracted from observability.html */
 
 .stats-grid {
@@ -19,7 +21,7 @@
 .stat-value {
     font-size: 2rem;
     font-weight: 700;
-    color: #8b5cf6;
+    color: var(--violet);
     font-family: 'JetBrains Mono', monospace;
 }
 
@@ -33,7 +35,7 @@
 
 .stat-label {
     font-size: 0.875rem;
-    color: #94a3b8;
+    color: var(--text-muted);
     margin-top: 0.25rem;
 }
 
@@ -102,7 +104,7 @@
     display: flex;
     gap: 1rem;
     font-size: 0.875rem;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .traces-table {
@@ -120,7 +122,7 @@
 .traces-table th {
     background: rgba(15, 23, 42, 0.6);
     font-weight: 600;
-    color: #94a3b8;
+    color: var(--text-muted);
     font-size: 0.875rem;
 }
 
@@ -205,7 +207,7 @@
     gap: 1.5rem;
     margin-top: 0.5rem;
     font-size: 0.875rem;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .metrics-chart {
@@ -217,7 +219,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .latency-bar {
@@ -248,14 +250,14 @@
 }
 
 .event-time {
-    color: #94a3b8;
+    color: var(--text-muted);
     font-family: 'JetBrains Mono', monospace;
     white-space: nowrap;
 }
 
 .event-type {
     font-weight: 600;
-    color: #8b5cf6;
+    color: var(--violet);
 }
 
 .refresh-btn {
@@ -297,7 +299,7 @@
     border: none;
     border-bottom: 2px solid transparent;
     cursor: pointer;
-    color: #94a3b8;
+    color: var(--text-muted);
     font-weight: 500;
     transition: all 0.2s;
 }
@@ -307,7 +309,7 @@
 }
 
 .tab-btn.active {
-    color: #8b5cf6;
+    color: var(--violet);
     border-bottom-color: #8b5cf6;
 }
 
@@ -317,4 +319,13 @@
 
 .tab-content.active {
     display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }

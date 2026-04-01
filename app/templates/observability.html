@@ -7,9 +7,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header animate-fade-in-up">
-    <h1>Observability</h1>
-    <p class="page-description">Monitor system health, traces, and metrics</p>
+<div class="mb-6 animate-fade-in-up">
+    <h1 class="text-2xl font-semibold text-white tracking-tight">Observability</h1>
+    <p class="text-slate-400 text-sm mt-1">Monitor system health, traces, and metrics</p>
 </div>
 
 <!-- Overview Stats -->
@@ -34,18 +34,18 @@
 
 <!-- Tabs -->
 <div class="tab-container">
-    <div class="tab-buttons">
-        <button class="tab-btn active" data-tab="trends">Trends</button>
-        <button class="tab-btn" data-tab="services">Services</button>
-        <button class="tab-btn" data-tab="traces">Traces</button>
-        <button class="tab-btn" data-tab="circuit-breakers">Circuit Breakers</button>
-        <button class="tab-btn" data-tab="events">Events</button>
-        <button class="tab-btn" data-tab="cache">Cache</button>
-        <button class="tab-btn" data-tab="saas">SaaS Metrics</button>
+    <div class="tab-buttons" role="tablist" aria-label="Observability tabs">
+        <button id="obs-tab-trends" class="tab-btn active" data-tab="trends" role="tab" aria-selected="true" aria-controls="tab-trends">Trends</button>
+        <button id="obs-tab-services" class="tab-btn" data-tab="services" role="tab" aria-selected="false" aria-controls="tab-services">Services</button>
+        <button id="obs-tab-traces" class="tab-btn" data-tab="traces" role="tab" aria-selected="false" aria-controls="tab-traces">Traces</button>
+        <button id="obs-tab-circuit-breakers" class="tab-btn" data-tab="circuit-breakers" role="tab" aria-selected="false" aria-controls="tab-circuit-breakers">Circuit Breakers</button>
+        <button id="obs-tab-events" class="tab-btn" data-tab="events" role="tab" aria-selected="false" aria-controls="tab-events">Events</button>
+        <button id="obs-tab-cache" class="tab-btn" data-tab="cache" role="tab" aria-selected="false" aria-controls="tab-cache">Cache</button>
+        <button id="obs-tab-saas" class="tab-btn" data-tab="saas" role="tab" aria-selected="false" aria-controls="tab-saas">SaaS Metrics</button>
     </div>
     
     <!-- Trends Tab -->
-    <div class="tab-content active" id="tab-trends">
+    <div class="tab-content active" id="tab-trends" role="tabpanel" aria-labelledby="obs-tab-trends">
         <div class="section-header">
             <h2 class="section-title">Metric Trends</h2>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -61,29 +61,29 @@
                 </button>
             </div>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <div class="card" style="padding: 1rem;">
-                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #e2e8f0;">Requests (total)</div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="card p-4">
+                <div class="font-semibold mb-2 text-slate-200">Requests (total)</div>
                 <canvas id="chart-requests" height="180"></canvas>
             </div>
-            <div class="card" style="padding: 1rem;">
-                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #e2e8f0;">Error Rate (%)</div>
+            <div class="card p-4">
+                <div class="font-semibold mb-2 text-slate-200">Error Rate (%)</div>
                 <canvas id="chart-errors" height="180"></canvas>
             </div>
-            <div class="card" style="padding: 1rem;">
-                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #e2e8f0;">Avg Latency (ms)</div>
+            <div class="card p-4">
+                <div class="font-semibold mb-2 text-slate-200">Avg Latency (ms)</div>
                 <canvas id="chart-latency" height="180"></canvas>
             </div>
-            <div class="card" style="padding: 1rem;">
-                <div style="font-weight: 600; margin-bottom: 0.5rem; color: #e2e8f0;">Latency Percentiles (ms)</div>
+            <div class="card p-4">
+                <div class="font-semibold mb-2 text-slate-200">Latency Percentiles (ms)</div>
                 <canvas id="chart-percentiles" height="180"></canvas>
             </div>
         </div>
-        <p style="color: #64748b; font-size: 0.75rem; margin-top: 0.75rem;">Snapshots every 60s. Data kept in-memory for up to 24 hours.</p>
+        <p class="text-slate-500 text-xs mt-3">Snapshots every 60s. Data kept in-memory for up to 24 hours.</p>
     </div>
 
     <!-- Services Tab -->
-    <div class="tab-content" id="tab-services">
+    <div class="tab-content" id="tab-services" role="tabpanel" aria-labelledby="obs-tab-services" hidden>
         <div class="section-header">
             <h2 class="section-title">Service Health</h2>
             <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Services">
@@ -97,7 +97,7 @@
     </div>
     
     <!-- Traces Tab -->
-    <div class="tab-content" id="tab-traces">
+    <div class="tab-content" id="tab-traces" role="tabpanel" aria-labelledby="obs-tab-traces" hidden>
         <div class="section-header">
             <h2 class="section-title">Recent Traces</h2>
             <div style="display: flex; gap: 0.5rem;">
@@ -130,7 +130,7 @@
     </div>
     
     <!-- Circuit Breakers Tab -->
-    <div class="tab-content" id="tab-circuit-breakers">
+    <div class="tab-content" id="tab-circuit-breakers" role="tabpanel" aria-labelledby="obs-tab-circuit-breakers" hidden>
         <div class="section-header">
             <h2 class="section-title">Circuit Breakers</h2>
             <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Circuit Breakers">
@@ -144,7 +144,7 @@
     </div>
     
     <!-- Events Tab -->
-    <div class="tab-content" id="tab-events">
+    <div class="tab-content" id="tab-events" role="tabpanel" aria-labelledby="obs-tab-events" hidden>
         <div class="section-header">
             <h2 class="section-title">Recent Events</h2>
             <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Events">
@@ -158,7 +158,7 @@
     </div>
     
     <!-- Cache Tab -->
-    <div class="tab-content" id="tab-cache">
+    <div class="tab-content" id="tab-cache" role="tabpanel" aria-labelledby="obs-tab-cache" hidden>
         <div class="section-header">
             <h2 class="section-title">Cache Statistics</h2>
             <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Cache">
@@ -172,7 +172,7 @@
     </div>
 
     <!-- SaaS Metrics Tab -->
-    <div class="tab-content" id="tab-saas">
+    <div class="tab-content" id="tab-saas" role="tabpanel" aria-labelledby="obs-tab-saas" hidden>
         <div class="section-header">
             <h2 class="section-title">SaaS KPI Metrics</h2>
             <button class="refresh-btn" onclick="refreshSaasMetrics()" aria-label="Refresh SaaS Metrics">

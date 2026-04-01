@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#8b5cf6">
     <meta name="robots" content="noindex, nofollow">
     <meta name="csrf-token" content="{{ request.cookies.get('csrf_token', '') }}">
-    <meta property="og:image" content="/static/og-image.svg">
+    <meta property="og:image" content="/static/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:type" content="website">
@@ -22,252 +22,85 @@
     
     <link rel="stylesheet" href="/static/css/base.css">
     {% block extra_css %}{% endblock %}
-    <!-- Centralized API client (must load before inline auth script) -->
+    <!-- Centralized API client (must load before confirm bootstrap) -->
     <script src="/static/js/api.js"></script>
-    <!-- Auth Check -->
-    <script nonce="{{ request.state.csp_nonce }}">
-        // Public paths constant (shared with api.js)
-        window.PUBLIC_PATHS = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy', '/legal/cookies', '/security', '/changelog'];
-
-        // Check if user is authenticated
-        if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
-            spectraApi.get('/api/v1/auth/me')
-                .then(result => {
-                    if (result.error === 'Unauthorized') {
-                        // Check if setup is needed
-                        spectraApi.get('/api/v1/auth/setup/status')
-                            .then(r2 => {
-                                if (r2.data && !r2.data.is_setup) {
-                                    window.location.href = '/setup';
-                                } else {
-                                    window.location.href = '/login';
-                                }
-                            })
-                            .catch(() => window.location.href = '/login');
-                    }
-                })
-                .catch(() => {});
-        }
-
-        // _spectraToast stub — real implementation loaded from toast.js module
-        function _spectraToast(msg, type) {
-            // Queue until module loads
-            (window._toastQueue = window._toastQueue || []).push({ msg, type });
-        }
-
-        function _spectraConfirm(msg, onConfirm, opts) {
-            opts = opts || {};
-            var modal = document.getElementById('spectra-gc-modal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'spectra-gc-modal';
-                modal.className = 'hidden fixed inset-0 z-50 flex items-center justify-center p-4';
-                modal.setAttribute('role', 'dialog');
-                modal.innerHTML = '<div class="fixed inset-0 bg-black/60 backdrop-filter backdrop-blur-sm" data-gc-dismiss></div>'
-                    + '<div class="relative w-full max-w-md glass-panel rounded-2xl shadow-2xl">'
-                    + '<div class="p-6">'
-                    + '<h3 id="spectra-gc-title" class="text-lg font-semibold text-white mb-2"></h3>'
-                    + '<p id="spectra-gc-msg" class="text-sm text-slate-400 mb-4"></p>'
-                    + '<div id="spectra-gc-input-area" class="hidden mb-4"></div>'
-                    + '<div class="flex gap-3 justify-end">'
-                    + '<button id="spectra-gc-cancel" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors">Cancel</button>'
-                    + '<button id="spectra-gc-ok" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-semibold transition-colors">Confirm</button>'
-                    + '</div></div></div>';
-                document.body.appendChild(modal);
-            }
-            document.getElementById('spectra-gc-title').textContent = opts.title || 'Confirm';
-            document.getElementById('spectra-gc-msg').textContent = msg;
-            var inputArea = document.getElementById('spectra-gc-input-area');
-            inputArea.classList.add('hidden');
-            inputArea.innerHTML = '';
-            var okBtn = document.getElementById('spectra-gc-ok');
-            var cancelBtn = document.getElementById('spectra-gc-cancel');
-            okBtn.textContent = opts.confirmLabel || 'Confirm';
-            cancelBtn.style.display = opts.hideCancel ? 'none' : '';
-            var newOk = okBtn.cloneNode(true);
-            okBtn.parentNode.replaceChild(newOk, okBtn);
-            var newCancel = cancelBtn.cloneNode(true);
-            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
-            function dismiss() { modal.classList.add('hidden'); }
-            modal.querySelector('[data-gc-dismiss]').onclick = dismiss;
-            newCancel.addEventListener('click', dismiss);
-            newOk.addEventListener('click', function() { dismiss(); if (onConfirm) onConfirm(); });
-            modal.classList.remove('hidden');
-        }
-
-        function _spectraPrompt(msg, onSubmit, opts) {
-            opts = opts || {};
-            _spectraConfirm(msg, null, opts);
-            var inputArea = document.getElementById('spectra-gc-input-area');
-            inputArea.classList.remove('hidden');
-            inputArea.textContent = ''; // Clear safely
-            var inp = document.createElement('input');
-            inp.id = 'spectra-gc-input';
-            inp.type = opts.inputType || 'text';
-            inp.className = 'w-full bg-black/30 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-violet-500 focus:outline-none';
-            inp.placeholder = opts.placeholder || '';
-            inp.autocomplete = 'off';
-            inputArea.appendChild(inp);
-            var okBtn = document.getElementById('spectra-gc-ok');
-            var newOk = okBtn.cloneNode(true);
-            okBtn.parentNode.replaceChild(newOk, okBtn);
-            newOk.addEventListener('click', function() {
-                var val = inp.value;
-                if (val) { document.getElementById('spectra-gc-modal').classList.add('hidden'); onSubmit(val); }
-            });
-            inp.focus();
-        }
-
-        // Plan-gate nav items (deferred to DOMContentLoaded — requires spectraApi + DOM)
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
-                spectraApi.get('/api/v1/auth/me')
-                    .then(({ data: user }) => {
-                        if (!user || !user.plan) return;
-                        const features = user.plan.features || {};
-                        document.querySelectorAll('[data-feature]').forEach(el => {
-                            const feat = el.dataset.feature;
-                            const allowed = features[feat] === true || features[feat] === undefined;
-                            if (!allowed) {
-                                el.classList.add('pointer-events-none', 'opacity-40');
-                                el.removeAttribute('href');
-                                el.setAttribute('title', `Requires a plan with ${feat.replace(/_/g, ' ')} — available on Professional and Enterprise plans`);
-                                el.style.cursor = 'not-allowed';
-                            }
-                        });
-                    })
-                    .catch(() => {});
-            }
-        });
-    </script>
+    <script src="/static/js/confirm.js" defer nonce="{{ request.state.csp_nonce }}"></script>
 </head>
 <body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-y-auto md:overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
-
-    <!-- Skip to content for accessibility -->
-    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg focus:shadow-lg">Skip to main content</a>
-
-    <!-- Global Status Bar (shown when setup in progress) -->
-    <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-900/90 to-slate-900/90 backdrop-blur-sm border-b border-violet-500/30">
-        <div class="flex items-center justify-between px-4 py-2">
-            <div class="flex items-center gap-3">
-                <div class="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></div>
-                <span id="status-message" class="text-sm text-violet-200 font-medium">System initializing...</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <div id="status-details" class="text-xs text-slate-400"></div>
-                <div id="status-progress" class="hidden">
-                    <div class="w-32 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                        <div id="progress-bar" class="h-full bg-violet-500 rounded-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {% set is_public_page = is_public_page|default(request.path in ['/login', '/setup', '/register', '/forgot-password', '/reset-password', '/verify-email', '/status', '/security', '/changelog', '/legal/terms', '/legal/privacy', '/legal/cookies']) %}
-    <div class="flex h-full relative z-10 {% if is_public_page %}items-center justify-center{% else %}flex-col md:flex-row{% endif %}">
-
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-violet-600 focus:text-white">Skip to content</a>
+    <div class="app-layout">
         {% if not is_public_page %}
-        <!-- Mobile Header -->
-        <header class="mobile-header" role="banner">
-            <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle menu">
-                <i data-lucide="menu" class="w-5 h-5"></i>
-            </button>
-            <div class="flex items-center">
-                <span class="text-violet-400 mr-2">{% include 'partials/shield_svg.html' %}</span>
-                <span class="font-mono font-bold text-sm tracking-wider text-white">{{ app_name | upper }}</span>
-            </div>
-            <div class="w-10"></div>
-        </header>
-
-        <!-- Sidebar Overlay (mobile) -->
-        <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
-        
-        <!-- Sidebar -->
-        <aside class="sidebar w-64 glass-sidebar flex flex-col justify-between h-full shrink-0" id="sidebar" aria-label="Main navigation sidebar">
-            <div>
-                <div class="h-16 flex items-center px-6 border-b border-white/5">
-                    <span class="text-violet-400 mr-3">{% include 'partials/shield_svg.html' %}</span>
-                    <span class="font-mono font-bold text-lg tracking-wider text-white">{{ app_name | upper }}</span>
+        <aside id="sidebar" class="sidebar">
+            <div class="p-4 h-full flex flex-col">
+                <!-- Logo -->
+                <div class="flex items-center gap-3 px-3 mb-8">
+                    <a href="/dashboard" class="flex items-center gap-3 text-xl font-bold text-white hover:text-violet-400 transition-colors">
+                        {% include 'partials/shield_svg.html' %}
+                        <span>Spectra</span>
+                    </a>
                 </div>
-                <nav class="p-4 space-y-1" role="navigation" aria-label="Main navigation">
-                    <a href="/dashboard" data-tooltip="Mission control & live assessment" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/dashboard' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="gauge" class="w-5 h-5 mr-3 {% if request.path == '/dashboard' %}text-violet-400{% else %}group-hover:text-violet-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Dashboard</span>
+
+                <!-- Navigation -->
+                <nav class="flex flex-col gap-2">
+                    <a href="/dashboard" data-tooltip="Main dashboard overview" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/dashboard' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Dashboard</span>
                     </a>
-                    <a href="/history" data-tooltip="Past assessments & results" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/history' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="history" class="w-5 h-5 mr-3 {% if request.path == '/history' %}text-blue-400{% else %}group-hover:text-blue-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">History</span>
+                    <a href="/history" data-tooltip="Past assessments &amp; results" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/history' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="history" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">History</span>
                     </a>
-                    <a href="/targets" data-tooltip="Manage assessment targets" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/targets' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="crosshair" class="w-5 h-5 mr-3 {% if request.path == '/targets' %}text-emerald-400{% else %}group-hover:text-emerald-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Targets</span>
+                    <a href="/targets" data-tooltip="Manage targets and scopes" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/targets' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="target" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Targets</span>
                     </a>
-                    <a href="/reports" data-tooltip="Generated security reports" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/reports' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="file-text" class="w-5 h-5 mr-3 {% if request.path == '/reports' %}text-amber-400{% else %}group-hover:text-amber-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Reports</span>
+                    <a href="/reports" data-tooltip="Generated security reports" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/reports' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Reports</span>
                     </a>
-                    <a href="/overseer" data-tooltip="Real-time agent monitoring" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/overseer' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="users" class="w-5 h-5 mr-3 {% if request.path == '/overseer' %}text-cyan-400{% else %}group-hover:text-cyan-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Agents</span>
+                    <a href="/docs" data-feature="api_docs" data-tooltip="API docs and integrations" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/docs' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="book-open" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Documentation</span>
                     </a>
-                    <a href="/toolbox" data-tooltip="Security tools & plugins" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/toolbox' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="wrench" class="w-5 h-5 mr-3 {% if request.path == '/toolbox' %}text-rose-400{% else %}group-hover:text-rose-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Toolbox</span>
+                    <a href="/manual-tools" data-tooltip="Manual tool execution workspace" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/manual-tools' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="terminal-square" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Manual Tools</span>
                     </a>
-                    <a href="/manual" data-feature="manual_mode" data-tooltip="Run tools manually" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/manual' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="terminal" class="w-5 h-5 mr-3 {% if request.path == '/manual' %}text-orange-400{% else %}group-hover:text-orange-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Manual Mode</span>
+                    <a href="/settings" data-tooltip="System and AI configuration" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/settings' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="settings-2" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Settings</span>
                     </a>
-                    <a href="/observability" data-tooltip="System metrics & performance" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/observability' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="chart-line" class="w-5 h-5 mr-3 {% if request.path == '/observability' %}text-teal-400{% else %}group-hover:text-teal-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Observability</span>
+                    <a href="/help" data-feature="priority_support" data-tooltip="Help resources and support" data-tooltip-pos="right" class="flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/help' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="help-circle" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Help Center</span>
                     </a>
-                    <a href="/settings" data-tooltip="Application configuration" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/settings' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="settings" class="w-5 h-5 mr-3 {% if request.path == '/settings' %}text-slate-200{% else %}group-hover:text-slate-200{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Settings</span>
-                    </a>
-                    {% set _nav_user = get_nav_user(request) %}
-                    {% if _nav_user and (_nav_user.get('is_superuser') or _nav_user.get('role') in ['admin', 'operator']) %}
-                    <a href="/admin" id="admin-nav-link" data-tooltip="User &amp; plan management" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="shield-check" class="w-5 h-5 mr-3 {% if request.path == '/admin' %}text-red-400{% else %}group-hover:text-red-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Admin</span>
-                    </a>
-                    {% endif %}
-                    <div class="border-t border-white/5 my-2"></div>
-                    <a href="/docs/api" data-tooltip="API reference & playground" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/docs/api' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="book-open" class="w-5 h-5 mr-3 {% if request.path == '/docs/api' %}text-indigo-400{% else %}group-hover:text-indigo-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">API Docs</span>
-                    </a>
-                    <a href="/help" data-tooltip="Guides & help center" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/help' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="circle-help" class="w-5 h-5 mr-3 {% if request.path == '/help' %}text-sky-400{% else %}group-hover:text-sky-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Help</span>
-                    </a>
-                    <a href="/profile" data-tooltip="Account & profile" data-tooltip-pos="right" class="flex items-center px-3 py-2.5 rounded-lg {% if request.path == '/profile' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
-                        <i data-lucide="id-card" class="w-5 h-5 mr-3 {% if request.path == '/profile' %}text-pink-400{% else %}group-hover:text-pink-400{% endif %} transition-colors"></i>
-                        <span class="text-sm font-medium">Account</span>
+                    <a id="admin-nav-link" href="/admin" data-tooltip="Admin controls and oversight" data-tooltip-pos="right" class="hidden flex w-full min-h-11 items-center px-3 py-2.5 rounded-lg {% if request.url.path == '/admin' %}bg-white/5 text-white border border-white/5{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %} transition-colors group">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i>
+                        <span class="ml-3 text-sm font-medium">Admin</span>
                     </a>
                 </nav>
-            </div>
-            <div class="p-4 border-t border-white/5">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-xs text-slate-400 border border-white/5">
-                            <i data-lucide="user" class="w-4 h-4"></i>
+
+                <!-- User Status -->
+                <div class="mt-auto px-3">
+                    <div class="bg-black/20 rounded-xl p-3 border border-white/5">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-xs text-slate-400 border border-white/5">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p id="sidebar-username" class="text-xs font-medium text-white">User</p>
+                                <p class="text-xs text-emerald-400 flex items-center mt-0.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                    Connected
+                                </p>
+                            </div>
                         </div>
-                        <div class="ml-3">
-                            <p class="text-xs font-medium text-white">Admin</p>
-                            <p class="text-xs text-emerald-400 flex items-center mt-0.5">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
-                                Connected
-                            </p>
+                        <div class="flex items-center gap-2 mt-3">
+                            <a href="/changelog" class="text-xs text-slate-500 hover:text-violet-400 transition-colors cursor-pointer" title="View changelog">v{{ version }}</a>
+                            <button id="sidebar-signout-btn" type="button" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out" aria-label="Sign out">
+                                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                            </button>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <a href="/changelog" class="text-xs text-slate-500 hover:text-violet-400 transition-colors cursor-pointer" title="View changelog">v{{ version }}</a>
-                        <button onclick="(async()=>{try{await spectraApi.post('/api/v1/auth/logout');}catch(e){}window.location.href='/login';})()" class="w-7 h-7 rounded bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-500 hover:text-rose-400 border border-white/5 transition-all" title="Sign out" aria-label="Sign out">
-                            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -276,10 +109,10 @@
 
         <!-- Main Content -->
         <main id="main-content" tabindex="-1" class="{% if is_public_page %}w-full max-w-lg px-4{% else %}main-content flex-1 p-4 md:p-6 h-full overflow-y-auto overflow-x-hidden flex flex-col{% endif %}">
+            {% block breadcrumbs %}{% endblock %}
             {% block content %}{% endblock %}
         </main>
     </div>
-
     <!-- Native WebSocket (for real-time updates) -->
     {% if not is_public_page %}
     <script nonce="{{ request.state.csp_nonce }}">
@@ -289,6 +122,36 @@
         let socket;
         let wsReconnectAttempts = 0;
         const maxReconnectAttempts = 5;
+
+        function clearSpectraLocalStorage() {
+            try {
+                Object.keys(localStorage)
+                    .filter((key) => key.startsWith('spectra_'))
+                    .forEach((key) => localStorage.removeItem(key));
+            } catch (_) {}
+        }
+
+        function logoutFromSpectra() {
+            clearSpectraLocalStorage();
+
+            try {
+                const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
+                const csrfToken = csrfMatch ? (() => { try { return decodeURIComponent(csrfMatch[1]); } catch (_) { return csrfMatch[1]; } })() : null;
+                const headers = csrfToken ? { 'X-CSRF-Token': csrfToken } : {};
+                fetch('/api/v1/auth/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers,
+                    keepalive: true,
+                }).catch(() => {});
+            } catch (_) {
+                // Preserve best-effort logout behavior.
+            }
+
+            window.location.href = '/login';
+        }
+
+        document.getElementById('sidebar-signout-btn')?.addEventListener('click', logoutFromSpectra);
 
         function connectWebSocket() {
             socket = new WebSocket(wsUrl);
@@ -427,7 +290,6 @@
         checkSystemStatus();
         statusPollingInterval = setInterval(checkSystemStatus, 3000);
     </script>
-    {% endif %}
     <!-- Sidebar Toggle -->
     <script nonce="{{ request.state.csp_nonce }}">
         function toggleSidebar() {
@@ -456,6 +318,7 @@
     <script src="/static/js/modules/tabs.js" type="module"></script>
     <script src="/static/js/modules/confirm.js" type="module"></script>
     <script src="/static/js/modules/toast.js" type="module"></script>
+    {% endif %}
     <script nonce="{{ request.state.csp_nonce }}">
     function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
     </script>

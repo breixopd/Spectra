@@ -19,11 +19,12 @@ function setCheckboxValue(name, value) {
 }
 
 function activateNavLink(targetId) {
-    document.querySelectorAll('nav a').forEach((link) => {
-        const isActive = link.getAttribute('href') === `#${targetId}`;
+    document.querySelectorAll('[role="tablist"] [role="tab"]').forEach((link) => {
+        const isActive = link.getAttribute('aria-controls') === targetId;
         link.classList.toggle('bg-white/5', isActive);
         link.classList.toggle('text-white', isActive);
         link.classList.toggle('text-slate-400', !isActive);
+        link.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
 }
 
@@ -339,18 +340,26 @@ async function testDefaultProfile() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    document.querySelectorAll('nav a').forEach((anchor) => {
-        anchor.addEventListener('click', function (event) {
-            event.preventDefault();
-            const targetId = this.getAttribute('href')?.replace('#', '');
+    document.querySelectorAll('[role="tablist"] [role="tab"]').forEach((anchor) => {
+        anchor.addEventListener('click', function () {
+            const targetId = this.getAttribute('aria-controls');
             const target = targetId ? document.getElementById(targetId) : null;
             if (target) {
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 activateNavLink(targetId);
+                if (history.replaceState) history.replaceState(null, '', '#' + targetId);
             }
         });
     });
-    activateNavLink('general');
+
+    const settingsHash = window.location.hash.slice(1);
+    if (settingsHash && document.getElementById(settingsHash)) {
+        const target = document.getElementById(settingsHash);
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        activateNavLink(settingsHash);
+    } else {
+        activateNavLink('general');
+    }
 
     document.getElementById('test-default-profile-btn')?.addEventListener('click', testDefaultProfile);
     document.getElementById('settings-form')?.addEventListener('submit', saveSettings);
@@ -454,7 +463,7 @@ async function loadSystemStatus() {
         const ts = data.tool_stats || {};
         
         container.innerHTML = `
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="flex justify-between text-sm">
                     <span class="text-slate-400">Database</span>
                     ${dbStatus}

@@ -9,7 +9,7 @@
     <script src="/static/vendor/js/xterm.js"></script>
     <script src="/static/vendor/js/xterm-addon-fit.js"></script>
     <script src="/static/js/reconnecting-ws.js"></script>
-    <style>
+    <style nonce="{{ request.state.csp_nonce }}">
         body { background-color: #0f172a; margin: 0; height: 100vh; display: flex; flex-direction: column; }
         #terminal { flex: 1; padding: 10px; }
         .xterm-viewport { overflow-y: auto !important; }

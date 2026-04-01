@@ -4,15 +4,18 @@
  */
 function toggleAccordion(button) {
     const content = button.nextElementSibling;
+    if (!content) return;
     const icon = button.querySelector('[data-lucide="chevron-down"], [data-lucide="chevron-right"], .accordion-icon, svg');
-    const isOpen = content.style.maxHeight || content.classList.contains('open');
+    const isOpen = Boolean(content.style.maxHeight) || content.classList.contains('open');
     if (isOpen) {
         content.style.maxHeight = null;
         content.classList.remove('open');
+        button.setAttribute('aria-expanded', 'false');
         if (icon) icon.style.transform = '';
     } else {
         content.style.maxHeight = content.scrollHeight + 'px';
         content.classList.add('open');
+        button.setAttribute('aria-expanded', 'true');
         if (icon) {
             // chevron-right rotates 90° to point down; chevron-down rotates 180° to point up
             var attr = icon.getAttribute && icon.getAttribute('data-lucide');

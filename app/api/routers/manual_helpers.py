@@ -9,10 +9,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from app.api.dependencies import get_current_active_user
+from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 from app.services.system.checklists import get_checklist, list_checklists
 from app.services.system.cvss import calculate_cvss31
@@ -120,11 +121,14 @@ class GenerateReportRequest(BaseModel):
 
 
 @router.post("/reports/generate")
+@limiter.limit(RateLimits.API_HEAVY)
 async def api_generate_report(
+    request: Request,
     req: GenerateReportRequest,
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Generate report data from a session using a template."""
+    _ = request
     try:
         from app.api.routers.pentest_sessions import _load_session
 

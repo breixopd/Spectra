@@ -256,3 +256,91 @@ async def test_mfa_disable_success(mock_session):
     assert result["detail"] == "MFA disabled successfully"
     assert user.mfa_enabled is False
     assert user.mfa_secret is None
+
+
+@pytest.mark.asyncio
+async def test_mfa_verify_setup_rejects_replayed_code(mock_session):
+    from fastapi import HTTPException
+
+    from app.api.routers.auth import _used_totp_codes, mfa_verify_setup
+    from app.api.schemas.auth import MFAVerifyRequest
+
+    _used_totp_codes.clear()
+    secret = pyotp.random_base32()
+    encrypted = encrypt_mfa_secret(secret)
+    user = _make_user(mfa_secret=encrypted, mfa_enabled=False)
+    body = MFAVerifyRequest(code=pyotp.TOTP(secret).now())
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+
+    with patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
+        await mfa_verify_setup(request=request, body=body, user=user, session=mock_session)
+
+    user.mfa_enabled = False
+    with pytest.raises(HTTPException) as exc_info:
+        await mfa_verify_setup(request=request, body=body, user=user, session=mock_session)
+    assert exc_info.value.status_code == 400
+    assert "already been used" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_mfa_verify_login_rejects_replayed_code(mock_session):
+    from datetime import timedelta
+    from fastapi import HTTPException, Request, Response
+
+    from app.api.routers.auth import _used_totp_codes, mfa_verify_login
+    from app.api.schemas.auth import MFAVerifyRequest
+    from app.core.security import create_access_token
+
+    _used_totp_codes.clear()
+    secret = pyotp.random_base32()
+    encrypted = encrypt_mfa_secret(secret)
+    user = _make_user(mfa_enabled=True, mfa_secret=encrypted)
+    mfa_token = create_access_token(data={"sub": user.username, "mfa_pending": True}, expires_delta=timedelta(minutes=5))
+
+    request = MagicMock(spec=Request)
+    request.headers = {"authorization": f"Bearer {mfa_token}"}
+    request.client = MagicMock()
+    request.client.host = "127.0.0.1"
+    response = MagicMock(spec=Response)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = user
+    mock_session.execute = AsyncMock(return_value=mock_result)
+    body = MFAVerifyRequest(code=pyotp.TOTP(secret).now())
+
+    with patch("app.api.routers.auth.invalidate_token"):
+        await mfa_verify_login(request=request, response=response, body=body, session=mock_session)
+        with pytest.raises(HTTPException) as exc_info:
+            await mfa_verify_login(request=request, response=response, body=body, session=mock_session)
+
+    assert exc_info.value.status_code == 401
+    assert "already been used" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_mfa_disable_rejects_replayed_code(mock_session):
+    from fastapi import HTTPException
+
+    from app.api.routers.auth import _used_totp_codes, mfa_disable
+    from app.api.schemas.auth import MFADisableRequest
+
+    _used_totp_codes.clear()
+    secret = pyotp.random_base32()
+    encrypted = encrypt_mfa_secret(secret)
+    user = _make_user(mfa_enabled=True, mfa_secret=encrypted)
+    body = MFADisableRequest(password="correct", code=pyotp.TOTP(secret).now())
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+
+    with patch("app.api.routers.auth.verify_password", return_value=True), \
+         patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
+        await mfa_disable(request=request, body=body, user=user, session=mock_session)
+
+    user.mfa_enabled = True
+    user.mfa_secret = encrypted
+    with patch("app.api.routers.auth.verify_password", return_value=True):
+        with pytest.raises(HTTPException) as exc_info:
+            await mfa_disable(request=request, body=body, user=user, session=mock_session)
+
+    assert exc_info.value.status_code == 400
+    assert "already been used" in exc_info.value.detail

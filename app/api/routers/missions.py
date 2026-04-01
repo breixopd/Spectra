@@ -278,7 +278,7 @@ async def list_missions(
         description="Max records to return",
     ),
     status_filter: str | None = Query(None, alias="status", description="Comma-separated statuses"),
-    target: str | None = Query(None, description="Filter by target (partial match)"),
+    target: str | None = Query(None, max_length=200, description="Filter by target (partial match)"),
     date_from: str | None = Query(None, description="ISO date lower bound"),
     date_to: str | None = Query(None, description="ISO date upper bound"),
     search: str | None = Query(None, max_length=200, description="Search in directive"),

@@ -38,6 +38,8 @@ def _is_live_test(item: pytest.Item) -> bool:
         return True
     if "/integration/" in fspath or "\\integration\\" in fspath:
         return True
+    if "/e2e/" in fspath or "\\e2e\\" in fspath:
+        return True
     return False
 
 

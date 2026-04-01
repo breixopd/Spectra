@@ -9,9 +9,38 @@
  * @param {string} group - The tab group identifier.
  * @param {string} tabId - The tab to activate.
  */
+function _getTabsForGroup(group) {
+  return Array.from(document.querySelectorAll('[role="tab"][data-tab-group]'))
+    .filter(tab => tab.dataset.tabGroup === group);
+}
+
+function _getPanelsForGroup(group) {
+  return Array.from(document.querySelectorAll('[role="tabpanel"][data-tab-group]'))
+    .filter(panel => panel.dataset.tabGroup === group);
+}
+
+let _baseDocumentTitle = null;
+
+function _updateDocumentTitle(activeTab) {
+  if (!activeTab) return;
+
+  if (_baseDocumentTitle === null) {
+    _baseDocumentTitle = document.title;
+  }
+
+  const tabLabel = (activeTab.dataset.tabTitle || activeTab.getAttribute('aria-label') || activeTab.textContent || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!tabLabel) return;
+
+  document.title = `${_baseDocumentTitle} (${tabLabel})`;
+}
+
 export function activateTab(group, tabId) {
-  const tabs = document.querySelectorAll(`[role="tab"][data-tab-group="${group}"]`);
-  const panels = document.querySelectorAll(`[role="tabpanel"][data-tab-group="${group}"]`);
+  const tabs = _getTabsForGroup(group);
+  const panels = _getPanelsForGroup(group);
+  const activeTab = tabs.find(tab => tab.dataset.tab === tabId) || null;
 
   tabs.forEach(tab => {
     const isActive = tab.dataset.tab === tabId;
@@ -36,6 +65,8 @@ export function activateTab(group, tabId) {
   if (history.replaceState) {
     history.replaceState(null, '', `#${group}-${tabId}`);
   }
+
+  _updateDocumentTitle(activeTab);
 }
 
 function _handleTabClick(e) {
@@ -52,7 +83,7 @@ function _handleTabKeydown(e) {
   if (!tab) return;
 
   const group = tab.dataset.tabGroup;
-  const tabs = Array.from(document.querySelectorAll(`[role="tab"][data-tab-group="${group}"]`));
+  const tabs = _getTabsForGroup(group);
   const index = tabs.indexOf(tab);
 
   let newIndex = -1;
@@ -97,7 +128,7 @@ export function initTabs() {
     const sep = hash.indexOf('-');
     const group = hash.substring(0, sep);
     const tabId = hash.substring(sep + 1);
-    const tab = document.querySelector(`[role="tab"][data-tab-group="${group}"][data-tab="${tabId}"]`);
+    const tab = _getTabsForGroup(group).find(candidate => candidate.dataset.tab === tabId);
     if (tab) activateTab(group, tabId);
   }
 }

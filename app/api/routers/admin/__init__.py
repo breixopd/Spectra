@@ -1,34 +1,40 @@
-"""Admin panel API router.
+"""Admin panel API router."""
 
-Provides user management, plan management, audit logs, server provisioning,
-and dashboard statistics. All endpoints require the admin role.
+from __future__ import annotations
 
-Split into submodules for maintainability:
-- users: User CRUD + admin page
-- plans: Plan CRUD
-- servers: Server provisioning + pool management
-- audit: Audit logs + dashboard statistics
-"""
+from importlib import import_module
 
 from fastapi import APIRouter
 
-from .audit import router as audit_router
-from .content import router as content_router
-from .email import router as email_router
-from .plans import router as plans_router
-from .rollback import router as rollback_router
-from .servers import router as servers_router
-from .settings import router as settings_router
-from .tensorzero import router as tensorzero_router
-from .users import router as users_router
+_ADMIN_ROUTER_MODULES = {
+    "users_router": "app.api.routers.admin.users",
+    "plans_router": "app.api.routers.admin.plans",
+    "servers_router": "app.api.routers.admin.servers",
+    "audit_router": "app.api.routers.admin.audit",
+    "content_router": "app.api.routers.admin.content",
+    "email_router": "app.api.routers.admin.email",
+    "settings_router": "app.api.routers.admin.settings",
+    "tensorzero_router": "app.api.routers.admin.tensorzero",
+    "rollback_router": "app.api.routers.admin.rollback",
+}
 
-router = APIRouter()
-router.include_router(users_router)
-router.include_router(plans_router)
-router.include_router(servers_router)
-router.include_router(audit_router)
-router.include_router(content_router)
-router.include_router(email_router)
-router.include_router(settings_router)
-router.include_router(tensorzero_router)
-router.include_router(rollback_router)
+__all__ = ["router", *list(_ADMIN_ROUTER_MODULES)]
+
+
+def _load_router(name: str):
+    module = import_module(_ADMIN_ROUTER_MODULES[name])
+    value = getattr(module, "router")
+    globals()[name] = value
+    return value
+
+
+def __getattr__(name: str):
+    if name == "router":
+        root = APIRouter()
+        for child_name in _ADMIN_ROUTER_MODULES:
+            root.include_router(_load_router(child_name))
+        globals()[name] = root
+        return root
+    if name in _ADMIN_ROUTER_MODULES:
+        return _load_router(name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

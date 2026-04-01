@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import logging
-import tomllib
+import os
+import re
+import tempfile
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 test runner
+    tomllib = None
+
 import httpx
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
@@ -20,6 +27,16 @@ logger = logging.getLogger(__name__)
 _CONFIG_PATH = Path(__file__).resolve().parents[4] / "config" / "tensorzero.toml"
 
 router = APIRouter()
+
+_TOML_SAFE_VALUE_RE = re.compile(r"^[a-zA-Z0-9._/-]+$")
+
+
+def _validate_toml_value(value: str, field_name: str) -> str:
+    if not value:
+        return ""
+    if not _TOML_SAFE_VALUE_RE.fullmatch(value):
+        raise ValueError(f"Invalid {field_name}: model names may only contain letters, digits, dot, underscore, slash, and hyphen")
+    return value
 
 
 def _tz_url() -> str:
@@ -123,6 +140,8 @@ async def tz_config(
     """Read current TensorZero model configuration from tensorzero.toml."""
     if not _CONFIG_PATH.exists():
         return {"models": {}, "provider_type": "openai"}
+    if tomllib is None:
+        return JSONResponse({"detail": "TOML parsing support is unavailable"}, status_code=503)
     with open(_CONFIG_PATH, "rb") as f:
         config = tomllib.load(f)
     models = {}
@@ -149,25 +168,33 @@ async def tz_update_config(
     """Update TensorZero model config by rewriting tensorzero.toml."""
     body = await request.json()
     models = body.get("models", {})
-    provider_type = body.get("provider_type", "openai")
+    try:
+        provider_type = _validate_toml_value(str(body.get("provider_type", "openai")), "provider_type")
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     # Read current to preserve functions/metrics
     current: dict = {}
     if _CONFIG_PATH.exists():
+        if tomllib is None:
+            raise HTTPException(status_code=503, detail="TOML parsing support is unavailable")
         with open(_CONFIG_PATH, "rb") as f:
             current = tomllib.load(f)
 
     # Normalize model values: accept either string or {primary, fallback} dict
     tiers: dict[str, dict[str, str]] = {}
-    for tier in ("fast", "balanced", "capable"):
-        raw = models.get(tier, "")
-        if isinstance(raw, dict):
-            tiers[tier] = {
-                "primary": raw.get("primary", ""),
-                "fallback": raw.get("fallback", ""),
-            }
-        else:
-            tiers[tier] = {"primary": raw, "fallback": ""}
+    try:
+        for tier in ("fast", "balanced", "capable"):
+            raw = models.get(tier, "")
+            if isinstance(raw, dict):
+                tiers[tier] = {
+                    "primary": _validate_toml_value(str(raw.get("primary", "")), f"{tier}.primary"),
+                    "fallback": _validate_toml_value(str(raw.get("fallback", "")), f"{tier}.fallback"),
+                }
+            else:
+                tiers[tier] = {"primary": _validate_toml_value(str(raw), f"{tier}.primary"), "fallback": ""}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     toml_lines = [
         "# TensorZero Gateway Configuration for Spectra",
@@ -235,7 +262,11 @@ async def tz_update_config(
         ]
 
     _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _CONFIG_PATH.write_text("\n".join(toml_lines) + "\n")
+    rendered = "\n".join(toml_lines) + "\n"
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=_CONFIG_PATH.parent, delete=False) as tmp_file:
+        tmp_file.write(rendered)
+        temp_path = tmp_file.name
+    os.replace(temp_path, _CONFIG_PATH)
 
     return {
         "status": "ok",

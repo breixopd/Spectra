@@ -10,10 +10,16 @@ import shutil
 import time
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.dependencies import (
+    _decode_access_payload,
+    _extract_request_token,
+    _load_active_user_from_payload_with_session,
+)
 
 from app.core.config import get_settings as _get_settings
 from app.core.database import get_async_session
@@ -33,6 +39,7 @@ def _data_dir() -> str:
     description="Liveness and readiness probe. Returns 200 if healthy, 503 if degraded. Use ?verbose=true for component details.",
 )
 async def health_check(
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_async_session),
     verbose: bool = Query(False, description="Include detailed component status"),
@@ -72,6 +79,12 @@ async def health_check(
         is_healthy = False
 
     if verbose:
+        resolved_token, _source = _extract_request_token(request)
+        payload = _decode_access_payload(resolved_token) if resolved_token else None
+        user = await _load_active_user_from_payload_with_session(payload, db) if payload else None
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for verbose health details")
+
         # Check RAG/Embedding service
         try:
             from app.services.ai.rag import RAGService

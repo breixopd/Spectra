@@ -1,27 +1,28 @@
 """API route handlers."""
 
-from .auth import router as auth_router
-from .exploits import router as exploits_router
-from .findings import router as findings_router
-from .health import router as health_router
-from .missions import router as missions_router
-from .observability import router as observability_router
-from .public import router as public_router
-from .system import router as system_router
-from .targets import router as targets_router
-from .tools import router as tools_router
-from .ui import router as ui_router
+from __future__ import annotations
 
-__all__ = [
-    "health_router",
-    "ui_router",
-    "public_router",
-    "auth_router",
-    "tools_router",
-    "missions_router",
-    "targets_router",
-    "findings_router",
-    "exploits_router",
-    "observability_router",
-    "system_router",
-]
+from importlib import import_module
+
+_ROUTER_MODULES = {
+    "health_router": ("app.api.routers.health", "router"),
+    "ui_router": ("app.api.routers.ui", "router"),
+    "public_router": ("app.api.routers.public", "router"),
+    "auth_router": ("app.api.routers.auth", "router"),
+    "tools_router": ("app.api.routers.tools", "router"),
+    "missions_router": ("app.api.routers.missions", "router"),
+    "targets_router": ("app.api.routers.targets", "router"),
+    "findings_router": ("app.api.routers.findings", "router"),
+    "exploits_router": ("app.api.routers.exploits", "router"),
+    "observability_router": ("app.api.routers.observability", "router"),
+    "system_router": ("app.api.routers.system", "router"),
+}
+
+__all__ = list(_ROUTER_MODULES)
+
+
+def __getattr__(name: str):
+    if name not in _ROUTER_MODULES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_name, attr_name = _ROUTER_MODULES[name]
+    return getattr(import_module(module_name), attr_name)

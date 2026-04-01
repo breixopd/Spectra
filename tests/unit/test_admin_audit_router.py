@@ -1,6 +1,8 @@
 """Tests for the admin audit log router."""
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -173,6 +175,8 @@ class TestAdminStats:
         data = resp.json()
         assert "total_users" in data
         assert "role_counts" in data
+        assert data["smtp_configured"] is False
+        assert "smtp_host" not in data
 
     async def test_admin_stats_non_admin_forbidden(self):
         app = _make_app()

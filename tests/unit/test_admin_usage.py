@@ -48,7 +48,7 @@ async def test_admin_usage_response_format(mock_telemetry, mock_get_trackers):
 
     # Call the endpoint function directly (bypass auth via mock)
     with patch("app.api.routers.admin.audit.require_permission", return_value=MagicMock()):
-        result = await admin_usage(_user=MagicMock())
+        result = await admin_usage(request=MagicMock(), _user=MagicMock())
 
     assert "total_calls" in result
     assert "total_tokens" in result
@@ -82,7 +82,7 @@ async def test_admin_usage_token_cost_aggregation(mock_telemetry, mock_get_track
     from app.api.routers.admin.audit import admin_usage
 
     with patch("app.api.routers.admin.audit.require_permission", return_value=MagicMock()):
-        result = await admin_usage(_user=MagicMock())
+        result = await admin_usage(request=MagicMock(), _user=MagicMock())
 
     # 3 calls total (2 in t1, 1 in t2)
     assert result["total_calls"] == 3
@@ -117,7 +117,7 @@ async def test_admin_usage_empty_state(mock_telemetry, mock_get_trackers):
     from app.api.routers.admin.audit import admin_usage
 
     with patch("app.api.routers.admin.audit.require_permission", return_value=MagicMock()):
-        result = await admin_usage(_user=MagicMock())
+        result = await admin_usage(request=MagicMock(), _user=MagicMock())
 
     assert result["total_calls"] == 0
     assert result["total_tokens"] == 0

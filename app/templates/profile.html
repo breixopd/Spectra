@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% from 'macros/forms.html' import password_requirements %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ request.state.csp_nonce }}">
     .profile-sidebar a.active { background: rgba(139,92,246,0.15); color: white; border-left: 3px solid #8b5cf6; }
     .profile-sidebar a:hover:not(.active) { background: rgba(255,255,255,0.04); }
     .profile-section { display: none; animation: fadeIn 0.2s ease-out; }
@@ -14,6 +15,12 @@
     .activity-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
     .activity-row:last-child { border-bottom: none; }
 </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="Breadcrumb" class="text-sm text-slate-400 mb-4">
+  <a href="/dashboard" class="hover:text-white">Home</a> / <span class="text-white">Account</span>
+</nav>
 {% endblock %}
 
 {% block content %}
@@ -100,12 +107,7 @@
                         <div>
                             <label for="new-password" class="form-label">New Password</label>
                             <input type="password" id="new-password" class="form-input" autocomplete="new-password" placeholder="Min 8 characters">
-                            <ul id="profile-pw-requirements" style="list-style:none;padding:0;margin:0.5rem 0 0;font-size:0.75rem;">
-                                <li id="profile-pw-len" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least 8 characters</li>
-                                <li id="profile-pw-upper" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least one uppercase letter</li>
-                                <li id="profile-pw-lower" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least one lowercase letter</li>
-                                <li id="profile-pw-digit" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least one digit</li>
-                            </ul>
+                            {{ password_requirements(id_prefix="profile-pw") }}
                         </div>
                         <div>
                             <label for="confirm-password" class="form-label">Confirm New Password</label>

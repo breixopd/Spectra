@@ -94,14 +94,18 @@ def authenticated_page(page: Page, app_url: str, auth_token: str):
 
 
 @pytest.fixture
-def logged_in_page(page: Page, app_url: str):
-    """Log in interactively via the login form and return the authenticated page."""
+def logged_in_page(page: Page, app_url: str, auth_token: str):
+    """Return an authenticated page for navigation-oriented UI tests."""
     page.goto(f"{app_url}/login", wait_until="networkidle")
-
-    page.locator("#username").fill(ADMIN_USERNAME)
-    page.locator("#password").fill(ADMIN_PASSWORD)
-    page.locator("#login-form button[type='submit']").click()
-
-    page.wait_for_url("**/dashboard", timeout=10_000)
+    page.evaluate(
+        """
+        token => {
+            localStorage.setItem('token', token);
+            document.cookie = `access_token=${token}; path=/; SameSite=Strict`;
+        }
+        """,
+        auth_token,
+    )
+    page.goto(f"{app_url}/dashboard", wait_until="networkidle")
     expect(page).to_have_url(f"{app_url}/dashboard")
     return page

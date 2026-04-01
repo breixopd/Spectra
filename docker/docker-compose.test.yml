@@ -369,11 +369,11 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.playwright
     entrypoint: ["python3", "-m", "pytest"]
-    command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--confcutdir=tests/e2e/ui", "--override-ini=addopts="]
+    command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--no-cov", "--confcutdir=tests/e2e/ui", "--override-ini=addopts="]
     env_file:
       - ../.env.test
     environment:
-      - APP_BASE_URL=http://spectra-ui-app:5000
+      - APP_BASE_URL=http://host.docker.internal:15000
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
     volumes:
       - ../tests:/app/tests:ro
@@ -383,6 +383,8 @@ services:
         condition: service_started
       db:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - spectra_test
 

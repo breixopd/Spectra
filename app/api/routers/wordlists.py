@@ -13,7 +13,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user
@@ -27,6 +27,7 @@ from app.core.constants import (
     WORDLISTS_DIR as WORDLISTS_DIR_STR,
 )
 from app.core.database import get_async_session
+from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -163,11 +164,14 @@ async def upload_wordlist(
 
 
 @router.post("/download-preset/{preset_id}")
+@limiter.limit(RateLimits.API_HEAVY)
 async def download_preset(
+    request: Request,
     preset_id: str,
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, str]:
     """Download a preset wordlist from SecLists."""
+    _ = request
     if preset_id not in PRESET_WORDLISTS:
         raise HTTPException(status_code=404, detail="Preset not found")
 
