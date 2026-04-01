@@ -285,12 +285,13 @@ async function loadSettings() {
     const statusDot = document.getElementById('sandbox-status-dot');
     const statusText = document.getElementById('sandbox-status-text');
     if (data.sandbox_available && statusDot && statusText) {
+        const sandboxStatusDotBaseClass = 'inline-block w-2 h-2 rounded-full';
         if (data.sandbox_available.available) {
-            statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+            statusDot.className = `${sandboxStatusDotBaseClass} bg-emerald-400`;
             statusText.textContent = data.sandbox_available.message;
             statusText.className = 'text-xs text-emerald-400';
         } else {
-            statusDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+            statusDot.className = `${sandboxStatusDotBaseClass} bg-amber-400`;
             statusText.textContent = data.sandbox_available.message;
             statusText.className = 'text-xs text-amber-400';
         }

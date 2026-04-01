@@ -1,14 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="docker/docker-compose.test.yml"
 export GARAGE_ACCESS_KEY="${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}"
 export GARAGE_SECRET_KEY="${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
 
-echo "=== Spectra UI Tests ==="
-echo "Starting test environment..."
+cleanup() {
+    echo ""
+    echo "Cleaning up test environment..."
+    docker compose -f "$COMPOSE_FILE" down -v --remove-orphans 2>/dev/null || true
+}
 
-cd "$(dirname "$0")/.."
+trap cleanup EXIT
+
+echo "=== Spectra UI Tests ==="
+echo "Resetting test environment..."
+
+cd "$PROJECT_DIR"
+
+docker compose -f "$COMPOSE_FILE" down -v --remove-orphans 2>/dev/null || true
+
+echo "Starting test environment..."
 
 # Start prerequisites and bootstrap Garage before app startup
 docker compose -f "$COMPOSE_FILE" up -d --force-recreate db redis garage

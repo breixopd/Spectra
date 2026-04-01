@@ -126,12 +126,25 @@ def _create_auth_token_pair(user: User) -> tuple[str, str]:
     return access_token, refresh_token
 
 
-def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
+def _should_use_secure_auth_cookies(request: Request) -> bool:
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    if forwarded_proto:
+        return forwarded_proto.split(",", 1)[0].strip().lower() == "https"
+    return request.scope.get("scheme") == "https"
+
+
+def _set_auth_cookies(
+    request: Request,
+    response: Response,
+    access_token: str,
+    refresh_token: str,
+) -> None:
+    secure = _should_use_secure_auth_cookies(request)
     response.set_cookie(
         key=ACCESS_COOKIE_KEY,
         value=access_token,
         httponly=True,
-        secure=True,
+        secure=secure,
         samesite=AUTH_COOKIE_SAMESITE,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path=ACCESS_COOKIE_PATH,
@@ -140,26 +153,27 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         key=REFRESH_COOKIE_KEY,
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=secure,
         samesite=AUTH_COOKIE_SAMESITE,
         max_age=REFRESH_TOKEN_MAX_AGE,
         path=REFRESH_COOKIE_PATH,
     )
 
 
-def _clear_auth_cookies(response: Response) -> None:
+def _clear_auth_cookies(request: Request, response: Response) -> None:
+    secure = _should_use_secure_auth_cookies(request)
     response.delete_cookie(
         key=ACCESS_COOKIE_KEY,
         path=ACCESS_COOKIE_PATH,
         httponly=True,
-        secure=True,
+        secure=secure,
         samesite=AUTH_COOKIE_SAMESITE,
     )
     response.delete_cookie(
         key=REFRESH_COOKIE_KEY,
         path=REFRESH_COOKIE_PATH,
         httponly=True,
-        secure=True,
+        secure=secure,
         samesite=AUTH_COOKIE_SAMESITE,
     )
 
@@ -366,7 +380,7 @@ async def login_for_access_token(
 
     await _record_success(user, session)
 
-    _set_auth_cookies(response, access_token, refresh_token)
+    _set_auth_cookies(request, response, access_token, refresh_token)
 
     return _token_response_payload(access_token, refresh_token)
 
@@ -404,7 +418,7 @@ async def refresh_token(
     invalidate_token(provided_refresh_token)
 
     access_token, new_refresh_token = _create_auth_token_pair(user)
-    _set_auth_cookies(response, access_token, new_refresh_token)
+    _set_auth_cookies(request, response, access_token, new_refresh_token)
 
     return Token(
         access_token=access_token,
@@ -482,7 +496,7 @@ async def logout(request: Request, response: Response, session: AsyncSession = D
             user.invalidated_before = datetime.now(UTC)
             await session.commit()
 
-    _clear_auth_cookies(response)
+    _clear_auth_cookies(request, response)
     return {"detail": "Successfully logged out"}
 
 
@@ -579,7 +593,7 @@ async def mfa_verify_login(
     invalidate_token(token)
 
     access_token, refresh_token = _create_auth_token_pair(user)
-    _set_auth_cookies(response, access_token, refresh_token)
+    _set_auth_cookies(request, response, access_token, refresh_token)
 
     return _token_response_payload(access_token, refresh_token)
 
