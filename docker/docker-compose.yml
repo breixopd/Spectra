@@ -6,26 +6,26 @@
 # For multi-host production: see docker-compose.swarm.yml
 # For testing: see docker-compose.test.yml
 services:
-  # MinIO Object Storage (S3-compatible, optional)
-  minio:
-    image: minio/minio:latest
-    container_name: spectra-minio
-    command: server /data --console-address ":9001"
+  # Garage S3-compatible object storage
+  garage:
+    image: dxflrs/garage:v2.2.0
+    container_name: spectra-garage
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set in .env}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set in .env}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
     ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
+      - "127.0.0.1:3900:3900"
+      - "127.0.0.1:3903:3903"
     volumes:
-      - minio_data:/data
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
     networks:
       - spectra-network
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3903/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
     restart: unless-stopped
 
   # PostgreSQL (persistent state, PostgreSQL-backed app cache, job queue,
@@ -109,7 +109,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
+      garage:
         condition: service_healthy
       ai-svc:
         condition: service_healthy
@@ -120,9 +120,9 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?set in .env}@db:5432/spectra
       - CONNECT_BACK_HOST=spectra-app
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=${MINIO_ROOT_USER:?set in .env}
-      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set in .env}
+      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:?set in .env}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:?set in .env}
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       # Deployment default: shared Redis-backed rate limiting.
@@ -183,9 +183,9 @@ services:
       - ../.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?set in .env}@db:5432/spectra
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=${MINIO_ROOT_USER:?set in .env}
-      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set in .env}
+      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:?set in .env}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:?set in .env}
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
       - SKIP_MIGRATIONS=true
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
@@ -277,9 +277,9 @@ services:
       - ../.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?set in .env}@db:5432/spectra
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=${MINIO_ROOT_USER:?set in .env}
-      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set in .env}
+      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:?set in .env}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:?set in .env}
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
       - BACKUP_ENABLED=${BACKUP_ENABLED:-false}
       - SKIP_MIGRATIONS=true
@@ -317,9 +317,9 @@ services:
       - ../.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?set in .env}@db:5432/spectra
-      - S3_ENDPOINT_URL=http://minio:9000
-      - S3_ACCESS_KEY=${MINIO_ROOT_USER:?set in .env}
-      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:?set in .env}
+      - S3_ENDPOINT_URL=http://garage:3900
+      - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:?set in .env}
+      - S3_SECRET_KEY=${GARAGE_SECRET_KEY:?set in .env}
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
       - SKIP_MIGRATIONS=true
     volumes:
@@ -352,6 +352,7 @@ volumes:
   spectra_plugins:
   caddy_data:
   caddy_config:
-  minio_data:
+  garage_meta:
+  garage_data:
   clickhouse_data:
   redis_data:

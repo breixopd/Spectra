@@ -27,7 +27,7 @@ See [Sandboxes](sandboxes.md) for full documentation.
 
 **Status**: Implemented.
 
-- MinIO/S3 integration for mission artifacts, sessions, knowledge base, and backups
+- Garage/S3 integration for mission artifacts, sessions, knowledge base, and backups
 - S3-compatible object storage required for mission artifacts, sessions, knowledge, and backups
 - Four dedicated buckets: missions, sessions, knowledge, backups
 

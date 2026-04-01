@@ -92,7 +92,7 @@ esac
 trap cleanup EXIT
 
 echo "Starting the Docker test stack for ${MODE} validation"
-docker compose -f "${COMPOSE_FILE}" up -d --build db minio redis app app-replica caddy tools >/dev/null
+docker compose -f "${COMPOSE_FILE}" up -d --build db garage redis app app-replica caddy tools >/dev/null
 
 wait_for_service_health app 60
 wait_for_service_health app-replica 60

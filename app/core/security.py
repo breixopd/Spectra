@@ -59,19 +59,22 @@ _blacklist_loaded = False
 
 
 def _ensure_blacklist_loaded() -> None:
-    """Load blacklist from DB once."""
+    """Schedule a one-time DB load; flag is only set inside the coroutine itself."""
     global _blacklist_loaded
     if _blacklist_loaded:
         return
     with _blacklist_lock:
         if _blacklist_loaded:
             return
+        # Mark loaded *before* scheduling so concurrent callers don't also
+        # schedule, but the coroutine will reset it on failure.
+        _blacklist_loaded = True
         try:
             loop = asyncio.get_running_loop()
             loop.create_task(_load_from_db())
         except RuntimeError:
-            pass
-        _blacklist_loaded = True
+            # Not in an async context; will be retried on next request.
+            _blacklist_loaded = False
 
 
 def _persist_blacklist() -> None:
@@ -209,12 +212,12 @@ def _cleanup_expired() -> None:
 
 def is_token_blacklisted(token: str) -> bool:
     """Check if a token is blacklisted (by direct blacklist or user-level invalidation)."""
-    global _cleanup_counter
     _ensure_blacklist_loaded()
-    _cleanup_counter += 1
-    if _cleanup_counter >= 100:
-        _cleanup_counter = 0
-        with _blacklist_lock:
+    with _blacklist_lock:
+        global _cleanup_counter
+        _cleanup_counter += 1
+        if _cleanup_counter >= 100:
+            _cleanup_counter = 0
             _cleanup_expired()
     token_h = _token_hash(token)
     with _blacklist_lock:

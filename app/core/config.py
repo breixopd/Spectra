@@ -279,11 +279,11 @@ class Settings(BaseSettings):
 
 
 
-    # --- Object Storage (S3/MinIO) ---
-    # S3-compatible object storage (MinIO or AWS S3) is required.
+    # --- Object Storage (S3-compatible storage: Garage or any S3 provider) ---
+    # S3-compatible object storage (Garage, AWS S3, or any S3 provider) is required.
     # Set S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY before starting.
     # Spectra will refuse to start without a working S3 configuration.
-    S3_ENDPOINT_URL: str = ""  # MinIO/S3 endpoint (e.g., http://minio:9000)
+    S3_ENDPOINT_URL: str = ""  # S3-compatible endpoint (e.g., http://garage:3900)
     S3_ACCESS_KEY: SecretStr = SecretStr("")  # Required when S3_ENDPOINT_URL is set
     S3_SECRET_KEY: SecretStr = SecretStr("")  # Required when S3_ENDPOINT_URL is set
     S3_REGION: str = "us-east-1"

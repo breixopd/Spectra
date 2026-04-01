@@ -1,4 +1,4 @@
-"""S3-compatible object storage service (S3/MinIO required)."""
+"""S3-compatible object storage service (Garage, AWS S3, or any S3-compatible provider)."""
 
 from __future__ import annotations
 
@@ -22,8 +22,20 @@ def _import_s3_deps() -> tuple[Any, Any, Any]:
     return _aioboto3, _BotoConfig, _ClientError
 
 
+class _NullContext:
+    """Wraps an already-open client so callers can use `async with self._client()`."""
+    def __init__(self, client: Any) -> None:
+        self._client = client
+
+    async def __aenter__(self) -> Any:
+        return self._client
+
+    async def __aexit__(self, *args: Any) -> None:
+        pass
+
+
 class StorageService:
-    """S3-compatible object storage (MinIO or AWS S3).
+    """S3-compatible object storage (Garage, AWS S3, or any S3-compatible provider).
 
     Requires S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY to be configured.
     Raises RuntimeError at instantiation if S3 is not configured.
@@ -35,7 +47,7 @@ class StorageService:
             raise RuntimeError(
                 "S3 object storage is required but S3_ENDPOINT_URL is not set. "
                 "Configure S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY "
-                "(e.g. point to a MinIO instance) before starting Spectra."
+                "(e.g. point to a Garage instance at http://garage:3900) before starting Spectra."
             )
         if not settings.S3_ACCESS_KEY.get_secret_value():
             raise RuntimeError(
@@ -50,6 +62,8 @@ class StorageService:
 
         _aioboto3, self._boto_config_cls, self._client_error = _import_s3_deps()
         self._session = _aioboto3.Session()
+        self._client_ctx: Any = None  # entered in start(); reused across all operations
+        self._s3: Any = None
         self._buckets_ensured: set[str] = set()
         logger.info(
             "Storage: S3 mode (endpoint=%s, region=%s, buckets=[%s, %s, %s, %s])",
@@ -64,6 +78,29 @@ class StorageService:
     @property
     def is_s3(self) -> bool:
         return True
+
+    async def start(self) -> None:
+        """Open a persistent S3 client connection for the lifetime of this service instance."""
+        if self._s3 is not None:
+            return
+        self._client_ctx = self._session.client(**self._s3_kwargs())
+        self._s3 = await self._client_ctx.__aenter__()
+
+    async def stop(self) -> None:
+        """Close the persistent S3 client."""
+        if self._client_ctx is not None:
+            try:
+                await self._client_ctx.__aexit__(None, None, None)
+            except Exception:
+                pass
+            self._s3 = None
+            self._client_ctx = None
+
+    def _client(self) -> Any:
+        """Return the persistent S3 client; falls back to a per-call client if start() not called."""
+        if self._s3 is not None:
+            return _NullContext(self._s3)
+        return self._session.client(**self._s3_kwargs())
 
     def _s3_kwargs(self) -> dict:
         """Build kwargs for S3 client creation."""
@@ -84,7 +121,7 @@ class StorageService:
         if bucket in self._buckets_ensured:
             return
         try:
-            async with self._session.client(**self._s3_kwargs()) as s3:
+            async with self._client() as s3:
                 try:
                     await s3.head_bucket(Bucket=bucket)
                 except self._client_error:
@@ -101,7 +138,7 @@ class StorageService:
     async def upload(self, bucket: str, key: str, data: bytes) -> str:
         """Upload data to S3. Returns the s3:// URI."""
         await self._ensure_bucket(bucket)
-        async with self._session.client(**self._s3_kwargs()) as s3:
+        async with self._client() as s3:
             await s3.put_object(Bucket=bucket, Key=key, Body=data)
         logger.debug("S3 upload: %s/%s (%d bytes)", bucket, key, len(data))
         return f"s3://{bucket}/{key}"
@@ -109,14 +146,14 @@ class StorageService:
     async def upload_file(self, bucket: str, key: str, file_path: str) -> str:
         """Upload a local file to S3."""
         await self._ensure_bucket(bucket)
-        async with self._session.client(**self._s3_kwargs()) as s3:
+        async with self._client() as s3:
             await s3.upload_file(str(file_path), bucket, key)
         logger.debug("S3 upload_file: %s → %s/%s", file_path, bucket, key)
         return f"s3://{bucket}/{key}"
 
     async def download(self, bucket: str, key: str) -> bytes:
         """Download data from S3."""
-        async with self._session.client(**self._s3_kwargs()) as s3:
+        async with self._client() as s3:
             response = await s3.get_object(Bucket=bucket, Key=key)
             data = await response["Body"].read()
         logger.debug("S3 download: %s/%s (%d bytes)", bucket, key, len(data))
@@ -127,7 +164,7 @@ class StorageService:
         from pathlib import Path
         dest = Path(dest_path)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        async with self._session.client(**self._s3_kwargs()) as s3:
+        async with self._client() as s3:
             await s3.download_file(bucket, key, str(dest))
         logger.debug("S3 download_file: %s/%s → %s", bucket, key, dest)
         return str(dest)
@@ -135,7 +172,7 @@ class StorageService:
     async def delete(self, bucket: str, key: str) -> bool:
         """Delete an object from S3."""
         try:
-            async with self._session.client(**self._s3_kwargs()) as s3:
+            async with self._client() as s3:
                 await s3.delete_object(Bucket=bucket, Key=key)
             logger.debug("S3 delete: %s/%s", bucket, key)
             return True
@@ -146,7 +183,7 @@ class StorageService:
     async def exists(self, bucket: str, key: str) -> bool:
         """Check if an S3 object exists."""
         try:
-            async with self._session.client(**self._s3_kwargs()) as s3:
+            async with self._client() as s3:
                 await s3.head_object(Bucket=bucket, Key=key)
             return True
         except self._client_error:
@@ -158,7 +195,7 @@ class StorageService:
     async def list_objects(self, bucket: str, prefix: str = "") -> list[str]:
         """List object keys in an S3 bucket with optional prefix."""
         keys = []
-        async with self._session.client(**self._s3_kwargs()) as s3:
+        async with self._client() as s3:
             paginator = s3.get_paginator("list_objects_v2")
             async for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
                 for obj in page.get("Contents", []):
@@ -168,7 +205,7 @@ class StorageService:
     async def get_presigned_url(self, bucket: str, key: str, expires: int = 3600) -> str | None:
         """Generate a presigned download URL."""
         try:
-            async with self._session.client(**self._s3_kwargs()) as s3:
+            async with self._client() as s3:
                 url = await s3.generate_presigned_url(
                     "get_object",
                     Params={"Bucket": bucket, "Key": key},
@@ -183,7 +220,7 @@ class StorageService:
         """Copy an object between S3 buckets."""
         try:
             await self._ensure_bucket(dst_bucket)
-            async with self._session.client(**self._s3_kwargs()) as s3:
+            async with self._client() as s3:
                 await s3.copy_object(
                     CopySource={"Bucket": src_bucket, "Key": src_key},
                     Bucket=dst_bucket,
@@ -207,7 +244,7 @@ class StorageService:
     async def health_check(self) -> dict:
         """Check S3 storage health."""
         try:
-            async with self._session.client(**self._s3_kwargs()) as s3:
+            async with self._client() as s3:
                 await s3.list_buckets()
             return {"status": "healthy", "mode": "s3", "endpoint": settings.S3_ENDPOINT_URL}
         except (OSError, RuntimeError, ConnectionError) as e:
@@ -235,5 +272,5 @@ async def close_storage_service() -> None:
     """Close the storage service."""
     global _storage_service
     if _storage_service is not None:
-        await _storage_service.close()
+        await _storage_service.stop()
         _storage_service = None

@@ -99,10 +99,13 @@ async def landing_page(request: Request):
             total_findings = findings_result.scalar() or 0
             missions_result = await session.execute(text("SELECT COUNT(*) FROM missions WHERE status = 'completed'"))
             total_missions = missions_result.scalar() or 0
+            users_result = await session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true"))
+            total_users = users_result.scalar() or 0
         except (OSError, RuntimeError, ValueError):
             logger.debug("Failed to load landing stats", exc_info=True)
             total_findings = 0
             total_missions = 0
+            total_users = 0
 
         plugin_dir = APP_DIR.parent / "plugins"
         total_tools = len(list(plugin_dir.glob("*.json"))) if plugin_dir.exists() else 0
@@ -110,7 +113,7 @@ async def landing_page(request: Request):
         stats = {
             "total_findings": f"{total_findings:,}",
             "total_missions": f"{total_missions:,}",
-            "uptime": "99.9%",
+            "total_users": f"{total_users:,}",
             "total_tools": str(total_tools),
         }
 

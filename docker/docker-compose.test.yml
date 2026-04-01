@@ -33,16 +33,16 @@ services:
     networks:
       - spectra_test
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ':9001'
-    environment:
-      MINIO_ROOT_USER: spectra
-      MINIO_ROOT_PASSWORD: spectra_test_minio
+  garage:
+    image: dxflrs/garage:v2.2.0
+    volumes:
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+      - ./garage.toml:/etc/garage.toml:ro
     ports:
-      - "19000:9000"
+      - "19000:3900"
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live >/dev/null"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3903/health || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -58,9 +58,9 @@ services:
     environment:
       # Override database for container network
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_minio
+      - S3_SECRET_KEY=spectra_test_garage
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
@@ -78,7 +78,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      minio:
+      garage:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -95,9 +95,9 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_minio
+      - S3_SECRET_KEY=spectra_test_garage
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
@@ -115,7 +115,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      minio:
+      garage:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -153,9 +153,9 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_minio
+      - S3_SECRET_KEY=spectra_test_garage
     volumes:
       - ../plugins:/app/plugins
       - ../app:/app/app:ro
@@ -204,9 +204,9 @@ services:
     environment:
       # Override for test environment
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_minio
+      - S3_SECRET_KEY=spectra_test_garage
       - TEST_TARGET_IP=172.21.0.5
       - TEST_TARGET_URL=http://172.21.0.5
       - METASPLOITABLE_AVAILABLE=true
@@ -224,7 +224,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      minio:
+      garage:
         condition: service_healthy
       metasploitable:
         condition: service_started
@@ -250,9 +250,9 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_minio
+      - S3_SECRET_KEY=spectra_test_garage
       - RATE_LIMIT_STORAGE=redis://redis:6379/0
       - LOAD_TEST_APP_URL=http://app:5000
       - LOAD_TEST_APP_REPLICA_URL=http://app-replica:5000
@@ -271,7 +271,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      minio:
+      garage:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -308,9 +308,9 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_minio
+      - S3_SECRET_KEY=spectra_test_garage
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
@@ -343,9 +343,9 @@ services:
       - ../.env.test
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
-      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=spectra
-      - S3_SECRET_KEY=spectra_test_minio
+      - S3_SECRET_KEY=spectra_test_garage
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false

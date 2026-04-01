@@ -10,14 +10,14 @@ Spectra Log Management
 Usage: $0 <command>
 
 Commands:
-  tail [service]      Tail logs for a service (default: app). Services: app, worker, scheduler, ai-svc, db, caddy, minio
+  tail [service]      Tail logs for a service (default: app). Services: app, worker, scheduler, ai-svc, db, caddy, garage
   errors [service]    Show recent ERROR lines for a service (default: all)
   export <dir>        Export all service logs to a directory
   sizes               Show log file and container log sizes
 EOF
 }
 
-SERVICES=(app worker scheduler ai-svc db caddy minio)
+SERVICES=(app worker scheduler ai-svc db caddy garage)
 
 _container_name_for_service() {
     local service="${1}"
@@ -41,8 +41,8 @@ _container_name_for_service() {
         caddy)
             printf '%s\n' "${CADDY_CONTAINER:-spectra-caddy}"
             ;;
-        minio)
-            printf '%s\n' "${MINIO_CONTAINER:-spectra-minio}"
+        garage)
+            printf '%s\n' "${GARAGE_CONTAINER:-spectra-garage}"
             ;;
         *)
             echo "Unknown service: ${service}" >&2

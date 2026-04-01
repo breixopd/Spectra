@@ -64,25 +64,23 @@ class UsageTracker:
         period = _period_start(period_type)
 
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(UsageRecord).where(
-                    UsageRecord.user_id == user_id,
-                    UsageRecord.period_type == period_type,
-                    UsageRecord.period_start == period,
-                )
-            )
-            record = result.scalar_one_or_none()
-
-            if record is None:
-                record = UsageRecord(
+            # Use an atomic server-side increment to avoid read-modify-write races.
+            # INSERT ... ON CONFLICT DO UPDATE SET col = col + amount
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+            stmt = (
+                pg_insert(UsageRecord)
+                .values(
                     user_id=user_id,
                     period_type=period_type,
                     period_start=period,
+                    **{col_name: amount},
                 )
-                session.add(record)
-
-            current = getattr(record, col_name)
-            setattr(record, col_name, current + amount)
+                .on_conflict_do_update(
+                    index_elements=["user_id", "period_type", "period_start"],
+                    set_={col_name: getattr(UsageRecord, col_name) + amount},
+                )
+            )
+            await session.execute(stmt)
             await session.commit()
 
         # Record to telemetry

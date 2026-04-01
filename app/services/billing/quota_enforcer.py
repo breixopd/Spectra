@@ -53,8 +53,17 @@ class QuotaEnforcer:
             return False, "No active subscription"
 
         async with async_session_maker() as session:
-            # Check concurrent missions
+            # Use a row-level lock on the user's subscription to prevent
+            # concurrent requests from both reading the same count and both
+            # passing the quota check simultaneously (TOCTOU).
             from app.models.mission import Mission as MissionModel
+
+            locked_sub = await session.execute(
+                select(Subscription)
+                .where(Subscription.user_id == user_id, Subscription.status == "active")
+                .with_for_update()
+            )
+            locked_sub.scalar_one_or_none()  # acquire lock; discard result
 
             active_count_result = await session.execute(
                 select(func.count(MissionModel.id)).where(

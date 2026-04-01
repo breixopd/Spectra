@@ -66,9 +66,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       JWT_SECRET_KEY_FILE: /run/secrets/jwt_secret
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-spectra}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_ENDPOINT_URL: http://garage:3900
+      S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-spectra}
+      S3_SECRET_KEY: ${GARAGE_SECRET_KEY}
       AI_SERVICE_URL: http://ai-svc:5010
       RATE_LIMIT_STORAGE: redis://redis:6379/0
       TENSORZERO_GATEWAY_URL: http://tensorzero:3000
@@ -100,9 +100,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-spectra}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_ENDPOINT_URL: http://garage:3900
+      S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-spectra}
+      S3_SECRET_KEY: ${GARAGE_SECRET_KEY}
       TENSORZERO_GATEWAY_URL: http://tensorzero:3000
       SKIP_MIGRATIONS: "true"
     networks:
@@ -128,9 +128,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-spectra}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_ENDPOINT_URL: http://garage:3900
+      S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-spectra}
+      S3_SECRET_KEY: ${GARAGE_SECRET_KEY}
       BACKUP_ENABLED: "true"
       SKIP_MIGRATIONS: "true"
     networks:
@@ -156,9 +156,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
-      S3_ENDPOINT_URL: http://minio:9000
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-spectra}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_ENDPOINT_URL: http://garage:3900
+      S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-spectra}
+      S3_SECRET_KEY: ${GARAGE_SECRET_KEY}
       SKIP_MIGRATIONS: "true"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -191,17 +191,27 @@ services:
     networks:
       - spectra-net
 
-  # MinIO Object Storage (S3-compatible)
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+  # Garage S3-compatible Object Storage
+  garage:
+    image: dxflrs/garage:v2.2.0
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-spectra}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
+    ports:
+      - "3900:3900"
+      - "3903:3903"
     volumes:
-      - minio_data:/data
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    configs:
+      - source: garage_config
+        target: /etc/garage.toml
     networks:
       - spectra-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3903/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     deploy:
       replicas: 1
       placement:
@@ -277,7 +287,8 @@ volumes:
   caddy_data:
   caddy_config:
   clickhouse_data:
-  minio_data:
+  garage_meta:
+  garage_data:
   redis_data:
 
 secrets:
@@ -293,3 +304,5 @@ configs:
     file: ./Caddyfile.prod
   tensorzero_config:
     file: ../config/tensorzero.toml
+  garage_config:
+    file: ./garage.toml

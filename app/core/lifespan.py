@@ -172,6 +172,21 @@ def _validate_production_secrets() -> None:
 
 
 
+def _validate_noop_payment() -> None:
+    """Prevent accidentally running with the noop (free-access) payment adapter in production."""
+    if settings.DEBUG:
+        return
+    if not settings.PLATFORM_EXPOSED:
+        return
+    if settings.PAYMENT_PROVIDER.lower() == "noop":
+        raise RuntimeError(
+            "PAYMENT_PROVIDER is set to 'noop' but PLATFORM_EXPOSED is True. "
+            "All users would receive unlimited free access. "
+            "Configure a real payment provider (stripe, crypto, or manual) "
+            "or set PLATFORM_EXPOSED=false for internal deployments."
+        )
+
+
 def _validate_rate_limit_storage() -> None:
     storage_uri = settings.RATE_LIMIT_STORAGE.strip()
     if not storage_uri.startswith(("redis://", "rediss://")):
@@ -199,6 +214,7 @@ async def _initialize_database(app: FastAPI) -> None:
     from app.services.storage import get_storage_service
 
     storage = get_storage_service()
+    await storage.start()
     logger.info("[OK] Storage service initialized (mode: s3)")
 
     # Verify S3 connectivity at startup
@@ -495,6 +511,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("[STARTUP] Starting Spectra...")
 
     _validate_production_secrets()
+    _validate_noop_payment()
 
     try:
         await _initialize_database(app)

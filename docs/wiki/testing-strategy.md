@@ -21,7 +21,7 @@ Covered subsystems include:
 
 - FastAPI app, routers, templates, and browser flows
 - AI service, scheduler, and worker services
-- PostgreSQL, Redis, MinIO, ClickHouse, and TensorZero gateway integrations
+- PostgreSQL, Redis, Garage, ClickHouse, and TensorZero gateway integrations
 - Caddy edge proxy and deployment configuration
 - scripts/test.sh, scripts/health_check.sh, and scripts/ops/* workflows
 
