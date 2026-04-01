@@ -5,8 +5,10 @@ Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
-from datetime import UTC, datetime
-from typing import Any, Annotated
+from datetime import datetime, timezone
+
+UTC = timezone.utc
+from typing import TYPE_CHECKING, Any, Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -17,9 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import async_session_maker, get_async_session
 from app.core.security import decode_token
 from app.models.user import User
-from app.repositories.exploit import ExploitRepository
-from app.repositories.finding import FindingRepository
-from app.repositories.target import TargetRepository
+
+if TYPE_CHECKING:
+    from app.repositories.exploit import ExploitRepository
+    from app.repositories.finding import FindingRepository
+    from app.repositories.target import TargetRepository
 
 logger = __import__("logging").getLogger(__name__)
 
@@ -164,13 +168,13 @@ def check_resource_owner(resource, user, resource_name: str = "resource") -> Non
         owner_id = resource.get("owner_id") or resource.get("user_id")
     else:
         owner_id = getattr(resource, "user_id", None)
-    if owner_id and owner_id != str(user.id):
+    if owner_id != str(user.id):
         raise HTTPException(status_code=403, detail=f"Not authorized to access this {resource_name}")
 
 
 async def get_target_repository(
     session: AsyncSession = Depends(get_async_session),
-) -> TargetRepository:
+) -> "TargetRepository":
     """Get TargetRepository instance.
 
     Args:
@@ -179,12 +183,14 @@ async def get_target_repository(
     Returns:
         Configured TargetRepository.
     """
+    from app.repositories.target import TargetRepository
+
     return TargetRepository(session)
 
 
 async def get_finding_repository(
     session: AsyncSession = Depends(get_async_session),
-) -> FindingRepository:
+) -> "FindingRepository":
     """Get FindingRepository instance.
 
     Args:
@@ -193,12 +199,14 @@ async def get_finding_repository(
     Returns:
         Configured FindingRepository.
     """
+    from app.repositories.finding import FindingRepository
+
     return FindingRepository(session)
 
 
 async def get_exploit_repository(
     session: AsyncSession = Depends(get_async_session),
-) -> ExploitRepository:
+) -> "ExploitRepository":
     """Get ExploitRepository instance.
 
     Args:
@@ -207,6 +215,8 @@ async def get_exploit_repository(
     Returns:
         Configured ExploitRepository.
     """
+    from app.repositories.exploit import ExploitRepository
+
     return ExploitRepository(session)
 
 

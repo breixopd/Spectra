@@ -2,47 +2,105 @@
 let safetyAllowed = 0;
 let safetyBlocked = 0;
 let safetyFlagged = 0;
+let hasLoadedSafetyStats = false;
+let safetyStatsFailureShown = false;
 
-function updateSafetyDisplay() {
+function updateSafetyDisplay(options = {}) {
+    const { stale = false, unavailable = false } = options;
     const el = document.getElementById('safety-stats');
-    if (el) el.textContent = `${safetyAllowed} allowed / ${safetyBlocked} blocked`;
+    if (!el) return;
+
+    el.classList.remove('text-slate-300', 'text-amber-300', 'text-rose-400');
+    if (unavailable) {
+        el.textContent = 'Safety stats unavailable';
+        el.classList.add('text-rose-400');
+        return;
+    }
+
+    el.textContent = `${safetyAllowed} allowed / ${safetyBlocked} blocked${stale ? ' (stale)' : ''}`;
+    el.classList.add(stale ? 'text-amber-300' : 'text-slate-300');
+}
+
+function getSafetyStatsErrorMessage(error, fallback) {
+    if (typeof error === 'string' && error.trim()) return error;
+    if (error && typeof error.detail === 'string' && error.detail.trim()) return error.detail;
+    if (error && typeof error.message === 'string' && error.message.trim()) return error.message;
+    return fallback;
+}
+
+function applySafetyStats(source) {
+    if (source.safety) {
+        safetyAllowed = source.safety.allowed || 0;
+        safetyBlocked = source.safety.blocked || 0;
+        safetyFlagged = source.safety.flagged || 0;
+        return true;
+    }
+    if (typeof source.allowed === 'number' || typeof source.blocked === 'number' || typeof source.flagged === 'number') {
+        safetyAllowed = source.allowed || 0;
+        safetyBlocked = source.blocked || 0;
+        safetyFlagged = source.flagged || 0;
+        return true;
+    }
+    if (source.tool_stats) {
+        safetyAllowed = source.tool_stats.total_executions || 0;
+        safetyBlocked = source.tool_stats.failed_executions || 0;
+        safetyFlagged = 0;
+        return true;
+    }
+    return false;
 }
 
 async function loadSafetyStats() {
+    let primaryError = null;
     try {
         // Try dedicated safety endpoint first
         const { data, error } = await spectraApi.get('/api/v1/system/safety-stats');
-        if (!error && data) {
-            safetyAllowed = data.allowed || 0;
-            safetyBlocked = data.blocked || 0;
-            safetyFlagged = data.flagged || 0;
+        if (!error && data && applySafetyStats(data)) {
+            hasLoadedSafetyStats = true;
+            safetyStatsFailureShown = false;
             updateSafetyDisplay();
             return;
         }
-    } catch {}
+        primaryError = error || 'Primary safety stats endpoint returned no data';
+    } catch (error) {
+        primaryError = error;
+    }
+
+    let secondaryError = null;
     // Fall back to system status
     try {
         const { data, error } = await spectraApi.get('/api/v1/system/status');
-        if (!error && data) {
-            if (data.safety) {
-                safetyAllowed = data.safety.allowed || 0;
-                safetyBlocked = data.safety.blocked || 0;
-                safetyFlagged = data.safety.flagged || 0;
-            }
-            // Also try tool_stats as a proxy for allowed commands
-            if (data.tool_stats && !data.safety) {
-                safetyAllowed = (data.tool_stats.total_executions || 0);
-                safetyBlocked = (data.tool_stats.failed_executions || 0);
-            }
+        if (!error && data && applySafetyStats(data)) {
+            hasLoadedSafetyStats = true;
+            safetyStatsFailureShown = false;
             updateSafetyDisplay();
+            return;
         }
-    } catch {}
+        secondaryError = error || 'System status endpoint returned no safety data';
+    } catch (error) {
+        secondaryError = error;
+    }
+
+    const message = `Unable to refresh safety stats. ${getSafetyStatsErrorMessage(secondaryError || primaryError, 'Please try again shortly.')}`;
+    console.error('Failed to load safety stats', { primaryError, secondaryError });
+    updateSafetyDisplay(hasLoadedSafetyStats ? { stale: true } : { unavailable: true });
+    if (!safetyStatsFailureShown && typeof _spectraToast === 'function') {
+        _spectraToast(message, 'error');
+        safetyStatsFailureShown = true;
+    }
 }
 
 // Load safety stats on page load
 loadSafetyStats();
 // Auto-refresh every 30 seconds
-setInterval(loadSafetyStats, 30000);
+const safetyStatsRefreshIntervalId = window.setInterval(loadSafetyStats, 30000);
+
+function cleanupOverseerPageState() {
+    window.clearInterval(safetyStatsRefreshIntervalId);
+}
+
+window.addEventListener('pagehide', cleanupOverseerPageState, { once: true });
+window.addEventListener('beforeunload', cleanupOverseerPageState, { once: true });
 
 // Listen for async WS messages without overwriting the global handler
 document.addEventListener('spectra:ws-message', (event) => {

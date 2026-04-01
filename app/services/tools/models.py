@@ -6,7 +6,11 @@ execution, parsing, and UI configuration.
 """
 
 import logging
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+    class StrEnum(str, __import__("enum").Enum):
+        pass
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field

@@ -65,7 +65,7 @@ Built on the PTES (Penetration Testing Execution Standard) methodology, Spectra 
 - Server pool management with health monitoring
 - Remote server provisioning via SSH
 - Load balancing with weighted node selection
-- S3-compatible storage (MinIO) with local filesystem fallback
+- S3-compatible storage with bundled MinIO by default, plus Garage and other compatible endpoints
 
 ### Security and Access Control
 

@@ -4,8 +4,13 @@ Authentication Router.
 Handles user login, setup, and token generation.
 """
 
+import hashlib
 import logging
-from datetime import UTC, datetime, timedelta
+import threading
+import time
+from datetime import datetime, timedelta, timezone
+
+UTC = timezone.utc
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
@@ -64,6 +69,22 @@ REFRESH_COOKIE_PATH = "/api/v1/auth/refresh"
 AUTH_COOKIE_SAMESITE = "strict"
 REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
 DUMMY_PASSWORD_HASH = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCJzFhWMu"
+_TOTP_REPLAY_WINDOW_SECONDS = 90
+_used_totp_codes: dict[str, float] = {}
+_used_totp_codes_lock = threading.Lock()
+
+
+def _consume_totp_code(user_id: str, code: str) -> bool:
+    now = time.time()
+    code_hash = hashlib.sha256(f"{user_id}:{code}".encode("utf-8")).hexdigest()
+    with _used_totp_codes_lock:
+        expired = [key for key, expires_at in _used_totp_codes.items() if expires_at <= now]
+        for key in expired:
+            _used_totp_codes.pop(key, None)
+        if code_hash in _used_totp_codes:
+            return False
+        _used_totp_codes[code_hash] = now + _TOTP_REPLAY_WINDOW_SECONDS
+        return True
 
 
 async def _check_lockout(user: User) -> None:
@@ -98,7 +119,7 @@ async def _record_success(user: User, session: AsyncSession) -> None:
 
 def _create_auth_token_pair(user: User) -> tuple[str, str]:
     access_token = create_access_token(
-        data={"sub": user.username, "role": user.role, "is_superuser": user.is_superuser},
+        data={"sub": user.username},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     refresh_token = create_refresh_token(data={"sub": user.username})
@@ -380,6 +401,7 @@ async def refresh_token(
         )
 
     _raise_if_token_invalidated(user, payload)
+    invalidate_token(provided_refresh_token)
 
     access_token, new_refresh_token = _create_auth_token_pair(user)
     _set_auth_cookies(response, access_token, new_refresh_token)
@@ -504,6 +526,8 @@ async def mfa_verify_setup(
     secret = decrypt_mfa_secret(user.mfa_secret)
     if not verify_totp(secret, body.code):
         raise HTTPException(status_code=400, detail="Invalid TOTP code")
+    if not _consume_totp_code(str(user.id), body.code):
+        raise HTTPException(status_code=400, detail="TOTP code has already been used")
 
     user.mfa_enabled = True
     await session.commit()
@@ -548,6 +572,8 @@ async def mfa_verify_login(
     secret = decrypt_mfa_secret(user.mfa_secret)
     if not verify_totp(secret, body.code):
         raise HTTPException(status_code=401, detail="Invalid TOTP code")
+    if not _consume_totp_code(str(user.id), body.code):
+        raise HTTPException(status_code=401, detail="TOTP code has already been used")
 
     # Invalidate the partial MFA token
     invalidate_token(token)
@@ -593,6 +619,8 @@ async def mfa_disable(
     secret = decrypt_mfa_secret(user.mfa_secret)
     if not verify_totp(secret, body.code):
         raise HTTPException(status_code=400, detail="Invalid TOTP code")
+    if not _consume_totp_code(str(user.id), body.code):
+        raise HTTPException(status_code=400, detail="TOTP code has already been used")
 
     user.mfa_enabled = False
     user.mfa_secret = None
@@ -798,14 +826,26 @@ async def forgot_password(
 ):
     """Request a password reset email. Always returns 204 to avoid user enumeration."""
     from app.repositories.user import UserRepository
+    from app.services.email import EmailService
 
     user_repo = UserRepository(session)
     user = await user_repo.get_by_email(body.email)
     if user:
         reset_token = create_password_reset_token(str(user.id))
-        # In production, send reset_token via email. For now, log it.
-        logger.info("Password reset requested for user %s (token generated)", user.id)
-        _ = reset_token  # Will be used when email service is integrated
+        base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/")
+        reset_url = f"{base_url}/reset-password?token={reset_token}"
+        try:
+            sent = await EmailService().send_template(
+                to=user.email,
+                template_name="password_reset",
+                subject=f"{settings.APP_NAME} - Password Reset",
+                username=user.username,
+                reset_url=reset_url,
+            )
+            if not sent:
+                logger.warning("Password reset email provider returned false for user %s", user.id)
+        except Exception:
+            logger.exception("Failed to send password reset email for user %s", user.id)
     return Response(status_code=204)
 
 
@@ -882,7 +922,6 @@ async def create_api_key(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Create a new API key for the current user."""
-    import hashlib
     import secrets
 
     from app.models.plan import ApiKey

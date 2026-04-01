@@ -14,7 +14,11 @@ import asyncio
 import logging
 import shlex
 from dataclasses import dataclass, field
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+    class StrEnum(str, __import__("enum").Enum):
+        pass
 
 logger = logging.getLogger(__name__)
 

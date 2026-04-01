@@ -47,6 +47,7 @@ function addTargetToGrid(target) {
     const grid = document.getElementById('targets-grid');
     const template = document.getElementById('target-card-template');
     const clone = template.content.cloneNode(true);
+    const card = clone.querySelector('[data-target-card]');
     
     clone.querySelector('.target-name').textContent = target.address;
     clone.querySelector('.target-desc').textContent = target.description || 'No description';
@@ -62,18 +63,74 @@ function addTargetToGrid(target) {
         }
     }
 
+    if (card && document.getElementById('target-search')?.value) {
+        const q = document.getElementById('target-search').value.toLowerCase();
+        const text = `${target.address} ${target.description || ''}`.toLowerCase();
+        if (!text.includes(q)) card.style.display = 'none';
+    }
+
     grid.appendChild(clone);
 }
+
+function filterTargets(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('[data-target-card]').forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(q) ? '' : 'none';
+    });
+}
+
+window.filterTargets = filterTargets;
 
 // --- Shell Handler ---
 
 let term = null;
 let socket = null;
 let fitAddon = null;
+let shellResizeHandler = null;
+let termDataDisposable = null;
+
+function hasValidSessionId(sessionId) {
+    return typeof sessionId === 'string'
+        && sessionId.trim() !== ''
+        && sessionId !== 'null'
+        && sessionId !== 'undefined';
+}
+
+function cleanupShellResources() {
+    if (termDataDisposable) {
+        termDataDisposable.dispose();
+        termDataDisposable = null;
+    }
+
+    if (shellResizeHandler) {
+        window.removeEventListener('resize', shellResizeHandler);
+        shellResizeHandler = null;
+    }
+
+    if (socket) {
+        socket.close();
+        socket = null;
+    }
+
+    if (term) {
+        term.dispose();
+        term = null;
+    }
+
+    fitAddon = null;
+}
 
 function openShell(btn, sessionId) {
+    if (!hasValidSessionId(sessionId)) {
+        _spectraToast('No active shell session is available for this target.', 'error');
+        return;
+    }
+
+    cleanupShellResources();
+
     document.getElementById('shell-modal').classList.remove('hidden');
-    document.getElementById('shell-title').textContent = sessionId ? `Session: ${sessionId}` : 'Connecting...';
+    document.getElementById('shell-title').textContent = `Session: ${sessionId}`;
 
     // Initialize xterm.js
     const container = document.getElementById('terminal-container');
@@ -105,44 +162,50 @@ function openShell(btn, sessionId) {
     socket = new ReconnectingWebSocket(wsUrl, { maxRetries: 10 });
 
     socket.on('open', () => {
+        if (!term) return;
         term.writeln('\x1b[32mConnected!\x1b[0m');
         term.focus();
     });
 
     socket.on('message', (event) => {
+        if (!term) return;
         term.write(event.data);
     });
 
     socket.on('close', () => {
+        if (!term) return;
         term.writeln('\r\n\x1b[31mConnection closed. Reconnecting...\x1b[0m');
     });
 
-    socket.on('error', (error) => {
+    socket.on('error', () => {
+        if (!term) return;
         term.writeln('\r\n\x1b[31mConnection error.\x1b[0m');
     });
 
     // Send input to server
-    term.onData(data => {
+    termDataDisposable = term.onData(data => {
         socket.send(data);
     });
 
     // Handle resize
-    window.addEventListener('resize', () => {
+    shellResizeHandler = () => {
         if (fitAddon) fitAddon.fit();
-    });
+    };
+    window.addEventListener('resize', shellResizeHandler);
 }
 
 function closeShell() {
     document.getElementById('shell-modal').classList.add('hidden');
-    if (socket) {
-        socket.close();
-        socket = null;
-    }
-    if (term) {
-        term.dispose();
-        term = null;
+    cleanupShellResources();
+
+    const container = document.getElementById('terminal-container');
+    if (container) {
+        container.innerHTML = '';
     }
 }
+
+window.addEventListener('pagehide', closeShell, { once: true });
+window.addEventListener('beforeunload', closeShell, { once: true });
 
 // Initialize with some dummy data
 document.addEventListener('DOMContentLoaded', () => {

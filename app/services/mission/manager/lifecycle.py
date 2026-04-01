@@ -11,6 +11,7 @@ from app.core.database import async_session_maker
 from app.core.events import events
 from app.repositories.mission import MissionRepository
 from app.services.ai.agents.base import AgentContext
+from app.services.ai.sanitizer import sanitize_for_prompt
 from app.services.billing.quota_enforcer import QuotaEnforcer
 from app.services.mission.mission import Mission
 from app.services.mission.state_store import MissionStateStore
@@ -266,8 +267,11 @@ class MissionLifecycleManager:
                 mission._broadcast("geo", geo)
 
             effective_mission = mission.directive
+            sanitized_requirements = ""
             if mission.requirements:
-                effective_mission = f"{mission.directive}\n\nRequirements:\n{mission.requirements}"
+                sanitized_requirements = sanitize_for_prompt(mission.requirements, field_name="requirements")
+            if sanitized_requirements:
+                effective_mission = f"{mission.directive}\n\nRequirements:\n{sanitized_requirements}"
 
             return AgentContext(
                 mission_id=mission.id,

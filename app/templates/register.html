@@ -1,11 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    {% include 'partials/head.html' %}
-    <title>Register — Spectra</title>
-    <link rel="stylesheet" href="/static/css/auth.css">
-</head>
-<body>
+{% extends "auth_layout.html" %}
+{% from 'macros/forms.html' import password_requirements %}
+
+{% block title %}Register — Spectra{% endblock %}
+
+{% block auth_body %}
 <div class="auth-brand">
     <div class="brand-logo">
         {% include 'partials/shield_svg.html' %}
@@ -43,12 +41,7 @@
         <div class="field">
             <label for="password">Password</label>
             <input type="password" id="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password" aria-required="true" placeholder="Minimum 8 characters">
-            <ul class="pw-requirements" id="pwRequirements" style="list-style:none;padding:0;margin:0.5rem 0 0;font-size:0.78rem;">
-                <li id="pw-req-length" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least 8 characters</li>
-                <li id="pw-req-upper" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least one uppercase letter</li>
-                <li id="pw-req-lower" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least one lowercase letter</li>
-                <li id="pw-req-digit" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least one digit</li>
-            </ul>
+                        {{ password_requirements(id_prefix="pw-req") }}
             <div class="pw-strength" id="pwStrength">
                 <div class="pw-strength-bar"><div class="pw-strength-fill" id="pwFill"></div></div>
                 <span class="pw-strength-text" id="pwText"></span>
@@ -82,7 +75,7 @@
         const hasUpper = /[A-Z]/.test(v);
         const hasLower = /[a-z]/.test(v);
         const hasDigit = /[0-9]/.test(v);
-        updateReq('pw-req-length', hasLen);
+        updateReq('pw-req-len', hasLen);
         updateReq('pw-req-upper', hasUpper);
         updateReq('pw-req-lower', hasLower);
         updateReq('pw-req-digit', hasDigit);
@@ -127,5 +120,4 @@
         }
     });
 </script>
-</body>
-</html>
+{% endblock %}

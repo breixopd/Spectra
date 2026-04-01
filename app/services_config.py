@@ -5,7 +5,11 @@ In monolith mode (default), all services run in one process.
 In split mode, each service runs its own FastAPI instance.
 """
 
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+    class StrEnum(str, __import__("enum").Enum):
+        pass
 
 
 class ServiceMode(StrEnum):

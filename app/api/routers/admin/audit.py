@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas import PaginatedResponse
 from app.core.config import settings
 from app.core.database import get_async_session
+from app.core.rate_limit import RateLimits, limiter
 from app.core.rbac import Permission, require_permission
 from app.core.telemetry import telemetry
 from app.models.audit_log import AuditLog
@@ -114,15 +117,18 @@ async def admin_stats(
         "total_audit_events": total_audit_events,
         "role_counts": role_counts,
         "service_topology": topology,
-        "smtp_host": settings.SMTP_HOST or "",
+        "smtp_configured": settings.smtp_configured,
     }
 
 
 @router.get("/api/admin/usage")
+@limiter.limit(RateLimits.API_HEAVY)
 async def admin_usage(
+    request: Request,
     _user: User = require_permission(Permission.MANAGE_USERS),
 ) -> dict[str, Any]:
     """Return aggregated LLM usage stats from active cost trackers."""
+    _ = request
     trackers = get_cost_trackers()
     saas = telemetry.get_saas_metrics()
 

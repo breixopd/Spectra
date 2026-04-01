@@ -1,10 +1,12 @@
 import asyncio
+from typing import TYPE_CHECKING
 
-from app.services.mission.manager import MissionManager
+if TYPE_CHECKING:
+    from app.services.mission.manager import MissionManager
 
 
 async def wait_for_mission_status(
-    mission_manager: MissionManager,
+    mission_manager: "MissionManager",
     mission_id: str,
     target_statuses: list[str],
     timeout: float = 10.0,
@@ -23,7 +25,7 @@ async def wait_for_mission_status(
     raise TimeoutError(f"Mission {mission_id} did not reach {target_statuses} in {timeout}s. Current: {current_status}")
 
 
-async def get_mission_logs(mission_manager: MissionManager, mission_id: str) -> list[str]:
+async def get_mission_logs(mission_manager: "MissionManager", mission_id: str) -> list[str]:
     """Get logs for a mission."""
     mission = await mission_manager.get_mission(mission_id)
     if not mission:

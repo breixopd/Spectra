@@ -80,7 +80,7 @@ let currentTool = null;
 async function selectTool(id) {
     const container = document.getElementById('tool-details');
     container.innerHTML = '<div class="text-center py-8 text-slate-500"><i data-lucide="loader" class="w-4 h-4 inline-block animate-spin mr-2"></i>Loading...</div>';
-    
+
     try {
         const [toolResult, statsResult] = await Promise.all([
             spectraApi.get(`/api/v1/tools/${id}`),
@@ -89,10 +89,28 @@ async function selectTool(id) {
         const tool = toolResult.data;
         const stats = statsResult.data;
         currentTool = tool;
-        
+
+        const toolId = escapeHtml(String(tool.id || ''));
         const successRate = stats.total_count > 0
             ? Math.round((stats.success_count / stats.total_count) * 100)
             : 0;
+        const toggleButton = tool.enabled
+            ? `<button type="button" data-tool-action="toggle" data-tool-enabled="false" data-tool-id="${toolId}" class="px-4 py-2.5 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-300 transition-colors" aria-label="Disable tool" title="Disable tool"><i data-lucide="toggle-left" class="w-5 h-5 inline-block"></i></button>`
+            : `<button type="button" data-tool-action="toggle" data-tool-enabled="true" data-tool-id="${toolId}" class="px-4 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-colors" aria-label="Enable tool" title="Enable tool"><i data-lucide="toggle-right" class="w-5 h-5 inline-block"></i></button>`;
+        const installButton = tool.status !== 'ready' && tool.status !== 'installing'
+            ? `<button type="button" data-tool-action="install" data-tool-id="${toolId}" class="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors"><i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i> Install</button>`
+            : '';
+        const installStatus = tool.status_message || (tool.install_logs && tool.install_logs.length)
+            ? `<div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Install Status</label>
+                    <div class="mt-1 p-3 rounded-lg bg-black/40 border border-white/5">
+                        <div class="text-sm text-slate-300">${escapeHtml(tool.status_message || 'Installation logs available')}</div>
+                        ${tool.last_updated ? `<div class="text-xs text-slate-500 mt-1">Updated: ${escapeHtml(tool.last_updated)}</div>` : ''}
+                        ${tool.last_output ? `<pre class="text-[11px] text-slate-400 mt-2 whitespace-pre-wrap">${escapeHtml(tool.last_output)}</pre>` : ''}
+                        ${tool.install_logs && tool.install_logs.length ? `<div class="mt-2 max-h-40 overflow-y-auto rounded bg-black/30 p-2 text-[11px] text-slate-400 whitespace-pre-wrap">${tool.install_logs.map(line => escapeHtml(line)).join('\n')}</div>` : ''}
+                    </div>
+                </div>`
+            : '';
 
         container.innerHTML = `
             <div class="flex items-center gap-4 mb-6 animate-fade-in-up">
@@ -104,7 +122,7 @@ async function selectTool(id) {
                     <p class="text-slate-400 text-sm">v${escapeHtml(tool.version)} · ${escapeHtml(tool.category)}</p>
                 </div>
             </div>
-            
+
             <div class="grid grid-cols-3 gap-3 mb-4 animate-fade-in-up stagger-1">
                 <div class="bg-black/30 rounded-lg p-3 text-center">
                     <div class="text-2xl font-bold font-mono text-white">${stats.total_count || 0}</div>
@@ -127,8 +145,29 @@ async function selectTool(id) {
                     <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500" style="width: ${successRate}%"></div>
                 </div>
             </div>` : ''}
-            
-            <div class="space-y-4 animate-fade-in-up stagger-2">
+
+            <div class="space-y-4 mb-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
+                    <p class="text-slate-300 text-sm mt-1">${escapeHtml(tool.description)}</p>
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Command</label>
+                    <code class="block mt-1 p-3 rounded-lg bg-black/40 font-mono text-xs text-violet-300 overflow-x-auto">${escapeHtml(tool.execution_command)} ${escapeHtml(tool.args_template)}</code>
+                </div>
+                ${installStatus}
+            </div>
+
+            <div class="pt-4 border-t border-white/10 flex gap-3">
+                    <i data-lucide="play" class="w-4 h-4 inline-block mr-1"></i> Run Test
+                </button>
+                ${toggleButton}
+                ${installButton}
+                <button type="button" data-tool-action="delete" data-tool-id="${toolId}" class="px-4 py-2.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors" aria-label="Delete tool" title="Delete tool">
+                    <i data-lucide="trash-2" class="w-4 h-4 inline-block"></i>
+                </button>
+            </div>
+        `;
                 <div>
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Description</label>
                     <p class="text-slate-300 text-sm mt-1">${escapeHtml(tool.description)}</p>
@@ -141,77 +180,35 @@ async function selectTool(id) {
                 <div>
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Install Status</label>
                     <div class="mt-1 p-3 rounded-lg bg-black/40 border border-white/5">
-                        <div class="text-xs text-slate-300">${escapeHtml(tool.status_message || tool.status_phase || 'No additional status')}</div>
                         ${tool.last_updated ? `<div class="text-xs text-slate-500 mt-1">Updated: ${escapeHtml(tool.last_updated)}</div>` : ''}
                         ${tool.last_output ? `<pre class="text-[11px] text-slate-400 mt-2 whitespace-pre-wrap">${escapeHtml(tool.last_output)}</pre>` : ''}
                         ${tool.install_logs && tool.install_logs.length ? `<div class="mt-2 max-h-40 overflow-y-auto rounded bg-black/30 p-2 text-[11px] text-slate-400 whitespace-pre-wrap">${tool.install_logs.map(line => escapeHtml(line)).join('\n')}</div>` : ''}
                     </div>
                 </div>` : ''}
                 <div class="pt-4 border-t border-white/10 flex gap-3">
-                    <button onclick="showTestModal('${tool.id}')" class="flex-1 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white text-sm font-medium transition-all">
+                    <button type="button" data-tool-action="test" data-tool-id="${escapeHtml(String(tool.id || ''))}" class="flex-1 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white text-sm font-medium transition-all">
                         <i data-lucide="play" class="w-4 h-4 inline-block mr-1"></i> Run Test
                     </button>
                     ${tool.enabled ? `
-                        <button onclick="toggleToolEnabled('${tool.id}', false)" class="px-4 py-2.5 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-300 transition-colors">
+                        <button type="button" data-tool-action="toggle" data-tool-enabled="false" data-tool-id="${escapeHtml(String(tool.id || ''))}" aria-label="Disable tool" title="Disable tool" class="px-4 py-2.5 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-300 transition-colors">
                             <i data-lucide="toggle-left" class="w-5 h-5 inline-block"></i>
                         </button>
                     ` : `
-                        <button onclick="toggleToolEnabled('${tool.id}', true)" class="px-4 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-colors">
+                        <button type="button" data-tool-action="toggle" data-tool-enabled="true" data-tool-id="${escapeHtml(String(tool.id || ''))}" aria-label="Enable tool" title="Enable tool" class="px-4 py-2.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-colors">
                             <i data-lucide="toggle-right" class="w-5 h-5 inline-block"></i>
                         </button>
                     `}
                     ${tool.status !== 'ready' && tool.status !== 'installing' ? `
-                        <button onclick="installTool('${tool.id}')" class="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors">
+                        <button type="button" data-tool-action="install" data-tool-id="${escapeHtml(String(tool.id || ''))}" class="flex-1 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-colors">
                             <i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i> Install
                         </button>
                     ` : ''}
-                    <button onclick="deleteTool('${tool.id}')" class="px-4 py-2.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors">
+                    <button type="button" data-tool-action="delete" data-tool-id="${escapeHtml(String(tool.id || ''))}" aria-label="Delete tool" title="Delete tool" class="px-4 py-2.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors">
                         <i data-lucide="trash-2" class="w-4 h-4 inline-block"></i>
                     </button>
                 </div>
             </div>
         `;
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-    } catch (e) {
-        container.innerHTML = `<div class="text-red-400 p-4">Error: ${escapeHtml(String(e))}</div>`;
-    }
-}
-
-async function installTool(id) {
-    const logs = document.getElementById('install-logs');
-    logs.innerHTML += `\n> Requesting installation for ${id}...`;
-    
-    try {
-        const { error } = await spectraApi.post(`/api/v1/tools/${id}/install`);
-        if (error) throw new Error(error);
-        
-        logs.innerHTML += `\n> Installation started.`;
-        refreshTools();
-        selectTool(id);
-    } catch (e) {
-        logs.innerHTML += `\n> Error: ${e.message}`;
-    }
-}
-
-async function toggleToolEnabled(id, enabled) {
-    const logs = document.getElementById('install-logs');
-    logs.innerHTML += `\n> ${enabled ? 'Enabling' : 'Disabling'} ${id}...`;
-
-    try {
-        const path = enabled ? 'enable' : 'disable';
-        const { error } = await spectraApi.post(`/api/v1/tools/${id}/${path}`);
-        if (error) throw new Error(error);
-        logs.innerHTML += `\n> ${enabled ? 'Enabled' : 'Disabled'} ${id}.`;
-        await refreshTools();
-        await selectTool(id);
-    } catch (e) {
-        logs.innerHTML += `\n> Error: ${e.message}`;
-    }
-}
-
-async function deleteTool(id) {
-    _spectraConfirm('Are you sure you want to delete this tool?', async () => {
-        try {
             await spectraApi.delete(`/api/v1/tools/${id}`);
             refreshTools();
             document.getElementById('tool-details').innerHTML = '<p class="text-gray-500 italic text-center mt-10">Select a tool to view details</p>';

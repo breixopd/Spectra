@@ -1,10 +1,16 @@
 {% extends "base.html" %}
 
+{% block breadcrumbs %}
+<nav aria-label="Breadcrumb" class="text-sm text-slate-400 mb-4">
+  <a href="/dashboard" class="hover:text-white">Home</a> / <span class="text-white">Settings</span>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="flex items-center justify-between mb-6 animate-fade-in-up">
     <h1 class="text-2xl font-semibold text-white tracking-tight">System Settings</h1>
-    <button type="submit" form="settings-form" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
-        Save Changes
+    <button type="submit" form="settings-form" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors" title="Saves the General Configuration form">
+        Save General Settings
     </button>
 </div>
 
@@ -12,26 +18,26 @@
     <!-- Sidebar Navigation -->
     <div class="md:col-span-3">
         <nav class="space-y-1" role="tablist" aria-label="Settings sections">
-            <a href="#general" role="tab" aria-selected="true" aria-controls="general" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
+            <button type="button" id="tab-general" role="tab" aria-selected="true" aria-controls="general" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
                 <i data-lucide="sliders-horizontal" class="w-4 h-4 inline-block mr-3 text-violet-400"></i>
                 General
-            </a>
-            <a href="#data-sources" role="tab" aria-selected="false" aria-controls="data-sources" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            </button>
+            <button type="button" id="tab-data-sources" role="tab" aria-selected="false" aria-controls="data-sources" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i data-lucide="download" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 Data Sources
-            </a>
-            <a href="#system" role="tab" aria-selected="false" aria-controls="system" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            </button>
+            <button type="button" id="tab-system" role="tab" aria-selected="false" aria-controls="system" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i data-lucide="server" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 System Status
-            </a>
-            <a href="#vpn" role="tab" aria-selected="false" aria-controls="vpn" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            </button>
+            <button type="button" id="tab-vpn" role="tab" aria-selected="false" aria-controls="vpn" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i data-lucide="shield" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 VPN
-            </a>
-            <a href="#platform" role="tab" aria-selected="false" aria-controls="platform" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            </button>
+            <button type="button" id="tab-platform" role="tab" aria-selected="false" aria-controls="platform" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i data-lucide="globe" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 Platform
-            </a>
+            </button>
         </nav>
     </div>
 
@@ -39,7 +45,7 @@
     <div class="md:col-span-9 space-y-6">
         
         <!-- General Settings -->
-        <div class="glass-panel rounded-xl p-6" id="general" role="tabpanel" aria-labelledby="general">
+        <div class="glass-panel rounded-xl p-6" id="general" role="tabpanel" aria-labelledby="tab-general">
             <h2 class="text-lg font-semibold text-white mb-4">General Configuration</h2>
             <form id="settings-form" class="space-y-5">
                 <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] gap-4">
@@ -143,13 +149,13 @@
         </div>
 
         <!-- Platform Settings -->
-        <div class="glass-panel rounded-xl p-6">
+        <div id="platform" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="tab-platform">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i data-lucide="globe" class="w-5 h-5 inline-block text-sky-400"></i>
                 Platform
             </h2>
             <form id="platform-form" class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Domain</label>
                         <input type="text" name="platform_domain" id="platform_domain" placeholder="spectra.example.com" class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none">
@@ -429,7 +435,7 @@
         </div>
 
         <!-- Data Sources Section -->
-        <div id="data-sources" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="data-sources">
+        <div id="data-sources" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="tab-data-sources">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i data-lucide="download" class="w-5 h-5 inline-block text-amber-400"></i>
                 Data Sources
@@ -453,7 +459,7 @@
         </div>
 
         <!-- VPN Management -->
-        <div id="vpn" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="vpn">
+        <div id="vpn" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="tab-vpn">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i data-lucide="shield" class="w-5 h-5 inline-block text-emerald-400"></i>
                 VPN Management
@@ -508,7 +514,7 @@
         </div>
 
         <!-- System Status -->
-        <div class="glass-panel rounded-xl p-6">
+        <div id="system" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="tab-system">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i data-lucide="server" class="w-5 h-5 inline-block text-cyan-400"></i>
                 System Status
@@ -631,7 +637,7 @@
             const ts = data.tool_stats || {};
             
             container.innerHTML = `
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-400">Database</span>
                         ${dbStatus}

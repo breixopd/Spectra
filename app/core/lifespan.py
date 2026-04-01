@@ -7,10 +7,12 @@ Initializes database connections, cache, and other services.
 
 import asyncio
 import logging
+import socket
 import shutil
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import FastAPI
 from pydantic import SecretStr
@@ -168,6 +170,30 @@ def _validate_production_secrets() -> None:
         )
 
 
+
+
+def _validate_rate_limit_storage() -> None:
+    storage_uri = settings.RATE_LIMIT_STORAGE.strip()
+    if not storage_uri.startswith(("redis://", "rediss://")):
+        return
+
+    parsed = urlparse(storage_uri)
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 6379
+    try:
+        with socket.create_connection((host, port), timeout=2.0):
+            logger.info("[OK] Rate-limit storage reachable at %s:%s", host, port)
+    except OSError as exc:
+        logger.error(
+            "[SECURITY] RATE_LIMIT_STORAGE points to Redis at %s:%s but it is unreachable. "
+            "Rate limiting may fall back to per-process memory and become inconsistent across replicas.",
+            host,
+            port,
+        )
+        if not settings.DEBUG:
+            raise RuntimeError("RATE_LIMIT_STORAGE Redis backend is unreachable") from exc
+
+
 async def _initialize_database(app: FastAPI) -> None:
     """Verify database connectivity, hydrate settings, and store session maker."""
     from app.services.storage import get_storage_service
@@ -194,6 +220,8 @@ async def _initialize_database(app: FastAPI) -> None:
 
     telemetry.update_service_status("database", healthy=True)
     logger.info("[OK] Database ready (migrations handled by start script)")
+
+    _validate_rate_limit_storage()
 
     await run_startup_checks()
 

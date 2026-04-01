@@ -66,4 +66,11 @@ async function loadStatus() {
 
 loadStatus();
 // Auto-refresh every 30 seconds
-setInterval(loadStatus, 30000);
+const statusRefreshIntervalId = window.setInterval(loadStatus, 30000);
+
+function cleanupStatusPageState() {
+    window.clearInterval(statusRefreshIntervalId);
+}
+
+window.addEventListener('pagehide', cleanupStatusPageState, { once: true });
+window.addEventListener('beforeunload', cleanupStatusPageState, { once: true });

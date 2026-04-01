@@ -4,6 +4,12 @@
 <link rel="stylesheet" href="/static/css/admin.css">
 {% endblock %}
 
+{% block breadcrumbs %}
+<nav aria-label="Breadcrumb" class="text-sm text-slate-400 mb-4">
+  <a href="/dashboard" class="hover:text-white">Home</a> / <span class="text-white">Admin</span>
+</nav>
+{% endblock %}
+
 {% block content %}
 <!-- Maintenance Mode Banner -->
 <div id="maintenance-banner" class="mb-5 p-4 rounded-xl border transition-all duration-300 animate-fade-in-up {{ 'bg-amber-500/10 border-amber-500/30' if maintenance_active else 'bg-slate-800/50 border-white/5' }}">
@@ -36,42 +42,42 @@
     <!-- Sidebar -->
     <div class="md:col-span-3 lg:col-span-2 admin-sidebar">
         <nav class="space-y-1" role="tablist" aria-label="Admin sections">
-            <a href="#" data-section="dashboard" role="tab" aria-selected="true" aria-controls="section-dashboard" class="active flex items-center px-3 py-2 rounded-lg text-sm font-medium">
+            <button type="button" id="tab-dashboard" data-section="dashboard" role="tab" aria-selected="true" aria-controls="section-dashboard" class="active flex items-center px-3 py-2 rounded-lg text-sm font-medium">
                 <i data-lucide="pie-chart" class="w-4 h-4 inline-block mr-3 text-violet-400"></i> Dashboard
-            </a>
-            <a href="#" data-section="users" role="tab" aria-selected="false" aria-controls="section-users" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-users" data-section="users" role="tab" aria-selected="false" aria-controls="section-users" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="users" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Users
-            </a>
-            <a href="#" data-section="plans" role="tab" aria-selected="false" aria-controls="section-plans" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-plans" data-section="plans" role="tab" aria-selected="false" aria-controls="section-plans" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="layers" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Plans
-            </a>
-            <a href="#" data-section="audit" role="tab" aria-selected="false" aria-controls="section-audit" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-audit" data-section="audit" role="tab" aria-selected="false" aria-controls="section-audit" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="scroll" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Audit Logs
-            </a>
-            <a href="#" data-section="usage" role="tab" aria-selected="false" aria-controls="section-usage" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-usage" data-section="usage" role="tab" aria-selected="false" aria-controls="section-usage" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="coins" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Usage
-            </a>
-            <a href="#" data-section="services" role="tab" aria-selected="false" aria-controls="section-services" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-services" data-section="services" role="tab" aria-selected="false" aria-controls="section-services" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="network" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Services
-            </a>
-            <a href="#" data-section="content" role="tab" aria-selected="false" aria-controls="section-content" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-content" data-section="content" role="tab" aria-selected="false" aria-controls="section-content" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="file-text" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Content
-            </a>
-            <a href="#" data-section="llm" role="tab" aria-selected="false" aria-controls="section-llm" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-llm" data-section="llm" role="tab" aria-selected="false" aria-controls="section-llm" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="brain" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> AI Config
-            </a>
-            <a href="#" data-section="tensorzero" role="tab" aria-selected="false" aria-controls="section-tensorzero" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-tensorzero" data-section="tensorzero" role="tab" aria-selected="false" aria-controls="section-tensorzero" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="chart-line" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> AI Gateway
-            </a>
-            <a href="#" data-section="email" role="tab" aria-selected="false" aria-controls="section-email" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-email" data-section="email" role="tab" aria-selected="false" aria-controls="section-email" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="mail" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Email
-            </a>
-            <a href="#" data-section="backups" role="tab" aria-selected="false" aria-controls="section-backups" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-backups" data-section="backups" role="tab" aria-selected="false" aria-controls="section-backups" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="archive" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Backups
-            </a>
-            <a href="#" data-section="rollback" role="tab" aria-selected="false" aria-controls="section-rollback" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+            </button>
+            <button type="button" id="tab-rollback" data-section="rollback" role="tab" aria-selected="false" aria-controls="section-rollback" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                 <i data-lucide="rotate-ccw" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> Rollback
-            </a>
+            </button>
             <a href="/settings" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium hover:bg-white/5">
                 <i data-lucide="settings" class="w-4 h-4 inline-block mr-3 text-slate-500"></i> System Settings
             </a>
@@ -366,7 +372,7 @@
         </div>
 
         <!-- Content Management -->
-        <div id="section-content" class="section-panel space-y-5" role="tabpanel">
+        <div id="section-content" class="section-panel space-y-5" role="tabpanel" aria-labelledby="tab-content">
             <div class="flex items-center justify-between mb-2">
                 <h2 class="text-lg font-semibold text-white">Content Management</h2>
             </div>
@@ -390,7 +396,7 @@
         </div>
 
         <!-- AI Gateway Configuration -->
-        <div id="section-llm" class="section-panel space-y-5" role="tabpanel">
+        <div id="section-llm" class="section-panel space-y-5" role="tabpanel" aria-labelledby="tab-llm">
             <h2 class="text-lg font-semibold text-white mb-4">AI Gateway Configuration</h2>
             <p class="text-sm text-slate-400 mb-4">All AI inference routes through the TensorZero gateway. Configure the connection, models, and embeddings here.</p>
             
@@ -486,7 +492,7 @@
         </div>
 
         <!-- TensorZero AI Gateway -->
-        <div id="section-tensorzero" class="section-panel space-y-5" role="tabpanel">
+        <div id="section-tensorzero" class="section-panel space-y-5" role="tabpanel" aria-labelledby="tab-tensorzero">
             <h2 class="text-lg font-semibold text-white mb-4">AI Gateway (TensorZero)</h2>
             <p class="text-sm text-slate-400 mb-4">Real-time AI inference monitoring, optimization, and analytics powered by TensorZero.</p>
 
@@ -628,6 +634,12 @@
 
         <!-- Audit Logs -->
         <div id="section-audit" class="section-panel space-y-4" role="tabpanel" aria-labelledby="tab-audit">
+            <div class="flex items-center justify-between gap-3">
+                <h2 class="text-lg font-semibold text-white">Audit Logs</h2>
+                <button onclick="exportAuditLogsCSV()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-medium transition-colors">
+                    <i data-lucide="download" class="w-4 h-4 inline-block mr-1.5"></i> Export CSV
+                </button>
+            </div>
             <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                 <select id="audit-event-filter" class="form-input form-select w-44" aria-label="Filter by event type">
                     <option value="">All Events</option>

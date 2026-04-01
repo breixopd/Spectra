@@ -1,51 +1,174 @@
 let currentMissionId = null;
+let missionCache = [];
+let historyRefreshIntervalId = null;
+let missionListRefreshErrorShown = false;
+let missionDetailsRefreshErrorShown = false;
+
+function getHistoryErrorMessage(error, fallback) {
+    if (typeof error === 'string' && error.trim()) {
+        return error;
+    }
+    if (error && typeof error.detail === 'string' && error.detail.trim()) {
+        return error.detail;
+    }
+    return fallback;
+}
+
+function renderMissionListError(message) {
+    const list = document.getElementById('mission-list');
+    if (!list) return;
+    list.innerHTML = `
+        <div class="text-center text-rose-400 py-8 px-4 space-y-2">
+            <p class="text-sm font-medium">Failed to load assessments</p>
+            <p class="text-xs text-slate-500">${escapeHtml(message)}</p>
+            <button type="button" onclick="window.location.reload()" class="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-xs transition-colors">
+                Retry
+            </button>
+        </div>
+    `;
+}
+
+function showMissionDetailsLoading() {
+    document.getElementById('mission-details-placeholder').classList.add('hidden');
+    document.getElementById('mission-details-content').classList.remove('hidden');
+    document.getElementById('detail-target').innerText = 'Loading...';
+    document.getElementById('detail-id').innerText = '';
+    document.getElementById('detail-directive').innerText = 'Loading mission details...';
+
+    const statusEl = document.getElementById('detail-status');
+    statusEl.innerText = 'Loading';
+    statusEl.className = 'px-2 py-1 rounded text-xs font-medium bg-slate-700 text-slate-300';
+
+    document.getElementById('tab-logs').innerHTML = '<div class="text-slate-500 italic">Loading mission logs...</div>';
+    document.getElementById('tab-findings').innerHTML = '<div class="text-slate-500 italic">Loading findings...</div>';
+    document.getElementById('detail-json').innerText = '{\n  "status": "loading"\n}';
+}
+
+function renderMissionDetailsError(message) {
+    document.getElementById('mission-details-placeholder').classList.add('hidden');
+    document.getElementById('mission-details-content').classList.remove('hidden');
+    document.getElementById('detail-target').innerText = 'Unable to load mission';
+    document.getElementById('detail-id').innerText = currentMissionId || '';
+    document.getElementById('detail-directive').innerText = message;
+
+    const statusEl = document.getElementById('detail-status');
+    statusEl.innerText = 'Error';
+    statusEl.className = 'px-2 py-1 rounded text-xs font-medium bg-rose-500/20 text-rose-400 border border-rose-500/30';
+
+    document.getElementById('tab-logs').innerHTML = `<div class="text-rose-400 italic">${escapeHtml(message)}</div>`;
+    document.getElementById('tab-findings').innerHTML = '<div class="text-slate-600 italic">Mission findings are unavailable right now.</div>';
+    document.getElementById('detail-json').innerText = JSON.stringify({ error: message }, null, 2);
+    document.getElementById('mission-feedback-section')?.classList.add('hidden');
+}
+
+async function loadMissionList(options = {}) {
+    const { initial = false } = options;
+    const { data, error } = await spectraApi.get('/api/v1/missions?page=1&per_page=100');
+
+    if (error) {
+        const message = getHistoryErrorMessage(error, 'Could not load assessment history.');
+        if (initial) {
+            renderMissionListError(message);
+        }
+        if (initial || !missionListRefreshErrorShown) {
+            _spectraToast(message, 'error');
+            missionListRefreshErrorShown = true;
+        }
+        return false;
+    }
+
+    missionListRefreshErrorShown = false;
+    missionCache = data?.items || [];
+    renderMissionList([...missionCache]);
+    return true;
+}
+
+function renderMissionList(missions) {
+    const list = document.getElementById('mission-list');
+    list.innerHTML = '';
+
+    if (missions.length === 0) {
+        list.innerHTML = '<div class="empty-state"><i data-lucide="history" class="w-8 h-8 inline-block text-blue-400/40"></i><h3>No assessments yet</h3><p>Start an assessment from the Dashboard to see history here.</p></div>';
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+    }
+
+    missions.reverse().forEach(m => {
+        const el = document.createElement('div');
+        el.className = 'mission-list-item p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition-colors border border-white/5';
+        el.dataset.missionCard = 'true';
+        el.onclick = () => loadMissionDetails(m.id);
+
+        let statusColor = 'text-slate-400';
+        if (m.status === 'completed' || m.status === 'exploitation_successful') statusColor = 'text-emerald-400';
+        if (m.status === 'failed') statusColor = 'text-rose-400';
+        if (m.status === 'running') statusColor = 'text-amber-400';
+
+        el.innerHTML = `
+            <div class="flex justify-between items-start mb-1">
+                <span class="font-medium text-slate-200 truncate">${escapeHtml(m.target)}</span>
+                <span class="text-xs ${statusColor} border border-current px-1 rounded uppercase">${escapeHtml(m.status)}</span>
+            </div>
+            <div class="text-xs text-slate-500 font-mono truncate">${escapeHtml(m.id)}</div>
+        `;
+        list.appendChild(el);
+    });
+}
+
+function filterMissions(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('[data-mission-card]').forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(q) ? '' : 'none';
+    });
+}
 
 // Load missions on start
 (async () => {
-    const { data, error } = await spectraApi.get('/api/v1/missions?page=1&per_page=100');
-    if (error) return;
-        const missions = data?.items || [];
-        const list = document.getElementById('mission-list');
-        list.innerHTML = '';
-        
-        if (missions.length === 0) {
-            list.innerHTML = '<div class="empty-state"><i data-lucide="history" class="w-8 h-8 inline-block text-blue-400/40"></i><h3>No assessments yet</h3><p>Start an assessment from the Dashboard to see history here.</p></div>';
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-            return;
-        }
-
-        // Sort by ID (timestamp roughly) descending
-        missions.reverse().forEach(m => {
-            const el = document.createElement('div');
-            el.className = 'p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition-colors border border-white/5';
-            el.onclick = () => loadMissionDetails(m.id);
-            
-            let statusColor = 'text-slate-400';
-            if (m.status === 'completed' || m.status === 'exploitation_successful') statusColor = 'text-emerald-400';
-            if (m.status === 'failed') statusColor = 'text-rose-400';
-            if (m.status === 'running') statusColor = 'text-amber-400';
-
-            el.innerHTML = `
-                <div class="flex justify-between items-start mb-1">
-                    <span class="font-medium text-slate-200 truncate">${escapeHtml(m.target)}</span>
-                    <span class="text-xs ${statusColor} border border-current px-1 rounded uppercase">${escapeHtml(m.status)}</span>
-                </div>
-                <div class="text-xs text-slate-500 font-mono truncate">${escapeHtml(m.id)}</div>
-            `;
-            list.appendChild(el);
-        });
+    await loadMissionList({ initial: true });
 })();
 
-async function loadMissionDetails(id) {
+historyRefreshIntervalId = window.setInterval(async () => {
+    const loaded = await loadMissionList();
+    if (!loaded) return;
+    const query = document.getElementById('mission-search')?.value;
+    if (query) filterMissions(query);
+    if (currentMissionId) {
+        await loadMissionDetails(currentMissionId, { background: true });
+    }
+}, 30000);
+
+function cleanupHistoryPageState() {
+    if (historyRefreshIntervalId) {
+        window.clearInterval(historyRefreshIntervalId);
+        historyRefreshIntervalId = null;
+    }
+}
+
+window.addEventListener('pagehide', cleanupHistoryPageState, { once: true });
+window.addEventListener('beforeunload', cleanupHistoryPageState, { once: true });
+
+async function loadMissionDetails(id, options = {}) {
+    const { background = false } = options;
     currentMissionId = id;
-    document.getElementById('mission-details-placeholder').classList.add('hidden');
-    document.getElementById('mission-details-content').classList.remove('hidden');
-    
-    // Show loading state
-    document.getElementById('detail-target').innerText = 'Loading...';
+    if (!background) {
+        showMissionDetailsLoading();
+    }
 
     const { data: mission, error } = await spectraApi.get(`/api/v1/missions/${id}`);
-    if (error) return;
+    if (error) {
+        const message = getHistoryErrorMessage(error, 'Could not load mission details.');
+        if (!background) {
+            renderMissionDetailsError(message);
+        }
+        if (!missionDetailsRefreshErrorShown || !background) {
+            _spectraToast(message, 'error');
+            missionDetailsRefreshErrorShown = true;
+        }
+        return false;
+    }
+
+    missionDetailsRefreshErrorShown = false;
             // Header
             document.getElementById('detail-target').innerText = mission.target;
             document.getElementById('detail-id').innerText = mission.id;
@@ -133,18 +256,28 @@ async function loadMissionDetails(id) {
             feedbackSection.classList.add('hidden');
         }
     }
+
+    return true;
 }
 
 function showDeleteModal() {
     if (!currentMissionId) return;
+    const targetRow = document.getElementById('delete-mission-target-row');
+    const targetEl = document.getElementById('delete-mission-target');
+    if (targetEl) {
+        targetEl.textContent = '';
+    }
+    if (targetRow) {
+        targetRow.classList.add('hidden');
+    }
     document.getElementById('download-before-delete-btn').onclick = () => {
         window.open(`/api/v1/missions/${currentMissionId}/report/pdf`, '_blank');
     };
-    showModal('delete-mission-modal');
+    window.showModal('delete-mission-modal');
 }
 
 function hideDeleteModal() {
-    closeModal('delete-mission-modal');
+    window.closeModal('delete-mission-modal');
 }
 
 async function confirmDeleteMission() {
@@ -163,9 +296,10 @@ function switchTab(tabName) {
 
 // Expose functions used by HTML onclick handlers
 window.showDeleteModal = showDeleteModal;
-window.hideDeleteModal = hideDeleteModal;
-window.confirmDeleteMission = confirmDeleteMission;
+window.handleDeleteMissionModalCancel = hideDeleteModal;
+window.handleDeleteMissionModalConfirm = confirmDeleteMission;
 window.switchTab = switchTab;
+window.filterMissions = filterMissions;
 window.submitFeedback = submitFeedback;
 
 // ---- Mission Feedback ----

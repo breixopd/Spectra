@@ -29,6 +29,16 @@ const spectraApi = (() => {
 
     const publicPaths = window.PUBLIC_PATHS || [];
 
+    function _getDecodedCookieValue(name) {
+        const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]+)`));
+        if (!match) return null;
+        try {
+            return decodeURIComponent(match[1]);
+        } catch (_) {
+            return match[1];
+        }
+    }
+
     function _onLoadingChange(count) {
         const el = document.getElementById('spectra-api-loading');
         if (el) {
@@ -78,7 +88,7 @@ const spectraApi = (() => {
         }
 
         // CSRF token from cookie (double-submit pattern)
-        const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+        const csrfToken = _getDecodedCookieValue('csrf_token');
         if (csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes((options.method || 'GET').toUpperCase())) {
             headers['X-CSRF-Token'] = csrfToken;
         }

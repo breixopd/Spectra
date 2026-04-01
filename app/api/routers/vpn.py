@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,8 @@ from app.services.tools.vpn import VPNManager
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/vpn", tags=["VPN"])
+
+VPN_NAME_PATTERN = r"^[a-zA-Z0-9_-]+$"
 
 DANGEROUS_OPENVPN_DIRECTIVES = [
     "up ",
@@ -91,7 +93,7 @@ class VPNConfigListItem(BaseModel):
 )
 async def upload_vpn_config(
     file: UploadFile = File(...),
-    name: str = Form(..., min_length=1, max_length=64),
+    name: str = Form(..., min_length=1, max_length=64, pattern=VPN_NAME_PATTERN),
     vpn_type: str = Form(..., pattern=r"^(wireguard|openvpn)$"),
     _user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_session),
@@ -141,7 +143,7 @@ async def list_vpn_configs(
 
 @router.delete("/configs/{name}", status_code=status.HTTP_200_OK)
 async def delete_vpn_config(
-    name: str,
+    name: str = Path(..., pattern=VPN_NAME_PATTERN),
     _user: User = Depends(get_current_active_user),
 ) -> dict:
     """Delete a saved VPN configuration."""
@@ -157,7 +159,7 @@ async def delete_vpn_config(
 
 @router.post("/connect/{name}", response_model=VPNActionResponse)
 async def connect_vpn(
-    name: str,
+    name: str = Path(..., pattern=VPN_NAME_PATTERN),
     _user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> VPNActionResponse:
@@ -175,7 +177,7 @@ async def connect_vpn(
 
 @router.post("/disconnect/{name}", response_model=VPNActionResponse)
 async def disconnect_vpn(
-    name: str,
+    name: str = Path(..., pattern=VPN_NAME_PATTERN),
     _user: User = Depends(get_current_active_user),
 ) -> VPNActionResponse:
     """Disconnect from a VPN."""

@@ -12,18 +12,75 @@ document.querySelectorAll('.profile-sidebar a').forEach(link => {
         link.classList.remove('text-slate-400');
         document.querySelectorAll('.profile-section').forEach(s => s.classList.remove('active'));
         document.getElementById(`section-${section}`).classList.add('active');
+        if (history.replaceState) history.replaceState(null, '', '#' + section);
     });
 });
+
+// Restore section from URL hash
+(function() {
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+        const link = document.querySelector(`.profile-sidebar a[data-section="${hash}"]`);
+        if (link) link.click();
+    }
+})();
+
+let profileLoadErrorShown = false;
+
+function ensureProfileLoadErrorElement() {
+    const panel = document.querySelector('#section-profile .glass-panel');
+    if (!panel) return null;
+
+    let errorEl = document.getElementById('profile-load-error');
+    if (!errorEl) {
+        errorEl = document.createElement('div');
+        errorEl.id = 'profile-load-error';
+        errorEl.className = 'hidden mb-4 rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300';
+        const intro = panel.querySelector('p.text-sm.text-slate-400');
+        if (intro) {
+            intro.insertAdjacentElement('afterend', errorEl);
+        } else {
+            panel.prepend(errorEl);
+        }
+    }
+
+    return errorEl;
+}
+
+function clearProfileLoadError() {
+    const errorEl = document.getElementById('profile-load-error');
+    if (errorEl) {
+        errorEl.textContent = '';
+        errorEl.classList.add('hidden');
+    }
+    profileLoadErrorShown = false;
+}
+
+function showProfileLoadError(message) {
+    const errorEl = ensureProfileLoadErrorElement();
+    if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.classList.remove('hidden');
+    }
+    if (!profileLoadErrorShown && typeof _spectraToast === 'function') {
+        _spectraToast(message, 'error');
+        profileLoadErrorShown = true;
+    }
+}
 
 // Load profile
 async function loadProfile() {
     try {
         const { data: user, error } = await spectraApi.get('/api/v1/auth/me');
-        if (error) return;
+        if (error) throw new Error(error);
+        clearProfileLoadError();
         document.getElementById('profile-username').value = user.username || '';
         document.getElementById('profile-email').value = user.email || '';
         document.getElementById('profile-role').value = (user.role || 'operator').charAt(0).toUpperCase() + (user.role || 'operator').slice(1);
-    } catch (e) { console.error('Failed to load profile', e); }
+    } catch (e) {
+        console.error('Failed to load profile', e);
+        showProfileLoadError(`Unable to load your profile right now. ${e.message || 'Please try again.'}`);
+    }
 }
 
 async function saveProfile() {
@@ -99,6 +156,7 @@ async function loadApiKeys() {
 }
 
 async function generateApiKey() {
+    _spectraConfirm('Generate a new API key? Your current key will be invalidated.', async () => {
     try {
         const { data, error } = await spectraApi.post('/api/v1/auth/api-keys');
         if (!error) {
@@ -117,6 +175,7 @@ async function generateApiKey() {
             setTimeout(loadApiKeys, 5000);
         } else _spectraToast('Failed to generate key', 'error');
     } catch (e) { _spectraToast('Network error', 'error'); }
+    }, { title: 'Generate API Key' });
 }
 
 async function revokeApiKey(keyId) {
@@ -286,12 +345,31 @@ async function showAvailablePlans() {
     } catch (e) { target.innerHTML = '<p class="text-sm text-red-400 text-center py-4">Could not load plans</p>'; }
 }
 
+function getSafeExternalHttpsUrl(urlValue) {
+    if (typeof urlValue !== 'string') return null;
+
+    try {
+        const parsedUrl = new URL(urlValue.trim());
+        if (parsedUrl.protocol !== 'https:' || !parsedUrl.hostname || parsedUrl.username || parsedUrl.password) {
+            return null;
+        }
+        return parsedUrl.toString();
+    } catch {
+        return null;
+    }
+}
+
 async function startCheckout(planId) {
     try {
         const { data, error } = await spectraApi.post('/api/v1/billing/checkout?plan_id=' + encodeURIComponent(planId));
         if (error) throw new Error(error.detail || 'Checkout failed');
         if (data.checkout_url) {
-            window.location.href = data.checkout_url;
+            const checkoutUrl = getSafeExternalHttpsUrl(data.checkout_url);
+            if (!checkoutUrl) {
+                _spectraToast('Invalid checkout URL returned', 'error');
+                return;
+            }
+            window.location.assign(checkoutUrl);
         } else {
             _spectraToast('No checkout URL returned — payment provider may not be configured', 'error');
         }
@@ -303,7 +381,13 @@ async function openBillingPortal() {
         const { data, error } = await spectraApi.get('/api/v1/billing/portal');
         if (error) throw new Error(error.detail || 'Could not open portal');
         if (data.portal_url) {
-            window.open(data.portal_url, '_blank');
+            const portalUrl = getSafeExternalHttpsUrl(data.portal_url);
+            if (!portalUrl) {
+                _spectraToast('Invalid billing portal URL returned', 'error');
+                return;
+            }
+            const portalWindow = window.open(portalUrl, '_blank', 'noopener,noreferrer');
+            if (portalWindow) portalWindow.opener = null;
         } else {
             _spectraToast('Billing portal not available', 'error');
         }

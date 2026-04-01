@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ request.state.csp_nonce }}">
     .method-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
     .method-GET { background: rgba(16,185,129,0.15); color: #34d399; }
     .method-POST { background: rgba(59,130,246,0.15); color: #60a5fa; }
@@ -30,6 +30,7 @@
         <div>
             <h1 class="text-2xl font-bold text-white tracking-tight">API Documentation</h1>
             <p class="text-slate-400 text-sm mt-0.5">Explore and test the {{ app_name }} REST API</p>
+            <div id="api-auth-status" class="text-xs text-slate-500 mt-2">Checking authentication...</div>
         </div>
         <div class="relative w-full sm:w-72">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -302,5 +303,20 @@ const data = await response.json();</code></pre>
         btn.innerHTML = '<i data-lucide="send" class="w-4 h-4 inline-block mr-1"></i> Send Request';
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const authStatus = document.getElementById('api-auth-status');
+        if (!authStatus) return;
+        try {
+            const { data, error } = await spectraApi.get('/api/v1/auth/me');
+            if (!error && data) {
+                authStatus.innerHTML = '<span class="text-emerald-400">● Authenticated</span> as ' + (data.username || data.email || 'user');
+            } else {
+                authStatus.innerHTML = '<span class="text-amber-400">● Anonymous</span> requests use your current browser session only';
+            }
+        } catch {
+            authStatus.innerHTML = '<span class="text-amber-400">● Anonymous</span> requests use your current browser session only';
+        }
+    });
 </script>
 {% endblock %}

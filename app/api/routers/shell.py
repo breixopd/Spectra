@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
@@ -26,6 +27,14 @@ from app.services.system.audit import log_event as audit_log_event
 router = APIRouter(prefix="/shell", tags=["Shell"])
 logger = logging.getLogger(__name__)
 
+_SHELL_SESSION_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def _validate_shell_session_id(session_id: str) -> str:
+    if not _SHELL_SESSION_ID_RE.fullmatch(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session ID format")
+    return session_id
+
 
 async def _keepalive(websocket: WebSocket) -> None:
     """Send periodic pings to keep the WebSocket connection alive."""
@@ -39,6 +48,7 @@ async def _keepalive(websocket: WebSocket) -> None:
 
 @router.websocket("/{session_id}")
 async def shell_websocket(websocket: WebSocket, session_id: str, token: str | None = Query(default=None)):
+    session_id = _validate_shell_session_id(session_id)
     # Prefer query-param token, fall back to cookie
     ws_token = token
     if not ws_token:

@@ -24,9 +24,9 @@ from app.core.constants import MAX_EXPORT_ROWS
 from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
 from app.models.exploit import Exploit
-from app.models.finding import Finding
-from app.models.mission import Mission
-from app.models.target import Target
+from app.models.finding import Finding, FindingStatus
+from app.models.mission import Mission, MissionStatus
+from app.models.target import Target, TargetStatus
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -63,6 +63,12 @@ _COLUMNS: dict[str, list[str]] = {
 
 _VALID_ENTITIES = frozenset(_ENTITY_MODELS.keys())
 _VALID_FORMATS = frozenset({"json", "csv"})
+
+_VALID_STATUS_FILTERS: dict[str, set[str]] = {
+    "missions": {status.value for status in MissionStatus},
+    "findings": {status.value for status in FindingStatus},
+    "targets": {status.value for status in TargetStatus},
+}
 
 
 def _parse_iso_datetime(value: str, field_name: str) -> dt:
@@ -105,8 +111,12 @@ def _build_export_query(
     if not current_user.is_superuser and hasattr(model, "user_id"):
         stmt = stmt.where(model.user_id == str(current_user.id))
 
-    if status and hasattr(model, "status"):
-        stmt = stmt.where(model.status == status)
+    if status:
+        allowed_statuses = _VALID_STATUS_FILTERS.get(entity_type)
+        if allowed_statuses is not None and status not in allowed_statuses:
+            raise HTTPException(status_code=422, detail=f"Invalid status for {entity_type}: {status}")
+        if hasattr(model, "status"):
+            stmt = stmt.where(model.status == status)
 
     date_col = model.timestamp if entity_type == "exploits" else model.created_at  # type: ignore[attr-defined]
     if date_from:

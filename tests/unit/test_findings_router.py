@@ -222,6 +222,34 @@ class TestCreateFinding:
         resp = await ac.post("/api/v1/findings", json={"title": "incomplete"})
         assert resp.status_code == 422
 
+    async def test_create_finding_rejects_oversized_evidence_map(self, client):
+        ac, _session, _user = client
+        resp = await ac.post(
+            "/api/v1/findings",
+            json={
+                "target_id": "t-1",
+                "title": "SQL Injection",
+                "severity": "high",
+                "tool_source": "sqlmap",
+                "evidence": {f"k{i}": "value" for i in range(26)},
+            },
+        )
+        assert resp.status_code == 422
+
+    async def test_create_finding_rejects_oversized_evidence_value(self, client):
+        ac, _session, _user = client
+        resp = await ac.post(
+            "/api/v1/findings",
+            json={
+                "target_id": "t-1",
+                "title": "SQL Injection",
+                "severity": "high",
+                "tool_source": "sqlmap",
+                "evidence": {"request": "x" * 5001},
+            },
+        )
+        assert resp.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # Update finding (PATCH)

@@ -3,7 +3,11 @@
 import logging
 import time
 from dataclasses import asdict, dataclass, field
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+    class StrEnum(str, __import__("enum").Enum):
+        pass
 from typing import Any
 
 logger = logging.getLogger(__name__)

@@ -47,6 +47,15 @@
 </label>
 {% endmacro %}
 
+{% macro password_requirements(id_prefix="pw") %}
+<ul id="{{ id_prefix }}-requirements" style="list-style:none;padding:0;margin:0.5rem 0 0;font-size:0.75rem;">
+    <li id="{{ id_prefix }}-len" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least 8 characters</li>
+    <li id="{{ id_prefix }}-upper" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least one uppercase letter</li>
+    <li id="{{ id_prefix }}-lower" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least one lowercase letter</li>
+    <li id="{{ id_prefix }}-digit" style="color:#94a3b8;"><span class="pw-req-icon">&#x2717;</span> At least one digit</li>
+</ul>
+{% endmacro %}
+
 {% macro glass_panel(title="", subtitle="") %}
 <div class="glass-panel rounded-xl p-5 space-y-4">
     {% if title %}<h3 class="text-sm font-semibold text-white">{{ title }}</h3>{% endif %}

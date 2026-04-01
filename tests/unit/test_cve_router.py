@@ -52,7 +52,7 @@ class TestCveLookup:
 
     async def test_lookup_with_product(self, client):
         cves = [{"id": "CVE-2026-0001", "description": "test vuln"}]
-        with patch("app.api.routers.cve.lookup_cves_live", AsyncMock(return_value=cves)):
+        with patch("app.api.routers.cve._lookup_cves_live", AsyncMock(return_value=cves)):
             resp = await client.get("/api/v1/cve/lookup?product=Apache")
         assert resp.status_code == 200
         data = resp.json()
@@ -60,7 +60,7 @@ class TestCveLookup:
         assert data["query"]["product"] == "Apache"
 
     async def test_lookup_with_keyword(self, client):
-        with patch("app.api.routers.cve.lookup_cves_live", AsyncMock(return_value=[])):
+        with patch("app.api.routers.cve._lookup_cves_live", AsyncMock(return_value=[])):
             resp = await client.get("/api/v1/cve/lookup?keyword=buffer+overflow")
         assert resp.status_code == 200
         assert resp.json()["query"]["keyword"] == "buffer overflow"
@@ -70,7 +70,7 @@ class TestCveLookup:
 class TestCveExploits:
     async def test_get_exploits_for_cve(self, client):
         modules = [{"name": "exploit/multi/handler", "rank": "excellent"}]
-        with patch("app.api.routers.cve.get_metasploit_modules", return_value=modules):
+        with patch("app.api.routers.cve._get_metasploit_modules", return_value=modules):
             resp = await client.get("/api/v1/cve/CVE-2026-0001/exploits")
         assert resp.status_code == 200
         data = resp.json()
@@ -79,7 +79,7 @@ class TestCveExploits:
         assert data["total"] == 1
 
     async def test_no_exploits_for_cve(self, client):
-        with patch("app.api.routers.cve.get_metasploit_modules", return_value=[]):
+        with patch("app.api.routers.cve._get_metasploit_modules", return_value=[]):
             resp = await client.get("/api/v1/cve/CVE-2026-9999/exploits")
         assert resp.status_code == 200
         assert resp.json()["exploit_available"] is False
@@ -106,10 +106,10 @@ class TestSearchSploit:
     async def test_searchsploit(self, client):
         results = [{"title": "Apache 2.4 RCE", "edb_id": "12345"}]
         with (
-            patch("app.api.routers.cve.search_exploitdb", AsyncMock(return_value=results)),
-            patch("app.api.routers.cve.get_metasploit_modules", return_value=[]),
+            patch("app.api.routers.cve._search_exploitdb", AsyncMock(return_value=results)),
+            patch("app.api.routers.cve._get_metasploit_modules", return_value=[]),
         ):
-            resp = await client.get("/api/v1/cve/searchsploit/apache")
+            resp = await client.get("/api/v1/cve/searchsploit?query=apache")
         assert resp.status_code == 200
         data = resp.json()
         assert data["query"] == "apache"
@@ -118,8 +118,16 @@ class TestSearchSploit:
     async def test_searchsploit_long_query(self, client):
         long_query = "a" * 201
         with (
-            patch("app.api.routers.cve.search_exploitdb", AsyncMock(return_value=[])),
-            patch("app.api.routers.cve.get_metasploit_modules", return_value=[]),
+            patch("app.api.routers.cve._search_exploitdb", AsyncMock(return_value=[])),
+            patch("app.api.routers.cve._get_metasploit_modules", return_value=[]),
         ):
-            resp = await client.get(f"/api/v1/cve/searchsploit/{long_query}")
+            resp = await client.get(f"/api/v1/cve/searchsploit?query={long_query}")
+        assert resp.status_code == 422
+
+    async def test_searchsploit_rejects_newline(self, client):
+        with (
+            patch("app.api.routers.cve._search_exploitdb", AsyncMock(return_value=[])),
+            patch("app.api.routers.cve._get_metasploit_modules", return_value=[]),
+        ):
+            resp = await client.get("/api/v1/cve/searchsploit?query=apache%0Aetc")
         assert resp.status_code == 422

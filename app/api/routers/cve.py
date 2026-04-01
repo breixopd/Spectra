@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 
 from app.api.dependencies import get_current_active_user
 from app.api.schemas.cve import (
@@ -17,18 +17,42 @@ from app.api.schemas.cve import (
     SearchExploitResponse,
 )
 from app.core.constants import CVE_RESULTS_LIMIT
+from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 
 _CVE_PATTERN = re.compile(r"^CVE-\d{4}-\d{4,}$")
-from app.services.ai.cve_intel import (
-    get_metasploit_modules,
-    lookup_cves_live,
-    search_exploitdb,
-)
+_SEARCHSPLOIT_QUERY_PATTERN = re.compile(r"^[a-zA-Z0-9._ -]{1,200}$")
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/cve", tags=["CVE Intelligence"])
+
+
+async def _lookup_cves_live(*, product: str | None, version: str | None, service: str | None):
+    from app.services.ai.cve_intel import lookup_cves_live
+
+    return await lookup_cves_live(product=product, version=version, service=service)
+
+
+def _get_metasploit_modules(cve_id: str):
+    from app.services.ai.cve_intel import get_metasploit_modules
+
+    return get_metasploit_modules(cve_id)
+
+
+async def _search_exploitdb(query: str):
+    from app.services.ai.cve_intel import search_exploitdb
+
+    return await search_exploitdb(query)
+
+
+def _validate_searchsploit_query(query: str) -> str:
+    if len(query) > 200:
+        raise HTTPException(status_code=422, detail="Query too long (max 200 chars)")
+    if not _SEARCHSPLOIT_QUERY_PATTERN.fullmatch(query):
+        raise HTTPException(status_code=422, detail="Query contains invalid characters")
+    return query
+
 
 
 @router.get("/lookup", response_model=CVELookupResponse)
@@ -47,7 +71,7 @@ async def cve_lookup(
         return {"cves": [], "query": {}, "message": "Provide at least one search parameter."}
 
     effective_product = product or keyword
-    cves = await lookup_cves_live(
+    cves = await _lookup_cves_live(
         product=effective_product,
         version=version,
         service=service,
@@ -66,7 +90,7 @@ async def get_cve_exploits(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get available exploit modules for a specific CVE."""
-    modules = get_metasploit_modules(cve_id)
+    modules = _get_metasploit_modules(cve_id)
     return {
         "cve_id": cve_id,
         "exploit_available": len(modules) > 0,
@@ -87,19 +111,31 @@ async def get_cve_enriched(
     return await db.enrich(cve_id)
 
 
-@router.get("/searchsploit/{query:path}", response_model=SearchExploitResponse)
+@router.get("/searchsploit", response_model=SearchExploitResponse)
+@limiter.limit(RateLimits.API_HEAVY)
 async def search_exploitdb_endpoint(
-    query: str,
+    request: Request,
+    query: str = Query(..., min_length=1, max_length=200),
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Search ExploitDB for exploits matching a query."""
-    if len(query) > 200:
-        raise HTTPException(status_code=422, detail="Query too long (max 200 chars)")
-    results = await search_exploitdb(query)
-    msf_matches = get_metasploit_modules(query.upper())
+    _ = request
+    validated_query = _validate_searchsploit_query(query)
+    results = await _search_exploitdb(validated_query)
+    msf_matches = _get_metasploit_modules(validated_query.upper())
     return {
-        "query": query,
+        "query": validated_query,
         "exploitdb_results": results,
         "metasploit_modules": msf_matches,
         "total": len(results) + len(msf_matches),
     }
+
+
+@router.get("/searchsploit/{query:path}", response_model=SearchExploitResponse)
+@limiter.limit(RateLimits.API_HEAVY)
+async def search_exploitdb_endpoint_legacy(
+    request: Request,
+    query: str,
+    _current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    return await search_exploitdb_endpoint(request=request, query=query, _current_user=_current_user)

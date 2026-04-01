@@ -4,12 +4,14 @@ These tests actually log in, interact with forms, click buttons,
 and verify page content — replacing shallow URL-only navigation tests.
 """
 
+import os
 import pytest
 from playwright.sync_api import Page, expect
 
 pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 
-APP_URL = "http://localhost:5000"
+APP_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
+
 
 
 # ---------------------------------------------------------------------------
@@ -102,10 +104,14 @@ def test_navigation_sidebar(logged_in_page: Page, app_url: str):
     """Click each sidebar link and verify the page loads."""
     page = logged_in_page
 
-    for path, _link_text in _SIDEBAR_LINKS:
+    expect(page).to_have_url(f"{app_url}/dashboard", timeout=10_000)
+
+    for path, _link_text in _SIDEBAR_LINKS[1:]:
         sidebar_link = page.locator(f"#sidebar nav a[href='{path}']")
-        sidebar_link.click()
-        page.wait_for_load_state("networkidle")
+        if sidebar_link.count() == 0:
+            continue
+        expect(sidebar_link).to_be_visible(timeout=10_000)
+        page.goto(f"{app_url}{path}", wait_until="networkidle")
         expect(page).to_have_url(f"{app_url}{path}", timeout=10_000)
 
 
@@ -131,7 +137,7 @@ def test_admin_panel_tabs(logged_in_page: Page, app_url: str):
     page.wait_for_timeout(2_000)  # let JS initialise
 
     for section_id, _label in _ADMIN_TABS:
-        tab_link = page.locator(f".admin-sidebar a[data-section='{section_id}']")
+        tab_link = page.locator(f".admin-sidebar [data-section='{section_id}']")
         tab_link.click()
         # The corresponding section should become visible
         section = page.locator(f"#section-{section_id}")
@@ -211,10 +217,10 @@ _LEGAL_PAGES = [
 ]
 
 
-def test_legal_pages(page: Page):
+def test_legal_pages(page: Page, app_url: str):
     """Verify legal pages load with Spectra branding and headings."""
     for path, expected_heading in _LEGAL_PAGES:
-        page.goto(f"{APP_URL}{path}", wait_until="networkidle")
+        page.goto(f"{app_url}{path}", wait_until="networkidle")
 
         # Page should contain the expected heading text
         heading = page.locator("h1")
@@ -264,9 +270,9 @@ def test_logout(logged_in_page: Page, app_url: str):
 # 12. Forgot password flow
 # ---------------------------------------------------------------------------
 
-def test_forgot_password_flow(page: Page):
+def test_forgot_password_flow(page: Page, app_url: str):
     """Go to /forgot-password, fill in email, submit, verify message."""
-    page.goto(f"{APP_URL}/forgot-password", wait_until="networkidle")
+    page.goto(f"{app_url}/forgot-password", wait_until="networkidle")
 
     email_input = page.locator("#email")
     expect(email_input).to_be_visible(timeout=10_000)

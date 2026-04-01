@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ request.state.csp_nonce }}">
     .tool-card { transition: all 0.2s ease; border: 1px solid rgba(255,255,255,0.05); }
     .tool-card:hover { border-color: rgba(139,92,246,0.3); transform: translateY(-1px); }
     .tool-card.selected { border-color: rgba(139,92,246,0.6); background: rgba(139,92,246,0.05); }
@@ -50,7 +50,7 @@
             <p class="text-slate-400 text-sm mt-0.5">Run security tools directly — no AI required</p>
         </div>
         <div class="flex items-center gap-2">
-            <div class="flex border border-white/10 rounded-lg overflow-hidden" role="tablist" aria-label="Manual mode tabs">
+            <div class="flex border border-white/10 rounded-lg overflow-hidden overflow-x-auto" role="tablist" aria-label="Manual mode tabs">
                 <button id="tab-execute" class="tab-btn-manual active" role="tab" data-tab-group="manual-tabs" data-tab="execute" aria-selected="true" tabindex="0">
                     <i data-lucide="play" class="w-4 h-4 inline-block mr-1.5"></i> Execute
                 </button>
@@ -117,6 +117,7 @@
                     <select id="scope-target-type" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
                         <option value="ip">IP/CIDR</option><option value="domain">Domain</option><option value="url">URL</option>
                     </select>
+                    <label for="scope-target-value" class="sr-only">Target scope value</label>
                     <input type="text" id="scope-target-value" placeholder="Value" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
                     <input type="text" id="scope-target-notes" placeholder="Notes" class="w-32 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none">
                     <button onclick="addScopeTarget()" class="px-2.5 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 inline-block"></i></button>
@@ -129,6 +130,7 @@
                     <select id="scope-excl-type" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
                         <option value="ip">IP/CIDR</option><option value="domain">Domain</option><option value="url">URL</option>
                     </select>
+                    <label for="scope-excl-value" class="sr-only">Exclusion scope value</label>
                     <input type="text" id="scope-excl-value" placeholder="Value" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
                     <input type="text" id="scope-excl-reason" placeholder="Reason" class="w-32 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none">
                     <button onclick="addScopeExclusion()" class="px-2.5 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 inline-block"></i></button>
@@ -167,7 +169,7 @@
     </div>
 
     <!-- Execute Tab -->
-    <div id="panel-execute" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="execute" class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up stagger-1">
+    <div id="panel-execute" role="tabpanel" aria-labelledby="tab-execute" data-tab-group="manual-tabs" data-tab-panel="execute" class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up stagger-1">
         <!-- Tool Picker (Left) -->
         <div class="lg:w-72 shrink-0 flex flex-col gap-3">
             <input type="text" id="tool-search" placeholder="Search tools..." oninput="debouncedFilterTools()"
@@ -275,7 +277,7 @@
     </div>
 
     <!-- Pipeline Tab -->
-    <div id="panel-pipeline" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="pipeline" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
+    <div id="panel-pipeline" role="tabpanel" aria-labelledby="tab-pipeline" data-tab-group="manual-tabs" data-tab-panel="pipeline" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <div class="glass-panel rounded-xl p-5 mb-4 shrink-0">
             <div class="flex items-center justify-between mb-3">
                 <div>
@@ -330,7 +332,7 @@
     </div>
 
     <!-- CVE Lookup Tab -->
-    <div id="panel-cve" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="cve" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
+    <div id="panel-cve" role="tabpanel" aria-labelledby="tab-cve" data-tab-group="manual-tabs" data-tab-panel="cve" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <div class="glass-panel rounded-xl p-5 mb-4 shrink-0">
             <h2 class="text-lg font-bold text-white mb-1">CVE Lookup</h2>
             <p class="text-slate-400 text-sm mb-4">Search known vulnerabilities by product, version, or service.</p>
@@ -367,7 +369,7 @@
     </div>
 
     <!-- Checklists Tab -->
-    <div id="panel-checklists" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="checklists" hidden class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
+    <div id="panel-checklists" role="tabpanel" aria-labelledby="tab-checklists" data-tab-group="manual-tabs" data-tab-panel="checklists" hidden class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
         <!-- Sidebar -->
         <div class="lg:w-64 shrink-0 flex flex-col gap-3">
             <div>
@@ -400,7 +402,7 @@
     </div>
 
     <!-- Notes Tab -->
-    <div id="panel-notes" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="notes" hidden class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
+    <div id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" data-tab-group="manual-tabs" data-tab-panel="notes" hidden class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up">
         <!-- Sidebar -->
         <div class="lg:w-64 shrink-0 flex flex-col gap-3">
             <div class="flex gap-2">
@@ -454,7 +456,7 @@
     </div>
 
     <!-- Evidence Tab -->
-    <div id="panel-evidence" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="evidence" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
+    <div id="panel-evidence" role="tabpanel" aria-labelledby="tab-evidence" data-tab-group="manual-tabs" data-tab-panel="evidence" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <div class="glass-panel rounded-xl p-4 mb-3 shrink-0 flex items-center gap-3">
             <label class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all cursor-pointer">
                 <i data-lucide="upload" class="w-4 h-4 inline-block mr-1.5"></i>Upload File
@@ -482,7 +484,7 @@
     </div>
 
     <!-- Helpers Tab -->
-    <div id="panel-helpers" role="tabpanel" data-tab-group="manual-tabs" data-tab-panel="helpers" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
+    <div id="panel-helpers" role="tabpanel" aria-labelledby="tab-helpers" data-tab-group="manual-tabs" data-tab-panel="helpers" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <!-- Helpers Sub-Tabs -->
         <div class="flex border-b border-white/10 mb-3 shrink-0 overflow-x-auto">
             <button class="helper-tab-btn active px-3 py-2 text-xs font-medium text-violet-400 border-b-2 border-violet-500 whitespace-nowrap" onclick="switchHelperTab('revshell')"><i data-lucide="terminal" class="w-4 h-4 inline-block mr-1.5"></i>Reverse Shells</button>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block extra_css %}
-<style>
+<style nonce="{{ request.state.csp_nonce }}">
     .help-sidebar a.active { background: rgba(139,92,246,0.15); color: white; border-left: 3px solid #8b5cf6; }
     .help-sidebar a:hover:not(.active) { background: rgba(255,255,255,0.04); }
     .help-section { display: none; animation: fadeIn 0.2s ease-out; }
@@ -16,6 +16,12 @@
     .help-card:hover { border-color: rgba(139,92,246,0.3); }
     .kb { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; background: rgba(255,255,255,0.08); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); }
 </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<nav aria-label="Breadcrumb" class="text-sm text-slate-400 mb-4">
+  <a href="/dashboard" class="hover:text-white">Home</a> / <span class="text-white">Help</span>
+</nav>
 {% endblock %}
 
 {% block content %}

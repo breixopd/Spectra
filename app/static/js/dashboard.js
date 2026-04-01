@@ -20,7 +20,7 @@ function addTerminalLine(text, type = 'info') {
 }
 
 // --- WebSocket Event Handlers ---
-window.onSocketMessage = (data) => {
+function handleDashboardSocketMessage(data) {
     try {
         const msg = JSON.parse(data);
         
@@ -48,7 +48,13 @@ window.onSocketMessage = (data) => {
         // Fallback for plain text logs
         addTerminalLine(data, 'info');
     }
-};
+}
+
+function handleDashboardSocketMessageEvent(event) {
+    handleDashboardSocketMessage(event.detail);
+}
+
+document.addEventListener('spectra:ws-message', handleDashboardSocketMessageEvent);
 
 function handleGeo(data) {
     if (data.lat && data.lon) {
@@ -153,11 +159,19 @@ document.addEventListener('click', (e) => {
 });
 
 // Poll for shell updates every 5 seconds — only when a mission is active
-setInterval(() => {
+const shellListPollingInterval = window.setInterval(() => {
     if (currentMissionId) {
         updateShellList();
     }
 }, 5000);
+
+function cleanupDashboardPageState() {
+    window.clearInterval(shellListPollingInterval);
+    document.removeEventListener('spectra:ws-message', handleDashboardSocketMessageEvent);
+}
+
+window.addEventListener('pagehide', cleanupDashboardPageState, { once: true });
+window.addEventListener('beforeunload', cleanupDashboardPageState, { once: true });
 
 
 // --- Mission Control ---
@@ -316,28 +330,53 @@ function stopMission() {
         addTerminalLine('[ERROR] No active mission to stop', 'error');
         return;
     }
-    
-    spectraApi.post(`/api/v1/missions/${currentMissionId}/stop`)
-        .then(({ error }) => addTerminalLine(error ? `[ERROR] ${error}` : '[SYSTEM] Aborting mission...', error ? 'error' : 'warning'));
+
+    _spectraConfirm('Are you sure you want to stop this mission? This action cannot be undone.', function() {
+        spectraApi.post(`/api/v1/missions/${currentMissionId}/stop`)
+            .then(({ error }) => addTerminalLine(error ? `[ERROR] ${error}` : '[SYSTEM] Aborting mission...', error ? 'error' : 'warning'));
+    }, { title: 'Stop Mission', confirmLabel: 'Stop Mission' });
 }
 
 async function switchModel(modelId) {
-    document.getElementById('current-model').textContent = modelId;
+    if (!modelId) {
+        addTerminalLine('[ERROR] No AI model selected', 'error');
+        return;
+    }
+
+    const currentModelEl = document.getElementById('current-model');
+    const previousModelId = currentModelEl ? currentModelEl.textContent : '';
+    if (currentModelEl) {
+        currentModelEl.textContent = modelId;
+    }
     addTerminalLine(`[SYSTEM] Switching AI model to ${modelId}...`, 'info');
     
     try {
-        const { error } = await spectraApi.post('/api/settings', {
-                log_level: 'INFO',
-                plugin_safe_mode: true
+        const { error } = await spectraApi.put('/api/v1/user/settings', {
+            llm_model: modelId,
         });
         
         if (!error) {
             addTerminalLine(`[SUCCESS] Model switched to ${modelId}`, 'success');
+            if (typeof _spectraToast === 'function') {
+                _spectraToast(`Model switched to ${modelId}`, 'success');
+            }
         } else {
-            addTerminalLine(`[ERROR] Failed to switch model`, 'error');
+            if (currentModelEl) {
+                currentModelEl.textContent = previousModelId;
+            }
+            addTerminalLine(`[ERROR] Failed to switch model: ${error}`, 'error');
+            if (typeof _spectraToast === 'function') {
+                _spectraToast(`Failed to switch model: ${error}`, 'error');
+            }
         }
     } catch (error) {
+        if (currentModelEl) {
+            currentModelEl.textContent = previousModelId;
+        }
         addTerminalLine(`[ERROR] Connection failed: ${error}`, 'error');
+        if (typeof _spectraToast === 'function') {
+            _spectraToast(`Connection failed while switching model: ${error}`, 'error');
+        }
     }
 }
 
@@ -872,11 +911,41 @@ document.addEventListener('spectra:ws-message', (event) => {
     } catch {}
 });
 
+// --- Presets dropdown toggle (keyboard accessible) ---
+function togglePresetsDropdown() {
+    const trigger = document.getElementById('presets-trigger');
+    const menu = document.getElementById('presets-menu');
+    if (!trigger || !menu) return;
+    const expanded = trigger.getAttribute('aria-expanded') === 'true';
+    trigger.setAttribute('aria-expanded', String(!expanded));
+    if (expanded) {
+        menu.classList.add('opacity-0', 'invisible');
+        menu.classList.remove('opacity-100', 'visible');
+    } else {
+        menu.classList.remove('opacity-0', 'invisible');
+        menu.classList.add('opacity-100', 'visible');
+    }
+}
+
 // Load metrics on page load
-document.addEventListener('DOMContentLoaded', () => { loadMetrics(); });
+document.addEventListener('DOMContentLoaded', () => {
+    loadMetrics();
+    // Close presets dropdown on outside click
+    document.addEventListener('click', (e) => {
+        const wrapper = document.getElementById('presets-dropdown-wrapper');
+        const trigger = document.getElementById('presets-trigger');
+        const menu = document.getElementById('presets-menu');
+        if (wrapper && trigger && menu && !wrapper.contains(e.target)) {
+            trigger.setAttribute('aria-expanded', 'false');
+            menu.classList.add('opacity-0', 'invisible');
+            menu.classList.remove('opacity-100', 'visible');
+        }
+    });
+});
 
 // --- Expose functions used by HTML onclick/onchange handlers ---
 window.toggleRequirements = toggleRequirements;
+window.togglePresetsDropdown = togglePresetsDropdown;
 window.launchFromForm = launchFromForm;
 window.launchPreset = launchPreset;
 window.pauseMission = pauseMission;

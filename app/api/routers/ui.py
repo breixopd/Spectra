@@ -36,6 +36,16 @@ templates.env.globals["version"] = __version__
 templates.env.globals["get_nav_user"] = get_ui_user
 
 
+
+
+async def _get_ui_db_user(username: str | None) -> User | None:
+    if not username:
+        return None
+    async with async_session_maker() as session:
+        result = await session.execute(select(User).where(User.username == username))
+        return result.scalar_one_or_none()
+
+
 async def _check_user_feature(user_id: str | None, feature: str) -> bool:
     """Check if a user's subscription plan has a specific feature enabled."""
     if not user_id:
@@ -234,8 +244,11 @@ async def api_docs_page(request: Request):
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
+    db_user = await _get_ui_db_user(user.get("sub"))
+    is_admin = bool(db_user and _is_admin_user(db_user))
+
     # Admins always have access; otherwise check plan features
-    if user.get("role") != "admin":
+    if not is_admin:
         has_api_access = await _check_user_feature(user.get("sub"), "api_access")
         if not has_api_access:
             return templates.TemplateResponse(
@@ -299,8 +312,6 @@ async def api_docs_page(request: Request):
         groups.setdefault(group, []).append(r)
 
     # Role-based filtering: hide admin/system routes from non-admin users
-    user_role = user.get("role", "")
-    is_admin = user_role == "admin" or user.get("is_superuser")
     if not is_admin:
         # Remove the admin group entirely
         groups.pop("admin", None)
