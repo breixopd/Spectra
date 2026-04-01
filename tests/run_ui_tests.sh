@@ -19,6 +19,7 @@ GARAGE_ACCESS_KEY="$GARAGE_ACCESS_KEY" \
 GARAGE_SECRET_KEY="$GARAGE_SECRET_KEY" \
 bash ./docker/garage-init.sh
 
+docker compose -f "$COMPOSE_FILE" build app
 docker compose -f "$COMPOSE_FILE" up -d --force-recreate app
 
 # Wait for app to be ready
@@ -46,7 +47,7 @@ except urllib.error.HTTPError as exc:
 
 # Run Playwright tests
 echo "Running UI tests..."
-docker compose -f "$COMPOSE_FILE" build ui-test-runner
-docker compose -f "$COMPOSE_FILE" run --rm -e APP_BASE_URL=http://host.docker.internal:15000 ui-test-runner --no-cov --override-ini=addopts= "$@"
+docker compose -f "${COMPOSE_FILE}" build ui-test-runner
+docker compose -f "${COMPOSE_FILE}" run --rm -e APP_BASE_URL=http://host.docker.internal:15000 ui-test-runner tests/e2e/ui/ -v --tb=short -x --no-cov --confcutdir=tests/e2e/ui --override-ini=addopts= "$@"
 
 echo "=== Done ==="

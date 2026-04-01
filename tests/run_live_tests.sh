@@ -114,13 +114,21 @@ curl -sf http://localhost:15000/api/health > /dev/null || {
 
 echo "Waiting for vulnerable targets to be healthy..."
 for target in spectra-vuln-web spectra-vuln-ssh spectra-vuln-network; do
+    target_healthy=false
     for i in $(seq 1 30); do
         if docker inspect --format='{{.State.Health.Status}}' "$target" 2>/dev/null | grep -q healthy; then
             echo "  $target: healthy"
+            target_healthy=true
             break
         fi
         sleep 1
     done
+
+    if [ "${target_healthy}" != true ]; then
+        target_status="$(docker inspect --format='{{.State.Health.Status}}' "$target" 2>/dev/null || echo 'missing')"
+        echo "ERROR: ${target} did not become healthy after 30 seconds (last status: ${target_status})" >&2
+        exit 1
+    fi
 done
 
 # ── Step 3: Run integration tests ───────────────────────────
