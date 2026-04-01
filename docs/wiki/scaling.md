@@ -97,25 +97,21 @@ SANDBOX_ORCHESTRATOR_API_KEY=sk-sandbox-key
 
 ## S3-Compatible Storage
 
-S3/MinIO is now required in every deployment mode.
+S3-compatible storage is now required in every deployment mode.
 
 - There is no local filesystem fallback for missions, pentest sessions, knowledge assets, or backups.
-- Single-host deployments can use the bundled MinIO service; multi-host deployments can use MinIO or any external S3-compatible endpoint.
+- Single-host deployments can use the bundled Garage service; multi-host deployments can use Garage or any external S3-compatible endpoint.
 - Automated backups are S3-native and stored in `S3_BUCKET_BACKUPS` when `BACKUP_ENABLED=true`.
 
-### MinIO Setup (Self-Hosted)
+### Garage Setup (Self-Hosted)
 
-Add MinIO to your Docker Compose:
+Add Garage to your Docker Compose:
 
 ```yaml
-minio:
-  image: minio/minio
-  command: server /data --console-address ":9001"
-  environment:
-    MINIO_ROOT_USER: spectra-admin
-    MINIO_ROOT_PASSWORD: spectra-secret-key
+garage:
+  image: dxflrs/garage:v2.2.0
   volumes:
-    - minio_data:/data
+    - garage_data:/var/lib/garage/data
   ports:
     - "9000:9000"
     - "9001:9001"
@@ -126,9 +122,9 @@ minio:
 Configure in `.env`:
 
 ```bash
-S3_ENDPOINT_URL=http://minio:9000
-S3_ACCESS_KEY=spectra-admin
-S3_SECRET_KEY=spectra-secret-key
+S3_ENDPOINT_URL=http://garage:3900
+S3_ACCESS_KEY=spectra
+S3_SECRET_KEY=your-garage-secret-key
 S3_BUCKET_MISSIONS=spectra-missions
 S3_BUCKET_SESSIONS=spectra-sessions
 S3_BUCKET_KNOWLEDGE=spectra-knowledge
@@ -137,7 +133,7 @@ S3_BUCKET_BACKUPS=spectra-backups
 
 ### Cloud S3 Migration
 
-To migrate from MinIO to cloud S3:
+To migrate from Garage to cloud S3:
 
 1. Update `.env` with cloud credentials:
    ```bash
@@ -146,7 +142,7 @@ To migrate from MinIO to cloud S3:
    S3_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
    S3_REGION=us-east-1
    ```
-2. Migrate existing data using `mc mirror` (MinIO Client) or `aws s3 sync`
+2. Migrate existing data using `aws s3 sync` or equivalent tooling
 3. Restart the app container
 
 Works with any S3-compatible provider: AWS S3, Cloudflare R2, DigitalOcean Spaces, Google Cloud Storage (S3-compatible mode).
@@ -249,7 +245,7 @@ Available via the observability endpoints:
 
 ### 1. Single-Server (Default)
 
-All services on one host with bundled MinIO or an external S3 endpoint. No gateway URLs set.
+All services on one host with bundled Garage or an external S3 endpoint. No gateway URLs set.
 
 ### 2. Split Tools
 
@@ -267,7 +263,7 @@ App + dedicated sandbox workers + S3 storage + DB replicas.
 ```bash
 SANDBOX_ORCHESTRATOR_URL=http://tools-server:9090
 SANDBOX_ORCHESTRATOR_API_KEY=sk-sandbox-key
-S3_ENDPOINT_URL=http://minio-server:9000
+S3_ENDPOINT_URL=http://garage:3900
 S3_ACCESS_KEY=...
 S3_SECRET_KEY=...
 ```

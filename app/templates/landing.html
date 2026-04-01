@@ -94,7 +94,7 @@
             <a href="/register?demo=true" class="btn-secondary">Request Demo</a>
         </div>
 
-        <!-- Dashboard preview — miniature of the real UI -->
+        <!-- Dashboard preview -->
         <div class="hero-preview" aria-hidden="true">
             <div class="preview-bar">
                 <span class="preview-dot r"></span>
@@ -155,11 +155,11 @@
                         <!-- Center: activity log -->
                         <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.375rem;display:flex;flex-direction:column;gap:2px;overflow:hidden;">
                             <div style="font-size:0.4375rem;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;font-weight:600;">Activity Log</div>
-                            <div class="mini-log"><span class="log-time">14:32:01</span> <span style="color:#34d399;">ReconIntel</span> — Discovered 12 services</div>
-                            <div class="mini-log"><span class="log-time">14:32:18</span> <span style="color:#fbbf24;">VulnScanner</span> — Running Nuclei templates</div>
-                            <div class="mini-log"><span class="log-time">14:32:45</span> <span style="color:#22d3ee;">ToolSelector</span> — Queuing SQLMap</div>
-                            <div class="mini-log"><span class="log-time">14:33:02</span> <span style="color:#f87171;">CRITICAL</span> — SQL Injection in /api/search</div>
-                            <div class="mini-log"><span class="log-time">14:33:19</span> <span style="color:#34d399;">ReconIntel</span> — Port scan complete</div>
+                            <div class="mini-log"><span class="log-time">14:32:01</span> <span style="color:#34d399;">ReconIntel</span> Discovered 12 services</div>
+                            <div class="mini-log"><span class="log-time">14:32:18</span> <span style="color:#fbbf24;">VulnScanner</span> Running Nuclei templates</div>
+                            <div class="mini-log"><span class="log-time">14:32:45</span> <span style="color:#22d3ee;">ToolSelector</span> Queuing SQLMap</div>
+                            <div class="mini-log"><span class="log-time">14:33:02</span> <span style="color:#f87171;">CRITICAL</span> SQL Injection in /api/search</div>
+                            <div class="mini-log"><span class="log-time">14:33:19</span> <span style="color:#34d399;">ReconIntel</span> Port scan complete</div>
                         </div>
                         <!-- Right: agents -->
                         <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(255,255,255,0.05);border-radius:6px;padding:0.375rem;display:flex;flex-direction:column;gap:3px;">
@@ -192,8 +192,8 @@
                 <div class="stat-label">Assessments Completed</div>
             </div>
             <div class="stat-cell">
-                <div class="stat-number">{{ stats.uptime or '99.9%' }}</div>
-                <div class="stat-label">Platform Uptime</div>
+                <div class="stat-number">{{ stats.total_users or '0' }}</div>
+                <div class="stat-label">Active Users</div>
             </div>
             <div class="stat-cell">
                 <div class="stat-number">{{ stats.total_tools or '0' }}</div>
@@ -209,8 +209,8 @@
         <span class="section-label reveal">Capabilities</span>
         <h2 class="section-title reveal">Everything you need for<br>modern security assessments</h2>
         <p class="section-desc reveal">
-            A multi-agent system that combines AI planning, automated tool execution,
-            and real-time analysis into a single cohesive workflow.
+            AI-driven planning, automated tool execution,
+            and real-time analysis in one workspace.
         </p>
         <div class="features-grid">
             <div class="feature-card reveal">
@@ -221,7 +221,7 @@
                     </svg>
                 </div>
                 <h3>Multi-Agent AI System</h3>
-                <p>Coordinated AI agents handle planning, reconnaissance, exploitation, and reporting — each specialised for its task.</p>
+                <p>Multiple AI agents split the work: planning, scanning, exploitation, and reporting.</p>
             </div>
             <div class="feature-card reveal">
                 <div class="feature-icon violet">
@@ -239,7 +239,7 @@
                     </svg>
                 </div>
                 <h3>Real-Time Monitoring</h3>
-                <p>Watch every step of the assessment live — WebSocket-powered dashboards show tool output, findings, and agent decisions as they happen.</p>
+                <p>Watch assessments as they run. Live dashboards show tool output, findings, and agent decisions.</p>
             </div>
             <div class="feature-card reveal">
                 <div class="feature-icon amber">
@@ -260,7 +260,7 @@
         <span class="section-label reveal">Process</span>
         <h2 class="section-title reveal">Three steps to a complete assessment</h2>
         <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
-            From target configuration to a finished report — the platform handles the entire workflow autonomously.
+            From target configuration to a finished report, the platform handles the full workflow.
         </p>
         <div class="steps">
             <div class="step reveal">
@@ -290,7 +290,7 @@
         <span class="section-label reveal">Pricing</span>
         <h2 class="section-title reveal">Choose your plan</h2>
         <p class="section-desc reveal" style="margin-left:auto;margin-right:auto;">
-            Flexible tiers to match your team&rsquo;s needs — from solo researchers to enterprise red teams.
+            Flexible tiers for solo researchers and teams alike.
         </p>
 
         {% if plans %}
@@ -457,15 +457,15 @@
         <div class="faq-list" style="text-align:left;" role="list">
             {% set faqs = [
                 ("What types of security assessments can " ~ app_name ~ " perform?",
-                 app_name ~ " covers full-scope penetration testing — network reconnaissance, vulnerability scanning, web application testing, service enumeration, and automated exploitation. AI agents orchestrate everything in secure sandboxed environments while you maintain control over scope and rules of engagement."),
+                 app_name ~ " supports network reconnaissance, vulnerability scanning, web app testing, service enumeration, and exploitation. All tools run in isolated sandbox containers. You control the scope and rules of engagement."),
                 ("Is it safe to run automated exploits?",
                  "Absolutely. All tools execute in isolated, sandboxed containers with strict target boundaries and scope limits. You can enable human-in-the-loop approval for high-risk actions, or use fully autonomous mode if your plan supports it. We recommend testing against staging environments first."),
                 ("Can I bring my own API key?",
-                 "Yes — Professional and Enterprise plans include BYOK (Bring Your Own Key) support. Connect your own OpenAI, Anthropic, or other LLM provider API keys for maximum flexibility and control over AI model selection."),
+                 "Yes. Professional and Enterprise plans let you connect your own OpenAI, Anthropic, or other LLM provider API keys."),
                 ("How are assessment reports generated?",
                  "Reports are automatically generated with CVSS-scored findings, evidence screenshots, remediation guidance, and executive summaries. Each finding includes detailed reproduction steps and is mapped to relevant CVE identifiers when applicable. Export in PDF, JSON, or Markdown."),
                 ("What security tools are available?",
-                 "The platform includes 25+ industry-standard tools — Nmap, Nuclei, Nikto, SQLMap, Feroxbuster, Hydra, and many more. New tools are regularly added by the " ~ app_name ~ " team. Enterprise plans can request custom tool integrations.")
+                 "25+ tools are included: Nmap, Nuclei, Nikto, SQLMap, Feroxbuster, Hydra, and more. New tools are added regularly by the " ~ app_name ~ " team. Enterprise plans can request custom tool integrations.")
             ] %}
             {% for question, answer in faqs %}
             <div class="faq-item reveal" role="listitem">

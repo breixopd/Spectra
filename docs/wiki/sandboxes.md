@@ -100,7 +100,7 @@ When a tool exits with code 137 (OOM killed), the sandbox is automatically recre
 | ----------- | --------- | ------------------------------- |
 | stdout/stderr | Job result in PostgreSQL | Yes |
 | Parsed findings | Mission object + DB | Yes |
-| Output files (nmap XML, etc.) | S3/MinIO or mounted volume | Yes |
+| Output files (nmap XML, etc.) | S3 or mounted volume | Yes |
 | Mission logs | DB | Yes |
 | Tool cache | App container CacheService | Yes (shared) |
 
@@ -108,7 +108,7 @@ When a tool exits with code 137 (OOM killed), the sandbox is automatically recre
 
 When `S3_ENDPOINT_URL` is configured, mission artifacts are stored in S3-compatible storage instead of local volumes. This enables multi-server setups where sandboxes run on different hosts.
 
-See [Scaling](scaling.md) for MinIO/S3 setup details.
+See [Scaling](scaling.md) for Garage/S3 setup details.
 
 ---
 

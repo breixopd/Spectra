@@ -1,6 +1,6 @@
 # Configuration
 
-[← Wiki Home](home.md) | [Architecture](architecture.md) | [Deployment](deployment.md) | [Scaling](scaling.md)
+[← Wiki Home](home.md) | [Architecture](architecture.md) | [Deployment Guide](deployment-guide.md) | [Scaling](scaling.md)
 
 ---
 
@@ -91,13 +91,13 @@ Rate limiting lives in the application layer. PostgreSQL is the persistent state
 
 ---
 
-## Object Storage (S3/MinIO)
+## Object Storage (S3-compatible)
 
-S3-compatible object storage is required for mission data, sessions, knowledge base, and backups. Use the bundled MinIO service or an external S3-compatible provider; there is no local filesystem fallback.
+S3-compatible object storage is required for mission data, sessions, knowledge base, and backups. Use the bundled Garage service or an external S3-compatible provider; there is no local filesystem fallback.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `S3_ENDPOINT_URL` | str | `""` | MinIO/S3 endpoint (e.g., `http://minio:9000`) |
+| `S3_ENDPOINT_URL` | str | `""` | S3-compatible endpoint (e.g., `http://garage:3900`) |
 | `S3_ACCESS_KEY` | str | `""` | Access key ID |
 | `S3_SECRET_KEY` | SecretStr | `""` | Secret access key |
 | `S3_REGION` | str | `"us-east-1"` | S3 region |
@@ -106,7 +106,7 @@ S3-compatible object storage is required for mission data, sessions, knowledge b
 | `S3_BUCKET_KNOWLEDGE` | str | `"spectra-knowledge"` | Bucket for knowledge base |
 | `S3_BUCKET_BACKUPS` | str | `"spectra-backups"` | Bucket for database backups |
 
-See [Scaling](scaling.md) for MinIO setup and cloud S3 migration.
+See [Scaling](scaling.md) for Garage setup and cloud S3 migration.
 
 ---
 

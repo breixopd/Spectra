@@ -94,7 +94,7 @@ Role-based access control with three tiers:
 - **Browser sessions**: `access_token` and `refresh_token` cookies are always `HttpOnly`, `SameSite=Strict`, and `Secure`; the separate non-HttpOnly `csrf_token` cookie uses `Secure` outside DEBUG and relaxes only for local HTTP development
 - **HSTS**: Strict-Transport-Security header with 63072000s max-age and preload
 - **Database**: `sslmode=require` recommended for production DATABASE_URL
-- **S3/MinIO**: TLS for all object storage traffic in production
+- **S3/Garage**: TLS for all object storage traffic in production
 
 ---
 

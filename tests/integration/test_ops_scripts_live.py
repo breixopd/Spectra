@@ -33,9 +33,9 @@ def ops_env() -> dict[str, str]:
     required_env = {
         "OPS_DB_CONTAINER": os.getenv("OPS_DB_CONTAINER", ""),
         "OPS_APP_CONTAINER": os.getenv("OPS_APP_CONTAINER", ""),
-        "OPS_MINIO_CONTAINER": os.getenv("OPS_MINIO_CONTAINER", ""),
-        "OPS_MINIO_ROOT_USER": os.getenv("OPS_MINIO_ROOT_USER", ""),
-        "OPS_MINIO_ROOT_PASSWORD": os.getenv("OPS_MINIO_ROOT_PASSWORD", ""),
+        "OPS_GARAGE_CONTAINER": os.getenv("OPS_GARAGE_CONTAINER", ""),
+        "OPS_GARAGE_ACCESS_KEY": os.getenv("OPS_GARAGE_ACCESS_KEY", ""),
+        "OPS_GARAGE_SECRET_KEY": os.getenv("OPS_GARAGE_SECRET_KEY", ""),
     }
 
     missing = [name for name, value in required_env.items() if not value]
@@ -43,7 +43,7 @@ def ops_env() -> dict[str, str]:
         pytest.skip(f"live ops smoke tests require env vars: {', '.join(missing)}")
 
     unavailable = [
-        name for name in ("OPS_DB_CONTAINER", "OPS_APP_CONTAINER", "OPS_MINIO_CONTAINER")
+        name for name in ("OPS_DB_CONTAINER", "OPS_APP_CONTAINER", "OPS_GARAGE_CONTAINER")
         if not _docker_inspect_running(required_env[name])
     ]
     if unavailable:
@@ -56,10 +56,10 @@ def ops_env() -> dict[str, str]:
             "DB_USER": os.getenv("OPS_DB_USER", "spectra"),
             "DB_NAME": os.getenv("OPS_DB_NAME", "spectra_test"),
             "APP_CONTAINER": required_env["OPS_APP_CONTAINER"],
-            "MINIO_CONTAINER": required_env["OPS_MINIO_CONTAINER"],
-            "MINIO_ROOT_USER": required_env["OPS_MINIO_ROOT_USER"],
-            "MINIO_ROOT_PASSWORD": required_env["OPS_MINIO_ROOT_PASSWORD"],
-            "MINIO_URL": os.getenv("OPS_MINIO_URL", "http://127.0.0.1:19000"),
+            "GARAGE_CONTAINER": required_env["OPS_GARAGE_CONTAINER"],
+            "GARAGE_ACCESS_KEY": required_env["OPS_GARAGE_ACCESS_KEY"],
+            "GARAGE_SECRET_KEY": required_env["OPS_GARAGE_SECRET_KEY"],
+            "GARAGE_ADMIN_URL": os.getenv("OPS_GARAGE_ADMIN_URL", "http://127.0.0.1:3903"),
             "WORKER_CONTAINER": os.getenv("OPS_WORKER_CONTAINER", "spectra-test-worker-missing"),
             "SCHEDULER_CONTAINER": os.getenv("OPS_SCHEDULER_CONTAINER", "spectra-test-scheduler-missing"),
             "AI_CONTAINER": os.getenv("OPS_AI_CONTAINER", "spectra-test-ai-missing"),
@@ -118,12 +118,12 @@ def test_safe_ops_scripts_smoke(ops_env: dict[str, str], script_path: str, args:
         assert "Backups in S3:" in output
         assert "No backups found." in output or "s3://" in output
     elif label == "s3-health":
-        assert "MinIO health:" in output
+        assert "Garage health:" in output
         assert "OK" in output
     elif label == "log-sizes":
         assert "Container log sizes:" in output
         assert ops_env["APP_CONTAINER"] in output
         assert ops_env["DB_CONTAINER"] in output
-        assert ops_env["MINIO_CONTAINER"] in output
+        assert ops_env["GARAGE_CONTAINER"] in output
     else:
         raise AssertionError(f"Unhandled smoke test label: {label}")

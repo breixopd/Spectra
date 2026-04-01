@@ -14,7 +14,9 @@ if TYPE_CHECKING:
 
 from app.core.constants import MAX_HOSTS_DEFAULT
 from app.core.events import events
-from app.services.ai.agents.base import AgentContext, ParallelToolAction, ToolAction
+from app.services.ai.agents.base import AgentContext
+from app.services.ai.sanitizer import sanitize_for_prompt
+from app.services.ai.agents.base import ParallelToolAction, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
 from app.services.ai.output_intelligence import extract_intelligence
 from app.services.mission.executor.analysis import auto_expand_scope
@@ -280,14 +282,16 @@ class TaskDispatcher:
         mission.blackboard.read("vulnerabilities")
 
         if bb_creds and isinstance(bb_creds, list):
+            raw = f"Discovered credentials: {bb_creds[:5]}"
             context.extra_context = (
                 getattr(context, "extra_context", "")
-                + f"\nDiscovered credentials: {bb_creds[:5]}"
+                + "\n" + sanitize_for_prompt(raw, field_name="blackboard_credentials")
             )
         if bb_ports and isinstance(bb_ports, list):
+            raw = f"Discovered open ports: {bb_ports[:20]}"
             context.extra_context = (
                 getattr(context, "extra_context", "")
-                + f"\nDiscovered open ports: {bb_ports[:20]}"
+                + "\n" + sanitize_for_prompt(raw, field_name="blackboard_ports")
             )
 
     async def _execute_parallel_selection(

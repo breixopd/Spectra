@@ -10,7 +10,7 @@ The canonical operator workflow lives in [../../docs/wiki/operations.md](../../d
 | `db_maintenance.sh` | Inspect PostgreSQL activity and run maintenance | `stats`, `sizes`, `vacuum`, `analyze`, `reindex` | Mutating |
 | `incident_response.sh` | Handle session, user, mission, and lockdown incidents | `audit-recent`, `active-sessions`, `invalidate-user`, `kill-mission`, `lockdown` | Destructive |
 | `log_management.sh` | Inspect and export service logs | `tail [service]`, `errors [service]`, `sizes`, `export <dir>` | Read-only |
-| `s3_management.sh` | Inspect MinIO or S3 state and create required buckets | `status`, `buckets`, `list <bucket>`, `usage`, `create-buckets`, `health` | Mutating |
+| `s3_management.sh` | Inspect Garage or S3 state and create required buckets | `status`, `buckets`, `list <bucket>`, `usage`, `create-buckets`, `health` | Mutating |
 | `user_management.sh` | Inspect and administer user accounts | `list`, `info <username>`, `create-admin`, `set-role`, `reset-password`, `disable-mfa`, `delete <username>` | Destructive and confirmation-required |
 | `worker_management.sh` | Inspect, retry, and purge queue work | `status`, `failed`, `dead-letter`, `retry-job <id>`, `purge-completed`, `purge-dead`, `worker-health` | Destructive |
 

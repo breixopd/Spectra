@@ -10,7 +10,7 @@ def _make_s3_storage():
 
     with patch("app.services.storage.service.settings") as mock_settings, \
          patch("app.services.storage.service._import_s3_deps") as mock_deps:
-        mock_settings.S3_ENDPOINT_URL = "http://minio:9000"
+        mock_settings.S3_ENDPOINT_URL = "http://garage:3900"
         mock_settings.S3_ACCESS_KEY = MagicMock()
         mock_settings.S3_ACCESS_KEY.get_secret_value.return_value = "testkey"
         mock_settings.S3_SECRET_KEY = MagicMock()
@@ -48,7 +48,7 @@ class TestStorageServiceInit:
         from app.services.storage.service import StorageService
 
         with patch("app.services.storage.service.settings") as s:
-            s.S3_ENDPOINT_URL = "http://minio:9000"
+            s.S3_ENDPOINT_URL = "http://garage:3900"
             s.S3_ACCESS_KEY = MagicMock()
             s.S3_ACCESS_KEY.get_secret_value.return_value = ""
             s.S3_SECRET_KEY = MagicMock()
@@ -60,7 +60,7 @@ class TestStorageServiceInit:
         from app.services.storage.service import StorageService
 
         with patch("app.services.storage.service.settings") as s:
-            s.S3_ENDPOINT_URL = "http://minio:9000"
+            s.S3_ENDPOINT_URL = "http://garage:3900"
             s.S3_ACCESS_KEY = MagicMock()
             s.S3_ACCESS_KEY.get_secret_value.return_value = "key"
             s.S3_SECRET_KEY = MagicMock()
@@ -101,7 +101,7 @@ class TestStorageServiceS3Mode:
         svc._session.client.return_value = mock_cm
 
         with patch("app.services.storage.service.settings") as ms:
-            ms.S3_ENDPOINT_URL = "http://minio:9000"
+            ms.S3_ENDPOINT_URL = "http://garage:3900"
             ms.S3_REGION = "us-east-1"
             ms.S3_ACCESS_KEY = MagicMock()
             ms.S3_ACCESS_KEY.get_secret_value.return_value = "key"
@@ -120,7 +120,7 @@ class TestStorageServiceS3Mode:
         svc._session.client.return_value = mock_cm
 
         with patch("app.services.storage.service.settings") as ms:
-            ms.S3_ENDPOINT_URL = "http://minio:9000"
+            ms.S3_ENDPOINT_URL = "http://garage:3900"
             ms.S3_REGION = "us-east-1"
             ms.S3_ACCESS_KEY = MagicMock()
             ms.S3_ACCESS_KEY.get_secret_value.return_value = "key"
@@ -140,7 +140,7 @@ class TestStorageServiceS3Mode:
         svc._session.client.return_value = mock_cm
 
         with patch("app.services.storage.service.settings") as ms:
-            ms.S3_ENDPOINT_URL = "http://minio:9000"
+            ms.S3_ENDPOINT_URL = "http://garage:3900"
             ms.S3_REGION = "us-east-1"
             ms.S3_ACCESS_KEY = MagicMock()
             ms.S3_ACCESS_KEY.get_secret_value.return_value = "key"
@@ -158,7 +158,7 @@ class TestStorageServiceS3Mode:
         svc._session.client.return_value = mock_cm
 
         with patch("app.services.storage.service.settings") as ms:
-            ms.S3_ENDPOINT_URL = "http://minio:9000"
+            ms.S3_ENDPOINT_URL = "http://garage:3900"
             ms.S3_REGION = "us-east-1"
             ms.S3_ACCESS_KEY = MagicMock()
             ms.S3_ACCESS_KEY.get_secret_value.return_value = "key"
@@ -181,10 +181,10 @@ class TestStorageServiceSingleton:
         from app.services.storage.service import close_storage_service
         import app.services.storage.service as svc_mod
         mock = MagicMock()
-        mock.close = AsyncMock()
+        mock.stop = AsyncMock()
         svc_mod._storage_service = mock
         await close_storage_service()
-        mock.close.assert_called_once()
+        mock.stop.assert_called_once()
         assert svc_mod._storage_service is None
 
     @pytest.mark.asyncio

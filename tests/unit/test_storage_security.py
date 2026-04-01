@@ -21,7 +21,7 @@ class TestStorageS3Required:
         from app.services.storage.service import StorageService
 
         with patch("app.core.config.settings") as mock_settings:
-            mock_settings.S3_ENDPOINT_URL = "http://minio:9000"
+            mock_settings.S3_ENDPOINT_URL = "http://garage:3900"
             mock_settings.S3_ACCESS_KEY = MagicMock()
             mock_settings.S3_ACCESS_KEY.get_secret_value.return_value = ""
             mock_settings.S3_SECRET_KEY = MagicMock()
@@ -33,7 +33,7 @@ class TestStorageS3Required:
         from app.services.storage.service import StorageService
 
         with patch("app.core.config.settings") as mock_settings:
-            mock_settings.S3_ENDPOINT_URL = "http://minio:9000"
+            mock_settings.S3_ENDPOINT_URL = "http://garage:3900"
             mock_settings.S3_ACCESS_KEY = MagicMock()
             mock_settings.S3_ACCESS_KEY.get_secret_value.return_value = "key"
             mock_settings.S3_SECRET_KEY = MagicMock()

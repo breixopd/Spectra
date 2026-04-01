@@ -29,7 +29,7 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     "TENSORZERO_GATEWAY_URL": ("TENSORZERO_GATEWAY_URL", "str"),
     "TENSORZERO_API_KEY": ("TENSORZERO_API_KEY", "secret"),
     "LLM_TIMEOUT": ("LLM_TIMEOUT", "int"),
-    # S3/MinIO Object Storage
+    # S3-compatible Object Storage
     "S3_ENDPOINT_URL": ("S3_ENDPOINT_URL", "str"),
     "S3_ACCESS_KEY": ("S3_ACCESS_KEY", "secret"),
     "S3_SECRET_KEY": ("S3_SECRET_KEY", "secret"),

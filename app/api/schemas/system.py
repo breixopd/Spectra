@@ -42,7 +42,7 @@ class SystemSetupRequest(BaseModel):
     # Service topology
     sandbox_orchestrator_url: str | None = None
     sandbox_orchestrator_api_key: str | None = None
-    # Object Storage (S3/MinIO)
+    # Object Storage (S3-compatible storage)
     s3_endpoint_url: str | None = None
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
@@ -103,7 +103,7 @@ class SettingsUpdate(BaseModel):
     # Shell Routing
     shell_routing_mode: str | None = Field(None, pattern="^(direct|sandbox|proxy)$")
 
-    # Object Storage (S3/MinIO)
+    # Object Storage (S3-compatible storage)
     s3_endpoint_url: str | None = None
     s3_access_key: str | None = None
     s3_secret_key: str | None = None

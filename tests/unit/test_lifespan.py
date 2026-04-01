@@ -131,7 +131,7 @@ class TestLifespanContextManager:
         # Mock all lazy imports used during startup
         mock_storage = MagicMock()
         mock_storage.is_s3 = True
-        mock_storage.health_check = AsyncMock(return_value={"status": "healthy", "endpoint": "http://minio:9000"})
+        mock_storage.health_check = AsyncMock(return_value={"status": "healthy", "endpoint": "http://garage:3900"})
 
         with (
             patch("app.services.storage.get_storage_service", return_value=mock_storage),

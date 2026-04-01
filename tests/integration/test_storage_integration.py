@@ -1,8 +1,7 @@
-"""Integration tests for StorageService with actual MinIO/S3.
+"""Integration tests for StorageService with actual Garage/S3.
 
 Requires:
-- MinIO container running (MINIO_TEST_URL env var)
-- Or S3_ENDPOINT_URL configured in environment
+- Garage container running or S3_ENDPOINT_URL configured in environment
 
 Skip if not available.
 """
@@ -14,7 +13,7 @@ import pytest
 pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.integration,
-    pytest.mark.skipif(not os.environ.get("S3_ENDPOINT_URL"), reason="S3/MinIO not configured"),
+    pytest.mark.skipif(not os.environ.get("S3_ENDPOINT_URL"), reason="S3/Garage not configured"),
 ]
 
 

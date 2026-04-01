@@ -150,7 +150,7 @@ class ShellSessionManager:
             # Check if port is actually free on system
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             try:
-                sock.bind(("0.0.0.0", port))
+                sock.bind(("127.0.0.1", port))
                 sock.close()
                 return port
             except OSError:
@@ -194,7 +194,7 @@ class ShellSessionManager:
             try:
                 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                server.bind(("0.0.0.0", port))
+                server.bind(("127.0.0.1", port))
                 server.listen(1)
                 logger.info("Shell listener started on port %s for session %s", port, session_id)
 
