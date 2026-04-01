@@ -1,11 +1,88 @@
 // Targets Management Logic
 
+const showSharedModal = (id) => {
+    if (typeof window.showModal === 'function') {
+        window.showModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.remove('hidden');
+};
+
+const closeSharedModal = (id) => {
+    if (typeof window.closeModal === 'function') {
+        window.closeModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.add('hidden');
+};
+
+let isImportMenuOpen = false;
+
+function setImportMenuOpen(isOpen) {
+    const trigger = document.getElementById('import-menu-trigger');
+    const menu = document.getElementById('import-menu');
+    if (!trigger || !menu) return;
+
+    isImportMenuOpen = isOpen;
+    trigger.setAttribute('aria-expanded', String(isOpen));
+    menu.setAttribute('aria-hidden', String(!isOpen));
+
+    if (isOpen) {
+        menu.classList.remove('opacity-0', 'invisible');
+        menu.classList.add('opacity-100', 'visible');
+        return;
+    }
+
+    menu.classList.add('opacity-0', 'invisible');
+    menu.classList.remove('opacity-100', 'visible');
+}
+
+function toggleImportMenu() {
+    setImportMenuOpen(!isImportMenuOpen);
+}
+
+function closeImportMenu() {
+    setImportMenuOpen(false);
+}
+
+function initImportMenu() {
+    const wrapper = document.getElementById('import-menu-wrapper');
+    const trigger = document.getElementById('import-menu-trigger');
+    const menu = document.getElementById('import-menu');
+    if (!wrapper || !trigger || !menu) return;
+
+    trigger.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleImportMenu();
+    });
+
+    menu.querySelectorAll('button').forEach((button) => {
+        button.addEventListener('click', () => closeImportMenu());
+    });
+
+    document.addEventListener('click', (event) => {
+        if (isImportMenuOpen && !wrapper.contains(event.target)) {
+            closeImportMenu();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isImportMenuOpen) {
+            closeImportMenu();
+            trigger.focus();
+        }
+    });
+}
+
 function openAddTargetModal() {
-    document.getElementById('add-target-modal').classList.remove('hidden');
+    showSharedModal('add-target-modal');
 }
 
 function closeAddTargetModal() {
-    document.getElementById('add-target-modal').classList.add('hidden');
+    closeSharedModal('add-target-modal');
 }
 
 async function handleAddTarget(event) {
@@ -129,7 +206,7 @@ function openShell(btn, sessionId) {
 
     cleanupShellResources();
 
-    document.getElementById('shell-modal').classList.remove('hidden');
+    showSharedModal('shell-modal');
     document.getElementById('shell-title').textContent = `Session: ${sessionId}`;
 
     // Initialize xterm.js
@@ -195,7 +272,7 @@ function openShell(btn, sessionId) {
 }
 
 function closeShell() {
-    document.getElementById('shell-modal').classList.add('hidden');
+    closeSharedModal('shell-modal');
     cleanupShellResources();
 
     const container = document.getElementById('terminal-container');
@@ -209,8 +286,7 @@ window.addEventListener('beforeunload', closeShell, { once: true });
 
 // Initialize with some dummy data
 document.addEventListener('DOMContentLoaded', () => {
-    // These calls are placeholders. In a real scenario, fetch from API.
-    // addTargetToGrid(...)
+    initImportMenu();
 });
 
 // --- Bulk Import ---
@@ -219,18 +295,21 @@ let parsedTargets = [];
 
 function openImportModal(fmt) {
     importFormat = fmt;
-    parsedTargets = [];
-    document.getElementById('import-preview').classList.add('hidden');
-    document.getElementById('import-btn').disabled = true;
+    closeImportMenu();
+    clearImportPreview();
     const pasteArea = document.getElementById('import-paste-area');
     const uploadArea = document.getElementById('import-upload-area');
+    const pasteInput = document.getElementById('import-paste-text');
+    const fileInput = document.getElementById('import-file-input');
     if (fmt === 'paste') { pasteArea.classList.remove('hidden'); uploadArea.classList.add('hidden'); }
     else { pasteArea.classList.add('hidden'); uploadArea.classList.remove('hidden'); }
+    if (pasteInput) pasteInput.value = '';
+    if (fileInput) fileInput.value = '';
     const hint = document.getElementById('import-format-hint');
     hint.textContent = fmt === 'csv' ? 'CSV: ip, hostname, notes' : fmt === 'nmap' ? 'Nmap XML output file' : '';
-    document.getElementById('import-modal').classList.remove('hidden');
+    showSharedModal('import-modal');
 }
-function closeImportModal() { document.getElementById('import-modal').classList.add('hidden'); }
+function closeImportModal() { closeSharedModal('import-modal'); }
 
 function handleImportDrop(e) { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) parseFile(f); }
 function handleImportFile(e) { const f = e.target.files[0]; if (f) parseFile(f); }
@@ -246,14 +325,67 @@ function parseFile(file) {
     reader.readAsText(file);
 }
 
+function parseCSVRows(text) {
+    const rows = [];
+    let currentRow = [];
+    let currentField = '';
+    let inQuotes = false;
+
+    const pushRow = () => {
+        currentRow.push(currentField.trim());
+        if (currentRow.some((value) => value !== '')) {
+            rows.push(currentRow);
+        }
+        currentRow = [];
+        currentField = '';
+    };
+
+    for (let index = 0; index < text.length; index += 1) {
+        const char = text[index];
+
+        if (char === '"') {
+            if (inQuotes && text[index + 1] === '"') {
+                currentField += '"';
+                index += 1;
+            } else {
+                inQuotes = !inQuotes;
+            }
+            continue;
+        }
+
+        if (char === ',' && !inQuotes) {
+            currentRow.push(currentField.trim());
+            currentField = '';
+            continue;
+        }
+
+        if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && text[index + 1] === '\n') {
+                index += 1;
+            }
+            pushRow();
+            continue;
+        }
+
+        currentField += char;
+    }
+
+    if (currentField !== '' || currentRow.length > 0) {
+        pushRow();
+    }
+
+    return rows;
+}
+
 function parseCSV(text) {
-    const lines = text.trim().split('\n');
-    const hasHeader = lines[0] && /ip|address|host/i.test(lines[0]);
-    const data = hasHeader ? lines.slice(1) : lines;
-    parsedTargets = data.filter(l => l.trim()).map(l => {
-        const cols = l.split(',').map(c => c.trim());
-        return { address: cols[0] || '', hostname: cols[1] || '', notes: cols[2] || '' };
-    }).filter(t => t.address);
+    const rows = parseCSVRows(text);
+    const hasHeader = rows[0]?.some((column) => /^(ip|address|host|hostname|notes|description)$/i.test(column));
+    const data = hasHeader ? rows.slice(1) : rows;
+    parsedTargets = data.map((cols) => ({
+        address: cols[0] || '',
+        hostname: cols[1] || '',
+        notes: cols[2] || ''
+    })).filter((target) => target.address);
     showPreview();
 }
 
@@ -285,7 +417,11 @@ function parsePasteList(text) {
 }
 
 function showPreview() {
-    if (parsedTargets.length === 0) return;
+    if (parsedTargets.length === 0) {
+        clearImportPreview();
+        return;
+    }
+
     const body = document.getElementById('import-preview-body');
     const esc = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
     body.innerHTML = parsedTargets.slice(0, 50).map(t => `<tr><td class="px-3 py-1.5 font-mono">${esc(t.address)}</td><td class="px-3 py-1.5">${esc(t.hostname)}</td><td class="px-3 py-1.5">${esc(t.notes)}</td></tr>`).join('');
@@ -294,7 +430,13 @@ function showPreview() {
     document.getElementById('import-btn').disabled = false;
 }
 
-function clearImportPreview() { parsedTargets = []; document.getElementById('import-preview').classList.add('hidden'); document.getElementById('import-btn').disabled = true; }
+function clearImportPreview() {
+    parsedTargets = [];
+    document.getElementById('import-preview').classList.add('hidden');
+    document.getElementById('import-preview-body').innerHTML = '';
+    document.getElementById('import-count').textContent = '0';
+    document.getElementById('import-btn').disabled = true;
+}
 
 // Listen for paste area changes
 document.getElementById('import-paste-text')?.addEventListener('input', () => { if (importFormat === 'paste') parsePasteList(); });

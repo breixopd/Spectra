@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import Sequence, Union
 
 from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision: str = "l3m4n5o6p7q8"
 down_revision: Union[str, None] = "k2l3m4n5o6p7"
@@ -18,6 +20,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    op.alter_column(
+        "sandboxes",
+        "mission_id",
+        existing_type=sa.String(),
+        type_=postgresql.UUID(as_uuid=False),
+        postgresql_using="mission_id::uuid",
+    )
     op.create_foreign_key(
         "fk_sandboxes_mission_id_missions",
         "sandboxes",
@@ -33,4 +42,11 @@ def downgrade() -> None:
         "fk_sandboxes_mission_id_missions",
         "sandboxes",
         type_="foreignkey",
+    )
+    op.alter_column(
+        "sandboxes",
+        "mission_id",
+        existing_type=postgresql.UUID(as_uuid=False),
+        type_=sa.String(),
+        postgresql_using="mission_id::text",
     )

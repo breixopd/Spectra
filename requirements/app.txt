@@ -22,6 +22,7 @@ fastembed==0.4.0
 
 # Web & Templates
 jinja2==3.1.6
+nh3==0.3.4
 python-multipart==0.0.22
 websockets==14.2
 aiohttp==3.13.3
