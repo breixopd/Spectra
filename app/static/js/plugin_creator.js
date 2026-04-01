@@ -3,6 +3,21 @@
  * Handles form processing, preview generation, validation, and submission.
  */
 
+function renderActionStatus(container, message, tone = 'info') {
+    if (!container) return;
+    const color = {
+        info: 'text-slate-300',
+        success: 'text-green-400',
+        error: 'text-red-400',
+    }[tone] || 'text-slate-300';
+    container.classList.remove('hidden');
+    container.textContent = '';
+    const span = document.createElement('span');
+    span.className = color;
+    span.textContent = String(message || 'Unknown status');
+    container.appendChild(span);
+}
+
 function addInstallCmd() {
     const container = document.getElementById('install-cmds-container');
     const div = document.createElement('div');
@@ -72,9 +87,9 @@ async function validatePlugin() {
         const { error } = await spectraApi.post('/api/v1/tools/validate', config);
         if (error) throw new Error(error);
         
-        status.innerHTML = '<span class="text-green-400"><i data-lucide="check" class="w-4 h-4 inline-block"></i> Validation passed!</span>';
+        renderActionStatus(status, 'Validation passed!', 'success');
     } catch (e) {
-        status.innerHTML = `<span class="text-red-400"><i data-lucide="x" class="w-4 h-4 inline-block"></i> ${e.message}</span>`;
+        renderActionStatus(status, e.message || 'Operation failed', 'error');
     }
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
@@ -109,7 +124,7 @@ async function signAndSave() {
         try {
             privateKeyPem = await getPrivateKeyPem();
         } catch (e) {
-            status.innerHTML = `<span class="text-red-400"><i data-lucide="x" class="w-4 h-4 inline-block"></i> ${e.message}</span>`;
+            renderActionStatus(status, e.message || 'Failed to read key file', 'error');
             return;
         }
 
@@ -135,14 +150,14 @@ async function signAndSave() {
         });
         if (uploadError) throw new Error(uploadError);
         
-        status.innerHTML = '<span class="text-green-400"><i data-lucide="check" class="w-4 h-4 inline-block"></i> Plugin signed & saved! Redirecting...</span>';
+        renderActionStatus(status, 'Plugin signed and saved. Redirecting...', 'success');
 
         setTimeout(() => {
             window.location.href = '/toolbox';
         }, 1500);
 
     } catch (e) {
-        status.innerHTML = `<span class="text-red-400"><i data-lucide="x" class="w-4 h-4 inline-block"></i> ${e.message}</span>`;
+        renderActionStatus(status, e.message || 'Operation failed', 'error');
     }
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
@@ -158,14 +173,14 @@ async function saveWithoutSigning() {
         const { error } = await spectraApi.post('/api/v1/tools/save-unsigned', config);
         if (error) throw new Error(error);
 
-        status.innerHTML = '<span class="text-green-400"><i data-lucide="check" class="w-4 h-4 inline-block"></i> Plugin saved (unsigned)! Redirecting...</span>';
+        renderActionStatus(status, 'Plugin saved without signing. Redirecting...', 'success');
         
         setTimeout(() => {
             window.location.href = '/toolbox';
         }, 1500);
         
     } catch (e) {
-        status.innerHTML = `<span class="text-red-400"><i data-lucide="x" class="w-4 h-4 inline-block"></i> ${e.message}</span>`;
+        renderActionStatus(status, e.message || 'Operation failed', 'error');
     }
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }

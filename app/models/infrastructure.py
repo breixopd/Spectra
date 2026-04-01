@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 UTC = timezone.utc
 
-from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, TypeDecorator, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, TypeDecorator, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import String as SAString
@@ -99,7 +99,9 @@ class Sandbox(InfrastructureBase):
     __tablename__ = "sandboxes"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    mission_id: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    mission_id: Mapped[str] = mapped_column(
+        String, ForeignKey("missions.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
     container_id: Mapped[str] = mapped_column(String, nullable=False)
     container_name: Mapped[str] = mapped_column(String, nullable=False)
     queue_name: Mapped[str] = mapped_column(String, nullable=False, index=True)

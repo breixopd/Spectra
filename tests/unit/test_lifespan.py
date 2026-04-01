@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi import FastAPI
 
 
 class TestRunStartupChecks:
@@ -131,6 +132,7 @@ class TestLifespanContextManager:
         # Mock all lazy imports used during startup
         mock_storage = MagicMock()
         mock_storage.is_s3 = True
+        mock_storage.start = AsyncMock()
         mock_storage.health_check = AsyncMock(return_value={"status": "healthy", "endpoint": "http://garage:3900"})
 
         with (
@@ -147,13 +149,14 @@ class TestLifespanContextManager:
             patch("app.services.gateway.service_registry.close_service_registry", new_callable=AsyncMock),
             patch("app.services.ai.embeddings.EmbeddingService", return_value=MagicMock(_load_model=AsyncMock())),
             patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock())),
+            patch("app.core.lifespan._validate_rate_limit_storage"),
             patch(
                 "app.services.scaling.get_pool_manager",
                 return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock()),
             ),
             patch("app.core.bridge.EventWebSocketBridge", return_value=MagicMock()),
         ):
-            app = MagicMock()
+            app = FastAPI()
             app.state = MagicMock()
 
             async with lifespan(app):

@@ -161,6 +161,8 @@ class TestGetCurrentSettings:
             TENSORZERO_GATEWAY_URL="http://tensorzero:3000",
             TENSORZERO_API_KEY="configured",
             LLM_TIMEOUT=600,
+        MAINTENANCE_MODE=False,
+        MAINTENANCE_MESSAGE="",
             LOG_LEVEL="INFO",
             PLUGIN_SAFE_MODE=True,
             CONNECT_BACK_HOST="teamserver.local",

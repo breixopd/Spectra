@@ -19,6 +19,10 @@ function _getPanelsForGroup(group) {
     .filter(panel => panel.dataset.tabGroup === group);
 }
 
+function _isSafeTabToken(value) {
+  return typeof value === 'string' && /^[a-zA-Z0-9_-]+$/.test(value);
+}
+
 let _baseDocumentTitle = null;
 
 function _updateDocumentTitle(activeTab) {
@@ -128,8 +132,10 @@ export function initTabs() {
     const sep = hash.indexOf('-');
     const group = hash.substring(0, sep);
     const tabId = hash.substring(sep + 1);
-    const tab = _getTabsForGroup(group).find(candidate => candidate.dataset.tab === tabId);
-    if (tab) activateTab(group, tabId);
+    if (_isSafeTabToken(group) && _isSafeTabToken(tabId)) {
+      const tab = _getTabsForGroup(group).find(candidate => candidate.dataset.tab === tabId);
+      if (tab) activateTab(group, tabId);
+    }
   }
 }
 

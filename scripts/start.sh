@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Fix Docker socket permissions if mounted (needed for sandbox container management)
 if [ -S /var/run/docker.sock ]; then

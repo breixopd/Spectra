@@ -352,7 +352,9 @@ class TestPreSetupRegistrationBlocked:
         plan_result = MagicMock()
         plan_result.scalar_one_or_none.return_value = None  # no default plan
 
-        maker = _mock_session_ctx([superuser_result, uniqueness_result, plan_result])
+        fallback_plan_result = MagicMock()
+        fallback_plan_result.scalar_one_or_none.return_value = None
+        maker = _mock_session_ctx([superuser_result, uniqueness_result, plan_result, fallback_plan_result])
         body = RegisterRequest(username="newuser", email="n@n.com", password="StrongP4ss!")
         scope = {
             "type": "http",

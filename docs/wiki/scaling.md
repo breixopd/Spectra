@@ -111,10 +111,12 @@ Add Garage to your Docker Compose:
 garage:
   image: dxflrs/garage:v2.2.0
   volumes:
+    - ./garage.toml:/etc/garage.toml:ro
+    - garage_meta:/var/lib/garage/meta
     - garage_data:/var/lib/garage/data
   ports:
-    - "9000:9000"
-    - "9001:9001"
+    - "3900:3900"
+    - "3903:3903"
   networks:
     - spectra-network
 ```
@@ -245,7 +247,7 @@ Available via the observability endpoints:
 
 ### 1. Single-Server (Default)
 
-All services on one host with bundled Garage or an external S3 endpoint. No gateway URLs set.
+All services on one host with bundled MinIO or an external S3 endpoint. No gateway URLs set.
 
 ### 2. Split Tools
 
@@ -263,7 +265,7 @@ App + dedicated sandbox workers + S3 storage + DB replicas.
 ```bash
 SANDBOX_ORCHESTRATOR_URL=http://tools-server:9090
 SANDBOX_ORCHESTRATOR_API_KEY=sk-sandbox-key
-S3_ENDPOINT_URL=http://garage:3900
+S3_ENDPOINT_URL=http://minio-server:9000
 S3_ACCESS_KEY=...
 S3_SECRET_KEY=...
 ```

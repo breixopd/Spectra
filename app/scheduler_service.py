@@ -14,8 +14,23 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
+from sqlalchemy import text
+
+from app.core.database import async_session_maker
 
 logger = logging.getLogger(__name__)
+
+# Stable advisory lock IDs for inter-replica coordination (PostgreSQL pg_advisory_lock)
+_BACKUP_LOCK_ID: int = hash("spectra_backup") & 0x7FFFFFFF
+_QUOTA_LOCK_ID: int = hash("spectra_quota_reset") & 0x7FFFFFFF
+
+
+async def _try_advisory_lock(session, lock_id: int) -> bool:
+    """Attempt a non-blocking PostgreSQL advisory lock. Returns True if acquired."""
+    result = await session.execute(
+        text("SELECT pg_try_advisory_lock(:lock_id)"), {"lock_id": lock_id}
+    )
+    return bool(result.scalar())
 
 
 class SchedulerService:
@@ -24,19 +39,21 @@ class SchedulerService:
     def __init__(self):
         self.running = False
         self.tasks: list[asyncio.Task] = []
+        self._named_tasks: dict[str, asyncio.Task] = {}
 
     async def start(self):
         self.running = True
         logger.info("Scheduler service starting...")
 
         # Start scheduled loops
-        self.tasks = [
-            asyncio.create_task(self._sandbox_watchdog()),
-            asyncio.create_task(self._quota_reset()),
-            asyncio.create_task(self._metrics_collector()),
-            asyncio.create_task(self._health_reporter()),
-            asyncio.create_task(self._backup_scheduler()),
-        ]
+        self._named_tasks = {
+            "sandbox_watchdog": asyncio.create_task(self._sandbox_watchdog()),
+            "quota_reset": asyncio.create_task(self._quota_reset()),
+            "metrics_collector": asyncio.create_task(self._metrics_collector()),
+            "health_reporter": asyncio.create_task(self._health_reporter()),
+            "backup_scheduler": asyncio.create_task(self._backup_scheduler()),
+        }
+        self.tasks = list(self._named_tasks.values())
 
         logger.info("Scheduler running with %d tasks", len(self.tasks))
         await asyncio.gather(*self.tasks, return_exceptions=True)
@@ -46,6 +63,18 @@ class SchedulerService:
         for task in self.tasks:
             task.cancel()
         logger.info("Scheduler stopped")
+
+    def health(self) -> dict:
+        task_status = {
+            name: (not task.done())
+            for name, task in self._named_tasks.items()
+        }
+        alive = any(task_status.values()) if task_status else self.running
+        return {
+            "status": "healthy" if alive else "degraded",
+            "tasks": task_status,
+            "running": self.running,
+        }
 
     async def _sandbox_watchdog(self):
         """Check for stale sandbox containers and clean them up. Runs every 60s."""
@@ -70,6 +99,11 @@ class SchedulerService:
                 break
 
             try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _QUOTA_LOCK_ID):
+                        logger.debug("Quota reset lock not acquired — skipping this iteration")
+                        continue
+
                 from app.services.billing.usage_tracker import UsageTracker
 
                 tracker = UsageTracker()
@@ -120,11 +154,44 @@ class SchedulerService:
                 continue
 
             try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _BACKUP_LOCK_ID):
+                        logger.debug("Backup scheduler lock not acquired — skipping this iteration")
+                        await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
+                        continue
+
+                    # Skip if a backup ran recently enough on another replica
+                    from app.core.cache import get_cache
+
+                    cache = get_cache()
+                    if cache:
+                        last_ts = await cache.get("last_backup_timestamp")
+                        if last_ts is not None:
+                            try:
+                                last_dt = datetime.fromisoformat(str(last_ts))
+                                elapsed = (datetime.now(UTC) - last_dt).total_seconds()
+                                if elapsed < settings.BACKUP_SCHEDULE_HOURS * 3600:
+                                    logger.debug("Backup skipped — ran %.0f s ago", elapsed)
+                                    await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
+                                    continue
+                            except (ValueError, TypeError):
+                                pass
+
                 from app.services.infrastructure.backup import BackupService
 
                 svc = BackupService()
                 result = await svc.create_backup()
                 logger.info("Scheduled backup: %s", result.get("status"))
+
+                from app.core.cache import get_cache as _get_cache
+
+                _cache = _get_cache()
+                if _cache:
+                    await _cache.set(
+                        "last_backup_timestamp",
+                        datetime.now(UTC).isoformat(),
+                        ttl=int(settings.BACKUP_SCHEDULE_HOURS * 3600 * 2),
+                    )
             except (OSError, RuntimeError, ValueError) as e:
                 logger.error("Scheduled backup failed: %s", e)
 
@@ -173,8 +240,11 @@ if _secret:
 
 @app.get("/health")
 async def health():
-    running = _scheduler_instance is not None and _scheduler_instance.running
-    return {"status": "healthy" if running else "starting", "service": "scheduler"}
+    if _scheduler_instance is None:
+        return {"status": "starting", "service": "scheduler"}
+    result = _scheduler_instance.health()
+    result["service"] = "scheduler"
+    return result
 
 
 if __name__ == "__main__":

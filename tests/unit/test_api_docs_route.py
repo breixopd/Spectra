@@ -1,6 +1,6 @@
 """Tests for API docs and help UI routes."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -24,7 +24,11 @@ class TestApiDocsRoute:
         mock_route.dependant = MagicMock(path_params=[], query_params=[])
         mock_app.routes = [mock_route]
 
-        with patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "username": "admin", "role": "admin"}):
+        with (
+            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "username": "admin", "sub": "admin"}),
+            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="admin", is_superuser=True)),
+            patch("app.api.routers.ui._is_admin_user", return_value=True),
+        ):
             with patch("app.api.routers.ui.templates") as mock_templates:
                 mock_response = MagicMock()
                 mock_response.status_code = 200
@@ -77,7 +81,11 @@ class TestApiDocsRoute:
         mock_app = MagicMock()
         mock_app.routes = [mock_route1, mock_route2]
 
-        with patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin"}):
+        with (
+            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
+            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="admin", is_superuser=True)),
+            patch("app.api.routers.ui._is_admin_user", return_value=True),
+        ):
             with patch("app.api.routers.ui._check_user_feature", return_value=True):
                 with patch("app.api.routers.ui.templates") as mock_templates:
                     mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)
@@ -117,7 +125,11 @@ class TestApiDocsRoute:
         mock_app = MagicMock()
         mock_app.routes = [mock_route1, mock_route2]
 
-        with patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "operator"}):
+        with (
+            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "operator", "sub": "operator"}),
+            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="operator", is_superuser=False)),
+            patch("app.api.routers.ui._is_admin_user", return_value=False),
+        ):
             with patch("app.api.routers.ui._check_user_feature", return_value=True):
                 with patch("app.api.routers.ui.templates") as mock_templates:
                     mock_templates.TemplateResponse.return_value = MagicMock(status_code=200)

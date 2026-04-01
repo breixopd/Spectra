@@ -102,6 +102,14 @@ async def execute_script_job(
     timeout: int = 300,
 ) -> dict[str, Any]:
     """Execute a custom script (Python/Go/Bash)."""
+    # Safety check: validate script content against blocklist before execution
+    from app.services.ai.agents.safety import SafetySupervisorAgent
+
+    allowed, reason = SafetySupervisorAgent.check_blocklist(content)  # type: ignore[attr-defined]
+    if not allowed:
+        logger.warning("Script blocked by safety check: %s", reason)
+        return _error_job_result(f"Blocked by safety check: {reason}")
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_id = f"script_{timestamp}_{uuid.uuid4().hex[:4]}"
     work_dir = Path(f"/tmp/spectra_scripts/{run_id}")

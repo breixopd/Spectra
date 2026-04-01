@@ -39,125 +39,19 @@ For local admin and troubleshooting work, use [Operations](operations.md) as the
 
 ## Testing
 
-Docker/containerized test paths are the default for CI-grade verification, and targeted local pytest commands are also supported for faster developer iteration.
-
-For the platform-wide verification matrix, release gate, and gaps between current automation and required future harnesses, see [Testing Strategy](testing-strategy.md).
-
-### Settings/Router/Setup Validation
-
-The targeted test suite for the settings, router, and setup workflow:
+The primary CI test command is:
 
 ```bash
 docker compose -f docker/docker-compose.test.yml run --rm settings-test-runner
 ```
 
-Runs: `test_runtime_settings.py`, `test_system_setup.py`, `test_smart_router.py`, `test_settings_runtime_api.py`, `test_settings_templates.py`.
-It still joins the same `spectra_test` Compose network as `docker-compose.test.yml`; the savings here are avoiding the full live stack, not bypassing the fixed test subnet.
-
-### Containerized Fallback
-
-If the Compose test network itself conflicts on your machine, this fallback provides a containerized full unit suite run outside that fixed subnet instead of the targeted settings/router/setup suite:
+For local iteration, run unit tests directly:
 
 ```bash
-docker build -f docker/Dockerfile.tools -t spectra-tools-test .
-docker run --rm \
-  -e DATABASE_URL=sqlite+aiosqlite:///test.db \
-  -e TENSORZERO_GATEWAY_URL=http://tensorzero:3000 \
-  -e JWT_SECRET_KEY=test-secret-key \
-  -e FULLY_AUTOMATED=true \
-  -e PLUGIN_SAFE_MODE=false \
-  -v "$PWD/app:/app/app:ro" \
-  -v "$PWD/tests:/app/tests:ro" \
-  -v "$PWD/pyproject.toml:/app/pyproject.toml:ro" \
-  -v "$PWD/.env.test:/app/.env.test:ro" \
-  -v "$PWD/alembic:/app/alembic:ro" \
-  -v "$PWD/config/alembic.ini:/app/config/alembic.ini:ro" \
-  -v "$PWD/plugins:/app/plugins:ro" \
-  -v "$PWD/data:/app/data" \
-  --entrypoint sh spectra-tools-test \
-  -c "pip install -q pytest pytest-asyncio pytest-dotenv aiosqlite aiohttp httpx && python3 -m pytest tests/unit/ -q --override-ini=addopts="
+python3 -m pytest tests/unit/ -q
 ```
 
-### Non-live integration tests
-
-Run non-live integration tests locally with this selector:
-
-```bash
-python3 -m pytest tests/integration/ -v --tb=short --timeout=120 -k "not live and not e2e"
-```
-
-For the Docker integration wrapper, which may require live services depending on the covered paths:
-
-```bash
-./scripts/test.sh integration
-```
-
-### Live Integration Tests
-
-Use the explicit live integration harness when you need real-service coverage (PostgreSQL, LLM, tools container):
-
-```bash
-./tests/run_live_tests.sh
-```
-
-### UI Tests
-
-Browser-based tests via Playwright:
-
-```bash
-./tests/run_ui_tests.sh
-```
-
-### Load And Performance Harnesses
-
-First-pass load and performance coverage runs against the Docker test stack with a real Redis-backed app limiter and a dedicated Caddy test proxy.
-
-```bash
-# Burst and rate-limit coverage
-./tests/run_load_tests.sh load
-
-# Performance smoke coverage, including queue throughput
-./tests/run_load_tests.sh performance
-
-# Mixed-traffic soak/stability coverage
-./tests/run_load_tests.sh soak
-
-# Makefile wrappers
-make test-load
-make test-performance
-make test-soak
-```
-
-The committed harness now covers direct app login and password-reset bursts, direct public registration burst behavior, real Caddy edge throttling with opt-in recovery checks, WebSocket churn and per-connection burst handling, Redis-backed multi-replica login limit sharing, concurrent worker-backed tool execution, moderate-concurrency latency smoke for core routes, PostgreSQL-backed queue drain throughput, and a first-pass mixed-traffic soak runner. Query benchmarks, queue retry and dead-letter profiling, and resource-ceiling automation still remain outside this batch.
-
-### Test Targets
-
-Custom vulnerable containers for live testing:
-
-```bash
-# Standalone targets (difficulty-based)
-cd docker/targets
-docker compose -f docker-compose.targets.yml up -d
-
-# Or use the test compose with --profile targets (vuln-web, vuln-ssh, vuln-network)
-docker compose -f docker/docker-compose.test.yml --profile targets up -d
-```
-
-| Target | Difficulty | Services | Key Vulns |
-| -------- | ----------- | ---------- | ----------- |
-| Easy Web | Easy | HTTP, SSH | Default creds, phpinfo, directory listing |
-| Medium Multi | Medium | HTTP, FTP, MySQL, SSH | FTP anon, LFI, weak DB creds |
-| Hard Hardened | Hard | HTTPS API, SSH | CORS, SSRF, hidden endpoints, weak JWT |
-| DVWA | Easy | HTTP | Classic web vulns (SQLi, XSS, etc.) |
-| Juice Shop | Medium | HTTP | OWASP Top 10 |
-
-### Test Configuration
-
-- `.env.test` is loaded by `pytest-dotenv` via `pyproject.toml`
-- `pytest-asyncio` mode is `strict` — all async tests need `@pytest.mark.asyncio`
-- `DATABASE_URL` is configured via `.env.test` for the shared test database
-- `TENSORZERO_GATEWAY_URL` points to the TensorZero gateway for LLM routing
-- `FULLY_AUTOMATED=true` disables human approval requirements
+For the full verification matrix, release gate criteria, load/performance/soak harnesses, and known gaps, see [Testing Strategy](testing-strategy.md).
 
 ---
 

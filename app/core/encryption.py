@@ -13,6 +13,8 @@ from pathlib import Path
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from sqlalchemy import Text
+from sqlalchemy.types import TypeDecorator
 
 from app.core.constants import PBKDF2_SALT_LENGTH
 
@@ -142,3 +144,41 @@ def decrypt_data_with_password(blob: bytes, password: str) -> bytes:
     salt, ciphertext = blob[:PBKDF2_SALT_LENGTH], blob[PBKDF2_SALT_LENGTH:]
     f = Fernet(_derive_key_from_password(password, salt))
     return f.decrypt(ciphertext)
+
+
+# ---------------------------------------------------------------------------
+# SQLAlchemy TypeDecorator for transparent column-level encryption
+# ---------------------------------------------------------------------------
+
+_FERNET_TOKEN_PREFIX = "gAAAAA"
+
+
+class EncryptedString(TypeDecorator):
+    """SQLAlchemy TypeDecorator that transparently encrypts/decrypts string
+    column values using the same Fernet backend as ``encrypt_byok_key``.
+
+    Store as TEXT in the database; present as plaintext in Python.
+    """
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, str) and value.startswith(_FERNET_TOKEN_PREFIX):
+            return value  # already encrypted, leave it
+        try:
+            from app.core.security import encrypt_byok_key
+            return encrypt_byok_key(value)
+        except Exception:
+            return value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        try:
+            from app.core.security import decrypt_byok_key
+            return decrypt_byok_key(value)
+        except Exception:
+            return value  # fallback: return raw (may be unencrypted legacy value)

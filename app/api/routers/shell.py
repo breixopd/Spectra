@@ -27,12 +27,12 @@ from app.services.system.audit import log_event as audit_log_event
 router = APIRouter(prefix="/shell", tags=["Shell"])
 logger = logging.getLogger(__name__)
 
-_SHELL_SESSION_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+_SHELL_SESSION_ID_RE = re.compile(r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$")
 
 
 def _validate_shell_session_id(session_id: str) -> str:
     if not _SHELL_SESSION_ID_RE.fullmatch(session_id):
-        raise HTTPException(status_code=400, detail="Invalid session ID format")
+        raise HTTPException(status_code=422, detail="Invalid session ID format")
     return session_id
 
 

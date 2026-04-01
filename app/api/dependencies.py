@@ -168,6 +168,8 @@ def check_resource_owner(resource, user, resource_name: str = "resource") -> Non
         owner_id = resource.get("owner_id") or resource.get("user_id")
     else:
         owner_id = getattr(resource, "user_id", None)
+    if owner_id is None:
+        raise HTTPException(status_code=403, detail="Resource access denied")
     if owner_id != str(user.id):
         raise HTTPException(status_code=403, detail=f"Not authorized to access this {resource_name}")
 

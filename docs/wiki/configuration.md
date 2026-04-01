@@ -1,6 +1,6 @@
 # Configuration
 
-[← Wiki Home](home.md) | [Architecture](architecture.md) | [Deployment Guide](deployment-guide.md) | [Scaling](scaling.md)
+[← Wiki Home](home.md) | [Architecture](architecture.md) | [Deployment](deployment.md) | [Scaling](scaling.md)
 
 ---
 

@@ -42,6 +42,26 @@ if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
     usage
 fi
 
+# ── Confirmation guard ────────────────────────────────────────────
+
+FORCED=false
+ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--yes" ] || [ "$arg" = "-y" ] || [ "$arg" = "--force" ]; then
+        FORCED=true
+    else
+        ARGS+=("$arg")
+    fi
+done
+
+# Re-assign TARGET_VERSION from filtered args
+TARGET_VERSION="${ARGS[0]:-}"
+
+if [ "$FORCED" != "true" ]; then
+    echo "WARNING: This will overwrite the database. Use --yes to confirm." >&2
+    exit 1
+fi
+
 mkdir -p "$LOG_DIR"
 
 log() {
@@ -54,7 +74,7 @@ notify() {
     local status="$1" message="$2"
     if [ -n "$DEPLOY_WEBHOOK_URL" ]; then
         local payload
-        payload=$(printf '{"text":"[Spectra Rollback] %s: %s (target: %s)"}' "$status" "$message" "${TARGET_VERSION:-current}")
+        payload=$(python3 -c "import json,sys; print(json.dumps({'text': '[Spectra Rollback] ' + sys.argv[1] + ': ' + sys.argv[2] + ' (target: ' + sys.argv[3] + ')'}))" "$status" "$message" "${TARGET_VERSION:-current}")
         curl -sf --max-time 10 -X POST -H 'Content-Type: application/json' \
             -d "$payload" "$DEPLOY_WEBHOOK_URL" > /dev/null 2>&1 || true
     fi
@@ -78,10 +98,11 @@ restore_database() {
 
     log "Restoring database from: $backup_file"
 
-    # Wait for DB container to be ready
+    # Wait for DB to be ready via pg_isready before restoring
     local retries=10
     while [ $retries -gt 0 ]; do
-        if docker exec spectra-db pg_isready -U spectra -d spectra > /dev/null 2>&1; then
+        if pg_isready -h db -U spectra -d spectra > /dev/null 2>&1 || \
+           docker exec spectra-db pg_isready -U spectra -d spectra > /dev/null 2>&1; then
             break
         fi
         retries=$((retries - 1))
@@ -93,7 +114,7 @@ restore_database() {
         return 1
     fi
 
-    if gunzip -c "$backup_file" | docker exec -i spectra-db psql -U spectra -d spectra > /dev/null 2>&1; then
+    if gunzip -c "$backup_file" | docker exec -i spectra-db psql --single-transaction -U spectra -d spectra > /dev/null 2>&1; then
         log "Database restored successfully from $backup_file"
     else
         log "ERROR: Database restore failed"

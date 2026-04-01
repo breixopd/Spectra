@@ -67,22 +67,22 @@
             <div class="absolute right-0 top-full mt-1 w-64 bg-slate-900 border border-white/10 rounded-lg shadow-xl opacity-0 invisible transition-all z-50 overflow-hidden" id="presets-menu" role="menu">
                 <div class="p-1.5" id="preset-dropdown">
                     <div class="px-2 py-1 text-xs font-mono text-slate-500 uppercase tracking-wider">Scan Presets</div>
-                    <button onclick="launchPreset('quick_recon')" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                    <button type="button" data-preset-id="quick_recon" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
                         <i data-lucide="zap" class="w-4 h-4 inline-block text-amber-400"></i> Quick Recon <span class="ml-auto text-xs text-slate-500">~5 min</span>
                     </button>
-                    <button onclick="launchPreset('full_assessment')" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                    <button type="button" data-preset-id="full_assessment" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
                         <i data-lucide="shield" class="w-4 h-4 inline-block text-violet-400"></i> Full Assessment <span class="ml-auto text-xs text-slate-500">~30 min</span>
                     </button>
-                    <button onclick="launchPreset('web_only')" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                    <button type="button" data-preset-id="web_only" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
                         <i data-lucide="globe" class="w-4 h-4 inline-block text-blue-400"></i> Web Application <span class="ml-auto text-xs text-slate-500">~15 min</span>
                     </button>
-                    <button onclick="launchPreset('stealth')" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                    <button type="button" data-preset-id="stealth" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
                         <i data-lucide="radar" class="w-4 h-4 inline-block text-slate-400"></i> Stealth Scan <span class="ml-auto text-xs text-slate-500">~45 min</span>
                     </button>
-                    <button onclick="launchPreset('exploit_focus')" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                    <button type="button" data-preset-id="exploit_focus" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
                         <i data-lucide="crosshair" class="w-4 h-4 inline-block text-rose-400"></i> Exploit Focus <span class="ml-auto text-xs text-slate-500">~20 min</span>
                     </button>
-                    <button onclick="launchPreset('api_security')" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
+                    <button type="button" data-preset-id="api_security" role="menuitem" class="w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-violet-500/10 hover:text-white rounded transition-colors flex items-center gap-2">
                         <i data-lucide="code" class="w-4 h-4 inline-block text-emerald-400"></i> API Security <span class="ml-auto text-xs text-slate-500">~15 min</span>
                     </button>
                 </div>

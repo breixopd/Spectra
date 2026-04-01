@@ -388,10 +388,12 @@ async def test_vpn_connect_job_handles_supported_unknown_and_error_cases():
 async def test_vpn_disconnect_job_handles_supported_unknown_and_error_cases():
     from app.worker import vpn_jobs
 
-    run_command = AsyncMock(side_effect=[(0, "wg down", ""), (0, "ovpn down", ""), OSError("broken")])
+    run_command = AsyncMock(side_effect=[(0, "wg down", ""), OSError("broken")])
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(vpn_jobs, "_run_command", run_command)
+        mp.setattr(vpn_jobs.Path, "read_text", MagicMock(side_effect=FileNotFoundError()))
+        mp.setattr(vpn_jobs.os, "kill", MagicMock())
         mp.setitem(
             sys.modules,
             "app.core.config",
@@ -404,6 +406,8 @@ async def test_vpn_disconnect_job_handles_supported_unknown_and_error_cases():
 
     assert wireguard["success"] is True
     assert openvpn["type"] == "openvpn"
+    assert openvpn["success"] is True
+    assert openvpn["stdout"] == "no pid file"
     assert unknown == {"success": False, "error": "Unknown VPN type: pptp"}
     assert errored == {"success": False, "error": "broken"}
 

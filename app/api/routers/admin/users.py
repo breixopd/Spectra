@@ -87,7 +87,7 @@ async def _active_superuser_count(session: AsyncSession) -> int:
 
 async def _ensure_not_last_active_superuser(session: AsyncSession, user: User) -> None:
     if user.is_superuser and user.is_active and await _active_superuser_count(session) <= 1:
-        raise HTTPException(status_code=400, detail="Cannot modify the last active superuser")
+        raise HTTPException(status_code=409, detail="Cannot delete the last administrator account")
 
 
 def _plan_id_value(plan_id: object | None) -> str | None:
@@ -351,7 +351,7 @@ async def update_user(
     if row.is_superuser and row.is_active and not (effective_is_superuser and effective_is_active):
         if await _active_superuser_count(session) <= 1:
             raise HTTPException(
-                status_code=400,
+                status_code=409,
                 detail="Cannot remove or deactivate the last active superuser",
             )
     if body.is_active and not row.email_verified:

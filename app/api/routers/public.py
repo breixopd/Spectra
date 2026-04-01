@@ -12,7 +12,8 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import select, text
+from sqlalchemy import or_, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import async_session_maker
@@ -408,6 +409,65 @@ def _registration_detail_message(email_verification_required: bool) -> str:
     if email_verification_required:
         return "Account created. Please check your email to verify your account before signing in."
     return "Account created successfully. You can now sign in."
+
+
+async def _ensure_registration_setup_complete(session: AsyncSession) -> None:
+    """Block self-registration until at least one superuser exists."""
+    superuser_exists = await session.execute(select(User.id).where(User.is_superuser.is_(True)).limit(1))
+    if not superuser_exists.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="Registration is unavailable until initial setup is complete")
+
+
+async def _ensure_registration_is_unique(session: AsyncSession, username: str, email: str) -> None:
+    duplicate = await session.execute(
+        select(User.id).where(or_(User.username == username, User.email == email)).limit(1)
+    )
+    if duplicate.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Username or email already registered")
+
+
+async def _get_default_registration_plan(session: AsyncSession) -> Plan | None:
+    result = await session.execute(
+        select(Plan)
+        .where(Plan.is_active.is_(True), Plan.is_default.is_(True))
+        .order_by(Plan.sort_order.asc(), Plan.created_at.asc())
+        .limit(1)
+    )
+    plan = result.scalar_one_or_none()
+    if plan is not None:
+        return plan
+
+    fallback = await session.execute(
+        select(Plan)
+        .where(Plan.is_active.is_(True))
+        .order_by(Plan.sort_order.asc(), Plan.created_at.asc())
+        .limit(1)
+    )
+    return fallback.scalar_one_or_none()
+
+
+async def _create_registered_user(session: AsyncSession, body: RegisterRequest, plan: Plan | None) -> User:
+    user = User(
+        username=body.username,
+        email=body.email,
+        hashed_password=get_password_hash(body.password),
+        is_active=True,
+        email_verified=not _registration_requires_email_verification(),
+        plan_id=getattr(plan, 'id', None),
+    )
+    session.add(user)
+    await session.flush()
+
+    if plan is not None:
+        session.add(
+            Subscription(
+                user_id=str(user.id),
+                plan_id=str(plan.id),
+                status='active',
+            )
+        )
+
+    return user
 
 
 def _verify_email_template_response(request: Request, *, success: bool, message: str):

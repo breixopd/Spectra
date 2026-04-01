@@ -35,7 +35,9 @@ class RollbackSnapshot(Base):
         Boolean, default=False, nullable=False
     )
     rolled_back_by: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), nullable=True
+        UUID(as_uuid=False),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )
     rolled_back_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

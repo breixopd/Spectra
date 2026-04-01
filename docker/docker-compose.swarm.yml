@@ -73,8 +73,8 @@ services:
       RATE_LIMIT_STORAGE: redis://redis:6379/0
       TENSORZERO_GATEWAY_URL: http://tensorzero:3000
       SCHEDULER_URL: http://scheduler:5011
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
     networks:
       - spectra-net
     healthcheck:
@@ -238,6 +238,7 @@ services:
       CLICKHOUSE_DB: tensorzero
       CLICKHOUSE_USER: default
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
     networks:
       - spectra-net
     healthcheck:
@@ -304,5 +305,3 @@ configs:
     file: ./Caddyfile.prod
   tensorzero_config:
     file: ../config/tensorzero.toml
-  garage_config:
-    file: ./garage.toml

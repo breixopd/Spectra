@@ -15,6 +15,13 @@
 		header Upgrade websocket
 	}
 	route {
+		@private_docs {
+			path /api/docs /api/docs/* /api/redoc /api/redoc/* /openapi.json
+		}
+		handle @private_docs {
+			respond "Not found" 404
+		}
+
 		handle @websocket {
 			reverse_proxy spectra-app:5000
 		}

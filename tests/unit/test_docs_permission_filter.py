@@ -7,7 +7,7 @@ Complements test_api_docs_route.py with additional coverage of:
 - Route group keys are determined by the second URL segment
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -42,7 +42,9 @@ class TestDocsAdminVisibility:
         ]
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
+            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="admin", is_superuser=True)),
+            patch("app.api.routers.ui._is_admin_user", return_value=True),
             patch("app.api.routers.ui._check_user_feature", return_value=True),
             patch("app.api.routers.ui.templates") as mock_tmpl,
             patch("app.main.app", _mock_app_with_routes(mock_routes)),
@@ -64,7 +66,9 @@ class TestDocsAdminVisibility:
         ]
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "operator"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "operator", "sub": "operator"}),
+            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="operator", is_superuser=False)),
+            patch("app.api.routers.ui._is_admin_user", return_value=False),
             patch("app.api.routers.ui._check_user_feature", return_value=True),
             patch("app.api.routers.ui.templates") as mock_tmpl,
             patch("app.main.app", _mock_app_with_routes(mock_routes)),
@@ -87,7 +91,9 @@ class TestDocsAdminVisibility:
         ]
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 2, "role": "viewer"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"id": 2, "role": "viewer", "sub": "viewer"}),
+            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="viewer", is_superuser=False)),
+            patch("app.api.routers.ui._is_admin_user", return_value=False),
             patch("app.api.routers.ui._check_user_feature", return_value=True),
             patch("app.api.routers.ui.templates") as mock_tmpl,
             patch("app.main.app", _mock_app_with_routes(mock_routes)),
@@ -112,7 +118,9 @@ class TestDocsAdminVisibility:
         ]
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
+            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="admin", is_superuser=True)),
+            patch("app.api.routers.ui._is_admin_user", return_value=True),
             patch("app.api.routers.ui._check_user_feature", return_value=True),
             patch("app.api.routers.ui.templates") as mock_tmpl,
             patch("app.main.app", _mock_app_with_routes(mock_routes)),

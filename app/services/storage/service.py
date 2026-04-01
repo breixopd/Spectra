@@ -23,7 +23,8 @@ def _import_s3_deps() -> tuple[Any, Any, Any]:
 
 
 class _NullContext:
-    """Wraps an already-open client so callers can use `async with self._client()`."""
+    """Wraps an already-open client so callers can use async-with syntax."""
+
     def __init__(self, client: Any) -> None:
         self._client = client
 
@@ -62,9 +63,9 @@ class StorageService:
 
         _aioboto3, self._boto_config_cls, self._client_error = _import_s3_deps()
         self._session = _aioboto3.Session()
-        self._client_ctx: Any = None  # entered in start(); reused across all operations
-        self._s3: Any = None
         self._buckets_ensured: set[str] = set()
+        self._client_ctx: Any = None
+        self._s3: Any = None
         logger.info(
             "Storage: S3 mode (endpoint=%s, region=%s, buckets=[%s, %s, %s, %s])",
             settings.S3_ENDPOINT_URL,
@@ -79,8 +80,22 @@ class StorageService:
     def is_s3(self) -> bool:
         return True
 
+    def _s3_kwargs(self) -> dict:
+        """Build kwargs for S3 client creation."""
+        return {
+            "service_name": "s3",
+            "endpoint_url": settings.S3_ENDPOINT_URL,
+            "aws_access_key_id": settings.S3_ACCESS_KEY.get_secret_value(),
+            "aws_secret_access_key": settings.S3_SECRET_KEY.get_secret_value(),
+            "region_name": settings.S3_REGION,
+            "config": self._boto_config_cls(
+                signature_version="s3v4",
+                retries={"max_attempts": 3, "mode": "adaptive"},
+            ),
+        }
+
     async def start(self) -> None:
-        """Open a persistent S3 client connection for the lifetime of this service instance."""
+        """Open a persistent S3 client for the lifetime of this service instance."""
         if self._s3 is not None:
             return
         self._client_ctx = self._session.client(**self._s3_kwargs())
@@ -97,24 +112,10 @@ class StorageService:
             self._client_ctx = None
 
     def _client(self) -> Any:
-        """Return the persistent S3 client; falls back to a per-call client if start() not called."""
+        """Return a context manager yielding the S3 client."""
         if self._s3 is not None:
             return _NullContext(self._s3)
         return self._session.client(**self._s3_kwargs())
-
-    def _s3_kwargs(self) -> dict:
-        """Build kwargs for S3 client creation."""
-        return {
-            "service_name": "s3",
-            "endpoint_url": settings.S3_ENDPOINT_URL,
-            "aws_access_key_id": settings.S3_ACCESS_KEY.get_secret_value(),
-            "aws_secret_access_key": settings.S3_SECRET_KEY.get_secret_value(),
-            "region_name": settings.S3_REGION,
-            "config": self._boto_config_cls(
-                signature_version="s3v4",
-                retries={"max_attempts": 3, "mode": "adaptive"},
-            ),
-        }
 
     async def _ensure_bucket(self, bucket: str) -> None:
         """Create bucket if it doesn't exist (idempotent)."""

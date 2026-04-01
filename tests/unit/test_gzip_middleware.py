@@ -21,10 +21,8 @@ async def client():
 @pytest.mark.asyncio
 async def test_large_response_is_compressed(client):
     """Responses above 1000 bytes should be gzip-compressed when client accepts it."""
-    # /api/v1/health?verbose=true typically returns a larger payload
     resp = await client.get(
         "/api/v1/health",
-        params={"verbose": "true"},
         headers={"Accept-Encoding": "gzip"},
     )
     assert resp.status_code in (200, 503)
