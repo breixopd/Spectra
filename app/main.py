@@ -167,6 +167,12 @@ async def maintenance_mode_check(request: Request, call_next):
 _TIMEOUT_EXEMPT_PREFIXES = ("/api/v1/export", "/ws")
 
 
+def _is_timeout_exempt_path(path: str) -> bool:
+    return any(path.startswith(prefix) for prefix in _TIMEOUT_EXEMPT_PREFIXES) or (
+        path.startswith("/api/v1/tools/") and path.endswith("/test")
+    )
+
+
 # --- Request Timeout ---
 @app.middleware("http")
 async def request_timeout(request: Request, call_next):
@@ -175,7 +181,7 @@ async def request_timeout(request: Request, call_next):
     if timeout <= 0:
         return await call_next(request)
     path = request.url.path
-    if any(path.startswith(p) for p in _TIMEOUT_EXEMPT_PREFIXES):
+    if _is_timeout_exempt_path(path):
         return await call_next(request)
     try:
         return await asyncio.wait_for(call_next(request), timeout=timeout)

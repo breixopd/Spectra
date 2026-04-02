@@ -7,6 +7,7 @@ Initializes database connections, cache, and other services.
 
 import asyncio
 import logging
+import os
 import socket
 import shutil
 from collections.abc import AsyncGenerator
@@ -44,6 +45,11 @@ from app.services.ai.llm import close_global_llm_client
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
 
 logger = logging.getLogger(__name__)
+
+
+def _should_queue_startup_tool_install() -> bool:
+    value = os.environ.get("QUEUE_STARTUP_TOOL_INSTALL", "true")
+    return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
 from app.services.billing.seed_plans import seed_default_plans  # noqa: E402
@@ -114,20 +120,26 @@ async def run_startup_tasks() -> None:
     try:
         logger.info("Running startup tasks...")
 
-        await add_system_operation(
-            "tool_install", "install", "Installing security tools"
-        )
+        if _should_queue_startup_tool_install():
+            await add_system_operation(
+                "tool_install", "install", "Installing security tools"
+            )
 
-        try:
-            from app.core.queue import PostgresJobQueue
+            try:
+                from app.core.queue import PostgresJobQueue
 
-            queue = PostgresJobQueue()
-            await queue.enqueue_job("install_all_tools_job")
-            logger.info("Queued tool installation job via PostgresJobQueue")
-        except (OSError, RuntimeError, ImportError) as e:
-            logger.debug("Could not queue install job (tools worker may not be running): %s", e)
+                queue = PostgresJobQueue()
+                await queue.enqueue_job("install_all_tools_job")
+                logger.info("Queued tool installation job via PostgresJobQueue")
+            except (OSError, RuntimeError, ImportError) as e:
+                logger.debug("Could not queue install job (tools worker may not be running): %s", e)
 
-        await remove_system_operation("tool_install")
+            await remove_system_operation("tool_install")
+        else:
+            logger.info(
+                "Skipping startup tool installation queue because QUEUE_STARTUP_TOOL_INSTALL is disabled"
+            )
+
         await set_system_status("ready", "System ready")
         logger.info("Startup tasks completed")
 

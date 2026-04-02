@@ -108,6 +108,24 @@ async def test_auto_install_pending_handles_ready_success_failed_and_exception_p
 
 
 @pytest.mark.asyncio
+async def test_auto_install_pending_skips_installs_when_env_requests_it():
+    from app.worker import lifecycle
+
+    installer_factory = MagicMock()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("WORKER_SKIP_STARTUP_AUTO_INSTALL", "true")
+        mp.setitem(
+            sys.modules,
+            "app.services.tools.installer",
+            make_module("app.services.tools.installer", ToolInstaller=installer_factory),
+        )
+        await lifecycle._auto_install_pending()
+
+    installer_factory.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_worker_shutdown_disposes_database_engine():
     from app.worker import lifecycle
 

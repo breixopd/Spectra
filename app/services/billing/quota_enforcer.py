@@ -11,8 +11,13 @@ from sqlalchemy import func, select
 
 from app.core.database import async_session_maker
 from app.models.plan import Plan, Subscription, UsageRecord
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
+
+
+def _is_admin_user(user: User | None) -> bool:
+    return bool(user and (user.is_superuser or user.role == "admin"))
 
 
 def _period_start_hourly() -> datetime:
@@ -27,6 +32,11 @@ def _period_start_monthly() -> datetime:
 
 class QuotaEnforcer:
     """Check plan quotas before allowing resource usage."""
+
+    async def _is_quota_exempt_user(self, user_id: str) -> bool:
+        async with async_session_maker() as session:
+            user = await session.get(User, user_id)
+            return _is_admin_user(user)
 
     async def _get_plan(self, user_id: str) -> Plan | None:
         async with async_session_maker() as session:
@@ -47,6 +57,8 @@ class QuotaEnforcer:
 
         Returns (allowed, reason).
         """
+        if await self._is_quota_exempt_user(user_id):
+            return True, ""
         if plan is None:
             plan = await self._get_plan(user_id)
         if plan is None:
@@ -104,6 +116,10 @@ class QuotaEnforcer:
 
         Returns (allowed, reason).
         """
+        if plan is not None and plan.max_api_requests_per_hour == 0:
+            return True, ""
+        if await self._is_quota_exempt_user(user_id):
+            return True, ""
         if plan is None:
             plan = await self._get_plan(user_id)
         if plan is None:
@@ -137,6 +153,8 @@ class QuotaEnforcer:
 
         Returns (allowed, reason).
         """
+        if await self._is_quota_exempt_user(user_id):
+            return True, ""
         if plan is None:
             plan = await self._get_plan(user_id)
         if plan is None:

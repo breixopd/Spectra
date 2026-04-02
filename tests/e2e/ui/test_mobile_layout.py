@@ -23,17 +23,13 @@ def test_login_page_mobile(mobile_page: Page):
     assert box["width"] <= 375, "Form overflows mobile viewport"
 
 
-def test_dashboard_mobile_scrollable(page: Page, app_url: str):
+def test_dashboard_mobile_scrollable(authenticated_page: Page, app_url: str):
     """Dashboard should be scrollable on mobile."""
-    page.set_viewport_size({"width": 375, "height": 812})
+    authenticated_page.set_viewport_size({"width": 375, "height": 812})
 
-    # Login first
-    page.goto(f"{app_url}/login")
-    page.fill("#username", "admin")
-    page.fill("#password", "TestPassword123!")
-    page.click("button[type='submit']")
-    page.wait_for_url("**/dashboard", timeout=10000)
+    # Reuse the shared authenticated flow before asserting the mobile layout.
+    authenticated_page.goto(f"{app_url}/dashboard")
 
     # Check that body allows scrolling (no overflow-hidden on mobile)
-    overflow = page.evaluate("() => getComputedStyle(document.body).overflowY")
+    overflow = authenticated_page.evaluate("() => getComputedStyle(document.body).overflowY")
     assert overflow != "hidden", "Body should allow vertical scrolling on mobile"

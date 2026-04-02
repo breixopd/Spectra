@@ -37,25 +37,25 @@ case "${1:-}" in
         run_sql "SELECT status, COUNT(*) as count FROM job_queue GROUP BY status ORDER BY status;"
         echo ""
         echo "Jobs by type:"
-        run_sql "SELECT job_type, status, COUNT(*) FROM job_queue GROUP BY job_type, status ORDER BY job_type, status;"
+        run_sql "SELECT queue_name, function AS job_type, status, COUNT(*) FROM job_queue GROUP BY queue_name, function, status ORDER BY queue_name, function, status;"
         ;;
     pending)
-        run_sql "SELECT id, job_type, created_at, priority FROM job_queue WHERE status = 'pending' ORDER BY priority DESC, created_at LIMIT 50;"
+        run_sql "SELECT id, queue_name, function AS job_type, status, enqueued_at, priority FROM job_queue WHERE status IN ('queued', 'pending') ORDER BY priority DESC, enqueued_at LIMIT 50;"
         ;;
     failed)
-        run_sql "SELECT id, job_type, error_message, failed_at, retry_count FROM job_queue WHERE status = 'failed' ORDER BY failed_at DESC LIMIT 50;"
+        run_sql "SELECT id, queue_name, function AS job_type, error AS error_message, COALESCE(completed_at, started_at, enqueued_at) AS last_updated_at, retry_count, max_retries FROM job_queue WHERE status = 'failed' ORDER BY COALESCE(completed_at, started_at, enqueued_at) DESC LIMIT 50;"
         ;;
     dead-letter)
-        run_sql "SELECT id, job_type, error_message, created_at, failed_at, retry_count FROM job_queue WHERE status = 'dead_letter' ORDER BY failed_at DESC LIMIT 50;"
+        run_sql "SELECT id, queue_name, function AS job_type, error AS error_message, enqueued_at, completed_at, retry_count, max_retries FROM job_queue WHERE status = 'dead_letter' ORDER BY COALESCE(completed_at, started_at, enqueued_at) DESC LIMIT 50;"
         ;;
     retry-failed)
         echo "Moving all failed jobs back to pending..."
-        run_sql "UPDATE job_queue SET status = 'pending', error_message = NULL, retry_count = retry_count + 1 WHERE status = 'failed';"
+        run_sql "UPDATE job_queue SET status = 'pending', error = NULL, started_at = NULL, completed_at = NULL, retry_count = retry_count + 1 WHERE status = 'failed';"
         echo "Done."
         ;;
     retry-job)
         [[ -z "${2:-}" ]] && echo "Usage: $0 retry-job <job-id>" && exit 1
-        run_sql "UPDATE job_queue SET status = 'pending', error_message = NULL WHERE id = '$2';"
+        run_sql "UPDATE job_queue SET status = 'pending', error = NULL, started_at = NULL, completed_at = NULL WHERE id = '$2';"
         echo "Job $2 moved to pending."
         ;;
     purge-completed)

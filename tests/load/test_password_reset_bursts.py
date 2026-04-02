@@ -24,14 +24,15 @@ def _assert_structured_rate_limit(response: httpx.Response) -> None:
 async def test_forgot_password_burst_returns_structured_429() -> None:
     expected_limit = get_env_int("LOAD_TEST_FORGOT_PASSWORD_EXPECTED_LIMIT", 3)
 
-    async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as client:
-        user = await create_public_test_user(client, prefix="load-reset-forgot")
+    async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as setup_client:
+        user = await create_public_test_user(setup_client, prefix="load-reset-forgot")
 
+    async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as client:
         responses = []
         for _ in range(expected_limit + 1):
             responses.append(
                 await client.post(
-                    "/api/auth/forgot-password",
+                    "/api/v1/auth/forgot-password",
                     json={"email": user.email},
                 )
             )
@@ -43,15 +44,16 @@ async def test_forgot_password_burst_returns_structured_429() -> None:
 async def test_reset_password_burst_returns_structured_429() -> None:
     expected_limit = get_env_int("LOAD_TEST_RESET_PASSWORD_EXPECTED_LIMIT", 5)
 
-    async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as client:
-        user = await create_public_test_user(client, prefix="load-reset-apply")
+    async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as setup_client:
+        user = await create_public_test_user(setup_client, prefix="load-reset-apply")
 
+    async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as client:
         responses = []
         for attempt in range(expected_limit + 1):
             reset_token = create_password_reset_token(user.user_id)
             responses.append(
                 await client.post(
-                    "/api/auth/reset-password",
+                    "/api/v1/auth/reset-password",
                     json={
                         "token": reset_token,
                         "new_password": f"ResetPass123!Aa{attempt}",

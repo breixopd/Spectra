@@ -423,7 +423,7 @@ async def _ensure_registration_is_unique(session: AsyncSession, username: str, e
         select(User.id).where(or_(User.username == username, User.email == email)).limit(1)
     )
     if duplicate.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Username or email already registered")
+        raise HTTPException(status_code=409, detail="Username or email already registered")
 
 
 async def _get_default_registration_plan(session: AsyncSession) -> Plan | None:
