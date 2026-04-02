@@ -98,13 +98,11 @@ case "${1:-}" in
         echo "Done."
         ;;
     health)
-        validate_garage_url
-
         echo "Garage health:"
-        if curl -sf "${GARAGE_ADMIN_URL}/health"; then
-            echo " OK"
+        if garage_cmd status >/dev/null 2>&1; then
+            echo "OK"
         else
-            echo " UNHEALTHY" >&2
+            echo "UNHEALTHY" >&2
             exit 1
         fi
         ;;

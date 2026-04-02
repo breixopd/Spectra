@@ -74,6 +74,36 @@ bootstrap_garage() {
     bash ./docker/garage-init.sh
 }
 
+wait_for_tools_worker_ready() {
+    local tools_container=""
+    local pending_install_jobs=""
+
+    tools_container="$($COMPOSE ps -q tools)"
+    if [ -z "$tools_container" ]; then
+        echo "ERROR: could not resolve tools container id" >&2
+        exit 1
+    fi
+
+    echo "Waiting for tools worker startup queue to settle..."
+    for i in $(seq 1 90); do
+        if ! docker inspect --format='{{.State.Running}}' "$tools_container" 2>/dev/null | grep -q true; then
+            sleep 1
+            continue
+        fi
+
+        pending_install_jobs="$($COMPOSE exec -T db psql -U spectra -d spectra_test -P pager=off -A -t -c "select count(*) from job_queue where queue_name = 'default' and function = 'install_all_tools_job' and status in ('queued', 'pending', 'in_progress');" 2>/dev/null | tr -d '[:space:]')"
+        if [ "$pending_install_jobs" = "0" ]; then
+            echo "Tools worker queue is ready (attempt $i)!"
+            return
+        fi
+        sleep 1
+    done
+
+    echo "ERROR: tools worker startup queue did not settle" >&2
+    $COMPOSE logs --tail=80 tools >&2 || true
+    exit 1
+}
+
 cleanup() {
     echo ""
     echo "=== Collecting logs ==="
@@ -112,6 +142,8 @@ curl -sf http://localhost:15000/api/health > /dev/null || {
     exit 1
 }
 
+wait_for_tools_worker_ready
+
 echo "Waiting for vulnerable targets to be healthy..."
 for target in spectra-vuln-web spectra-vuln-ssh spectra-vuln-network; do
     target_healthy=false
@@ -137,12 +169,12 @@ echo "Running live integration tests..."
 
 if [ "$TARGETS_ONLY" = true ]; then
     # Run only the target-scan tests
-    $COMPOSE run --rm --entrypoint sh test-runner -c \
+    $COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
         "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && \
          python3 -m pytest tests/integration/test_live_scan.py -v -m live --timeout=120 --tb=short"
 else
     # Full suite: LLM + target tests
-    $COMPOSE run --rm --entrypoint sh test-runner -c \
+    $COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
         "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && \
          python3 -m pytest tests/integration/test_live_targets.py tests/integration/test_live_scan.py -v --timeout=600 --tb=short"
 fi
@@ -161,7 +193,7 @@ GARAGE_SECRET_KEY="${OPS_GARAGE_SECRET_KEY}" \
 ./scripts/ops/s3_management.sh create-buckets >/dev/null
 
 echo "Running live ops smoke tests..."
-python3 -m pytest "${OPS_TEST_FILE}" -v -m live --tb=short --override-ini=addopts=
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3 -m pytest "${OPS_TEST_FILE}" -v -m live --tb=short --override-ini=addopts=
 
 # ── Step 4: Collect results ──────────────────────────────────
 echo ""

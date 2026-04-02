@@ -64,6 +64,7 @@ services:
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
+      - QUEUE_STARTUP_TOOL_INSTALL=false
       - RATE_LIMIT_STORAGE=redis://redis:6379/0
     ports:
       - "15000:5000"
@@ -98,9 +99,11 @@ services:
       - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - SKIP_MIGRATIONS=true
       - TEST_TARGET_IP=metasploitable
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
+      - QUEUE_STARTUP_TOOL_INSTALL=false
       - RATE_LIMIT_STORAGE=redis://redis:6379/0
     ports:
       - "15001:5000"
@@ -113,6 +116,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
+      app:
+        condition: service_healthy
       db:
         condition: service_healthy
       garage:
@@ -149,6 +154,9 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.tools
+    user: root
+    cap_add:
+      - NET_ADMIN
     env_file:
       - ../.env.test
     environment:
@@ -156,10 +164,14 @@ services:
       - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      - IS_TOOLS_CONTAINER=true
+      - WORKER_SKIP_STARTUP_AUTO_INSTALL=true
     volumes:
       - ../plugins:/app/plugins
       - ../app:/app/app:ro
     depends_on:
+      app:
+        condition: service_healthy
       db:
         condition: service_healthy
     networks:
@@ -337,7 +349,7 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        python -m pip install -q pytest pytest-asyncio pytest-dotenv pytest-cov &&
+        python -m pip install -q pytest pytest-asyncio pytest-dotenv pytest-cov aiosqlite &&
         python -m pytest tests/unit/ -q --override-ini=addopts=
     env_file:
       - ../.env.test

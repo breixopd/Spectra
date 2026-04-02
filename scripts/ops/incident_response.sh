@@ -91,7 +91,7 @@ case "${1:-}" in
         ;;
     active-sessions)
         echo "Users with valid sessions (not invalidated):"
-        run_sql "SELECT id, username, email, role, is_active, last_login, invalidated_before FROM users WHERE is_active = true ORDER BY last_login DESC NULLS LAST;"
+        run_sql "SELECT id, username, email, role, CASE WHEN invalidated_before IS NULL THEN 'valid' ELSE 'relogin_required' END AS session_state, invalidated_before, login_fail_count, locked_until, created_at FROM users WHERE is_active = true ORDER BY invalidated_before NULLS FIRST, created_at DESC;"
         ;;
     *)
         usage

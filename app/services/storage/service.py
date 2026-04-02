@@ -6,11 +6,15 @@ import asyncio
 import logging
 from typing import Any
 
-from app.core.config import settings
+import app.core.config as config
 
 logger = logging.getLogger(__name__)
 
 _storage_service: StorageService | None = None
+
+
+def _settings():
+    return config.settings
 
 
 def _import_s3_deps() -> tuple[Any, Any, Any]:
@@ -44,6 +48,7 @@ class StorageService:
     """
 
     def __init__(self) -> None:
+        settings = _settings()
         if not settings.S3_ENDPOINT_URL:
             raise RuntimeError(
                 "S3 object storage is required but S3_ENDPOINT_URL is not set. "
@@ -82,6 +87,7 @@ class StorageService:
 
     def _s3_kwargs(self) -> dict:
         """Build kwargs for S3 client creation."""
+        settings = _settings()
         return {
             "service_name": "s3",
             "endpoint_url": settings.S3_ENDPOINT_URL,
@@ -121,6 +127,7 @@ class StorageService:
         """Create bucket if it doesn't exist (idempotent)."""
         if bucket in self._buckets_ensured:
             return
+        settings = _settings()
         try:
             async with self._client() as s3:
                 try:
@@ -244,6 +251,7 @@ class StorageService:
 
     async def health_check(self) -> dict:
         """Check S3 storage health."""
+        settings = _settings()
         try:
             async with self._client() as s3:
                 await s3.list_buckets()

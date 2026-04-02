@@ -64,10 +64,12 @@ class TestLandingPage:
         findings_result.scalar.return_value = 0
         missions_result = MagicMock()
         missions_result.scalar.return_value = 0
+        users_result = MagicMock()
+        users_result.scalar.return_value = 0
         reviews_result = MagicMock()
         reviews_result.fetchall.return_value = []
 
-        maker, _ = _mock_session_ctx([plan_result, findings_result, missions_result, reviews_result])
+        maker, _ = _mock_session_ctx([plan_result, findings_result, missions_result, users_result, reviews_result])
 
         with (
             patch("app.api.routers.public._get_user_from_cookie", return_value=None),
@@ -147,9 +149,11 @@ class TestRegisterEndpoint:
         superuser_result.scalar_one_or_none.return_value = "admin-id"
         uniq = MagicMock()
         uniq.scalar_one_or_none.return_value = None
-        plan = MagicMock()
-        plan.scalar_one_or_none.return_value = None
-        maker, _ = _mock_session_ctx([superuser_result, uniq, plan])
+        default_plan = MagicMock()
+        default_plan.scalar_one_or_none.return_value = None
+        fallback_plan = MagicMock()
+        fallback_plan.scalar_one_or_none.return_value = None
+        maker, _ = _mock_session_ctx([superuser_result, uniq, default_plan, fallback_plan])
 
         body = RegisterRequest(username="newuser", email="new@example.com", password="StrongP4ss!")
         with patch("app.api.routers.public.async_session_maker", maker):

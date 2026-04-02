@@ -10,11 +10,18 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_active_user
+from app.api.dependencies import check_resource_owner, get_current_active_user
+from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
+from app.repositories.mission import MissionRepository
+from app.services.mission.output_model import (
+    get_mission_findings,
+    get_mission_summary_dict,
+)
 from app.services.system.checklists import get_checklist, list_checklists
 from app.services.system.cvss import calculate_cvss31
 from app.services.system.gtfobins import search_gtfobins
@@ -116,8 +123,34 @@ async def api_list_report_templates(
 
 
 class GenerateReportRequest(BaseModel):
-    session_id: str = Field(..., description="Pentest session ID")
-    template_id: str = Field(..., description="Report template ID")
+    session_id: str | None = Field(default=None, description="Pentest session ID")
+    mission_id: str | None = Field(default=None, description="Mission ID")
+    template_id: str | None = Field(default=None, description="Report template ID")
+    template: str | None = Field(default=None, description="Legacy report template ID")
+
+    @model_validator(mode="after")
+    def validate_source_and_template(self) -> GenerateReportRequest:
+        if bool(self.session_id) == bool(self.mission_id):
+            raise ValueError("Provide exactly one of session_id or mission_id")
+        if not (self.template_id or self.template):
+            raise ValueError("template_id or template is required")
+        return self
+
+
+def _build_report_source_from_mission(mission: Any) -> dict[str, Any]:
+    summary = get_mission_summary_dict(mission)
+    mission_id = str(getattr(mission, "id", ""))
+    directive = getattr(mission, "directive", "") or ""
+
+    return {
+        "id": mission_id,
+        "name": directive or f"Mission {mission_id[:8] or 'report'}",
+        "target": getattr(mission, "target", "") or "",
+        "findings": get_mission_findings(mission),
+        "scope": summary.get("scope") or getattr(mission, "attack_surface", None),
+        "tools_used": summary.get("tools_run", []) or [],
+        "command_history": getattr(mission, "logs", []) or [],
+    }
 
 
 @router.post("/reports/generate")
@@ -125,17 +158,34 @@ class GenerateReportRequest(BaseModel):
 async def api_generate_report(
     request: Request,
     req: GenerateReportRequest,
+    session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
-    """Generate report data from a session using a template."""
+    """Generate report data from a session or mission using a template."""
     _ = request
+    template_id = req.template_id or req.template
+
     try:
+        if req.mission_id:
+            repo = MissionRepository(session)
+            mission = await repo.get_by_id(req.mission_id)
+            if not mission:
+                raise HTTPException(status_code=404, detail="Mission not found")
+
+            check_resource_owner(mission, _current_user, "mission")
+            report_data = build_report_data(_build_report_source_from_mission(mission), template_id)
+            report_data["mission_id"] = str(mission.id)
+            report_data["source_type"] = "mission"
+            return report_data
+
         from app.api.routers.pentest_sessions import _load_session
 
         session = await _load_session(req.session_id)
         if session.get("owner_id") != str(_current_user.id) and not getattr(_current_user, "is_superuser", False):
             raise HTTPException(status_code=403, detail="Forbidden")
-        return build_report_data(session, req.template_id)
+        report_data = build_report_data(session, template_id)
+        report_data["source_type"] = "session"
+        return report_data
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
     except ValueError as e:

@@ -24,7 +24,7 @@ async def test_concurrent_tool_worker_execution_returns_usable_results() -> None
 
         async def run_once() -> httpx.Response:
             return await client.post(
-                f"/api/tools/{tool_id}/test",
+                f"/api/v1/tools/{tool_id}/test",
                 headers=headers,
                 json={
                     "target": target,

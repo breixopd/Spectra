@@ -1,9 +1,15 @@
 """Tests for manual mode backend services and API endpoints."""
 
 import json
+from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError
 
+from app.api.routers.manual_helpers import (
+    GenerateReportRequest,
+    _build_report_source_from_mission,
+)
 from app.services.system.checklists import (
     BUILTIN_CHECKLISTS,
     get_checklist,
@@ -20,6 +26,7 @@ from app.services.system.payloads import (
 )
 from app.services.system.report_templates import (
     REPORT_TEMPLATES,
+    build_report_data,
     generate_report_data,
     get_report_template,
     list_report_templates,
@@ -249,3 +256,51 @@ class TestReportTemplates:
         assert result["total_findings"] == 2
         assert result["severity_counts"]["high"] == 1
         assert result["severity_counts"]["medium"] == 1
+
+
+class TestGenerateReportRequest:
+    def test_accepts_legacy_mission_contract(self):
+        req = GenerateReportRequest(mission_id="mission-1", template="executive")
+
+        assert req.mission_id == "mission-1"
+        assert req.template == "executive"
+
+    def test_rejects_missing_report_source(self):
+        with pytest.raises(ValidationError, match="Provide exactly one of session_id or mission_id"):
+            GenerateReportRequest(template_id="technical")
+
+    def test_rejects_ambiguous_report_source(self):
+        with pytest.raises(ValidationError, match="Provide exactly one of session_id or mission_id"):
+            GenerateReportRequest(session_id="session-1", mission_id="mission-1", template_id="technical")
+
+
+class TestMissionReportSourceMapping:
+    def test_build_report_source_from_mission_maps_expected_fields(self):
+        mission = SimpleNamespace(
+            id="mission-1",
+            target="corp.internal",
+            directive="Internal assessment",
+            logs=[{"message": "scanned"}],
+            attack_surface={"hosts": ["corp.internal"]},
+            summary={
+                "tools_run": ["nmap", "nuclei"],
+                "findings": [
+                    {
+                        "title": "SQL Injection",
+                        "severity": "high",
+                        "description": "Unsanitized query",
+                        "tool_source": "sqlmap",
+                    }
+                ],
+            },
+        )
+
+        source = _build_report_source_from_mission(mission)
+        result = build_report_data(source, "technical")
+
+        assert result["session_id"] == "mission-1"
+        assert result["session_name"] == "Internal assessment"
+        assert result["target"] == "corp.internal"
+        assert result["tools_used"] == ["nmap", "nuclei"]
+        assert result["command_history"] == [{"message": "scanned"}]
+        assert result["total_findings"] == 1

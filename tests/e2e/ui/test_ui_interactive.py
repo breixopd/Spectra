@@ -38,30 +38,49 @@ def test_login_and_dashboard(logged_in_page: Page):
 # ---------------------------------------------------------------------------
 
 def test_signup_shows_errors(page: Page):
-    """Submit empty registration form — HTML validation prevents submission.
-    Then fill invalid data and verify error message."""
+    """Invalid signup data should be blocked by native browser validation."""
     page.goto(f"{APP_URL}/register", wait_until="networkidle")
 
     submit_btn = page.locator("#submitBtn")
     expect(submit_btn).to_be_visible(timeout=10_000)
+    msg = page.locator("#msg")
 
-    # Try to click submit on empty form — browser validation should prevent submission.
-    # The username field has `required`, so it should block submission.
+    # Empty required fields should keep the form invalid before any submit handler runs.
     username_input = page.locator("#username")
     is_valid = page.evaluate("document.getElementById('registerForm').checkValidity()")
     assert not is_valid, "Empty form should not pass HTML validation"
 
-    # Fill invalid data: username too short (minlength=3), bad email
+    # Fill invalid client-side data and attempt a real submit.
     username_input.fill("ab")
     page.locator("#email").fill("not-an-email")
     page.locator("#password").fill("short")
+    submit_btn.click()
 
-    # Force submit via JS to bypass HTML validation and trigger server-side errors
-    page.evaluate("document.getElementById('registerForm').requestSubmit()")
+    expect(submit_btn).to_have_text("Create Account")
+    expect(page).to_have_url(f"{APP_URL}/register", timeout=10_000)
+    expect(msg).to_have_text("")
 
-    # Error message should appear in the msg div
-    msg = page.locator("#msg")
-    expect(msg).to_be_visible(timeout=10_000)
+    invalid_state = page.evaluate(
+        """
+        () => {
+            const form = document.getElementById('registerForm');
+            const username = document.getElementById('username');
+            const email = document.getElementById('email');
+            const password = document.getElementById('password');
+            return {
+                form_valid: form.checkValidity(),
+                username_message: username.validationMessage,
+                email_message: email.validationMessage,
+                password_message: password.validationMessage,
+            };
+        }
+        """
+    )
+
+    assert not invalid_state["form_valid"], "Invalid registration data should be blocked client-side"
+    assert invalid_state["username_message"], "Username minlength validation should be active"
+    assert invalid_state["email_message"], "Email format validation should be active"
+    assert invalid_state["password_message"], "Password minlength validation should be active"
 
 
 # ---------------------------------------------------------------------------
@@ -197,8 +216,8 @@ def test_landing_page_elements(page: Page):
     pricing = page.locator("#pricing")
     expect(pricing).to_be_attached(timeout=10_000)
 
-    # CTA button exists and is clickable
-    cta = page.locator("a.btn-primary", has_text="Start Free Assessment")
+    # Primary hero CTA exists and is clickable
+    cta = page.locator("section.hero .hero-actions a.btn-primary", has_text="Get Started")
     expect(cta).to_be_visible(timeout=10_000)
 
     # No mentions of "self-hosting" anywhere on the page

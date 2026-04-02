@@ -867,10 +867,12 @@ async def forgot_password(
 @limiter.limit(RateLimits.RESET_PASSWORD)
 async def reset_password(
     request: Request,
+    response: Response,
     body: ResetPasswordRequest,
     session: AsyncSession = Depends(get_async_session),
 ):
     """Reset password using a valid reset token."""
+    _ = response
     user_id = verify_password_reset_token(body.token)
     if not user_id:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
