@@ -18,13 +18,35 @@ function setCheckboxValue(name, value) {
     }
 }
 
+function showSharedModal(id) {
+    if (typeof window.showModal === 'function') {
+        window.showModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.remove('hidden');
+}
+
+function closeSharedModal(id) {
+    if (typeof window.closeModal === 'function') {
+        window.closeModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.add('hidden');
+}
+
 function activateNavLink(targetId) {
-    document.querySelectorAll('[role="tablist"] [role="tab"]').forEach((link) => {
-        const isActive = link.getAttribute('aria-controls') === targetId;
+    document.querySelectorAll('[data-settings-section]').forEach((link) => {
+        const isActive = link.dataset.settingsSection === targetId;
         link.classList.toggle('bg-white/5', isActive);
         link.classList.toggle('text-white', isActive);
         link.classList.toggle('text-slate-400', !isActive);
-        link.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        if (isActive) {
+            link.setAttribute('aria-current', 'location');
+        } else {
+            link.removeAttribute('aria-current');
+        }
     });
 }
 
@@ -341,9 +363,9 @@ async function testDefaultProfile() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    document.querySelectorAll('[role="tablist"] [role="tab"]').forEach((anchor) => {
+    document.querySelectorAll('[data-settings-section]').forEach((anchor) => {
         anchor.addEventListener('click', function () {
-            const targetId = this.getAttribute('aria-controls');
+            const targetId = this.dataset.settingsSection;
             const target = targetId ? document.getElementById(targetId) : null;
             if (target) {
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -400,11 +422,11 @@ async function clearToolStats() {
 }
 
 function showClearMissionsConfirm() {
-    document.getElementById('clear-missions-modal').classList.remove('hidden');
+    showSharedModal('clear-missions-modal');
 }
 
 function hideClearMissionsConfirm() {
-    document.getElementById('clear-missions-modal').classList.add('hidden');
+    closeSharedModal('clear-missions-modal');
 }
 
 async function confirmClearMissions() {

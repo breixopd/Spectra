@@ -1,5 +1,23 @@
 // Dashboard Logic for Spectra
 
+function showSharedModal(id) {
+    if (typeof window.showModal === 'function') {
+        window.showModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.remove('hidden');
+}
+
+function closeSharedModal(id) {
+    if (typeof window.closeModal === 'function') {
+        window.closeModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.add('hidden');
+}
+
 // --- Terminal Handling ---
 const terminalOutput = document.getElementById('terminal-output');
 
@@ -744,9 +762,9 @@ function showPlaybookDetail(playbook) {
     phasesEl.innerHTML = steps.map((s, i) => `<div class="flex items-center gap-2 text-xs"><span class="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-xs font-mono shrink-0">${i + 1}</span><span class="text-slate-300">${escapeHtml(typeof s === 'string' ? s : s.name || s.description || JSON.stringify(s))}</span></div>`).join('');
     document.getElementById('pb-detail-stealth').textContent = playbook.stealth ? 'On' : 'Off';
     document.getElementById('pb-detail-autoexploit').textContent = playbook.auto_exploit !== false ? 'Yes' : 'No';
-    document.getElementById('playbook-detail-modal').classList.remove('hidden');
+    showSharedModal('playbook-detail-modal');
 }
-function closePlaybookDetail() { document.getElementById('playbook-detail-modal').classList.add('hidden'); }
+function closePlaybookDetail() { closeSharedModal('playbook-detail-modal'); }
 function launchPlaybook() {
     if (!selectedPlaybookData) return;
     const target = document.getElementById('mission-target')?.value?.trim();
@@ -793,9 +811,9 @@ function openFindingDetail(finding) {
     document.getElementById('fd-tab-notes').innerHTML = `<textarea class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 outline-none resize-none" rows="4" placeholder="Add notes about this finding..."></textarea>`;
 
     switchFDTab('details');
-    document.getElementById('finding-detail-modal').classList.remove('hidden');
+    showSharedModal('finding-detail-modal');
 }
-function closeFindingDetail() { document.getElementById('finding-detail-modal').classList.add('hidden'); }
+function closeFindingDetail() { closeSharedModal('finding-detail-modal'); }
 
 function switchFDTab(tab) {
     document.querySelectorAll('.fd-tab').forEach(t => { t.classList.remove('text-violet-400', 'border-violet-500'); t.classList.add('text-slate-400', 'border-transparent'); });

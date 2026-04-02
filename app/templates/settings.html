@@ -17,24 +17,24 @@
 <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 animate-fade-in-up stagger-1">
     <!-- Sidebar Navigation -->
     <div class="md:col-span-3">
-        <nav class="space-y-1" role="tablist" aria-label="Settings sections">
-            <button type="button" id="tab-general" role="tab" aria-selected="true" aria-controls="general" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
+        <nav class="space-y-1" aria-label="Settings sections">
+            <button type="button" id="tab-general" data-settings-section="general" aria-current="location" class="flex items-center px-3 py-2 rounded-lg bg-white/5 text-white font-medium text-sm">
                 <i data-lucide="sliders-horizontal" class="w-4 h-4 inline-block mr-3 text-violet-400"></i>
                 General
             </button>
-            <button type="button" id="tab-data-sources" role="tab" aria-selected="false" aria-controls="data-sources" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            <button type="button" id="tab-data-sources" data-settings-section="data-sources" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i data-lucide="download" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 Data Sources
             </button>
-            <button type="button" id="tab-system" role="tab" aria-selected="false" aria-controls="system" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            <button type="button" id="tab-system" data-settings-section="system" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i data-lucide="server" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 System Status
             </button>
-            <button type="button" id="tab-vpn" role="tab" aria-selected="false" aria-controls="vpn" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            <button type="button" id="tab-vpn" data-settings-section="vpn" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i data-lucide="shield" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 VPN
             </button>
-            <button type="button" id="tab-platform" role="tab" aria-selected="false" aria-controls="platform" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
+            <button type="button" id="tab-platform" data-settings-section="platform" class="flex items-center px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors text-sm">
                 <i data-lucide="globe" class="w-4 h-4 inline-block mr-3 text-slate-500"></i>
                 Platform
             </button>
@@ -45,7 +45,7 @@
     <div class="md:col-span-9 space-y-6">
         
         <!-- General Settings -->
-        <div class="glass-panel rounded-xl p-6" id="general" role="tabpanel" aria-labelledby="tab-general">
+        <div class="glass-panel rounded-xl p-6" id="general">
             <h2 class="text-lg font-semibold text-white mb-4">General Configuration</h2>
             <form id="settings-form" class="space-y-5">
                 <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)] gap-4">
@@ -149,7 +149,7 @@
         </div>
 
         <!-- Platform Settings -->
-        <div id="platform" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="tab-platform">
+        <div id="platform" class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i data-lucide="globe" class="w-5 h-5 inline-block text-sky-400"></i>
                 Platform
@@ -193,7 +193,7 @@
 
             <div id="sandbox-status" class="mb-4 p-3 rounded-lg border border-white/10 bg-slate-900/50">
                 <div class="flex items-center gap-2">
-                    <span id="sandbox-status-dot" class="inline-block w-2 h-2 rounded-full bg-slate-500" style="width: 0.5rem; height: 0.5rem;"></span>
+                    <div id="sandbox-status-dot" class="inline-block w-2 h-2 rounded-full bg-slate-500" style="width: 0.5rem; height: 0.5rem;" aria-hidden="true"></div>
                     <span id="sandbox-status-text" class="text-xs text-slate-400">Checking sandbox pool...</span>
                 </div>
             </div>
@@ -435,7 +435,7 @@
         </div>
 
         <!-- Data Sources Section -->
-        <div id="data-sources" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="tab-data-sources">
+        <div id="data-sources" class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i data-lucide="download" class="w-5 h-5 inline-block text-amber-400"></i>
                 Data Sources
@@ -459,7 +459,7 @@
         </div>
 
         <!-- VPN Management -->
-        <div id="vpn" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="tab-vpn">
+        <div id="vpn" class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i data-lucide="shield" class="w-5 h-5 inline-block text-emerald-400"></i>
                 VPN Management
@@ -514,7 +514,7 @@
         </div>
 
         <!-- System Status -->
-        <div id="system" class="glass-panel rounded-xl p-6" role="tabpanel" aria-labelledby="tab-system">
+        <div id="system" class="glass-panel rounded-xl p-6">
             <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <i data-lucide="server" class="w-5 h-5 inline-block text-cyan-400"></i>
                 System Status
@@ -530,10 +530,10 @@
 </div>
 
 <!-- Clear Missions Confirmation Modal -->
-<div id="clear-missions-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50">
+<div id="clear-missions-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50" role="dialog" aria-modal="true" aria-labelledby="clear-missions-modal-title">
     <div class="w-full h-full flex items-center justify-center">
     <div class="glass-panel rounded-xl p-6 max-w-md w-full mx-4">
-        <h3 class="text-lg font-semibold text-white mb-2">
+        <h3 id="clear-missions-modal-title" class="text-lg font-semibold text-white mb-2">
             <i data-lucide="alert-triangle" class="w-5 h-5 inline-block text-rose-400 mr-2"></i>
             Confirm Delete All Missions
         </h3>
@@ -573,10 +573,20 @@
     }
 
     function showClearMissionsConfirm() {
+        if (typeof window.showModal === 'function') {
+            window.showModal('clear-missions-modal');
+            return;
+        }
+
         document.getElementById('clear-missions-modal').classList.remove('hidden');
     }
 
     function hideClearMissionsConfirm() {
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('clear-missions-modal');
+            return;
+        }
+
         document.getElementById('clear-missions-modal').classList.add('hidden');
     }
 

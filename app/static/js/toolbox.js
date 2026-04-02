@@ -43,6 +43,32 @@ let _lastToolsHash = '';
 let _toolsPollingInterval = null;
 let currentTool = null;
 
+function showSharedModal(id) {
+    if (typeof window.showModal === 'function') {
+        window.showModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.remove('hidden');
+}
+
+function closeSharedModal(id) {
+    if (typeof window.closeModal === 'function') {
+        window.closeModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.add('hidden');
+}
+
+function openUploadModal() {
+    showSharedModal('upload-modal');
+}
+
+function closeUploadModal() {
+    closeSharedModal('upload-modal');
+}
+
 function _hashTools(tools) {
     return JSON.stringify((tools || []).map(t => `${t.id}:${t.status}:${t.name}`));
 }
@@ -246,7 +272,7 @@ async function handleFiles(files) {
         if (status) status.innerHTML = '<span class="text-green-400">Upload successful!</span>';
         _setInstallLogs(`Uploaded plugin ${file.name}`, 'success');
         window.setTimeout(async () => {
-            document.getElementById('upload-modal')?.classList.add('hidden');
+            closeUploadModal();
             status?.classList.add('hidden');
             await refreshTools();
         }, 1000);
@@ -426,4 +452,6 @@ window.addEventListener('beforeunload', cleanupToolboxPageState, { once: true })
 window.refreshTools = refreshTools;
 window.selectTool = selectTool;
 window.showTestModal = showTestModal;
+window.openUploadModal = openUploadModal;
+window.closeUploadModal = closeUploadModal;
 window.runToolTest = runToolTest;
