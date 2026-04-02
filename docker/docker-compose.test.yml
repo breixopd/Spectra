@@ -1,7 +1,7 @@
 # Test environment — Metasploitable2 + DVWA vulnerable targets
 #
-# Live LLM tests: pass .env.live for real AI provider credentials:
-#   docker compose -f docker/docker-compose.test.yml --env-file .env.live \
+# Live LLM tests: set LLM_API_KEY in .env.test, then:
+#   docker compose -f docker/docker-compose.test.yml --profile targets \
 #     run --rm test-runner sh -c "pytest tests/integration/ -v"
 #
 # Vulnerable scan targets: use --profile targets to start lightweight targets:
