@@ -2,6 +2,24 @@ let allReports = [];
 let currentPage = 1;
 const pageSize = 12;
 
+function showSharedModal(id) {
+    if (typeof window.showModal === 'function') {
+        window.showModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.remove('hidden');
+}
+
+function closeSharedModal(id) {
+    if (typeof window.closeModal === 'function') {
+        window.closeModal(id);
+        return;
+    }
+
+    document.getElementById(id)?.classList.add('hidden');
+}
+
 document.addEventListener('DOMContentLoaded', () => { loadReports(); });
 
 async function loadReports() {
@@ -145,10 +163,10 @@ async function viewReport(missionId) {
     if (!reportData) return;
     document.getElementById('view-report-title').textContent = `Report: ${reportData.report.target || 'Unknown'}`;
     document.getElementById('view-report-content').innerHTML = reportData.content;
-    document.getElementById('view-report-modal').classList.remove('hidden');
+    showSharedModal('view-report-modal');
 }
 
-function closeViewReportModal() { document.getElementById('view-report-modal').classList.add('hidden'); }
+function closeViewReportModal() { closeSharedModal('view-report-modal'); }
 
 function printReport() {
     const content = document.getElementById('view-report-content').innerHTML;
@@ -188,9 +206,9 @@ async function openNewReportModal() {
     const { data } = await spectraApi.get('/api/v1/missions');
     const missionsList = data?.items || [];
     if (missionsList) { missionsList.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = `${m.target||'Unknown'} (${m.status})`; sel.appendChild(o); }); }
-    document.getElementById('new-report-modal').classList.remove('hidden');
+    showSharedModal('new-report-modal');
 }
-function closeNewReportModal() { document.getElementById('new-report-modal').classList.add('hidden'); }
+function closeNewReportModal() { closeSharedModal('new-report-modal'); }
 
 async function generateReport() {
     const mid = document.getElementById('report-mission-select').value;

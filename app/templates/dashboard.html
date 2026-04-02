@@ -332,7 +332,7 @@
 </div>
 
 <!-- Playbook Detail Modal -->
-<div id="playbook-detail-modal" class="fixed inset-0 z-50 hidden">
+<div id="playbook-detail-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="pb-detail-title">
     <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closePlaybookDetail()"></div>
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-xl p-6 border border-white/10 shadow-2xl">
         <h2 class="text-lg font-semibold text-white mb-1" id="pb-detail-title">Playbook</h2>
@@ -357,12 +357,12 @@
 </div>
 
 <!-- Finding Detail Modal -->
-<div id="finding-detail-modal" class="fixed inset-0 z-50 hidden">
+<div id="finding-detail-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="fd-title">
     <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeFindingDetail()"></div>
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[80vh] glass-panel rounded-xl flex flex-col border border-white/10 shadow-2xl overflow-hidden">
         <div class="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
             <h2 class="text-lg font-semibold text-white truncate" id="fd-title">Finding</h2>
-            <button onclick="closeFindingDetail()" class="text-slate-400 hover:text-white transition-colors"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
+            <button onclick="closeFindingDetail()" class="text-slate-400 hover:text-white transition-colors" aria-label="Close finding dialog" title="Close finding dialog"><i data-lucide="x" class="w-4 h-4 inline-block"></i></button>
         </div>
         <!-- Tabs -->
         <div class="flex border-b border-white/5 px-6 shrink-0">
