@@ -33,6 +33,7 @@ def _make_request(
     headers: dict[str, str] | None = None,
     cookies: dict[str, str] | None = None,
     path: str = "/api/v1/test",
+    scheme: str = "http",
 ) -> Request:
     raw_headers = [(key.lower().encode(), value.encode()) for key, value in (headers or {}).items()]
     if cookies:
@@ -45,6 +46,7 @@ def _make_request(
         "path": path,
         "headers": raw_headers,
         "query_string": b"",
+        "scheme": scheme,
     }
     return Request(scope)
 
@@ -286,8 +288,9 @@ def test_login_response_sets_httponly_secure_cookie():
         _set_auth_cookies,
     )
 
+    request = _make_request(headers={"x-forwarded-proto": "https"})
     response = Response()
-    _set_auth_cookies(response, "access-token", "refresh-token")
+    _set_auth_cookies(request, response, "access-token", "refresh-token")
 
     headers = _set_cookie_headers(response)
     assert len(headers) == 2
@@ -306,8 +309,9 @@ def test_logout_deletes_cookie_with_secure_flags():
         _clear_auth_cookies,
     )
 
+    request = _make_request(scheme="https")
     response = Response()
-    _clear_auth_cookies(response)
+    _clear_auth_cookies(request, response)
 
     headers = _set_cookie_headers(response)
     assert len(headers) == 2

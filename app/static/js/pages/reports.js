@@ -95,17 +95,56 @@ function renderReports() {
 
 function goToPage(p) { const t = Math.ceil(getFilteredReports().length / pageSize); if (p < 1 || p > t) return; currentPage = p; renderReports(); }
 
-async function viewReport(missionId) {
-    const r = allReports.find(m => m.id === missionId);
-    if (!r) return;
-    document.getElementById('view-report-title').textContent = `Report: ${r.target || 'Unknown'}`;
+function getReportById(missionId) {
+    return allReports.find(m => String(m.id) === String(missionId));
+}
+
+function buildReportContent(report, findings) {
+    const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+    const sortedFindings = [...findings].sort((a, b) => (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5));
+    const sevBadge = s => { const c = { critical:'bg-rose-500/20 text-rose-400', high:'bg-amber-500/20 text-amber-400', medium:'bg-blue-500/20 text-blue-400', low:'bg-slate-500/20 text-slate-400', info:'bg-slate-700/30 text-slate-500' }; return `<span class="px-2 py-0.5 rounded text-xs font-mono uppercase ${c[s]||c.info}">${s}</span>`; };
+    return `<div class="max-w-4xl mx-auto space-y-6"><div class="border-b border-white/10 pb-4"><h2 class="text-xl font-bold text-white">${escapeHtml(report.target||'Unknown')}</h2><p class="text-sm text-slate-400 mt-1">${escapeHtml(report.directive||'Security Assessment')}</p><p class="text-xs text-slate-500 mt-2">Date: ${report.created_at?new Date(report.created_at).toLocaleString():'N/A'} | Status: ${escapeHtml(String(report.status || 'unknown'))} | Total: ${sortedFindings.length}</p></div><div><h3 class="text-lg font-semibold text-white mb-3">Findings (${sortedFindings.length})</h3>${sortedFindings.length===0?'<p class="text-slate-500 text-sm">No findings.</p>':''}<div class="space-y-3">${sortedFindings.map(f=>`<div class="glass-panel rounded-lg p-4 border-l-2 ${f.severity==='critical'?'border-rose-500':f.severity==='high'?'border-amber-500':f.severity==='medium'?'border-blue-500':'border-slate-600'}"><div class="flex items-center gap-2 mb-2">${sevBadge(f.severity)}<span class="text-white font-medium text-sm">${escapeHtml(f.title||'Untitled')}</span></div><p class="text-xs text-slate-400">${escapeHtml(f.description||'No description')}</p>${f.tool_source?`<p class="text-xs text-slate-500 mt-2">Tool: ${escapeHtml(f.tool_source)}</p>`:''}</div>`).join('')}</div></div></div>`;
+}
+
+async function getReportRenderData(missionId) {
+    const report = getReportById(missionId);
+    if (!report) return null;
     let findings = [];
     const { data: findingsData } = await spectraApi.get(`/api/v1/missions/${missionId}/findings`);
     if (findingsData) findings = findingsData;
-    const sevOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-    findings.sort((a, b) => (sevOrder[a.severity] ?? 5) - (sevOrder[b.severity] ?? 5));
-    const sevBadge = s => { const c = { critical:'bg-rose-500/20 text-rose-400', high:'bg-amber-500/20 text-amber-400', medium:'bg-blue-500/20 text-blue-400', low:'bg-slate-500/20 text-slate-400', info:'bg-slate-700/30 text-slate-500' }; return `<span class="px-2 py-0.5 rounded text-xs font-mono uppercase ${c[s]||c.info}">${s}</span>`; };
-    document.getElementById('view-report-content').innerHTML = `<div class="max-w-4xl mx-auto space-y-6"><div class="border-b border-white/10 pb-4"><h2 class="text-xl font-bold text-white">${escapeHtml(r.target||'Unknown')}</h2><p class="text-sm text-slate-400 mt-1">${escapeHtml(r.directive||'Security Assessment')}</p><p class="text-xs text-slate-500 mt-2">Date: ${r.created_at?new Date(r.created_at).toLocaleString():'N/A'} | Status: ${escapeHtml(String(r.status || 'unknown'))} | Total: ${findings.length}</p></div><div><h3 class="text-lg font-semibold text-white mb-3">Findings (${findings.length})</h3>${findings.length===0?'<p class="text-slate-500 text-sm">No findings.</p>':''}<div class="space-y-3">${findings.map(f=>`<div class="glass-panel rounded-lg p-4 border-l-2 ${f.severity==='critical'?'border-rose-500':f.severity==='high'?'border-amber-500':f.severity==='medium'?'border-blue-500':'border-slate-600'}"><div class="flex items-center gap-2 mb-2">${sevBadge(f.severity)}<span class="text-white font-medium text-sm">${escapeHtml(f.title||'Untitled')}</span></div><p class="text-xs text-slate-400">${escapeHtml(f.description||'No description')}</p>${f.tool_source?`<p class="text-xs text-slate-500 mt-2">Tool: ${escapeHtml(f.tool_source)}</p>`:''}</div>`).join('')}</div></div></div>`;
+    return {
+        report,
+        content: buildReportContent(report, findings),
+    };
+}
+
+function buildReportDocument(title, content) {
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>body{font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:2rem;color:#1e293b;background:#f8fafc}main{max-width:960px;margin:0 auto}h2{font-size:1.5rem;margin-bottom:0.5rem}h3{font-size:1.125rem;margin-top:1.5rem}.glass-panel{background:#ffffff;border:1px solid #e2e8f0;border-radius:0.75rem}.text-white{color:#0f172a}.text-slate-400,.text-slate-500{color:#475569}.border-white\/10{border-color:#e2e8f0}.border-rose-500{border-color:#e11d48}.border-amber-500{border-color:#f59e0b}.border-blue-500{border-color:#3b82f6}.border-slate-600{border-color:#475569}</style></head><body><main>${content}</main></body></html>`;
+}
+
+function getReportFilename(report, extension) {
+    const safeTarget = String(report.target || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const safeId = String(report.id || 'mission').replace(/[^a-zA-Z0-9_-]+/g, '-');
+    return `${safeTarget || 'report'}-${safeId}.${extension}`;
+}
+
+function downloadTextFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function viewReport(missionId) {
+    const reportData = await getReportRenderData(missionId);
+    if (!reportData) return;
+    document.getElementById('view-report-title').textContent = `Report: ${reportData.report.target || 'Unknown'}`;
+    document.getElementById('view-report-content').innerHTML = reportData.content;
     document.getElementById('view-report-modal').classList.remove('hidden');
 }
 
@@ -113,14 +152,35 @@ function closeViewReportModal() { document.getElementById('view-report-modal').c
 
 function printReport() {
     const content = document.getElementById('view-report-content').innerHTML;
+    const title = document.getElementById('view-report-title')?.textContent || 'Report';
     const w = window.open('', '_blank');
-    w.document.write(`<!DOCTYPE html><html><head><title>Report</title><style>body{font-family:sans-serif;padding:2rem;color:#1e293b}h2{font-size:1.25rem}h3{font-size:1rem;margin-top:1.5rem}.finding{border:1px solid #e2e8f0;border-radius:0.5rem;padding:1rem;margin:0.5rem 0}</style></head><body>${content}</body></html>`);
+    if (!w) {
+        _spectraToast('Allow pop-ups to print the report', 'warning');
+        return;
+    }
+    w.document.write(buildReportDocument(title, content));
     w.document.close();
     w.print();
 }
 
-function downloadReportHTML(id) { viewReport(id).then(() => printReport()); }
-function downloadReportPDF(id) { viewReport(id).then(() => printReport()); }
+async function downloadReportHTML(id) {
+    const reportData = await getReportRenderData(id);
+    if (!reportData) {
+        _spectraToast('Report not found', 'warning');
+        return;
+    }
+    const title = `Report: ${reportData.report.target || 'Unknown'}`;
+    downloadTextFile(
+        buildReportDocument(title, reportData.content),
+        getReportFilename(reportData.report, 'html'),
+        'text/html;charset=utf-8',
+    );
+}
+
+function downloadReportPDF(id) {
+    if (!id) return;
+    window.open(`/api/v1/missions/${encodeURIComponent(String(id))}/report/pdf`, '_blank');
+}
 
 async function openNewReportModal() {
     const sel = document.getElementById('report-mission-select');
