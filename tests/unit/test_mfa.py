@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pyotp
 import pytest
+from fastapi import Response
+from starlette.requests import Request
 
 from app.core.security import decrypt_mfa_secret, encrypt_mfa_secret, verify_totp
 
@@ -49,6 +51,24 @@ def _make_user(**overrides):
     user.mfa_secret = overrides.get("mfa_secret", None)
     user.plan_id = overrides.get("plan_id", None)
     return user
+
+
+def _make_request(
+    headers: dict[str, str] | None = None,
+    scheme: str = "http",
+    path: str = "/api/v1/auth/mfa/verify",
+) -> Request:
+    raw_headers = [(key.lower().encode(), value.encode()) for key, value in (headers or {}).items()]
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": path,
+        "headers": raw_headers,
+        "query_string": b"",
+        "scheme": scheme,
+        "client": ("127.0.0.1", 50000),
+    }
+    return Request(scope)
 
 
 @pytest.fixture
@@ -164,8 +184,6 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
     """After MFA verify, a full access token should be returned."""
     from datetime import timedelta
 
-    from fastapi import Request, Response
-
     from app.api.routers.auth import mfa_verify_login
     from app.api.schemas.auth import MFAVerifyRequest
     from app.core.security import create_access_token, decode_token
@@ -180,13 +198,10 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
         expires_delta=timedelta(minutes=5),
     )
 
-    # Mock request with auth header
-    request = MagicMock(spec=Request)
-    request.headers = {"authorization": f"Bearer {mfa_token}"}
-    request.client = MagicMock()
-    request.client.host = "127.0.0.1"
-
-    response = MagicMock(spec=Response)
+    request = _make_request(
+        headers={"authorization": f"Bearer {mfa_token}", "x-forwarded-proto": "https"},
+    )
+    response = Response()
 
     # Mock DB to return our user
     mock_result = MagicMock()
@@ -203,6 +218,13 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
 
     assert "access_token" in result
     assert result["token_type"] == "bearer"
+    set_cookie_headers = [
+        value.decode("latin-1")
+        for key, value in response.raw_headers
+        if key.lower() == b"set-cookie"
+    ]
+    assert len(set_cookie_headers) == 2
+    assert all("Secure" in header for header in set_cookie_headers)
     # Verify the returned token is a proper access token (no mfa_pending)
     payload = decode_token(result["access_token"])
     assert "mfa_pending" not in payload
@@ -286,7 +308,7 @@ async def test_mfa_verify_setup_rejects_replayed_code(mock_session):
 @pytest.mark.asyncio
 async def test_mfa_verify_login_rejects_replayed_code(mock_session):
     from datetime import timedelta
-    from fastapi import HTTPException, Request, Response
+    from fastapi import HTTPException
 
     from app.api.routers.auth import _used_totp_codes, mfa_verify_login
     from app.api.schemas.auth import MFAVerifyRequest
@@ -298,11 +320,8 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
     user = _make_user(mfa_enabled=True, mfa_secret=encrypted)
     mfa_token = create_access_token(data={"sub": user.username, "mfa_pending": True}, expires_delta=timedelta(minutes=5))
 
-    request = MagicMock(spec=Request)
-    request.headers = {"authorization": f"Bearer {mfa_token}"}
-    request.client = MagicMock()
-    request.client.host = "127.0.0.1"
-    response = MagicMock(spec=Response)
+    request = _make_request(headers={"authorization": f"Bearer {mfa_token}"}, scheme="https")
+    response = Response()
     mock_result = MagicMock()
     mock_result.scalar_one_or_none.return_value = user
     mock_session.execute = AsyncMock(return_value=mock_result)
