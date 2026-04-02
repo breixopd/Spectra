@@ -2,11 +2,11 @@
 # Run live integration tests against vulnerable containers.
 #
 # Two modes:
-#   1. Full LLM tests:   requires .env.live with valid API credentials
+#   1. Full LLM tests:   requires LLM_API_KEY set in .env.test
 #   2. Target-only tests: runs scan/vuln tests against lightweight targets
 #
 # Usage:
-#   ./tests/run_live_tests.sh              # Full suite (needs .env.live)
+#   ./tests/run_live_tests.sh              # Full suite (needs LLM_API_KEY in .env.test)
 #   ./tests/run_live_tests.sh --targets    # Target-only (no LLM needed)
 
 set -euo pipefail
@@ -14,7 +14,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_BASE="docker/docker-compose.test.yml"
-ENV_LIVE="$PROJECT_DIR/.env.live"
 OPS_TEST_FILE="tests/integration/test_ops_scripts_live.py"
 
 cd "$PROJECT_DIR"
@@ -31,20 +30,16 @@ COMPOSE_TARGETS="docker compose -f $COMPOSE_BASE --profile targets"
 if [ "$TARGETS_ONLY" = true ]; then
     COMPOSE="docker compose -f $COMPOSE_BASE --profile targets"
 else
-    # Full mode — check .env.live
-    if [ ! -f "$ENV_LIVE" ]; then
-        echo "SKIP: .env.live not found."
-        echo "  Copy .env.live.example to .env.live and fill in your LLM credentials."
+    # Full mode — check .env.test for LLM credentials
+    # shellcheck disable=SC1091
+    source "$PROJECT_DIR/.env.test"
+    if [ -z "${LLM_API_KEY:-}" ] || [ "$LLM_API_KEY" = "your-api-key-here" ]; then
+        echo "SKIP: LLM_API_KEY is not configured in .env.test."
+        echo "  Add your LLM_API_KEY to .env.test and re-run."
         echo "  Or run with --targets for target-only tests."
         exit 0
     fi
-    # shellcheck disable=SC1090
-    source "$ENV_LIVE"
-    if [ -z "${LLM_API_KEY:-}" ] || [ "$LLM_API_KEY" = "your-api-key-here" ]; then
-        echo "SKIP: LLM_API_KEY is not configured in .env.live."
-        exit 0
-    fi
-    COMPOSE="docker compose -f $COMPOSE_BASE --profile targets --env-file .env.live"
+    COMPOSE="docker compose -f $COMPOSE_BASE --profile targets --env-file .env.test"
 fi
 
 echo "=== Spectra Live Integration Tests ==="
