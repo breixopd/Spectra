@@ -60,6 +60,39 @@ cd docker && docker compose up -d
 
 ---
 
+### First-Run Setup
+
+Use the automated first-run script for a complete single-command setup:
+
+```bash
+./scripts/first_run.sh
+```
+
+This handles:
+1. Starting core services (database, Redis, Garage S3)
+2. Bootstrapping S3 storage and creating required buckets
+3. Running database migrations
+4. Starting all application services
+5. Printing the setup URL for admin account creation
+
+**Manual first-run** (if you prefer step-by-step):
+
+```bash
+# 1. Start services
+docker compose -f docker/docker-compose.yml up -d
+
+# 2. Bootstrap S3 storage
+bash docker/garage-init.sh
+
+# 3. Copy the printed S3 credentials to your .env file
+# 4. Restart to pick up new env vars
+docker compose -f docker/docker-compose.yml restart
+
+# 5. Open /setup in your browser to create the admin account
+```
+
+---
+
 ## Server Hardening
 
 Before deploying to production, harden the server:
@@ -86,6 +119,84 @@ This applies: SSH hardening, UFW firewall, fail2ban, kernel sysctl tuning, and a
 
 # 4. Check status
 ./scripts/ops/swarm_deploy.sh --status
+```
+
+### Adding a New Worker Node
+
+#### Option A: Automated provisioning
+
+```bash
+# Get the join token from the manager
+docker swarm join-token worker
+
+# Provision and join in one command
+./scripts/ops/swarm_deploy.sh provision <new-node-ip> --join-token <token>
+```
+
+This automatically:
+- Hardens the server (SSH, firewall, fail2ban)
+- Installs Docker
+- Joins the Swarm cluster
+
+#### Option B: Manual provisioning
+
+1. **Harden the server:**
+   ```bash
+   scp scripts/ops/harden_server.sh user@new-node:/tmp/
+   ssh user@new-node "sudo /tmp/harden_server.sh --yes"
+   ```
+
+2. **Install Docker:**
+   ```bash
+   ssh user@new-node "curl -fsSL https://get.docker.com | sudo sh"
+   ```
+
+3. **Open Swarm ports on the new node:**
+   ```bash
+   ssh user@new-node "sudo ufw allow 2377/tcp && sudo ufw allow 7946/tcp && sudo ufw allow 7946/udp && sudo ufw allow 4789/udp"
+   ```
+
+4. **Join the swarm:**
+   ```bash
+   # On manager: get the token
+   docker swarm join-token worker
+   
+   # On new node: join
+   docker swarm join --token <token> <manager-ip>:2377
+   ```
+
+5. **Label the node (on manager):**
+   ```bash
+   docker node ls  # Find the new node ID
+   docker node update --label-add spectra.role=worker <node-id>
+   ```
+
+6. **Redeploy to spread services:**
+   ```bash
+   ./scripts/ops/swarm_deploy.sh deploy
+   ```
+
+7. **Verify:**
+   ```bash
+   ./scripts/ops/swarm_deploy.sh status
+   docker service ls
+   docker node ps <node-id>
+   ```
+
+### Removing a Node
+
+```bash
+# 1. Drain the node (moves containers to other nodes)
+docker node update --availability drain <node-id>
+
+# 2. Wait for services to migrate
+docker node ps <node-id>  # Should show "Shutdown"
+
+# 3. On the worker node: leave the swarm
+docker swarm leave
+
+# 4. On the manager: remove the node
+docker node rm <node-id>
 ```
 
 ---
@@ -122,6 +233,58 @@ Triggered by **manual dispatch** or pushing a tag matching `v*`.
 | `DEPLOY_HOST` | Production server hostname or IP |
 | `DEPLOY_USER` | SSH username |
 | `DEPLOY_SSH_KEY` | SSH private key for deployment |
+
+---
+
+### Server Migration
+
+To migrate Spectra to a new server:
+
+1. **On the old server — export everything:**
+   ```bash
+   ./scripts/ops/migrate_server.sh export --output /tmp/spectra-migration
+   ```
+
+2. **Transfer to new server:**
+   ```bash
+   rsync -avz /tmp/spectra-migration/ user@new-server:/tmp/spectra-migration/
+   ```
+
+3. **On the new server — set up the base:**
+   ```bash
+   git clone <repo-url> Spectra && cd Spectra
+   cp /tmp/spectra-migration/config/.env .env
+   # Edit .env: update PLATFORM_DOMAIN, database passwords, etc.
+   ./scripts/first_run.sh
+   ```
+
+4. **Import data:**
+   ```bash
+   ./scripts/ops/migrate_server.sh import --bundle /tmp/spectra-migration
+   ```
+
+5. **Verify:**
+   ```bash
+   ./scripts/ops/migrate_server.sh verify
+   ```
+
+---
+
+### Health Checks
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `GET /api/health` | None | Liveness probe — checks DB, Redis, S3 |
+| `GET /api/health?verbose=true` | Required | Detailed status of all components |
+| `GET /api/health/ready` | None | Readiness probe — checks DB, LLM, embeddings |
+| `GET /api/health/services` | Required | Aggregate health of all backend microservices |
+
+For monitoring, use the basic endpoint:
+```bash
+curl -sf http://localhost/api/health | python3 -m json.tool
+```
+
+When running multiple replicas, Caddy load-balances health checks across instances. Use `/api/health/services` to check all backend services from any replica.
 
 ---
 

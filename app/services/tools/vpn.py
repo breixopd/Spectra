@@ -2,6 +2,7 @@
 
 Manages WireGuard and OpenVPN connections in the tools container
 so all security tool traffic routes through VPN tunnels.
+VPN configs are stored in S3 (Garage) and downloaded to local temp for worker use.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.core.queue import PostgresJobQueue
+from app.services.storage import get_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -73,30 +75,45 @@ def _validate_openvpn_config(content: str) -> None:
 
 
 class VPNManager:
-    """Manages VPN connections in the tools container."""
+    """Manages VPN connections in the tools container.
+
+    Configs are stored in S3 under the ``vpn/`` prefix and downloaded to a
+    local temp directory when workers or sandboxes need filesystem access.
+    """
 
     def __init__(self, config_dir: str | None = None):
-        self.config_dir = Path(config_dir or settings.VPN_CONFIG_DIR)
+        self.config_dir = Path(config_dir or "/tmp/vpn_configs")
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+        self._bucket = settings.S3_BUCKET_VPN
+        self._prefix = "vpn/"
         self._queue = PostgresJobQueue(queue_name="default")
 
-    def _ensure_config_dir(self) -> None:
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+    def _s3_key(self, name: str, ext: str) -> str:
+        return f"{self._prefix}{name}{ext}"
 
-    def _config_path(self, name: str, vpn_type: str) -> Path:
-        ext = _VPN_EXTENSIONS.get(vpn_type)
-        if not ext:
-            raise ValueError(f"Unsupported VPN type: {vpn_type}")
-        return self.config_dir / f"{name}{ext}"
-
-    def _detect_type(self, name: str) -> str | None:
-        """Detect VPN type from existing config file extension."""
+    async def _detect_type(self, name: str) -> str | None:
+        """Detect VPN type by checking S3 for known extensions."""
+        storage = get_storage_service()
         for vpn_type, ext in _VPN_EXTENSIONS.items():
-            if (self.config_dir / f"{name}{ext}").exists():
+            key = self._s3_key(name, ext)
+            if await storage.exists(self._bucket, key):
                 return vpn_type
         return None
 
+    async def _download_to_local(self, name: str) -> Path | None:
+        """Download config from S3 to local temp for worker/sandbox use."""
+        storage = get_storage_service()
+        for ext in _VPN_EXTENSIONS.values():
+            key = self._s3_key(name, ext)
+            if await storage.exists(self._bucket, key):
+                local_path = self.config_dir / f"{name}{ext}"
+                await storage.download_file(self._bucket, key, str(local_path))
+                local_path.chmod(0o600)
+                return local_path
+        return None
+
     async def upload_config(self, name: str, config_content: bytes, vpn_type: str) -> dict[str, Any]:
-        """Save a VPN config file after validation."""
+        """Save a VPN config to S3 after validation."""
         name = _validate_config_name(name)
         if vpn_type not in _VPN_EXTENSIONS:
             raise ValueError(f"vpn_type must be 'wireguard' or 'openvpn', got '{vpn_type}'")
@@ -108,30 +125,31 @@ class VPNManager:
         else:
             _validate_openvpn_config(text)
 
-        import asyncio
+        ext = _VPN_EXTENSIONS[vpn_type]
+        key = self._s3_key(name, ext)
+        storage = get_storage_service()
+        await storage.upload(self._bucket, key, config_content)
 
-        self._ensure_config_dir()
-        path = self._config_path(name, vpn_type)
-        await asyncio.to_thread(path.write_text, text, encoding="utf-8")
-        # Restrict permissions
-        await asyncio.to_thread(path.chmod, 0o600)
-
-        logger.info("Saved VPN config '%s' (%s) at %s", name, vpn_type, path)
+        logger.info("Saved VPN config '%s' (%s) to S3 key %s", name, vpn_type, key)
         return {
             "name": name,
             "type": vpn_type,
-            "path": str(path),
+            "path": key,
             "size": len(config_content),
         }
 
     async def connect(self, config_name: str) -> dict[str, Any]:
         """Start VPN connection by enqueuing a job to the tools worker."""
         config_name = _validate_config_name(config_name)
-        vpn_type = self._detect_type(config_name)
+        vpn_type = await self._detect_type(config_name)
         if not vpn_type:
             raise ValueError(f"No config found for '{config_name}'")
 
-        config_path = str(self._config_path(config_name, vpn_type))
+        local_path = await self._download_to_local(config_name)
+        if not local_path:
+            raise ValueError(f"Failed to download config for '{config_name}'")
+
+        config_path = str(local_path)
         job_id = await self._queue.enqueue_job("vpn_connect_job", config_path, vpn_type, _timeout=60)
         logger.info("Enqueued VPN connect job %s for %s (%s)", job_id, config_name, vpn_type)
         return {"job_id": job_id, "config": config_name, "type": vpn_type, "action": "connect"}
@@ -139,11 +157,17 @@ class VPNManager:
     async def disconnect(self, config_name: str) -> dict[str, Any]:
         """Stop VPN connection by enqueuing a job to the tools worker."""
         config_name = _validate_config_name(config_name)
-        vpn_type = self._detect_type(config_name)
+        vpn_type = await self._detect_type(config_name)
         if not vpn_type:
             raise ValueError(f"No config found for '{config_name}'")
 
-        job_id = await self._queue.enqueue_job("vpn_disconnect_job", config_name, vpn_type, _timeout=30)
+        # Download to local — wg-quick down needs the config file
+        local_path = await self._download_to_local(config_name)
+        config_path = str(local_path) if local_path else ""
+
+        job_id = await self._queue.enqueue_job(
+            "vpn_disconnect_job", config_name, vpn_type, config_path, _timeout=30,
+        )
         logger.info("Enqueued VPN disconnect job %s for %s", job_id, config_name)
         return {"job_id": job_id, "config": config_name, "type": vpn_type, "action": "disconnect"}
 
@@ -153,29 +177,33 @@ class VPNManager:
         return {"job_id": job_id, "action": "status"}
 
     async def list_configs(self) -> list[dict[str, Any]]:
-        """List all saved VPN configurations."""
-        self._ensure_config_dir()
+        """List all saved VPN configurations from S3."""
+        storage = get_storage_service()
+        keys = await storage.list_objects(self._bucket, self._prefix)
         configs: list[dict[str, Any]] = []
-        for vpn_type, ext in _VPN_EXTENSIONS.items():
-            for path in sorted(self.config_dir.glob(f"*{ext}")):
-                configs.append(
-                    {
-                        "name": path.stem,
-                        "type": vpn_type,
-                        "path": str(path),
-                        "size": path.stat().st_size,
-                    }
-                )
+        for key in keys:
+            filename = key.removeprefix(self._prefix)
+            if not filename:
+                continue
+            name = Path(filename).stem
+            vpn_type = "wireguard" if filename.endswith(".conf") else "openvpn"
+            configs.append({
+                "name": name,
+                "type": vpn_type,
+                "path": key,
+                "size": 0,
+            })
         return configs
 
     async def delete_config(self, name: str) -> bool:
-        """Delete a saved VPN config file."""
+        """Delete a saved VPN config from S3."""
         name = _validate_config_name(name)
+        storage = get_storage_service()
         for ext in _VPN_EXTENSIONS.values():
-            path = self.config_dir / f"{name}{ext}"
-            if path.exists():
-                path.unlink()
-                logger.info("Deleted VPN config: %s", path)
+            key = self._s3_key(name, ext)
+            if await storage.exists(self._bucket, key):
+                await storage.delete(self._bucket, key)
+                logger.info("Deleted VPN config from S3: %s", key)
                 return True
         return False
 

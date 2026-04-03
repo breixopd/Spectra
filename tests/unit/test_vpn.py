@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -99,7 +100,7 @@ class TestOpenVPNValidation:
 
 
 # =============================================================================
-# VPNManager
+# VPNManager (S3-backed)
 # =============================================================================
 
 
@@ -109,24 +110,51 @@ class TestVPNManager:
         return tmp_path
 
     @pytest.fixture()
+    def mock_storage(self):
+        storage = AsyncMock()
+        storage.upload = AsyncMock(return_value="s3://spectra-sessions/vpn/test.conf")
+        storage.exists = AsyncMock(return_value=False)
+        storage.delete = AsyncMock(return_value=True)
+        storage.list_objects = AsyncMock(return_value=[])
+
+        async def _fake_download(bucket, key, dest):
+            p = Path(dest)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("placeholder")
+            return str(p)
+
+        storage.download_file = AsyncMock(side_effect=_fake_download)
+        return storage
+
+    @pytest.fixture(autouse=True)
+    def _patch_storage(self, mock_storage):
+        with patch("app.services.tools.vpn.get_storage_service", return_value=mock_storage):
+            yield
+
+    @pytest.fixture()
     def mgr(self, tmp_dir):
         return VPNManager(config_dir=str(tmp_dir))
 
     @pytest.mark.asyncio
-    async def test_upload_wireguard_config(self, mgr, tmp_dir):
+    async def test_upload_wireguard_config(self, mgr, mock_storage):
         content = b"[Interface]\nAddress = 10.0.0.2/24\nPrivateKey = abc=\n\n[Peer]\nPublicKey = xyz=\nEndpoint = 1.2.3.4:51820\n"
         result = await mgr.upload_config("test-wg", content, "wireguard")
         assert result["name"] == "test-wg"
         assert result["type"] == "wireguard"
-        assert (tmp_dir / "test-wg.conf").exists()
+        mock_storage.upload.assert_called_once()
+        call_args = mock_storage.upload.call_args
+        assert call_args[0][1] == "vpn/test-wg.conf"
+        assert call_args[0][2] == content
 
     @pytest.mark.asyncio
-    async def test_upload_openvpn_config(self, mgr, tmp_dir):
+    async def test_upload_openvpn_config(self, mgr, mock_storage):
         content = b"client\nremote vpn.example.com 1194\ndev tun\n"
         result = await mgr.upload_config("test-ovpn", content, "openvpn")
         assert result["name"] == "test-ovpn"
         assert result["type"] == "openvpn"
-        assert (tmp_dir / "test-ovpn.ovpn").exists()
+        mock_storage.upload.assert_called_once()
+        call_args = mock_storage.upload.call_args
+        assert call_args[0][1] == "vpn/test-ovpn.ovpn"
 
     @pytest.mark.asyncio
     async def test_upload_rejects_bad_type(self, mgr):
@@ -160,27 +188,29 @@ class TestVPNManager:
         assert configs == []
 
     @pytest.mark.asyncio
-    async def test_list_configs(self, mgr, tmp_dir):
-        (tmp_dir / "vpn1.conf").write_text("[Interface]\n[Peer]\n")
-        (tmp_dir / "vpn2.ovpn").write_text("remote x 1194\n")
+    async def test_list_configs(self, mgr, mock_storage):
+        mock_storage.list_objects = AsyncMock(return_value=[
+            "vpn/vpn1.conf",
+            "vpn/vpn2.ovpn",
+        ])
         configs = await mgr.list_configs()
         names = {c["name"] for c in configs}
         assert "vpn1" in names
         assert "vpn2" in names
 
     @pytest.mark.asyncio
-    async def test_delete_config(self, mgr, tmp_dir):
-        (tmp_dir / "del-me.conf").write_text("[Interface]\n[Peer]\n")
+    async def test_delete_config(self, mgr, mock_storage):
+        mock_storage.exists = AsyncMock(side_effect=lambda b, k: k.endswith(".conf"))
         assert await mgr.delete_config("del-me") is True
-        assert not (tmp_dir / "del-me.conf").exists()
+        mock_storage.delete.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_delete_nonexistent(self, mgr):
         assert await mgr.delete_config("nope") is False
 
     @pytest.mark.asyncio
-    async def test_connect_enqueues_job(self, mgr, tmp_dir):
-        (tmp_dir / "myvpn.conf").write_text("[Interface]\n[Peer]\n")
+    async def test_connect_enqueues_job(self, mgr, mock_storage):
+        mock_storage.exists = AsyncMock(side_effect=lambda b, k: k.endswith(".conf"))
         with patch.object(mgr._queue, "enqueue_job", new_callable=AsyncMock, return_value="job-123"):
             result = await mgr.connect("myvpn")
             assert result["job_id"] == "job-123"
@@ -193,8 +223,8 @@ class TestVPNManager:
             await mgr.connect("nonexistent")
 
     @pytest.mark.asyncio
-    async def test_disconnect_enqueues_job(self, mgr, tmp_dir):
-        (tmp_dir / "myvpn.ovpn").write_text("remote x 1194\n")
+    async def test_disconnect_enqueues_job(self, mgr, mock_storage):
+        mock_storage.exists = AsyncMock(side_effect=lambda b, k: k.endswith(".ovpn"))
         with patch.object(mgr._queue, "enqueue_job", new_callable=AsyncMock, return_value="job-456"):
             result = await mgr.disconnect("myvpn")
             assert result["job_id"] == "job-456"
@@ -207,9 +237,9 @@ class TestVPNManager:
             assert result["job_id"] == "job-789"
 
     @pytest.mark.asyncio
-    async def test_config_file_permissions(self, mgr, tmp_dir):
-        content = b"[Interface]\nAddress = 10.0.0.2/24\nPrivateKey = abc=\n\n[Peer]\nPublicKey = xyz=\nEndpoint = 1.2.3.4:51820\n"
-        await mgr.upload_config("perm-test", content, "wireguard")
-        path = tmp_dir / "perm-test.conf"
+    async def test_download_sets_permissions(self, mgr, mock_storage, tmp_dir):
+        mock_storage.exists = AsyncMock(side_effect=lambda b, k: k.endswith(".conf"))
+        path = await mgr._download_to_local("perm-test")
+        assert path is not None
         mode = oct(path.stat().st_mode & 0o777)
         assert mode == "0o600"

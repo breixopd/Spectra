@@ -190,6 +190,42 @@ case "${ACTION}" in
   --deploy)  cmd_deploy;;
   --status)  cmd_status;;
   --rollback) cmd_rollback;;
+  provision)
+    # Provision a new node: harden + install Docker + join swarm
+    TARGET_HOST="${1:?Usage: $0 provision <host> [--join-token <token>]}"
+    JOIN_TOKEN=""
+    shift
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --join-token) JOIN_TOKEN="$2"; shift 2 ;;
+            *) shift ;;
+        esac
+    done
+
+    log "Provisioning node: ${TARGET_HOST}"
+
+    # Copy and run hardening script
+    log "Hardening server..."
+    scp "${SCRIPT_DIR}/harden_server.sh" "${TARGET_HOST}:/tmp/harden_server.sh"
+    ssh "${TARGET_HOST}" "chmod +x /tmp/harden_server.sh && sudo /tmp/harden_server.sh --yes"
+
+    # Install Docker
+    log "Installing Docker..."
+    ssh "${TARGET_HOST}" "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker \$(whoami)"
+
+    # Join swarm if token provided
+    if [[ -n "${JOIN_TOKEN}" ]]; then
+        MANAGER_IP=$(hostname -I | awk '{print $1}')
+        log "Joining swarm..."
+        ssh "${TARGET_HOST}" "sudo docker swarm join --token ${JOIN_TOKEN} ${MANAGER_IP}:2377"
+        log "Node joined swarm successfully"
+    else
+        log "Skipping swarm join (no --join-token provided)"
+        log "Get a join token with: docker swarm join-token worker"
+    fi
+
+    log "Provisioning complete for ${TARGET_HOST}"
+    ;;
   *)
     echo "Usage: $0 <command>"
     echo ""
@@ -201,6 +237,7 @@ case "${ACTION}" in
     echo "  --deploy           Deploy or update the stack"
     echo "  --status           Show stack status"
     echo "  --rollback         Rollback all services"
+    echo "  provision HOST     Provision a new node (harden + Docker + join)"
     exit 1
     ;;
 esac
