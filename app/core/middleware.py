@@ -1,14 +1,65 @@
+import ipaddress as _ipaddress
 import logging
 import secrets
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 from starlette.status import HTTP_403_FORBIDDEN
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+class AdminIPAllowlistMiddleware(BaseHTTPMiddleware):
+    """Restrict admin panel access to configured IP addresses."""
+
+    async def dispatch(self, request: Request, call_next):
+        allowlist_str = settings.ADMIN_IP_ALLOWLIST
+
+        # Skip if allowlist is empty (disabled)
+        if not allowlist_str or not allowlist_str.strip():
+            return await call_next(request)
+
+        # Only apply to admin routes
+        path = request.url.path
+        if not (path.startswith("/api/admin") or path.startswith("/api/v1/admin") or path == "/admin"):
+            return await call_next(request)
+
+        # Parse allowlist
+        allowed_networks = []
+        for entry in allowlist_str.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            try:
+                allowed_networks.append(_ipaddress.ip_network(entry, strict=False))
+            except ValueError:
+                continue
+
+        if not allowed_networks:
+            return await call_next(request)
+
+        # Check client IP
+        client_ip = request.client.host if request.client else None
+        if not client_ip:
+            return JSONResponse(
+                {"detail": "Access denied"},
+                status_code=403,
+            )
+
+        try:
+            client_addr = _ipaddress.ip_address(client_ip)
+            if any(client_addr in network for network in allowed_networks):
+                return await call_next(request)
+        except ValueError:
+            pass
+
+        return JSONResponse(
+            {"detail": "Access denied: IP not in allowlist"},
+            status_code=403,
+        )
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

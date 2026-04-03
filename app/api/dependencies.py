@@ -130,6 +130,29 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
+    # Idle session timeout check
+    from app.core.config import get_settings
+
+    idle_timeout = get_settings().SESSION_IDLE_TIMEOUT_MINUTES
+    if idle_timeout > 0 and isinstance(user.last_activity, datetime):
+        from datetime import timedelta
+
+        idle_limit = datetime.now(UTC) - timedelta(minutes=idle_timeout)
+        if user.last_activity < idle_limit:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired due to inactivity",
+            )
+
+    # Update last_activity (throttled to every 60 seconds)
+    now = datetime.now(UTC)
+    if not user.last_activity or (
+        isinstance(user.last_activity, datetime)
+        and (now - user.last_activity).total_seconds() > 60
+    ):
+        user.last_activity = now
+        await session.commit()
+
     return user
 
 

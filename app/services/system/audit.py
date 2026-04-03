@@ -1,5 +1,6 @@
 """Audit logging service for security events."""
 
+import hashlib
 import json
 import logging
 from typing import Any
@@ -30,13 +31,27 @@ async def log_event(
 
     repo = AuditLogRepository(session)
     try:
-        await repo.create(
+        entry = await repo.create(
             event_type=event_type.value,
             user_id=user_id,
             details=json.dumps(details) if details else None,
             ip_address=ip_address,
             user_agent=user_agent,
         )
+
+        # Compute integrity hash chain
+        try:
+            prev_hash = await repo.get_latest_hash() or "genesis"
+        except Exception:  # noqa: BLE001
+            prev_hash = "genesis"
+        timestamp = entry.created_at.isoformat() if entry.created_at else ""
+        hash_input = (
+            f"{prev_hash}|{entry.event_type}|{entry.user_id}"
+            f"|{entry.details}|{timestamp}"
+        )
+        entry.integrity_hash = hashlib.sha256(hash_input.encode()).hexdigest()
+        entry.previous_hash = prev_hash
+
         await session.commit()
     except SQLAlchemyError as e:
         logger.error("Failed to write audit log: %s", e)

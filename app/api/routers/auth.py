@@ -14,6 +14,7 @@ UTC = timezone.utc
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
@@ -794,6 +795,112 @@ async def change_password(
     )
 
     return {"detail": "Password changed successfully"}
+
+
+@router.get("/export-data", tags=["Account"])
+@limiter.limit(RateLimits.EXPORT_DATA)
+async def export_user_data(
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+) -> JSONResponse:
+    """Export all user data for GDPR Article 20 compliance.
+
+    Returns a JSON file containing all data associated with the
+    requesting user's account.
+    """
+    from app.models.mission import Mission
+    from app.models.target import Target
+    from app.models.finding import Finding
+    from app.models.exploit import Exploit
+    from app.models.audit_log import AuditLog
+
+    user_id = current_user.id
+
+    # Collect user profile
+    profile = {
+        "id": str(user_id),
+        "username": current_user.username,
+        "email": current_user.email,
+        "role": current_user.role,
+        "is_superuser": current_user.is_superuser,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+        "mfa_enabled": current_user.mfa_enabled,
+    }
+
+    # Collect missions
+    result = await session.execute(
+        select(Mission).where(Mission.user_id == user_id).order_by(Mission.created_at.desc())
+    )
+    missions = []
+    for m in result.scalars().all():
+        missions.append({
+            "id": str(m.id),
+            "target": m.target,
+            "status": m.status,
+            "directive": m.directive,
+            "created_at": m.created_at.isoformat() if m.created_at else None,
+            "completed_at": m.completed_at.isoformat() if hasattr(m, "completed_at") and m.completed_at else None,
+        })
+
+    # Collect targets
+    result = await session.execute(
+        select(Target).where(Target.user_id == user_id)
+    )
+    targets = []
+    for t in result.scalars().all():
+        targets.append({
+            "id": str(t.id),
+            "address": t.address,
+            "hostname": getattr(t, "hostname", None),
+            "status": getattr(t, "status", None),
+        })
+
+    # Collect findings
+    result = await session.execute(
+        select(Finding).where(Finding.user_id == user_id)
+    )
+    findings = []
+    for f in result.scalars().all():
+        findings.append({
+            "id": str(f.id),
+            "title": f.title,
+            "severity": f.severity,
+            "description": getattr(f, "description", None),
+            "status": getattr(f, "status", None),
+            "created_at": f.created_at.isoformat() if f.created_at else None,
+        })
+
+    # Collect audit log entries for this user
+    result = await session.execute(
+        select(AuditLog).where(AuditLog.user_id == user_id).order_by(AuditLog.created_at.desc()).limit(1000)
+    )
+    audit_entries = []
+    for a in result.scalars().all():
+        audit_entries.append({
+            "event_type": a.event_type,
+            "details": a.details,
+            "ip_address": a.ip_address,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+        })
+
+    export_data = {
+        "export_version": "1.0",
+        "exported_at": datetime.now(UTC).isoformat(),
+        "user_profile": profile,
+        "missions": missions,
+        "targets": targets,
+        "findings": findings,
+        "audit_log": audit_entries,
+    }
+
+    return JSONResponse(
+        content=export_data,
+        headers={
+            "Content-Disposition": f'attachment; filename="spectra-data-export-{current_user.username}.json"',
+        },
+    )
 
 
 @router.delete("/account", tags=["Auth"])

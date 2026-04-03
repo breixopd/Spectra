@@ -218,6 +218,7 @@ class MissionLifecycleManager:
         try:
             mission.set_status("running")
             mission.log(f"Starting mission against {mission.target}")
+            await self.update_db_status(mission)
 
             # Connect per-mission VPN if configured
             if mission.vpn_config:

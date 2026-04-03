@@ -51,6 +51,7 @@ class User(Base):
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
     login_fail_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_activity: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     invalidated_before: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, server_default="true")
 

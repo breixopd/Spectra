@@ -141,6 +141,7 @@ class Settings(BaseSettings):
     SECRET_KEY: SecretStr = SecretStr("change-me-in-production")  # Overridden by get_settings()
     ENCRYPTION_KEY: str = ""  # Separate key for data encryption (MFA secrets, BYOK credentials). Falls back to JWT_SECRET_KEY.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
+    SESSION_IDLE_TIMEOUT_MINUTES: int = 60  # 0 = disabled
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
     # DEPRECATED: FULLY_AUTOMATED is now a per-mission setting (Mission.requires_approval).
@@ -291,6 +292,8 @@ class Settings(BaseSettings):
     BACKUP_SCHEDULE_HOURS: int = Field(default=24, description="Backup interval in hours")
     BACKUP_RETENTION_COUNT: int = Field(default=10, description="Number of backups to retain")
     AUDIT_LOG_RETENTION_DAYS: int = Field(default=365, description="Days to retain audit log entries (0 = keep forever)")
+    MISSION_RETENTION_DAYS: int = 0  # 0 = keep forever, >0 = auto-delete completed missions after N days
+    ADMIN_IP_ALLOWLIST: str = ""  # Comma-separated list of allowed IPs/CIDRs for admin routes, empty = disabled
     # Alias for S3_BUCKET_BACKUPS — used by BackupService (app/services/infrastructure/backup.py)
     BACKUP_S3_BUCKET: str = Field(default="spectra-backups", description="S3 bucket for backups")
 

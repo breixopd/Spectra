@@ -24,10 +24,30 @@ logger = logging.getLogger(__name__)
 SENSITIVE_KEYS = ("password", "secret", "token", "credential", "api_key")
 
 
-def _derive_fernet_key(secret: str) -> bytes:
-    """Derive a Fernet-compatible key (32 bytes, url-safe base64) from *secret*."""
+def _derive_fernet_key_legacy(secret: str) -> bytes:
+    """Legacy SHA-256 derivation — used only for reading old data."""
     raw = hashlib.sha256(secret.encode()).digest()
     return base64.urlsafe_b64encode(raw)
+
+
+def _derive_fernet_key_modern(secret: str) -> bytes:
+    """PBKDF2-based derivation for new data."""
+    salt = b"spectra-fernet-field-encryption-v1"
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=600_000,
+    )
+    return base64.urlsafe_b64encode(kdf.derive(secret.encode()))
+
+
+def _derive_fernet_key(secret: str) -> bytes:
+    """Derive a Fernet-compatible key (32 bytes, url-safe base64) from *secret*.
+
+    Uses modern PBKDF2 derivation for all new encryptions.
+    """
+    return _derive_fernet_key_modern(secret)
 
 
 def encrypt_field(data: str, secret: str) -> str:
@@ -37,9 +57,16 @@ def encrypt_field(data: str, secret: str) -> str:
 
 
 def decrypt_field(encrypted_data: str, secret: str) -> str:
-    """Decrypt a Fernet token back to the original string."""
-    f = Fernet(_derive_fernet_key(secret))
-    return f.decrypt(encrypted_data.encode("ascii")).decode("utf-8")
+    """Decrypt a Fernet token back to the original string.
+
+    Tries modern key first, falls back to legacy for pre-migration data.
+    """
+    try:
+        f = Fernet(_derive_fernet_key_modern(secret))
+        return f.decrypt(encrypted_data.encode("ascii")).decode("utf-8")
+    except (InvalidToken, Exception):
+        f = Fernet(_derive_fernet_key_legacy(secret))
+        return f.decrypt(encrypted_data.encode("ascii")).decode("utf-8")
 
 
 def is_sensitive_key(key: str) -> bool:
@@ -70,7 +97,10 @@ def encrypt_sensitive_fields(data: dict, secret: str) -> dict:
 
 
 def decrypt_sensitive_fields(data: dict, secret: str) -> dict:
-    """Return a shallow copy of *data* with sensitive string values decrypted."""
+    """Return a shallow copy of *data* with sensitive string values decrypted.
+
+    Tries modern key first, falls back to legacy for pre-migration data.
+    """
     out: dict = {}
     for k, v in data.items():
         if is_sensitive_key(k) and isinstance(v, str) and v:
@@ -107,10 +137,18 @@ def encrypt_file(file_path: Path, key: str | None = None) -> None:
 
 
 def decrypt_file(file_path: Path, key: str | None = None) -> bytes:
-    """Decrypt a file and return plaintext bytes."""
+    """Decrypt a file and return plaintext bytes.
+
+    Tries modern key first, falls back to legacy for pre-migration data.
+    """
     secret = key or _get_default_secret()
-    f = Fernet(_derive_fernet_key(secret))
-    return f.decrypt(Path(file_path).read_bytes())
+    data = Path(file_path).read_bytes()
+    try:
+        f = Fernet(_derive_fernet_key_modern(secret))
+        return f.decrypt(data)
+    except (InvalidToken, Exception):
+        f = Fernet(_derive_fernet_key_legacy(secret))
+        return f.decrypt(data)
 
 
 # ---------------------------------------------------------------------------

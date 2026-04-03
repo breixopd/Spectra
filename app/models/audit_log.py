@@ -67,6 +67,8 @@ class AuditLog(Base):
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    integrity_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    previous_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     def __repr__(self) -> str:
         return f"<AuditLog id={self.id} event={self.event_type}>"
