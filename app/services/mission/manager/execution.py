@@ -165,7 +165,9 @@ class MissionExecutionManager:
     ) -> None:
         """Execute all mission phases: scope, plan, execute, debrief, report."""
         await self._run_scope_phase(mission, context)
+        await self.lifecycle.update_db_status(mission)
         await self._run_planning_phase(mission, context)
+        await self.lifecycle.update_db_status(mission)
 
         if mission.plan is None:
             raise RuntimeError("No plan created")
@@ -181,6 +183,7 @@ class MissionExecutionManager:
 
         mission.set_status("completed")
         mission.log("Mission completed successfully")
+        await self.lifecycle.update_db_status(mission)
         self._broadcast_state("mission_controller", "idle", plan="Mission Complete")
 
         summary = cost_tracker.get_summary()

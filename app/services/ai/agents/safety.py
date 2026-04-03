@@ -35,6 +35,7 @@ class SafetyInput(BaseModel):
     tool_id: str
     target: str
     args: dict[str, Any] = Field(default_factory=dict)
+    scope_targets: list[str] = Field(default_factory=list)
 
 
 class SafetyAction(AgentAction):
@@ -105,6 +106,24 @@ class SafetySupervisorAgent(Agent[SafetyInput, SafetyAction]):
     ) -> AgentResult:
         """Evaluate the safety of a command."""
         logger.info("Safety check: tool=%s target=%s", input_data.tool_id, input_data.target)
+
+        # 0. Deterministic scope validation
+        if input_data.scope_targets:
+            from app.services.tools.scope_validator import validate_command_target
+
+            is_valid, reason = validate_command_target(input_data.command, input_data.scope_targets)
+            if not is_valid:
+                logger.warning("Scope violation: %s (tool=%s)", reason, input_data.tool_id)
+                return AgentResult(
+                    success=True,
+                    action=SafetyAction(
+                        confidence=1.0,
+                        risk_level=ActionRisk.HIGH,
+                        reasoning=f"Deterministic scope check failed: {reason}",
+                        allowed=False,
+                        reason=f"Scope violation: {reason}",
+                    ),
+                )
 
         # 1. Fast Path: Regex Blocklist
         for pattern in self.BLOCKLIST:

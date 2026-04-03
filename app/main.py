@@ -46,7 +46,7 @@ from app.core.config import settings
 from app.core.exceptions import SpectraError, get_status_code_for_exception
 from app.core.lifespan import lifespan
 from app.core.logging_config import CorrelationIdMiddleware, configure_logging
-from app.core.middleware import SecurityHeadersMiddleware
+from app.core.middleware import AdminIPAllowlistMiddleware, SecurityHeadersMiddleware
 from app.core.rate_limit import (
     limiter,
     rate_limit_exceeded_handler_sync,
@@ -115,6 +115,9 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "Accept"],
     max_age=86400,
 )
+
+# --- Admin IP Allowlist ---
+app.add_middleware(AdminIPAllowlistMiddleware)
 
 # --- Security Headers ---
 app.add_middleware(SecurityHeadersMiddleware)

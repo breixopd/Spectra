@@ -57,11 +57,11 @@ services:
   redis:
     image: redis:7-alpine
     container_name: spectra-redis
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-change-me-redis-pass}"]
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-change-me-redis-pass}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -132,7 +132,7 @@ services:
       # Deployment default: shared Redis-backed rate limiting.
       # Use memory:// mainly for tests or intentionally ephemeral local runs.
       # Move limits to Caddy only if you intentionally want edge-only limiting.
-      - RATE_LIMIT_STORAGE=redis://redis:6379/0
+      - RATE_LIMIT_STORAGE=redis://:${REDIS_PASSWORD:-change-me-redis-pass}@redis:6379/0
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
     volumes:
       - spectra_data:/app/data

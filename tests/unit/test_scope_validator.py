@@ -1,0 +1,85 @@
+"""Tests for deterministic scope validation."""
+
+import ipaddress
+
+import pytest
+
+from app.services.tools.scope_validator import (
+    is_target_in_scope,
+    parse_scope,
+    validate_command_target,
+)
+
+
+class TestParseScope:
+    def test_parse_single_ip(self):
+        networks, domains = parse_scope(["192.168.1.1"])
+        assert len(networks) == 1
+        assert ipaddress.ip_address("192.168.1.1") in networks[0]
+
+    def test_parse_cidr(self):
+        networks, domains = parse_scope(["10.0.0.0/24"])
+        assert len(networks) == 1
+        assert ipaddress.ip_address("10.0.0.50") in networks[0]
+
+    def test_parse_domain(self):
+        networks, domains = parse_scope(["example.com"])
+        assert "example.com" in domains
+
+    def test_parse_mixed(self):
+        networks, domains = parse_scope(["192.168.1.0/24", "example.com", "10.0.0.1"])
+        assert len(networks) == 2
+        assert len(domains) == 1
+
+
+class TestIsTargetInScope:
+    def test_ip_in_cidr(self):
+        networks, domains = parse_scope(["10.0.0.0/24"])
+        assert is_target_in_scope("10.0.0.50", networks, domains) is True
+
+    def test_ip_outside_cidr(self):
+        networks, domains = parse_scope(["10.0.0.0/24"])
+        assert is_target_in_scope("10.0.1.1", networks, domains) is False
+
+    def test_exact_ip_match(self):
+        networks, domains = parse_scope(["192.168.1.100"])
+        assert is_target_in_scope("192.168.1.100", networks, domains) is True
+
+    def test_domain_exact_match(self):
+        networks, domains = parse_scope(["example.com"])
+        assert is_target_in_scope("example.com", networks, domains) is True
+
+    def test_subdomain_match(self):
+        networks, domains = parse_scope(["example.com"])
+        assert is_target_in_scope("sub.example.com", networks, domains) is True
+
+    def test_domain_no_match(self):
+        networks, domains = parse_scope(["example.com"])
+        assert is_target_in_scope("evil.com", networks, domains) is False
+
+    def test_empty_target(self):
+        networks, domains = parse_scope(["10.0.0.0/24"])
+        assert is_target_in_scope("", networks, domains) is False
+
+
+class TestValidateCommandTarget:
+    def test_nmap_in_scope(self):
+        ok, reason = validate_command_target("nmap -sV 192.168.1.1", ["192.168.1.0/24"])
+        assert ok is True
+
+    def test_nmap_out_of_scope(self):
+        ok, reason = validate_command_target("nmap -sV 10.0.0.1", ["192.168.1.0/24"])
+        assert ok is False
+        assert "outside declared scope" in reason
+
+    def test_localhost_allowed(self):
+        ok, reason = validate_command_target("curl http://127.0.0.1", ["10.0.0.0/24"])
+        assert ok is True
+
+    def test_no_targets_in_command(self):
+        ok, reason = validate_command_target("whoami", ["10.0.0.0/24"])
+        assert ok is True
+
+    def test_empty_scope(self):
+        ok, reason = validate_command_target("nmap 10.0.0.1", [])
+        assert ok is False

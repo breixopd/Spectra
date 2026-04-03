@@ -6,8 +6,9 @@ import logging
 import shutil
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 
+from app.core.config import get_settings as _get_settings
 from app.core.paths import data_path
 from app.models.audit_log import AuditLog
 from app.models.infrastructure import CacheEntry, JobQueue, SystemCache
@@ -126,6 +127,69 @@ async def cleanup_transient_mission_artifacts(max_age_hours: int = 6) -> int:
     return removed
 
 
+async def cleanup_old_missions(session=None) -> int:
+    """Delete completed/failed missions older than MISSION_RETENTION_DAYS.
+
+    Returns the number of deleted missions. Cascades handle
+    related targets, findings, and exploits.
+    """
+    settings = _get_settings()
+    retention_days = settings.MISSION_RETENTION_DAYS
+    if retention_days <= 0:
+        return 0
+
+    close_session = False
+    if session is None:
+        from app.core.database import async_session_factory
+        session = async_session_factory()
+        close_session = True
+
+    try:
+        from app.models.mission import Mission
+
+        cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+
+        # Find missions to delete
+        result = await session.execute(
+            select(Mission.id).where(
+                Mission.status.in_(["completed", "failed", "cancelled"]),
+                Mission.created_at < cutoff,
+            )
+        )
+        mission_ids = [row[0] for row in result.all()]
+
+        if not mission_ids:
+            return 0
+
+        # Delete S3 artifacts for each mission
+        try:
+            from app.services.storage import get_storage_service
+            storage = get_storage_service()
+            for mid in mission_ids:
+                keys = await storage.list_objects(settings.S3_BUCKET_MISSIONS, prefix=str(mid))
+                for key in keys:
+                    await storage.delete(settings.S3_BUCKET_MISSIONS, key)
+        except Exception:
+            logger.warning("Failed to cleanup S3 artifacts for expired missions", exc_info=True)
+
+        # Delete from database (cascade handles related tables)
+        await session.execute(
+            delete(Mission).where(Mission.id.in_(mission_ids))
+        )
+        await session.commit()
+
+        logger.info("Cleaned up %d expired missions (retention: %d days)", len(mission_ids), retention_days)
+        return len(mission_ids)
+    except Exception:
+        logger.error("Mission retention cleanup failed", exc_info=True)
+        if close_session:
+            await session.rollback()
+        return 0
+    finally:
+        if close_session:
+            await session.close()
+
+
 async def run_all_cleanup() -> dict[str, int]:
     """Run all cleanup tasks. Intended for periodic scheduling."""
     from app.core.database import async_session_maker
@@ -138,6 +202,7 @@ async def run_all_cleanup() -> dict[str, int]:
         results["old_cache_entries"] = await cleanup_old_cache_entries(session)
         results["completed_jobs"] = await cleanup_completed_jobs(session)
         results["audit_logs"] = await cleanup_audit_logs(session)
+        results["expired_missions"] = await cleanup_old_missions(session)
 
     sandbox_pool = get_sandbox_pool()
     results["orphaned_sandboxes"] = await cleanup_orphaned_sandboxes(sandbox_pool)

@@ -28,11 +28,13 @@ async def perform_safety_check(
     safety_supervisor: SafetySupervisorAgent,
 ) -> tuple[bool, str]:
     """Run the command through the Safety Supervisor."""
+    scope_targets = [mission.target] if mission.target else []
     safety_input = SafetyInput(
         command=command,
         tool_id=tool_name,
         target=target,
         args=args or {},
+        scope_targets=scope_targets,
     )
 
     try:

@@ -39,6 +39,16 @@ class AuditLogRepository(BaseRepository[AuditLog]):
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def get_latest_hash(self) -> str | None:
+        """Return the integrity_hash of the most recent hash-chained entry."""
+        result = await self.session.execute(
+            select(AuditLog.integrity_hash)
+            .where(AuditLog.integrity_hash.is_not(None))
+            .order_by(AuditLog.created_at.desc())
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
     async def count_events(
         self,
         event_type: str | None = None,
