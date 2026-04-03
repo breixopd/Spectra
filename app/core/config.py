@@ -282,6 +282,7 @@ class Settings(BaseSettings):
     S3_BUCKET_MISSIONS: str = "spectra-missions"
     S3_BUCKET_SESSIONS: str = "spectra-sessions"
     S3_BUCKET_KNOWLEDGE: str = "spectra-knowledge"
+    S3_BUCKET_VPN: str = "spectra-sessions"  # Reuse sessions bucket with vpn/ prefix
     # Used by BackupService (app/services/infrastructure/backup.py) for automated backups
     S3_BUCKET_BACKUPS: str = "spectra-backups"
 

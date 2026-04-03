@@ -65,8 +65,8 @@ def _unscoped_name(user: User, scoped: str) -> str:
 class VPNConfigResponse(BaseModel):
     name: str
     type: str
-    path: str
-    size: int
+    path: str = ""
+    size: int = 0
 
 
 class VPNActionResponse(BaseModel):
@@ -79,8 +79,8 @@ class VPNActionResponse(BaseModel):
 class VPNConfigListItem(BaseModel):
     name: str
     type: str
-    path: str
-    size: int
+    path: str = ""
+    size: int = 0
 
 
 # --- Endpoints ---

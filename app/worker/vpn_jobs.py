@@ -61,7 +61,7 @@ async def vpn_connect_job(config_path: str, vpn_type: str) -> dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 
-async def vpn_disconnect_job(config_name: str, vpn_type: str) -> dict[str, Any]:
+async def vpn_disconnect_job(config_name: str, vpn_type: str, config_path: str = "") -> dict[str, Any]:
     """Stop a VPN connection inside the tools container."""
     logger.info("VPN disconnect: %s (%s)", config_name, vpn_type)
 
@@ -71,9 +71,8 @@ async def vpn_disconnect_job(config_name: str, vpn_type: str) -> dict[str, Any]:
 
     try:
         if vpn_type == "wireguard":
-            from app.core.config import settings as _s
-
-            config_path = f"{_s.VPN_CONFIG_DIR}/{config_name}.conf"
+            if not config_path:
+                config_path = f"/tmp/vpn_configs/{config_name}.conf"
             cmd: list[str] = ["wg-quick", "down", config_path]
             returncode, stdout, stderr = await _run_command(cmd, 15)
         elif vpn_type == "openvpn":

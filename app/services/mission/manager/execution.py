@@ -138,14 +138,13 @@ class MissionExecutionManager:
             if pool and pool.available:
                 vpn_path = None
                 if getattr(mission, "vpn_config", None):
-                    from pathlib import Path
-
-                    from app.core.config import get_settings
-                    vpn_dir = Path(get_settings().VPN_CONFIG_DIR)
-                    vpn_path = str(vpn_dir / mission.vpn_config)
-                    if not (vpn_dir / mission.vpn_config).exists():
-                        vpn_path = None
-                        mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found, skipping VPN")
+                    from app.services.tools.vpn import VPNManager
+                    _vpn_mgr = VPNManager()
+                    _local = await _vpn_mgr._download_to_local(mission.vpn_config)
+                    if _local:
+                        vpn_path = str(_local)
+                    else:
+                        mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found in S3, skipping VPN")
 
                 sandbox_info = await pool.create(mission.id, vpn_config_path=vpn_path)
                 mission.log(f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})")

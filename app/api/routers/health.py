@@ -6,6 +6,7 @@ Unauthenticated for load balancer/orchestrator use.
 """
 
 import logging
+import os
 import shutil
 import time
 from typing import Any
@@ -20,7 +21,6 @@ from app.api.dependencies import (
     _extract_request_token,
     _load_active_user_from_payload_with_session,
 )
-
 from app.core.config import get_settings as _get_settings
 from app.core.database import get_async_session
 from app.version import __version__
@@ -76,6 +76,38 @@ async def health_check(
             "status": "unhealthy",
             "error": type(e).__name__,
         }
+        is_healthy = False
+
+    # Check Redis (critical for rate limiting / caching)
+    try:
+        import redis.asyncio as aioredis
+
+        settings = _get_settings()
+        redis_url = settings.RATE_LIMIT_STORAGE
+        if redis_url and redis_url.startswith(("redis://", "rediss://")):
+            r = aioredis.from_url(redis_url, socket_timeout=2)
+            await r.ping()
+            await r.aclose()
+            health_status["components"]["redis"] = {"status": "healthy"}
+        else:
+            health_status["components"]["redis"] = {"status": "not configured"}
+    except Exception as e:
+        health_status["components"]["redis"] = {"status": "unhealthy", "error": type(e).__name__}
+        is_healthy = False
+
+    # Check S3/Garage storage
+    try:
+        from app.services.storage import get_storage_service
+
+        storage = get_storage_service()
+        s3_health = await storage.health_check()
+        health_status["components"]["s3"] = {
+            "status": s3_health.get("status", "unknown"),
+        }
+        if s3_health.get("status") != "healthy":
+            is_healthy = False
+    except Exception as e:
+        health_status["components"]["s3"] = {"status": "unhealthy", "error": type(e).__name__}
         is_healthy = False
 
     if verbose:
@@ -153,6 +185,22 @@ async def health_check(
         except (OSError, RuntimeError, ValueError) as e:
             health_status["components"]["disk"] = {"status": "error", "error": type(e).__name__}
 
+        # Check TensorZero gateway
+        try:
+            import httpx
+
+            tz_url = getattr(_get_settings(), "TENSORZERO_GATEWAY_URL", "")
+            if tz_url:
+                async with httpx.AsyncClient(timeout=3.0) as client:
+                    tz_resp = await client.get(f"{tz_url.rstrip('/')}/health")
+                    health_status["components"]["tensorzero"] = {
+                        "status": "healthy" if tz_resp.status_code == 200 else "degraded",
+                    }
+            else:
+                health_status["components"]["tensorzero"] = {"status": "not configured"}
+        except Exception as e:
+            health_status["components"]["tensorzero"] = {"status": "unreachable", "error": type(e).__name__}
+
     if not is_healthy:
         health_status["status"] = "degraded"
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
@@ -210,3 +258,64 @@ async def readiness_check(
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     return result
+
+
+@router.get(
+    "/health/services",
+    summary="Aggregate service health",
+    description="Health of all backend services across replicas. Requires authentication.",
+)
+async def service_health(
+    request: Request,
+    db: AsyncSession = Depends(get_async_session),
+) -> dict[str, Any]:
+    """Health of all backend services. Requires authentication."""
+    resolved_token, _source = _extract_request_token(request)
+    payload = _decode_access_payload(resolved_token) if resolved_token else None
+    user = await _load_active_user_from_payload_with_session(payload, db) if payload else None
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+
+    try:
+        import httpx
+    except ImportError:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="httpx not available")
+
+    settings = _get_settings()
+    services: dict[str, Any] = {}
+
+    # Check AI service
+    ai_url = getattr(settings, "AI_SERVICE_URL", "")
+    if ai_url:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.get(f"{ai_url.rstrip('/')}/api/health")
+                services["ai_service"] = {"status": "healthy" if r.status_code == 200 else "degraded", "url": ai_url}
+        except Exception as e:
+            services["ai_service"] = {"status": "unreachable", "error": type(e).__name__}
+
+    # Check TensorZero
+    tz_url = getattr(settings, "TENSORZERO_GATEWAY_URL", "")
+    if tz_url:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.get(f"{tz_url.rstrip('/')}/health")
+                services["tensorzero"] = {"status": "healthy" if r.status_code == 200 else "degraded"}
+        except Exception as e:
+            services["tensorzero"] = {"status": "unreachable", "error": type(e).__name__}
+
+    # Check Scheduler
+    scheduler_url = getattr(settings, "SCHEDULER_SERVICE_URL", "")
+    if scheduler_url:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.get(f"{scheduler_url.rstrip('/')}/api/health")
+                services["scheduler"] = {"status": "healthy" if r.status_code == 200 else "degraded"}
+        except Exception as e:
+            services["scheduler"] = {"status": "unreachable", "error": type(e).__name__}
+
+    return {
+        "status": "healthy" if all(s.get("status") == "healthy" for s in services.values()) else "degraded",
+        "services": services,
+        "instance": os.environ.get("HOSTNAME", "unknown"),
+    }
