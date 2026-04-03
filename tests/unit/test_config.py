@@ -253,10 +253,12 @@ class TestDatabasePoolValidation:
         assert s.SANDBOX_MAX_CONTAINERS == 10
         assert s.SANDBOX_MAX_LIFETIME == 7200
 
-    def test_platform_defaults(self):
+    def test_platform_defaults(self, monkeypatch):
+        monkeypatch.delenv("PLATFORM_DOMAIN", raising=False)
+        monkeypatch.delenv("PLATFORM_EXPOSED", raising=False)
         from app.core.config import Settings
 
-        s = Settings(_env_file=None)
+        s = Settings(_env_file=None, PLATFORM_DOMAIN="", PLATFORM_EXPOSED=False)
         assert s.PLATFORM_DOMAIN == ""
         assert s.PLATFORM_EXPOSED is False
 

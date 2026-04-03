@@ -101,14 +101,12 @@ class TestLifespanContextManager:
     @patch("app.core.lifespan.seed_default_plans", new_callable=AsyncMock)
     @patch("app.core.lifespan.set_system_status", new_callable=AsyncMock)
     @patch("app.core.lifespan.run_startup_tasks", new_callable=AsyncMock)
-    @patch("app.core.lifespan.cache_cleanup_loop", new_callable=AsyncMock)
     @patch("app.core.lifespan.add_system_operation", new_callable=AsyncMock)
     @patch("app.core.lifespan.remove_system_operation", new_callable=AsyncMock)
     async def test_lifespan_startup_and_shutdown(
         self,
         mock_remove_op,
         mock_add_op,
-        mock_cache_loop,
         mock_startup_tasks,
         mock_set_status,
         mock_seed_plans,

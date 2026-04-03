@@ -51,16 +51,42 @@ git clone <repo-url> && cd spectra
 cp .env.example .env
 # Edit .env — at minimum set JWT_SECRET_KEY
 
-# Monolith mode:
-cd docker && docker compose up -d
-
-# Microservices mode:
 cd docker && docker compose up -d
 ```
 
 - **Dev UI:** `http://localhost:5000`
 - Create your admin account at `/setup`
 - Configure your AI provider through the web UI
+
+---
+
+## Server Hardening
+
+Before deploying to production, harden the server:
+
+```bash
+# On the target server (as root):
+sudo ./scripts/ops/harden_server.sh --yes
+```
+
+This applies: SSH hardening, UFW firewall, fail2ban, kernel sysctl tuning, and automatic security updates.
+
+## Multi-Node Deployment (Swarm)
+
+```bash
+# 1. Initialize Swarm on the manager node
+./scripts/ops/swarm_deploy.sh --init
+
+# 2. Label nodes by role
+./scripts/ops/swarm_deploy.sh --label <node-id> app
+./scripts/ops/swarm_deploy.sh --label <node-id> db
+
+# 3. Deploy the stack
+./scripts/ops/swarm_deploy.sh --deploy
+
+# 4. Check status
+./scripts/ops/swarm_deploy.sh --status
+```
 
 ---
 

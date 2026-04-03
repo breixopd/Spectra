@@ -8,6 +8,7 @@ import os
 
 import httpx
 import pytest
+import pytest_asyncio
 
 BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 
@@ -18,25 +19,24 @@ pytestmark = [
 ]
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client():
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=30.0) as c:
         yield c
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def auth_client(client):
     """Authenticated client — logs in and returns client with auth headers."""
+    username = os.environ.get("APP_USERNAME", os.environ.get("TEST_USERNAME", "admin"))
+    password = os.environ.get("APP_PASSWORD", os.environ.get("TEST_PASSWORD", "admin"))
     resp = await client.post(
-        "/api/auth/login",
-        json={
-            "username": os.environ.get("TEST_USERNAME", "admin"),
-            "password": os.environ.get("TEST_PASSWORD", "admin"),
-        },
+        "/api/v1/auth/token",
+        data={"username": username, "password": password},
     )
     if resp.status_code != 200:
-        pytest.skip("Cannot authenticate — check TEST_USERNAME/TEST_PASSWORD")
-    token = resp.json().get("access_token") or resp.cookies.get("access_token")
+        pytest.skip(f"Cannot authenticate (status {resp.status_code})")
+    token = resp.json().get("access_token")
     if token:
         client.headers["Authorization"] = f"Bearer {token}"
     return client

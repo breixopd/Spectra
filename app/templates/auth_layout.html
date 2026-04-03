@@ -10,7 +10,7 @@
 </head>
 <body>
     {% block auth_body %}{% endblock %}
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/static/vendor/js/lucide.min.js"></script>
     <script nonce="{{ request.state.csp_nonce }}">lucide.createIcons();</script>
     {% block auth_scripts %}{% endblock %}
 </body>

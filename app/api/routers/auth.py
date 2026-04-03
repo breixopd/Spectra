@@ -496,6 +496,14 @@ async def logout(request: Request, response: Response, session: AsyncSession = D
             user.invalidated_before = datetime.now(UTC)
             await session.commit()
 
+            await audit_log_event(
+                session,
+                AuditEventType.LOGOUT,
+                user_id=str(user.id),
+                details={"username": user.username},
+                request=request,
+            )
+
     _clear_auth_cookies(request, response)
     return {"detail": "Successfully logged out"}
 
@@ -585,6 +593,13 @@ async def mfa_verify_login(
 
     secret = decrypt_mfa_secret(user.mfa_secret)
     if not verify_totp(secret, body.code):
+        await audit_log_event(
+            session,
+            AuditEventType.LOGIN_FAILED,
+            user_id=str(user.id),
+            details={"reason": "mfa_failed", "username": username},
+            request=request,
+        )
         raise HTTPException(status_code=401, detail="Invalid TOTP code")
     if not _consume_totp_code(str(user.id), body.code):
         raise HTTPException(status_code=401, detail="TOTP code has already been used")

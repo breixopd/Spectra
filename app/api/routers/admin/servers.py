@@ -181,6 +181,7 @@ async def list_server_nodes(
 
 @router.post("/api/admin/servers", status_code=201)
 async def add_server_node(
+    request: Request,
     name: str = Body(...),
     service_type: str = Body(..., pattern=r"^(sandbox_worker|app_worker|tools_worker|db_replica|db_backup|storage)$"),
     url: str = Body(...),
@@ -206,12 +207,22 @@ async def add_server_node(
         max_capacity=max_capacity,
     )
     await session.commit()
+
+    await audit_log_event(
+        session,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=str(_perm.id),
+        details={"action": "server_node_added", "node_name": name, "node_role": service_type},
+        request=request,
+    )
+
     logger.info("Server node added: %s (%s)", name, service_type)
     return node
 
 
 @router.delete("/api/admin/servers/{node_id}")
 async def remove_server_node(
+    request: Request,
     node_id: int,
     session: AsyncSession = Depends(get_async_session),
     _perm=require_permission(Permission.MANAGE_SETTINGS),
@@ -224,11 +235,21 @@ async def remove_server_node(
     if not removed:
         raise HTTPException(status_code=404, detail="Node not found")
     await session.commit()
+
+    await audit_log_event(
+        session,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=str(_perm.id),
+        details={"action": "server_node_removed", "node_id": str(node_id)},
+        request=request,
+    )
+
     return {"status": "removed"}
 
 
 @router.patch("/api/admin/servers/{node_id}")
 async def update_server_node(
+    request: Request,
     node_id: int,
     body: UpdateServerNodeRequest,
     session: AsyncSession = Depends(get_async_session),
@@ -243,6 +264,15 @@ async def update_server_node(
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     await session.commit()
+
+    await audit_log_event(
+        session,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=str(_perm.id),
+        details={"action": "server_node_updated", "node_id": str(node_id)},
+        request=request,
+    )
+
     return node
 
 

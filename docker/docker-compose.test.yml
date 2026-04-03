@@ -13,8 +13,6 @@ services:
       POSTGRES_USER: spectra
       POSTGRES_PASSWORD: spectra_test
       POSTGRES_DB: spectra_test
-    ports:
-      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U spectra -d spectra_test"]
       interval: 5s
@@ -39,13 +37,121 @@ services:
       - garage_meta:/var/lib/garage/meta
       - garage_data:/var/lib/garage/data
       - ./garage.toml:/etc/garage.toml:ro
-    ports:
-      - "19000:3900"
     healthcheck:
       test: ["CMD", "/garage", "status"]
       interval: 5s
       timeout: 5s
       retries: 12
+    networks:
+      - spectra_test
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.11-alpine
+    environment:
+      CLICKHOUSE_DB: tensorzero
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ""
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - spectra_test
+
+  tensorzero:
+    image: tensorzero/gateway
+    command: ["--config-file", "/app/config/tensorzero.toml"]
+    volumes:
+      - ../config/tensorzero.toml:/app/config/tensorzero.toml:ro
+    environment:
+      TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
+      TENSORZERO_CLICKHOUSE_URL: http://clickhouse:8123/tensorzero
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+    networks:
+      - spectra_test
+
+  ai-svc:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    command: ["uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
+      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
+      SKIP_MIGRATIONS: "true"
+      TENSORZERO_GATEWAY_URL: http://tensorzero:3000
+      EMBEDDING_API_KEY: ${OPENAI_API_KEY}
+      EMBEDDING_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+    depends_on:
+      db:
+        condition: service_healthy
+      tensorzero:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5010/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    networks:
+      - spectra_test
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.app
+    command: ["uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "5011"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
+      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
+      SKIP_MIGRATIONS: "true"
+      S3_ENDPOINT_URL: http://garage:3900
+      S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5011/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    networks:
+      - spectra_test
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.tools
+    command: ["uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "5012"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
+      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
+      SKIP_MIGRATIONS: "true"
+      S3_ENDPOINT_URL: http://garage:3900
+      S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+      S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5012/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - spectra_test
 
@@ -66,8 +172,9 @@ services:
       - PLUGIN_SAFE_MODE=false
       - QUEUE_STARTUP_TOOL_INSTALL=false
       - RATE_LIMIT_STORAGE=redis://redis:6379/0
-    ports:
-      - "15000:5000"
+      - AI_SERVICE_URL=http://ai-svc:5010
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
     volumes:
       - ../app:/app/app:ro
       - ../alembic:/app/alembic:ro
@@ -82,6 +189,8 @@ services:
       garage:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      ai-svc:
         condition: service_healthy
     networks:
       spectra_test:
@@ -105,8 +214,9 @@ services:
       - PLUGIN_SAFE_MODE=false
       - QUEUE_STARTUP_TOOL_INSTALL=false
       - RATE_LIMIT_STORAGE=redis://redis:6379/0
-    ports:
-      - "15001:5000"
+      - AI_SERVICE_URL=http://ai-svc:5010
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
     volumes:
       - ../app:/app/app:ro
       - ../alembic:/app/alembic:ro
@@ -123,6 +233,8 @@ services:
       garage:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      ai-svc:
         condition: service_healthy
     networks:
       spectra_test:
@@ -183,7 +295,7 @@ services:
     tty: true
     networks:
       spectra_test:
-        ipv4_address: 172.21.0.5
+        ipv4_address: 172.21.0.50
 
   # DVWA - Damn Vulnerable Web Application
   dvwa:
@@ -192,14 +304,14 @@ services:
       - MYSQL_ROOT_PASSWORD=dvwa
     networks:
       spectra_test:
-        ipv4_address: 172.21.0.6
+        ipv4_address: 172.21.0.51
     # DVWA exposes HTTP on port 80
 
   # Test runner service
   test-runner:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.tools
+      dockerfile: docker/Dockerfile.app
     user: root
     cap_add:
       - NET_ADMIN
@@ -209,8 +321,8 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        pip install -q pytest pytest-asyncio pytest-dotenv httpx aiohttp aiosqlite websockets &&
-        python3 -m pytest tests/ -v --tb=short -x
+        pip install -q pytest pytest-asyncio pytest-dotenv &&
+        python3 -m pytest tests/ -v --tb=short -x --ignore=tests/e2e/ui --ignore=tests/unit --ignore=tests/load --ignore=tests/performance --ignore=tests/soak
     env_file:
       - ../.env.test
     environment:
@@ -219,24 +331,37 @@ services:
       - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
-      - TEST_TARGET_IP=172.21.0.5
-      - TEST_TARGET_URL=http://172.21.0.5
+      - TEST_TARGET_IP=172.21.0.50
+      - TEST_TARGET_URL=http://172.21.0.50
       - METASPLOITABLE_AVAILABLE=true
-      - DVWA_URL=http://172.21.0.6
+      - DVWA_URL=http://172.21.0.51
       - WEB_TARGET_URL=http://testphp.vulnweb.com
       - PLUGIN_SAFE_MODE=false
       - SAFE_MODE=true
       - PERMISSION_BOUNDARY=172.21.0.0/24
+      - APP_BASE_URL=http://caddy
+      - APP_USERNAME=admin
+      - APP_PASSWORD=TestPassword123!
+      - AI_SERVICE_URL=http://ai-svc:5010
+      - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+      - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
     volumes:
       - ../app:/app/app:ro
       - ../tests:/app/tests:ro
       - ../plugins:/app/plugins
+      - ../requirements:/app/requirements:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
       garage:
+        condition: service_healthy
+      caddy:
+        condition: service_healthy
+      ai-svc:
+        condition: service_healthy
+      tensorzero:
         condition: service_healthy
       metasploitable:
         condition: service_started

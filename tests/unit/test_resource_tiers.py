@@ -1,6 +1,7 @@
 """Tests for tiered resource profiles."""
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -60,28 +61,21 @@ class TestGetTierLimits:
             assert cpu == 4096
 
 
+PLUGINS_DIR = Path(__file__).resolve().parents[2] / "plugins"
+
+
 class TestPluginResourceTiers:
     """Tests that plugin JSONs have valid resource tiers."""
 
     def test_all_plugins_have_resources_field(self):
-        from pathlib import Path
-
-        plugins_dir = Path("plugins")
-        if not plugins_dir.exists():
-            pytest.skip("plugins directory not found")
-        for f in plugins_dir.glob("*.json"):
+        for f in PLUGINS_DIR.glob("*.json"):
             data = json.loads(f.read_text())
             assert "resources" in data, f"Plugin {f.name} missing resources field"
             assert "tier" in data["resources"], f"Plugin {f.name} missing resources.tier"
 
     def test_all_plugin_tiers_are_valid(self):
-        from pathlib import Path
-
         valid_tiers = {"light", "medium", "heavy", "extreme"}
-        plugins_dir = Path("plugins")
-        if not plugins_dir.exists():
-            pytest.skip("plugins directory not found")
-        for f in plugins_dir.glob("*.json"):
+        for f in PLUGINS_DIR.glob("*.json"):
             data = json.loads(f.read_text())
             tier = data.get("resources", {}).get("tier")
             assert tier in valid_tiers, f"Plugin {f.name} has invalid tier: {tier}"

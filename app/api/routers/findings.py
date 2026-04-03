@@ -386,6 +386,14 @@ async def export_findings_csv(
     """Export all findings as CSV."""
     findings = await _fetch_all_findings(db, _current_user)
 
+    await audit_log_event(
+        db,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=str(_current_user.id),
+        details={"action": "findings_exported", "format": "csv", "count": len(findings)},
+        request=request,
+    )
+
     buf = StringIO()
     writer = csv.writer(buf)
     writer.writerow(_CSV_COLUMNS)
@@ -417,6 +425,14 @@ async def export_findings_json(
 ) -> FastAPIResponse:
     """Export all findings as JSON."""
     findings = await _fetch_all_findings(db, _current_user)
+
+    await audit_log_event(
+        db,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=str(_current_user.id),
+        details={"action": "findings_exported", "format": "json", "count": len(findings)},
+        request=request,
+    )
 
     payload = json.dumps(
         [_finding_to_export_dict(finding) for finding in findings],
