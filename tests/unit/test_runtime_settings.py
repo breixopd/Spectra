@@ -171,6 +171,10 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         )
         stack.enter_context(patch("app.services.tools.sandbox.SandboxPool", return_value=MagicMock(available=False)))
 
+        mock_settings = stack.enter_context(patch("app.core.lifespan.settings"))
+        mock_settings.AI_SERVICE_URL = ""
+        mock_settings.DEBUG = True
+
         from app.core.lifespan import lifespan
 
         mock_init_registry.return_value = MagicMock(list_tools=MagicMock(return_value=[]))

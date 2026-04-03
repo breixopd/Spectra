@@ -24,10 +24,21 @@
     {% block extra_css %}{% endblock %}
     <!-- Centralized API client (must load before confirm bootstrap) -->
     <script src="/static/js/api.js"></script>
-    <script src="/static/js/confirm.js" defer nonce="{{ request.state.csp_nonce }}"></script>
+    <script src="/static/js/confirm.js" nonce="{{ request.state.csp_nonce }}"></script>
 </head>
 <body class="bg-[#0a0e1a] text-slate-300 font-sans antialiased overflow-y-auto md:overflow-hidden h-screen selection:bg-violet-500/30 selection:text-violet-200">
     <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-violet-600 focus:text-white">Skip to content</a>
+    <!-- Global system status bar -->
+    <div id="global-status-bar" class="hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-900/90 via-indigo-900/90 to-violet-900/90 backdrop-blur-md border-b border-violet-500/20 px-4 py-2 text-center text-sm text-white shadow-lg">
+        <div class="flex items-center justify-center gap-3 max-w-4xl mx-auto">
+            <svg class="animate-spin h-4 w-4 text-violet-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+            <span id="status-message">System initializing...</span>
+            <span id="status-details" class="text-violet-300/70 text-xs"></span>
+        </div>
+        <div id="status-progress" class="hidden mt-1 mx-auto max-w-xs h-1 bg-white/10 rounded-full overflow-hidden">
+            <div id="progress-bar" class="h-full bg-violet-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+    </div>
     <div class="app-layout">
         {% if not is_public_page %}
         <aside id="sidebar" class="sidebar">

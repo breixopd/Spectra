@@ -138,7 +138,7 @@ function updateShellList() {
 
     spectraApi.get('/api/v1/shell/sessions')
         .then(({ data: sessions, error }) => {
-            if (error || !sessions) return;
+            if (error || !sessions) { sessions = []; }
             container.innerHTML = '';
             if (sessions.length === 0) {
                 container.innerHTML = '<div class="text-center text-slate-600 text-xs py-4">No active sessions</div>';
@@ -163,6 +163,9 @@ function updateShellList() {
                 container.appendChild(el);
             });
         })
+        .catch(() => {
+            if (container) container.innerHTML = '<div class="text-center text-slate-600 text-xs py-4">No active sessions</div>';
+        });
 
 }
 
@@ -630,7 +633,7 @@ async function loadMetrics() {
 
     try {
         const { data: missionsData, error: missionsError } = await spectraApi.get('/api/v1/missions');
-        if (!missionsError) missions = missionsData;
+        if (!missionsError) missions = missionsData.items || missionsData || [];
         if (errEl) errEl.classList.add('hidden');
     } catch {
         if (errEl) errEl.classList.remove('hidden');

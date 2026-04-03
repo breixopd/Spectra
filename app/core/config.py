@@ -112,11 +112,6 @@ class Settings(BaseSettings):
     MAINTENANCE_MODE: bool = False
     MAINTENANCE_MESSAGE: str = "We're performing scheduled maintenance. Please check back shortly."
 
-    # --- Scheduler ---
-    # Set False when running a dedicated scheduler service to prevent duplicate
-    # maintenance tasks (sandbox watchdog, cache cleanup, periodic cleanup).
-    SCHEDULER_ENABLED: bool = True
-
     # --- Request Limits ---
     MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 10 MB
 
@@ -222,14 +217,11 @@ class Settings(BaseSettings):
     SERVICE_AUTH_SECRET: SecretStr = Field(default=SecretStr(""), description="Shared secret for inter-service authentication. Set same value on all services.")
 
     # --- Service Mode ---
-    SERVICE_MODE: str = Field(default="monolith", description="Service mode: monolith, api, ai, scheduler, worker")
+    SERVICE_MODE: str = Field(default="api", description="Service mode: api, ai, scheduler, worker")
 
     # --- External Service Gateways ---
-    # When set, the service uses an HTTP client to the external URL.
-    # When empty/None, the service runs in-process (default monolith mode).
-
-    # AI microservice — LLM, embeddings, RAG (for split mode)
-    AI_SERVICE_URL: str = Field(default="", description="URL for AI microservice (empty = use in-process)")
+    # URL to the AI microservice. Must be set for production.
+    AI_SERVICE_URL: str = ""
 
     # Sandbox Orchestrator — external container management (for multi-node)
     SANDBOX_ORCHESTRATOR_URL: str | None = None  # e.g. "http://orchestrator:8084"
@@ -378,14 +370,9 @@ def get_settings() -> Settings:
 
         settings_instance.SECRET_KEY = SecretStr(secrets.token_urlsafe(32))
 
-    if (
-        settings_instance.SERVICE_MODE != "monolith"
-        and not settings_instance.SERVICE_AUTH_SECRET.get_secret_value()
-    ):
-        raise ValueError(
-            "SERVICE_AUTH_SECRET must be set when SERVICE_MODE is not 'monolith'. "
-            "Set a shared secret across all services."
-        )
+    if not settings_instance.SERVICE_AUTH_SECRET.get_secret_value():
+        import logging
+        logging.getLogger("spectra.config").warning("SERVICE_AUTH_SECRET not set — inter-service auth disabled")
 
     return settings_instance
 

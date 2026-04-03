@@ -39,7 +39,7 @@ class TestJsUsesSpectraApi:
         content = js_file.read_text()
         # Skip files that don't make any network calls
         if "spectraApi" not in content and "fetch(" not in content:
-            pytest.skip(f"{js_file.name} makes no API calls")
+            return  # File makes no API calls — nothing to check, pass silently
         raw_fetches = re.findall(r"(?<!\.)\bfetch\s*\(", content)
         assert not raw_fetches, (
             f"{js_file.name} uses raw fetch() instead of spectraApi ({len(raw_fetches)} occurrence(s))"

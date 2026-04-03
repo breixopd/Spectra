@@ -25,11 +25,6 @@ except ImportError:
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.core.background_tasks import (
-    cache_cleanup_loop,
-    periodic_cleanup_loop,
-    sandbox_watchdog_loop,
-)
 from app.core.cache import CacheService, set_cache
 from app.core.config import settings
 from app.core.database import async_session_maker, engine
@@ -280,11 +275,7 @@ async def _initialize_sandbox() -> None:
             if orphans:
                 logger.info("[OK] Cleaned %d orphaned sandbox containers", orphans)
             logger.info("[OK] Sandbox pool initialized")
-            if settings.SCHEDULER_ENABLED:
-                asyncio.create_task(sandbox_watchdog_loop())
-                logger.info("[OK] Sandbox watchdog started")
-            else:
-                logger.info("[SKIP] Sandbox watchdog deferred to dedicated scheduler")
+            logger.info("[SKIP] sandbox_watchdog deferred to scheduler service")
 
             # Initialize warm pool manager
             if settings.SANDBOX_WARM_POOL_ENABLED:
@@ -341,25 +332,29 @@ async def _initialize_services() -> None:
     await set_system_status("initializing", "Loading AI models...")
 
     # Preload embedding model in background (for RAG)
-    try:
-        from app.services.ai.embeddings import EmbeddingService
+    if not settings.AI_SERVICE_URL:
+        # In-process AI: preload embeddings
+        try:
+            from app.services.ai.embeddings import EmbeddingService
 
-        await add_system_operation("embeddings", "load", "Loading embedding model")
-        embed_service = EmbeddingService()
+            await add_system_operation("embeddings", "load", "Loading embedding model")
+            embed_service = EmbeddingService()
 
-        async def load_embeddings_with_status():
-            try:
-                await embed_service._load_model()
-                logger.info("[OK] Embedding model loaded")
-            except (OSError, RuntimeError, ImportError) as e:
-                logger.warning("Embedding model loading failed: %s", e)
-            finally:
-                await remove_system_operation("embeddings")
+            async def load_embeddings_with_status():
+                try:
+                    await embed_service._load_model()
+                    logger.info("[OK] Embedding model loaded")
+                except (OSError, RuntimeError, ImportError) as e:
+                    logger.warning("Embedding model loading failed: %s", e)
+                finally:
+                    await remove_system_operation("embeddings")
 
-        asyncio.create_task(load_embeddings_with_status())
-        logger.info("Triggered embedding model preloading")
-    except (OSError, RuntimeError, ImportError) as e:
-        logger.warning("Failed to trigger embedding preloading: %s", e)
+            asyncio.create_task(load_embeddings_with_status())
+            logger.info("Triggered embedding model preloading")
+        except (OSError, RuntimeError, ImportError) as e:
+            logger.warning("Failed to trigger embedding preloading: %s", e)
+    else:
+        logger.info("[SKIP] Embedding preload deferred to ai-svc")
 
     # Initialize exploit database in background (loads from DB cache or downloads)
     if settings.EXPLOIT_DB_AUTO_INIT:
@@ -407,13 +402,8 @@ async def _initialize_services() -> None:
     # Trigger background setup tasks (including tool installation)
     asyncio.create_task(run_startup_tasks())
 
-    # Start periodic maintenance loops (skipped when a dedicated scheduler runs)
-    if settings.SCHEDULER_ENABLED:
-        asyncio.create_task(cache_cleanup_loop())
-        asyncio.create_task(periodic_cleanup_loop())
-        logger.info("[OK] Maintenance loops started (cache cleanup, periodic cleanup)")
-    else:
-        logger.info("[SKIP] Maintenance loops deferred to dedicated scheduler")
+    # Start periodic maintenance loops (deferred to scheduler service)
+    logger.info("[SKIP] Maintenance loops deferred to scheduler service")
 
     # Start metrics snapshot store
     from app.core.metrics_store import get_metrics_store

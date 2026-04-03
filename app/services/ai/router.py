@@ -91,16 +91,20 @@ class TensorZeroRouter(LLMClient):
         function_name = self._get_function_for_task(task_type)
 
         messages = []
+        messages.append({"role": "user", "content": [{"type": "text", "text": prompt}]})
+
+        input_data: dict[str, Any] = {"messages": messages}
         if system_prompt:
-            messages.append({"role": "system", "content": [{"type": "text", "value": system_prompt}]})
-        messages.append({"role": "user", "content": [{"type": "text", "value": prompt}]})
+            input_data["system"] = system_prompt
 
         payload: dict[str, Any] = {
             "function_name": function_name,
-            "input": {"messages": messages},
+            "input": input_data,
             "params": {
-                "temperature": temperature,
-                "max_tokens": max_tokens,
+                "chat_completion": {
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                }
             },
         }
 
@@ -199,17 +203,21 @@ class TensorZeroRouter(LLMClient):
         function_name = self._get_function_for_task(task_type)
 
         messages = []
+        messages.append({"role": "user", "content": [{"type": "text", "text": prompt}]})
+
+        input_data: dict[str, Any] = {"messages": messages}
         if system_prompt:
-            messages.append({"role": "system", "content": [{"type": "text", "value": system_prompt}]})
-        messages.append({"role": "user", "content": [{"type": "text", "value": prompt}]})
+            input_data["system"] = system_prompt
 
         payload: dict[str, Any] = {
             "function_name": function_name,
-            "input": {"messages": messages},
+            "input": input_data,
             "stream": True,
             "params": {
-                "temperature": temperature,
-                "max_tokens": max_tokens,
+                "chat_completion": {
+                    "temperature": temperature,
+                    "max_tokens": max_tokens,
+                }
             },
         }
 

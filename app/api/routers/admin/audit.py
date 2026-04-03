@@ -38,6 +38,7 @@ async def list_audit_logs(
     event_type: str | None = Query(None),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
+    ip_address: str | None = Query(None, description="Filter by client IP address"),
     _user: User = require_permission(Permission.VIEW_AUDIT_LOG),
     session: AsyncSession = Depends(get_async_session),
 ) -> PaginatedResponse:
@@ -49,6 +50,7 @@ async def list_audit_logs(
     total = await repo.count_events(
         user_id=user_id,
         event_type=event_type,
+        ip_address=ip_address,
         date_from=parsed_date_from,
         date_to=parsed_date_to,
     )
@@ -57,6 +59,7 @@ async def list_audit_logs(
         limit=per_page,
         user_id=user_id,
         event_type=event_type,
+        ip_address=ip_address,
         date_from=parsed_date_from,
         date_to=parsed_date_to,
     )

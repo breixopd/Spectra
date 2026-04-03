@@ -169,7 +169,7 @@ if [ "$TARGETS_ONLY" = true ]; then
          python3 -m pytest tests/integration/test_live_scan.py -v -m live --timeout=120 --tb=short"
 else
     # Full suite: LLM + target tests
-    $COMPOSE run --rm --no-deps --entrypoint sh test-runner -c \
+    $COMPOSE run --rm --no-deps -e SPECTRA_URL=http://app:5000 --entrypoint sh test-runner -c \
         "pip install -q pytest pytest-asyncio pytest-dotenv pytest-timeout httpx aiohttp aiosqlite && \
          python3 -m pytest tests/integration/test_live_targets.py tests/integration/test_live_scan.py -v --timeout=600 --tb=short"
 fi

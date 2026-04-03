@@ -362,6 +362,7 @@ async def list_missions(
 
 @router.get("/{mission_id}/report/pdf")
 async def download_pdf_report(
+    request: Request,
     mission_id: str,
     session: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
@@ -403,6 +404,14 @@ async def download_pdf_report(
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    await audit_log_event(
+        session,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=str(_current_user.id),
+        details={"action": "mission_exported", "mission_id": str(mission_id), "format": "pdf"},
+        request=request,
+    )
+
     return FastAPIResponse(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -414,6 +423,7 @@ async def download_pdf_report(
 
 @router.get("/{mission_id}/export/json")
 async def export_mission_json(
+    request: Request,
     mission_id: str,
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
@@ -451,6 +461,14 @@ async def export_mission_json(
         "timeline": summary.get("timeline", []),
         "attack_surface": mission.attack_surface or {},
     }
+
+    await audit_log_event(
+        session,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=str(_current_user.id),
+        details={"action": "mission_exported", "mission_id": str(mission_id), "format": "json"},
+        request=request,
+    )
 
     payload = json.dumps(export_data, indent=2, default=str).encode()
 
@@ -625,6 +643,7 @@ async def stop_mission(
     response: Response,
     mission_id: str,
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
+    session: AsyncSession = Depends(get_async_session),
 ) -> StatusResponse:
     """Stop a running mission. Requires superuser privileges."""
     active = await mission_manager.get_mission(mission_id)
@@ -633,6 +652,15 @@ async def stop_mission(
     result = await mission_manager.stop_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
+
+    await audit_log_event(
+        session,
+        AuditEventType.MISSION_STATUS_CHANGED,
+        user_id=str(_current_user.id),
+        details={"mission_id": str(mission_id), "action": "stopped"},
+        request=request,
+    )
+
     return StatusResponse(message="Mission stopping")
 
 
@@ -648,6 +676,7 @@ async def pause_mission(
     response: Response,
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
 ) -> StatusResponse:
     """Pause a running mission."""
     active = await mission_manager.get_mission(mission_id)
@@ -656,6 +685,15 @@ async def pause_mission(
     result = await mission_manager.pause_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
+
+    await audit_log_event(
+        session,
+        AuditEventType.MISSION_STATUS_CHANGED,
+        user_id=str(_current_user.id),
+        details={"mission_id": str(mission_id), "action": "paused"},
+        request=request,
+    )
+
     return StatusResponse(message="Mission paused")
 
 

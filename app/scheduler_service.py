@@ -52,6 +52,8 @@ class SchedulerService:
             "metrics_collector": asyncio.create_task(self._metrics_collector()),
             "health_reporter": asyncio.create_task(self._health_reporter()),
             "backup_scheduler": asyncio.create_task(self._backup_scheduler()),
+            "cache_cleanup": asyncio.create_task(self._cache_cleanup()),
+            "periodic_cleanup": asyncio.create_task(self._periodic_cleanup()),
         }
         self.tasks = list(self._named_tasks.values())
 
@@ -196,6 +198,22 @@ class SchedulerService:
                 logger.error("Scheduled backup failed: %s", e)
 
             await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
+
+    async def _cache_cleanup(self):
+        """Delegate to the shared cache_cleanup_loop from background_tasks."""
+        try:
+            from app.core.background_tasks import cache_cleanup_loop
+            await cache_cleanup_loop()
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.error("Cache cleanup error: %s", e)
+
+    async def _periodic_cleanup(self):
+        """Delegate to the shared periodic_cleanup_loop from background_tasks."""
+        try:
+            from app.core.background_tasks import periodic_cleanup_loop
+            await periodic_cleanup_loop()
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.error("Periodic cleanup error: %s", e)
 
 
 async def main():
