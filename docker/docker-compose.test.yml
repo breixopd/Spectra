@@ -23,8 +23,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "spectra_test_redis"]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "spectra_test_redis", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -65,10 +66,13 @@ services:
     command: ["--config-file", "/app/config/tensorzero.toml"]
     volumes:
       - ../config/tensorzero.toml:/app/config/tensorzero.toml:ro
+    env_file:
+      - ../.env.test
+      - path: ../.env.test.local
+        required: false
     environment:
       TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
       TENSORZERO_CLICKHOUSE_URL: http://clickhouse:8123/tensorzero
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
     depends_on:
       clickhouse:
@@ -161,6 +165,8 @@ services:
       dockerfile: docker/Dockerfile.app
     env_file:
       - ../.env.test
+      - path: ../.env.test.local
+        required: false
     environment:
       # Override database for container network
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
@@ -171,7 +177,7 @@ services:
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
       - QUEUE_STARTUP_TOOL_INSTALL=false
-      - RATE_LIMIT_STORAGE=redis://redis:6379/0
+      - RATE_LIMIT_STORAGE=redis://:spectra_test_redis@redis:6379/0
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
@@ -181,6 +187,7 @@ services:
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins
       - ../tests:/app/tests:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -203,6 +210,8 @@ services:
       dockerfile: docker/Dockerfile.app
     env_file:
       - ../.env.test
+      - path: ../.env.test.local
+        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
@@ -213,7 +222,7 @@ services:
       - TEST_TARGET_URL=http://metasploitable
       - PLUGIN_SAFE_MODE=false
       - QUEUE_STARTUP_TOOL_INSTALL=false
-      - RATE_LIMIT_STORAGE=redis://redis:6379/0
+      - RATE_LIMIT_STORAGE=redis://:spectra_test_redis@redis:6379/0
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
@@ -223,6 +232,7 @@ services:
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins
       - ../tests:/app/tests:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -271,6 +281,8 @@ services:
       - NET_ADMIN
     env_file:
       - ../.env.test
+      - path: ../.env.test.local
+        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
@@ -281,6 +293,7 @@ services:
     volumes:
       - ../plugins:/app/plugins
       - ../app:/app/app:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       app:
         condition: service_healthy
@@ -325,6 +338,8 @@ services:
         python3 -m pytest tests/ -v --tb=short -x --ignore=tests/e2e/ui --ignore=tests/unit --ignore=tests/load --ignore=tests/performance --ignore=tests/soak
     env_file:
       - ../.env.test
+      - path: ../.env.test.local
+        required: false
     environment:
       # Override for test environment
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
@@ -385,12 +400,14 @@ services:
         -m "load or performance or soak" -q --override-ini=addopts=
     env_file:
       - ../.env.test
+      - path: ../.env.test.local
+        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
-      - RATE_LIMIT_STORAGE=redis://redis:6379/0
+      - RATE_LIMIT_STORAGE=redis://:spectra_test_redis@redis:6379/0
       - LOAD_TEST_APP_URL=http://app:5000
       - LOAD_TEST_APP_REPLICA_URL=http://app-replica:5000
       - LOAD_TEST_CADDY_URL=http://caddy
@@ -443,6 +460,8 @@ services:
         -q --override-ini=addopts=
     env_file:
       - ../.env.test
+      - path: ../.env.test.local
+        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
@@ -478,6 +497,8 @@ services:
         python -m pytest tests/unit/ -q --override-ini=addopts=
     env_file:
       - ../.env.test
+      - path: ../.env.test.local
+        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
@@ -509,6 +530,8 @@ services:
     command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--no-cov", "--confcutdir=tests/e2e/ui", "--override-ini=addopts="]
     env_file:
       - ../.env.test
+      - path: ../.env.test.local
+        required: false
     environment:
       - APP_BASE_URL=http://host.docker.internal:15000
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
