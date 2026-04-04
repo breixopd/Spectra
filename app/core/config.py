@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "text"  # "json" for structured logs in production, "text" for dev
     DATA_ROOT: str = "/app/data"
 
+    # --- OpenTelemetry Export ---
+    OTEL_EXPORTER_ENDPOINT: str = ""  # e.g. "http://otel-collector:4318" — empty = disabled
+    OTEL_EXPORTER_PROTOCOL: str = "http/protobuf"  # or "http/json"
+    OTEL_SERVICE_NAME: str = "spectra"
+    OTEL_EXPORT_INTERVAL_SECONDS: int = 30
+
     # --- Request Timeout ---
     REQUEST_TIMEOUT_SECONDS: int = 60  # Cancel requests exceeding this (0 = disabled)
 
