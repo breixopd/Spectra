@@ -96,17 +96,13 @@ async def execute_via_worker(
         return result
 
     except TimeoutError:
-        return create_error_result(
-            tool_id, target, f"Job timed out after {job_timeout}s"
-        )
+        return create_error_result(tool_id, target, f"Job timed out after {job_timeout}s")
     except (OSError, RuntimeError, ValueError) as e:
         logger.error("Worker execution failed: %s", e)
         return create_error_result(tool_id, target, f"Worker error: {e}")
 
 
-async def ensure_tool_installed(
-    tool_id: str, install_timeout: int
-) -> bool:
+async def ensure_tool_installed(tool_id: str, install_timeout: int) -> bool:
     """Ensure a tool is installed via the worker."""
     from app.core.queue import Job, PostgresJobQueue
 

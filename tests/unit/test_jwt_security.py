@@ -65,11 +65,7 @@ def _mock_async_session_maker_with_user(user):
 
 
 def _set_cookie_headers(response: Response) -> list[str]:
-    return [
-        value.decode("latin-1")
-        for key, value in response.raw_headers
-        if key.lower() == b"set-cookie"
-    ]
+    return [value.decode("latin-1") for key, value in response.raw_headers if key.lower() == b"set-cookie"]
 
 
 # ---------------------------------------------------------------------------
@@ -196,8 +192,8 @@ def test_token_without_type_claim_still_decodes():
 @pytest.mark.asyncio
 async def test_get_current_user_rejects_token_without_type():
     """get_current_user rejects tokens missing the 'type' claim."""
-    from fastapi import HTTPException
     import jwt
+    from fastapi import HTTPException
 
     from app.api.dependencies import get_current_user
     from app.core.config import settings

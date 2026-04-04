@@ -7,8 +7,10 @@ to enforce access control on endpoints.
 try:
     from enum import StrEnum
 except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+
     class StrEnum(str, __import__("enum").Enum):
         pass
+
 
 from fastapi import Depends, HTTPException
 
@@ -85,9 +87,7 @@ def require_permission(permission: Permission):
         if current_user.is_superuser:
             return current_user
         if not has_permission(current_user.role, permission):
-            raise HTTPException(
-                status_code=403, detail="Insufficient permissions"
-            )
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
         return current_user
 
     return Depends(dependency)

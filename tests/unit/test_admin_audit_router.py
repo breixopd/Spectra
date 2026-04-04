@@ -1,8 +1,8 @@
 """Tests for the admin audit log router."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

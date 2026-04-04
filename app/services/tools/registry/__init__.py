@@ -84,12 +84,8 @@ class ToolRegistry:
         # The Validator takes `public_key`.
         self._public_key = self._load_public_key()
 
-        self.validator = PluginValidator(
-            public_key=self._public_key, safe_mode=safe_mode
-        )
-        self.loader = PluginLoader(
-            plugins_dir=self.plugins_dir, validator=self.validator
-        )
+        self.validator = PluginValidator(public_key=self._public_key, safe_mode=safe_mode)
+        self.loader = PluginLoader(plugins_dir=self.plugins_dir, validator=self.validator)
         self.installer = PluginInstaller()
 
     def _load_public_key(self) -> Any | None:
@@ -116,9 +112,7 @@ class ToolRegistry:
                 [str(p) for p in paths_to_check],
             )
             if self.safe_mode:
-                logger.warning(
-                    "Safe mode is enabled but no key found. Plugin loading will likely fail."
-                )
+                logger.warning("Safe mode is enabled but no key found. Plugin loading will likely fail.")
             return None
 
         # Determine if crypto is available
@@ -293,9 +287,7 @@ class ToolRegistry:
 
     def list_tools_for_ai(self) -> list[dict[str, Any]]:
         """Get all available tools formatted for AI agents."""
-        return [
-            self._tool_to_ai_dict(t) for t in self._tools.values() if t.is_available
-        ]
+        return [self._tool_to_ai_dict(t) for t in self._tools.values() if t.is_available]
 
     def _tool_to_ai_dict(self, tool: RegisteredTool) -> dict[str, Any]:
         """Convert a RegisteredTool to a dict for AI consumption."""
@@ -322,9 +314,7 @@ class ToolRegistry:
         if config.id in self._tools:
             existing = self._tools[config.id]
             if existing.config.is_system:
-                raise PluginValidationError(
-                    f"Cannot overwrite system tool: {config.id}"
-                )
+                raise PluginValidationError(f"Cannot overwrite system tool: {config.id}")
             existing.config = config
             existing.status = ToolStatus.PENDING
         else:

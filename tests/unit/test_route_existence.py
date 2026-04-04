@@ -48,44 +48,28 @@ class TestRouteExistence:
     def test_auth_logout_has_post_method(self):
         from app.main import app
 
-        routes = [
-            r
-            for r in app.routes
-            if isinstance(r, APIRoute) and r.path == "/api/v1/auth/logout"
-        ]
+        routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/api/v1/auth/logout"]
         assert routes, "Route /api/v1/auth/logout not found"
         assert "POST" in routes[0].methods
 
     def test_auth_refresh_has_post_method(self):
         from app.main import app
 
-        routes = [
-            r
-            for r in app.routes
-            if isinstance(r, APIRoute) and r.path == "/api/v1/auth/refresh"
-        ]
+        routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/api/v1/auth/refresh"]
         assert routes, "Route /api/v1/auth/refresh not found"
         assert "POST" in routes[0].methods
 
     def test_mfa_cancel_has_post_method(self):
         from app.main import app
 
-        routes = [
-            r
-            for r in app.routes
-            if isinstance(r, APIRoute) and r.path == "/api/v1/auth/mfa/cancel"
-        ]
+        routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/api/v1/auth/mfa/cancel"]
         assert routes, "Route /api/v1/auth/mfa/cancel not found"
         assert "POST" in routes[0].methods
 
     def test_public_status_has_get_method(self):
         from app.main import app
 
-        routes = [
-            r
-            for r in app.routes
-            if isinstance(r, APIRoute) and r.path == "/api/v1/system/public-status"
-        ]
+        routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/api/v1/system/public-status"]
         assert routes, "Route /api/v1/system/public-status not found"
         assert "GET" in routes[0].methods
 
@@ -93,11 +77,7 @@ class TestRouteExistence:
         from app.main import app
 
         path = "/api/v1/pentest-sessions/{session_id}/manual-state"
-        routes = [
-            r
-            for r in app.routes
-            if isinstance(r, APIRoute) and r.path == path
-        ]
+        routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == path]
         assert len(routes) >= 2, f"Expected PUT and GET for {path}, found {len(routes)}"
         methods = set()
         for r in routes:

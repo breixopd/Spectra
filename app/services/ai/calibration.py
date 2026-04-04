@@ -31,18 +31,21 @@ class ConfidenceCalibrator:
         self._records: list[CalibrationRecord] = []
         self._window_size = window_size
 
-    def record_prediction(self, agent_name: str, predicted_confidence: float,
-                          actual_accuracy: float, task_type: str = "general"):
+    def record_prediction(
+        self, agent_name: str, predicted_confidence: float, actual_accuracy: float, task_type: str = "general"
+    ):
         """Record a prediction/outcome pair for calibration."""
-        self._records.append(CalibrationRecord(
-            agent_name=agent_name,
-            predicted_confidence=predicted_confidence,
-            actual_accuracy=actual_accuracy,
-            task_type=task_type,
-            timestamp=datetime.now(UTC),
-        ))
+        self._records.append(
+            CalibrationRecord(
+                agent_name=agent_name,
+                predicted_confidence=predicted_confidence,
+                actual_accuracy=actual_accuracy,
+                task_type=task_type,
+                timestamp=datetime.now(UTC),
+            )
+        )
         if len(self._records) > self._window_size:
-            self._records = self._records[-self._window_size:]
+            self._records = self._records[-self._window_size :]
 
     def get_calibration_factor(self, agent_name: str, task_type: str | None = None) -> float:
         """Get calibration factor for an agent.
@@ -67,8 +70,7 @@ class ConfidenceCalibrator:
         # Clamp to reasonable range
         return max(0.3, min(2.0, factor))
 
-    def calibrate_confidence(self, agent_name: str, raw_confidence: float,
-                              task_type: str | None = None) -> float:
+    def calibrate_confidence(self, agent_name: str, raw_confidence: float, task_type: str | None = None) -> float:
         """Apply calibration to a raw confidence score."""
         factor = self.get_calibration_factor(agent_name, task_type)
         calibrated = raw_confidence * factor
@@ -112,7 +114,7 @@ class ConfidenceCalibrator:
                     VALUES ('calibration_data', :value, now() + interval '90 days')
                     ON CONFLICT (key) DO UPDATE SET value = :value, expires_at = now() + interval '90 days'
                 """),
-                {"value": json.dumps(data)}
+                {"value": json.dumps(data)},
             )
             await session.commit()
 
@@ -126,26 +128,27 @@ class ConfidenceCalibrator:
 
         try:
             async with async_session_maker() as session:
-                result = await session.execute(
-                    text("SELECT value FROM system_cache WHERE key = 'calibration_data'")
-                )
+                result = await session.execute(text("SELECT value FROM system_cache WHERE key = 'calibration_data'"))
                 row = result.fetchone()
                 if row:
                     data = json.loads(row[0]) if isinstance(row[0], str) else row[0]
                     for d in data:
-                        self._records.append(CalibrationRecord(
-                            agent_name=d["agent"],
-                            predicted_confidence=d["predicted"],
-                            actual_accuracy=d["actual"],
-                            task_type=d["task"],
-                            timestamp=datetime.fromisoformat(d["ts"]),
-                        ))
+                        self._records.append(
+                            CalibrationRecord(
+                                agent_name=d["agent"],
+                                predicted_confidence=d["predicted"],
+                                actual_accuracy=d["actual"],
+                                task_type=d["task"],
+                                timestamp=datetime.fromisoformat(d["ts"]),
+                            )
+                        )
         except (OSError, ValueError) as exc:
             logger.debug("Failed to persist calibration data: %s", exc)
 
 
 # Singleton
 _calibrator: ConfidenceCalibrator | None = None
+
 
 def get_calibrator() -> ConfidenceCalibrator:
     global _calibrator

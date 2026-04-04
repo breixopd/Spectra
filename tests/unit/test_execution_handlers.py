@@ -47,6 +47,7 @@ class TestGetKnownTools:
         """Verify the hardcoded fallback set has the expected tools."""
         # Directly test the fallback path by making get_registry raise
         import app.services.tools.registry as reg_mod
+
         original = reg_mod._registry_instance
         try:
             reg_mod._registry_instance = None
@@ -109,32 +110,35 @@ class TestTaskDispatcher:
             assert handler is not None
 
     def test_extract_tool_hint_nmap(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
-                    return_value={"nmap", "nuclei", "sqlmap"}):
+        with patch(
+            "app.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
+        ):
             hint = dispatcher._extract_tool_hint_from_description("Run nmap scan on target")
             assert hint == "nmap"
 
     def test_extract_tool_hint_using_pattern(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
-                    return_value={"nmap", "nuclei", "sqlmap"}):
+        with patch(
+            "app.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
+        ):
             hint = dispatcher._extract_tool_hint_from_description("Scan ports using nmap")
             assert hint == "nmap"
 
     def test_extract_tool_hint_with_pattern(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
-                    return_value={"nmap", "nuclei", "sqlmap"}):
+        with patch(
+            "app.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
+        ):
             hint = dispatcher._extract_tool_hint_from_description("Check vulnerabilities with nuclei")
             assert hint == "nuclei"
 
     def test_extract_tool_hint_no_match(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
-                    return_value={"nmap", "nuclei"}):
+        with patch("app.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei"}):
             hint = dispatcher._extract_tool_hint_from_description("Analyze the target system")
             assert hint is None
 
     def test_extract_tool_hint_direct_mention(self, dispatcher):
-        with patch("app.services.mission.executor.handlers._get_known_tools",
-                    return_value={"nmap", "nuclei", "sqlmap"}):
+        with patch(
+            "app.services.mission.executor.handlers._get_known_tools", return_value={"nmap", "nuclei", "sqlmap"}
+        ):
             hint = dispatcher._extract_tool_hint_from_description("sqlmap injection test")
             assert hint == "sqlmap"
 
@@ -147,9 +151,7 @@ class TestTaskDispatcherDispatch:
         consensus = AsyncMock()
 
         mock_tool_selector = AsyncMock()
-        mock_tool_selector.execute = AsyncMock(return_value=MagicMock(
-            success=True, action=MagicMock(actions=[])
-        ))
+        mock_tool_selector.execute = AsyncMock(return_value=MagicMock(success=True, action=MagicMock(actions=[])))
         agents = {"tool_selector": mock_tool_selector}
 
         dispatcher = TaskDispatcher(tool_service, exploit_manager, consensus, agents)

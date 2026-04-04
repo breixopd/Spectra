@@ -51,15 +51,11 @@ async def perform_safety_check(
             cost_tracker=None,
         )
 
-        safety_result = await safety_supervisor.execute(
-            safety_context, safety_input
-        )
+        safety_result = await safety_supervisor.execute(safety_context, safety_input)
 
         if safety_result.success and isinstance(safety_result.action, SafetyAction):
             if not safety_result.action.allowed:
-                mission.log(
-                    f"[BLOCK] Safety check blocked: {safety_result.action.reason}"
-                )
+                mission.log(f"[BLOCK] Safety check blocked: {safety_result.action.reason}")
                 return False, safety_result.action.reason
         return True, "Safe"
     except (OSError, RuntimeError, ValueError, TimeoutError) as e:
@@ -85,7 +81,11 @@ async def perform_safety_check_with_retry(
 
     for attempt in range(max_retries + 1):
         is_safe, reason = await perform_safety_check(
-            mission, current_command, tool_name, target, current_args,
+            mission,
+            current_command,
+            tool_name,
+            target,
+            current_args,
             safety_supervisor,
         )
 
@@ -93,12 +93,15 @@ async def perform_safety_check_with_retry(
             return True, "Safe", current_args if attempt > 0 else None
 
         if attempt < max_retries:
-            mission.log(
-                f"[ADAPT] Attempting to fix command (attempt {attempt + 1}/{max_retries})..."
-            )
+            mission.log(f"[ADAPT] Attempting to fix command (attempt {attempt + 1}/{max_retries})...")
 
             fixed_args = await _try_fix_command(
-                mission, tool_name, target, current_args, reason, llm_client,
+                mission,
+                tool_name,
+                target,
+                current_args,
+                reason,
+                llm_client,
             )
 
             if fixed_args is not None and fixed_args != current_args:
@@ -109,9 +112,7 @@ async def perform_safety_check_with_retry(
                     args=fixed_args,
                     timeout=None,
                 )
-                current_command = builder.builder.build_command(
-                    fixed_request, output_dir=str(output_dir)
-                )
+                current_command = builder.builder.build_command(fixed_request, output_dir=str(output_dir))
                 mission.log(f"[INFO] Retrying with fixed args: {fixed_args}")
             else:
                 break
@@ -167,9 +168,7 @@ Example response format:
         response_text = response_text.strip()
         if response_text.startswith("```"):
             lines = response_text.split("\n")
-            response_text = "\n".join(
-                line for line in lines if not line.startswith("```")
-            )
+            response_text = "\n".join(line for line in lines if not line.startswith("```"))
 
         fixed_args = json.loads(response_text)
         if isinstance(fixed_args, dict):
@@ -180,6 +179,3 @@ Example response format:
         logger.warning("Failed to fix command via LLM: %s", e)
 
     return None
-
-
-

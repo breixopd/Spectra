@@ -226,7 +226,18 @@ class TestReportTemplates:
 
     def test_generate_report_unknown_template(self, tmp_path):
         session_file = tmp_path / "session.json"
-        session_file.write_text(json.dumps({"id": "s1", "name": "Session", "target": "127.0.0.1", "findings": [], "tools_used": [], "command_history": []}))
+        session_file.write_text(
+            json.dumps(
+                {
+                    "id": "s1",
+                    "name": "Session",
+                    "target": "127.0.0.1",
+                    "findings": [],
+                    "tools_used": [],
+                    "command_history": [],
+                }
+            )
+        )
         with pytest.raises(ValueError, match="Unknown template"):
             generate_report_data(session_file, "bad_template")
 

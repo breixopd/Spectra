@@ -8,11 +8,7 @@ def _make_request(scheme: str = "https", headers: list[tuple[bytes, bytes]] | No
 
 
 def _set_cookie_headers(response: Response) -> list[str]:
-    return [
-        value.decode("latin-1")
-        for key, value in response.raw_headers
-        if key.lower() == b"set-cookie"
-    ]
+    return [value.decode("latin-1") for key, value in response.raw_headers if key.lower() == b"set-cookie"]
 
 
 def _cookie_header(response: Response, cookie_key: str) -> str:

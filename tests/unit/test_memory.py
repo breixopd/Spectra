@@ -6,7 +6,6 @@ from app.services.ai.memory import (
     MissionMemory,
     detect_os_from_output,
     detect_os_from_services,
-    get_memory,
 )
 
 
@@ -261,13 +260,16 @@ class TestStats:
 
 class TestSingleton:
     def test_get_memory_returns_same(self, tmp_path):
-        import app.services.ai.memory as mod
         from unittest.mock import patch
+
+        import app.services.ai.memory as mod
 
         mod._memory = None
         cache_dir = tmp_path / "cache"
         cache_dir.mkdir(parents=True, exist_ok=True)
-        with patch.object(mod, "MissionMemory", side_effect=lambda *a, **kw: mod.MissionMemory.__new__(mod.MissionMemory)):
+        with patch.object(
+            mod, "MissionMemory", side_effect=lambda *a, **kw: mod.MissionMemory.__new__(mod.MissionMemory)
+        ):
             pass  # skip patching constructor, use different approach
         # Directly set _memory to a real instance with tmp_path
         m_inst = mod.MissionMemory(memory_dir=cache_dir)

@@ -1,6 +1,5 @@
 """Tests for app.core.config — Settings loading, validation, and runtime persistence."""
 
-
 import pytest
 from pydantic import ValidationError
 

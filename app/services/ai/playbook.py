@@ -39,9 +39,7 @@ class PlaybookStep(BaseModel):
     tool: str = Field(..., description="Tool ID to use")
     args: dict[str, Any] = Field(default_factory=dict, description="Tool arguments")
     description: str = Field(..., description="What this step does")
-    condition: str | None = Field(
-        None, description="When to run (e.g., 'port_80_open')"
-    )
+    condition: str | None = Field(None, description="When to run (e.g., 'port_80_open')")
     on_success: str | None = Field(None, description="Next step ID on success")
     on_failure: str | None = Field(None, description="Next step ID on failure")
 
@@ -300,11 +298,13 @@ class PlaybookEngine:
         tmp = self._PATTERNS_FILE.with_suffix(".tmp")
         try:
             self._PATTERNS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            tmp.write_text(json.dumps(
-                [p.model_dump() for p in self.exploit_patterns],
-                indent=2,
-                default=str,
-            ))
+            tmp.write_text(
+                json.dumps(
+                    [p.model_dump() for p in self.exploit_patterns],
+                    indent=2,
+                    default=str,
+                )
+            )
             tmp.rename(self._PATTERNS_FILE)
         except (OSError, ValueError) as e:
             logger.warning("Failed to save exploit patterns: %s", e)
@@ -338,9 +338,7 @@ class PlaybookEngine:
         self.playbooks.append(playbook)
         self._rebuild_indices()
 
-    def get_playbook_for_service(
-        self, service: str, port: int | None = None
-    ) -> ServicePlaybook | None:
+    def get_playbook_for_service(self, service: str, port: int | None = None) -> ServicePlaybook | None:
         """Find matching playbook for a service.
 
         Optimized to use O(1) dictionary lookups instead of O(N) list traversal.
@@ -430,11 +428,7 @@ class PlaybookEngine:
         from datetime import datetime
 
         existing = next(
-            (
-                p
-                for p in self.exploit_patterns
-                if p.service == service and p.tool == tool
-            ),
+            (p for p in self.exploit_patterns if p.service == service and p.tool == tool),
             None,
         )
 

@@ -1,7 +1,7 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, TypeDecorator, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -160,4 +160,6 @@ class SystemContent(InfrastructureBase):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), onupdate=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), onupdate=lambda: datetime.now(UTC)
+    )

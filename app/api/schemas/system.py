@@ -118,6 +118,7 @@ class SettingsUpdate(BaseModel):
     def validate_resource_tiers(cls, value: str | None) -> str | None:
         if value is not None and value != "":
             import json
+
             try:
                 data = json.loads(value)
                 if not isinstance(data, dict):

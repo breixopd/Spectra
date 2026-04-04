@@ -212,16 +212,12 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
     body = MFAVerifyRequest(code=code)
 
     with patch("app.api.routers.auth.invalidate_token"):
-        result = await mfa_verify_login(
-            request=request, response=response, body=body, session=mock_session
-        )
+        result = await mfa_verify_login(request=request, response=response, body=body, session=mock_session)
 
     assert "access_token" in result
     assert result["token_type"] == "bearer"
     set_cookie_headers = [
-        value.decode("latin-1")
-        for key, value in response.raw_headers
-        if key.lower() == b"set-cookie"
+        value.decode("latin-1") for key, value in response.raw_headers if key.lower() == b"set-cookie"
     ]
     assert len(set_cookie_headers) == 2
     assert all("Secure" in header for header in set_cookie_headers)
@@ -271,8 +267,10 @@ async def test_mfa_disable_success(mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.verify_password", return_value=True), \
-         patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
+    with (
+        patch("app.api.routers.auth.verify_password", return_value=True),
+        patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock),
+    ):
         result = await mfa_disable(request=request, body=body, user=user, session=mock_session)
 
     assert result["detail"] == "MFA disabled successfully"
@@ -308,6 +306,7 @@ async def test_mfa_verify_setup_rejects_replayed_code(mock_session):
 @pytest.mark.asyncio
 async def test_mfa_verify_login_rejects_replayed_code(mock_session):
     from datetime import timedelta
+
     from fastapi import HTTPException
 
     from app.api.routers.auth import _used_totp_codes, mfa_verify_login
@@ -318,7 +317,9 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
     secret = pyotp.random_base32()
     encrypted = encrypt_mfa_secret(secret)
     user = _make_user(mfa_enabled=True, mfa_secret=encrypted)
-    mfa_token = create_access_token(data={"sub": user.username, "mfa_pending": True}, expires_delta=timedelta(minutes=5))
+    mfa_token = create_access_token(
+        data={"sub": user.username, "mfa_pending": True}, expires_delta=timedelta(minutes=5)
+    )
 
     request = _make_request(headers={"authorization": f"Bearer {mfa_token}"}, scheme="https")
     response = Response()
@@ -351,8 +352,10 @@ async def test_mfa_disable_rejects_replayed_code(mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.verify_password", return_value=True), \
-         patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
+    with (
+        patch("app.api.routers.auth.verify_password", return_value=True),
+        patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock),
+    ):
         await mfa_disable(request=request, body=body, user=user, session=mock_session)
 
     user.mfa_enabled = True

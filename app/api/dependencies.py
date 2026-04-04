@@ -5,10 +5,10 @@ Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
-from typing import TYPE_CHECKING, Any, Annotated
+UTC = UTC
+from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -147,8 +147,7 @@ async def get_current_user(
     # Update last_activity (throttled to every 60 seconds)
     now = datetime.now(UTC)
     if not user.last_activity or (
-        isinstance(user.last_activity, datetime)
-        and (now - user.last_activity).total_seconds() > 60
+        isinstance(user.last_activity, datetime) and (now - user.last_activity).total_seconds() > 60
     ):
         user.last_activity = now
         await session.commit()
@@ -163,9 +162,7 @@ async def get_current_active_user(
     Get current user and verify they are active.
     """
     if not current_user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
     return current_user
 
 
@@ -298,11 +295,7 @@ async def check_target_limit(user: User, session: AsyncSession) -> None:
         return
     from app.models.target import Target
 
-    count = (
-        await session.execute(
-            select(func.count(Target.id)).where(Target.user_id == str(user.id))
-        )
-    ).scalar() or 0
+    count = (await session.execute(select(func.count(Target.id)).where(Target.user_id == str(user.id)))).scalar() or 0
     if count >= plan.max_targets:
         raise HTTPException(
             status_code=429,

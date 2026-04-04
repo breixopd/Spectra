@@ -65,9 +65,7 @@ async def real_mission_manager():
     def new_init(self, llm, config=None):
         if config is None:
             # Use single voter for tests to avoid timeouts and consensus issues with small models
-            config = consensus.VotingConfig(
-                num_voters=1, k_threshold=1, min_confidence=0.5
-            )
+            config = consensus.VotingConfig(num_voters=1, k_threshold=1, min_confidence=0.5)
         original_init(self, llm, config)
 
     # Apply patch
@@ -107,19 +105,21 @@ def mock_websocket_for_unit_tests(request):
     original_create_task = asyncio.create_task
 
     # Background function names that must never run as real tasks in unit tests.
-    _BACKGROUND_CORO_NAMES = frozenset({
-        "cache_cleanup_loop",
-        "periodic_cleanup_loop",
-        "load_embeddings_with_status",
-        "_initialize_services.<locals>.load_embeddings_with_status",
-        "_initialize_services.<locals>._init_exploit_db",
-        "_init_exploit_db",
-        "_keepalive",
-        "AsyncMockMixin._execute_mock_call",
-        "sandbox_watchdog_loop",
-        "warm_pool_maintain_loop",
-        "run_startup_tasks",
-    })
+    _BACKGROUND_CORO_NAMES = frozenset(
+        {
+            "cache_cleanup_loop",
+            "periodic_cleanup_loop",
+            "load_embeddings_with_status",
+            "_initialize_services.<locals>.load_embeddings_with_status",
+            "_initialize_services.<locals>._init_exploit_db",
+            "_init_exploit_db",
+            "_keepalive",
+            "AsyncMockMixin._execute_mock_call",
+            "sandbox_watchdog_loop",
+            "warm_pool_maintain_loop",
+            "run_startup_tasks",
+        }
+    )
 
     def safe_create_task(coro, **kwargs):
         """Wrap create_task: close known background coroutines, schedule the rest."""
@@ -170,6 +170,7 @@ def disable_rate_limiting_for_unit_tests(request):
         yield
         return
     from app.core.rate_limit import limiter
+
     original = limiter.enabled
     limiter.enabled = False
     yield
@@ -286,11 +287,13 @@ def reset_service_singletons():
     yield
     try:
         import app.services.ai.exploit_db as _edb_mod
+
         _edb_mod._instance = None
     except Exception:
         pass
     try:
         import app.services.ai.cve_intel as _cve_mod
+
         _cve_mod._cve_knowledge_base = None
         _cve_mod._last_nvd_request = 0.0
     except Exception:

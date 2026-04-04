@@ -36,16 +36,12 @@ def record_mission_lessons(mission: Mission) -> None:
             )
             if count >= 5 and severity == "info":
                 memory.record_false_positive(template)
-                mission.log(
-                    f"[LEARN] Marked '{template}' as probable false positive ({count} duplicates)"
-                )
+                mission.log(f"[LEARN] Marked '{template}' as probable false positive ({count} duplicates)")
 
         # Record OS profile if detected
         os_family = getattr(mission, "_detected_os", None)
         if os_family and os_family != "unknown":
-            services = [
-                s.service for s in mission.attack_surface.services if s.service
-            ]
+            services = [s.service for s in mission.attack_surface.services if s.service]
             memory.update_target_profile(
                 os_family,
                 services=services,
@@ -99,15 +95,9 @@ async def index_to_rag(mission: Mission) -> None:
 
         # Index successful exploit vectors (max 10)
         if mission.attack_surface:
-            successful = [
-                v
-                for v in mission.attack_surface.vectors
-                if v.status == VectorStatus.SUCCESS
-            ][:10]
+            successful = [v for v in mission.attack_surface.vectors if v.status == VectorStatus.SUCCESS][:10]
             for vector in successful:
-                tool = (
-                    vector.suggested_tools[0] if vector.suggested_tools else "manual"
-                )
+                tool = vector.suggested_tools[0] if vector.suggested_tools else "manual"
                 doc = Document(
                     id=f"exploit-{mission_id}-{vector.id}",
                     content=(
@@ -128,9 +118,7 @@ async def index_to_rag(mission: Mission) -> None:
                 indexed += 1
 
         # Index mission summary
-        tools_str = (
-            ", ".join(mission.tools_run[:8]) if mission.tools_run else "none"
-        )
+        tools_str = ", ".join(mission.tools_run[:8]) if mission.tools_run else "none"
         doc = Document(
             id=f"mission-{mission_id}",
             content=(
@@ -147,11 +135,7 @@ async def index_to_rag(mission: Mission) -> None:
         indexed += 1
 
         # Index debrief lessons from logs (max 10)
-        lessons = [
-            entry
-            for entry in (mission.logs or [])
-            if isinstance(entry, str) and "[LEARN]" in entry
-        ][:10]
+        lessons = [entry for entry in (mission.logs or []) if isinstance(entry, str) and "[LEARN]" in entry][:10]
         for i, lesson in enumerate(lessons):
             doc = Document(
                 id=f"lesson-{mission_id}-{i}",

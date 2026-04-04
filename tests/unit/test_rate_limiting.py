@@ -35,8 +35,10 @@ async def test_enforce_rate_limit_allows_within_limit():
     mock_tracker = MagicMock()
     mock_tracker.record_api_request = AsyncMock()
 
-    with patch("app.services.billing.quota_enforcer.QuotaEnforcer", return_value=mock_enforcer), \
-         patch("app.services.billing.usage_tracker.UsageTracker", return_value=mock_tracker):
+    with (
+        patch("app.services.billing.quota_enforcer.QuotaEnforcer", return_value=mock_enforcer),
+        patch("app.services.billing.usage_tracker.UsageTracker", return_value=mock_tracker),
+    ):
         result = await enforce_api_rate_limit(user=user)
 
     assert result is user

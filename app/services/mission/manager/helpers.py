@@ -56,9 +56,7 @@ async def run_debrief(
         if result.success and result.action:
             action = result.action
             mission.log(f"[DEBRIEF] Risk: {action.risk_rating.upper()}")
-            mission.log(
-                f"[DEBRIEF] {action.executive_summary[:DEBRIEF_SUMMARY_LOG_CHARS]}"
-            )
+            mission.log(f"[DEBRIEF] {action.executive_summary[:DEBRIEF_SUMMARY_LOG_CHARS]}")
             for lesson in action.lessons_learned[:3]:
                 mission.log(f"[LEARN] {lesson}")
 
@@ -130,29 +128,18 @@ async def adapt_plan_to_findings(
     steering: MissionSteeringManager,
 ) -> None:
     """Adapt mission plan based on new findings (PTES/MAKER methodology)."""
-    mission.log(
-        f"[ADAPT] {new_findings_count} new findings discovered. Evaluating plan adaptation..."
-    )
+    mission.log(f"[ADAPT] {new_findings_count} new findings discovered. Evaluating plan adaptation...")
 
     try:
         recent_findings = mission.findings[-new_findings_count:]
-        critical_high = [
-            f
-            for f in recent_findings
-            if str(f.get("severity", "")).lower() in ("critical", "high")
-        ]
+        critical_high = [f for f in recent_findings if str(f.get("severity", "")).lower() in ("critical", "high")]
 
         if not critical_high:
-            mission.log(
-                "[ADAPT] No critical/high findings - continuing with current plan"
-            )
+            mission.log("[ADAPT] No critical/high findings - continuing with current plan")
             return
 
         finding_summary = "; ".join(
-            [
-                f"{f.get('title', 'Unknown')} ({f.get('severity', 'unknown')})"
-                for f in critical_high[:5]
-            ]
+            [f"{f.get('title', 'Unknown')} ({f.get('severity', 'unknown')})" for f in critical_high[:5]]
         )
 
         adapt_directive = (
@@ -183,9 +170,7 @@ async def adapt_plan_to_findings(
                     insert_pos = mission.current_task_index + 1
                     for j, new_task in enumerate(new_tasks[:5]):
                         mission.plan.tasks.insert(insert_pos + j, new_task)
-                    mission.log(
-                        f"[ADAPT] Added {len(new_tasks[:5])} new tasks to plan"
-                    )
+                    mission.log(f"[ADAPT] Added {len(new_tasks[:5])} new tasks to plan")
         else:
             mission.log("[ADAPT] Plan adaptation not needed")
 
@@ -236,9 +221,7 @@ async def handle_task_failure(
                 )
 
                 if vote_result.status != "approved":
-                    mission.log(
-                        f"[REJECTED] Replan rejected: {vote_result.escalation_reason}"
-                    )
+                    mission.log(f"[REJECTED] Replan rejected: {vote_result.escalation_reason}")
                     mission.log("[ADAPT] Continuing with original plan")
                     return
 
@@ -269,12 +252,9 @@ def _partition_phase_tasks(
     independent = [
         (index, task)
         for index, task in indexed_tasks
-        if not task.dependencies
-        or all(dependency in completed_task_ids for dependency in task.dependencies)
+        if not task.dependencies or all(dependency in completed_task_ids for dependency in task.dependencies)
     ]
-    dependent = [
-        (index, task) for index, task in indexed_tasks if (index, task) not in independent
-    ]
+    dependent = [(index, task) for index, task in indexed_tasks if (index, task) not in independent]
     return independent, dependent
 
 
@@ -318,13 +298,10 @@ def _mission_stop_requested(mission: Mission) -> bool:
 
 
 def _mission_timed_out(mission: Mission) -> bool:
-    elapsed = time.time() - getattr(mission, '_start_wall_time', time.time())
+    elapsed = time.time() - getattr(mission, "_start_wall_time", time.time())
     if elapsed <= MISSION_TIMEOUT_SECONDS:
         return False
-    mission.log(
-        f"[TIMEOUT] Mission timed out after {int(elapsed)}s "
-        f"(limit: {MISSION_TIMEOUT_SECONDS}s)"
-    )
+    mission.log(f"[TIMEOUT] Mission timed out after {int(elapsed)}s (limit: {MISSION_TIMEOUT_SECONDS}s)")
     mission.set_status("timed_out")
     return True
 
@@ -477,6 +454,7 @@ async def execute_mission_tasks(
         )
 
         if independent:
+
             async def _run_task(
                 idx: int,
                 task: Any,
@@ -496,9 +474,7 @@ async def execute_mission_tasks(
                 return_exceptions=True,
             )
 
-            for position, ((_, task), result) in enumerate(
-                zip(independent, results, strict=False)
-            ):
+            for position, ((_, task), result) in enumerate(zip(independent, results, strict=False)):
                 task_result = result if isinstance(result, Exception) else None
                 effective_idx = global_task_counter + position
                 last_findings_count, last_adaptation_index = await _handle_task_execution_result(

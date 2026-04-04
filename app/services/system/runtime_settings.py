@@ -25,6 +25,7 @@ def _encrypt_config_value(value: str) -> str:
         return value
     try:
         from app.core.encryption import _get_default_secret, encrypt_field
+
         return encrypt_field(value, _get_default_secret())
     except Exception:
         return value
@@ -36,6 +37,7 @@ def _decrypt_config_value(value: str) -> str:
         return value
     try:
         from app.core.encryption import _get_default_secret, decrypt_field
+
         return decrypt_field(value, _get_default_secret())
     except Exception:
         return value  # legacy unencrypted value — return as-is
@@ -119,9 +121,7 @@ async def get_runtime_setting_value(key: str) -> str | int | bool | None:
     _, field_type = field_info
     try:
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(SystemConfig).where(SystemConfig.key == key)
-            )
+            result = await session.execute(select(SystemConfig).where(SystemConfig.key == key))
             obj = result.scalar_one_or_none()
             if inspect.isawaitable(obj):
                 obj = await obj
@@ -243,11 +243,7 @@ async def hydrate_runtime_settings_from_db(
     result = await session.execute(select(SystemConfig))
     rows = result.scalars().all()
     row_map = {
-        row.key: (
-            _decrypt_config_value(row.value or "")
-            if getattr(row, "is_secret", False)
-            else (row.value or "")
-        )
+        row.key: (_decrypt_config_value(row.value or "") if getattr(row, "is_secret", False) else (row.value or ""))
         for row in rows
     }
 

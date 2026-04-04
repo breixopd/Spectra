@@ -17,20 +17,19 @@ class TestOverseerSyntax:
         # Extract all script block content
         in_script = False
         script_content = []
-        for line in content.split('\n'):
-            if '<script' in line:
+        for line in content.split("\n"):
+            if "<script" in line:
                 in_script = True
                 continue
-            if '</script>' in line:
+            if "</script>" in line:
                 in_script = False
                 continue
             if in_script:
                 script_content.append(line)
 
-        js = '\n'.join(script_content)
+        js = "\n".join(script_content)
         # Remove strings and comments to avoid false positives
         # Simple heuristic: count { and } outside of strings
-        opens = js.count('{')
-        closes = js.count('}')
-        assert opens == closes, \
-            f"Unbalanced braces in overseer.html scripts: {opens} opens vs {closes} closes"
+        opens = js.count("{")
+        closes = js.count("}")
+        assert opens == closes, f"Unbalanced braces in overseer.html scripts: {opens} opens vs {closes} closes"

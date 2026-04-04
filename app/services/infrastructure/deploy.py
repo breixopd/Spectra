@@ -14,11 +14,14 @@ import asyncio
 import logging
 import shlex
 from dataclasses import dataclass, field
+
 try:
     from enum import StrEnum
 except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+
     class StrEnum(str, __import__("enum").Enum):
         pass
+
 
 logger = logging.getLogger(__name__)
 
@@ -101,25 +104,25 @@ class ServerDeployer:
             logs.append(f"FATAL: {e}")
             return DeployResult(DeploymentStatus.FAILED, str(e), logs)
 
-    def _build_ssh_base(
-        self, hostname: str, user: str, port: int, key: str | None
-    ) -> list[str]:
+    def _build_ssh_base(self, hostname: str, user: str, port: int, key: str | None) -> list[str]:
         """Build SSH command prefix with security-hardened options."""
         cmd = [
             "ssh",
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-o", "ConnectTimeout=10",
-            "-o", "BatchMode=yes",
-            "-p", str(port),
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "ConnectTimeout=10",
+            "-o",
+            "BatchMode=yes",
+            "-p",
+            str(port),
         ]
         if key:
             cmd.extend(["-i", key])
         cmd.append(f"{user}@{hostname}")
         return cmd
 
-    async def _run_ssh(
-        self, ssh_base: list[str], command: str, logs: list[str]
-    ) -> int:
+    async def _run_ssh(self, ssh_base: list[str], command: str, logs: list[str]) -> int:
         """Execute a command over SSH and capture output."""
         full_cmd = ssh_base + [command]
         proc = await asyncio.create_subprocess_exec(
@@ -214,9 +217,7 @@ echo "Docker Compose: $(docker compose version)"
 """
         return await self._run_ssh(ssh_base, f"bash -c {shlex.quote(install_script)}", logs)
 
-    async def _deploy_services(
-        self, ssh_base: list[str], services: list[str], logs: list[str]
-    ) -> int:
+    async def _deploy_services(self, ssh_base: list[str], services: list[str], logs: list[str]) -> int:
         """Deploy Spectra services via Docker Compose on the remote server."""
         svc_list = " ".join(shlex.quote(s) for s in services)
         deploy_script = f"""set -e
@@ -226,7 +227,7 @@ cd /opt/spectra
 if [ -f docker-compose.yml ]; then
     docker compose pull --ignore-pull-failures 2>/dev/null || true
     docker compose up -d --remove-orphans {svc_list}
-    echo "Services deployed: {', '.join(services)}"
+    echo "Services deployed: {", ".join(services)}"
 else
     echo "WARNING: No docker-compose.yml found at /opt/spectra. Upload config first."
 fi

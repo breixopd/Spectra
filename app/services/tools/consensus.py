@@ -36,9 +36,7 @@ async def perform_consensus_check(
     )
 
     if vote_result.status != "approved":
-        mission.log(
-            f"[REJECTED] Action blocked by consensus: {vote_result.escalation_reason}"
-        )
+        mission.log(f"[REJECTED] Action blocked by consensus: {vote_result.escalation_reason}")
         return False
 
     mission.log("[APPROVED] Action validated by consensus")

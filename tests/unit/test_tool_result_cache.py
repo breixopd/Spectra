@@ -122,8 +122,7 @@ class TestCacheSet:
         mock_ctx.__aexit__ = AsyncMock(return_value=False)
 
         with patch(PATCH_SESSION_MAKER, return_value=mock_ctx):
-            await cache.set("nmap", "10.0.0.1", {"findings": []},
-                            ttl=timedelta(minutes=30))
+            await cache.set("nmap", "10.0.0.1", {"findings": []}, ttl=timedelta(minutes=30))
 
         call_args = mock_session.execute.call_args
         params = call_args[0][1]

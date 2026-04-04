@@ -35,7 +35,9 @@ def _validate_toml_value(value: str, field_name: str) -> str:
     if not value:
         return ""
     if not _TOML_SAFE_VALUE_RE.fullmatch(value):
-        raise ValueError(f"Invalid {field_name}: model names may only contain letters, digits, dot, underscore, slash, and hyphen")
+        raise ValueError(
+            f"Invalid {field_name}: model names may only contain letters, digits, dot, underscore, slash, and hyphen"
+        )
     return value
 
 
@@ -121,11 +123,13 @@ async def tz_functions(
                 data = resp.json()
                 functions = []
                 for name, config in data.get("functions", {}).items():
-                    functions.append({
-                        "name": name,
-                        "type": config.get("type", "chat"),
-                        "variant_count": len(config.get("variants", {})),
-                    })
+                    functions.append(
+                        {
+                            "name": name,
+                            "type": config.get("type", "chat"),
+                            "variant_count": len(config.get("variants", {})),
+                        }
+                    )
                 return {"functions": functions}
     except (httpx.HTTPError, OSError) as e:
         logger.warning("Failed to fetch TZ functions: %s", e)

@@ -15,9 +15,9 @@ import hashlib
 import json
 import logging
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-UTC = timezone.utc
+UTC = UTC
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 

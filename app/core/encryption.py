@@ -208,6 +208,7 @@ class EncryptedString(TypeDecorator):
             return value  # already encrypted, leave it
         try:
             from app.core.security import encrypt_byok_key
+
             return encrypt_byok_key(value)
         except Exception:
             return value
@@ -217,6 +218,7 @@ class EncryptedString(TypeDecorator):
             return None
         try:
             from app.core.security import decrypt_byok_key
+
             return decrypt_byok_key(value)
         except Exception:
             return value  # fallback: return raw (may be unencrypted legacy value)

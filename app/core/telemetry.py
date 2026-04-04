@@ -128,16 +128,12 @@ class TelemetryCollector:
 
         # Cleanup expired traces
         trace_cutoff = now.timestamp() - self._trace_ttl_seconds
-        valid_traces = [
-            t for t in self._traces if t.start_time.timestamp() > trace_cutoff
-        ]
+        valid_traces = [t for t in self._traces if t.start_time.timestamp() > trace_cutoff]
         self._traces = deque(valid_traces, maxlen=self._max_traces)
 
         # Cleanup expired metrics
         metric_cutoff = now.timestamp() - self._metric_ttl_seconds
-        valid_metrics = [
-            m for m in self._metrics if m.timestamp.timestamp() > metric_cutoff
-        ]
+        valid_metrics = [m for m in self._metrics if m.timestamp.timestamp() > metric_cutoff]
         self._metrics = deque(valid_metrics, maxlen=self._max_metrics)
 
     def _generate_id(self) -> str:
@@ -167,9 +163,7 @@ class TelemetryCollector:
         )
         return span
 
-    def end_span(
-        self, span: SpanData, status: str = "ok", error: str | None = None
-    ) -> None:
+    def end_span(self, span: SpanData, status: str = "ok", error: str | None = None) -> None:
         """End a span and record it."""
         span.end_time = datetime.now()
         span.duration_ms = (span.end_time - span.start_time).total_seconds() * 1000
@@ -215,9 +209,7 @@ class TelemetryCollector:
             self._metrics.popleft()
 
         # Update aggregates
-        key = (
-            f"{name}:{','.join(f'{k}={v}' for k, v in sorted((labels or {}).items()))}"
-        )
+        key = f"{name}:{','.join(f'{k}={v}' for k, v in sorted((labels or {}).items()))}"
 
         if metric_type == "counter":
             self._counters[key] = self._counters.get(key, 0) + value
@@ -231,21 +223,15 @@ class TelemetryCollector:
             if len(self._histograms[key]) > 1000:
                 self._histograms[key] = self._histograms[key][-1000:]
 
-    def increment_counter(
-        self, name: str, value: float = 1, labels: dict[str, str] | None = None
-    ) -> None:
+    def increment_counter(self, name: str, value: float = 1, labels: dict[str, str] | None = None) -> None:
         """Increment a counter metric."""
         self.record_metric(name, value, labels, "counter")
 
-    def set_gauge(
-        self, name: str, value: float, labels: dict[str, str] | None = None
-    ) -> None:
+    def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """Set a gauge metric."""
         self.record_metric(name, value, labels, "gauge")
 
-    def observe_histogram(
-        self, name: str, value: float, labels: dict[str, str] | None = None
-    ) -> None:
+    def observe_histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """Record a histogram observation."""
         self.record_metric(name, value, labels, "histogram")
 
@@ -369,14 +355,8 @@ class TelemetryCollector:
 
     def get_overview_stats(self) -> dict[str, Any]:
         """Get high-level statistics."""
-        avg_latency = (
-            self._total_latency / self._request_count if self._request_count > 0 else 0
-        )
-        error_rate = (
-            self._error_count / self._request_count * 100
-            if self._request_count > 0
-            else 0
-        )
+        avg_latency = self._total_latency / self._request_count if self._request_count > 0 else 0
+        error_rate = self._error_count / self._request_count * 100 if self._request_count > 0 else 0
 
         # Get latency distribution from traces
         # Convert deque to list for slicing
@@ -390,9 +370,7 @@ class TelemetryCollector:
                 "p50_ms": round(sorted_latencies[int(n * 0.5)], 2),
                 "p90_ms": round(sorted_latencies[int(n * 0.9)], 2),
                 "p99_ms": round(
-                    sorted_latencies[int(n * 0.99)]
-                    if n >= 100
-                    else sorted_latencies[-1],
+                    sorted_latencies[int(n * 0.99)] if n >= 100 else sorted_latencies[-1],
                     2,
                 ),
             }
@@ -404,9 +382,7 @@ class TelemetryCollector:
             "avg_latency_ms": round(avg_latency, 2),
             "latency_percentiles": latency_stats,
             "active_services": len(self._service_status),
-            "healthy_services": sum(
-                1 for s in self._service_status.values() if s.get("healthy")
-            ),
+            "healthy_services": sum(1 for s in self._service_status.values() if s.get("healthy")),
             "total_traces": len(self._traces),
             "total_metrics": len(self._metrics),
         }
@@ -416,9 +392,7 @@ class TelemetryCollector:
         spans = [t for t in self._traces if t.trace_id == trace_id]
         return [s.to_dict() for s in spans]
 
-    def get_slow_operations(
-        self, threshold_ms: float = 1000, limit: int = 20
-    ) -> list[dict[str, Any]]:
+    def get_slow_operations(self, threshold_ms: float = 1000, limit: int = 20) -> list[dict[str, Any]]:
         """Get slowest operations above threshold."""
         slow = [t for t in self._traces if t.duration_ms >= threshold_ms]
         slow.sort(key=lambda x: x.duration_ms, reverse=True)
@@ -446,48 +420,60 @@ class TelemetryCollector:
 
         for key, value in self._counters.items():
             name = key.split(":")[0]
-            otlp_metrics.append({
-                "name": name,
-                "sum": {
-                    "dataPoints": [{
-                        "asDouble": value,
-                        "timeUnixNano": str(now_ns),
-                        "isMonotonic": True,
-                        "aggregationTemporality": 2,
-                    }],
-                },
-            })
+            otlp_metrics.append(
+                {
+                    "name": name,
+                    "sum": {
+                        "dataPoints": [
+                            {
+                                "asDouble": value,
+                                "timeUnixNano": str(now_ns),
+                                "isMonotonic": True,
+                                "aggregationTemporality": 2,
+                            }
+                        ],
+                    },
+                }
+            )
 
         for key, values in self._histograms.items():
             name = key.split(":")[0]
             if not values:
                 continue
             sorted_v = sorted(values)
-            otlp_metrics.append({
-                "name": name,
-                "histogram": {
-                    "dataPoints": [{
-                        "count": str(len(sorted_v)),
-                        "sum": sum(sorted_v),
-                        "min": sorted_v[0],
-                        "max": sorted_v[-1],
-                        "timeUnixNano": str(now_ns),
-                        "aggregationTemporality": 2,
-                    }],
-                },
-            })
+            otlp_metrics.append(
+                {
+                    "name": name,
+                    "histogram": {
+                        "dataPoints": [
+                            {
+                                "count": str(len(sorted_v)),
+                                "sum": sum(sorted_v),
+                                "min": sorted_v[0],
+                                "max": sorted_v[-1],
+                                "timeUnixNano": str(now_ns),
+                                "aggregationTemporality": 2,
+                            }
+                        ],
+                    },
+                }
+            )
 
         for key, value in self._gauges.items():
             name = key.split(":")[0]
-            otlp_metrics.append({
-                "name": name,
-                "gauge": {
-                    "dataPoints": [{
-                        "asDouble": value,
-                        "timeUnixNano": str(now_ns),
-                    }],
-                },
-            })
+            otlp_metrics.append(
+                {
+                    "name": name,
+                    "gauge": {
+                        "dataPoints": [
+                            {
+                                "asDouble": value,
+                                "timeUnixNano": str(now_ns),
+                            }
+                        ],
+                    },
+                }
+            )
 
         # --- traces ---
         otlp_spans: list[dict[str, Any]] = []
@@ -499,10 +485,7 @@ class TelemetryCollector:
                 "kind": 1,  # SPAN_KIND_INTERNAL
                 "startTimeUnixNano": str(int(span.start_time.timestamp() * 1e9)),
                 "status": {"code": 2 if span.status == "error" else 1},
-                "attributes": [
-                    {"key": k, "value": {"stringValue": str(v)}}
-                    for k, v in span.attributes.items()
-                ],
+                "attributes": [{"key": k, "value": {"stringValue": str(v)}} for k, v in span.attributes.items()],
             }
             if span.end_time:
                 otlp_span["endTimeUnixNano"] = str(int(span.end_time.timestamp() * 1e9))
@@ -511,38 +494,41 @@ class TelemetryCollector:
             otlp_spans.append(otlp_span)
 
         return {
-            "resourceMetrics": [{
-                "resource": resource,
-                "scopeMetrics": [{
-                    "scope": {"name": "spectra.telemetry"},
-                    "metrics": otlp_metrics,
-                }],
-            }],
-            "resourceSpans": [{
-                "resource": resource,
-                "scopeSpans": [{
-                    "scope": {"name": "spectra.telemetry"},
-                    "spans": otlp_spans,
-                }],
-            }],
+            "resourceMetrics": [
+                {
+                    "resource": resource,
+                    "scopeMetrics": [
+                        {
+                            "scope": {"name": "spectra.telemetry"},
+                            "metrics": otlp_metrics,
+                        }
+                    ],
+                }
+            ],
+            "resourceSpans": [
+                {
+                    "resource": resource,
+                    "scopeSpans": [
+                        {
+                            "scope": {"name": "spectra.telemetry"},
+                            "spans": otlp_spans,
+                        }
+                    ],
+                }
+            ],
         }
 
     def get_saas_metrics(self) -> dict[str, Any]:
         """Aggregate key SaaS KPIs from existing collected data."""
         # Active users from auth counters
-        active_users = sum(
-            v for k, v in self._counters.items()
-            if k.startswith("auth.")
-        )
+        active_users = sum(v for k, v in self._counters.items() if k.startswith("auth."))
 
         # Mission throughput
         missions_started = sum(
-            v for k, v in self._counters.items()
-            if "mission_events_total" in k and "event=started" in k
+            v for k, v in self._counters.items() if "mission_events_total" in k and "event=started" in k
         )
         missions_completed = sum(
-            v for k, v in self._counters.items()
-            if "mission_events_total" in k and "event=completed" in k
+            v for k, v in self._counters.items() if "mission_events_total" in k and "event=completed" in k
         )
 
         # API error rates by endpoint path

@@ -14,14 +14,14 @@ from .helpers import _run_command
 logger = logging.getLogger(__name__)
 
 # Allowlist pattern: letters, digits, underscore, hyphen, forward slash, dot only.
-_SAFE_PATH_RE = re.compile(r'^[a-zA-Z0-9_\-/\.]+$')
+_SAFE_PATH_RE = re.compile(r"^[a-zA-Z0-9_\-/\.]+$")
 # Safe config name (no path separators)
-_SAFE_NAME_RE = re.compile(r'^[a-zA-Z0-9_\-]+$')
+_SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
 
 def _validate_config_path(path: str) -> bool:
     """Return True if path contains only safe characters and has no path traversal."""
-    return bool(_SAFE_PATH_RE.match(path)) and '..' not in path
+    return bool(_SAFE_PATH_RE.match(path)) and ".." not in path
 
 
 def _validate_config_name(name: str) -> bool:
@@ -125,9 +125,7 @@ async def vpn_status_job() -> dict[str, Any]:
             result["interfaces"].append("tun0")
 
         if result["connected"]:
-            rc_ip, out_ip, _ = await _run_command(
-                ["curl", "-s", "--max-time", "5", "https://ifconfig.me"], 10
-            )
+            rc_ip, out_ip, _ = await _run_command(["curl", "-s", "--max-time", "5", "https://ifconfig.me"], 10)
             result["public_ip"] = out_ip.strip() if rc_ip == 0 else "unknown"
 
     except (OSError, RuntimeError, ValueError) as e:

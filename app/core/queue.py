@@ -2,9 +2,9 @@ import asyncio
 import logging
 import re
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-UTC = timezone.utc
+UTC = UTC
 from typing import Any
 
 from sqlalchemy import select, update

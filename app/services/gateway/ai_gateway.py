@@ -27,8 +27,7 @@ class AIGateway:
         else:
             self.client = None
             logger.warning(
-                "AI Gateway: AI_SERVICE_URL is not set — AI calls will fail. "
-                "Set AI_SERVICE_URL to the ai-svc endpoint."
+                "AI Gateway: AI_SERVICE_URL is not set — AI calls will fail. Set AI_SERVICE_URL to the ai-svc endpoint."
             )
 
     def _require_client(self) -> GatewayClient:

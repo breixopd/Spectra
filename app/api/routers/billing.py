@@ -21,8 +21,8 @@ router = APIRouter(prefix="/billing", tags=["Billing"])
 async def list_available_plans(session: AsyncSession = Depends(get_async_session)):
     """List all active plans available for subscription."""
     plans = (
-        await session.execute(select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order))
-    ).scalars().all()
+        (await session.execute(select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order))).scalars().all()
+    )
     return [
         {
             "id": str(p.id),

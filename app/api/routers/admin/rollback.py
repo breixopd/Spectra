@@ -1,4 +1,5 @@
 """Admin rollback endpoints."""
+
 from __future__ import annotations
 
 import logging
@@ -45,9 +46,7 @@ async def apply_rollback(
 ):
     """Roll back a specific snapshot. Admin only."""
     try:
-        before_state = await rollback_snapshot(
-            session, snapshot_id, str(admin.id), request
-        )
+        before_state = await rollback_snapshot(session, snapshot_id, str(admin.id), request)
         # audit_log_event already commits; this is a safe no-op if nothing remains
         await session.commit()
         return {"status": "rolled_back", "restored": before_state}

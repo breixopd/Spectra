@@ -38,8 +38,10 @@ from app.repositories.mission import MissionRepository
 from app.services.mission import mission_manager
 from app.services.mission.output_model import (
     get_mission_finding_counts,
-    get_mission_findings as get_mission_output_findings,
     get_mission_summary_dict,
+)
+from app.services.mission.output_model import (
+    get_mission_findings as get_mission_output_findings,
 )
 from app.services.system.audit import log_event as audit_log_event
 
@@ -54,9 +56,7 @@ router = APIRouter(prefix="/missions", tags=["Missions"])
 class SteerMissionRequest(BaseModel):
     """Schema for steering a mission."""
 
-    action: str = Field(
-        ..., description="Steering action: skip_phase, prioritize_target, focus_vuln"
-    )
+    action: str = Field(..., description="Steering action: skip_phase, prioritize_target, focus_vuln")
     phase: str | None = Field(None, description="Phase to skip (for skip_phase action)")
     target: str | None = Field(None, description="Target to prioritize")
     vulnerability: str | None = Field(None, description="Vulnerability to focus on")
@@ -68,6 +68,7 @@ async def get_scan_presets(
 ) -> list[dict[str, Any]]:
     """Get available scan presets."""
     from app.services.mission.presets import SCAN_PRESETS
+
     return SCAN_PRESETS
 
 
@@ -95,15 +96,17 @@ async def get_missions_summary(
     for m in db_missions:
         counts = get_mission_finding_counts(m)
 
-        missions.append({
-            "id": str(m.id),
-            "target": m.target,
-            "directive": m.directive,
-            "status": m.status,
-            "created_at": m.created_at.isoformat() if m.created_at else None,
-            "updated_at": m.updated_at.isoformat() if m.updated_at else None,
-            "findings": counts,
-        })
+        missions.append(
+            {
+                "id": str(m.id),
+                "target": m.target,
+                "directive": m.directive,
+                "status": m.status,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+                "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+                "findings": counts,
+            }
+        )
         for sev in ("critical", "high", "medium", "low", "info"):
             totals[sev] += counts[sev]
         totals["total"] += counts["total"]
@@ -186,9 +189,7 @@ async def get_attack_coverage(
         memory = get_memory(str(_current_user.id))
         findings = []
         for lesson in memory.tool_lessons[-50:]:
-            findings.append(
-                {"tool_name": lesson.tool_id, "source": "tool_execution"}
-            )
+            findings.append({"tool_name": lesson.tool_id, "source": "tool_execution"})
         return get_attack_summary(findings)
     except (OSError, RuntimeError, ValueError):
         return {"tactics": {}, "total_techniques": 0}
@@ -257,9 +258,7 @@ async def start_mission(
         tools_run=mission.tools_run or [],
         tool_executions=getattr(mission, "tool_executions", []),
         report_path=getattr(mission, "report_path", None),
-        attack_surface=mission.attack_surface.get_summary()
-        if mission.attack_surface
-        else None,
+        attack_surface=mission.attack_surface.get_summary() if mission.attack_surface else None,
     )
 
 
@@ -415,9 +414,7 @@ async def download_pdf_report(
     return FastAPIResponse(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f"attachment; filename=spectra_report_{mission_id[:8]}.pdf"
-        },
+        headers={"Content-Disposition": f"attachment; filename=spectra_report_{mission_id[:8]}.pdf"},
     )
 
 
@@ -476,6 +473,7 @@ async def export_mission_json(
         if not password:
             raise HTTPException(status_code=400, detail="X-Export-Password header required when encrypted=true")
         from app.core.encryption import encrypt_data_with_password
+
         payload = encrypt_data_with_password(payload, password)
         return FastAPIResponse(
             content=payload,
@@ -554,9 +552,7 @@ async def get_mission(
             tools_run=mission.tools_run or [],
             tool_executions=getattr(mission, "tool_executions", []),
             report_path=getattr(mission, "report_path", None),
-            attack_surface=mission.attack_surface.get_summary()
-            if mission.attack_surface
-            else None,
+            attack_surface=mission.attack_surface.get_summary() if mission.attack_surface else None,
         )
 
     # Try DB
@@ -599,8 +595,16 @@ async def delete_mission(
     check_resource_owner(mission, _current_user, "mission")
 
     active_statuses = {
-        "created", "initializing", "scoping", "planning", "running",
-        "scanning", "analyzing", "executing", "exploiting", "paused",
+        "created",
+        "initializing",
+        "scoping",
+        "planning",
+        "running",
+        "scanning",
+        "analyzing",
+        "executing",
+        "exploiting",
+        "paused",
     }
     if mission.status in active_statuses:
         raise HTTPException(
@@ -744,9 +748,7 @@ async def diff_missions(
 
     new_db = await repo.get_by_id(other_mission_id)
     if not new_db:
-        raise HTTPException(
-            status_code=404, detail=f"Mission {other_mission_id} not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Mission {other_mission_id} not found")
     check_resource_owner(new_db, _current_user, "mission")
 
     old_dict = {
@@ -864,16 +866,20 @@ async def approve_action(
 
     from app.core.websocket import manager
 
-    await manager.broadcast_to_room_json(f"mission:{mission_id}", {
-        "type": "action_approval",
-        "action_id": body.action_id,
-        "approved": body.approved,
-    })
+    await manager.broadcast_to_room_json(
+        f"mission:{mission_id}",
+        {
+            "type": "action_approval",
+            "action_id": body.action_id,
+            "approved": body.approved,
+        },
+    )
     return ActionApprovalResponse(status="approval_sent", action_id=body.action_id, approved=body.approved)
 
 
 class MissionFeedback(BaseModel):
     """User feedback for a completed mission."""
+
     rating: int = Field(..., ge=1, le=5, description="1-5 star rating")
     comment: str | None = Field(None, max_length=1000, description="Optional feedback comment")
 

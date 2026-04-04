@@ -5,8 +5,10 @@ Audit Log model for security event tracking.
 try:
     from enum import StrEnum
 except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+
     class StrEnum(str, __import__("enum").Enum):
         pass
+
 
 from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -62,7 +64,9 @@ class AuditEventType(StrEnum):
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
-    user_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     event_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)

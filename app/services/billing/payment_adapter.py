@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 
 from sqlalchemy import select
 
@@ -110,22 +110,15 @@ class StripePaymentAdapter(PaymentAdapter):
             import stripe as _stripe
         except ImportError as exc:
             raise ImportError(
-                "The 'stripe' package is required for Stripe payments. "
-                "Install it with: pip install stripe"
+                "The 'stripe' package is required for Stripe payments. Install it with: pip install stripe"
             ) from exc
         from app.core.config import get_settings
 
         _settings = get_settings()
         self._stripe = _stripe
-        self._stripe.api_key = (
-            _settings.STRIPE_SECRET_KEY.get_secret_value()
-            if _settings.STRIPE_SECRET_KEY
-            else ""
-        )
+        self._stripe.api_key = _settings.STRIPE_SECRET_KEY.get_secret_value() if _settings.STRIPE_SECRET_KEY else ""
         self._webhook_secret = (
-            _settings.STRIPE_WEBHOOK_SECRET.get_secret_value()
-            if _settings.STRIPE_WEBHOOK_SECRET
-            else ""
+            _settings.STRIPE_WEBHOOK_SECRET.get_secret_value() if _settings.STRIPE_WEBHOOK_SECRET else ""
         )
 
     @property
@@ -155,14 +148,10 @@ class StripePaymentAdapter(PaymentAdapter):
 
     async def get_subscription_status(self, subscription_id: str) -> str:
         loop = asyncio.get_running_loop()
-        sub = await loop.run_in_executor(
-            None, lambda: self._stripe.Subscription.retrieve(subscription_id)
-        )
+        sub = await loop.run_in_executor(None, lambda: self._stripe.Subscription.retrieve(subscription_id))
         return sub.get("status", "unknown")
 
-    async def create_checkout_session(
-        self, user_id: str, plan_id: str, success_url: str, cancel_url: str
-    ) -> str:
+    async def create_checkout_session(self, user_id: str, plan_id: str, success_url: str, cancel_url: str) -> str:
         """Create a Stripe Checkout session URL — user is redirected to Stripe."""
         async with async_session_maker() as session:
             plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
@@ -170,14 +159,17 @@ class StripePaymentAdapter(PaymentAdapter):
                 raise ValueError("Plan has no Stripe price configured")
 
         loop = asyncio.get_running_loop()
-        checkout = await loop.run_in_executor(None, lambda: self._stripe.checkout.Session.create(
-            mode="subscription",
-            line_items=[{"price": plan.stripe_price_id, "quantity": 1}],
-            success_url=success_url,
-            cancel_url=cancel_url,
-            client_reference_id=user_id,
-            metadata={"plan_id": plan_id, "user_id": user_id},
-        ))
+        checkout = await loop.run_in_executor(
+            None,
+            lambda: self._stripe.checkout.Session.create(
+                mode="subscription",
+                line_items=[{"price": plan.stripe_price_id, "quantity": 1}],
+                success_url=success_url,
+                cancel_url=cancel_url,
+                client_reference_id=user_id,
+                metadata={"plan_id": plan_id, "user_id": user_id},
+            ),
+        )
         return checkout.url
 
     async def handle_webhook(self, payload: bytes, signature: str) -> dict:
@@ -207,10 +199,13 @@ class StripePaymentAdapter(PaymentAdapter):
 
         base_url = get_settings().PLATFORM_BASE_URL or "http://localhost:5000"
         loop = asyncio.get_running_loop()
-        portal = await loop.run_in_executor(None, lambda: self._stripe.billing_portal.Session.create(
-            customer=sub.external_customer_id,
-            return_url=f"{base_url}/profile?section=plan",
-        ))
+        portal = await loop.run_in_executor(
+            None,
+            lambda: self._stripe.billing_portal.Session.create(
+                customer=sub.external_customer_id,
+                return_url=f"{base_url}/profile?section=plan",
+            ),
+        )
         return portal.url
 
 
@@ -226,11 +221,7 @@ class CryptoPaymentAdapter(PaymentAdapter):
 
         _settings = get_settings()
         self._provider_url = _settings.CRYPTO_PAYMENT_URL
-        self._api_key = (
-            _settings.CRYPTO_PAYMENT_API_KEY.get_secret_value()
-            if _settings.CRYPTO_PAYMENT_API_KEY
-            else ""
-        )
+        self._api_key = _settings.CRYPTO_PAYMENT_API_KEY.get_secret_value() if _settings.CRYPTO_PAYMENT_API_KEY else ""
 
     @property
     def provider_name(self) -> str:
@@ -242,9 +233,7 @@ class CryptoPaymentAdapter(PaymentAdapter):
     async def create_subscription(self, customer_id: str, plan_external_id: str) -> dict:
         return {}  # No recurring billing in crypto
 
-    async def create_checkout_session(
-        self, user_id: str, plan_id: str, success_url: str, cancel_url: str
-    ) -> str:
+    async def create_checkout_session(self, user_id: str, plan_id: str, success_url: str, cancel_url: str) -> str:
         import httpx
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -265,9 +254,7 @@ class CryptoPaymentAdapter(PaymentAdapter):
         import hmac
         import json
 
-        expected = hmac.new(
-            self._api_key.encode(), payload, hashlib.sha256
-        ).hexdigest()
+        expected = hmac.new(self._api_key.encode(), payload, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, signature):
             raise ValueError("Invalid webhook signature")
         data = json.loads(payload)
@@ -300,9 +287,7 @@ class ManualPaymentAdapter(PaymentAdapter):
     async def create_subscription(self, customer_id: str, plan_external_id: str) -> dict:
         return {}
 
-    async def create_checkout_session(
-        self, user_id: str, plan_id: str, success_url: str, cancel_url: str
-    ) -> str:
+    async def create_checkout_session(self, user_id: str, plan_id: str, success_url: str, cancel_url: str) -> str:
         # No checkout — admin assigns plan directly via admin panel
         return ""
 
@@ -455,17 +440,13 @@ class PaymentService:
             if subscription_id:
                 existing = (
                     await session.execute(
-                        select(Subscription).where(
-                            Subscription.external_subscription_id == subscription_id
-                        )
+                        select(Subscription).where(Subscription.external_subscription_id == subscription_id)
                     )
                 ).scalar_one_or_none()
                 if existing:
                     return False
 
-            user = (
-                await session.execute(select(UserModel).where(UserModel.id == user_id))
-            ).scalar_one_or_none()
+            user = (await session.execute(select(UserModel).where(UserModel.id == user_id))).scalar_one_or_none()
             if user:
                 user.plan_id = plan_id
 

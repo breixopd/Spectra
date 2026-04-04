@@ -104,7 +104,9 @@ class MissionExecutionManager:
             return None
 
     def _setup_cost_tracking(
-        self, mission: Mission, context: AgentContext,
+        self,
+        mission: Mission,
+        context: AgentContext,
     ) -> CostTracker:
         """Initialize and attach cost tracker to all agents."""
         cost_tracker = CostTracker(str(mission.id))
@@ -139,6 +141,7 @@ class MissionExecutionManager:
                 vpn_path = None
                 if getattr(mission, "vpn_config", None):
                     from app.services.tools.vpn import VPNManager
+
                     _vpn_mgr = VPNManager()
                     _local = await _vpn_mgr._download_to_local(mission.vpn_config)
                     if _local:
@@ -147,7 +150,9 @@ class MissionExecutionManager:
                         mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found in S3, skipping VPN")
 
                 sandbox_info = await pool.create(mission.id, vpn_config_path=vpn_path)
-                mission.log(f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})")
+                mission.log(
+                    f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})"
+                )
                 return sandbox_info
             else:
                 mission.log("[WARN] Sandbox pool unavailable — tools will use default queue")
@@ -209,14 +214,8 @@ class MissionExecutionManager:
         try:
             from app.services.notifications import notify_mission_completed
 
-            critical = sum(
-                1
-                for f in mission.findings
-                if str(f.get("severity", "")).lower() == "critical"
-            )
-            await notify_mission_completed(
-                mission.target, len(mission.findings), critical
-            )
+            critical = sum(1 for f in mission.findings if str(f.get("severity", "")).lower() == "critical")
+            await notify_mission_completed(mission.target, len(mission.findings), critical)
         except (ImportError, OSError, ConnectionError, RuntimeError) as e:
             logger.warning("Failed to send mission completion notification: %s", e)
 
@@ -230,9 +229,7 @@ class MissionExecutionManager:
                 from app.services.email import EmailService
 
                 async with async_session_maker() as db_session:
-                    result = await db_session.execute(
-                        select(User).where(User.id == mission.user_id)
-                    )
+                    result = await db_session.execute(select(User).where(User.id == mission.user_id))
                     owner = result.scalar_one_or_none()
                 if owner:
                     _settings = get_settings()
@@ -266,6 +263,7 @@ class MissionExecutionManager:
         if getattr(mission, "vpn_config", None):
             try:
                 from app.services.tools.vpn import VPNManager
+
                 vpn_mgr = VPNManager()
                 await vpn_mgr.disconnect(str(mission.vpn_config))
                 mission.log(f"[VPN] Disconnected '{mission.vpn_config}'")
@@ -275,9 +273,7 @@ class MissionExecutionManager:
         try:
             shell_manager.notify_mission_complete(str(mission.id))
         except (OSError, RuntimeError) as e:
-            logger.error(
-                f"Failed to notify shell manager of mission completion: {e}"
-            )
+            logger.error(f"Failed to notify shell manager of mission completion: {e}")
 
         cleanup_mission_workspace(mission.id)
 
@@ -300,18 +296,16 @@ class MissionExecutionManager:
 
         self._broadcast_state("scope_agent", "idle")
 
-        if (
-            not scope_result.success
-            and scope_result.action
-            and not scope_result.action.targets
-            and mission.target
-        ):
+        if not scope_result.success and scope_result.action and not scope_result.action.targets and mission.target:
             from app.services.ai.agents.scope import TargetSpec
-            scope_result.action.targets = [TargetSpec(
-                value=mission.target,
-                target_type="hostname",
-                notes="Direct target from mission input",
-            )]
+
+            scope_result.action.targets = [
+                TargetSpec(
+                    value=mission.target,
+                    target_type="hostname",
+                    notes="Direct target from mission input",
+                )
+            ]
             scope_result.success = True
             scope_result.error = None
 
@@ -321,9 +315,7 @@ class MissionExecutionManager:
         target_count = len(scope_result.action.targets)  # type: ignore
         mission.log(f"Scope defined: {target_count} targets")
 
-    async def _run_planning_phase(
-        self, mission: Mission, context: AgentContext
-    ) -> None:
+    async def _run_planning_phase(self, mission: Mission, context: AgentContext) -> None:
         """Run mission planning phase with quality gate validation."""
         mission.log("Generating mission plan...")
 
@@ -378,32 +370,28 @@ class MissionExecutionManager:
         if vote_result.status != "approved":
             raise RuntimeError(f"Plan rejected: {vote_result.escalation_reason}")
 
-        mission.log(
-            f"[APPROVED] Plan validated (Confidence: {vote_result.average_confidence:.2f})"
-        )
+        mission.log(f"[APPROVED] Plan validated (Confidence: {vote_result.average_confidence:.2f})")
         mission.plan = plan_action
 
         task_count = len(mission.plan.tasks)
         mission.log(f"Plan created: {task_count} tasks")
-        self._broadcast_state(
-            "mission_controller", "running", plan=f"{task_count} tasks planned"
-        )
+        self._broadcast_state("mission_controller", "running", plan=f"{task_count} tasks planned")
 
-    async def _execute_mission_tasks(
-        self, mission: Mission, context: AgentContext
-    ) -> None:
+    async def _execute_mission_tasks(self, mission: Mission, context: AgentContext) -> None:
         """Execute all mission tasks with dynamic plan adaptation."""
         await execute_mission_tasks(
-            mission, context,
-            self.executor, self.mission_controller, self.consensus,
-            self.steering, self.lifecycle,
+            mission,
+            context,
+            self.executor,
+            self.mission_controller,
+            self.consensus,
+            self.steering,
+            self.lifecycle,
         )
 
     def _broadcast_state(self, agent_id: str, status: str, **kwargs: Any) -> None:
         """Broadcast agent state."""
-        self._broadcast(
-            "agent_state", {"agent_id": agent_id, "status": status, **kwargs}
-        )
+        self._broadcast("agent_state", {"agent_id": agent_id, "status": status, **kwargs})
 
     def _broadcast(self, msg_type: str, data: Any) -> None:
         """Broadcast to WebSocket clients via EventBus."""

@@ -4,9 +4,8 @@ Validates that the http middleware in app.main rejects oversized
 requests with 413 and passes normal-sized requests through.
 """
 
-from unittest.mock import MagicMock
-
 import json
+from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio

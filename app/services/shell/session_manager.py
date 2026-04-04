@@ -258,9 +258,7 @@ class ShellSessionManager:
             try:
                 container = self._get_sandbox_container(mission_id)
                 if container is None:
-                    logger.error(
-                        "No sandbox container found for mission %s — falling back to direct", mission_id[:8]
-                    )
+                    logger.error("No sandbox container found for mission %s — falling back to direct", mission_id[:8])
                     self.listeners.pop(port, None)
                     # Fallback: start a direct listener instead
                     self._start_direct_listener(session_id, target, mission_id, port)

@@ -58,11 +58,7 @@ class TestPublicStatusApi:
         from app.api.dependencies import get_current_active_user
         from app.main import app
 
-        routes = [
-            r
-            for r in app.routes
-            if isinstance(r, APIRoute) and r.path == "/api/v1/system/public-status"
-        ]
+        routes = [r for r in app.routes if isinstance(r, APIRoute) and r.path == "/api/v1/system/public-status"]
         assert routes, "Route not found"
         route = routes[0]
         dep_callables = [d.call for d in route.dependant.dependencies]

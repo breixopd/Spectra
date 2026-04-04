@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 
 from sqlalchemy import select
 
@@ -67,6 +67,7 @@ class UsageTracker:
             # Use an atomic server-side increment to avoid read-modify-write races.
             # INSERT ... ON CONFLICT DO UPDATE SET col = col + amount
             from sqlalchemy.dialects.postgresql import insert as pg_insert
+
             stmt = (
                 pg_insert(UsageRecord)
                 .values(
@@ -141,14 +142,18 @@ class UsageTracker:
             async with async_session_maker() as session:
                 from sqlalchemy import update
 
-                stmt = update(UsageRecord).where(
-                    UsageRecord.period_type == "daily",
-                    UsageRecord.period_start == _period_start("daily"),
-                ).values(
-                    api_requests=0,
-                    missions_started=0,
-                    sandbox_minutes=0,
-                    llm_tokens_used=0,
+                stmt = (
+                    update(UsageRecord)
+                    .where(
+                        UsageRecord.period_type == "daily",
+                        UsageRecord.period_start == _period_start("daily"),
+                    )
+                    .values(
+                        api_requests=0,
+                        missions_started=0,
+                        sandbox_minutes=0,
+                        llm_tokens_used=0,
+                    )
                 )
                 await session.execute(stmt)
                 await session.commit()

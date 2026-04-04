@@ -68,12 +68,9 @@ services:
       - ../config/tensorzero.toml:/app/config/tensorzero.toml:ro
     env_file:
       - ../.env.test
-      - path: ../.env.test.local
-        required: false
     environment:
       TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
       TENSORZERO_CLICKHOUSE_URL: http://clickhouse:8123/tensorzero
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -165,8 +162,6 @@ services:
       dockerfile: docker/Dockerfile.app
     env_file:
       - ../.env.test
-      - path: ../.env.test.local
-        required: false
     environment:
       # Override database for container network
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
@@ -210,8 +205,6 @@ services:
       dockerfile: docker/Dockerfile.app
     env_file:
       - ../.env.test
-      - path: ../.env.test.local
-        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
@@ -281,8 +274,6 @@ services:
       - NET_ADMIN
     env_file:
       - ../.env.test
-      - path: ../.env.test.local
-        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
@@ -338,8 +329,6 @@ services:
         python3 -m pytest tests/ -v --tb=short -x --ignore=tests/e2e/ui --ignore=tests/unit --ignore=tests/load --ignore=tests/performance --ignore=tests/soak
     env_file:
       - ../.env.test
-      - path: ../.env.test.local
-        required: false
     environment:
       # Override for test environment
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
@@ -400,8 +389,6 @@ services:
         -m "load or performance or soak" -q --override-ini=addopts=
     env_file:
       - ../.env.test
-      - path: ../.env.test.local
-        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
@@ -460,8 +447,6 @@ services:
         -q --override-ini=addopts=
     env_file:
       - ../.env.test
-      - path: ../.env.test.local
-        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
@@ -497,8 +482,6 @@ services:
         python -m pytest tests/unit/ -q --override-ini=addopts=
     env_file:
       - ../.env.test
-      - path: ../.env.test.local
-        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
@@ -530,8 +513,6 @@ services:
     command: ["tests/e2e/ui/", "-v", "--tb=short", "-x", "--no-cov", "--confcutdir=tests/e2e/ui", "--override-ini=addopts="]
     env_file:
       - ../.env.test
-      - path: ../.env.test.local
-        required: false
     environment:
       - APP_BASE_URL=http://host.docker.internal:15000
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test

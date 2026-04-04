@@ -31,14 +31,14 @@ class TestEscapeHtmlConsolidation:
             if tmpl.exists():
                 content = tmpl.read_text()
                 matches = re.findall(r"function\s+escapeHtml\s*\(", content)
-                assert len(matches) == 0, \
-                    f"{tmpl.name} still has duplicate escapeHtml ({len(matches)} found)"
+                assert len(matches) == 0, f"{tmpl.name} still has duplicate escapeHtml ({len(matches)} found)"
 
     def test_api_js_no_escape_html(self):
         api_js = Path(__file__).resolve().parents[2] / "app" / "static" / "js" / "api.js"
         content = api_js.read_text()
-        assert not re.search(r"function\s+escapeHtml\s*\(", content), \
+        assert not re.search(r"function\s+escapeHtml\s*\(", content), (
             "api.js must not define escapeHtml (consolidated in base.html)"
+        )
 
 
 class TestDashboardXssFix:
@@ -46,15 +46,16 @@ class TestDashboardXssFix:
 
     def test_no_inline_onclick_json(self):
         content = DASHBOARD.read_text()
-        assert "onclick='openFindingDetail(${JSON.stringify" not in content, \
+        assert "onclick='openFindingDetail(${JSON.stringify" not in content, (
             "Dashboard must not use inline onclick with JSON.stringify (XSS risk)"
+        )
 
     def test_uses_data_attribute(self):
         content = DASHBOARD_JS.read_text()
-        assert "data-task-id" in content, \
-            "Dashboard task tree must use data attributes for task identification"
+        assert "data-task-id" in content, "Dashboard task tree must use data attributes for task identification"
 
     def test_uses_event_delegation(self):
         content = DASHBOARD_JS.read_text()
-        assert "task-tree-content" in content and ("addEventListener('click'" in content or 'addEventListener("click"' in content), \
-            "Dashboard must use event delegation for task tree clicks"
+        assert "task-tree-content" in content and (
+            "addEventListener('click'" in content or 'addEventListener("click"' in content
+        ), "Dashboard must use event delegation for task tree clicks"

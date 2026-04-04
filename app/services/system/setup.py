@@ -8,11 +8,10 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.paths import data_path
-
 import app.services.ai.llm as llm_module
 from app.api.schemas import SystemSetupRequest
 from app.core.config import settings
+from app.core.paths import data_path
 from app.core.security import get_password_hash
 from app.models.user import User
 from app.services.ai.llm import close_global_llm_client
@@ -178,9 +177,7 @@ class SystemSetupService:
         if setup_meta:
             await upsert_system_config_values(self.session, setup_meta)
 
-    async def _handle_infrastructure_changes(
-        self, setup_in: SystemSetupRequest
-    ) -> None:
+    async def _handle_infrastructure_changes(self, setup_in: SystemSetupRequest) -> None:
         """Handle infrastructure changes: save config and manage containers."""
         infra_updates = {}
 
@@ -369,8 +366,7 @@ class SystemSetupService:
                 for name in stdout.decode().splitlines():
                     name = name.strip()
                     if name and (
-                        name.endswith(container_name_suffix)
-                        or name.strip("/").endswith(container_name_suffix)
+                        name.endswith(container_name_suffix) or name.strip("/").endswith(container_name_suffix)
                     ):
                         logger.info("Stopping container: %s", name)
                         await asyncio.create_subprocess_exec("docker", "stop", name)

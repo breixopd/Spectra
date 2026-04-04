@@ -186,9 +186,7 @@ async def clear_cache(
     try:
         cleared_count = await cache.delete_pattern(pattern)
 
-        logger.info(
-            "Cleared %d cache keys matching pattern '%s'", cleared_count, pattern
-        )
+        logger.info("Cleared %d cache keys matching pattern '%s'", cleared_count, pattern)
 
         async with async_session_maker() as session:
             await audit_log_event(
@@ -225,9 +223,7 @@ async def clear_cache(
 @router.post("/operations/add")
 async def add_operation(
     operation_id: str = Query(..., description="Unique operation identifier"),
-    operation_type: str = Query(
-        ..., description="Operation type (e.g., installing_tools)"
-    ),
+    operation_type: str = Query(..., description="Operation type (e.g., installing_tools)"),
     description: str = Query(..., description="Human-readable description"),
     _current_user: User = Depends(get_current_superuser),
 ) -> dict[str, Any]:
@@ -261,9 +257,7 @@ async def remove_operation(
         cache = _get_cache()
         removed = False
         if cache:
-            removed = await cache.delete(
-                f"{SystemKeys.OPERATIONS_PREFIX}{operation_id}"
-            )
+            removed = await cache.delete(f"{SystemKeys.OPERATIONS_PREFIX}{operation_id}")
 
         return {
             "success": removed,
@@ -287,9 +281,7 @@ async def remove_operation(
 @router.post("/operations/update-progress")
 async def update_operation_progress(
     operation_id: str = Query(..., description="Operation identifier"),
-    progress: float = Query(
-        ..., ge=0, le=100, description="Progress percentage (0-100)"
-    ),
+    progress: float = Query(..., ge=0, le=100, description="Progress percentage (0-100)"),
     details: str | None = Query(default=None, description="Optional JSON details"),
     _current_user: User = Depends(get_current_superuser),
 ) -> dict[str, Any]:

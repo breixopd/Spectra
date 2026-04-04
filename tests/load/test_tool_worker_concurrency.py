@@ -46,8 +46,4 @@ async def test_concurrent_tool_worker_execution_returns_usable_results() -> None
         assert body["success"] is True
         assert body["exit_code"] == 0
         assert body["command_info"]["base_command"]
-        assert (
-            body["parsed_findings_count"] > 0
-            or bool(body["stdout"].strip())
-            or bool(body["stderr"].strip())
-        ), body
+        assert body["parsed_findings_count"] > 0 or bool(body["stdout"].strip()) or bool(body["stderr"].strip()), body

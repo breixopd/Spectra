@@ -77,7 +77,9 @@ async def _get_user_or_404(session: AsyncSession, user_id: str) -> User:
 
 async def _active_superuser_count(session: AsyncSession) -> int:
     result = await session.execute(
-        select(func.count()).select_from(User).where(
+        select(func.count())
+        .select_from(User)
+        .where(
             User.is_superuser.is_(True),
             User.is_active.is_(True),
         )

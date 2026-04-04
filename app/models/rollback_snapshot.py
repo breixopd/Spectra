@@ -1,6 +1,7 @@
 """
 Rollback Snapshot — stores before-state for reversible admin/operator actions.
 """
+
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
@@ -19,29 +20,17 @@ class RollbackSnapshot(Base):
         nullable=False,
         index=True,
     )
-    target_entity_type: Mapped[str] = mapped_column(
-        String(50), nullable=False
-    )  # "user", "mission"
-    target_entity_id: Mapped[str] = mapped_column(
-        String(36), nullable=False, index=True
-    )
-    action: Mapped[str] = mapped_column(
-        String(100), nullable=False
-    )  # human-readable label
-    before_state: Mapped[str] = mapped_column(
-        Text, nullable=False
-    )  # JSON snapshot of before
-    rolled_back: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
-    )
+    target_entity_type: Mapped[str] = mapped_column(String(50), nullable=False)  # "user", "mission"
+    target_entity_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(100), nullable=False)  # human-readable label
+    before_state: Mapped[str] = mapped_column(Text, nullable=False)  # JSON snapshot of before
+    rolled_back: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     rolled_back_by: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    rolled_back_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    rolled_back_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
         return f"<RollbackSnapshot id={self.id} entity={self.target_entity_type}:{self.target_entity_id}>"

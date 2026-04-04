@@ -14,11 +14,10 @@ if TYPE_CHECKING:
 
 from app.core.constants import MAX_HOSTS_DEFAULT
 from app.core.events import events
-from app.services.ai.agents.base import AgentContext
-from app.services.ai.sanitizer import sanitize_for_prompt
-from app.services.ai.agents.base import ParallelToolAction, ToolAction
+from app.services.ai.agents.base import AgentContext, ParallelToolAction, ToolAction
 from app.services.ai.agents.mission_controller import AssessmentPhase, Task
 from app.services.ai.output_intelligence import extract_intelligence
+from app.services.ai.sanitizer import sanitize_for_prompt
 from app.services.mission.executor.analysis import auto_expand_scope
 from app.services.mission.executor.utils import detect_target_type
 from app.services.mission.task_tree import TaskStatus
@@ -137,9 +136,7 @@ class TaskDispatcher:
             mission.log(f"Unknown agent type: {task.agent_type}")
             mission.task_tree.update_status(task_tree_id, TaskStatus.SKIPPED)
 
-    def _get_task_handler(
-        self, agent_type: str
-    ) -> Callable[[Mission, Task, AgentContext], Awaitable[None]] | None:
+    def _get_task_handler(self, agent_type: str) -> Callable[[Mission, Task, AgentContext], Awaitable[None]] | None:
         """Get the handler method for an agent type."""
         handlers = {
             "tool_selector": self._handle_tool_selector,
@@ -194,9 +191,7 @@ class TaskDispatcher:
         # Direct mention check
         for tool in known_tools:
             if tool in desc_lower:
-                logger.debug(
-                    "Found tool '%s' in description: %s", tool, description[:50]
-                )
+                logger.debug("Found tool '%s' in description: %s", tool, description[:50])
                 return tool
 
         return None
@@ -227,13 +222,9 @@ class TaskDispatcher:
             result = await agent.execute(context, selector_input)
 
             if result.success and isinstance(result.action, ParallelToolAction):
-                await self._execute_parallel_selection(
-                    mission, result.action, context
-                )
+                await self._execute_parallel_selection(mission, result.action, context)
             elif result.success and isinstance(result.action, ToolAction):
-                await self._execute_single_selection(
-                    mission, task, result.action, context
-                )
+                await self._execute_single_selection(mission, task, result.action, context)
             else:
                 mission.log(f"Tool selection failed: {result.error}")
 
@@ -273,9 +264,7 @@ class TaskDispatcher:
             tags_filter=task.parameters.get("tags", []),
         )
 
-    def _enrich_context_from_blackboard(
-        self, mission: Mission, context: AgentContext
-    ) -> None:
+    def _enrich_context_from_blackboard(self, mission: Mission, context: AgentContext) -> None:
         """Add blackboard intelligence (creds, ports) to agent context."""
         bb_creds = mission.blackboard.read("credentials")
         bb_ports = mission.blackboard.read("open_ports")
@@ -285,13 +274,13 @@ class TaskDispatcher:
             raw = f"Discovered credentials: {bb_creds[:5]}"
             context.extra_context = (
                 getattr(context, "extra_context", "")
-                + "\n" + sanitize_for_prompt(raw, field_name="blackboard_credentials")
+                + "\n"
+                + sanitize_for_prompt(raw, field_name="blackboard_credentials")
             )
         if bb_ports and isinstance(bb_ports, list):
             raw = f"Discovered open ports: {bb_ports[:20]}"
             context.extra_context = (
-                getattr(context, "extra_context", "")
-                + "\n" + sanitize_for_prompt(raw, field_name="blackboard_ports")
+                getattr(context, "extra_context", "") + "\n" + sanitize_for_prompt(raw, field_name="blackboard_ports")
             )
 
     async def _execute_parallel_selection(
@@ -301,12 +290,8 @@ class TaskDispatcher:
         context: AgentContext,
     ) -> None:
         """Execute parallel tool selection results."""
-        mission.log(
-            f"Parallel execution: {[t.tool_name for t in parallel_action.tools]}"
-        )
-        results = await self._execute_parallel_tools(
-            mission, parallel_action, context
-        )
+        mission.log(f"Parallel execution: {[t.tool_name for t in parallel_action.tools]}")
+        results = await self._execute_parallel_tools(mission, parallel_action, context)
         for r in results:
             tool_name = r.get("tool")
             if tool_name:
@@ -325,9 +310,7 @@ class TaskDispatcher:
             mission.log(f"No more tools for phase: {reason}")
             return
 
-        success = await self.tool_service.execute_tool_action(
-            mission, action, context
-        )
+        success = await self.tool_service.execute_tool_action(mission, action, context)
 
         if success and mission.findings:
             mission.blackboard.write(
@@ -337,14 +320,10 @@ class TaskDispatcher:
             )
 
         if not success:
-            mission.log(
-                f"Tool {action.tool_name} execution failed or was blocked."
-            )
+            mission.log(f"Tool {action.tool_name} execution failed or was blocked.")
 
         if success:
-            await self._process_tool_chain(
-                mission, action.tool_name, context
-            )
+            await self._process_tool_chain(mission, action.tool_name, context)
 
     async def _handle_exploit_crafter(
         self,
@@ -377,9 +356,7 @@ class TaskDispatcher:
                 return
 
             # Execute
-            result = await self.tool_service.execute_custom_script(
-                mission, content, language, target
-            )
+            result = await self.tool_service.execute_custom_script(mission, content, language, target)
 
             if result.success:
                 mission.log("Custom script executed successfully.")
@@ -409,9 +386,7 @@ class TaskDispatcher:
         try:
             target = task.parameters.get("target", mission.target)
             exploit_output = task.parameters.get("exploit_output", "")
-            expected_outcome = task.parameters.get(
-                "expected_outcome", "successful exploitation"
-            )
+            expected_outcome = task.parameters.get("expected_outcome", "successful exploitation")
 
             # Try to get output from last attempt
             if not exploit_output and mission.attack_surface.vectors:
@@ -448,9 +423,7 @@ class TaskDispatcher:
                     mission.log(f"Proof: {action.proof}")
 
                     if action.is_successful:
-                        mission.log(
-                            "Exploit verified! Proceeding to post-exploitation..."
-                        )
+                        mission.log("Exploit verified! Proceeding to post-exploitation...")
                 else:
                     mission.log(f"Verification failed: {result.error}")
 
@@ -556,8 +529,7 @@ class TaskDispatcher:
             ]
             credentials = mission.attack_surface.credentials
             exploit_findings = [
-                f for f in mission.findings
-                if f.get("type") == "exploit" or f.get("severity") in ("critical", "high")
+                f for f in mission.findings if f.get("type") == "exploit" or f.get("severity") in ("critical", "high")
             ]
 
             exploitation_summary = {
@@ -569,9 +541,7 @@ class TaskDispatcher:
             # Enrich task description with exploitation context
             enriched_desc = task.description
             if successful_vectors:
-                vector_lines = "; ".join(
-                    f"{v['name']} on {v['target']}" for v in successful_vectors
-                )
+                vector_lines = "; ".join(f"{v['name']} on {v['target']}" for v in successful_vectors)
                 enriched_desc += f"\n\nExploitation context — successful vectors: {vector_lines}"
             if credentials:
                 enriched_desc += f"\n\nCredentials discovered: {len(credentials)} set(s) available"
@@ -624,11 +594,14 @@ class TaskDispatcher:
         try:
             if "vector_generator" in self.agents:
                 agent = self.agents["vector_generator"]
-                result = await agent.execute(context, {
-                    "services": mission.get_known_services(),
-                    "vulnerabilities": mission.get_known_vulns(),
-                    "target": mission.target,
-                })
+                result = await agent.execute(
+                    context,
+                    {
+                        "services": mission.get_known_services(),
+                        "vulnerabilities": mission.get_known_vulns(),
+                        "target": mission.target,
+                    },
+                )
                 if result.success and result.action:
                     vectors = getattr(result.action, "vectors", [])
                     for v in vectors:
@@ -656,9 +629,7 @@ class TaskDispatcher:
         async def _run_one(tool_action: ToolAction) -> dict[str, Any]:
             async with sem:
                 mission.log(f"Parallel start: {tool_action.tool_name}")
-                success = await self.tool_service.execute_tool_action(
-                    mission, tool_action, context
-                )
+                success = await self.tool_service.execute_tool_action(mission, tool_action, context)
                 if success and mission.findings:
                     mission.blackboard.write(
                         "tool_selector",
@@ -699,15 +670,12 @@ class TaskDispatcher:
             mission.blackboard.write(
                 "output_intelligence",
                 f"intel_{item.type}_{item.value[:30]}",
-                {"type": item.type, "value": item.value, "confidence": item.confidence,
-                 "source": item.source_tool},
+                {"type": item.type, "value": item.value, "confidence": item.confidence, "source": item.source_tool},
             )
 
         # 1b. Auto-expand scope if new hosts/subdomains discovered
         host_findings = [
-            {"type": item.type, "value": item.value}
-            for item in intel_items
-            if item.type in ("subdomain", "host", "ip")
+            {"type": item.type, "value": item.value} for item in intel_items if item.type in ("subdomain", "host", "ip")
         ]
         if host_findings:
             current_scope = {"target": mission.target}
@@ -716,7 +684,8 @@ class TaskDispatcher:
                 for exp in expansions:
                     mission.log(f"[SCOPE] Auto-discovered: {exp['type']} {exp['value']}")
                 mission.blackboard.write(
-                    "scope", "auto_expansions",
+                    "scope",
+                    "auto_expansions",
                     {"expansions": expansions},
                 )
 
@@ -751,11 +720,12 @@ class TaskDispatcher:
             # Track in task tree as child
             parent_id = f"{tool_name}-chain"
             if not mission.task_tree.get_node(parent_id):
-                mission.task_tree.add_task(
-                    parent_id, f"{tool_name} chains", f"chain/{tool_name}")
+                mission.task_tree.add_task(parent_id, f"{tool_name} chains", f"chain/{tool_name}")
             mission.task_tree.add_task(
-                new_task.task_id, rule.description[:60],
-                f"chain/{rule.next_tool}", parent_id=parent_id,
+                new_task.task_id,
+                rule.description[:60],
+                f"chain/{rule.next_tool}",
+                parent_id=parent_id,
                 tool_used=rule.next_tool,
             )
             chain_count += 1
@@ -773,10 +743,7 @@ class TaskDispatcher:
             return False
 
         # Count tools run in this phase
-        phase_tool_count = sum(
-            1 for e in mission.tool_executions
-            if e.get("success", False)
-        )
+        phase_tool_count = sum(1 for e in mission.tool_executions if e.get("success", False))
 
         # Check max tools
         if phase_tool_count >= rules["max_tools"]:
@@ -803,13 +770,11 @@ class TaskDispatcher:
         # Check max failures for exploitation
         max_failures = rules.get("max_failures")
         if max_failures:
-            failure_count = sum(
-                1 for e in mission.tool_executions
-                if not e.get("success", False)
-            )
+            failure_count = sum(1 for e in mission.tool_executions if not e.get("success", False))
             if failure_count >= max_failures:
                 mission.log(
-                    f"Phase {current_phase}: {failure_count} failures reached max ({max_failures}), transitioning")
+                    f"Phase {current_phase}: {failure_count} failures reached max ({max_failures}), transitioning"
+                )
                 return True
 
         return False
@@ -831,9 +796,7 @@ class TaskDispatcher:
                     version=finding.get("version"),
                 )
                 if context and "vector_generator" in self.agents:
-                    await self._generate_dynamic_vectors(
-                        mission, context, "service", svc.model_dump()
-                    )
+                    await self._generate_dynamic_vectors(mission, context, "service", svc.model_dump())
 
             if finding.get("severity") and finding.get("name"):
                 vuln = mission.add_vulnerability(
@@ -843,9 +806,7 @@ class TaskDispatcher:
                     cve_id=finding.get("cve_id"),
                 )
                 if context and "vector_generator" in self.agents:
-                    await self._generate_dynamic_vectors(
-                        mission, context, "vulnerability", vuln.model_dump()
-                    )
+                    await self._generate_dynamic_vectors(mission, context, "vulnerability", vuln.model_dump())
 
             if finding.get("url") and finding.get("technologies"):
                 app = mission.add_webapp(
@@ -853,9 +814,7 @@ class TaskDispatcher:
                     technologies=finding.get("technologies", []),
                 )
                 if context and "vector_generator" in self.agents:
-                    await self._generate_dynamic_vectors(
-                        mission, context, "webapp", app.model_dump()
-                    )
+                    await self._generate_dynamic_vectors(mission, context, "webapp", app.model_dump())
 
         except (OSError, RuntimeError, ValueError, KeyError, TypeError, AttributeError) as e:
             logger.warning("Failed to update attack surface: %s", e)

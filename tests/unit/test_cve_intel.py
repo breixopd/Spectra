@@ -21,15 +21,78 @@ from app.services.ai.cve_intel import (
 
 # Sample knowledge base data for tests — loaded via _load_cve_knowledge_base
 _TEST_CVE_KB = [
-    {"cve": "CVE-2021-41773", "product": "apache", "versions": "2.4.49", "type": "path_traversal", "severity": "critical", "description": "Path traversal in Apache 2.4.49 via %2e encoding"},
-    {"cve": "CVE-2021-42013", "product": "apache", "versions": "2.4.49,2.4.50", "type": "rce", "severity": "critical", "description": "RCE via path traversal in Apache 2.4.49-2.4.50"},
-    {"cve": "CVE-2019-0211", "product": "apache", "versions": "2.4.17-2.4.38", "type": "privilege_escalation", "severity": "high", "description": "Local privilege escalation in Apache 2.4.17-2.4.38"},
-    {"cve": "CVE-2017-9798", "product": "apache", "versions": "2.2.x,2.4.x", "type": "info_leak", "severity": "medium", "description": "Optionsbleed - memory leak via OPTIONS method"},
-    {"cve": "CVE-2024-6387", "product": "openssh", "versions": "8.5p1-9.7p1", "type": "rce", "severity": "critical", "description": "regreSSHion - unauthenticated RCE in OpenSSH signal handler race"},
-    {"cve": "CVE-2012-2122", "product": "mysql", "versions": "5.1.x,5.5.x", "type": "auth_bypass", "severity": "critical", "description": "Authentication bypass via timing attack"},
-    {"cve": "CVE-2022-21661", "product": "wordpress", "versions": "<5.8.3", "type": "sqli", "severity": "high", "description": "SQL injection in WP_Query"},
-    {"cve": "CVE-2021-44228", "product": "log4j", "versions": "2.0-2.14.1", "type": "rce", "severity": "critical", "description": "Log4Shell - JNDI injection RCE via ${jndi:ldap://}"},
-    {"cve": "CVE-2017-0144", "product": "smb", "versions": "smbv1", "type": "rce", "severity": "critical", "description": "EternalBlue - MS17-010 SMBv1 remote code execution"},
+    {
+        "cve": "CVE-2021-41773",
+        "product": "apache",
+        "versions": "2.4.49",
+        "type": "path_traversal",
+        "severity": "critical",
+        "description": "Path traversal in Apache 2.4.49 via %2e encoding",
+    },
+    {
+        "cve": "CVE-2021-42013",
+        "product": "apache",
+        "versions": "2.4.49,2.4.50",
+        "type": "rce",
+        "severity": "critical",
+        "description": "RCE via path traversal in Apache 2.4.49-2.4.50",
+    },
+    {
+        "cve": "CVE-2019-0211",
+        "product": "apache",
+        "versions": "2.4.17-2.4.38",
+        "type": "privilege_escalation",
+        "severity": "high",
+        "description": "Local privilege escalation in Apache 2.4.17-2.4.38",
+    },
+    {
+        "cve": "CVE-2017-9798",
+        "product": "apache",
+        "versions": "2.2.x,2.4.x",
+        "type": "info_leak",
+        "severity": "medium",
+        "description": "Optionsbleed - memory leak via OPTIONS method",
+    },
+    {
+        "cve": "CVE-2024-6387",
+        "product": "openssh",
+        "versions": "8.5p1-9.7p1",
+        "type": "rce",
+        "severity": "critical",
+        "description": "regreSSHion - unauthenticated RCE in OpenSSH signal handler race",
+    },
+    {
+        "cve": "CVE-2012-2122",
+        "product": "mysql",
+        "versions": "5.1.x,5.5.x",
+        "type": "auth_bypass",
+        "severity": "critical",
+        "description": "Authentication bypass via timing attack",
+    },
+    {
+        "cve": "CVE-2022-21661",
+        "product": "wordpress",
+        "versions": "<5.8.3",
+        "type": "sqli",
+        "severity": "high",
+        "description": "SQL injection in WP_Query",
+    },
+    {
+        "cve": "CVE-2021-44228",
+        "product": "log4j",
+        "versions": "2.0-2.14.1",
+        "type": "rce",
+        "severity": "critical",
+        "description": "Log4Shell - JNDI injection RCE via ${jndi:ldap://}",
+    },
+    {
+        "cve": "CVE-2017-0144",
+        "product": "smb",
+        "versions": "smbv1",
+        "type": "rce",
+        "severity": "critical",
+        "description": "EternalBlue - MS17-010 SMBv1 remote code execution",
+    },
 ]
 
 
@@ -40,6 +103,7 @@ def _mock_cve_kb(tmp_path):
     kb_path.write_text(json.dumps(_TEST_CVE_KB))
 
     import app.services.ai.cve_intel as mod
+
     mod._cve_knowledge_base = None  # Reset cache
     with patch("app.services.ai.cve_intel._load_cve_knowledge_base", return_value=_TEST_CVE_KB):
         yield
@@ -47,7 +111,6 @@ def _mock_cve_kb(tmp_path):
 
 
 class TestLookupCVEs:
-
     def test_apache_lookup(self):
         results = lookup_cves(product="Apache")
         assert len(results) > 0
@@ -95,7 +158,6 @@ class TestLookupCVEs:
 
 
 class TestGetCVEContext:
-
     def test_generates_context_for_apache(self):
         services = [{"service": "http", "product": "Apache", "version": "2.4.49", "port": 80}]
         ctx = get_cve_context_for_services(services)
@@ -234,11 +296,7 @@ class TestFetchCVEsFromNVD:
                     "cve": {
                         "id": "CVE-2021-99999",
                         "descriptions": [{"lang": "en", "value": "Test vuln"}],
-                        "metrics": {
-                            "cvssMetricV31": [
-                                {"cvssData": {"baseSeverity": "HIGH", "baseScore": 8.5}}
-                            ]
-                        },
+                        "metrics": {"cvssMetricV31": [{"cvssData": {"baseSeverity": "HIGH", "baseScore": 8.5}}]},
                         "configurations": [],
                     }
                 }
@@ -278,6 +336,7 @@ class TestFetchCVEsFromNVD:
     @pytest.mark.asyncio
     async def test_api_timeout(self):
         import httpx
+
         with patch("app.services.ai.cve_intel._load_cache", return_value=None):
             with patch("app.services.ai.cve_intel._last_nvd_request", 0):
                 with patch("httpx.AsyncClient") as MockClient:
@@ -306,6 +365,7 @@ class TestFetchCVEsFromNVD:
 class TestReloadKnowledgeBase:
     def test_reload_resets_cache(self):
         import app.services.ai.cve_intel as mod
+
         old = mod._cve_knowledge_base
         with patch("app.services.ai.cve_intel._load_cve_knowledge_base", return_value=_TEST_CVE_KB):
             count = reload_cve_knowledge_base()
@@ -316,9 +376,10 @@ class TestReloadKnowledgeBase:
 class TestEnrichCVE:
     def test_enrich_adds_exploit_fields(self):
         cve = {"cve": "CVE-2021-44228", "severity": "critical"}
-        with patch("app.services.ai.cve_intel.get_metasploit_modules", return_value=[
-            {"source": "metasploit", "module": "test"}
-        ]):
+        with patch(
+            "app.services.ai.cve_intel.get_metasploit_modules",
+            return_value=[{"source": "metasploit", "module": "test"}],
+        ):
             with patch("app.services.ai.exploit_db.get_exploit_db") as mock_db:
                 db = mock_db.return_value
                 db.is_kev.return_value = True
@@ -369,7 +430,9 @@ class TestLookupCVEsLive:
 
     @pytest.mark.asyncio
     async def test_live_failure_falls_back(self):
-        with patch("app.services.ai.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, side_effect=RuntimeError("fail")):
+        with patch(
+            "app.services.ai.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, side_effect=RuntimeError("fail")
+        ):
             with patch("app.services.ai.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
                 results = await lookup_cves_live(product="Apache")
                 assert len(results) > 0  # Falls back to builtin

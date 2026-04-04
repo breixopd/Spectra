@@ -37,8 +37,10 @@ class ToolResultCache:
         try:
             async with async_session_maker() as session:
                 result = await session.execute(
-                    text("SELECT value FROM system_cache WHERE key = :key AND (expires_at IS NULL OR expires_at > now())"),
-                    {"key": key}
+                    text(
+                        "SELECT value FROM system_cache WHERE key = :key AND (expires_at IS NULL OR expires_at > now())"
+                    ),
+                    {"key": key},
                 )
                 row = result.fetchone()
                 if row:
@@ -49,8 +51,9 @@ class ToolResultCache:
             logger.debug("Cache lookup failed: %s", e)
         return None
 
-    async def set(self, tool_name: str, target: str, result: dict,
-                  args: dict | None = None, ttl: timedelta | None = None):
+    async def set(
+        self, tool_name: str, target: str, result: dict, args: dict | None = None, ttl: timedelta | None = None
+    ):
         """Cache a tool result."""
         from sqlalchemy import text
 
@@ -68,7 +71,7 @@ class ToolResultCache:
                         VALUES (:key, :value, now() + make_interval(secs => :ttl))
                         ON CONFLICT (key) DO UPDATE SET value = :value, expires_at = now() + make_interval(secs => :ttl)
                     """),
-                    {"key": key, "value": json.dumps(result), "ttl": ttl_seconds}
+                    {"key": key, "value": json.dumps(result), "ttl": ttl_seconds},
                 )
                 await session.commit()
                 logger.info("Cache SET: %s on %s (TTL: %ds)", tool_name, target, ttl_seconds)
@@ -92,6 +95,7 @@ class ToolResultCache:
 
 # Singleton
 _tool_cache: ToolResultCache | None = None
+
 
 def get_tool_cache() -> ToolResultCache:
     global _tool_cache

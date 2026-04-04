@@ -103,6 +103,7 @@ async def spectra_error_handler(request: Request, exc: SpectraError) -> JSONResp
     status_code = get_status_code_for_exception(exc)
     return JSONResponse(exc.to_dict(), status_code=status_code)
 
+
 # --- GZip Compression ---
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
@@ -155,7 +156,10 @@ async def maintenance_mode_check(request: Request, call_next):
                     msg = await get_runtime_setting_value("MAINTENANCE_MESSAGE") or "Maintenance in progress"
                     return JSONResponse({"detail": msg}, status_code=503)
                 else:
-                    msg = await get_runtime_setting_value("MAINTENANCE_MESSAGE") or "We're performing scheduled maintenance. Please check back shortly."
+                    msg = (
+                        await get_runtime_setting_value("MAINTENANCE_MESSAGE")
+                        or "We're performing scheduled maintenance. Please check back shortly."
+                    )
                     _maint_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
                     return HTMLResponse(
                         content=_maint_templates.get_template("errors/maintenance.html").render(message=msg),
@@ -164,6 +168,7 @@ async def maintenance_mode_check(request: Request, call_next):
         except (OSError, RuntimeError):
             pass  # If DB is down, don't block requests
     return await call_next(request)
+
 
 # --- Paths exempt from request timeout (long-running by design) ---
 _TIMEOUT_EXEMPT_PREFIXES = ("/api/v1/export", "/ws")
@@ -204,6 +209,7 @@ async def limit_request_body_size(request: Request, call_next):
     response = await call_next(request)
     return response
 
+
 # --- Static Files ---
 app.mount(
     "/static",
@@ -240,6 +246,7 @@ def _make_error_handler(status_code: int, default_detail: str, template: str, lo
                 status_code=status_code,
             )
         return JSONResponse({"detail": default_detail}, status_code=status_code)
+
     return handler
 
 
@@ -344,17 +351,13 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
 
             # Validate message size (DoS protection)
             if len(data) > WS_MAX_MESSAGE_SIZE:
-                logger.warning(
-                    "WebSocket message too large from %s, ignoring", user.username
-                )
+                logger.warning("WebSocket message too large from %s, ignoring", user.username)
                 continue
 
             try:
                 message_json = json.loads(data)
                 if not isinstance(message_json, dict) or "type" not in message_json:
-                    logger.warning(
-                        "Invalid WebSocket message format from %s", user.username
-                    )
+                    logger.warning("Invalid WebSocket message format from %s", user.username)
                     continue
 
                 msg_type = message_json.get("type")
@@ -363,9 +366,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> 
                 else:
                     logger.debug("Received WS message type: %s", msg_type)
             except json.JSONDecodeError:
-                logger.warning(
-                    "Invalid JSON in WebSocket message from %s", user.username
-                )
+                logger.warning("Invalid JSON in WebSocket message from %s", user.username)
 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)

@@ -237,7 +237,11 @@ async def update_target(
         db,
         AuditEventType.SETTINGS_CHANGED,
         user_id=str(_current_user.id),
-        details={"action": "target_updated", "target_id": updated_target.id, "changed_fields": sorted(update_data.keys())},
+        details={
+            "action": "target_updated",
+            "target_id": updated_target.id,
+            "changed_fields": sorted(update_data.keys()),
+        },
         request=request,
     )
 

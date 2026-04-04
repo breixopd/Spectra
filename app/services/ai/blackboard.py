@@ -80,10 +80,12 @@ class MissionBlackboard:
 
         mid = mission_id or self.mission_id
         key = f"blackboard:{mid}"
-        data = json.dumps({
-            "data": {k: v for k, v in self._data.items()},
-            "history": self._history,
-        })
+        data = json.dumps(
+            {
+                "data": {k: v for k, v in self._data.items()},
+                "history": self._history,
+            }
+        )
         async with async_session_maker() as session:
             await session.execute(
                 text("""
@@ -91,7 +93,7 @@ class MissionBlackboard:
                     VALUES (:key, :value, now() + interval '30 days')
                     ON CONFLICT (key) DO UPDATE SET value = :value, expires_at = now() + interval '30 days'
                 """),
-                {"key": key, "value": data}
+                {"key": key, "value": data},
             )
             await session.commit()
 
@@ -105,7 +107,7 @@ class MissionBlackboard:
         async with async_session_maker() as session:
             result = await session.execute(
                 text("SELECT value FROM system_cache WHERE key = :key AND (expires_at IS NULL OR expires_at > now())"),
-                {"key": f"blackboard:{mid}"}
+                {"key": f"blackboard:{mid}"},
             )
             row = result.fetchone()
             if row:
@@ -130,7 +132,7 @@ class MissionBlackboard:
                     AND (expires_at IS NULL OR expires_at > now())
                     ORDER BY key DESC LIMIT 5
                 """),
-                {"target_pattern": f"%{target_address}%"}
+                {"target_pattern": f"%{target_address}%"},
             )
             findings: list[dict] = []
             for row in result.fetchall():

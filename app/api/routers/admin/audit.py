@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -147,16 +147,18 @@ async def admin_usage(
         grand_calls += summary["total_calls"]
 
         for agent_name, agent_data in summary.get("by_agent", {}).items():
-            missions.append({
-                "mission_id": summary["mission_id"],
-                "agent_name": agent_name,
-                "role": agent_data["role"],
-                "calls": agent_data["calls"],
-                "tokens": agent_data["tokens"],
-                "cost_usd": agent_data["cost_usd"],
-                "avg_latency_ms": agent_data["avg_latency_ms"],
-                "errors": agent_data["errors"],
-            })
+            missions.append(
+                {
+                    "mission_id": summary["mission_id"],
+                    "agent_name": agent_name,
+                    "role": agent_data["role"],
+                    "calls": agent_data["calls"],
+                    "tokens": agent_data["tokens"],
+                    "cost_usd": agent_data["cost_usd"],
+                    "avg_latency_ms": agent_data["avg_latency_ms"],
+                    "errors": agent_data["errors"],
+                }
+            )
 
     return {
         "total_calls": grand_calls,

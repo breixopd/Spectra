@@ -91,9 +91,7 @@ def cleanup_mission_workspace(mission_id: str) -> None:
         shutil.rmtree(workspace, ignore_errors=True)
 
 
-def create_error_result(
-    tool_id: str, target: str, error: str
-) -> ToolExecutionResult:
+def create_error_result(tool_id: str, target: str, error: str) -> ToolExecutionResult:
     from app.services.tools.models import ToolExecutionResult as _TER
 
     return _TER(
@@ -110,9 +108,7 @@ def create_error_result(
 # --- Post-execution logging --------------------------------------------------
 
 
-def log_success(
-    mission: Mission, tool_name: str, result: ToolExecutionResult
-) -> None:
+def log_success(mission: Mission, tool_name: str, result: ToolExecutionResult) -> None:
     """Log detailed successful execution summary."""
     finding_count = len(result.parsed_findings)
     summary_parts: list[str] = []
@@ -122,11 +118,7 @@ def log_success(
         findings = result.parsed_findings
 
         # Collect open ports (nmap, naabu style)
-        open_ports = [
-            f.get("port")
-            for f in findings
-            if f.get("state") == "open" and f.get("port")
-        ]
+        open_ports = [f.get("port") for f in findings if f.get("state") == "open" and f.get("port")]
         if open_ports:
             summary_parts.append(f"{len(open_ports)} open port(s)")
             details.append(f"Ports: {', '.join(str(p) for p in open_ports[:10])}")
@@ -135,9 +127,7 @@ def log_success(
 
         # Collect services discovered
         services = [
-            f"{f.get('service', 'unknown')}:{f.get('port')}"
-            for f in findings
-            if f.get("service") and f.get("port")
+            f"{f.get('service', 'unknown')}:{f.get('port')}" for f in findings if f.get("service") and f.get("port")
         ]
         if services and len(services) <= 8:
             details.append(f"Services: {', '.join(services)}")
@@ -148,19 +138,14 @@ def log_success(
         vulns = [
             f
             for f in findings
-            if f.get("severity")
-            or (f.get("info", {}) if isinstance(f.get("info"), dict) else {}).get(
-                "severity"
-            )
+            if f.get("severity") or (f.get("info", {}) if isinstance(f.get("info"), dict) else {}).get("severity")
         ]
         if vulns:
             sev_counts: dict[str, int] = {}
             for v in vulns:
                 sev = (
                     v.get("severity")
-                    or (
-                        v.get("info", {}) if isinstance(v.get("info"), dict) else {}
-                    ).get("severity")
+                    or (v.get("info", {}) if isinstance(v.get("info"), dict) else {}).get("severity")
                     or "info"
                 )
                 sev_counts[sev.lower()] = sev_counts.get(sev.lower(), 0) + 1
@@ -177,9 +162,7 @@ def log_success(
             # Show top 3 vulnerability names
             vuln_names = [
                 v.get("name")
-                or (
-                    v.get("info", {}) if isinstance(v.get("info"), dict) else {}
-                ).get("name")
+                or (v.get("info", {}) if isinstance(v.get("info"), dict) else {}).get("name")
                 or v.get("template-id", "")
                 for v in vulns[:3]
             ]
@@ -189,9 +172,7 @@ def log_success(
 
         # Collect directories/files (gobuster, ffuf style)
         dirs = [
-            f.get("url") or f.get("path")
-            for f in findings
-            if f.get("status") in (200, 301, 302, 403) or f.get("words")
+            f.get("url") or f.get("path") for f in findings if f.get("status") in (200, 301, 302, 403) or f.get("words")
         ]
         if dirs and not open_ports and not vulns:
             summary_parts.append(f"{len(dirs)} path(s) discovered")
@@ -211,9 +192,7 @@ def log_success(
         summary_parts.append("scan complete, no findings")
 
     summary_str = ", ".join(summary_parts)
-    duration_str = (
-        f" ({result.duration_seconds:.1f}s)" if result.duration_seconds else ""
-    )
+    duration_str = f" ({result.duration_seconds:.1f}s)" if result.duration_seconds else ""
 
     mission.log(f"[OK] {tool_name}{duration_str}: {summary_str}")
     for detail in details[:4]:
@@ -223,9 +202,7 @@ def log_success(
 # --- Attack surface updates --------------------------------------------------
 
 
-def update_attack_surface_from_finding(
-    mission: Mission, finding: dict[str, Any]
-) -> None:
+def update_attack_surface_from_finding(mission: Mission, finding: dict[str, Any]) -> None:
     """Update attack surface from a parsed finding."""
     # Handle nmap-style port/service findings
     if finding.get("port") or finding.get("portid"):
@@ -246,17 +223,9 @@ def update_attack_surface_from_finding(
     _raw_info = finding.get("info")
     info: dict[str, Any] = _raw_info if isinstance(_raw_info, dict) else {}
     severity = finding.get("severity") or info.get("severity")
-    name = (
-        finding.get("name")
-        or info.get("name")
-        or finding.get("template-id")
-    )
+    name = finding.get("name") or info.get("name") or finding.get("template-id")
 
-    if (
-        severity
-        and name
-        and severity.lower() in ("info", "low", "medium", "high", "critical")
-    ):
+    if severity and name and severity.lower() in ("info", "low", "medium", "high", "critical"):
         _raw_cls = info.get("classification")
         classification: dict[str, Any] = _raw_cls if isinstance(_raw_cls, dict) else {}
         cve_id = finding.get("cve_id") or classification.get("cve-id")
@@ -350,9 +319,7 @@ def record_to_memory(
             if result.success and result.parsed_findings:
                 memory.update_target_profile(os_family, effective_tools=[tool_name])
             elif not result.success:
-                memory.update_target_profile(
-                    os_family, ineffective_tools=[tool_name]
-                )
+                memory.update_target_profile(os_family, ineffective_tools=[tool_name])
 
     except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Memory recording failed: %s", e)

@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.core.bridge import EventWebSocketBridge, _USER_SCOPED_EVENTS
+from app.core.bridge import _USER_SCOPED_EVENTS, EventWebSocketBridge
 from app.core.events import EventType, events
 
 
@@ -56,9 +56,7 @@ class TestWebSocketEventIsolation:
                 bridge.stop()
 
         for call in mock_ws.broadcast_to_user_event.call_args_list:
-            assert call.kwargs.get("user_id") != "user-b", (
-                "user-b should not receive an event destined for user-a"
-            )
+            assert call.kwargs.get("user_id") != "user-b", "user-b should not receive an event destined for user-a"
 
     @pytest.mark.asyncio
     async def test_two_user_events_route_to_separate_channels(self):
@@ -75,10 +73,7 @@ class TestWebSocketEventIsolation:
                 bridge.stop()
 
         assert mock_ws.broadcast_to_user_event.call_count == 2
-        routed_users = {
-            call.kwargs["user_id"]
-            for call in mock_ws.broadcast_to_user_event.call_args_list
-        }
+        routed_users = {call.kwargs["user_id"] for call in mock_ws.broadcast_to_user_event.call_args_list}
         assert routed_users == {"user-a", "user-b"}
         # Neither event should have triggered a global broadcast
         mock_ws.broadcast_event.assert_not_called()

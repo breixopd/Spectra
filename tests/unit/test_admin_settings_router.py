@@ -46,7 +46,10 @@ class TestAdminSettingsRouter:
         app.dependency_overrides[get_async_session] = lambda: mock_session
 
         with (
-            patch("app.api.routers.admin.settings.apply_settings_update", new=AsyncMock(return_value={"status": "updated", "message": "ok"})) as apply_mock,
+            patch(
+                "app.api.routers.admin.settings.apply_settings_update",
+                new=AsyncMock(return_value={"status": "updated", "message": "ok"}),
+            ) as apply_mock,
             patch("app.api.routers.admin.settings.audit_log_event", new=AsyncMock()) as audit_mock,
         ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:

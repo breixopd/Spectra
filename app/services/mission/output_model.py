@@ -67,13 +67,15 @@ def get_reporter_findings(mission_or_summary: Any) -> list[dict[str, Any]]:
     for finding in get_mission_findings(mission_or_summary):
         source = finding.get("source") or finding.get("tool_source") or finding.get("tool") or ""
         tool_name = finding.get("tool_name") or finding.get("tool_source") or finding.get("tool") or ""
-        reporter_findings.append({
-            "title": finding.get("title", ""),
-            "severity": _normalize_severity(finding.get("severity")),
-            "description": finding.get("description", ""),
-            "source": source,
-            "confirmed": finding.get("confirmed", False),
-            "tool_name": tool_name,
-        })
+        reporter_findings.append(
+            {
+                "title": finding.get("title", ""),
+                "severity": _normalize_severity(finding.get("severity")),
+                "description": finding.get("description", ""),
+                "source": source,
+                "confirmed": finding.get("confirmed", False),
+                "tool_name": tool_name,
+            }
+        )
 
     return reporter_findings

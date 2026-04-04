@@ -34,14 +34,11 @@ from __future__ import annotations
 
 #: Metasploit module metadata index (rapid7/metasploit-framework on GitHub).
 MSF_METADATA_URL: str = (
-    "https://raw.githubusercontent.com/rapid7/metasploit-framework"
-    "/master/db/modules_metadata_base.json"
+    "https://raw.githubusercontent.com/rapid7/metasploit-framework/master/db/modules_metadata_base.json"
 )
 
 #: CISA Known Exploited Vulnerabilities catalog.
-CISA_KEV_URL: str = (
-    "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
-)
+CISA_KEV_URL: str = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 
 #: EPSS (Exploit Prediction Scoring System) API — first.org.
 EPSS_API_URL: str = "https://api.first.org/data/v1/epss"
@@ -52,29 +49,19 @@ NVD_API_BASE_URL: str = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 # --- Wordlists (SecLists on GitHub) ----------------------------------------
 
 #: Base URL for the danielmiessler/SecLists raw content on GitHub.
-SECLISTS_BASE_URL: str = (
-    "https://raw.githubusercontent.com/danielmiessler/SecLists/master"
-)
+SECLISTS_BASE_URL: str = "https://raw.githubusercontent.com/danielmiessler/SecLists/master"
 
 #: Common web directory / file paths (~4,600 entries).
-SECLISTS_COMMON_WEB_URL: str = (
-    f"{SECLISTS_BASE_URL}/Discovery/Web-Content/common.txt"
-)
+SECLISTS_COMMON_WEB_URL: str = f"{SECLISTS_BASE_URL}/Discovery/Web-Content/common.txt"
 
 #: Top usernames for brute-force testing (~8,900 entries).
-SECLISTS_TOP_USERNAMES_URL: str = (
-    f"{SECLISTS_BASE_URL}/Usernames/top-usernames-shortlist.txt"
-)
+SECLISTS_TOP_USERNAMES_URL: str = f"{SECLISTS_BASE_URL}/Usernames/top-usernames-shortlist.txt"
 
 #: Top 1,000 most common passwords.
-SECLISTS_COMMON_PASSWORDS_URL: str = (
-    f"{SECLISTS_BASE_URL}/Passwords/Common-Credentials/top-1000.txt"
-)
+SECLISTS_COMMON_PASSWORDS_URL: str = f"{SECLISTS_BASE_URL}/Passwords/Common-Credentials/top-1000.txt"
 
 #: Top 5,000 subdomains for DNS enumeration.
-SECLISTS_SUBDOMAINS_TOP5000_URL: str = (
-    f"{SECLISTS_BASE_URL}/Discovery/DNS/subdomains-top1million-5000.txt"
-)
+SECLISTS_SUBDOMAINS_TOP5000_URL: str = f"{SECLISTS_BASE_URL}/Discovery/DNS/subdomains-top1million-5000.txt"
 
 # --- GeoIP -----------------------------------------------------------------
 

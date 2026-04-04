@@ -267,7 +267,9 @@ class TestManualHelpers:
 
     def test_cvss_calculate(self, client, auth_headers):
         resp = client.post(
-            "/api/v1/helpers/cvss/calculate", headers=auth_headers, json={"vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
+            "/api/v1/helpers/cvss/calculate",
+            headers=auth_headers,
+            json={"vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -277,7 +279,9 @@ class TestManualHelpers:
 
     def test_cvss_calculate_medium(self, client, auth_headers):
         resp = client.post(
-            "/api/v1/helpers/cvss/calculate", headers=auth_headers, json={"vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:L/A:N"}
+            "/api/v1/helpers/cvss/calculate",
+            headers=auth_headers,
+            json={"vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:L/A:N"},
         )
         assert resp.status_code == 200
         data = resp.json()
@@ -670,7 +674,9 @@ class TestSecurity:
         with httpx.Client(base_url=SPECTRA_URL, timeout=10) as fresh:
             for endpoint in sensitive:
                 resp = fresh.get(endpoint)
-                assert resp.status_code in (401, 403, 307), f"{endpoint} accessible without auth (got {resp.status_code})"
+                assert resp.status_code in (401, 403, 307), (
+                    f"{endpoint} accessible without auth (got {resp.status_code})"
+                )
 
     def test_invalid_token_rejected(self):
         """Tampered JWT tokens should be rejected."""

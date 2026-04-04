@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
 def _data_dir() -> str:
     return str(_get_settings().DATA_ROOT)
 
@@ -115,7 +116,9 @@ async def health_check(
         payload = _decode_access_payload(resolved_token) if resolved_token else None
         user = await _load_active_user_from_payload_with_session(payload, db) if payload else None
         if user is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for verbose health details")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required for verbose health details"
+            )
 
         # Check RAG/Embedding service
         try:

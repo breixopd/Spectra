@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,6 +23,7 @@ def _mission_runtime_isolation(tmp_path):
         patch("app.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
+
 
 # ============================================================================
 # 1. Path Traversal Prevention in Pentest Sessions
@@ -214,7 +215,7 @@ class TestPersistentAccountLockout:
 
     @pytest.mark.asyncio
     async def test_reset_failures_persists(self):
-        user = self._make_user(fail_count=3, locked_until=datetime.now(timezone.utc))
+        user = self._make_user(fail_count=3, locked_until=datetime.now(UTC))
         user.login_fail_count = 0
         user.locked_until = None
         assert user.login_fail_count == 0
@@ -233,7 +234,7 @@ class TestPersistentAccountLockout:
     async def test_check_lockout_raises_when_locked(self):
         from app.api.routers.auth import _check_lockout
 
-        user = self._make_user(locked_until=datetime.now(timezone.utc) + timedelta(minutes=5))
+        user = self._make_user(locked_until=datetime.now(UTC) + timedelta(minutes=5))
         with pytest.raises(HTTPException) as exc:
             await _check_lockout(user)
         assert exc.value.status_code == 429
@@ -242,7 +243,7 @@ class TestPersistentAccountLockout:
     async def test_check_lockout_allows_after_expiry(self):
         from app.api.routers.auth import _check_lockout
 
-        user = self._make_user(locked_until=datetime.now(timezone.utc) - timedelta(seconds=1))
+        user = self._make_user(locked_until=datetime.now(UTC) - timedelta(seconds=1))
         await _check_lockout(user)
 
     @pytest.mark.asyncio

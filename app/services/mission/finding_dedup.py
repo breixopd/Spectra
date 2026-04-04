@@ -38,9 +38,9 @@ def finding_dedup_key(finding: dict[str, Any]) -> str:
     # Strip protocol prefixes for URL-based comparisons
     for prefix in ("https://", "http://"):
         if host.startswith(prefix):
-            host = host[len(prefix):]
+            host = host[len(prefix) :]
         if matched.startswith(prefix):
-            matched = matched[len(prefix):]
+            matched = matched[len(prefix) :]
 
     # Remove trailing slashes
     host = host.rstrip("/")

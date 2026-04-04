@@ -19,6 +19,7 @@ def _mission_runtime_isolation(tmp_path):
     ):
         yield
 
+
 from app.services.ai.agents.base import AgentContext, SteeringAction
 from app.services.ai.agents.mission_controller import (
     AssessmentPhase,
@@ -37,7 +38,7 @@ def mock_manager_context():
         patch("app.services.mission.manager.execution.MissionExecutor") as MockExecutor,
         patch("app.services.mission.manager.execution.MissionController") as MockController,
         patch("app.services.mission.manager.execution.ScopeAgent") as MockScope,
-        patch("app.services.mission.manager.execution.index_to_rag", new_callable=AsyncMock) as mock_index_to_rag,
+        patch("app.services.mission.manager.execution.index_to_rag", new_callable=AsyncMock),
         patch("app.services.mission.manager.execution.run_debrief", new_callable=AsyncMock),
         patch("app.services.mission.manager.execution.generate_html_report", new_callable=AsyncMock),
         patch("app.services.mission.manager.execution.record_mission_lessons"),

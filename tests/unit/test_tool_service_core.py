@@ -2,7 +2,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.ai.agents.base import ActionRisk
 from app.services.tools.service import ToolExecutionResult, ToolExecutionService
 
 
@@ -34,7 +33,13 @@ async def test_execute_tool_success(service_and_mission):
     service._apply_safety_and_consensus = AsyncMock(return_value=("nmap -p 80 127.0.0.1", None))
     service._dispatch_and_process_result = AsyncMock(return_value=result_obj)
 
-    with patch("app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "nmap -p 80 127.0.0.1", "/tmp/out")), patch("app.services.tools.service.record_to_memory"):
+    with (
+        patch(
+            "app.services.tools.service.build_execution_request",
+            return_value=(MagicMock(), MagicMock(), "nmap -p 80 127.0.0.1", "/tmp/out"),
+        ),
+        patch("app.services.tools.service.record_to_memory"),
+    ):
         result = await service.execute_request(mission=mission, tool_name="nmap", target="127.0.0.1")
 
     assert result.success is True
@@ -69,7 +74,9 @@ async def test_execute_tool_safety_block(service_and_mission):
     service._validate_and_resolve_tool = AsyncMock(return_value=(tool, None))
     service._apply_safety_and_consensus = AsyncMock(return_value=("cmd", blocked))
 
-    with patch("app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")):
+    with patch(
+        "app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")
+    ):
         result = await service.execute_request(mission, "nmap", "127.0.0.1")
     assert result.success is False
     assert "Blocked by Safety Supervisor" in result.stderr
@@ -92,7 +99,9 @@ async def test_execute_tool_consensus_block(service_and_mission):
     service._validate_and_resolve_tool = AsyncMock(return_value=(tool, None))
     service._apply_safety_and_consensus = AsyncMock(return_value=("cmd", blocked))
 
-    with patch("app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")):
+    with patch(
+        "app.services.tools.service.build_execution_request", return_value=(MagicMock(), MagicMock(), "cmd", "/tmp/out")
+    ):
         result = await service.execute_request(mission, "nmap", "127.0.0.1", risk_level="high")
     assert result.success is False
     assert "Blocked by Consensus" in result.stderr

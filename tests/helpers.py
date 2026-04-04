@@ -23,7 +23,6 @@ def reload_module(module: ModuleT) -> ModuleT:
 
 def has_async_update(async_mock: Any, item_id: str, **expected: object) -> bool:
     return any(
-        call.args[0] == item_id
-        and all(call.args[1].get(key) == value for key, value in expected.items())
+        call.args[0] == item_id and all(call.args[1].get(key) == value for key, value in expected.items())
         for call in async_mock.await_args_list
     )

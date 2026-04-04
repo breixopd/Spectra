@@ -57,9 +57,7 @@ def sign_plugin(plugin_path: Path, private_key_path: Path):
     data.pop("signature", None)
 
     # Canonicalize JSON
-    canonical_json = json.dumps(data, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    canonical_json = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
     # Sign
     signature = private_key.sign(canonical_json)

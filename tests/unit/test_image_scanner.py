@@ -13,7 +13,10 @@ class TestImageScanConfig:
     def test_scan_enabled_default_true(self):
         from app.core.config import Settings
 
-        s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"), SANDBOX_IMAGE_SCAN_ENABLED=True)
+        s = Settings(
+            DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"),
+            SANDBOX_IMAGE_SCAN_ENABLED=True,
+        )
         assert s.SANDBOX_IMAGE_SCAN_ENABLED is True
 
     def test_block_critical_default_false(self):

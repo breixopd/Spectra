@@ -18,17 +18,34 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/user/settings", tags=["User Settings"])
 
-BYOK_FIELDS = frozenset({
-    "llm_api_key", "llm_api_base_url", "llm_model",
-    "embedding_api_key", "embedding_api_base_url", "embedding_model",
-})
+BYOK_FIELDS = frozenset(
+    {
+        "llm_api_key",
+        "llm_api_base_url",
+        "llm_model",
+        "embedding_api_key",
+        "embedding_api_base_url",
+        "embedding_model",
+    }
+)
 
-ALLOWED_SETTINGS_FIELDS = frozenset({
-    "llm_api_key", "llm_api_base_url", "llm_model",
-    "embedding_api_key", "embedding_api_base_url", "embedding_model",
-    "email_notifications", "notify_on_mission_complete", "notify_on_critical_finding",
-    "webhook_url", "default_scan_mode", "default_report_format", "timezone",
-})
+ALLOWED_SETTINGS_FIELDS = frozenset(
+    {
+        "llm_api_key",
+        "llm_api_base_url",
+        "llm_model",
+        "embedding_api_key",
+        "embedding_api_base_url",
+        "embedding_model",
+        "email_notifications",
+        "notify_on_mission_complete",
+        "notify_on_critical_finding",
+        "webhook_url",
+        "default_scan_mode",
+        "default_report_format",
+        "timezone",
+    }
+)
 
 
 def _prefs_to_response(prefs: UserPreferences | None) -> UserSettingsResponse:
@@ -53,9 +70,7 @@ def _prefs_to_response(prefs: UserPreferences | None) -> UserSettingsResponse:
 
 
 async def _get_prefs(user_id: str, session: AsyncSession) -> UserPreferences | None:
-    result = await session.execute(
-        select(UserPreferences).where(UserPreferences.user_id == user_id)
-    )
+    result = await session.execute(select(UserPreferences).where(UserPreferences.user_id == user_id))
     return result.scalar_one_or_none()
 
 

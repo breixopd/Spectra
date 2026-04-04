@@ -28,17 +28,19 @@ def _mock_mission(mission_id="m-1", target="10.0.0.1", directive="Full scan", su
 async def test_generate_mission_report_returns_path():
     from app.worker.report_jobs import generate_mission_report
 
-    mission = _mock_mission(summary={
-        "findings": [
-            {
-                "title": "XSS",
-                "severity": "high",
-                "description": "Reflected XSS",
-                "tool_source": "nuclei",
-                "confirmed": True,
-            }
-        ]
-    })
+    mission = _mock_mission(
+        summary={
+            "findings": [
+                {
+                    "title": "XSS",
+                    "severity": "high",
+                    "description": "Reflected XSS",
+                    "tool_source": "nuclei",
+                    "confirmed": True,
+                }
+            ]
+        }
+    )
 
     mission_result = MagicMock()
     mission_result.scalar_one_or_none.return_value = mission
@@ -103,15 +105,17 @@ async def test_generate_mission_report_handles_missing_mission():
 async def test_generate_executive_summary_returns_text():
     from app.worker.report_jobs import generate_executive_summary
 
-    mission = _mock_mission(summary={
-        "findings": [
-            {
-                "title": "XSS",
-                "severity": "high",
-                "description": "Reflected XSS",
-            }
-        ]
-    })
+    mission = _mock_mission(
+        summary={
+            "findings": [
+                {
+                    "title": "XSS",
+                    "severity": "high",
+                    "description": "Reflected XSS",
+                }
+            ]
+        }
+    )
 
     mission_result = MagicMock()
     mission_result.scalar_one_or_none.return_value = mission

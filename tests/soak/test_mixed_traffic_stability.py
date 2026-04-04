@@ -103,9 +103,7 @@ async def test_mixed_traffic_soak_stays_within_error_budget() -> None:
                     },
                 )
                 if worker_response.status_code != 200:
-                    failures.append(
-                        f"worker-tool returned {worker_response.status_code}: {worker_response.text[:200]}"
-                    )
+                    failures.append(f"worker-tool returned {worker_response.status_code}: {worker_response.text[:200]}")
                 else:
                     worker_body = worker_response.json()
                     if not worker_body.get("success"):

@@ -62,9 +62,7 @@ class Settings(BaseSettings):
     # --- Database (PostgreSQL) ---
     # Primary persistent store, PostgreSQL-backed app cache, job queue, and
     # LISTEN/NOTIFY backbone.
-    DATABASE_URL: SecretStr = SecretStr(
-        "postgresql+asyncpg://spectra:spectra@db:5432/spectra"
-    )
+    DATABASE_URL: SecretStr = SecretStr("postgresql+asyncpg://spectra:spectra@db:5432/spectra")
     DATABASE_ECHO: bool = False
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
@@ -116,7 +114,12 @@ class Settings(BaseSettings):
     MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 10 MB
 
     # --- CORS ---
-    CORS_ORIGINS: list[str] = ["http://localhost:5000", "http://127.0.0.1:5000", "http://localhost:5050", "http://127.0.0.1:5050"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+        "http://localhost:5050",
+        "http://127.0.0.1:5050",
+    ]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -139,7 +142,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     # Security
     SECRET_KEY: SecretStr = SecretStr("change-me-in-production")  # Overridden by get_settings()
-    ENCRYPTION_KEY: str = ""  # Separate key for data encryption (MFA secrets, BYOK credentials). Falls back to JWT_SECRET_KEY.
+    ENCRYPTION_KEY: str = (
+        ""  # Separate key for data encryption (MFA secrets, BYOK credentials). Falls back to JWT_SECRET_KEY.
+    )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 4  # 4 hours
     SESSION_IDLE_TIMEOUT_MINUTES: int = 60  # 0 = disabled
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
@@ -163,6 +168,7 @@ class Settings(BaseSettings):
     @classmethod
     def warn_fully_automated(cls, v: bool) -> bool:
         import os
+
         if v and os.environ.get("ENVIRONMENT", "development") == "production":
             logging.getLogger(__name__).warning(
                 "FULLY_AUTOMATED=true in production — human approval bypassed for all operations"
@@ -183,6 +189,7 @@ class Settings(BaseSettings):
         if not 1 <= v <= 100:
             raise ValueError("SANDBOX_MAX_CONTAINERS must be 1-100")
         return v
+
     SANDBOX_MEMORY_LIMIT: str = "2g"
     SANDBOX_CPU_SHARES: int = 512
     SANDBOX_RESOURCE_TIERS: str = '{"light": {"memory": "512m", "cpu_shares": 256}, "medium": {"memory": "2g", "cpu_shares": 512}, "heavy": {"memory": "4g", "cpu_shares": 1024}, "extreme": {"memory": "8g", "cpu_shares": 2048}}'
@@ -194,6 +201,7 @@ class Settings(BaseSettings):
         if not 60 <= v <= 86400:
             raise ValueError("SANDBOX_MAX_LIFETIME must be 60-86400 seconds")
         return v
+
     SANDBOX_WORKER_POLL_DELAY: float = 0.5
     SANDBOX_NETWORK_ISOLATION: bool = True
     SANDBOX_IDLE_TIMEOUT: int = 600  # seconds — destroy sandbox if no heartbeat for this long
@@ -206,6 +214,7 @@ class Settings(BaseSettings):
         if not 1 <= v <= 50:
             raise ValueError("SANDBOX_PER_USER_LIMIT must be 1-50")
         return v
+
     SANDBOX_DEFAULT_PRIORITY: int = 5  # Default job priority (1=highest, 10=lowest)
     SANDBOX_OOM_ESCALATION_ENABLED: bool = True  # Auto-escalate resource tier on OOM (exit 137)
     SANDBOX_WARM_POOL_ENABLED: bool = False  # Disabled by default — pre-warms idle containers for instant assignment
@@ -215,7 +224,10 @@ class Settings(BaseSettings):
     SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL: bool = False  # Block deployment if critical CVEs found
 
     # --- Inter-Service Auth ---
-    SERVICE_AUTH_SECRET: SecretStr = Field(default=SecretStr(""), description="Shared secret for inter-service authentication. Set same value on all services.")
+    SERVICE_AUTH_SECRET: SecretStr = Field(
+        default=SecretStr(""),
+        description="Shared secret for inter-service authentication. Set same value on all services.",
+    )
 
     # --- Service Mode ---
     SERVICE_MODE: str = Field(default="api", description="Service mode: api, ai, scheduler, worker")
@@ -270,8 +282,6 @@ class Settings(BaseSettings):
             raise ValueError("SMTP_PORT must be between 1 and 65535")
         return v
 
-
-
     # --- Object Storage (S3-compatible storage: Garage or any S3 provider) ---
     # S3-compatible object storage (Garage, AWS S3, or any S3 provider) is required.
     # Set S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY before starting.
@@ -291,7 +301,9 @@ class Settings(BaseSettings):
     BACKUP_ENABLED: bool = Field(default=False, description="Enable automated backups")
     BACKUP_SCHEDULE_HOURS: int = Field(default=24, description="Backup interval in hours")
     BACKUP_RETENTION_COUNT: int = Field(default=10, description="Number of backups to retain")
-    AUDIT_LOG_RETENTION_DAYS: int = Field(default=365, description="Days to retain audit log entries (0 = keep forever)")
+    AUDIT_LOG_RETENTION_DAYS: int = Field(
+        default=365, description="Days to retain audit log entries (0 = keep forever)"
+    )
     MISSION_RETENTION_DAYS: int = 0  # 0 = keep forever, >0 = auto-delete completed missions after N days
     ADMIN_IP_ALLOWLIST: str = ""  # Comma-separated list of allowed IPs/CIDRs for admin routes, empty = disabled
     # Alias for S3_BUCKET_BACKUPS — used by BackupService (app/services/infrastructure/backup.py)
@@ -376,6 +388,7 @@ def get_settings() -> Settings:
 
     if not settings_instance.SERVICE_AUTH_SECRET.get_secret_value():
         import logging
+
         logging.getLogger("spectra.config").warning("SERVICE_AUTH_SECRET not set — inter-service auth disabled")
 
     return settings_instance

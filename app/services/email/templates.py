@@ -67,22 +67,22 @@ TEMPLATES: dict[str, str] = {
 def wrap_email(content: str) -> str:
     """Wrap template content in the branded Spectra email layout."""
     return (
-        '<!DOCTYPE html>'
+        "<!DOCTYPE html>"
         '<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>'
-        '<body style="margin:0;padding:0;background:#0a0a0f;font-family:\'Segoe UI\',system-ui,sans-serif;">'
+        "<body style=\"margin:0;padding:0;background:#0a0a0f;font-family:'Segoe UI',system-ui,sans-serif;\">"
         '<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:40px 20px;">'
         '<tr><td align="center">'
         '<table width="600" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;overflow:hidden;">'
         '<tr><td style="padding:32px 40px 24px;border-bottom:1px solid rgba(255,255,255,0.06);">'
         '<span style="font-size:20px;font-weight:700;color:#fff;">&#x1f6e1; Spectra</span>'
-        '</td></tr>'
+        "</td></tr>"
         '<tr><td style="padding:32px 40px;color:#e2e8f0;font-size:15px;line-height:1.7;">'
-        f'{content}'
-        '</td></tr>'
+        f"{content}"
+        "</td></tr>"
         '<tr><td style="padding:24px 40px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">'
         '<p style="margin:0;font-size:12px;color:#64748b;">Spectra Security &middot; <a href="#" style="color:#8b5cf6;">Unsubscribe</a></p>'
-        '</td></tr>'
-        '</table>'
-        '</td></tr></table>'
-        '</body></html>'
+        "</td></tr>"
+        "</table>"
+        "</td></tr></table>"
+        "</body></html>"
     )

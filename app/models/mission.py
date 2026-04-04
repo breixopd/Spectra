@@ -46,9 +46,7 @@ class Mission(Base):
     checkpoint_data: Mapped[dict | None] = mapped_column(JSON, nullable=True, default=None)
     resume: Mapped[bool] = mapped_column(default=False, nullable=False)
     vpn_config: Mapped[str | None] = mapped_column(String(64), nullable=True, default=None)
-    requires_approval: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False, server_default="false"
-    )
+    requires_approval: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
     feedback_rating: Mapped[int | None] = mapped_column(nullable=True, default=None)  # 1-5 stars
     feedback_comment: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
 

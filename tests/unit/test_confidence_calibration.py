@@ -1,6 +1,5 @@
 """Tests for app.services.ai.calibration.ConfidenceCalibrator."""
 
-
 from app.services.ai.calibration import ConfidenceCalibrator
 
 
@@ -12,15 +11,21 @@ class TestRecordPrediction:
 
     def test_rolling_window_truncation(self):
         cal = ConfidenceCalibrator(window_size=10)
-        for i in range(15):
+        for _i in range(15):
             cal.record_prediction("agent-a", 0.5, 0.5)
         assert len(cal._records) == 10
 
 
 class TestCalibrationFactor:
-    def _fill(self, cal: ConfidenceCalibrator, agent: str,
-              predicted: float, actual: float, n: int = 15,
-              task_type: str = "general"):
+    def _fill(
+        self,
+        cal: ConfidenceCalibrator,
+        agent: str,
+        predicted: float,
+        actual: float,
+        n: int = 15,
+        task_type: str = "general",
+    ):
         for _ in range(n):
             cal.record_prediction(agent, predicted, actual, task_type)
 

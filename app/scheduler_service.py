@@ -27,9 +27,7 @@ _QUOTA_LOCK_ID: int = hash("spectra_quota_reset") & 0x7FFFFFFF
 
 async def _try_advisory_lock(session, lock_id: int) -> bool:
     """Attempt a non-blocking PostgreSQL advisory lock. Returns True if acquired."""
-    result = await session.execute(
-        text("SELECT pg_try_advisory_lock(:lock_id)"), {"lock_id": lock_id}
-    )
+    result = await session.execute(text("SELECT pg_try_advisory_lock(:lock_id)"), {"lock_id": lock_id})
     return bool(result.scalar())
 
 
@@ -67,10 +65,7 @@ class SchedulerService:
         logger.info("Scheduler stopped")
 
     def health(self) -> dict:
-        task_status = {
-            name: (not task.done())
-            for name, task in self._named_tasks.items()
-        }
+        task_status = {name: (not task.done()) for name, task in self._named_tasks.items()}
         alive = any(task_status.values()) if task_status else self.running
         return {
             "status": "healthy" if alive else "degraded",
@@ -144,7 +139,6 @@ class SchedulerService:
                 pass
             await asyncio.sleep(15)
 
-
     async def _backup_scheduler(self):
         """Run automated backups on the configured schedule."""
         from app.core.config import get_settings
@@ -203,6 +197,7 @@ class SchedulerService:
         """Delegate to the shared cache_cleanup_loop from background_tasks."""
         try:
             from app.core.background_tasks import cache_cleanup_loop
+
             await cache_cleanup_loop()
         except (OSError, RuntimeError, ValueError) as e:
             logger.error("Cache cleanup error: %s", e)
@@ -211,6 +206,7 @@ class SchedulerService:
         """Delegate to the shared periodic_cleanup_loop from background_tasks."""
         try:
             from app.core.background_tasks import periodic_cleanup_loop
+
             await periodic_cleanup_loop()
         except (OSError, RuntimeError, ValueError) as e:
             logger.error("Periodic cleanup error: %s", e)

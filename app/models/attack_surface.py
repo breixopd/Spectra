@@ -5,14 +5,17 @@ Tracks discovered attack surface components and attack vectors
 for iterative exploitation attempts.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 try:
     from enum import StrEnum
 except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+
     class StrEnum(str, __import__("enum").Enum):
         pass
+
+
 from typing import Any
 
 from pydantic import BaseModel, Field

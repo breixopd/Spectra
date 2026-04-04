@@ -11,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _fake_user(role: str = "admin", user_id: str = "u-1", username: str = "testuser"):
     user = MagicMock()
     user.id = user_id
@@ -51,6 +52,7 @@ def _make_app_with_router(router, prefix: str = ""):
 # 1. Logout emits LOGOUT audit event
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestLogoutAuditEmission:
     async def test_logout_emits_audit_event(self):
@@ -83,6 +85,7 @@ class TestLogoutAuditEmission:
             mock_audit.assert_called_once()
             call_args = mock_audit.call_args
             from app.models.audit_log import AuditEventType
+
             assert call_args[0][1] == AuditEventType.LOGOUT
             assert call_args[1]["user_id"] == str(user.id)
 
@@ -90,6 +93,7 @@ class TestLogoutAuditEmission:
 # ---------------------------------------------------------------------------
 # 2. Mission stop emits MISSION_STATUS_CHANGED audit event
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 class TestMissionStopAuditEmission:
@@ -119,6 +123,7 @@ class TestMissionStopAuditEmission:
             mock_audit.assert_called_once()
             call_args = mock_audit.call_args
             from app.models.audit_log import AuditEventType
+
             assert call_args[0][1] == AuditEventType.MISSION_STATUS_CHANGED
             assert call_args[1]["details"]["action"] == "stopped"
             assert call_args[1]["details"]["mission_id"] == mission_id
@@ -127,6 +132,7 @@ class TestMissionStopAuditEmission:
 # ---------------------------------------------------------------------------
 # 3. Mission pause emits MISSION_STATUS_CHANGED audit event
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 class TestMissionPauseAuditEmission:
@@ -156,6 +162,7 @@ class TestMissionPauseAuditEmission:
             mock_audit.assert_called_once()
             call_args = mock_audit.call_args
             from app.models.audit_log import AuditEventType
+
             assert call_args[0][1] == AuditEventType.MISSION_STATUS_CHANGED
             assert call_args[1]["details"]["action"] == "paused"
             assert call_args[1]["details"]["mission_id"] == mission_id
@@ -164,6 +171,7 @@ class TestMissionPauseAuditEmission:
 # ---------------------------------------------------------------------------
 # 4. Failed MFA emits LOGIN_FAILED audit event
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 class TestFailedMfaAuditEmission:
@@ -197,6 +205,7 @@ class TestFailedMfaAuditEmission:
             mock_audit.assert_called_once()
             call_args = mock_audit.call_args
             from app.models.audit_log import AuditEventType
+
             assert call_args[0][1] == AuditEventType.LOGIN_FAILED
             assert call_args[1]["details"]["reason"] == "mfa_failed"
 
@@ -204,6 +213,7 @@ class TestFailedMfaAuditEmission:
 # ---------------------------------------------------------------------------
 # 5. Findings CSV export emits audit event
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 class TestFindingsExportAuditEmission:
@@ -233,6 +243,7 @@ class TestFindingsExportAuditEmission:
 # ---------------------------------------------------------------------------
 # 6. Audit-logs endpoint accepts ip_address filter
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 class TestAuditIpAddressFilter:

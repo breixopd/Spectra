@@ -26,7 +26,11 @@ class TestApiDocsRoute:
 
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "username": "admin", "sub": "admin"}),
-            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="admin", is_superuser=True)),
+            patch(
+                "app.api.routers.ui._get_ui_db_user",
+                new_callable=AsyncMock,
+                return_value=MagicMock(role="admin", is_superuser=True),
+            ),
             patch("app.api.routers.ui._is_admin_user", return_value=True),
         ):
             with patch("app.api.routers.ui.templates") as mock_templates:
@@ -83,7 +87,11 @@ class TestApiDocsRoute:
 
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "admin", "sub": "admin"}),
-            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="admin", is_superuser=True)),
+            patch(
+                "app.api.routers.ui._get_ui_db_user",
+                new_callable=AsyncMock,
+                return_value=MagicMock(role="admin", is_superuser=True),
+            ),
             patch("app.api.routers.ui._is_admin_user", return_value=True),
         ):
             with patch("app.api.routers.ui._check_user_feature", return_value=True):
@@ -127,7 +135,11 @@ class TestApiDocsRoute:
 
         with (
             patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "operator", "sub": "operator"}),
-            patch("app.api.routers.ui._get_ui_db_user", new_callable=AsyncMock, return_value=MagicMock(role="operator", is_superuser=False)),
+            patch(
+                "app.api.routers.ui._get_ui_db_user",
+                new_callable=AsyncMock,
+                return_value=MagicMock(role="operator", is_superuser=False),
+            ),
             patch("app.api.routers.ui._is_admin_user", return_value=False),
         ):
             with patch("app.api.routers.ui._check_user_feature", return_value=True):

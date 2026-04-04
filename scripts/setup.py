@@ -33,9 +33,7 @@ async def setup_spectra():
     registry = get_registry()
     await registry.load_plugins()  # Ensure plugins are loaded
     tools = registry.get_available_tools()
-    logger.info(
-        "Found %d plugins: %s", len(tools), ", ".join(t.config.id for t in tools)
-    )
+    logger.info("Found %d plugins: %s", len(tools), ", ".join(t.config.id for t in tools))
 
     # 3. Check Tool Dependencies
     logger.info("[TOOLS] Checking tool dependencies...")

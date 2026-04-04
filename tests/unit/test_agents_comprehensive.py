@@ -19,7 +19,6 @@ from app.services.ai.agents.exploit_crafter import (
     ExploitCrafter,
     ExploitInput,
 )
-from app.services.ai.errors import LLMParseError
 from app.services.ai.agents.post_exploitation import (
     PostExploitAction,
     PostExploitationAgent,
@@ -34,6 +33,7 @@ from app.services.ai.agents.vector_generator import (
     VectorGeneratorInput,
     VectorGeneratorOutput,
 )
+from app.services.ai.errors import LLMParseError
 from tests.mocks.llm import MockLLMClient
 
 # --- Fixtures ---

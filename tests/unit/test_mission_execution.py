@@ -295,10 +295,7 @@ class TestTaskExecutionHelpers:
 
         executor.execute_task.assert_not_awaited()
         mission.set_status.assert_called_once_with("timed_out")
-        assert any(
-            "[TIMEOUT] Mission timed out after" in call.args[0]
-            for call in mission.log.call_args_list
-        )
+        assert any("[TIMEOUT] Mission timed out after" in call.args[0] for call in mission.log.call_args_list)
 
     @pytest.mark.asyncio
     async def test_execute_task_copies_context_for_parallel_tasks(self):

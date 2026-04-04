@@ -12,9 +12,9 @@ import json
 import logging
 import threading
 import time as _time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-UTC = timezone.utc
+UTC = UTC
 from typing import Any
 
 import bcrypt
@@ -184,8 +184,6 @@ def _get_token_expiry(token: str) -> float:
         return float(payload.get("exp", _time.time() + 3600))
     except (ValueError, TypeError, KeyError):
         return _time.time() + 3600
-
-
 
 
 def invalidate_token(token: str) -> None:

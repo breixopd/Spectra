@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_user(user_id="user-1", is_superuser=False, role="operator", plan_id=None):
     u = MagicMock()
@@ -59,6 +59,7 @@ def _make_prefs(**overrides):
 # _prefs_to_response
 # ---------------------------------------------------------------------------
 
+
 class TestPrefsToResponse:
     def test_none_returns_defaults(self):
         from app.api.routers.user_settings import _prefs_to_response
@@ -108,6 +109,7 @@ class TestPrefsToResponse:
 # GET /api/v1/user/settings
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestGetUserSettings:
     async def test_returns_defaults_when_no_prefs(self):
@@ -143,11 +145,12 @@ class TestGetUserSettings:
 # PUT /api/v1/user/settings
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestUpdateUserSettings:
     async def test_creates_prefs_for_first_time_user(self):
-        from app.api.schemas.user_settings import UserSettingsUpdate
         from app.api.routers.user_settings import update_user_settings
+        from app.api.schemas.user_settings import UserSettingsUpdate
 
         user = _make_user()
         request = _make_request()
@@ -175,8 +178,8 @@ class TestUpdateUserSettings:
         assert resp.timezone == "Asia/Tokyo"
 
     async def test_updates_existing_prefs(self):
-        from app.api.schemas.user_settings import UserSettingsUpdate
         from app.api.routers.user_settings import update_user_settings
+        from app.api.schemas.user_settings import UserSettingsUpdate
 
         user = _make_user()
         request = _make_request()
@@ -193,8 +196,8 @@ class TestUpdateUserSettings:
         assert prefs.timezone == "US/Pacific"
 
     async def test_empty_body_returns_422(self):
-        from app.api.schemas.user_settings import UserSettingsUpdate
         from app.api.routers.user_settings import update_user_settings
+        from app.api.schemas.user_settings import UserSettingsUpdate
 
         user = _make_user()
         request = _make_request()
@@ -206,8 +209,8 @@ class TestUpdateUserSettings:
         assert exc_info.value.status_code == 422
 
     async def test_byok_rejected_when_plan_disallows(self):
-        from app.api.schemas.user_settings import UserSettingsUpdate
         from app.api.routers.user_settings import update_user_settings
+        from app.api.schemas.user_settings import UserSettingsUpdate
 
         user = _make_user(plan_id="plan-1")
         request = _make_request()
@@ -225,8 +228,8 @@ class TestUpdateUserSettings:
             assert "byok" in exc_info.value.detail
 
     async def test_byok_accepted_when_plan_allows(self):
-        from app.api.schemas.user_settings import UserSettingsUpdate
         from app.api.routers.user_settings import update_user_settings
+        from app.api.schemas.user_settings import UserSettingsUpdate
 
         user = _make_user(plan_id="plan-pro")
         request = _make_request()
@@ -247,8 +250,8 @@ class TestUpdateUserSettings:
         assert prefs.llm_model == "gpt-4o"
 
     async def test_non_byok_fields_dont_trigger_check(self):
-        from app.api.schemas.user_settings import UserSettingsUpdate
         from app.api.routers.user_settings import update_user_settings
+        from app.api.schemas.user_settings import UserSettingsUpdate
 
         user = _make_user(plan_id="plan-1")
         request = _make_request()
@@ -268,8 +271,8 @@ class TestUpdateUserSettings:
         check_mock.assert_not_called()
 
     async def test_audit_oserror_does_not_block_update(self):
-        from app.api.schemas.user_settings import UserSettingsUpdate
         from app.api.routers.user_settings import update_user_settings
+        from app.api.schemas.user_settings import UserSettingsUpdate
 
         user = _make_user()
         request = _make_request()
@@ -298,16 +301,19 @@ class TestUpdateUserSettings:
 # DELETE /api/v1/user/settings/byok
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestClearByok:
     async def test_clears_byok_fields(self):
-        from app.api.routers.user_settings import clear_byok, BYOK_FIELDS
+        from app.api.routers.user_settings import BYOK_FIELDS, clear_byok
 
         user = _make_user()
         request = _make_request()
         prefs = _make_prefs(
-            llm_api_key="sk-x", llm_api_base_url="https://api.openai.com",
-            llm_model="gpt-4", embedding_api_key="sk-e",
+            llm_api_key="sk-x",
+            llm_api_base_url="https://api.openai.com",
+            llm_model="gpt-4",
+            embedding_api_key="sk-e",
             embedding_api_base_url="https://embed.example.com",
             embedding_model="text-embedding-3-small",
         )
@@ -360,6 +366,7 @@ class TestClearByok:
 # ---------------------------------------------------------------------------
 # Schema validation
 # ---------------------------------------------------------------------------
+
 
 class TestSchemas:
     def test_response_defaults(self):

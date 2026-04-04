@@ -1,6 +1,7 @@
 """
 Rollback service — creates snapshots and applies rollbacks for reversible actions.
 """
+
 import json
 import logging
 from datetime import UTC, datetime
@@ -74,9 +75,7 @@ async def rollback_snapshot(
     request=None,
 ) -> dict:
     """Apply a rollback for a snapshot. Returns the before_state dict."""
-    result = await session.execute(
-        select(RollbackSnapshot).where(RollbackSnapshot.id == snapshot_id)
-    )
+    result = await session.execute(select(RollbackSnapshot).where(RollbackSnapshot.id == snapshot_id))
     snapshot = result.scalar_one_or_none()
     if not snapshot:
         raise ValueError(f"Snapshot {snapshot_id} not found")
@@ -89,9 +88,7 @@ async def rollback_snapshot(
     if snapshot.target_entity_type == "user":
         await _rollback_user(session, snapshot.target_entity_id, before_state)
     else:
-        raise ValueError(
-            f"Rollback not supported for entity type: {snapshot.target_entity_type}"
-        )
+        raise ValueError(f"Rollback not supported for entity type: {snapshot.target_entity_type}")
 
     # Mark as rolled back
     snapshot.rolled_back = True
@@ -116,9 +113,7 @@ async def rollback_snapshot(
     return before_state
 
 
-async def _rollback_user(
-    session: AsyncSession, user_id: str, before_state: dict
-) -> None:
+async def _rollback_user(session: AsyncSession, user_id: str, before_state: dict) -> None:
     """Restore user fields from a before_state snapshot."""
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

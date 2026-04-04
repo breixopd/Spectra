@@ -101,10 +101,14 @@ class TestReportEncryptionAtRest:
         uploaded: list[bytes] = []
 
         mock_storage = MagicMock()
-        mock_storage.upload = AsyncMock(side_effect=lambda bucket, key, data: (uploaded.append(data), f"local/{key}") and f"local/{key}")
+        mock_storage.upload = AsyncMock(
+            side_effect=lambda bucket, key, data: (uploaded.append(data), f"local/{key}") and f"local/{key}"
+        )
 
-        with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"), \
-             patch("app.services.mission.report_generator.get_storage_service", return_value=mock_storage):
+        with (
+            patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"),
+            patch("app.services.mission.report_generator.get_storage_service", return_value=mock_storage),
+        ):
             from app.services.mission.report_generator import save_report
 
             path = await save_report("mission-1", "<html>report</html>")
@@ -130,10 +134,14 @@ class TestReportEncryptionAtRest:
         uploaded: list[bytes] = []
 
         mock_storage = MagicMock()
-        mock_storage.upload = AsyncMock(side_effect=lambda bucket, key, data: (uploaded.append(data), f"local/{key}") and f"local/{key}")
+        mock_storage.upload = AsyncMock(
+            side_effect=lambda bucket, key, data: (uploaded.append(data), f"local/{key}") and f"local/{key}"
+        )
 
-        with patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"), \
-             patch("app.services.mission.report_generator.get_storage_service", return_value=mock_storage):
+        with (
+            patch("app.services.mission.report_generator._get_default_secret", return_value="test-key"),
+            patch("app.services.mission.report_generator.get_storage_service", return_value=mock_storage),
+        ):
             from app.services.mission.report_generator import save_pdf_report
 
             path = await save_pdf_report("mission-2", pdf_data)

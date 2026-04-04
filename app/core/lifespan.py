@@ -8,8 +8,8 @@ Initializes database connections, cache, and other services.
 import asyncio
 import logging
 import os
-import socket
 import shutil
+import socket
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -77,10 +77,7 @@ async def run_startup_checks() -> None:
         expected_tables = {"users", "missions", "targets", "findings", "exploits"}
         async with async_session_maker() as session:
             result = await session.execute(
-                sa_text(
-                    "SELECT tablename FROM pg_catalog.pg_tables "
-                    "WHERE schemaname = 'public'"
-                )
+                sa_text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname = 'public'")
             )
             existing = {row[0] for row in result.fetchall()}
 
@@ -99,9 +96,7 @@ async def run_startup_checks() -> None:
         usage = shutil.disk_usage(str(data_dir))
         free_mb = usage.free / (1024 * 1024)
         if free_mb < 100:
-            logger.warning(
-                "[CHECK][WARN] Low disk space for data directory: %.0f MB free", free_mb
-            )
+            logger.warning("[CHECK][WARN] Low disk space for data directory: %.0f MB free", free_mb)
         else:
             logger.info("[CHECK][OK] Disk space: %.0f MB free", free_mb)
     except (OSError, RuntimeError, ConnectionError) as e:
@@ -116,9 +111,7 @@ async def run_startup_tasks() -> None:
         logger.info("Running startup tasks...")
 
         if _should_queue_startup_tool_install():
-            await add_system_operation(
-                "tool_install", "install", "Installing security tools"
-            )
+            await add_system_operation("tool_install", "install", "Installing security tools")
 
             try:
                 from app.core.queue import PostgresJobQueue
@@ -131,9 +124,7 @@ async def run_startup_tasks() -> None:
 
             await remove_system_operation("tool_install")
         else:
-            logger.info(
-                "Skipping startup tool installation queue because QUEUE_STARTUP_TOOL_INSTALL is disabled"
-            )
+            logger.info("Skipping startup tool installation queue because QUEUE_STARTUP_TOOL_INSTALL is disabled")
 
         await set_system_status("ready", "System ready")
         logger.info("Startup tasks completed")
@@ -149,11 +140,20 @@ def _validate_production_secrets() -> None:
         return
 
     _insecure_defaults = {
-        "", "change-me-in-production", "test-key", "secret",
-        "changeme", "password", "default",
+        "",
+        "change-me-in-production",
+        "test-key",
+        "secret",
+        "changeme",
+        "password",
+        "default",
     }
     jwt_val = settings.JWT_SECRET_KEY.get_secret_value()
-    secret_val = settings.SECRET_KEY.get_secret_value() if isinstance(settings.SECRET_KEY, SecretStr) else str(settings.SECRET_KEY)
+    secret_val = (
+        settings.SECRET_KEY.get_secret_value()
+        if isinstance(settings.SECRET_KEY, SecretStr)
+        else str(settings.SECRET_KEY)
+    )
     if jwt_val.lower() in _insecure_defaults:
         raise RuntimeError(
             "JWT_SECRET_KEY is empty or using a default value. "
@@ -161,8 +161,7 @@ def _validate_production_secrets() -> None:
         )
     if len(jwt_val) < 32:
         logger.warning(
-            "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. "
-            "Use a longer secret for production security."
+            "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. Use a longer secret for production security."
         )
     if secret_val.lower() in _insecure_defaults:
         raise RuntimeError(
@@ -175,8 +174,6 @@ def _validate_production_secrets() -> None:
             "[SECURITY] DATABASE_URL uses SQLite, which is not suitable for production. "
             "Configure a PostgreSQL connection string."
         )
-
-
 
 
 def _validate_noop_payment() -> None:
@@ -228,8 +225,7 @@ async def _initialize_database(app: FastAPI) -> None:
     storage_health = await storage.health_check()
     if storage_health["status"] != "healthy":
         logger.error(
-            "[FAIL] S3 storage is unreachable: %s. "
-            "Configure S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY.",
+            "[FAIL] S3 storage is unreachable: %s. Configure S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY.",
             storage_health.get("error", "unknown"),
         )
     else:
@@ -259,6 +255,7 @@ async def _seed_default_data() -> None:
     await seed_default_plans()
 
     from app.services.gateway.service_registry import get_service_registry
+
     get_service_registry()
     logger.info("[OK] Service registry initialized")
 
@@ -280,6 +277,7 @@ async def _initialize_sandbox() -> None:
             # Initialize warm pool manager
             if settings.SANDBOX_WARM_POOL_ENABLED:
                 from app.services.tools.sandbox import WarmPoolManager, set_warm_pool_manager
+
                 warm_manager = WarmPoolManager(sandbox_pool)
                 set_warm_pool_manager(warm_manager)
 
@@ -320,6 +318,7 @@ async def _initialize_scaling() -> None:
     """Initialize server pool manager and start health loop."""
     try:
         from app.services.scaling import get_pool_manager
+
         pool_mgr = get_pool_manager()
         await pool_mgr.start_health_loop()
         logger.info("[OK] Server pool manager initialized")
@@ -407,6 +406,7 @@ async def _initialize_services() -> None:
 
     # Start metrics snapshot store
     from app.core.metrics_store import get_metrics_store
+
     metrics_store = get_metrics_store()
     await metrics_store.start()
     logger.info("[OK] Metrics store started")
@@ -424,6 +424,7 @@ async def _start_event_bridge() -> Any | None:
     """Start the event-to-websocket bridge. Returns the bridge instance or None."""
     try:
         from app.core.bridge import EventWebSocketBridge
+
         bridge = EventWebSocketBridge()
         bridge.start()
         logger.info("[OK] Event bridge started")
@@ -438,6 +439,7 @@ async def _shutdown_services() -> None:
     # Close storage service
     try:
         from app.services.storage import close_storage_service
+
         await close_storage_service()
         logger.info("[OK] Storage service closed")
     except (OSError, RuntimeError) as e:
@@ -448,6 +450,7 @@ async def _shutdown_services() -> None:
     # Stop server pool health loop
     try:
         from app.services.scaling import get_pool_manager
+
         pool_mgr = get_pool_manager()
         await pool_mgr.stop_health_loop()
     except (OSError, RuntimeError) as e:
@@ -456,6 +459,7 @@ async def _shutdown_services() -> None:
     # Clean up warm pool first
     try:
         from app.services.tools.sandbox import get_warm_pool_manager
+
         wm = get_warm_pool_manager()
         if wm:
             await wm.cleanup()
@@ -482,14 +486,13 @@ async def _shutdown_services() -> None:
                 task.cancel()
 
             try:
-                await asyncio.wait_for(
-                    asyncio.gather(*tasks, return_exceptions=True), timeout=5.0
-                )
+                await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=5.0)
             except TimeoutError:
                 logger.warning("Timed out waiting for tasks to cancel")
 
         # Close service registry (all gateway connections)
         from app.services.gateway.service_registry import close_service_registry
+
         await close_service_registry()
         logger.info("[OK] Service registry closed")
 

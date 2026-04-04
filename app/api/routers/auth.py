@@ -8,9 +8,9 @@ import hashlib
 import logging
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-UTC = timezone.utc
+UTC = UTC
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, status
@@ -59,10 +59,10 @@ router = APIRouter()
 
 
 # --- Account Lockout (DB-backed) ---
-LOCKOUT_THRESHOLD_1 = 5   # failures before first lockout
+LOCKOUT_THRESHOLD_1 = 5  # failures before first lockout
 LOCKOUT_DURATION_1 = 300  # 5 minutes
 LOCKOUT_THRESHOLD_2 = 10  # failures before extended lockout
-LOCKOUT_DURATION_2 = 1800 # 30 minutes
+LOCKOUT_DURATION_2 = 1800  # 30 minutes
 ACCESS_COOKIE_KEY = "access_token"
 REFRESH_COOKIE_KEY = "refresh_token"
 ACCESS_COOKIE_PATH = "/"
@@ -77,7 +77,7 @@ _used_totp_codes_lock = threading.Lock()
 
 def _consume_totp_code(user_id: str, code: str) -> bool:
     now = time.time()
-    code_hash = hashlib.sha256(f"{user_id}:{code}".encode("utf-8")).hexdigest()
+    code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()
     with _used_totp_codes_lock:
         expired = [key for key, expires_at in _used_totp_codes.items() if expires_at <= now]
         for key in expired:
@@ -301,14 +301,10 @@ async def login_for_access_token(
         await _check_lockout(user)
 
     # Always verify password even if user doesn't exist (timing-safe)
-    password_valid = verify_password(
-        form_data.password, user.hashed_password if user else DUMMY_PASSWORD_HASH
-    )
+    password_valid = verify_password(form_data.password, user.hashed_password if user else DUMMY_PASSWORD_HASH)
 
     if not user or not password_valid:
-        logger.warning(
-            "Failed login attempt for user '%s' from %s", form_data.username, client_ip
-        )
+        logger.warning("Failed login attempt for user '%s' from %s", form_data.username, client_ip)
 
         if user:
             await _record_failure(user, session)
@@ -320,9 +316,7 @@ async def login_for_access_token(
             username=form_data.username,
             client_ip=client_ip,
         )
-        telemetry.increment_counter(
-            "login_failed", 1, {"reason": "invalid_credentials"}
-        )
+        telemetry.increment_counter("login_failed", 1, {"reason": "invalid_credentials"})
 
         # Audit log
         await audit_log_event(
@@ -339,9 +333,7 @@ async def login_for_access_token(
         )
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
 
     # Block unverified users when email verification is active
     if (settings.smtp_configured or settings.EMAIL_VERIFICATION_ENABLED) and not user.email_verified:
@@ -556,7 +548,8 @@ async def mfa_verify_setup(
     await session.commit()
 
     await audit_log_event(
-        session, AuditEventType.MFA_ENABLED,
+        session,
+        AuditEventType.MFA_ENABLED,
         user_id=str(user.id),
         details={"username": user.username},
         request=request,
@@ -657,7 +650,8 @@ async def mfa_disable(
     await session.commit()
 
     await audit_log_event(
-        session, AuditEventType.MFA_DISABLED,
+        session,
+        AuditEventType.MFA_DISABLED,
         user_id=str(user.id),
         details={"username": user.username},
         request=request,
@@ -700,9 +694,7 @@ async def get_current_profile(
     # Check if user has preferences configured
     from app.models.user_preferences import UserPreferences
 
-    prefs_result = await session.execute(
-        select(UserPreferences.id).where(UserPreferences.user_id == str(user.id))
-    )
+    prefs_result = await session.execute(select(UserPreferences.id).where(UserPreferences.user_id == str(user.id)))
     has_preferences = prefs_result.scalar_one_or_none() is not None
 
     return {
@@ -724,7 +716,9 @@ async def get_current_profile(
             "max_targets": plan.max_targets,
             "max_storage_mb": plan.max_storage_mb,
             "max_api_requests_per_hour": plan.max_api_requests_per_hour,
-        } if plan else None,
+        }
+        if plan
+        else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 
@@ -744,11 +738,10 @@ async def update_profile(
     """Update current user's profile."""
     if body.email is not None:
         import re
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', body.email):
+
+        if not re.match(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", body.email):
             raise HTTPException(status_code=400, detail="Invalid email format")
-        existing = await session.execute(
-            select(User).where(User.email == body.email, User.id != user.id)
-        )
+        existing = await session.execute(select(User).where(User.email == body.email, User.id != user.id))
         if existing.scalar_one_or_none():
             # Don't reveal whether an email exists — return success silently
             logger.warning("Email change conflict for user=%s target=%s", user.id, body.email)
@@ -759,7 +752,8 @@ async def update_profile(
 
         try:
             await audit_log_event(
-                session, AuditEventType.SETTINGS_CHANGED,
+                session,
+                AuditEventType.SETTINGS_CHANGED,
                 user_id=str(user.id),
                 details={"action": "email_changed", "old_email": old_email, "new_email": body.email},
                 request=request,
@@ -788,7 +782,8 @@ async def change_password(
     await session.commit()
 
     await audit_log_event(
-        session, AuditEventType.PASSWORD_CHANGED,
+        session,
+        AuditEventType.PASSWORD_CHANGED,
         user_id=str(user.id),
         details={"username": user.username},
         request=request,
@@ -810,11 +805,10 @@ async def export_user_data(
     Returns a JSON file containing all data associated with the
     requesting user's account.
     """
+    from app.models.audit_log import AuditLog
+    from app.models.finding import Finding
     from app.models.mission import Mission
     from app.models.target import Target
-    from app.models.finding import Finding
-    from app.models.exploit import Exploit
-    from app.models.audit_log import AuditLog
 
     user_id = current_user.id
 
@@ -835,42 +829,44 @@ async def export_user_data(
     )
     missions = []
     for m in result.scalars().all():
-        missions.append({
-            "id": str(m.id),
-            "target": m.target,
-            "status": m.status,
-            "directive": m.directive,
-            "created_at": m.created_at.isoformat() if m.created_at else None,
-            "completed_at": m.completed_at.isoformat() if hasattr(m, "completed_at") and m.completed_at else None,
-        })
+        missions.append(
+            {
+                "id": str(m.id),
+                "target": m.target,
+                "status": m.status,
+                "directive": m.directive,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+                "completed_at": m.completed_at.isoformat() if hasattr(m, "completed_at") and m.completed_at else None,
+            }
+        )
 
     # Collect targets
-    result = await session.execute(
-        select(Target).where(Target.user_id == user_id)
-    )
+    result = await session.execute(select(Target).where(Target.user_id == user_id))
     targets = []
     for t in result.scalars().all():
-        targets.append({
-            "id": str(t.id),
-            "address": t.address,
-            "hostname": getattr(t, "hostname", None),
-            "status": getattr(t, "status", None),
-        })
+        targets.append(
+            {
+                "id": str(t.id),
+                "address": t.address,
+                "hostname": getattr(t, "hostname", None),
+                "status": getattr(t, "status", None),
+            }
+        )
 
     # Collect findings
-    result = await session.execute(
-        select(Finding).where(Finding.user_id == user_id)
-    )
+    result = await session.execute(select(Finding).where(Finding.user_id == user_id))
     findings = []
     for f in result.scalars().all():
-        findings.append({
-            "id": str(f.id),
-            "title": f.title,
-            "severity": f.severity,
-            "description": getattr(f, "description", None),
-            "status": getattr(f, "status", None),
-            "created_at": f.created_at.isoformat() if f.created_at else None,
-        })
+        findings.append(
+            {
+                "id": str(f.id),
+                "title": f.title,
+                "severity": f.severity,
+                "description": getattr(f, "description", None),
+                "status": getattr(f, "status", None),
+                "created_at": f.created_at.isoformat() if f.created_at else None,
+            }
+        )
 
     # Collect audit log entries for this user
     result = await session.execute(
@@ -878,12 +874,14 @@ async def export_user_data(
     )
     audit_entries = []
     for a in result.scalars().all():
-        audit_entries.append({
-            "event_type": a.event_type,
-            "details": a.details,
-            "ip_address": a.ip_address,
-            "created_at": a.created_at.isoformat() if a.created_at else None,
-        })
+        audit_entries.append(
+            {
+                "event_type": a.event_type,
+                "details": a.details,
+                "ip_address": a.ip_address,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+        )
 
     export_data = {
         "export_version": "1.0",
@@ -920,9 +918,7 @@ async def delete_account(
         raise HTTPException(400, "Password is incorrect")
 
     if user.is_superuser:
-        stmt = select(func.count()).select_from(User).where(
-            User.is_superuser.is_(True), User.is_active.is_(True)
-        )
+        stmt = select(func.count()).select_from(User).where(User.is_superuser.is_(True), User.is_active.is_(True))
         result = await session.execute(stmt)
         if result.scalar_one() <= 1:
             raise HTTPException(400, "Cannot delete the last superuser account")
@@ -931,7 +927,8 @@ async def delete_account(
     username = user.username
 
     await audit_log_event(
-        session, AuditEventType.ACCOUNT_DELETED,
+        session,
+        AuditEventType.ACCOUNT_DELETED,
         user_id=user_id,
         details={"username": username},
         request=request,
@@ -1011,7 +1008,8 @@ async def reset_password(
     await session.commit()
 
     await audit_log_event(
-        session, AuditEventType.PASSWORD_RESET,
+        session,
+        AuditEventType.PASSWORD_RESET,
         user_id=str(user.id),
         details={"user_id": str(user.id)},
         request=request,
@@ -1104,9 +1102,7 @@ async def revoke_api_key(
     """Revoke an API key belonging to the current user."""
     from app.models.plan import ApiKey
 
-    stmt = select(ApiKey).where(
-        ApiKey.id == key_id, ApiKey.user_id == str(user.id)
-    )
+    stmt = select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == str(user.id))
     result = await session.execute(stmt)
     api_key = result.scalar_one_or_none()
     if not api_key:

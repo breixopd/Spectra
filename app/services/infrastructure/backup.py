@@ -16,6 +16,7 @@ class BackupService:
 
     def __init__(self) -> None:
         from app.core.config import settings
+
         self.settings = settings
 
     @property
@@ -31,21 +32,24 @@ class BackupService:
         with tempfile.TemporaryDirectory() as tmpdir:
             dump_file = Path(tmpdir) / f"{backup_id}.dump"
             try:
-                parsed = urlparse(
-                    str(self.settings.DATABASE_URL.get_secret_value()).replace("+asyncpg", "")
-                )
+                parsed = urlparse(str(self.settings.DATABASE_URL.get_secret_value()).replace("+asyncpg", ""))
                 env = os.environ.copy()
                 env["PGPASSWORD"] = parsed.password or ""
 
                 cmd = [
                     "pg_dump",
-                    "-h", parsed.hostname or "db",
-                    "-p", str(parsed.port or 5432),
-                    "-U", parsed.username or "spectra",
-                    "-d", (parsed.path or "/spectra").lstrip("/"),
+                    "-h",
+                    parsed.hostname or "db",
+                    "-p",
+                    str(parsed.port or 5432),
+                    "-U",
+                    parsed.username or "spectra",
+                    "-d",
+                    (parsed.path or "/spectra").lstrip("/"),
                     "--format=custom",
                     "--compress=6",
-                    "-f", str(dump_file),
+                    "-f",
+                    str(dump_file),
                 ]
 
                 proc = await asyncio.create_subprocess_exec(
@@ -72,6 +76,7 @@ class BackupService:
             # Upload to S3
             try:
                 from app.services.storage.service import get_storage_service
+
                 storage = get_storage_service()
                 await storage.upload_file(self._bucket, s3_key, str(dump_file))
                 logger.info("Backup uploaded to S3: %s/%s", self._bucket, s3_key)
@@ -97,6 +102,7 @@ class BackupService:
         s3_key = f"backups/{backup_id}.dump"
 
         from app.services.storage.service import get_storage_service
+
         storage = get_storage_service()
 
         if not await storage.exists(self._bucket, s3_key):
@@ -110,18 +116,20 @@ class BackupService:
                 return {"status": "failed", "error": f"S3 download failed: {exc}"}
 
             try:
-                parsed = urlparse(
-                    str(self.settings.DATABASE_URL.get_secret_value()).replace("+asyncpg", "")
-                )
+                parsed = urlparse(str(self.settings.DATABASE_URL.get_secret_value()).replace("+asyncpg", ""))
                 env = os.environ.copy()
                 env["PGPASSWORD"] = parsed.password or ""
 
                 cmd = [
                     "pg_restore",
-                    "-h", parsed.hostname or "db",
-                    "-p", str(parsed.port or 5432),
-                    "-U", parsed.username or "spectra",
-                    "-d", (parsed.path or "/spectra").lstrip("/"),
+                    "-h",
+                    parsed.hostname or "db",
+                    "-p",
+                    str(parsed.port or 5432),
+                    "-U",
+                    parsed.username or "spectra",
+                    "-d",
+                    (parsed.path or "/spectra").lstrip("/"),
                     "--clean",
                     "--if-exists",
                     "--no-owner",
@@ -153,6 +161,7 @@ class BackupService:
     async def list_backups(self) -> list[dict]:
         """List all backups stored in S3 under the backups/ prefix."""
         from app.services.storage.service import get_storage_service
+
         storage = get_storage_service()
         keys = await storage.list_objects(self._bucket, prefix="backups/")
         backups = []
@@ -160,20 +169,23 @@ class BackupService:
             if not key.endswith(".dump"):
                 continue
             name = Path(key).stem  # backup_20260329_120000
-            backups.append({
-                "backup_id": name,
-                "s3_key": key,
-                "s3_uri": f"s3://{self._bucket}/{key}",
-            })
+            backups.append(
+                {
+                    "backup_id": name,
+                    "s3_key": key,
+                    "s3_uri": f"s3://{self._bucket}/{key}",
+                }
+            )
         return backups
 
     async def _prune_old_backups(self) -> None:
         """Delete S3 backup objects beyond the retention limit."""
         from app.services.storage.service import get_storage_service
+
         storage = get_storage_service()
         keys = sorted(await storage.list_objects(self._bucket, prefix="backups/"), reverse=True)
         dump_keys = [k for k in keys if k.endswith(".dump")]
-        for old_key in dump_keys[self.settings.BACKUP_RETENTION_COUNT:]:
+        for old_key in dump_keys[self.settings.BACKUP_RETENTION_COUNT :]:
             deleted = await storage.delete(self._bucket, old_key)
             if deleted:
                 logger.info("Pruned old backup: %s", old_key)

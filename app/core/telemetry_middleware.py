@@ -31,9 +31,7 @@ def _normalize_path(path: str) -> str:
 class TelemetryMiddleware(BaseHTTPMiddleware):
     """Collects per-request metrics via :pydata:`telemetry`."""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         path = request.url.path
 
         # Skip static assets — they are high-volume, low-value.
@@ -63,9 +61,7 @@ class TelemetryMiddleware(BaseHTTPMiddleware):
                 labels["correlation_id"] = correlation_id
 
             telemetry.increment_counter("http.requests.total", 1, labels)
-            telemetry.observe_histogram(
-                "http.request.duration_ms", elapsed_ms, labels
-            )
+            telemetry.observe_histogram("http.request.duration_ms", elapsed_ms, labels)
             telemetry.increment_counter("http.requests.errors", 1, labels)
             raise
 

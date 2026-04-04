@@ -85,7 +85,9 @@ async def provision_server(
 
     valid_types = {"sandbox_worker", "app_worker", "tools_worker", "db_replica", "db_backup"}
     if body.service_type not in valid_types:
-        raise HTTPException(400, f"Invalid service_type: {body.service_type}. Must be one of: {', '.join(sorted(valid_types))}")
+        raise HTTPException(
+            400, f"Invalid service_type: {body.service_type}. Must be one of: {', '.join(sorted(valid_types))}"
+        )
 
     config = ServerConfig(
         host=body.host,
@@ -383,12 +385,14 @@ async def list_services(
                 except (OSError, RuntimeError, ConnectionError, TimeoutError):
                     health_status = "unreachable"
 
-        results.append({
-            "name": svc["name"],
-            "type": svc["type"],
-            "port": svc["port"],
-            "status": health_status,
-        })
+        results.append(
+            {
+                "name": svc["name"],
+                "type": svc["type"],
+                "port": svc["port"],
+                "status": health_status,
+            }
+        )
 
     return {"services": results}
 
@@ -403,9 +407,7 @@ async def list_service_nodes(
 
     from app.models.server_node import ServerNode
 
-    nodes = (await session.execute(
-        sa_select(ServerNode).order_by(ServerNode.created_at.desc())
-    )).scalars().all()
+    nodes = (await session.execute(sa_select(ServerNode).order_by(ServerNode.created_at.desc()))).scalars().all()
     return {"nodes": [n.to_dict() for n in nodes]}
 
 
@@ -424,9 +426,7 @@ async def deploy_to_node(
     from app.models.server_node import ServerNode
     from app.services.infrastructure.deploy import ServerDeployer
 
-    node = (await session.execute(
-        sa_select(ServerNode).where(ServerNode.id == node_id)
-    )).scalar_one_or_none()
+    node = (await session.execute(sa_select(ServerNode).where(ServerNode.id == node_id))).scalar_one_or_none()
     if not node:
         raise HTTPException(404, "Node not found")
 

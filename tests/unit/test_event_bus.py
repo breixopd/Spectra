@@ -1,6 +1,5 @@
 """Tests for app.services.ai.event_bus.AgentEventBus."""
 
-
 import pytest
 
 from app.services.ai.event_bus import AgentEventBus, AgentMessage
@@ -87,8 +86,7 @@ class TestDirectQueue:
     async def test_fifo_ordering(self):
         bus = AgentEventBus()
         for i in range(3):
-            await bus.send_direct("agent-c", AgentMessage(
-                sender="s", topic="d", payload=i))
+            await bus.send_direct("agent-c", AgentMessage(sender="s", topic="d", payload=i))
         for i in range(3):
             msg = await bus.receive_direct("agent-c", timeout=1.0)
             assert msg is not None
