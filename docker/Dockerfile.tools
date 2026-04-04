@@ -31,8 +31,23 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && rm -rf /usr/share/doc /usr/share/man
 
+# Golden image: pre-install core security tools so missions don't wait
+# for apt-get on every boot.  The plugin system can still add more tools
+# dynamically at runtime.
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    nmap nikto sqlmap hydra whatweb \
+    masscan proxychains4 dnsutils \
+    feroxbuster \
+    build-essential libssl-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 ENV GOPATH=/home/spectra/go
 ENV PATH=$PATH:/home/spectra/go/bin:/usr/local/go/bin
+
+# Install Go-based tools (nuclei for vulnerability scanning)
+RUN go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest 2>/dev/null || true
 
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"
