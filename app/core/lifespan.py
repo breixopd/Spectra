@@ -410,6 +410,12 @@ async def _initialize_services() -> None:
     await metrics_store.start()
     logger.info("[OK] Metrics store started")
 
+    # Start OTLP export loop if configured
+    otel_endpoint = getattr(settings, "OTEL_EXPORTER_ENDPOINT", "")
+    if otel_endpoint and isinstance(otel_endpoint, str) and otel_endpoint.strip():
+        asyncio.create_task(telemetry.start_export_loop())
+        logger.info("[OK] OTLP export loop started (endpoint=%s)", otel_endpoint)
+
     # Emit startup event
     await events.emit(
         EventType.SERVICE_HEALTH_CHANGED,

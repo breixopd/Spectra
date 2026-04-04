@@ -518,6 +518,63 @@ class TelemetryCollector:
             ],
         }
 
+    async def push_to_collector(self) -> bool:
+        """Push collected telemetry to an external OTLP collector."""
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        endpoint = settings.OTEL_EXPORTER_ENDPOINT
+        if not endpoint:
+            return False
+
+        import httpx
+
+        data = self.export_otlp_format()
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                # Push metrics
+                if data["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]:
+                    await client.post(
+                        f"{endpoint.rstrip('/')}/v1/metrics",
+                        json=data["resourceMetrics"][0],
+                        headers={"Content-Type": "application/json"},
+                    )
+                # Push traces
+                if data["resourceSpans"][0]["scopeSpans"][0]["spans"]:
+                    await client.post(
+                        f"{endpoint.rstrip('/')}/v1/traces",
+                        json=data["resourceSpans"][0],
+                        headers={"Content-Type": "application/json"},
+                    )
+            logger.debug("Pushed telemetry to %s", endpoint)
+            return True
+        except (httpx.HTTPError, OSError) as exc:
+            logger.debug("OTLP push failed: %s", exc)
+            return False
+
+    async def start_export_loop(self) -> None:
+        """Background loop to periodically push telemetry."""
+        import asyncio
+
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        if not settings.OTEL_EXPORTER_ENDPOINT:
+            return
+        interval = settings.OTEL_EXPORT_INTERVAL_SECONDS
+        logger.info(
+            "Starting OTLP export loop (interval=%ds, endpoint=%s)",
+            interval,
+            settings.OTEL_EXPORTER_ENDPOINT,
+        )
+        while True:
+            await asyncio.sleep(interval)
+            try:
+                await self.push_to_collector()
+            except Exception:
+                logger.debug("OTLP export loop error", exc_info=True)
+
     def get_saas_metrics(self) -> dict[str, Any]:
         """Aggregate key SaaS KPIs from existing collected data."""
         # Active users from auth counters
