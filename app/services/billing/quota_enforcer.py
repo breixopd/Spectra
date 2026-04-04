@@ -30,6 +30,18 @@ def _period_start_monthly() -> datetime:
     return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
+def _period_start_daily() -> datetime:
+    now = datetime.now(UTC)
+    return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _period_start_weekly() -> datetime:
+    now = datetime.now(UTC)
+    # Start of ISO week (Monday)
+    monday = now - __import__("datetime").timedelta(days=now.weekday())
+    return monday.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 class QuotaEnforcer:
     """Check plan quotas before allowing resource usage."""
 
@@ -102,6 +114,38 @@ class QuotaEnforcer:
                 started = record.missions_started if record else 0
                 if started >= plan.max_missions_per_month:
                     return False, (f"Monthly mission limit reached: {started}/{plan.max_missions_per_month}")
+
+            # Check daily mission cap
+            daily_limit = getattr(plan, "max_missions_per_day", 0)
+            if isinstance(daily_limit, int) and daily_limit > 0:
+                period = _period_start_daily()
+                rec_result = await session.execute(
+                    select(UsageRecord).where(
+                        UsageRecord.user_id == user_id,
+                        UsageRecord.period_type == "daily",
+                        UsageRecord.period_start == period,
+                    )
+                )
+                record = rec_result.scalar_one_or_none()
+                started = record.missions_started if record else 0
+                if started >= daily_limit:
+                    return False, (f"Daily mission limit reached: {started}/{daily_limit}")
+
+            # Check weekly mission cap
+            weekly_limit = getattr(plan, "max_missions_per_week", 0)
+            if isinstance(weekly_limit, int) and weekly_limit > 0:
+                period = _period_start_weekly()
+                rec_result = await session.execute(
+                    select(UsageRecord).where(
+                        UsageRecord.user_id == user_id,
+                        UsageRecord.period_type == "weekly",
+                        UsageRecord.period_start == period,
+                    )
+                )
+                record = rec_result.scalar_one_or_none()
+                started = record.missions_started if record else 0
+                if started >= weekly_limit:
+                    return False, (f"Weekly mission limit reached: {started}/{weekly_limit}")
 
         return True, ""
 

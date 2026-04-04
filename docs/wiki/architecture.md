@@ -24,6 +24,7 @@ Spectra uses the **MAKER** framework: Maximal Agentic decomposition, K-threshold
 | SafetySupervisor | Safety | 0.1 | Blocks dangerous commands via regex + LLM analysis |
 | PostExploitation | Post-Exploit | 0.3 | Plans privilege escalation, persistence, lateral movement |
 | ReporterAgent | Reporting | 0.3 | Generates PTES-standard assessment reports |
+| ReconIntelAgent | RECON_INTEL | 0.3 | Gathers OSINT and reconnaissance intelligence on targets |
 | DebriefAgent | Learning | 0.3 | Post-mission analysis: extracts lessons for memory |
 
 ### Consensus System (K-Threshold Voting)
@@ -88,7 +89,7 @@ PostgreSQL-backed semantic search engine (`app/services/ai/rag.py`).
 
 1. **Embedding** — Text is embedded via the configured embedding provider (local fastembed or any OpenAI-compatible API). Configure `EMBEDDING_MODEL` to select the model.
 2. **Storage** — Embeddings stored as JSONB arrays in a `rag_documents` PostgreSQL table.
-3. **Search** — Query embedded, cosine similarity computed in application code against stored vectors.
+3. **Search** — Query embedded, pgvector-native cosine similarity with HNSW index for fast nearest-neighbor retrieval.
 
 ### Document Types
 

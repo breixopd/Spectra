@@ -125,13 +125,24 @@ class TestRAGBatchIndex:
         assert result == 0
 
     @pytest.mark.asyncio
-    async def test_batch_calls_index_document(self, rag_service):
+    async def test_batch_falls_back_to_sequential(self, rag_service):
+        """When batch embedding fails, index_batch falls back to index_document."""
         docs = [
             Document(id="d1", content="test1", doc_type="cve"),
             Document(id="d2", content="test2", doc_type="finding"),
         ]
+        rag_service._table_ready = True
+        rag_service.embeddings.embed_batch = AsyncMock(side_effect=RuntimeError("batch fail"))
         rag_service.index_document = AsyncMock(return_value=True)
-        result = await rag_service.index_batch(docs)
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(return_value=AsyncMock(mappings=lambda: AsyncMock(all=lambda: [])))
+        mock_session_maker = AsyncMock()
+        mock_session_maker.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session_maker.__aexit__ = AsyncMock(return_value=False)
+
+        with patch("app.services.ai.rag.async_session_maker", return_value=mock_session_maker):
+            result = await rag_service.index_batch(docs)
         assert result == 2
         assert rag_service.index_document.await_count == 2
 

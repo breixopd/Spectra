@@ -112,7 +112,7 @@ Provide:
             result = await self._llm_generate_structured(
                 prompt=prompt,
                 response_model=DebriefOutput,
-                system_prompt="You are a senior penetration tester conducting a post-engagement debrief. Be specific, actionable, and honest about both successes and failures.",
+                system_prompt="You are a senior penetration tester conducting a post-engagement debrief. Be specific, actionable, and honest about both successes and failures. Ground your analysis in specific evidence from the mission logs. Quote relevant tool outputs when discussing findings. If a finding lacks supporting evidence, flag it as unverified.",
                 temperature=0.4,
             )
 

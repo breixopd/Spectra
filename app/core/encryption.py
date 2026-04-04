@@ -211,6 +211,7 @@ class EncryptedString(TypeDecorator):
 
             return encrypt_byok_key(value)
         except Exception:
+            logger.warning("BYOK key encryption failed", exc_info=True)
             return value
 
     def process_result_value(self, value, dialect):
@@ -221,4 +222,5 @@ class EncryptedString(TypeDecorator):
 
             return decrypt_byok_key(value)
         except Exception:
+            logger.warning("BYOK key decryption failed, returning raw value", exc_info=True)
             return value  # fallback: return raw (may be unencrypted legacy value)
