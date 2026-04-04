@@ -55,7 +55,15 @@ class Mission:
     - Coordinate agents (see MissionManager)
     """
 
-    def __init__(self, target: str, directive: str, requirements: str | None = None, vpn_config: str | None = None, user_id: str | None = None, requires_approval: bool = False):
+    def __init__(
+        self,
+        target: str,
+        directive: str,
+        requirements: str | None = None,
+        vpn_config: str | None = None,
+        user_id: str | None = None,
+        requires_approval: bool = False,
+    ):
         self.id = str(uuid.uuid4())
         self.target = target
         self.directive = directive
@@ -166,10 +174,7 @@ class Mission:
         for i, task in enumerate(new_tasks):
             self.plan.tasks.insert(insert_idx + i, task)
 
-        self.log(
-            f"[REPLAN] #{self.replan_count}: {reason} — "
-            f"inserted {len(new_tasks)} tasks at index {insert_idx}"
-        )
+        self.log(f"[REPLAN] #{self.replan_count}: {reason} — inserted {len(new_tasks)} tasks at index {insert_idx}")
         return True
 
     async def wait_if_paused(self) -> None:
@@ -190,9 +195,7 @@ class Mission:
     def _broadcast(self, msg_type: str, data: Any) -> None:
         """Broadcast a message to the owning user's WebSocket connections."""
         if self.user_id:
-            asyncio.create_task(
-                ws_manager.broadcast_to_user_event(self.user_id, msg_type, data)
-            )
+            asyncio.create_task(ws_manager.broadcast_to_user_event(self.user_id, msg_type, data))
         else:
             asyncio.create_task(ws_manager.broadcast_event(msg_type, data))
 
@@ -369,14 +372,17 @@ class Mission:
         total = len(nodes) - 1  # exclude root
         if total <= 0:
             return MissionProgress(
-                percent=0, phase="initializing",
-                completed_tasks=0, total_tasks=0, active_tasks=[],
+                percent=0,
+                phase="initializing",
+                completed_tasks=0,
+                total_tasks=0,
+                active_tasks=[],
             )
 
         completed = sum(
-            1 for n in nodes.values()
-            if n.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.SKIPPED)
-            and n.id != "root"
+            1
+            for n in nodes.values()
+            if n.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.SKIPPED) and n.id != "root"
         )
         active = [n for n in nodes.values() if n.status == TaskStatus.ACTIVE]
 
@@ -480,6 +486,7 @@ class Mission:
         if data.get("plan"):
             try:
                 from app.services.ai.agents.mission_controller import MissionPlan
+
                 mission.plan = MissionPlan.model_validate(data["plan"])
             except (ValueError, TypeError, KeyError) as e:
                 logger.warning("Failed to restore plan: %s", e)

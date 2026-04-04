@@ -193,9 +193,7 @@ class TestPostExploitSubAgent:
                 {"title": "Log4Shell CVE-2021-44228", "severity": "critical"},
             ]
         )
-        input_data = PostExploitInput(
-            target="10.0.0.1", access_level="user", system_info="Linux"
-        )
+        input_data = PostExploitInput(target="10.0.0.1", access_level="user", system_info="Linux")
 
         with patch.object(agent, "spawn_sub_agent", new_callable=AsyncMock, return_value=recon_result):
             result = await agent.execute(ctx, input_data)
@@ -226,9 +224,7 @@ class TestPostExploitSubAgent:
         agent = PostExploitationAgent(llm)
 
         ctx = _ctx(previous_findings=[{"title": "Open port 80", "severity": "info"}])
-        input_data = PostExploitInput(
-            target="10.0.0.1", access_level="root", system_info="Linux"
-        )
+        input_data = PostExploitInput(target="10.0.0.1", access_level="root", system_info="Linux")
 
         with patch.object(agent, "spawn_sub_agent", new_callable=AsyncMock) as mock_spawn:
             result = await agent.execute(ctx, input_data)
@@ -260,9 +256,7 @@ class TestPostExploitSubAgent:
                 {"title": "CVE-2023-9999 found", "severity": "high"},
             ]
         )
-        input_data = PostExploitInput(
-            target="10.0.0.1", access_level="user", system_info="Linux"
-        )
+        input_data = PostExploitInput(target="10.0.0.1", access_level="user", system_info="Linux")
 
         with patch.object(
             agent,

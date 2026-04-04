@@ -1,7 +1,8 @@
 """Tests for storage service S3 configuration requirements."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 class TestStorageS3Required:

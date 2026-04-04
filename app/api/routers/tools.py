@@ -181,6 +181,7 @@ def _queue_background_job(
     **job_kwargs,
 ) -> None:
     """Queue a worker job and log enqueue failures without failing the request."""
+
     async def _enqueue() -> None:
         try:
             from app.core.queue import PostgresJobQueue

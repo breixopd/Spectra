@@ -1,15 +1,18 @@
 """Tests for StorageService — S3-only mode."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 def _make_s3_storage():
     """Create a StorageService with fully mocked S3 deps, patching the right target."""
     from app.services.storage.service import StorageService
 
-    with patch("app.core.config.settings") as mock_settings, \
-         patch("app.services.storage.service._import_s3_deps") as mock_deps:
+    with (
+        patch("app.core.config.settings") as mock_settings,
+        patch("app.services.storage.service._import_s3_deps") as mock_deps,
+    ):
         mock_settings.S3_ENDPOINT_URL = "http://garage:3900"
         mock_settings.S3_ACCESS_KEY = MagicMock()
         mock_settings.S3_ACCESS_KEY.get_secret_value.return_value = "testkey"
@@ -87,9 +90,7 @@ class TestStorageServiceS3Mode:
 
         result = await svc.upload("spectra-missions", "test/file.bin", b"data")
 
-        mock_client.put_object.assert_called_once_with(
-            Bucket="spectra-missions", Key="test/file.bin", Body=b"data"
-        )
+        mock_client.put_object.assert_called_once_with(Bucket="spectra-missions", Key="test/file.bin", Body=b"data")
         assert result == "s3://spectra-missions/test/file.bin"
 
     @pytest.mark.asyncio
@@ -173,13 +174,15 @@ class TestStorageServiceSingleton:
 
     def test_get_storage_service_returns_mock_in_unit_tests(self, mock_storage_for_unit_tests):
         from app.services.storage import get_storage_service
+
         svc = get_storage_service()
         assert svc is mock_storage_for_unit_tests
 
     @pytest.mark.asyncio
     async def test_close_storage_service(self):
-        from app.services.storage.service import close_storage_service
         import app.services.storage.service as svc_mod
+        from app.services.storage.service import close_storage_service
+
         mock = MagicMock()
         mock.stop = AsyncMock()
         svc_mod._storage_service = mock
@@ -189,7 +192,8 @@ class TestStorageServiceSingleton:
 
     @pytest.mark.asyncio
     async def test_close_storage_service_when_none(self):
-        from app.services.storage.service import close_storage_service
         import app.services.storage.service as svc_mod
+        from app.services.storage.service import close_storage_service
+
         svc_mod._storage_service = None
         await close_storage_service()  # Should not raise

@@ -8,7 +8,7 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -59,6 +59,7 @@ def _get_user_from_cookie(request: Request) -> dict | None:
 
 
 templates.env.globals["get_nav_user"] = _get_user_from_cookie
+
 
 def _extract_legal_html(raw: object) -> object:
     """Extract HTML content from admin-managed legal JSON envelope."""
@@ -121,12 +122,11 @@ async def landing_page(request: Request):
         # Query admin-managed reviews
         try:
             reviews_result = await session.execute(
-                text("SELECT content FROM system_content WHERE content_type = 'review' AND is_active = true ORDER BY sort_order")
+                text(
+                    "SELECT content FROM system_content WHERE content_type = 'review' AND is_active = true ORDER BY sort_order"
+                )
             )
-            reviews = [
-                json.loads(r[0]) if isinstance(r[0], str) else r[0]
-                for r in reviews_result.fetchall()
-            ]
+            reviews = [json.loads(r[0]) if isinstance(r[0], str) else r[0] for r in reviews_result.fetchall()]
         except (ValueError, TypeError):
             logger.debug("Failed to load reviews", exc_info=True)
             reviews = []
@@ -159,27 +159,35 @@ async def sitemap(request: Request):
     xml_parts = ['<?xml version="1.0" encoding="UTF-8"?>']
     xml_parts.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
     for path, priority, freq in urls:
-        xml_parts.append(f"  <url><loc>{base}{path}</loc><priority>{priority}</priority><changefreq>{freq}</changefreq></url>")
+        xml_parts.append(
+            f"  <url><loc>{base}{path}</loc><priority>{priority}</priority><changefreq>{freq}</changefreq></url>"
+        )
     xml_parts.append("</urlset>")
     return Response(content="\n".join(xml_parts), media_type="application/xml")
 
 
 @router.get("/status", response_class=HTMLResponse, include_in_schema=False)
 async def status_page(request: Request):
-    return templates.TemplateResponse("status.html", {
-        "request": request,
-        "app_name": settings.APP_NAME,
-        "is_public_page": True,
-    })
+    return templates.TemplateResponse(
+        "status.html",
+        {
+            "request": request,
+            "app_name": settings.APP_NAME,
+            "is_public_page": True,
+        },
+    )
 
 
 @router.get("/security", response_class=HTMLResponse, include_in_schema=False)
 async def security_page(request: Request):
-    return templates.TemplateResponse("security.html", {
-        "request": request,
-        "app_name": settings.APP_NAME,
-        "is_public_page": True,
-    })
+    return templates.TemplateResponse(
+        "security.html",
+        {
+            "request": request,
+            "app_name": settings.APP_NAME,
+            "is_public_page": True,
+        },
+    )
 
 
 @router.get("/pricing", response_class=HTMLResponse, include_in_schema=False)
@@ -194,14 +202,24 @@ async def legal_terms(request: Request):
     try:
         async with async_session_maker() as session:
             result = await session.execute(
-                text("SELECT content FROM system_content WHERE content_type = 'legal_terms' AND is_active = true ORDER BY sort_order LIMIT 1")
+                text(
+                    "SELECT content FROM system_content WHERE content_type = 'legal_terms' AND is_active = true ORDER BY sort_order LIMIT 1"
+                )
             )
             row = result.fetchone()
             if row:
                 content_override = _extract_legal_html(row[0])
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal terms", exc_info=True)
-    return templates.TemplateResponse("legal/terms.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override, "is_public_page": True})
+    return templates.TemplateResponse(
+        "legal/terms.html",
+        {
+            "request": request,
+            "app_name": settings.APP_NAME,
+            "content_override": content_override,
+            "is_public_page": True,
+        },
+    )
 
 
 @router.get("/legal/privacy", response_class=HTMLResponse, include_in_schema=False)
@@ -210,14 +228,24 @@ async def legal_privacy(request: Request):
     try:
         async with async_session_maker() as session:
             result = await session.execute(
-                text("SELECT content FROM system_content WHERE content_type = 'legal_privacy' AND is_active = true ORDER BY sort_order LIMIT 1")
+                text(
+                    "SELECT content FROM system_content WHERE content_type = 'legal_privacy' AND is_active = true ORDER BY sort_order LIMIT 1"
+                )
             )
             row = result.fetchone()
             if row:
                 content_override = _extract_legal_html(row[0])
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal privacy", exc_info=True)
-    return templates.TemplateResponse("legal/privacy.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override, "is_public_page": True})
+    return templates.TemplateResponse(
+        "legal/privacy.html",
+        {
+            "request": request,
+            "app_name": settings.APP_NAME,
+            "content_override": content_override,
+            "is_public_page": True,
+        },
+    )
 
 
 @router.get("/legal/cookies", response_class=HTMLResponse, include_in_schema=False)
@@ -226,14 +254,24 @@ async def legal_cookies(request: Request):
     try:
         async with async_session_maker() as session:
             result = await session.execute(
-                text("SELECT content FROM system_content WHERE content_type = 'legal_cookies' AND is_active = true ORDER BY sort_order LIMIT 1")
+                text(
+                    "SELECT content FROM system_content WHERE content_type = 'legal_cookies' AND is_active = true ORDER BY sort_order LIMIT 1"
+                )
             )
             row = result.fetchone()
             if row:
                 content_override = _extract_legal_html(row[0])
     except (OSError, RuntimeError, ValueError):
         logger.debug("Failed to load legal cookies", exc_info=True)
-    return templates.TemplateResponse("legal/cookie.html", {"request": request, "app_name": settings.APP_NAME, "content_override": content_override, "is_public_page": True})
+    return templates.TemplateResponse(
+        "legal/cookie.html",
+        {
+            "request": request,
+            "app_name": settings.APP_NAME,
+            "content_override": content_override,
+            "is_public_page": True,
+        },
+    )
 
 
 @router.get("/register", response_class=HTMLResponse, include_in_schema=False)
@@ -283,7 +321,13 @@ async def changelog_page(request: Request):
         logger.debug("Failed to load changelog", exc_info=True)
     return templates.TemplateResponse(
         "changelog.html",
-        {"request": request, "app_name": settings.APP_NAME, "changelogs": changelogs, "version": __version__, "is_public_page": True},
+        {
+            "request": request,
+            "app_name": settings.APP_NAME,
+            "changelogs": changelogs,
+            "version": __version__,
+            "is_public_page": True,
+        },
     )
 
 
@@ -438,10 +482,7 @@ async def _get_default_registration_plan(session: AsyncSession) -> Plan | None:
         return plan
 
     fallback = await session.execute(
-        select(Plan)
-        .where(Plan.is_active.is_(True))
-        .order_by(Plan.sort_order.asc(), Plan.created_at.asc())
-        .limit(1)
+        select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order.asc(), Plan.created_at.asc()).limit(1)
     )
     return fallback.scalar_one_or_none()
 
@@ -453,7 +494,7 @@ async def _create_registered_user(session: AsyncSession, body: RegisterRequest, 
         hashed_password=get_password_hash(body.password),
         is_active=True,
         email_verified=not _registration_requires_email_verification(),
-        plan_id=getattr(plan, 'id', None),
+        plan_id=getattr(plan, "id", None),
     )
     session.add(user)
     await session.flush()
@@ -463,7 +504,7 @@ async def _create_registered_user(session: AsyncSession, body: RegisterRequest, 
             Subscription(
                 user_id=str(user.id),
                 plan_id=str(plan.id),
-                status='active',
+                status="active",
             )
         )
 
@@ -500,7 +541,8 @@ async def register_user(request: Request, body: RegisterRequest, response: Respo
         from app.services.system.audit import log_event as audit_log_event
 
         await audit_log_event(
-            session, AuditEventType.REGISTRATION,
+            session,
+            AuditEventType.REGISTRATION,
             user_id=str(user.id),
             details={"username": body.username},
             request=request,

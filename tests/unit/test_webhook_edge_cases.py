@@ -190,10 +190,12 @@ async def test_fire_does_not_duplicate_delivery_to_same_hook():
 
     with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
         with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
+
             def _close_coro(coro):
                 if asyncio.iscoroutine(coro):
                     coro.close()
                 return MagicMock()
+
             mock_task.side_effect = _close_coro
             await svc.fire("mission.completed", {"id": "m-1"})
 
@@ -234,10 +236,12 @@ async def test_fire_multiple_hooks_each_get_one_delivery():
 
     with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
         with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
+
             def _close_coro(coro):
                 if asyncio.iscoroutine(coro):
                     coro.close()
                 return MagicMock()
+
             mock_task.side_effect = _close_coro
             await svc.fire("mission.completed", {"id": "m-1"})
 

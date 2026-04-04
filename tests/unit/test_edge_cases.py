@@ -1,6 +1,6 @@
 """Additional edge case tests for RBAC, encryption, token blacklist, and lockout."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -28,7 +28,6 @@ from app.core.security import (
     invalidate_token,
     is_token_blacklisted,
 )
-
 
 # --- RBAC Permission Tests ---
 
@@ -219,7 +218,7 @@ def _make_user(fail_count=0, locked_until=None):
 class TestAccountLockout:
     @pytest.mark.asyncio
     async def test_check_lockout_raises_when_locked(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         user = _make_user(locked_until=now + timedelta(minutes=5))
         with pytest.raises(HTTPException) as exc:
             await _check_lockout(user)
@@ -232,7 +231,7 @@ class TestAccountLockout:
 
     @pytest.mark.asyncio
     async def test_check_lockout_passes_when_lock_expired(self):
-        past = datetime.now(timezone.utc) - timedelta(seconds=1)
+        past = datetime.now(UTC) - timedelta(seconds=1)
         user = _make_user(locked_until=past)
         await _check_lockout(user)  # Should not raise — lock has expired
 

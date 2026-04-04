@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -52,6 +52,7 @@ async def periodic_cleanup_loop() -> None:
         try:
             await asyncio.sleep(SYSTEM_CLEANUP_INTERVAL)
             from app.worker.cleanup_jobs import run_all_cleanup
+
             await run_all_cleanup()
         except asyncio.CancelledError:
             logger.info("System cleanup task stopped")
@@ -74,9 +75,7 @@ async def sandbox_watchdog_loop() -> None:
                 continue
 
             async with async_session_maker() as session:
-                result = await session.execute(
-                    select(Sandbox).where(Sandbox.status == "running")
-                )
+                result = await session.execute(select(Sandbox).where(Sandbox.status == "running"))
                 sandboxes = list(result.scalars().all())
 
             now = datetime.now(UTC)
@@ -93,7 +92,9 @@ async def sandbox_watchdog_loop() -> None:
                 if idle_seconds > settings.SANDBOX_IDLE_TIMEOUT:
                     logger.warning(
                         "Watchdog: reaping stale sandbox %s (mission=%s, idle=%.0fs)",
-                        sb.container_name, sb.mission_id[:8], idle_seconds,
+                        sb.container_name,
+                        sb.mission_id[:8],
+                        idle_seconds,
                     )
                     await pool.destroy(sb.mission_id)
 

@@ -12,11 +12,15 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
+
 try:
     from enum import StrEnum
 except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+
     class StrEnum(str, __import__("enum").Enum):
         pass
+
+
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 

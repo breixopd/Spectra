@@ -48,6 +48,7 @@ TASK_TIERS = {
     "post_exploitation": 3,
 }
 
+
 class TensorZeroRouter(LLMClient):
     """
     Smart LLM router powered by TensorZero gateway.
@@ -238,6 +239,7 @@ class TensorZeroRouter(LLMClient):
                     break
                 try:
                     import json
+
                     chunk = json.loads(data_str)
                     for block in chunk.get("content", []):
                         if block.get("type") == "text":

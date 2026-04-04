@@ -19,6 +19,7 @@ def _fake_user(role: str = "admin"):
 
 def _fake_content_item(**overrides):
     from datetime import UTC, datetime
+
     defaults = {
         "id": "c-1",
         "content_type": "changelog",
@@ -38,6 +39,7 @@ def _fake_content_item(**overrides):
 
 def _make_app() -> FastAPI:
     from app.core.rate_limit import limiter
+
     app = FastAPI()
     app.state.limiter = limiter
     limiter.enabled = False
@@ -111,7 +113,6 @@ class TestCreateContent:
         # After add + commit + refresh, the item gets an id
         _fake_content_item()
 
-
         def _capture_add(item):
             item.id = "c-new"
 
@@ -120,11 +121,14 @@ class TestCreateContent:
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            resp = await ac.post("/api/admin/content", json={
-                "content_type": "review",
-                "title": "Q1 Review",
-                "content": {"body": "Great quarter"},
-            })
+            resp = await ac.post(
+                "/api/admin/content",
+                json={
+                    "content_type": "review",
+                    "title": "Q1 Review",
+                    "content": {"body": "Great quarter"},
+                },
+            )
         assert resp.status_code == 201
         data = resp.json()
         assert data["status"] == "created"
@@ -133,18 +137,20 @@ class TestCreateContent:
         app = _make_app()
         mock_session = AsyncMock()
         mock_session.refresh = AsyncMock()
-        mock_session.add = lambda item: setattr(item, 'id', 'c-cl')
+        mock_session.add = lambda item: setattr(item, "id", "c-cl")
         _override_deps(app, _fake_user(), mock_session)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            resp = await ac.post("/api/admin/content", json={
-                "content_type": "changelog",
-                "title": "v2.0",
-                "content": {"changes": ["feature X"]},
-            })
+            resp = await ac.post(
+                "/api/admin/content",
+                json={
+                    "content_type": "changelog",
+                    "title": "v2.0",
+                    "content": {"changes": ["feature X"]},
+                },
+            )
         assert resp.status_code == 201
-
 
     async def test_create_legal_content_preserves_safe_legal_markup(self):
         app = _make_app()
@@ -161,13 +167,16 @@ class TestCreateContent:
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            resp = await ac.post("/api/admin/content", json={
-                "content_type": "legal_cookies",
-                "title": "Cookie Policy",
-                "content": {
-                    "html": "<section><h2>Cookies</h2><table><tr><th scope=\"col\">Cookie</th></tr><tr><td colspan=\"2\">session</td></tr></table><script>alert(1)</script></section>",
+            resp = await ac.post(
+                "/api/admin/content",
+                json={
+                    "content_type": "legal_cookies",
+                    "title": "Cookie Policy",
+                    "content": {
+                        "html": '<section><h2>Cookies</h2><table><tr><th scope="col">Cookie</th></tr><tr><td colspan="2">session</td></tr></table><script>alert(1)</script></section>',
+                    },
                 },
-            })
+            )
         assert resp.status_code == 201
         stored_html = captured["item"].content["html"]
         assert "<section>" in stored_html
@@ -187,9 +196,12 @@ class TestUpdateContent:
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            resp = await ac.put("/api/admin/content/c-1", json={
-                "title": "Updated Title",
-            })
+            resp = await ac.put(
+                "/api/admin/content/c-1",
+                json={
+                    "title": "Updated Title",
+                },
+            )
         assert resp.status_code == 200
         assert resp.json()["status"] == "updated"
 
@@ -200,9 +212,12 @@ class TestUpdateContent:
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            resp = await ac.put("/api/admin/content/nonexistent", json={
-                "title": "x",
-            })
+            resp = await ac.put(
+                "/api/admin/content/nonexistent",
+                json={
+                    "title": "x",
+                },
+            )
         assert resp.status_code == 404
 
 
@@ -250,8 +265,11 @@ class TestPermissionEnforcement:
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            resp = await ac.post("/api/admin/content", json={
-                "content_type": "changelog",
-                "content": {},
-            })
+            resp = await ac.post(
+                "/api/admin/content",
+                json={
+                    "content_type": "changelog",
+                    "content": {},
+                },
+            )
         assert resp.status_code == 403

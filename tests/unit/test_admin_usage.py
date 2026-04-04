@@ -39,9 +39,12 @@ async def test_admin_usage_response_format(mock_telemetry, mock_get_trackers):
     """The endpoint must return the documented top-level keys."""
     mock_telemetry.get_saas_metrics.return_value = {"missions": {"started": 2}}
 
-    tracker = _build_mock_tracker("m-1", [
-        {"agent": "planner", "role": "planner", "prompt": 200, "completion": 100},
-    ])
+    tracker = _build_mock_tracker(
+        "m-1",
+        [
+            {"agent": "planner", "role": "planner", "prompt": 200, "completion": 100},
+        ],
+    )
     mock_get_trackers.return_value = {"m-1": tracker}
 
     from app.api.routers.admin.audit import admin_usage
@@ -70,13 +73,19 @@ async def test_admin_usage_token_cost_aggregation(mock_telemetry, mock_get_track
     """Totals must aggregate across all trackers and agents."""
     mock_telemetry.get_saas_metrics.return_value = {"missions": {"started": 3}}
 
-    t1 = _build_mock_tracker("m-1", [
-        {"agent": "planner", "role": "planner", "prompt": 200, "completion": 100},
-        {"agent": "executor", "role": "executor", "prompt": 300, "completion": 150},
-    ])
-    t2 = _build_mock_tracker("m-2", [
-        {"agent": "planner", "role": "planner", "prompt": 400, "completion": 200},
-    ])
+    t1 = _build_mock_tracker(
+        "m-1",
+        [
+            {"agent": "planner", "role": "planner", "prompt": 200, "completion": 100},
+            {"agent": "executor", "role": "executor", "prompt": 300, "completion": 150},
+        ],
+    )
+    t2 = _build_mock_tracker(
+        "m-2",
+        [
+            {"agent": "planner", "role": "planner", "prompt": 400, "completion": 200},
+        ],
+    )
     mock_get_trackers.return_value = {"m-1": t1, "m-2": t2}
 
     from app.api.routers.admin.audit import admin_usage

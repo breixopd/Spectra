@@ -12,11 +12,15 @@ Responsible for:
 from __future__ import annotations
 
 import logging
+
 try:
     from enum import StrEnum
 except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
+
     class StrEnum(str, __import__("enum").Enum):
         pass
+
+
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import BaseModel, Field
@@ -149,20 +153,12 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
                     target=context.target or "unknown",
                     args={"directive": input_data.directive},
                 )
-                safety_result = await self.spawn_sub_agent(
-                    AgentRole.SAFETY_SUPERVISOR, context, safety_input
-                )
+                safety_result = await self.spawn_sub_agent(AgentRole.SAFETY_SUPERVISOR, context, safety_input)
                 if safety_result.success and safety_result.action:
                     safety_action = safety_result.action
-                    safety_metadata["preflight_allowed"] = getattr(
-                        safety_action, "allowed", True
-                    )
-                    safety_metadata["preflight_risk"] = getattr(
-                        safety_action, "risk_level", "low"
-                    )
-                    safety_metadata["preflight_reason"] = getattr(
-                        safety_action, "reason", ""
-                    )
+                    safety_metadata["preflight_allowed"] = getattr(safety_action, "allowed", True)
+                    safety_metadata["preflight_risk"] = getattr(safety_action, "risk_level", "low")
+                    safety_metadata["preflight_reason"] = getattr(safety_action, "reason", "")
                     logger.info(
                         "Pre-flight safety check: allowed=%s risk=%s",
                         safety_metadata["preflight_allowed"],

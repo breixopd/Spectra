@@ -43,7 +43,8 @@ def ops_env() -> dict[str, str]:
         pytest.skip(f"live ops smoke tests require env vars: {', '.join(missing)}")
 
     unavailable = [
-        name for name in ("OPS_DB_CONTAINER", "OPS_APP_CONTAINER", "OPS_GARAGE_CONTAINER")
+        name
+        for name in ("OPS_DB_CONTAINER", "OPS_APP_CONTAINER", "OPS_GARAGE_CONTAINER")
         if not _docker_inspect_running(required_env[name])
     ]
     if unavailable:

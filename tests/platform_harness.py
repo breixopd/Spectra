@@ -4,9 +4,9 @@ import asyncio
 import os
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Awaitable, Callable
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -91,9 +91,7 @@ def ensure_platform_targets_available(*targets: tuple[str, str], helper_command:
                 continue
 
             if not response.is_success:
-                failures.append(
-                    f"{label} at {health_url} returned HTTP {response.status_code}"
-                )
+                failures.append(f"{label} at {health_url} returned HTTP {response.status_code}")
 
     if failures:
         pytest.skip(_platform_targets_skip_message(failures=failures, helper_command=helper_command))
@@ -107,8 +105,7 @@ def require_recovery_window_tests_enabled() -> None:
     if recovery_window_tests_enabled():
         return
     pytest.skip(
-        "Recovery-window assertions are disabled by default; "
-        "set LOAD_TEST_ENABLE_RECOVERY_WINDOWS=1 to enable them."
+        "Recovery-window assertions are disabled by default; set LOAD_TEST_ENABLE_RECOVERY_WINDOWS=1 to enable them."
     )
 
 
@@ -124,9 +121,7 @@ async def reset_rate_limit_state_if_requested() -> None:
         import redis.asyncio as redis
         from redis import exceptions as redis_exceptions
     except ImportError:
-        pytest.skip(
-            "Load test rate-limit reset was requested, but redis-py is unavailable in the test runner."
-        )
+        pytest.skip("Load test rate-limit reset was requested, but redis-py is unavailable in the test runner.")
 
     client = redis.from_url(storage_url, encoding="utf-8", decode_responses=True)
     try:
@@ -216,9 +211,7 @@ async def get_access_token_for_credentials(
         data={"username": username, "password": password},
     )
     if response.status_code == 403 and "verify your email" in response.text.lower():
-        pytest.skip(
-            "Load user provisioning requires email verification to be disabled in the test stack."
-        )
+        pytest.skip("Load user provisioning requires email verification to be disabled in the test stack.")
     assert response.status_code == 200, response.text
     return str(response.json()["access_token"])
 

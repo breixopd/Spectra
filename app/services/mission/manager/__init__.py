@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Coroutine
+from collections.abc import Coroutine
+from typing import Any
 
 from app.core.constants import MAX_CONCURRENT_MISSIONS
 from app.services.mission.mission import Mission
@@ -162,9 +163,7 @@ class MissionManager:
         Raises:
             ValueError: If mission not found or input invalid
         """
-        return await self.steering.steer_mission(
-            mission_id, action, phase, target, vulnerability, **kwargs
-        )
+        return await self.steering.steer_mission(mission_id, action, phase, target, vulnerability, **kwargs)
 
     def list_missions(self) -> list[dict[str, Any]]:
         """List all missions with their status."""

@@ -1,7 +1,8 @@
 """Tests for BackupService — S3-native backup and restore."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from app.services.infrastructure.backup import BackupService
 
@@ -19,9 +20,7 @@ def _wait_for_wrapper(recorded_timeouts: list[int | None]):
 @pytest.fixture
 def backup_svc():
     mock_settings = MagicMock()
-    mock_settings.DATABASE_URL.get_secret_value.return_value = (
-        "postgresql+asyncpg://spectra:pass@db:5432/spectra"
-    )
+    mock_settings.DATABASE_URL.get_secret_value.return_value = "postgresql+asyncpg://spectra:pass@db:5432/spectra"
     mock_settings.S3_BUCKET_BACKUPS = "spectra-backups"
     mock_settings.BACKUP_RETENTION_COUNT = 5
 
@@ -44,10 +43,12 @@ async def test_create_backup_success(backup_svc):
     mock_storage.list_objects = AsyncMock(return_value=[])
     mock_storage.delete = AsyncMock()
 
-    with patch("asyncio.create_subprocess_exec", return_value=mock_proc), \
-         patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)), \
-         patch(STORAGE_PATCH, return_value=mock_storage), \
-         patch("pathlib.Path.stat") as mock_stat:
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)),
+        patch(STORAGE_PATCH, return_value=mock_storage),
+        patch("pathlib.Path.stat") as mock_stat,
+    ):
         mock_stat.return_value.st_size = 1024
         result = await backup_svc.create_backup()
 
@@ -75,10 +76,12 @@ async def test_restore_backup_not_found(backup_svc):
 async def test_list_backups_returns_s3_objects(backup_svc):
     """list_backups should parse S3 keys into structured backup metadata."""
     mock_storage = MagicMock()
-    mock_storage.list_objects = AsyncMock(return_value=[
-        "backups/backup_20260329_100000.dump",
-        "backups/backup_20260329_120000.dump",
-    ])
+    mock_storage.list_objects = AsyncMock(
+        return_value=[
+            "backups/backup_20260329_100000.dump",
+            "backups/backup_20260329_120000.dump",
+        ]
+    )
 
     with patch(STORAGE_PATCH, return_value=mock_storage):
         result = await backup_svc.list_backups()
@@ -97,8 +100,10 @@ async def test_create_backup_returns_failure_when_pg_dump_fails(backup_svc):
     mock_proc.returncode = 1
     timeouts: list[int | None] = []
 
-    with patch("asyncio.create_subprocess_exec", return_value=mock_proc), \
-         patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)):
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)),
+    ):
         result = await backup_svc.create_backup()
 
     assert result == {"status": "failed", "error": "permission denied"}
@@ -116,10 +121,12 @@ async def test_create_backup_returns_failure_when_upload_fails(backup_svc):
     mock_storage = MagicMock()
     mock_storage.upload_file = AsyncMock(side_effect=Exception("s3 unavailable"))
 
-    with patch("asyncio.create_subprocess_exec", return_value=mock_proc), \
-         patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)), \
-         patch(STORAGE_PATCH, return_value=mock_storage), \
-         patch("pathlib.Path.stat") as mock_stat:
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)),
+        patch(STORAGE_PATCH, return_value=mock_storage),
+        patch("pathlib.Path.stat") as mock_stat,
+    ):
         mock_stat.return_value.st_size = 2048
         result = await backup_svc.create_backup()
 
@@ -139,9 +146,11 @@ async def test_restore_backup_returns_success_when_pg_restore_only_warns(backup_
     mock_proc.communicate = AsyncMock(return_value=(b"", b"warning only"))
     mock_proc.returncode = 1
 
-    with patch(STORAGE_PATCH, return_value=mock_storage), \
-         patch("asyncio.create_subprocess_exec", return_value=mock_proc), \
-         patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)):
+    with (
+        patch(STORAGE_PATCH, return_value=mock_storage),
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        patch("asyncio.wait_for", new=_wait_for_wrapper(timeouts)),
+    ):
         result = await backup_svc.restore_backup("backup_20260329_130000")
 
     assert result["status"] == "success"

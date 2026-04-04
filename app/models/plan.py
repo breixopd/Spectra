@@ -71,7 +71,9 @@ class ApiKey(Base):
 
     __tablename__ = "api_keys"
 
-    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     key_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     key_prefix: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -90,11 +92,11 @@ class UsageRecord(Base):
     """Tracks API/resource usage per user per period."""
 
     __tablename__ = "usage_records"
-    __table_args__ = (
-        Index("ix_usage_records_user_period", "user_id", "period_start", "period_type"),
-    )
+    __table_args__ = (Index("ix_usage_records_user_period", "user_id", "period_start", "period_type"),)
 
-    user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     period_type: Mapped[str] = mapped_column(String(20), nullable=False)
     api_requests: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

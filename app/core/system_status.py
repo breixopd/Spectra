@@ -18,11 +18,15 @@ async def set_system_status(status: str, message: str) -> None:
 
         cache = get_cache()
         if cache:
-            await cache.set("spectra:system:status", {
-                "status": status,
-                "message": message,
-                "timestamp": datetime.now().isoformat(),
-            }, ttl=3600)
+            await cache.set(
+                "spectra:system:status",
+                {
+                    "status": status,
+                    "message": message,
+                    "timestamp": datetime.now().isoformat(),
+                },
+                ttl=3600,
+            )
     except (OSError, RuntimeError) as e:
         logger.debug("Failed to set system status: %s", e)
 

@@ -23,7 +23,7 @@ __all__ = ["router", *list(_ADMIN_ROUTER_MODULES)]
 
 def _load_router(name: str):
     module = import_module(_ADMIN_ROUTER_MODULES[name])
-    value = getattr(module, "router")
+    value = module.router
     globals()[name] = value
     return value
 

@@ -521,7 +521,12 @@ async def delete_finding(
     repo = FindingRepository(db)
     existing = await _get_owned_finding_or_404(repo, finding_id, _current_user)
 
-    details = {"finding_id": existing.id, "target_id": existing.target_id, "title": existing.title, "severity": existing.severity.value}
+    details = {
+        "finding_id": existing.id,
+        "target_id": existing.target_id,
+        "title": existing.title,
+        "severity": existing.severity.value,
+    }
     await repo.delete(finding_id)
     await db.commit()
     await audit_log_event(

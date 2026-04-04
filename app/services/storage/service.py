@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -139,7 +138,7 @@ class StorageService:
         except (OSError, ConnectionError) as exc:
             raise RuntimeError(
                 f"Cannot reach S3 storage at {settings.S3_ENDPOINT_URL} "
-                f"while ensuring bucket \"{bucket}\". "
+                f'while ensuring bucket "{bucket}". '
                 f"Check S3 connectivity and credentials. Error: {exc}"
             ) from exc
 
@@ -170,6 +169,7 @@ class StorageService:
     async def download_file(self, bucket: str, key: str, dest_path: str) -> str:
         """Download an S3 object to a local path."""
         from pathlib import Path
+
         dest = Path(dest_path)
         dest.parent.mkdir(parents=True, exist_ok=True)
         async with self._client() as s3:

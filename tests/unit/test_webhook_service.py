@@ -205,6 +205,7 @@ async def test_fire_only_delivers_to_matching_hooks():
                 if asyncio.iscoroutine(coro):
                     coro.close()
                 return MagicMock()
+
             mock_task.side_effect = _close_coro
 
             await svc.fire("mission.completed", {"id": "m-1"})

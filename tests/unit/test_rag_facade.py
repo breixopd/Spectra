@@ -90,18 +90,14 @@ class TestRAGFacadeIndexToolOutput:
 
     @pytest.mark.asyncio
     async def test_index_tool_output_empty_output(self, facade, mock_rag_service):
-        result = await facade.index_tool_output(
-            mission_id="m-123", tool_name="nmap", output=""
-        )
+        result = await facade.index_tool_output(mission_id="m-123", tool_name="nmap", output="")
         assert result is False
         mock_rag_service.index_document.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_index_tool_output_truncates_large_output(self, facade, mock_rag_service):
         large = "x" * 100_000
-        await facade.index_tool_output(
-            mission_id="m-123", tool_name="nmap", output=large
-        )
+        await facade.index_tool_output(mission_id="m-123", tool_name="nmap", output=large)
         doc = mock_rag_service.index_document.call_args[0][0]
         # Content includes "Tool output from nmap: " prefix + truncated data
         assert len(doc.content) <= 50_000 + 50

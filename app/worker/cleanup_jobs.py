@@ -141,6 +141,7 @@ async def cleanup_old_missions(session=None) -> int:
     close_session = False
     if session is None:
         from app.core.database import async_session_factory
+
         session = async_session_factory()
         close_session = True
 
@@ -164,6 +165,7 @@ async def cleanup_old_missions(session=None) -> int:
         # Delete S3 artifacts for each mission
         try:
             from app.services.storage import get_storage_service
+
             storage = get_storage_service()
             for mid in mission_ids:
                 keys = await storage.list_objects(settings.S3_BUCKET_MISSIONS, prefix=str(mid))
@@ -173,9 +175,7 @@ async def cleanup_old_missions(session=None) -> int:
             logger.warning("Failed to cleanup S3 artifacts for expired missions", exc_info=True)
 
         # Delete from database (cascade handles related tables)
-        await session.execute(
-            delete(Mission).where(Mission.id.in_(mission_ids))
-        )
+        await session.execute(delete(Mission).where(Mission.id.in_(mission_ids)))
         await session.commit()
 
         logger.info("Cleaned up %d expired missions (retention: %d days)", len(mission_ids), retention_days)

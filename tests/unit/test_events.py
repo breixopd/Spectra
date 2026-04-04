@@ -165,12 +165,10 @@ class TestEventBus:
 
         assert len(received) == 1
 
-
     @pytest.mark.asyncio
     async def test_get_history_since_filters_old_events(self, bus):
         """Events before the since timestamp should be excluded."""
         import time
-        from datetime import datetime
 
         await bus.emit(EventType.LOGIN_SUCCESS, source="test", info="old")
         old_ts = time.time()

@@ -53,21 +53,11 @@ def build_execution_request(
         args=args or {},
         timeout=effective_timeout,
     )
-    full_command = adapter.builder.build_command(
-        request, output_dir=str(output_dir)
-    )
+    full_command = adapter.builder.build_command(request, output_dir=str(output_dir))
 
-    args_str = (
-        ", ".join(f"{k}={v}" for k, v in (args or {}).items())
-        if args
-        else "default"
-    )
-    mission.log(
-        f"[EXEC] Executing: {tool_name} | Target: {target} | Args: {args_str}"
-    )
-    mission.log(
-        f"[CMD] Command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}"
-    )
+    args_str = ", ".join(f"{k}={v}" for k, v in (args or {}).items()) if args else "default"
+    mission.log(f"[EXEC] Executing: {tool_name} | Target: {target} | Args: {args_str}")
+    mission.log(f"[CMD] Command: {full_command[:200]}{'...' if len(full_command) > 200 else ''}")
     return request, adapter, full_command, str(output_dir)
 
 
@@ -92,12 +82,12 @@ async def dispatch_and_process_result(
     """Apply stealth settings, dispatch to worker, and process the result."""
     try:
         stealth = tool.config.stealth
-        if stealth and isinstance(getattr(stealth, 'delay_ms', None), (int, float)) and stealth.delay_ms:
+        if stealth and isinstance(getattr(stealth, "delay_ms", None), (int, float)) and stealth.delay_ms:
             delay_s = stealth.delay_ms / 1000.0
             mission.log(f"[STEALTH] Applying {stealth.delay_ms}ms delay before execution")
             await asyncio.sleep(delay_s)
 
-        if stealth and getattr(stealth, 'extra_args', None):
+        if stealth and getattr(stealth, "extra_args", None):
             full_command = adapter.builder.apply_stealth_args(full_command, stealth)
 
         async with semaphore:
@@ -114,29 +104,27 @@ async def dispatch_and_process_result(
             )
 
         if result.success:
-            result.stdout = truncate_for_llm(
-                result.stdout, max_chars=max_stdout_chars, label="stdout"
-            )
-            result.stderr = truncate_for_llm(
-                result.stderr, max_chars=max_stderr_chars, label="stderr"
-            )
+            result.stdout = truncate_for_llm(result.stdout, max_chars=max_stdout_chars, label="stdout")
+            result.stderr = truncate_for_llm(result.stderr, max_chars=max_stderr_chars, label="stderr")
             log_success(mission, tool_name, result)
             for finding in result.parsed_findings:
                 typed_finding = cast("FindingDict", finding)
                 mission.add_finding(typed_finding)
                 update_attack_surface_from_finding(mission, finding)
             mission.record_tool_run(
-                tool_name, args=args, command=full_command, success=True,
+                tool_name,
+                args=args,
+                command=full_command,
+                success=True,
             )
         else:
-            last_error = (
-                result.stderr[:max_stderr_chars]
-                if result.stderr
-                else "No error message"
-            )
+            last_error = result.stderr[:max_stderr_chars] if result.stderr else "No error message"
             mission.log(f"[ERROR] {tool_name} failed: {last_error[:200]}")
             mission.record_tool_run(
-                tool_name, args=args, success=False, error=last_error,
+                tool_name,
+                args=args,
+                success=False,
+                error=last_error,
             )
 
         return result

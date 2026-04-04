@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 
 from sqlalchemy import func, select
 
@@ -86,10 +86,7 @@ class QuotaEnforcer:
             active_count = active_count_result.scalar() or 0
 
             if plan.max_concurrent_missions and active_count >= plan.max_concurrent_missions:
-                return False, (
-                    f"Concurrent mission limit reached: "
-                    f"{active_count}/{plan.max_concurrent_missions}"
-                )
+                return False, (f"Concurrent mission limit reached: {active_count}/{plan.max_concurrent_missions}")
 
             # Check monthly mission cap
             if plan.max_missions_per_month is not None:
@@ -104,10 +101,7 @@ class QuotaEnforcer:
                 record = rec_result.scalar_one_or_none()
                 started = record.missions_started if record else 0
                 if started >= plan.max_missions_per_month:
-                    return False, (
-                        f"Monthly mission limit reached: "
-                        f"{started}/{plan.max_missions_per_month}"
-                    )
+                    return False, (f"Monthly mission limit reached: {started}/{plan.max_missions_per_month}")
 
         return True, ""
 
@@ -141,10 +135,7 @@ class QuotaEnforcer:
             current = record.api_requests if record else 0
 
             if current >= plan.max_api_requests_per_hour:
-                return False, (
-                    f"Hourly API limit reached: "
-                    f"{current}/{plan.max_api_requests_per_hour}"
-                )
+                return False, (f"Hourly API limit reached: {current}/{plan.max_api_requests_per_hour}")
 
         return True, ""
 
@@ -175,9 +166,7 @@ class QuotaEnforcer:
             used = record.storage_used_mb if record else 0
 
             if used >= plan.max_storage_mb:
-                return False, (
-                    f"Storage limit reached: {used}/{plan.max_storage_mb} MB"
-                )
+                return False, (f"Storage limit reached: {used}/{plan.max_storage_mb} MB")
 
         return True, ""
 

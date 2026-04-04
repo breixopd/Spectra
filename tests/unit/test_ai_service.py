@@ -62,9 +62,7 @@ async def test_ai_chat_returns_router_response():
     from app import ai_service
 
     router = SimpleNamespace(
-        generate=AsyncMock(
-            return_value=SimpleNamespace(content="planned", model="gpt-test", usage={"tokens": 42})
-        )
+        generate=AsyncMock(return_value=SimpleNamespace(content="planned", model="gpt-test", usage={"tokens": 42}))
     )
     request = ai_service.ChatRequest(
         messages=[

@@ -52,16 +52,20 @@ class TestTensorZeroRouter:
         router = TensorZeroRouter(gateway_url="http://tensorzero:3000")
         mock_client = MagicMock()
         mock_client.is_closed = False
-        mock_client.post = AsyncMock(return_value=MagicMock(
-            raise_for_status=MagicMock(),
-            json=MagicMock(return_value={
-                "content": [{"type": "text", "text": "test response"}],
-                "usage": {"input_tokens": 10, "output_tokens": 20},
-                "variant_name": "fast-primary",
-                "inference_id": "inf-123",
-                "episode_id": "ep-123",
-            }),
-        ))
+        mock_client.post = AsyncMock(
+            return_value=MagicMock(
+                raise_for_status=MagicMock(),
+                json=MagicMock(
+                    return_value={
+                        "content": [{"type": "text", "text": "test response"}],
+                        "usage": {"input_tokens": 10, "output_tokens": 20},
+                        "variant_name": "fast-primary",
+                        "inference_id": "inf-123",
+                        "episode_id": "ep-123",
+                    }
+                ),
+            )
+        )
         router._client = mock_client
 
         result = await router.generate("hello", task_type="tool_selection")

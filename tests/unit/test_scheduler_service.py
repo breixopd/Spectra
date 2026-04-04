@@ -122,9 +122,7 @@ async def test_quota_reset_runs_single_iteration():
 
     service = scheduler_service.SchedulerService()
     service.running = True
-    tracker = SimpleNamespace(
-        reset_daily_counters=AsyncMock(side_effect=lambda: setattr(service, "running", False))
-    )
+    tracker = SimpleNamespace(reset_daily_counters=AsyncMock(side_effect=lambda: setattr(service, "running", False)))
 
     class _FakeDateTime:
         @classmethod
@@ -270,7 +268,9 @@ async def test_backup_scheduler_runs_single_iteration():
     service = scheduler_service.SchedulerService()
     service.running = True
     settings = SimpleNamespace(BACKUP_ENABLED=True, BACKUP_SCHEDULE_HOURS=0)
-    backup_service = SimpleNamespace(create_backup=AsyncMock(side_effect=lambda: setattr(service, "running", False) or {"status": "ok"}))
+    backup_service = SimpleNamespace(
+        create_backup=AsyncMock(side_effect=lambda: setattr(service, "running", False) or {"status": "ok"})
+    )
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
@@ -349,8 +349,15 @@ async def test_backup_scheduler_handles_backup_errors():
 async def test_health_reports_scheduler_running_state():
     from app import scheduler_service
 
-    scheduler_service._scheduler_instance = SimpleNamespace(running=True, health=lambda: {"status": "healthy", "tasks": {}, "running": True})
-    assert await scheduler_service.health() == {"status": "healthy", "tasks": {}, "running": True, "service": "scheduler"}
+    scheduler_service._scheduler_instance = SimpleNamespace(
+        running=True, health=lambda: {"status": "healthy", "tasks": {}, "running": True}
+    )
+    assert await scheduler_service.health() == {
+        "status": "healthy",
+        "tasks": {},
+        "running": True,
+        "service": "scheduler",
+    }
 
     scheduler_service._scheduler_instance = None
     assert await scheduler_service.health() == {"status": "starting", "service": "scheduler"}

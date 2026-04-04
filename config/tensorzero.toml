@@ -10,11 +10,11 @@
 # Set OPENAI_BASE_URL to https://openrouter.ai/api/v1 (done in docker-compose).
 #
 # Fast tier:    meta-llama/llama-3.3-70b-instruct:free (primary)
-#               meta-llama/llama-3.2-3b-instruct:free (fallback)
+#               google/gemma-3-27b-it:free (fallback)
 # Balanced tier: qwen/qwen3.6-plus:free (primary)
-#               nousresearch/hermes-3-llama-3.1-405b:free (fallback)
-# Capable tier: openai/gpt-oss-120b:free (primary)
-#               minimax/minimax-m2.5:free (fallback)
+#               nvidia/nemotron-3-super-120b-a12b:free (fallback)
+# Capable tier: nvidia/nemotron-3-super-120b-a12b:free (primary)
+#               qwen/qwen3-coder:free (fallback)
 #
 # To use paid models: change model_name values to e.g. "openai/gpt-4.1",
 # "anthropic/claude-sonnet-4", etc. Models are hot-swappable.
@@ -39,7 +39,7 @@ api_key_location = "env::OPENAI_API_KEY"
 
 [models.fast.providers.fallback]
 type = "openai"
-model_name = "meta-llama/llama-3.2-3b-instruct:free"
+model_name = "google/gemma-3-27b-it:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 
@@ -55,7 +55,7 @@ api_key_location = "env::OPENAI_API_KEY"
 
 [models.balanced.providers.fallback]
 type = "openai"
-model_name = "nousresearch/hermes-3-llama-3.1-405b:free"
+model_name = "nvidia/nemotron-3-super-120b-a12b:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 
@@ -65,13 +65,13 @@ routing = ["primary", "fallback"]
 
 [models.capable.providers.primary]
 type = "openai"
-model_name = "openai/gpt-oss-120b:free"
+model_name = "nvidia/nemotron-3-super-120b-a12b:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 
 [models.capable.providers.fallback]
 type = "openai"
-model_name = "minimax/minimax-m2.5:free"
+model_name = "qwen/qwen3-coder:free"
 api_base = "https://openrouter.ai/api/v1"
 api_key_location = "env::OPENAI_API_KEY"
 

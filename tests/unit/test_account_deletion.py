@@ -7,7 +7,6 @@ from pydantic import ValidationError
 
 from app.api.schemas.system import DeleteAccountRequest
 
-
 # --- Schema validation ---
 
 
@@ -111,7 +110,10 @@ async def test_delete_account_success(mock_user, mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.verify_password", return_value=True),          patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
+    with (
+        patch("app.api.routers.auth.verify_password", return_value=True),
+        patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock),
+    ):
         result = await delete_account(
             request=request,
             body=body,

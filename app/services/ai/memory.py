@@ -358,9 +358,7 @@ class MissionMemory:
         self.false_positives.add(template_id)
         self._save()
 
-    def record_tool_lesson(
-        self, tool: str, lesson: str, context: str = ""
-    ) -> None:
+    def record_tool_lesson(self, tool: str, lesson: str, context: str = "") -> None:
         """Record a freeform lesson (e.g. from debrief) as a ToolLesson note."""
         entry = ToolLesson(
             tool_id=tool,
@@ -448,17 +446,9 @@ class MissionMemory:
                 continue
 
             relevance = 0.5
-            if (
-                product
-                and lesson.target_product
-                and product.lower() in lesson.target_product.lower()
-            ):
+            if product and lesson.target_product and product.lower() in lesson.target_product.lower():
                 relevance += 0.3
-            if (
-                os_family
-                and lesson.target_os
-                and os_family.lower() in lesson.target_os.lower()
-            ):
+            if os_family and lesson.target_os and os_family.lower() in lesson.target_os.lower():
                 relevance += 0.2
 
             recommendations.append(
@@ -486,11 +476,7 @@ class MissionMemory:
         for lesson in reversed(self.exploit_lessons):
             if service and lesson.target_service.lower() != service.lower():
                 continue
-            if (
-                product
-                and lesson.target_product
-                and product.lower() not in lesson.target_product.lower()
-            ):
+            if product and lesson.target_product and product.lower() not in lesson.target_product.lower():
                 continue
             results.append(lesson)
             if len(results) >= 5:
@@ -557,11 +543,7 @@ class MissionMemory:
             if exploits:
                 lines = ["**Successful Exploits** (from previous missions):"]
                 for ex in exploits[:3]:
-                    chain_str = (
-                        " → ".join(ex.attack_chain)
-                        if ex.attack_chain
-                        else ex.exploit_tool
-                    )
+                    chain_str = " → ".join(ex.attack_chain) if ex.attack_chain else ex.exploit_tool
                     lines.append(
                         f"  - {chain_str}"
                         + (f" (CVE: {ex.cve_id})" if ex.cve_id else "")
@@ -575,17 +557,11 @@ class MissionMemory:
             if profile:
                 lines = [f"**{os_family.title()} Strategy** (learned):"]
                 if profile.effective_tools:
-                    lines.append(
-                        f"  Effective tools: {', '.join(profile.effective_tools)}"
-                    )
+                    lines.append(f"  Effective tools: {', '.join(profile.effective_tools)}")
                 if profile.ineffective_tools:
-                    lines.append(
-                        f"  Skip these tools: {', '.join(profile.ineffective_tools)}"
-                    )
+                    lines.append(f"  Skip these tools: {', '.join(profile.ineffective_tools)}")
                 if profile.effective_exploits:
-                    lines.append(
-                        f"  Known exploits: {', '.join(profile.effective_exploits)}"
-                    )
+                    lines.append(f"  Known exploits: {', '.join(profile.effective_exploits)}")
                 if profile.notes:
                     lines.append(f"  Notes: {profile.notes[-1]}")
                 parts.append("\n".join(lines))
@@ -702,8 +678,7 @@ OS_SIGNATURES = {
 # Performance Optimization: Pre-compute lowercase signatures to avoid recalculating
 # them inside the hot path during output matching.
 OS_SIGNATURES_LOWER: dict[str, list[str]] = {
-    os_family: [sig.lower() for sig in signatures]
-    for os_family, signatures in OS_SIGNATURES.items()
+    os_family: [sig.lower() for sig in signatures] for os_family, signatures in OS_SIGNATURES.items()
 }
 
 
@@ -725,10 +700,7 @@ def detect_os_from_output(output: str) -> str:
 
 def detect_os_from_services(services: list[dict[str, Any]]) -> str:
     """Detect OS family from discovered services."""
-    all_text = " ".join(
-        f"{s.get('product', '')} {s.get('version', '')} {s.get('service', '')}"
-        for s in services
-    )
+    all_text = " ".join(f"{s.get('product', '')} {s.get('version', '')} {s.get('service', '')}" for s in services)
     return detect_os_from_output(all_text)
 
 

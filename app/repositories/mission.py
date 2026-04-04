@@ -64,11 +64,7 @@ class MissionRepository(BaseRepository[Mission]):
             MissionStatus.EXPLOITING.value,
         ]
 
-        stmt = (
-            select(self.model)
-            .where(self.model.status.in_(active_statuses))
-            .order_by(self.model.created_at.desc())
-        )
+        stmt = select(self.model).where(self.model.status.in_(active_statuses)).order_by(self.model.created_at.desc())
         if user_id:
             stmt = stmt.where(self.model.user_id == user_id)
 

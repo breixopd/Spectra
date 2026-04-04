@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -21,10 +20,12 @@ class _FakeRequest:
 @pytest.mark.asyncio
 async def test_tz_update_config_rejects_invalid_provider_type(tmp_path: Path):
     config_path = tmp_path / "tensorzero.toml"
-    request = _FakeRequest({
-        "provider_type": "openai\n[metrics.injected]",
-        "models": {"fast": "gpt-4o-mini", "balanced": "gpt-4o", "capable": "gpt-5"},
-    })
+    request = _FakeRequest(
+        {
+            "provider_type": "openai\n[metrics.injected]",
+            "models": {"fast": "gpt-4o-mini", "balanced": "gpt-4o", "capable": "gpt-5"},
+        }
+    )
 
     with patch.object(tensorzero, "_CONFIG_PATH", config_path):
         with pytest.raises(HTTPException) as excinfo:
@@ -37,10 +38,12 @@ async def test_tz_update_config_rejects_invalid_provider_type(tmp_path: Path):
 @pytest.mark.asyncio
 async def test_tz_update_config_rejects_invalid_model_name(tmp_path: Path):
     config_path = tmp_path / "tensorzero.toml"
-    request = _FakeRequest({
-        "provider_type": "openai",
-        "models": {"fast": {"primary": "gpt-4o\n[bad]", "fallback": ""}, "balanced": "gpt-4o", "capable": "gpt-5"},
-    })
+    request = _FakeRequest(
+        {
+            "provider_type": "openai",
+            "models": {"fast": {"primary": "gpt-4o\n[bad]", "fallback": ""}, "balanced": "gpt-4o", "capable": "gpt-5"},
+        }
+    )
 
     with patch.object(tensorzero, "_CONFIG_PATH", config_path):
         with pytest.raises(HTTPException) as excinfo:

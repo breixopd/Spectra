@@ -26,6 +26,7 @@ def _mission_runtime_isolation(tmp_path):
     ):
         yield
 
+
 # --- MISSION-002: Checkpoint/Resume ---
 
 

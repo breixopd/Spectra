@@ -403,10 +403,12 @@ class TestWebhookFire:
 
         with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
             with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
+
                 def _close_coro(coro):
                     if asyncio.iscoroutine(coro):
                         coro.close()
                     return MagicMock()
+
                 mock_task.side_effect = _close_coro
                 await svc.fire("mission.completed", {"id": "m-1"})
 

@@ -1,7 +1,6 @@
 """Tests for MEM-002 (indexing), MEM-003 (backup rotation), MEM-006 (aggregation)."""
 
 import json
-from pathlib import Path
 
 import pytest
 

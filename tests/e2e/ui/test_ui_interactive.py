@@ -5,6 +5,7 @@ and verify page content — replacing shallow URL-only navigation tests.
 """
 
 import os
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -13,10 +14,10 @@ pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 APP_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 
 
-
 # ---------------------------------------------------------------------------
 # 1. Login & Dashboard
 # ---------------------------------------------------------------------------
+
 
 def test_login_and_dashboard(logged_in_page: Page):
     """Log in as admin, verify dashboard loads with sidebar and content."""
@@ -36,6 +37,7 @@ def test_login_and_dashboard(logged_in_page: Page):
 # ---------------------------------------------------------------------------
 # 2. Signup shows errors
 # ---------------------------------------------------------------------------
+
 
 def test_signup_shows_errors(page: Page):
     """Invalid signup data should be blocked by native browser validation."""
@@ -86,6 +88,7 @@ def test_signup_shows_errors(page: Page):
 # ---------------------------------------------------------------------------
 # 3. Signup with existing user
 # ---------------------------------------------------------------------------
+
 
 def test_signup_with_existing_user(page: Page):
     """Register with existing 'admin' username — verify error message."""
@@ -167,6 +170,7 @@ def test_admin_panel_tabs(logged_in_page: Page, app_url: str):
 # 6. Profile page
 # ---------------------------------------------------------------------------
 
+
 def test_profile_page(logged_in_page: Page, app_url: str):
     """Navigate to /profile, verify profile form with username field."""
     page = logged_in_page
@@ -182,6 +186,7 @@ def test_profile_page(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 # 7. Observability page
 # ---------------------------------------------------------------------------
+
 
 def test_observability_page(logged_in_page: Page, app_url: str):
     """Go to /observability, verify metrics/charts section loads."""
@@ -199,6 +204,7 @@ def test_observability_page(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 # 8. Landing page elements
 # ---------------------------------------------------------------------------
+
 
 def test_landing_page_elements(page: Page):
     """Verify hero, features, pricing, CTA buttons on landing page."""
@@ -255,6 +261,7 @@ def test_legal_pages(page: Page, app_url: str):
 # 10. Error pages
 # ---------------------------------------------------------------------------
 
+
 def test_error_pages(page: Page):
     """Navigate to non-existent URL, verify 404 page."""
     response = page.goto(f"{APP_URL}/nonexistent-url-that-does-not-exist", wait_until="networkidle")
@@ -273,6 +280,7 @@ def test_error_pages(page: Page):
 # 11. Logout
 # ---------------------------------------------------------------------------
 
+
 def test_logout(logged_in_page: Page, app_url: str):
     """Log in, click logout, verify redirect to /login."""
     page = logged_in_page
@@ -288,6 +296,7 @@ def test_logout(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 # 12. Forgot password flow
 # ---------------------------------------------------------------------------
+
 
 def test_forgot_password_flow(page: Page, app_url: str):
     """Go to /forgot-password, fill in email, submit, verify message."""

@@ -71,10 +71,16 @@ class EmbeddingService:
 
             if model_lower.startswith("local/") or (not api_key):
                 # Mark as local — actual model download is deferred to first embed() call
-                self._local_model_name = self.model_name.removeprefix("local/") if model_lower.startswith("local/") else "BAAI/bge-small-en-v1.5"
+                self._local_model_name = (
+                    self.model_name.removeprefix("local/")
+                    if model_lower.startswith("local/")
+                    else "BAAI/bge-small-en-v1.5"
+                )
                 self._use_local = True
                 self._api_ready = True
-                logger.info("Local embedding configured (lazy): model=%s (downloaded on first use)", self._local_model_name)
+                logger.info(
+                    "Local embedding configured (lazy): model=%s (downloaded on first use)", self._local_model_name
+                )
                 return
 
             from openai import AsyncOpenAI
@@ -95,7 +101,9 @@ class EmbeddingService:
         await self._load_model()
 
         if not self._api_ready:
-            raise RuntimeError("Embedding service not configured. Set EMBEDDING_API_KEY or use a local model (EMBEDDING_MODEL=local/BAAI/bge-small-en-v1.5).")
+            raise RuntimeError(
+                "Embedding service not configured. Set EMBEDDING_API_KEY or use a local model (EMBEDDING_MODEL=local/BAAI/bge-small-en-v1.5)."
+            )
 
         if self._use_local:
             await self._ensure_local_loaded()

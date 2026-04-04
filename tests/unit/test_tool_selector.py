@@ -142,6 +142,7 @@ class TestToolSelectorPhaseCapabilities:
         caps = ToolSelectorAgent.PHASE_CAPABILITIES.get("exploitation", [])
         assert len(caps) > 0
 
+
 class TestToolSelectorExecution:
     """Tests for full execution flow."""
 

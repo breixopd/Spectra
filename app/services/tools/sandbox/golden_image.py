@@ -15,7 +15,6 @@ from app.core.constants import SANDBOX_BASE_IMAGE
 logger = logging.getLogger(__name__)
 
 
-
 class GoldenImageBuilder:
     """Builds the spectra-tools Docker image from plugin JSON definitions.
 

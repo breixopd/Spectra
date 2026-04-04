@@ -86,6 +86,7 @@ def _run_tool_test(
 
 # ── Network scanning tests ──────────────────────────────────
 
+
 class TestNetworkScan:
     """Verify nmap can discover open ports on vuln-network."""
 
@@ -123,6 +124,7 @@ class TestNetworkScan:
 
 # ── Web vulnerability tests ─────────────────────────────────
 
+
 class TestWebScan:
     """Verify web vulnerabilities on vuln-web are detectable."""
 
@@ -135,9 +137,7 @@ class TestWebScan:
                 f"http://{VULN_WEB_HOST}/search?q=<script>alert(1)</script>",
                 timeout=10,
             )
-            assert "<script>alert(1)</script>" in target_resp.text, (
-                "XSS payload should be reflected unescaped"
-            )
+            assert "<script>alert(1)</script>" in target_resp.text, "XSS payload should be reflected unescaped"
         except httpx.ConnectError:
             pytest.skip("Cannot reach vuln-web directly from test runner")
 
@@ -169,6 +169,7 @@ class TestWebScan:
 
 
 # ── Mission engine tests ────────────────────────────────────
+
 
 class TestMissionEngine:
     """Verify mission creation against live targets."""

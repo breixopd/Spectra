@@ -11,9 +11,9 @@ import os
 import re
 import sys
 from contextvars import ContextVar
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-UTC = timezone.utc
+UTC = UTC
 from typing import Any
 from uuid import uuid4
 

@@ -49,18 +49,28 @@ class MissionLifecycleManager:
             if not allowed:
                 raise MissionQuotaExceeded(reason)
 
-        mission = Mission(target, directive, requirements=requirements, vpn_config=vpn_config, user_id=user_id, requires_approval=requires_approval)
+        mission = Mission(
+            target,
+            directive,
+            requirements=requirements,
+            vpn_config=vpn_config,
+            user_id=user_id,
+            requires_approval=requires_approval,
+        )
         self.active_missions[mission.id] = mission
 
         # Persist to distributed state store
-        await self.state_store.register(mission.id, {
-            "id": mission.id,
-            "target": target,
-            "directive": directive,
-            "status": "created",
-            "user_id": user_id,
-            "started_at": mission.start_time.isoformat(),
-        })
+        await self.state_store.register(
+            mission.id,
+            {
+                "id": mission.id,
+                "target": target,
+                "directive": directive,
+                "status": "created",
+                "user_id": user_id,
+                "started_at": mission.start_time.isoformat(),
+            },
+        )
 
         # Persist to DB
         try:
@@ -162,14 +172,17 @@ class MissionLifecycleManager:
 
         # Sync to distributed state store
         try:
-            await self.state_store.update_state(mission.id, {
-                "id": mission.id,
-                "target": mission.target,
-                "directive": mission.directive,
-                "status": mission.status,
-                "user_id": mission.user_id,
-                "started_at": mission.start_time.isoformat(),
-            })
+            await self.state_store.update_state(
+                mission.id,
+                {
+                    "id": mission.id,
+                    "target": mission.target,
+                    "directive": mission.directive,
+                    "status": mission.status,
+                    "user_id": mission.user_id,
+                    "started_at": mission.start_time.isoformat(),
+                },
+            )
         except (OSError, RuntimeError) as e:
             logger.warning("Failed to sync mission state to store: %s", e)
 

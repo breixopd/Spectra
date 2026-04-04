@@ -166,7 +166,11 @@ class VPNManager:
         config_path = str(local_path) if local_path else ""
 
         job_id = await self._queue.enqueue_job(
-            "vpn_disconnect_job", config_name, vpn_type, config_path, _timeout=30,
+            "vpn_disconnect_job",
+            config_name,
+            vpn_type,
+            config_path,
+            _timeout=30,
         )
         logger.info("Enqueued VPN disconnect job %s for %s", job_id, config_name)
         return {"job_id": job_id, "config": config_name, "type": vpn_type, "action": "disconnect"}
@@ -187,12 +191,14 @@ class VPNManager:
                 continue
             name = Path(filename).stem
             vpn_type = "wireguard" if filename.endswith(".conf") else "openvpn"
-            configs.append({
-                "name": name,
-                "type": vpn_type,
-                "path": key,
-                "size": 0,
-            })
+            configs.append(
+                {
+                    "name": name,
+                    "type": vpn_type,
+                    "path": key,
+                    "size": 0,
+                }
+            )
         return configs
 
     async def delete_config(self, name: str) -> bool:

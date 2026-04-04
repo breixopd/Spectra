@@ -20,6 +20,8 @@ def _mission_runtime_isolation(tmp_path):
         patch("app.services.mission.mission.asyncio.create_task", side_effect=_safe_create_task),
     ):
         yield
+
+
 from app.core.encryption import (
     _derive_fernet_key,
     decrypt_field,

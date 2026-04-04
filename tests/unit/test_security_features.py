@@ -1,7 +1,7 @@
 """Tests for security features: lockout, token blacklist, websocket auth, settings RBAC."""
 
-from datetime import datetime, timedelta, timezone
 import time
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -109,7 +109,7 @@ class TestAccountLockout:
 
     @pytest.mark.asyncio
     async def test_lockout_expires(self):
-        user = self._make_user(locked_until=datetime.now(timezone.utc) - timedelta(seconds=1))
+        user = self._make_user(locked_until=datetime.now(UTC) - timedelta(seconds=1))
         await _check_lockout(user)
 
 

@@ -72,9 +72,7 @@ async def notify_mission_started(target: str, directive: str) -> None:
     )
 
 
-async def notify_mission_completed(
-    target: str, findings_count: int, critical_count: int
-) -> None:
+async def notify_mission_completed(target: str, findings_count: int, critical_count: int) -> None:
     """Notify when a mission completes."""
     await send_notification(
         title="Mission Complete",

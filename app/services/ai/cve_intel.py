@@ -183,17 +183,19 @@ async def fetch_cves_from_nvd(
                         if len(parts) > 4:
                             products.append(parts[4])
 
-            results.append({
-                "cve": cve_id,
-                "description": desc[:300],
-                "severity": severity,
-                "cvss_score": cvss_score,
-                "products": products,
-                "product": keyword.lower(),
-                "type": _infer_vuln_type(desc),
-                "source": "nvd_api",
-                "fetched_at": datetime.now().isoformat(),
-            })
+            results.append(
+                {
+                    "cve": cve_id,
+                    "description": desc[:300],
+                    "severity": severity,
+                    "cvss_score": cvss_score,
+                    "products": products,
+                    "product": keyword.lower(),
+                    "type": _infer_vuln_type(desc),
+                    "source": "nvd_api",
+                    "fetched_at": datetime.now().isoformat(),
+                }
+            )
 
         # Cache results
         _save_cache(keyword, results)
@@ -467,8 +469,7 @@ def get_cve_context_for_services(services: list[dict[str, Any]]) -> str:
                 for c in relevant[:4]:
                     match_flag = " ← VERSION MATCH" if c.get("version_match") else ""
                     lines.append(
-                        f"  - {c['cve']} [{c['severity'].upper()}] {c['type']}: "
-                        f"{c['description'][:120]}{match_flag}"
+                        f"  - {c['cve']} [{c['severity'].upper()}] {c['type']}: {c['description'][:120]}{match_flag}"
                     )
                 parts.append("\n".join(lines))
 
@@ -492,9 +493,7 @@ async def get_cve_context_for_services_live(
         if not product and not service_name:
             continue
 
-        cves = await lookup_cves_live(
-            product=product, version=version, service=service_name
-        )
+        cves = await lookup_cves_live(product=product, version=version, service=service_name)
 
         if cves:
             relevant = cves[:5]

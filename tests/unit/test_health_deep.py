@@ -120,7 +120,11 @@ async def test_health_verbose_includes_embeddings():
         with (
             patch("app.api.routers.health._extract_request_token", return_value=("tok", "header")),
             patch("app.api.routers.health._decode_access_payload", return_value={"sub": "u-1"}),
-            patch("app.api.routers.health._load_active_user_from_payload_with_session", new_callable=AsyncMock, return_value=MagicMock()),
+            patch(
+                "app.api.routers.health._load_active_user_from_payload_with_session",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
         ):
             result = await health_check(request=_mock_request(), response=response, db=db, verbose=True)
 
@@ -145,16 +149,22 @@ async def test_health_verbose_includes_llm():
     mock_pool = MagicMock()
     mock_pool.available = True
 
-    with _mock_infra_checks(extra_modules={
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=lambda: mock_router),
-        "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
-        "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: mock_pool),
-    }):
+    with _mock_infra_checks(
+        extra_modules={
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=lambda: mock_router),
+            "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: mock_pool),
+        }
+    ):
         with (
             patch("app.api.routers.health._extract_request_token", return_value=("tok", "header")),
             patch("app.api.routers.health._decode_access_payload", return_value={"sub": "u-1"}),
-            patch("app.api.routers.health._load_active_user_from_payload_with_session", new_callable=AsyncMock, return_value=MagicMock()),
+            patch(
+                "app.api.routers.health._load_active_user_from_payload_with_session",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
         ):
             result = await health_check(request=_mock_request(), response=response, db=db, verbose=True)
 
@@ -174,16 +184,22 @@ async def test_health_verbose_cache_healthy():
     mock_rag = MagicMock()
     mock_rag.is_functional = False
 
-    with _mock_infra_checks(extra_modules={
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError("no LLM"))),
-        "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
-        "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: None),
-    }):
+    with _mock_infra_checks(
+        extra_modules={
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError("no LLM"))),
+            "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: None),
+        }
+    ):
         with (
             patch("app.api.routers.health._extract_request_token", return_value=("tok", "header")),
             patch("app.api.routers.health._decode_access_payload", return_value={"sub": "u-1"}),
-            patch("app.api.routers.health._load_active_user_from_payload_with_session", new_callable=AsyncMock, return_value=MagicMock()),
+            patch(
+                "app.api.routers.health._load_active_user_from_payload_with_session",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
         ):
             result = await health_check(request=_mock_request(), response=response, db=db, verbose=True)
 
@@ -200,16 +216,22 @@ async def test_health_verbose_cache_unavailable():
     mock_rag = MagicMock()
     mock_rag.is_functional = False
 
-    with _mock_infra_checks(extra_modules={
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
-        "app.core.cache": MagicMock(get_cache=lambda: None),
-        "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=RuntimeError)),
-    }):
+    with _mock_infra_checks(
+        extra_modules={
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
+            "app.core.cache": MagicMock(get_cache=lambda: None),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=RuntimeError)),
+        }
+    ):
         with (
             patch("app.api.routers.health._extract_request_token", return_value=("tok", "header")),
             patch("app.api.routers.health._decode_access_payload", return_value={"sub": "u-1"}),
-            patch("app.api.routers.health._load_active_user_from_payload_with_session", new_callable=AsyncMock, return_value=MagicMock()),
+            patch(
+                "app.api.routers.health._load_active_user_from_payload_with_session",
+                new_callable=AsyncMock,
+                return_value=MagicMock(),
+            ),
         ):
             result = await health_check(request=_mock_request(), response=response, db=db, verbose=True)
 
@@ -230,17 +252,23 @@ async def test_health_verbose_disk_info():
     mock_rag = MagicMock()
     mock_rag.is_functional = False
 
-    with _mock_infra_checks(extra_modules={
-        "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-        "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
-        "app.core.cache": MagicMock(get_cache=lambda: None),
-        "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=RuntimeError)),
-    }):
+    with _mock_infra_checks(
+        extra_modules={
+            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
+            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
+            "app.core.cache": MagicMock(get_cache=lambda: None),
+            "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=RuntimeError)),
+        }
+    ):
         with patch("app.api.routers.health.shutil.disk_usage", return_value=mock_usage):
             with (
                 patch("app.api.routers.health._extract_request_token", return_value=("tok", "header")),
                 patch("app.api.routers.health._decode_access_payload", return_value={"sub": "u-1"}),
-                patch("app.api.routers.health._load_active_user_from_payload_with_session", new_callable=AsyncMock, return_value=MagicMock()),
+                patch(
+                    "app.api.routers.health._load_active_user_from_payload_with_session",
+                    new_callable=AsyncMock,
+                    return_value=MagicMock(),
+                ),
             ):
                 result = await health_check(request=_mock_request(), response=response, db=db, verbose=True)
 

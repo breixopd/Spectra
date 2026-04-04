@@ -86,9 +86,7 @@ async def startup() -> None:
 async def _auto_install_pending() -> None:
     """Auto-install pending tools on startup."""
     if _should_skip_startup_auto_install():
-        logger.info(
-            "Skipping startup tool preflight because WORKER_SKIP_STARTUP_AUTO_INSTALL is enabled"
-        )
+        logger.info("Skipping startup tool preflight because WORKER_SKIP_STARTUP_AUTO_INSTALL is enabled")
         return
 
     from app.services.tools.registry import get_registry

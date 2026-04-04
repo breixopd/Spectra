@@ -4,8 +4,6 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 class TestGetTierLimits:
     """Tests for SandboxPool.get_tier_limits()."""

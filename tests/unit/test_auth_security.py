@@ -22,7 +22,6 @@ from app.core.security import (
     is_token_blacklisted,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -34,9 +33,7 @@ def _make_request(
     cookies: dict[str, str] | None = None,
 ) -> Request:
     """Build a minimal Starlette Request."""
-    raw_headers = [
-        (k.lower().encode(), v.encode()) for k, v in (headers or {}).items()
-    ]
+    raw_headers = [(k.lower().encode(), v.encode()) for k, v in (headers or {}).items()]
     if cookies:
         cookie_header = "; ".join(f"{key}={value}" for key, value in cookies.items())
         raw_headers.append((b"cookie", cookie_header.encode()))
@@ -343,7 +340,6 @@ class TestPreSetupRegistrationBlocked:
     @pytest.mark.asyncio
     async def test_register_allowed_when_superuser_exists(self):
         from app.api.routers.public import RegisterRequest, register_user
-        from app.models.audit_log import AuditEventType
 
         superuser_result = MagicMock()
         superuser_result.scalar_one_or_none.return_value = "admin-id"

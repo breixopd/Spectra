@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 try:
     import jsonschema
+
     HAS_JSONSCHEMA = True
 except ImportError:
     HAS_JSONSCHEMA = False
@@ -48,26 +49,18 @@ async def validate_and_resolve_tool(
         install_success = await ensure_tool_installed(tool_name, install_timeout)
         if not install_success:
             mission.log(f"Failed to install {tool_name}")
-            return None, create_error_result(
-                tool_name, target, "Tool installation failed"
-            )
+            return None, create_error_result(tool_name, target, "Tool installation failed")
         mission.log(f"Tool {tool_name} installed successfully")
         tool = registry.get_tool(tool_name)
         if not tool:
-            return None, create_error_result(
-                tool_name, target, "Tool not found after install"
-            )
+            return None, create_error_result(tool_name, target, "Tool not found after install")
 
     if tool.config.execution.args_schema:
         if HAS_JSONSCHEMA:
             try:
-                jsonschema.validate(
-                    instance=args or {}, schema=tool.config.execution.args_schema
-                )
+                jsonschema.validate(instance=args or {}, schema=tool.config.execution.args_schema)
             except jsonschema.ValidationError as e:
-                return None, create_error_result(
-                    tool_name, target, f"Invalid arguments: {e}"
-                )
+                return None, create_error_result(tool_name, target, f"Invalid arguments: {e}")
         else:
             logger.warning(
                 "Skipping argument validation for %s — jsonschema not installed",

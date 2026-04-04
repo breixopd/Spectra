@@ -42,7 +42,11 @@ if _secret:
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "worker", "task_alive": _worker_task is not None and not _worker_task.done()}
+    return {
+        "status": "healthy",
+        "service": "worker",
+        "task_alive": _worker_task is not None and not _worker_task.done(),
+    }
 
 
 async def work_loop():

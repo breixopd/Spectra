@@ -98,9 +98,7 @@ class EventWebSocketBridge:
                         data=event.data,
                     )
                 else:
-                    logger.debug(
-                        "User-scoped event %s has no user_id, dropping", event.type
-                    )
+                    logger.debug("User-scoped event %s has no user_id, dropping", event.type)
                 return
 
             # System/operational events — broadcast globally

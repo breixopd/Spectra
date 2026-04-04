@@ -54,7 +54,6 @@ def _validate_searchsploit_query(query: str) -> str:
     return query
 
 
-
 @router.get("/lookup", response_model=CVELookupResponse)
 async def cve_lookup(
     product: str | None = Query(default=None, max_length=200, description="Product name (e.g., Apache)"),

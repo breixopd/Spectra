@@ -61,9 +61,7 @@ class OngoingOperation(BaseModel):
 class SystemStatusResponse(BaseModel):
     """Complete system status response."""
 
-    status: str = Field(
-        description="Overall system status: ready, initializing, degraded, error"
-    )
+    status: str = Field(description="Overall system status: ready, initializing, degraded, error")
     message: str = Field(description="Human-readable status message for UI display")
     timestamp: str = Field(description="ISO timestamp of status check")
 
@@ -129,6 +127,7 @@ def _get_tool_cache_stats() -> dict[str, int]:
     """Get tool result cache statistics."""
     try:
         from app.core.optimizations import tool_cache
+
         return tool_cache.stats
     except (OSError, RuntimeError, ImportError):
         return {"size": 0, "hits": 0, "misses": 0, "hit_rate_pct": 0}

@@ -12,7 +12,6 @@ from app.services.ai.agents.tool_selector import (
 )
 
 
-
 @pytest.fixture
 def mock_llm():
     from app.services.ai.llm import get_llm_client

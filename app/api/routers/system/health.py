@@ -44,9 +44,7 @@ async def get_safety_stats(
         blocked = 0
         flagged = 0
         for event in getattr(event_bus, "history", []):
-            etype = getattr(event, "type", "") or (
-                event.get("type", "") if isinstance(event, dict) else ""
-            )
+            etype = getattr(event, "type", "") or (event.get("type", "") if isinstance(event, dict) else "")
             if etype == "safety_check":
                 data = (
                     getattr(event, "data", {})
@@ -103,6 +101,7 @@ async def get_system_status(
     # Storage health
     try:
         from app.services.storage import get_storage_service
+
         storage = get_storage_service()
         storage_health = await storage.health_check()
     except (OSError, RuntimeError, ValueError) as e:
@@ -165,6 +164,7 @@ async def get_system_status(
     rag_status = "unknown"
     try:
         from app.services.ai.rag import RAGService
+
         rag = RAGService()
         if rag.is_functional:
             rag_status = "healthy"
@@ -177,9 +177,7 @@ async def get_system_status(
 
     if tool_stats.installing > 0:
         setup_complete = False
-        setup_message = (
-            setup_message or f"Installing {tool_stats.installing} tool(s)..."
-        )
+        setup_message = setup_message or f"Installing {tool_stats.installing} tool(s)..."
 
     if overall_status == "ready" and setup_complete:
         message = "System is ready"

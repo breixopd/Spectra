@@ -2,7 +2,6 @@
 
 from playwright.sync_api import Page, expect
 
-
 LOGIN_SHIELD_SELECTOR = (
     "svg:visible.lucide-shield, "
     "svg[data-lucide='shield']:visible, "
@@ -10,9 +9,7 @@ LOGIN_SHIELD_SELECTOR = (
     "svg:visible:has(path[d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'])"
 )
 SIDEBAR_BRAND_SHIELD_SELECTOR = (
-    "a[href='/dashboard'] svg:visible:has("
-    "path[d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z']"
-    ")"
+    "a[href='/dashboard'] svg:visible:has(path[d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'])"
 )
 
 

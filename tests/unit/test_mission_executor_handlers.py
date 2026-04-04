@@ -61,9 +61,7 @@ def mock_mission():
 
 @pytest.fixture
 def mock_context():
-    return AgentContext(
-        mission_id="test-mission-1", session_id="test-session", request_id="req-1"
-    )
+    return AgentContext(mission_id="test-mission-1", session_id="test-session", request_id="req-1")
 
 
 @pytest.mark.asyncio
@@ -145,9 +143,7 @@ async def test_handle_tool_selector_success(dispatcher, mock_mission, mock_conte
     await dispatcher._handle_tool_selector(mock_mission, task, mock_context)
 
     agent.execute.assert_called_once()
-    dispatcher.tool_service.execute_tool_action.assert_called_once_with(
-        mock_mission, action, mock_context
-    )
+    dispatcher.tool_service.execute_tool_action.assert_called_once_with(mock_mission, action, mock_context)
 
 
 @pytest.mark.asyncio
@@ -213,9 +209,7 @@ async def test_scope_handler(dispatcher, mock_mission, mock_context):
         phase=AssessmentPhase.SCOPE,
     )
     agent = dispatcher.agents["scope_agent"]
-    agent.execute.return_value = AgentResult(
-        success=True, action=MagicMock(targets=["1.1.1.1"])
-    )
+    agent.execute.return_value = AgentResult(success=True, action=MagicMock(targets=["1.1.1.1"]))
 
     await dispatcher._handle_scope(mock_mission, task, mock_context)
 

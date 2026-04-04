@@ -189,10 +189,12 @@ class TestVPNManager:
 
     @pytest.mark.asyncio
     async def test_list_configs(self, mgr, mock_storage):
-        mock_storage.list_objects = AsyncMock(return_value=[
-            "vpn/vpn1.conf",
-            "vpn/vpn2.ovpn",
-        ])
+        mock_storage.list_objects = AsyncMock(
+            return_value=[
+                "vpn/vpn1.conf",
+                "vpn/vpn2.ovpn",
+            ]
+        )
         configs = await mgr.list_configs()
         names = {c["name"] for c in configs}
         assert "vpn1" in names

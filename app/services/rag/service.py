@@ -35,6 +35,7 @@ class RAGFacade:
         doc_id = kwargs.pop("id", None) or kwargs.pop("doc_id", None)
         if not doc_id:
             import hashlib
+
             doc_id = f"doc-{hashlib.sha256(content[:256].encode()).hexdigest()[:12]}"
 
         doc_type = kwargs.pop("doc_type", "knowledge")
@@ -120,11 +121,10 @@ class RAGFacade:
         description = finding.get("description", "")
         severity = finding.get("severity")
 
-        content = (
-            f"Found {name} on {host} using {tool}. {description}"
-        )
+        content = f"Found {name} on {host} using {tool}. {description}"
 
         import hashlib
+
         finding_hash = hashlib.sha256(content[:256].encode()).hexdigest()[:12]
         doc_id = f"finding-{finding_hash}"
         if mission_id:

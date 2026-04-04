@@ -23,8 +23,9 @@ class TestApiJsUtilities:
     def test_escape_html_consolidated_in_base(self):
         """escapeHtml is defined in base.html, not duplicated in api.js."""
         content = API_JS.read_text()
-        assert not re.search(r"function\s+escapeHtml\s*\(", content), \
+        assert not re.search(r"function\s+escapeHtml\s*\(", content), (
             "escapeHtml should NOT be in api.js — it is consolidated in base.html"
+        )
 
     def test_spectra_api_object_defined(self):
         content = API_JS.read_text()

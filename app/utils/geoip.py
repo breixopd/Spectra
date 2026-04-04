@@ -16,7 +16,6 @@ from app.core.constants import GEOIP_API_URL, GEOIP_TIMEOUT
 logger = logging.getLogger(__name__)
 
 
-
 class GeoLocation(TypedDict):
     """Geographic location data."""
 

@@ -36,8 +36,6 @@ templates.env.globals["version"] = __version__
 templates.env.globals["get_nav_user"] = get_ui_user
 
 
-
-
 async def _get_ui_db_user(username: str | None) -> User | None:
     if not username:
         return None
@@ -270,6 +268,7 @@ async def api_docs_page(request: Request):
             ):
                 params = []
                 if hasattr(route, "dependant"):
+
                     def _type_name(fi):
                         ann = getattr(fi, "annotation", None)
                         if ann is None:
@@ -318,10 +317,7 @@ async def api_docs_page(request: Request):
         # Remove admin/system/observability routes from other groups
         _admin_segments = {"/admin/", "/system/", "/observability/"}
         for grp in list(groups):
-            groups[grp] = [
-                r for r in groups[grp]
-                if not any(seg in r["path"] for seg in _admin_segments)
-            ]
+            groups[grp] = [r for r in groups[grp] if not any(seg in r["path"] for seg in _admin_segments)]
             if not groups[grp]:
                 del groups[grp]
 

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AgentMessage:
     """Message passed between agents."""
+
     sender: str
     topic: str
     payload: Any
@@ -58,14 +59,11 @@ class AgentEventBus:
         """Publish a message to all subscribers of the topic."""
         self._message_history.append(message)
         if len(self._message_history) > self._max_history:
-            self._message_history = self._message_history[-self._max_history:]
+            self._message_history = self._message_history[-self._max_history :]
 
         handlers = self._subscribers.get(message.topic, [])
         if handlers:
-            await asyncio.gather(
-                *(h(message) for h in handlers),
-                return_exceptions=True
-            )
+            await asyncio.gather(*(h(message) for h in handlers), return_exceptions=True)
             logger.debug("Published to '%s': %d handlers", message.topic, len(handlers))
 
     async def send_direct(self, target_agent: str, message: AgentMessage):
@@ -79,10 +77,7 @@ class AgentEventBus:
         if agent_name not in self._direct_queues:
             self._direct_queues[agent_name] = asyncio.Queue(maxsize=100)
         try:
-            return await asyncio.wait_for(
-                self._direct_queues[agent_name].get(),
-                timeout=timeout
-            )
+            return await asyncio.wait_for(self._direct_queues[agent_name].get(), timeout=timeout)
         except TimeoutError:
             return None
 

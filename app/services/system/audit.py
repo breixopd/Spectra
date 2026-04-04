@@ -45,10 +45,7 @@ async def log_event(
         except Exception:  # noqa: BLE001
             prev_hash = "genesis"
         timestamp = entry.created_at.isoformat() if entry.created_at else ""
-        hash_input = (
-            f"{prev_hash}|{entry.event_type}|{entry.user_id}"
-            f"|{entry.details}|{timestamp}"
-        )
+        hash_input = f"{prev_hash}|{entry.event_type}|{entry.user_id}|{entry.details}|{timestamp}"
         entry.integrity_hash = hashlib.sha256(hash_input.encode()).hexdigest()
         entry.previous_hash = prev_hash
 

@@ -143,7 +143,11 @@ async def test_get_settings_returns_new_sandbox_fields(test_app):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["sandbox_resource_tiers"] == json.loads(settings_stub.SANDBOX_RESOURCE_TIERS) if isinstance(data["sandbox_resource_tiers"], dict) else settings_stub.SANDBOX_RESOURCE_TIERS
+    assert (
+        data["sandbox_resource_tiers"] == json.loads(settings_stub.SANDBOX_RESOURCE_TIERS)
+        if isinstance(data["sandbox_resource_tiers"], dict)
+        else settings_stub.SANDBOX_RESOURCE_TIERS
+    )
     assert data["sandbox_per_user_limit"] == 3
     assert data["sandbox_default_priority"] == 5
     assert data["sandbox_oom_escalation_enabled"] is True

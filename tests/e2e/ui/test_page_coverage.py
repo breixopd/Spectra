@@ -14,6 +14,7 @@ APP_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 # 1. Targets page
 # ---------------------------------------------------------------------------
 
+
 def test_targets_page(logged_in_page: Page, app_url: str):
     """Navigate to /targets, verify heading, add-target button, and list container."""
     page = logged_in_page
@@ -38,6 +39,7 @@ def test_targets_page(logged_in_page: Page, app_url: str):
 # 2. History page
 # ---------------------------------------------------------------------------
 
+
 def test_history_page(logged_in_page: Page, app_url: str):
     """Navigate to /history, verify heading and mission list container."""
     page = logged_in_page
@@ -56,6 +58,7 @@ def test_history_page(logged_in_page: Page, app_url: str):
 # 3. Reports page
 # ---------------------------------------------------------------------------
 
+
 def test_reports_page(logged_in_page: Page, app_url: str):
     """Navigate to /reports, verify heading and reports container."""
     page = logged_in_page
@@ -72,6 +75,7 @@ def test_reports_page(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 # 4. Toolbox page
 # ---------------------------------------------------------------------------
+
 
 def test_toolbox_page(logged_in_page: Page, app_url: str):
     """Navigate to /toolbox, verify heading and tools list/grid."""
@@ -92,6 +96,7 @@ def test_toolbox_page(logged_in_page: Page, app_url: str):
 # 5. Toolbox create page
 # ---------------------------------------------------------------------------
 
+
 def test_toolbox_create_page(logged_in_page: Page, app_url: str):
     """Navigate to /toolbox/create, verify plugin creation form."""
     page = logged_in_page
@@ -110,6 +115,7 @@ def test_toolbox_create_page(logged_in_page: Page, app_url: str):
 # 6. Manual tools page
 # ---------------------------------------------------------------------------
 
+
 def test_manual_tools_page(logged_in_page: Page, app_url: str):
     """Navigate to /manual, verify Manual Mode heading."""
     page = logged_in_page
@@ -121,8 +127,9 @@ def test_manual_tools_page(logged_in_page: Page, app_url: str):
         pytest.skip("manual_mode feature not enabled for test user")
 
     # But a 500 should be a real failure, not a skip
-    assert response is not None and response.status < 500, \
+    assert response is not None and response.status < 500, (
         f"/manual returned {response.status if response else 'no response'}"
+    )
 
     heading = page.locator("h1")
     expect(heading).to_be_visible(timeout=10_000)
@@ -132,6 +139,7 @@ def test_manual_tools_page(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 # 7. Help page
 # ---------------------------------------------------------------------------
+
 
 def test_help_page(logged_in_page: Page, app_url: str):
     """Navigate to /help, verify heading and at least one help section."""
@@ -143,15 +151,14 @@ def test_help_page(logged_in_page: Page, app_url: str):
     expect(heading).to_contain_text("Help Center")
 
     # At least one help section or guide card
-    sections = page.locator(
-        ".help-section, .guide-card, .help-card, .help-content, article, section"
-    )
+    sections = page.locator(".help-section, .guide-card, .help-card, .help-content, article, section")
     expect(sections.first).to_be_attached(timeout=10_000)
 
 
 # ---------------------------------------------------------------------------
 # 8. Changelog page (public)
 # ---------------------------------------------------------------------------
+
 
 def test_changelog_page(page: Page, app_url: str):
     """Navigate to /changelog (public), verify heading."""
@@ -166,6 +173,7 @@ def test_changelog_page(page: Page, app_url: str):
 # 9. Status page (public)
 # ---------------------------------------------------------------------------
 
+
 def test_status_page(page: Page, app_url: str):
     """Navigate to /status (public), verify system status heading."""
     page.goto(f"{app_url}/status", wait_until="networkidle")
@@ -179,6 +187,7 @@ def test_status_page(page: Page, app_url: str):
 # 10. Security page (public)
 # ---------------------------------------------------------------------------
 
+
 def test_security_page(page: Page, app_url: str):
     """Navigate to /security (public), verify security heading."""
     page.goto(f"{app_url}/security", wait_until="networkidle")
@@ -191,6 +200,7 @@ def test_security_page(page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 # 11. Targets — add a target
 # ---------------------------------------------------------------------------
+
 
 def test_targets_add_target(logged_in_page: Page, app_url: str):
     """Verify the Add Target modal opens and contains the expected form fields."""
@@ -223,6 +233,7 @@ def test_targets_add_target(logged_in_page: Page, app_url: str):
 # 12. Dashboard — mission launch form
 # ---------------------------------------------------------------------------
 
+
 def test_dashboard_mission_launch_form(logged_in_page: Page, app_url: str):
     """Verify the mission launch form on the dashboard is interactive."""
     page = logged_in_page
@@ -234,8 +245,7 @@ def test_dashboard_mission_launch_form(logged_in_page: Page, app_url: str):
 
     # Launch/start button
     launch_btn = page.locator(
-        "button:has-text('Launch'), button:has-text('Start'), "
-        "button:has-text('Scan'), button[type='submit']"
+        "button:has-text('Launch'), button:has-text('Start'), button:has-text('Scan'), button[type='submit']"
     )
     expect(launch_btn.first).to_be_visible(timeout=10_000)
 
@@ -247,6 +257,7 @@ def test_dashboard_mission_launch_form(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 # 13. Admin — user management
 # ---------------------------------------------------------------------------
+
 
 def test_admin_user_management(logged_in_page: Page, app_url: str):
     """Navigate to /admin, verify the Users section shows user data."""
@@ -268,5 +279,4 @@ def test_admin_user_management(logged_in_page: Page, app_url: str):
 
     # Check the section has loaded some user data
     section_text = users_section.inner_text()
-    assert "admin" in section_text.lower(), \
-        "Admin user not found in users section text"
+    assert "admin" in section_text.lower(), "Admin user not found in users section text"
