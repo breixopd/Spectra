@@ -5,6 +5,7 @@ Stores document embeddings and metadata in PostgreSQL and performs
 similarity ranking in application code.
 """
 
+import hashlib
 import json
 import logging
 from dataclasses import dataclass
@@ -120,6 +121,7 @@ class RAGService:
                         session_id TEXT NULL,
                         metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
                         embedding vector({dim}) NOT NULL,
+                        content_hash TEXT NULL,
                         created_at TIMESTAMPTZ DEFAULT now()
                     )
                 """)
@@ -130,7 +132,8 @@ class RAGService:
                 await session.execute(
                     text(
                         "CREATE INDEX IF NOT EXISTS idx_rag_embedding_hnsw "
-                        "ON rag_documents USING hnsw (embedding vector_cosine_ops)"
+                        "ON rag_documents USING hnsw (embedding vector_cosine_ops) "
+                        "WITH (m = 16, ef_construction = 100)"
                     )
                 )
                 await session.commit()
@@ -172,21 +175,33 @@ class RAGService:
             )
 
         try:
+            content_hash = hashlib.sha256(doc.content.encode()).hexdigest()
+
+            # Check if document exists with same content hash
+            async with async_session_maker() as session:
+                existing = await session.execute(
+                    text("SELECT content_hash FROM rag_documents WHERE id = :id"),
+                    {"id": doc.id},
+                )
+                if existing.scalar() == content_hash:
+                    return True  # Content unchanged, skip re-embedding
+
             embedding = await self.embeddings.embed(doc.content)
             embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
             async with async_session_maker() as session:
                 await session.execute(
                     text("""
                         INSERT INTO rag_documents
-                            (id, content, doc_type, cve_id, severity, target, session_id, metadata, embedding)
+                            (id, content, doc_type, cve_id, severity, target, session_id, metadata, embedding, content_hash)
                         VALUES
                             (:id, :content, :doc_type, :cve_id, :severity, :target, :session_id,
-                             CAST(:metadata AS JSONB), CAST(:embedding AS vector))
+                             CAST(:metadata AS JSONB), CAST(:embedding AS vector), :content_hash)
                         ON CONFLICT (id) DO UPDATE SET
                             content = EXCLUDED.content, doc_type = EXCLUDED.doc_type,
                             cve_id = EXCLUDED.cve_id, severity = EXCLUDED.severity,
                             target = EXCLUDED.target, session_id = EXCLUDED.session_id,
-                            metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding
+                            metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding,
+                            content_hash = EXCLUDED.content_hash
                     """),
                     {
                         "id": doc.id,
@@ -198,6 +213,7 @@ class RAGService:
                         "session_id": doc.session_id,
                         "metadata": json.dumps(doc.metadata),
                         "embedding": embedding_str,
+                        "content_hash": content_hash,
                     },
                 )
                 await session.commit()
@@ -207,14 +223,101 @@ class RAGService:
             return False
 
     async def index_batch(self, docs: list[Document]) -> int:
-        """Index multiple documents."""
+        """Index multiple documents with batch embedding."""
         if not docs:
             return 0
-        success = 0
+        if not self._table_ready:
+            await self.initialize()
+
+        # Compute content hashes and filter out unchanged documents
+        doc_hashes = {}
         for doc in docs:
-            if await self.index_document(doc):
-                success += 1
-        return success
+            if len(doc.content) > self.MAX_DOCUMENT_SIZE:
+                doc = doc.model_copy(update={"content": doc.content[: self.MAX_DOCUMENT_SIZE]})
+            doc_hashes[doc.id] = hashlib.sha256(doc.content.encode()).hexdigest()
+
+        # Check existing hashes in bulk
+        try:
+            async with async_session_maker() as session:
+                doc_ids = list(doc_hashes.keys())
+                rows = (
+                    (
+                        await session.execute(
+                            text("SELECT id, content_hash FROM rag_documents WHERE id = ANY(:ids)"),
+                            {"ids": doc_ids},
+                        )
+                    )
+                    .mappings()
+                    .all()
+                )
+                existing_hashes = {r["id"]: r["content_hash"] for r in rows}
+        except (OSError, RuntimeError, OperationalError):
+            existing_hashes = {}
+
+        # Filter to only docs that changed
+        docs_to_index = [doc for doc in docs if doc_hashes.get(doc.id) != existing_hashes.get(doc.id)]
+        if not docs_to_index:
+            return len(docs)  # All unchanged
+
+        # Batch embed all content at once
+        try:
+            contents = [
+                doc.content[: self.MAX_DOCUMENT_SIZE] if len(doc.content) > self.MAX_DOCUMENT_SIZE else doc.content
+                for doc in docs_to_index
+            ]
+            embeddings = await self.embeddings.embed_batch(contents)
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.error("Batch embedding failed, falling back to sequential: %s", e)
+            success = 0
+            for doc in docs:
+                if await self.index_document(doc):
+                    success += 1
+            return success
+
+        # Bulk insert
+        success = 0
+        try:
+            async with async_session_maker() as session:
+                for doc, embedding in zip(docs_to_index, embeddings, strict=True):
+                    content_hash = doc_hashes[doc.id]
+                    embedding_str = "[" + ",".join(str(x) for x in embedding) + "]"
+                    await session.execute(
+                        text("""
+                            INSERT INTO rag_documents
+                                (id, content, doc_type, cve_id, severity, target, session_id,
+                                 metadata, embedding, content_hash)
+                            VALUES
+                                (:id, :content, :doc_type, :cve_id, :severity, :target, :session_id,
+                                 CAST(:metadata AS JSONB), CAST(:embedding AS vector), :content_hash)
+                            ON CONFLICT (id) DO UPDATE SET
+                                content = EXCLUDED.content, doc_type = EXCLUDED.doc_type,
+                                cve_id = EXCLUDED.cve_id, severity = EXCLUDED.severity,
+                                target = EXCLUDED.target, session_id = EXCLUDED.session_id,
+                                metadata = EXCLUDED.metadata, embedding = EXCLUDED.embedding,
+                                content_hash = EXCLUDED.content_hash
+                        """),
+                        {
+                            "id": doc.id,
+                            "content": doc.content[: self.MAX_DOCUMENT_SIZE]
+                            if len(doc.content) > self.MAX_DOCUMENT_SIZE
+                            else doc.content,
+                            "doc_type": doc.doc_type,
+                            "cve_id": doc.cve_id,
+                            "severity": doc.severity,
+                            "target": doc.target,
+                            "session_id": doc.session_id,
+                            "metadata": json.dumps(doc.metadata),
+                            "embedding": embedding_str,
+                            "content_hash": content_hash,
+                        },
+                    )
+                    success += 1
+                await session.commit()
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.error("Batch insert failed: %s", e)
+
+        # Count unchanged docs as success too
+        return success + (len(docs) - len(docs_to_index))
 
     async def search(
         self,
@@ -270,6 +373,7 @@ class RAGService:
             params["top_k"] = top_k
 
             async with async_session_maker() as session:
+                await session.execute(text("SET hnsw.ef_search = 60"))
                 rows = (await session.execute(text(sql), params)).mappings().all()
 
             results: list[SearchResult] = []

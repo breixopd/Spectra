@@ -9,6 +9,8 @@ def _make_plan(**overrides):
     plan = MagicMock()
     plan.max_concurrent_missions = overrides.get("max_concurrent_missions", 2)
     plan.max_missions_per_month = overrides.get("max_missions_per_month", 10)
+    plan.max_missions_per_day = overrides.get("max_missions_per_day", 0)
+    plan.max_missions_per_week = overrides.get("max_missions_per_week", 0)
     plan.max_api_requests_per_hour = overrides.get("max_api_requests_per_hour", 100)
     plan.max_storage_mb = overrides.get("max_storage_mb", 500)
     return plan

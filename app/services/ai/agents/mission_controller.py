@@ -120,6 +120,8 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
 
     role: ClassVar[AgentRole] = AgentRole.MISSION_CONTROLLER
     name: ClassVar[str] = "MissionController"
+    enable_reflection: ClassVar[bool] = True
+    reflection_threshold: ClassVar[float] = 0.7
 
     def __init__(self, llm: LLMClient):
         super().__init__(llm)

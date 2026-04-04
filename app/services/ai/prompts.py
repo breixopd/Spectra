@@ -43,7 +43,8 @@ Context:
 """
     + PENTEST_PRINCIPLES
     + """
-Respond ONLY with valid JSON matching the required schema."""
+Think through your reasoning step by step before responding.
+Then respond with valid JSON matching the required schema in a ```json code block."""
 )
 
 # =============================================================================
@@ -61,7 +62,10 @@ Context:
 You follow the PTES (Penetration Testing Execution Standard) framework.
 You plan like an experienced pentester: systematic, efficient, evidence-driven.
 
-Respond with valid JSON matching the required schema."""
+Ground every recommendation in specific evidence from reconnaissance data, tool output, or known CVE databases. Do not assume vulnerabilities without evidence. If information is insufficient, recommend additional reconnaissance before exploitation.
+
+Think through your reasoning step by step before responding.
+Then respond with your plan as a JSON object in a ```json code block."""
 
 
 MISSION_PLAN_PROMPT = """
@@ -69,6 +73,14 @@ Plan a penetration test following PTES methodology.
 
 **Directive:** "{directive}"
 **Target:** {target}
+
+Think through the assessment strategy step by step before responding:
+1. What do I know about this target from reconnaissance?
+2. What services and versions are exposed?
+3. What attack surfaces exist based on the evidence?
+4. What tools and techniques are most likely to succeed?
+
+If reconnaissance returns no results or tool execution fails, explicitly state what was attempted, what failed, and recommend alternative approaches. Never fabricate findings from failed tools.
 
 {methodology}
 
@@ -189,6 +201,14 @@ Exploit Candidate: {candidate}
 Attempt: {attempt}
 Previous Error: {previous_error}
 
+Before crafting the exploit, analyze step by step:
+1. What is the exact service, version, and configuration?
+2. What CVEs or known vulnerabilities apply to this specific version?
+3. What is the most reliable exploitation path?
+4. What could go wrong, and how do I handle edge cases?
+
+Cite specific CVE IDs, version numbers, and tool output evidence.
+
 **Exploitation Strategy (follow this order):**
 1. CVE-based exploit: If a specific CVE is known, configure the exact exploit module.
 2. Metasploit module: Use 'module' field with full path (e.g., 'exploit/unix/ftp/vsftpd_234_backdoor').
@@ -275,6 +295,8 @@ REPORTING_PROMPT = """Generate a professional penetration test report.
 
 **Findings Summary:**
 {findings_summary}
+
+Every finding must cite specific evidence: tool name, raw output excerpt, CVE ID, or observed behavior. Do not include findings that lack supporting evidence.
 
 **Report Structure (PTES Standard):**
 

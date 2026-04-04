@@ -230,6 +230,8 @@ class PlanCreate(BaseModel):
     sort_order: int = 0
     max_concurrent_missions: int = Field(default=1, ge=1)
     max_missions_per_month: int | None = None
+    max_missions_per_day: int = Field(default=0, ge=0)
+    max_missions_per_week: int = Field(default=0, ge=0)
     max_targets: int | None = None
     max_api_requests_per_hour: int = Field(default=100, ge=1)
     max_api_requests_per_day: int = Field(default=1000, ge=1)
@@ -248,6 +250,8 @@ class PlanUpdate(BaseModel):
     sort_order: int | None = None
     max_concurrent_missions: int | None = Field(None, ge=1)
     max_missions_per_month: int | None = None
+    max_missions_per_day: int | None = Field(None, ge=0)
+    max_missions_per_week: int | None = Field(None, ge=0)
     max_targets: int | None = None
     max_api_requests_per_hour: int | None = Field(None, ge=1)
     max_api_requests_per_day: int | None = Field(None, ge=1)
@@ -269,6 +273,8 @@ class PlanResponse(BaseModel):
     sort_order: int
     max_concurrent_missions: int
     max_missions_per_month: int | None = None
+    max_missions_per_day: int = 0
+    max_missions_per_week: int = 0
     max_targets: int | None = None
     max_api_requests_per_hour: int
     max_api_requests_per_day: int

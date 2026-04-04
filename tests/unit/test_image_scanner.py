@@ -69,7 +69,7 @@ class TestImageScanner:
 
         assert ImageScanner is not None
 
-    def test_unavailable_without_trivy(self):
+    def test_unavailable_without_grype(self):
         from app.services.tools.sandbox.image_scanner import ImageScanner
 
         with patch("shutil.which", return_value=None):

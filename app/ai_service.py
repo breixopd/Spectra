@@ -38,18 +38,30 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from app.core.config import get_settings as _get_cors_settings
+
+_cors_settings = _get_cors_settings()
+_cors_origins = (
+    _cors_settings.CORS_ORIGINS
+    if _cors_settings.CORS_ORIGINS
+    else [
+        "http://spectra-app:5000",
+        "http://app:5000",
+        "http://localhost:5000",
+    ]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://spectra-app:5000", "http://app:5000", "http://localhost:5000"],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Service auth middleware
-from app.core.config import get_settings
 from app.core.service_auth import ServiceAuthMiddleware
 
-_settings = get_settings()
+_settings = _cors_settings
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
 if _secret:
     app.add_middleware(ServiceAuthMiddleware, secret=_secret)

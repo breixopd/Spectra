@@ -25,6 +25,8 @@ class Plan(Base):
     # Limits
     max_concurrent_missions: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     max_missions_per_month: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_missions_per_day: Mapped[int] = mapped_column(Integer, default=0, nullable=False, server_default="0")
+    max_missions_per_week: Mapped[int] = mapped_column(Integer, default=0, nullable=False, server_default="0")
     max_targets: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_api_requests_per_hour: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
     max_api_requests_per_day: Mapped[int] = mapped_column(Integer, default=1000, nullable=False)
