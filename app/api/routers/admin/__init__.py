@@ -15,7 +15,9 @@ _ADMIN_ROUTER_MODULES = {
     "email_router": "app.api.routers.admin.email",
     "settings_router": "app.api.routers.admin.settings",
     "tensorzero_router": "app.api.routers.admin.tensorzero",
+    "monitoring_router": "app.api.routers.admin.monitoring",
     "rollback_router": "app.api.routers.admin.rollback",
+    "training_router": "app.api.routers.admin.training",
 }
 
 __all__ = ["router", *list(_ADMIN_ROUTER_MODULES)]

@@ -62,7 +62,40 @@ def _resolve_output_dir(tool_id: str, output_dir: str | None) -> str:
     return f"/tmp/spectra_tool_outputs/{run_id}"
 
 
-def _calculate_effective_timeout(target: str, requested_timeout: int | None, execution: Any) -> int:
+def _estimate_timeout_multiplier(tool_id: str, args: dict[str, Any] | None) -> float:
+    """Estimate timeout multiplier based on tool type and execution args."""
+    multiplier = 1.0
+    if not args:
+        return multiplier
+
+    args_str = " ".join(str(v) for v in args.values()).lower()
+
+    # Nmap deep scan flags
+    if tool_id == "nmap" and any(flag in args_str for flag in ["-sv", "-sc", "-a", "--script", "-p-"]):
+        multiplier *= 2.0
+
+    # Brute force tools need more time
+    if tool_id in ("hydra", "crackmapexec", "kerbrute"):
+        multiplier *= 1.5
+
+    # Web fuzzing with wordlists
+    if tool_id in ("ffuf", "gobuster", "feroxbuster", "dirsearch") and "wordlist" in args_str:
+        multiplier *= 1.5
+
+    # Full vulnerability scanning
+    if tool_id == "nuclei" and ("-t" in args_str or "--templates" in args_str):
+        multiplier *= 2.0
+
+    return min(multiplier, 4.0)  # Cap at 4x
+
+
+def _calculate_effective_timeout(
+    target: str,
+    requested_timeout: int | None,
+    execution: Any,
+    tool_id: str | None = None,
+    args: dict[str, Any] | None = None,
+) -> int:
     effective_timeout = requested_timeout or execution.timeout
 
     if "/" in target:
@@ -75,6 +108,13 @@ def _calculate_effective_timeout(target: str, requested_timeout: int | None, exe
                 "Target '%s' is not a valid IP network; skipping dynamic timeout adjustment",
                 target,
             )
+
+    # Apply tool/args-based multiplier
+    if tool_id:
+        multiplier = _estimate_timeout_multiplier(tool_id, args)
+        if multiplier > 1.0:
+            logger.info("Timeout multiplier %.1fx for %s (args-based)", multiplier, tool_id)
+            effective_timeout = int(effective_timeout * multiplier)
 
     effective_timeout = min(effective_timeout, execution.max_timeout)
     return max(effective_timeout, execution.min_timeout)
@@ -132,7 +172,7 @@ async def execute_tool_job(
     except ValueError as e:
         return _error_result(tool_id, target, f"Command build failed: {e}")
 
-    effective_timeout = _calculate_effective_timeout(target, timeout, config.execution)
+    effective_timeout = _calculate_effective_timeout(target, timeout, config.execution, tool_id, args)
 
     # Execute command with timeout
     import time

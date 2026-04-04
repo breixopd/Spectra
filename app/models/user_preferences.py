@@ -47,6 +47,9 @@ class UserPreferences(Base):
     # --- UI preferences ---
     timezone: Mapped[str] = mapped_column(String(50), default="UTC", server_default="UTC")
 
+    # --- Training data sharing ---
+    share_training_data: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
     # --- Extensible JSONB for future preferences ---
     extra: Mapped[dict | None] = mapped_column(JSONBType, nullable=True)
 

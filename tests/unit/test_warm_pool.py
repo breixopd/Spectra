@@ -9,12 +9,6 @@ from pydantic import SecretStr
 class TestWarmPoolConfig:
     """Warm pool config settings."""
 
-    def test_warm_pool_enabled_default_false(self):
-        from app.core.config import Settings
-
-        s = Settings(DATABASE_URL=SecretStr("postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test"))
-        assert s.SANDBOX_WARM_POOL_ENABLED is False
-
     def test_warm_pool_size_default(self):
         from app.core.config import Settings
 
@@ -44,25 +38,32 @@ class TestWarmPoolManager:
         assert wm._pool is mock_pool
 
     @pytest.mark.asyncio
-    async def test_claim_returns_none_when_disabled(self):
+    async def test_claim_returns_none_when_no_warm_containers(self):
         from app.services.tools.sandbox.warm_pool import WarmPoolManager
 
         mock_pool = MagicMock()
         wm = WarmPoolManager(mock_pool)
-        with patch("app.services.tools.sandbox.warm_pool.get_settings") as mock_settings:
-            mock_settings.return_value = MagicMock(SANDBOX_WARM_POOL_ENABLED=False)
+
+        mock_session = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=None)
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        with patch("app.services.tools.sandbox.warm_pool.async_session_maker", return_value=mock_session):
             result = await wm.claim("mission-1")
             assert result is None
 
     @pytest.mark.asyncio
-    async def test_maintain_skips_when_disabled(self):
+    async def test_maintain_skips_when_pool_unavailable(self):
         from app.services.tools.sandbox.warm_pool import WarmPoolManager
 
-        mock_pool = MagicMock(available=True)
+        mock_pool = MagicMock(available=False)
         wm = WarmPoolManager(mock_pool)
         wm._spawn_warm_container = AsyncMock()
         with patch("app.services.tools.sandbox.warm_pool.get_settings") as mock_settings:
-            mock_settings.return_value = MagicMock(SANDBOX_WARM_POOL_ENABLED=False)
+            mock_settings.return_value = MagicMock(SANDBOX_WARM_POOL_SIZE=2)
             await wm.maintain()
             wm._spawn_warm_container.assert_not_awaited()
 

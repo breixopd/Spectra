@@ -55,10 +55,6 @@ class WarmPoolManager:
         Uses SELECT FOR UPDATE to prevent race conditions between concurrent claims.
         Returns SandboxInfo if a warm container was claimed, None if pool is empty.
         """
-        settings = get_settings()
-        if not settings.SANDBOX_WARM_POOL_ENABLED:
-            return None
-
         queue_name = SandboxInfo.make_queue_name(mission_id)
 
         async with async_session_maker() as session:
@@ -106,7 +102,7 @@ class WarmPoolManager:
         Called periodically by a background task.
         """
         settings = get_settings()
-        if not settings.SANDBOX_WARM_POOL_ENABLED or not self._pool.available:
+        if not self._pool.available:
             return
 
         async with self._maintain_lock:

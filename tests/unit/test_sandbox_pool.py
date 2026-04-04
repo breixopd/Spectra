@@ -184,27 +184,33 @@ class TestSandboxPool:
 class TestGetQueueName:
     """Tests for ToolExecutionService._get_queue_name routing."""
 
-    def test_get_queue_name_returns_default_without_sandbox(self):
-        """Falls back to 'default' when sandbox pool is unavailable."""
-        from unittest.mock import patch
-
-        from app.services.tools.service import ToolExecutionService
-
-        with patch("app.services.tools.sandbox.get_sandbox_pool", return_value=None):
-            result = ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
-        assert result == "default"
-
-    def test_get_queue_name_delegates_when_sandbox_available(self):
-        """Routes through SandboxInfo.make_queue_name when sandbox pool is available."""
-        from unittest.mock import MagicMock, patch
-
+    def test_get_queue_name_with_sandbox_pool(self):
+        """Returns mission-specific queue when sandbox pool is available."""
         from app.services.tools.service import ToolExecutionService
 
         mock_pool = MagicMock()
         mock_pool.available = True
         with patch("app.services.tools.sandbox.get_sandbox_pool", return_value=mock_pool):
             result = ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
-        assert result == "mission_a1b2c3d4"
+            assert result == "mission_a1b2c3d4"
+
+    def test_get_queue_name_without_sandbox_pool(self):
+        """Returns default queue when sandbox pool is unavailable."""
+        from app.services.tools.service import ToolExecutionService
+
+        with patch("app.services.tools.sandbox.get_sandbox_pool", return_value=None):
+            result = ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            assert result == "default"
+
+    def test_get_queue_name_pool_not_available(self):
+        """Returns default queue when pool exists but is not available."""
+        from app.services.tools.service import ToolExecutionService
+
+        mock_pool = MagicMock()
+        mock_pool.available = False
+        with patch("app.services.tools.sandbox.get_sandbox_pool", return_value=mock_pool):
+            result = ToolExecutionService._get_queue_name("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+            assert result == "default"
 
 
 # --- Sandbox container config tests ---

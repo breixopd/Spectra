@@ -90,7 +90,6 @@ class SettingsUpdate(BaseModel):
     sandbox_per_user_limit: int | None = Field(None, ge=0, le=20)
     sandbox_default_priority: int | None = Field(None, ge=1, le=10)
     sandbox_oom_escalation_enabled: bool | None = None
-    sandbox_warm_pool_enabled: bool | None = None
     sandbox_warm_pool_size: int | None = Field(None, ge=0, le=10)
     sandbox_auto_build_image: bool | None = None
     sandbox_image_scan_enabled: bool | None = None

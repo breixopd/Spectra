@@ -125,7 +125,7 @@ class MissionExecutionManager:
         return cost_tracker
 
     async def _create_sandbox(self, mission: Mission) -> Any:
-        """Create per-mission sandbox container and send start notification."""
+        """Create per-mission sandbox container or configure shared worker queue."""
         try:
             from app.services.notifications import notify_mission_started
 
@@ -133,11 +133,11 @@ class MissionExecutionManager:
         except (ImportError, OSError, ConnectionError, RuntimeError) as e:
             logger.warning("Failed to send mission start notification: %s", e)
 
-        try:
-            from app.services.tools.sandbox import get_sandbox_pool
+        from app.services.tools.sandbox import get_sandbox_pool
 
-            pool = get_sandbox_pool()
-            if pool and pool.available:
+        pool = get_sandbox_pool()
+        if pool and pool.available:
+            try:
                 vpn_path = None
                 if getattr(mission, "vpn_config", None):
                     from app.services.tools.vpn import VPNManager
@@ -150,15 +150,14 @@ class MissionExecutionManager:
                         mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found in S3, skipping VPN")
 
                 sandbox_info = await pool.create(mission.id, vpn_config_path=vpn_path)
-                mission.log(
-                    f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})"
-                )
+                mission.log(f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})")
                 return sandbox_info
-            else:
-                mission.log("[WARN] Sandbox pool unavailable — tools will use default queue")
-        except (ImportError, OSError, RuntimeError, ConnectionError) as e:
-            logger.error("Failed to create sandbox for mission %s: %s", mission.id, e)
-            mission.log(f"[ERROR] Sandbox creation failed: {e}")
+            except (OSError, RuntimeError) as e:
+                logger.warning("Sandbox creation failed for mission %s: %s", mission.id, e)
+
+        # Containerized deployment: tools run via shared worker queue
+        mission.log("[INFO] Using shared tools worker for execution")
+        logger.info("Mission %s using shared tools worker (no sandbox pool)", mission.id)
         return None
 
     async def _run_mission_phases(

@@ -100,17 +100,19 @@ class ToolExecutionService:
 
     @staticmethod
     def _get_queue_name(mission_id: str) -> str:
-        """Get the queue name for a mission's sandbox worker.
+        """Get the queue name for tool execution.
 
-        Falls back to 'default' when sandboxes are unavailable so the
-        tools/worker container can pick up the jobs.
+        Uses mission-specific queue if sandbox container exists,
+        otherwise routes to shared tools worker queue.
         """
         from app.services.tools.sandbox import get_sandbox_pool
+        from app.services.tools.sandbox.models import SandboxInfo
 
         pool = get_sandbox_pool()
         if pool and pool.available:
-            from app.services.tools.sandbox.models import SandboxInfo
             return SandboxInfo.make_queue_name(mission_id)
+
+        # Shared tools worker in containerized deployment
         return "default"
 
     def __init__(self, llm_client: LLMClient):

@@ -50,7 +50,7 @@ class TestStandaloneMissionAdapter:
 
 class TestToolExecutionServiceInit:
     def test_semaphore_limit(self, tool_service):
-        assert tool_service._semaphore._value == 5
+        assert tool_service._semaphore._value == 8
 
     def test_has_safety_supervisor(self, tool_service):
         assert tool_service.safety_supervisor is not None
