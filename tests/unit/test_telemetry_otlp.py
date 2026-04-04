@@ -225,9 +225,7 @@ class TestOtelPushExporter:
                 mock_instance = AsyncMock()
                 mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
                 mock_instance.__aexit__ = AsyncMock(return_value=None)
-                mock_instance.post = AsyncMock(
-                    side_effect=httpx.ConnectError("connection refused")
-                )
+                mock_instance.post = AsyncMock(side_effect=httpx.ConnectError("connection refused"))
                 mock_client.return_value = mock_instance
 
                 result = await collector.push_to_collector()

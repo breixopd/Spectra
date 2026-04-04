@@ -28,7 +28,7 @@ class ContextSection:
 
     @property
     def token_estimate(self) -> int:
-        return len(self.content) // ContextManager.CHARS_PER_TOKEN
+        return ContextManager.estimate_tokens(self.content)
 
 
 class ContextManager:
@@ -55,7 +55,7 @@ class ContextManager:
             if not content or not content.strip():
                 continue
 
-            section_tokens = len(content) // self.CHARS_PER_TOKEN
+            section_tokens = self.estimate_tokens(content)
 
             # Apply per-section cap
             if section.max_tokens and section_tokens > section.max_tokens:
@@ -84,8 +84,8 @@ class ContextManager:
 
     @staticmethod
     def estimate_tokens(text: str) -> int:
-        """Estimate token count for text."""
-        return len(text) // ContextManager.CHARS_PER_TOKEN
+        """Estimate token count using character-based heuristic (4 chars ≈ 1 token)."""
+        return max(1, len(text) // ContextManager.CHARS_PER_TOKEN)
 
 
 def truncate_for_llm(text: str, max_chars: int = 3000, label: str = "output") -> str:

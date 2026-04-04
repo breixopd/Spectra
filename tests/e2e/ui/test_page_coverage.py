@@ -24,10 +24,8 @@ def test_targets_page(logged_in_page: Page, app_url: str):
     expect(heading).to_be_visible(timeout=10_000)
     expect(heading).to_contain_text("Target Management")
 
-    # An "Add Target" button or input should be present
-    add_btn = page.locator("button, a, input").filter(has_text="Add Target")
-    if add_btn.count() == 0:
-        add_btn = page.locator("[data-action='add-target'], #add-target, .add-target")
+    # An "Add Target" button should be present (icon-only with aria-label)
+    add_btn = page.locator("button[aria-label='Add Target']")
     expect(add_btn.first).to_be_visible(timeout=10_000)
 
     # Target list container
@@ -116,17 +114,14 @@ def test_toolbox_create_page(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 
 
-def test_manual_tools_page(logged_in_page: Page, app_url: str):
+def test_manual_tools_page(logged_in_page: Page, app_url: str, ensure_manual_mode_subscription: None):
     """Navigate to /manual, verify Manual Mode heading."""
     page = logged_in_page
 
     response = page.goto(f"{app_url}/manual", wait_until="networkidle")
 
-    # If redirected to dashboard, the feature isn't enabled — that's OK, skip
-    if "/dashboard" in page.url:
-        pytest.skip("manual_mode feature not enabled for test user")
+    assert "/dashboard" not in page.url, "Redirected to /dashboard — manual_mode subscription setup failed"
 
-    # But a 500 should be a real failure, not a skip
     assert response is not None and response.status < 500, (
         f"/manual returned {response.status if response else 'no response'}"
     )
@@ -207,11 +202,12 @@ def test_targets_add_target(logged_in_page: Page, app_url: str):
     page = logged_in_page
     page.goto(f"{app_url}/targets", wait_until="networkidle")
 
-    # Click "Add Target" button to open the modal
+    # Click "Add Target" button to open the modal (icon-only trigger)
     add_btn = page.locator("button[aria-label='Add Target']")
-    if add_btn.count() == 0:
-        pytest.skip("Add Target button not found on targets page")
-    add_btn.click()
+    expect(add_btn.first).to_be_visible(timeout=10_000)
+
+    # Open modal via JS directly — click may not work if Lucide icons haven't rendered
+    page.evaluate("openAddTargetModal()")
 
     # Wait for the modal to appear
     modal = page.locator("#add-target-modal")

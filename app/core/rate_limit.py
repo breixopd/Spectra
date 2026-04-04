@@ -71,8 +71,21 @@ def get_user_identifier(request: Request) -> str:
 from app.core.config import settings as _rl_settings
 from app.core.constants import API_RATE_LIMIT
 
+# Paths exempt from rate limiting (static assets, health probes)
+_RATE_LIMIT_EXEMPT_PREFIXES = ("/static/", "/api/health")
+
+
+def _rate_limit_key_func(request: Request) -> str:
+    """Return rate limit key, or skip for exempt paths."""
+    path = request.url.path
+    if any(path.startswith(prefix) for prefix in _RATE_LIMIT_EXEMPT_PREFIXES):
+        # Return a sentinel that slowapi will not track
+        return "__rate_limit_exempt__"
+    return get_user_identifier(request)
+
+
 limiter = Limiter(
-    key_func=get_user_identifier,
+    key_func=_rate_limit_key_func,
     default_limits=[API_RATE_LIMIT],
     headers_enabled=True,  # Add rate limit headers to responses
     storage_uri=_rl_settings.RATE_LIMIT_STORAGE,

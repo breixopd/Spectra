@@ -176,7 +176,7 @@ def _apply_general_runtime_settings(rows: dict[str, str]) -> None:
             try:
                 setattr(settings, attr_name, int(value))
             except (ValueError, TypeError):
-                pass
+                logger.debug("Failed to parse int setting %s", key, exc_info=True)
         elif kind == "nullable_str":
             setattr(settings, attr_name, value or None)
         elif kind == "secret":

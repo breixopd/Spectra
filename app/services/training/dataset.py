@@ -73,7 +73,7 @@ async def get_dataset_stats(session: AsyncSession) -> dict[str, Any]:
             }
             for row in rows
         },
-        "total": sum(row.count for row in rows),
+        "total": sum(int(row.count) for row in rows),
     }
 
 

@@ -72,6 +72,8 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
     role: ClassVar[AgentRole] = AgentRole.TOOL_SELECTOR
     name: ClassVar[str] = "ToolSelector"
     description: ClassVar[str] = "Analyzes context and selects the optimal security tool to run"
+    enable_reflection: ClassVar[bool] = True
+    reflection_threshold: ClassVar[float] = 0.7
 
     # Pre-defined groups of tools safe to run in parallel
     PARALLEL_TOOL_GROUPS: ClassVar[dict[str, list[str]]] = {

@@ -150,7 +150,9 @@ class MissionExecutionManager:
                         mission.log(f"[WARN] VPN config '{mission.vpn_config}' not found in S3, skipping VPN")
 
                 sandbox_info = await pool.create(mission.id, vpn_config_path=vpn_path)
-                mission.log(f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})")
+                mission.log(
+                    f"[SANDBOX] Created sandbox: {sandbox_info.container_name} (queue={sandbox_info.queue_name})"
+                )
                 return sandbox_info
             except (OSError, RuntimeError) as e:
                 logger.warning("Sandbox creation failed for mission %s: %s", mission.id, e)

@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from starlette.routing import Route
 
 
 class TestApiDocsRoute:
@@ -15,7 +16,7 @@ class TestApiDocsRoute:
         mock_request = MagicMock()
 
         mock_app = MagicMock()
-        mock_route = MagicMock()
+        mock_route = MagicMock(spec=Route)
         mock_route.methods = {"GET"}
         mock_route.path = "/api/v1/health"
         mock_route.name = "health_check"
@@ -66,7 +67,7 @@ class TestApiDocsRoute:
 
         mock_request = MagicMock()
 
-        mock_route1 = MagicMock()
+        mock_route1 = MagicMock(spec=Route)
         mock_route1.methods = {"GET"}
         mock_route1.path = "/api/v1/health"
         mock_route1.name = "health_check"
@@ -74,7 +75,7 @@ class TestApiDocsRoute:
         mock_route1.tags = []
         mock_route1.dependant = MagicMock(path_params=[], query_params=[])
 
-        mock_route2 = MagicMock()
+        mock_route2 = MagicMock(spec=Route)
         mock_route2.methods = {"GET"}
         mock_route2.path = "/api/admin/users"
         mock_route2.name = "list_users"
@@ -114,7 +115,7 @@ class TestApiDocsRoute:
 
         mock_request = MagicMock()
 
-        mock_route1 = MagicMock()
+        mock_route1 = MagicMock(spec=Route)
         mock_route1.methods = {"GET"}
         mock_route1.path = "/api/v1/health"
         mock_route1.name = "health_check"
@@ -122,7 +123,7 @@ class TestApiDocsRoute:
         mock_route1.tags = []
         mock_route1.dependant = MagicMock(path_params=[], query_params=[])
 
-        mock_route2 = MagicMock()
+        mock_route2 = MagicMock(spec=Route)
         mock_route2.methods = {"GET"}
         mock_route2.path = "/api/admin/users"
         mock_route2.name = "list_users"

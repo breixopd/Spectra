@@ -115,6 +115,21 @@ Provide:
                 system_prompt="You are a senior penetration tester conducting a post-engagement debrief. Be specific, actionable, and honest about both successes and failures.",
                 temperature=0.4,
             )
+
+            # Store lessons learned in persistent memory
+            try:
+                from app.services.ai.memory import get_memory
+
+                memory = get_memory(context.user_id)
+                for lesson in result.lessons_learned:
+                    memory.record_tool_lesson(
+                        tool="debrief",
+                        lesson=lesson,
+                        context=input_data.target,
+                    )
+            except (OSError, RuntimeError, ValueError):
+                logger.debug("Failed to store debrief lessons in memory", exc_info=True)
+
             return AgentResult(success=True, action=result)
         except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.error("Debrief failed: %s", e)

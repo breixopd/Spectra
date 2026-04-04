@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.routing import Route
 
 from app.api.dependencies import _is_admin_user, get_current_active_user, get_ui_user
 from app.api.schemas import SettingsUpdate
@@ -44,25 +45,27 @@ async def _get_ui_db_user(username: str | None) -> User | None:
         return result.scalar_one_or_none()
 
 
-async def _check_user_feature(user_id: str | None, feature: str) -> bool:
+async def _check_user_feature(username: str | None, feature: str) -> bool:
     """Check if a user's subscription plan has a specific feature enabled."""
-    if not user_id:
+    if not username:
         return False
     try:
         from app.models.plan import Plan, Subscription
+        from app.models.user import User
 
         async with async_session_maker() as session:
             result = await session.execute(
                 select(Plan.features)
                 .join(Subscription, Subscription.plan_id == Plan.id)
-                .where(Subscription.user_id == user_id, Subscription.status == "active")
+                .join(User, User.id == Subscription.user_id)
+                .where(User.username == username, Subscription.status == "active")
                 .limit(1)
             )
             features = result.scalar_one_or_none()
             if features and isinstance(features, dict):
                 return bool(features.get(feature))
     except Exception:
-        pass
+        logger.debug("Feature check failed", exc_info=True)
     return False
 
 
@@ -259,50 +262,51 @@ async def api_docs_page(request: Request):
 
     routes = []
     for route in fastapi_app.routes:
-        if hasattr(route, "methods") and hasattr(route, "path"):
-            if (
-                route.path.startswith("/api/")
-                and not route.path.startswith("/api/docs")
-                and not route.path.startswith("/api/redoc")
-                and not route.path.startswith("/api/openapi")
-            ):
-                params = []
-                if hasattr(route, "dependant"):
+        if not isinstance(route, Route):
+            continue
+        if (
+            route.path.startswith("/api/")
+            and not route.path.startswith("/api/docs")
+            and not route.path.startswith("/api/redoc")
+            and not route.path.startswith("/api/openapi")
+        ):
+            params = []
+            if hasattr(route, "dependant"):
 
-                    def _type_name(fi):
-                        ann = getattr(fi, "annotation", None)
-                        if ann is None:
-                            return "string"
-                        return getattr(ann, "__name__", str(ann))
+                def _type_name(fi):
+                    ann = getattr(fi, "annotation", None)
+                    if ann is None:
+                        return "string"
+                    return getattr(ann, "__name__", str(ann))
 
-                    for param in getattr(route.dependant, "path_params", []):
-                        params.append(
-                            {
-                                "name": param.name,
-                                "in": "path",
-                                "required": True,
-                                "type": _type_name(param.field_info),
-                            }
-                        )
-                    for param in getattr(route.dependant, "query_params", []):
-                        params.append(
-                            {
-                                "name": param.name,
-                                "in": "query",
-                                "required": getattr(param, "required", False),
-                                "type": _type_name(param.field_info),
-                            }
-                        )
-                routes.append(
-                    {
-                        "path": route.path,
-                        "methods": sorted(route.methods - {"HEAD", "OPTIONS"}),
-                        "name": route.name or "",
-                        "description": (route.endpoint.__doc__ or "").strip(),
-                        "tags": getattr(route, "tags", []),
-                        "params": params,
-                    }
-                )
+                for param in getattr(route.dependant, "path_params", []):
+                    params.append(
+                        {
+                            "name": param.name,
+                            "in": "path",
+                            "required": True,
+                            "type": _type_name(param.field_info),
+                        }
+                    )
+                for param in getattr(route.dependant, "query_params", []):
+                    params.append(
+                        {
+                            "name": param.name,
+                            "in": "query",
+                            "required": getattr(param, "required", False),
+                            "type": _type_name(param.field_info),
+                        }
+                    )
+            routes.append(
+                {
+                    "path": route.path,
+                    "methods": sorted(route.methods - {"HEAD", "OPTIONS"}),
+                    "name": route.name or "",
+                    "description": (route.endpoint.__doc__ or "").strip(),
+                    "tags": getattr(route, "tags", []),
+                    "params": params,
+                }
+            )
 
     groups: dict[str, list] = {}
     for r in routes:

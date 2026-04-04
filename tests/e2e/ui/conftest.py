@@ -147,3 +147,76 @@ def authenticated_page(authenticated_context: BrowserContext, app_url: str):
 def logged_in_page(authenticated_page: Page):
     """Alias for tests that only need a logged-in browser page."""
     return authenticated_page
+
+
+def _db_dsn_from_env() -> str:
+    """Return a plain DSN from DATABASE_URL."""
+    raw = os.environ.get("DATABASE_URL", "")
+    return raw.replace("postgresql+asyncpg://", "postgresql://")
+
+
+async def _seed_manual_mode(dsn: str) -> None:
+    """Connect to the database and seed manual_mode plan+subscription."""
+    import asyncpg  # already in requirements
+
+    conn = await asyncpg.connect(dsn)
+    try:
+        await conn.execute(
+            """
+            DO $$
+            DECLARE
+                v_user_id UUID;
+                v_plan_id UUID;
+            BEGIN
+                SELECT id INTO v_user_id FROM users WHERE username = $1;
+                IF v_user_id IS NULL THEN
+                    RAISE EXCEPTION 'User not found';
+                END IF;
+
+                INSERT INTO plans (id, name, display_name, features, is_active,
+                                  max_concurrent_missions, max_api_requests_per_hour,
+                                  max_api_requests_per_day, sandbox_max_containers,
+                                  max_storage_mb, sort_order)
+                VALUES (gen_random_uuid(), 'test_manual_mode', 'Test Manual Mode',
+                        '{"manual_mode": true}'::jsonb, true, 1, 100, 1000, 1, 500, 0)
+                ON CONFLICT (name) DO UPDATE SET features = '{"manual_mode": true}'::jsonb
+                RETURNING id INTO v_plan_id;
+
+                INSERT INTO subscriptions (id, user_id, plan_id, status, current_period_start)
+                VALUES (gen_random_uuid(), v_user_id, v_plan_id, 'active', now())
+                ON CONFLICT (user_id) DO UPDATE SET plan_id = v_plan_id, status = 'active';
+            END $$;
+            """,
+            ADMIN_USERNAME,
+        )
+    finally:
+        await conn.close()
+
+
+@pytest.fixture(scope="session")
+def ensure_manual_mode_subscription() -> None:
+    """Seed the DB with a plan+subscription granting manual_mode to the admin user."""
+    import asyncio
+    import threading
+
+    dsn = _db_dsn_from_env()
+    if not dsn:
+        pytest.skip("DATABASE_URL not set")
+        return
+
+    result: dict[str, Exception | None] = {"error": None}
+
+    def _run() -> None:
+        try:
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(_seed_manual_mode(dsn))
+            loop.close()
+        except Exception as exc:
+            result["error"] = exc
+
+    thread = threading.Thread(target=_run)
+    thread.start()
+    thread.join(timeout=15)
+
+    if result["error"]:
+        pytest.skip(f"Could not seed manual_mode: {result['error']}")
