@@ -44,6 +44,7 @@ ALLOWED_SETTINGS_FIELDS = frozenset(
         "default_scan_mode",
         "default_report_format",
         "timezone",
+        "share_training_data",
     }
 )
 
@@ -66,6 +67,7 @@ def _prefs_to_response(prefs: UserPreferences | None) -> UserSettingsResponse:
         default_scan_mode=prefs.default_scan_mode,
         default_report_format=prefs.default_report_format,
         timezone=prefs.timezone,
+        share_training_data=prefs.share_training_data,
     )
 
 

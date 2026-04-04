@@ -183,7 +183,6 @@ class TestGetCurrentSettings:
             SANDBOX_PER_USER_LIMIT=3,
             SANDBOX_DEFAULT_PRIORITY=5,
             SANDBOX_OOM_ESCALATION_ENABLED=True,
-            SANDBOX_WARM_POOL_ENABLED=False,
             SANDBOX_WARM_POOL_SIZE=2,
             SANDBOX_AUTO_BUILD_IMAGE=True,
             SANDBOX_IMAGE_SCAN_ENABLED=True,

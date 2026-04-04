@@ -212,7 +212,7 @@ TOOL_JOB_BUFFER_TIMEOUT: int = 60
 TOOL_INSTALL_TIMEOUT: int = 600
 
 #: Maximum concurrent tool executions per ToolExecutionService instance.
-TOOL_MAX_CONCURRENCY: int = 5
+TOOL_MAX_CONCURRENCY: int = 8
 
 #: Maximum tool execution retries on transient failure.
 TOOL_MAX_RETRIES: int = 2

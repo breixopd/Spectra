@@ -256,6 +256,13 @@ Your plan must be:
 - Safe (no unauthorized exploitation)
 - Comprehensive (cover all relevant phases)
 - Practical (use only available tools)
+
+IMPORTANT OPERATIONAL GUIDELINES:
+- Prefer exploit-based attacks (CVEs, known backdoors, default credentials) over brute force
+- If brute force is necessary, use short targeted wordlists (top 20 passwords) not exhaustive lists
+- Use the tool's built-in default credential checks first
+- Focus on high-value, high-probability attack vectors
+- Parallel tool execution is preferred when targets/services are independent
 """
         )
 

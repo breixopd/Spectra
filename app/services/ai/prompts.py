@@ -76,6 +76,13 @@ Plan a penetration test following PTES methodology.
 
 {rag_context}
 
+**IMPORTANT OPERATIONAL GUIDELINES:**
+- Prefer exploit-based attacks (CVEs, known backdoors, default credentials) over brute force
+- If brute force is necessary, use short targeted wordlists (top 20 passwords) not exhaustive lists
+- Use the tool's built-in default credential checks first
+- Focus on high-value, high-probability attack vectors
+- Parallel tool execution is preferred when targets/services are independent
+
 **PTES-Aligned Planning Rules:**
 
 PHASE 1 - SCOPE: Define boundaries. One task.
@@ -146,6 +153,13 @@ TOOL_SELECTION_PROMPT = """Select the best security tool for the current phase.
 **Available Tools:**
 
 {tools_text}
+
+**IMPORTANT OPERATIONAL GUIDELINES:**
+- Prefer exploit-based attacks (CVEs, known backdoors, default credentials) over brute force
+- If brute force is necessary, use short targeted wordlists (top 20 passwords) not exhaustive lists
+- Use the tool's built-in default credential checks first
+- Focus on high-value, high-probability attack vectors
+- Parallel tool execution is preferred when targets/services are independent
 
 **Selection Rules:**
 1. If a REQUIRED TOOL is specified above, select it. No alternatives.

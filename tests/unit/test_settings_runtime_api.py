@@ -39,7 +39,6 @@ def _make_settings_stub() -> SimpleNamespace:
         SANDBOX_PER_USER_LIMIT=3,
         SANDBOX_DEFAULT_PRIORITY=5,
         SANDBOX_OOM_ESCALATION_ENABLED=True,
-        SANDBOX_WARM_POOL_ENABLED=False,
         SANDBOX_WARM_POOL_SIZE=2,
         SANDBOX_AUTO_BUILD_IMAGE=False,
         SANDBOX_IMAGE_SCAN_ENABLED=False,
@@ -151,7 +150,6 @@ async def test_get_settings_returns_new_sandbox_fields(test_app):
     assert data["sandbox_per_user_limit"] == 3
     assert data["sandbox_default_priority"] == 5
     assert data["sandbox_oom_escalation_enabled"] is True
-    assert data["sandbox_warm_pool_enabled"] is False
     assert data["sandbox_warm_pool_size"] == 2
     assert data["sandbox_auto_build_image"] is False
     assert data["sandbox_image_scan_enabled"] is False

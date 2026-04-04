@@ -233,9 +233,6 @@ function buildSettingsPayload() {
         const oomEscalation = sandboxForm.querySelector('[name="sandbox_oom_escalation_enabled"]');
         if (oomEscalation) payload.sandbox_oom_escalation_enabled = oomEscalation.checked;
 
-        const warmPoolEnabled = sandboxForm.querySelector('[name="sandbox_warm_pool_enabled"]');
-        if (warmPoolEnabled) payload.sandbox_warm_pool_enabled = warmPoolEnabled.checked;
-
         const warmPoolSize = sandboxForm.querySelector('[name="sandbox_warm_pool_size"]');
         if (warmPoolSize && warmPoolSize.value) payload.sandbox_warm_pool_size = parseInt(warmPoolSize.value, 10);
 
@@ -297,7 +294,6 @@ async function loadSettings() {
     setFieldValue('sandbox_per_user_limit', data.sandbox_per_user_limit);
     setFieldValue('sandbox_default_priority', data.sandbox_default_priority);
     setCheckboxValue('sandbox_oom_escalation_enabled', data.sandbox_oom_escalation_enabled);
-    setCheckboxValue('sandbox_warm_pool_enabled', data.sandbox_warm_pool_enabled);
     setFieldValue('sandbox_warm_pool_size', data.sandbox_warm_pool_size);
     setCheckboxValue('sandbox_auto_build_image', data.sandbox_auto_build_image);
     setCheckboxValue('sandbox_image_scan_enabled', data.sandbox_image_scan_enabled);

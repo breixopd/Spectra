@@ -207,7 +207,6 @@ class TestGeneralRuntimeFieldMapIncludes:
             "SANDBOX_PER_USER_LIMIT",
             "SANDBOX_DEFAULT_PRIORITY",
             "SANDBOX_OOM_ESCALATION_ENABLED",
-            "SANDBOX_WARM_POOL_ENABLED",
             "SANDBOX_WARM_POOL_SIZE",
             "SANDBOX_AUTO_BUILD_IMAGE",
             "SANDBOX_IMAGE_SCAN_ENABLED",
@@ -220,7 +219,6 @@ class TestGeneralRuntimeFieldMapIncludes:
         type_checks = {
             "SANDBOX_NETWORK_ISOLATION": "bool",
             "SANDBOX_OOM_ESCALATION_ENABLED": "bool",
-            "SANDBOX_WARM_POOL_ENABLED": "bool",
             "SANDBOX_AUTO_BUILD_IMAGE": "bool",
             "SANDBOX_IMAGE_SCAN_ENABLED": "bool",
             "SANDBOX_IMAGE_SCAN_BLOCK_CRITICAL": "bool",

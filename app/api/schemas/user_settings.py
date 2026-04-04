@@ -27,6 +27,8 @@ class UserSettingsResponse(BaseModel):
     default_report_format: str = "pdf"
     # UI
     timezone: str = "UTC"
+    # Training data
+    share_training_data: bool = False
 
 
 class UserSettingsUpdate(BaseModel):
@@ -49,6 +51,8 @@ class UserSettingsUpdate(BaseModel):
     default_report_format: Literal["pdf", "html", "json"] | None = None
     # UI
     timezone: str | None = None
+    # Training data
+    share_training_data: bool | None = None
 
     @field_validator("llm_api_base_url", "embedding_api_base_url", "webhook_url", mode="before")
     @classmethod

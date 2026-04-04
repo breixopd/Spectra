@@ -25,6 +25,8 @@ _MODEL_EXPORTS = {
     "TargetStatus": ("app.models.target", "TargetStatus"),
     "User": ("app.models.user", "User"),
     "UserPreferences": ("app.models.user_preferences", "UserPreferences"),
+    "TrainingSample": ("app.models.training", "TrainingSample"),
+    "FineTuningJob": ("app.models.training", "FineTuningJob"),
 }
 
 __all__ = list(_MODEL_EXPORTS)

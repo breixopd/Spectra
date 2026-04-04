@@ -35,6 +35,9 @@ class Plan(Base):
     max_storage_mb: Mapped[int] = mapped_column(Integer, default=500, nullable=False)
     stripe_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     features: Mapped[dict | None] = mapped_column(JSONBType, nullable=True)
+    auto_share_training_data: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
 
     def __repr__(self) -> str:
         return f"<Plan(id={self.id}, name={self.name})>"

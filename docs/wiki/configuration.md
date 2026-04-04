@@ -149,7 +149,6 @@ Default tiers:
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `SANDBOX_WARM_POOL_ENABLED` | bool | `false` | Pre-warm idle containers for instant assignment |
 | `SANDBOX_WARM_POOL_SIZE` | int | `2` | Number of pre-warmed containers to maintain |
 
 ### Image Management

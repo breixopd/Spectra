@@ -184,11 +184,12 @@ Sandboxes are destroyed if no heartbeat is received within `SANDBOX_IDLE_TIMEOUT
 
 ## Warm Pool
 
-Pre-warmed idle containers for instant mission start (`SANDBOX_WARM_POOL_ENABLED=false` by default):
+Pre-warmed idle containers for instant mission start (always active):
 
 - Maintains `SANDBOX_WARM_POOL_SIZE` idle containers ready for assignment
 - When a mission requests a sandbox, assign a pre-warmed one
 - Spin up a replacement in the background
+- Control pool size with `SANDBOX_WARM_POOL_SIZE` (set to 0 to effectively disable)
 
 ---
 

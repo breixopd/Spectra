@@ -275,25 +275,24 @@ async def _initialize_sandbox() -> None:
             logger.info("[SKIP] sandbox_watchdog deferred to scheduler service")
 
             # Initialize warm pool manager
-            if settings.SANDBOX_WARM_POOL_ENABLED:
-                from app.services.tools.sandbox import WarmPoolManager, set_warm_pool_manager
+            from app.services.tools.sandbox import WarmPoolManager, set_warm_pool_manager
 
-                warm_manager = WarmPoolManager(sandbox_pool)
-                set_warm_pool_manager(warm_manager)
+            warm_manager = WarmPoolManager(sandbox_pool)
+            set_warm_pool_manager(warm_manager)
 
-                async def warm_pool_maintain_loop():
-                    while True:
-                        try:
-                            await asyncio.sleep(30)
-                            await warm_manager.maintain()
-                        except asyncio.CancelledError:
-                            break
-                        except (OSError, RuntimeError) as e:
-                            logger.error("Warm pool maintain error: %s", e)
+            async def warm_pool_maintain_loop():
+                while True:
+                    try:
+                        await asyncio.sleep(30)
+                        await warm_manager.maintain()
+                    except asyncio.CancelledError:
+                        break
+                    except (OSError, RuntimeError) as e:
+                        logger.error("Warm pool maintain error: %s", e)
 
-                asyncio.create_task(warm_pool_maintain_loop())
-                asyncio.create_task(warm_manager.maintain())
-                logger.info("[OK] Warm pool manager initialized (size=%d)", settings.SANDBOX_WARM_POOL_SIZE)
+            asyncio.create_task(warm_pool_maintain_loop())
+            asyncio.create_task(warm_manager.maintain())
+            logger.info("[OK] Warm pool manager initialized (size=%d)", settings.SANDBOX_WARM_POOL_SIZE)
 
             # Initialize golden image builder
             if settings.SANDBOX_AUTO_BUILD_IMAGE:

@@ -276,3 +276,66 @@ async def tz_update_config(
         "status": "ok",
         "message": "Config updated. Restart TensorZero container to apply changes.",
     }
+
+
+@router.get("/api/v1/admin/tensorzero/analytics")
+async def tz_analytics(
+    _user: User = require_permission(Permission.MANAGE_SETTINGS),
+    hours: int = Query(24, ge=1, le=168),
+):
+    """Get inference analytics from TensorZero."""
+    base = _tz_url()
+    if not base:
+        return {"analytics": {}, "available": False}
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(f"{base}/status")
+            if resp.status_code != 200:
+                return {"analytics": {}, "available": False}
+
+            status = resp.json()
+            functions = status.get("functions", {})
+            models = status.get("models", {})
+
+            return {
+                "available": True,
+                "functions_count": len(functions),
+                "models_count": len(models),
+                "functions": {
+                    name: {
+                        "type": conf.get("type", "chat"),
+                        "variants": list(conf.get("variants", {}).keys()),
+                    }
+                    for name, conf in functions.items()
+                },
+                "models": {
+                    name: {
+                        "providers": list(conf.get("providers", {}).keys()),
+                    }
+                    for name, conf in models.items()
+                },
+            }
+    except (httpx.HTTPError, OSError) as e:
+        logger.warning("TensorZero analytics fetch failed: %s", e)
+        return {"analytics": {}, "available": False, "error": str(e)}
+
+
+@router.get("/api/v1/admin/tensorzero/model-performance")
+async def tz_model_performance(
+    _user: User = require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Get model performance metrics from cost trackers."""
+    from app.services.ai.cost_tracker import get_cost_trackers
+
+    cost_trackers = get_cost_trackers()
+    performance = {}
+    for name, tracker in (cost_trackers or {}).items():
+        summary = tracker.get_summary()
+        performance[name] = {
+            "total_calls": summary["total_calls"],
+            "total_tokens": summary["total_tokens"],
+            "total_cost_usd": summary["total_cost_usd"],
+            "avg_tokens_per_call": round(summary["total_tokens"] / max(summary["total_calls"], 1), 1),
+        }
+    return {"models": performance}

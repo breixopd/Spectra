@@ -51,6 +51,7 @@ class TestMissionLoop:
     @pytest.mark.asyncio
     async def test_loop_sets_status_on_exception(self, execution_manager):
         execution_manager.lifecycle.initialize_mission = AsyncMock(return_value=MagicMock())
+        execution_manager._create_sandbox = AsyncMock()
 
         mission = MagicMock()
         mission.record_demo = False
@@ -72,6 +73,7 @@ class TestMissionLoop:
     @pytest.mark.asyncio
     async def test_loop_demo_recorder_integration(self, execution_manager):
         execution_manager.lifecycle.initialize_mission = AsyncMock(return_value=MagicMock())
+        execution_manager._create_sandbox = AsyncMock()
 
         mission = MagicMock()
         mission.record_demo = True
@@ -100,6 +102,7 @@ class TestMissionLoop:
     async def test_loop_success_path(self, execution_manager):
         context = MagicMock()
         execution_manager.lifecycle.initialize_mission = AsyncMock(return_value=context)
+        execution_manager._create_sandbox = AsyncMock()
 
         mission = MagicMock()
         mission.record_demo = False
@@ -126,6 +129,7 @@ class TestMissionLoop:
     async def test_loop_no_plan_fails(self, execution_manager):
         context = MagicMock()
         execution_manager.lifecycle.initialize_mission = AsyncMock(return_value=context)
+        execution_manager._create_sandbox = AsyncMock()
 
         mission = MagicMock()
         mission.record_demo = False

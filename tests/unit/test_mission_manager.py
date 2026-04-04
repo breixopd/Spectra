@@ -194,6 +194,7 @@ async def test_run_mission_loop_success(mock_manager_context):
     voting.validate_at_gate.return_value = vote
 
     # Invoke via execution manager
+    manager.execution._create_sandbox = AsyncMock()
     await manager.execution.run_mission_loop(mission)
 
     scope.execute.assert_called_once()

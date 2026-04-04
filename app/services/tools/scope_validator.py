@@ -108,7 +108,7 @@ def _resolve_hostname(hostname: str) -> tuple[str, ...]:
     """Resolve hostname to IP addresses with caching."""
     try:
         results = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
-        return tuple({r[4][0] for r in results})
+        return tuple({str(r[4][0]) for r in results})
     except (OSError, socket.gaierror):
         return ()
 
@@ -131,16 +131,42 @@ def validate_command_target(
     found_domains = _DOMAIN_PATTERN.findall(command)
 
     # Filter out file-like matches (e.g., common.txt, output.json, nmap_output.xml)
-    _FILE_EXTENSIONS = frozenset({
-        "txt", "json", "xml", "csv", "html", "log", "conf", "cfg", "ini", "yml",
-        "yaml", "toml", "md", "py", "sh", "bash", "js", "ts", "go", "rs", "rb",
-        "sql", "db", "bak", "tmp", "old", "gz", "zip", "tar", "png", "jpg",
-    })
-    found_domains = [
-        d for d in found_domains
-        if d.rsplit(".", 1)[-1].lower() not in _FILE_EXTENSIONS
-        and "/" not in d
-    ]
+    _FILE_EXTENSIONS = frozenset(
+        {
+            "txt",
+            "json",
+            "xml",
+            "csv",
+            "html",
+            "log",
+            "conf",
+            "cfg",
+            "ini",
+            "yml",
+            "yaml",
+            "toml",
+            "md",
+            "py",
+            "sh",
+            "bash",
+            "js",
+            "ts",
+            "go",
+            "rs",
+            "rb",
+            "sql",
+            "db",
+            "bak",
+            "tmp",
+            "old",
+            "gz",
+            "zip",
+            "tar",
+            "png",
+            "jpg",
+        }
+    )
+    found_domains = [d for d in found_domains if d.rsplit(".", 1)[-1].lower() not in _FILE_EXTENSIONS and "/" not in d]
 
     targets_to_check = found_ips + found_domains
     if not targets_to_check:
