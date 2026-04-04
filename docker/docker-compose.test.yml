@@ -280,7 +280,7 @@ services:
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - IS_TOOLS_CONTAINER=true
-      - WORKER_SKIP_STARTUP_AUTO_INSTALL=true
+      - WORKER_SKIP_STARTUP_AUTO_INSTALL=false
     volumes:
       - ../plugins:/app/plugins
       - ../app:/app/app:ro
