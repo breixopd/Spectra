@@ -10,10 +10,11 @@ Complements test_api_docs_route.py with additional coverage of:
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from starlette.routing import Route
 
 
 def _make_mock_route(path: str, name: str = "endpoint"):
-    route = MagicMock()
+    route = MagicMock(spec=Route)
     route.methods = {"GET"}
     route.path = path
     route.name = name

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_session
@@ -91,7 +92,7 @@ async def approve_sample(
     result = await session.execute(
         update(TrainingSample).where(TrainingSample.id == sample_id).values(is_approved=True)
     )
-    if result.rowcount == 0:
+    if cast(CursorResult, result).rowcount == 0:
         raise HTTPException(status_code=404, detail="Sample not found")
     await session.commit()
     return {"status": "approved"}
@@ -118,7 +119,7 @@ async def bulk_approve_samples(
     query = query.values(is_approved=True)
     result = await session.execute(query)
     await session.commit()
-    return {"approved_count": result.rowcount}
+    return {"approved_count": cast(CursorResult, result).rowcount}
 
 
 @router.get("/api/v1/admin/training/export")

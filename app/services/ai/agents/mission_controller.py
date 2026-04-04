@@ -223,6 +223,20 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
         except (OSError, RuntimeError, ValueError) as e:
             logger.debug("Memory context fetch failed: %s", e)
 
+        # Fetch lessons learned from previous debriefs
+        lessons_context = ""
+        try:
+            from app.services.ai.memory import get_memory as _get_memory
+
+            _mem = _get_memory(context.user_id)
+            debrief_lessons = [lesson for lesson in _mem.tool_lessons if lesson.tool_id == "debrief" and lesson.notes]
+            if debrief_lessons:
+                lessons_context = "\n**Lessons from Previous Missions:**\n" + "\n".join(
+                    f"- {lesson.notes}" for lesson in debrief_lessons[-5:]
+                )
+        except (OSError, RuntimeError, ValueError):
+            logger.debug("Could not fetch debrief lessons from memory", exc_info=True)
+
         from app.services.ai.context import ContextManager, ContextSection, Priority
         from app.services.ai.sanitizer import sanitize_for_prompt
 
@@ -243,6 +257,7 @@ class MissionController(Agent[MissionInput, MissionPlan | PhaseTransition | Stee
                 ContextSection("tools", tools_context, Priority.HIGH, max_tokens=800),
                 ContextSection("methodology", methodology_summary, Priority.LOW, max_tokens=400),
                 ContextSection("memory", memory_context, Priority.MEDIUM, max_tokens=500),
+                ContextSection("lessons", lessons_context, Priority.MEDIUM, max_tokens=400),
                 ContextSection("rag", rag_context, Priority.LOW, max_tokens=500),
             ]
         )

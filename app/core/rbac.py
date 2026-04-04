@@ -66,7 +66,7 @@ def has_permission(user_role: str, permission: Permission) -> bool:
     return permission in ROLE_PERMISSIONS.get(user_role, set())
 
 
-def require_permission(permission: Permission):
+def require_permission(permission: Permission | str):
     """FastAPI dependency that enforces a permission check.
 
     Usage::
@@ -81,12 +81,14 @@ def require_permission(permission: Permission):
     # rbac -> app.api.dependencies -> app.api -> app.api.routers -> (router) -> rbac
     from app.api.dependencies import get_current_active_user
 
+    resolved = Permission(permission) if isinstance(permission, str) else permission
+
     async def dependency(
         current_user: User = Depends(get_current_active_user),
     ) -> User:
         if current_user.is_superuser:
             return current_user
-        if not has_permission(current_user.role, permission):
+        if not has_permission(current_user.role, resolved):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return current_user
 

@@ -579,3 +579,39 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
             "message": f"Action requires approval: {action.action_type}",
             "timeout_seconds": 300,
         }
+
+    async def debate_exploit(
+        self,
+        action: AgentAction,
+        context: dict[str, Any] | None = None,
+        *,
+        num_rounds: int = 2,
+    ) -> ConsensusResult:
+        """Red-team/blue-team debate for exploit decisions.
+
+        Gets perspectives from both attacker and defender viewpoints
+        to validate the exploit approach before execution.
+        """
+        attacker_system = (
+            "You are an experienced RED TEAM operator. Evaluate this exploit plan. "
+            "Consider: Will it work? Is the payload correct? Are there edge cases? "
+            "Vote APPROVE only if the exploit is technically sound and likely to succeed."
+        )
+        defender_system = (
+            "You are a BLUE TEAM defender. Evaluate this exploit plan. "
+            "Consider: Is this within scope? Could it cause unintended damage? "
+            "Are there safer alternatives? Vote APPROVE if it's safe to execute."
+        )
+
+        perspectives = [
+            ("attacker", attacker_system, 0.3),
+            ("defender", defender_system, 0.3),
+        ]
+
+        votes: list[Vote] = []
+        for _round in range(num_rounds):
+            for voter_id, _system_prompt, temperature in perspectives:
+                vote = await self._get_vote(action, context, voter_id, temperature)
+                votes.append(vote)
+
+        return self._analyze_votes_with_params(votes, action, k_threshold=len(votes), min_confidence=0.6)

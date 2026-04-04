@@ -112,7 +112,7 @@ class StorageService:
             try:
                 await self._client_ctx.__aexit__(None, None, None)
             except Exception:
-                pass
+                logger.debug("Error closing S3 client", exc_info=True)
             self._s3 = None
             self._client_ctx = None
 

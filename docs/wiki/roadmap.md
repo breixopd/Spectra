@@ -85,7 +85,7 @@ See [Scaling](scaling.md) for usage guide.
 - OOM-based automatic escalation (exit 137 → recreate at next tier)
 - Golden image builder — rebuild image when plugins change
 - Priority queue with per-user sandbox limits
-- Container image scanning (Trivy/Grype on rebuild)
+- Container image scanning (Grype on rebuild)
 
 ### 4. Infrastructure Scaling
 

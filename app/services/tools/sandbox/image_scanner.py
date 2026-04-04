@@ -1,4 +1,4 @@
-"""Container image vulnerability scanning using Trivy."""
+"""Container image vulnerability scanning using Grype."""
 
 from __future__ import annotations
 
@@ -59,23 +59,23 @@ class ScanResult:
 
 
 class ImageScanner:
-    """Scans Docker images for vulnerabilities using Trivy.
+    """Scans Docker images for vulnerabilities using Grype.
 
-    Trivy must be installed locally (binary in PATH). If not available,
+    Grype must be installed locally (binary in PATH). If not available,
     scans are skipped gracefully. No external APIs are called — all
-    scanning is local using Trivy's offline DB (auto-downloaded on first use).
+    scanning is local using Grype's offline DB (auto-downloaded on first use).
     """
 
     def __init__(self) -> None:
-        self._trivy_path = shutil.which("trivy")
-        if self._trivy_path:
-            logger.info("ImageScanner: Trivy found at %s", self._trivy_path)
+        self._grype_path = shutil.which("grype")
+        if self._grype_path:
+            logger.info("ImageScanner: Grype found at %s", self._grype_path)
         else:
-            logger.info("ImageScanner: Trivy not found — image scanning unavailable")
+            logger.info("ImageScanner: Grype not found — image scanning unavailable")
 
     @property
     def available(self) -> bool:
-        return self._trivy_path is not None
+        return self._grype_path is not None
 
     async def scan(self, image_tag: str, *, block_critical: bool = False) -> ScanResult:
         """Scan a Docker image for vulnerabilities.
@@ -91,36 +91,34 @@ class ImageScanner:
             return ScanResult(
                 image=image_tag,
                 status="unavailable",
-                error="Trivy not installed",
+                error="Grype not installed",
             )
 
         try:
-            result = await self._run_trivy(image_tag)
+            result = await self._run_grype(image_tag)
 
-            # Parse severity counts
+            # Parse severity counts from Grype output
             critical = high = medium = low = 0
             raw_results = []
 
-            if isinstance(result, dict) and "Results" in result:
-                for target in result["Results"]:
-                    vulns = target.get("Vulnerabilities", [])
+            if isinstance(result, dict) and "matches" in result:
+                for match in result["matches"]:
+                    vuln = match.get("vulnerability", {})
+                    severity = vuln.get("severity", "").upper()
                     raw_results.append(
                         {
-                            "target": target.get("Target", ""),
-                            "type": target.get("Type", ""),
-                            "vulnerability_count": len(vulns),
+                            "id": vuln.get("id", ""),
+                            "severity": severity,
                         }
                     )
-                    for vuln in vulns:
-                        severity = vuln.get("Severity", "").upper()
-                        if severity == "CRITICAL":
-                            critical += 1
-                        elif severity == "HIGH":
-                            high += 1
-                        elif severity == "MEDIUM":
-                            medium += 1
-                        elif severity == "LOW":
-                            low += 1
+                    if severity == "CRITICAL":
+                        critical += 1
+                    elif severity == "HIGH":
+                        high += 1
+                    elif severity == "MEDIUM":
+                        medium += 1
+                    elif severity == "LOW":
+                        low += 1
 
             total = critical + high + medium + low
 
@@ -193,17 +191,15 @@ class ImageScanner:
         except (OSError, RuntimeError):
             return None
 
-    async def _run_trivy(self, image_tag: str) -> dict[str, Any]:
-        """Run Trivy scan and return parsed JSON output."""
+    async def _run_grype(self, image_tag: str) -> dict[str, Any]:
+        """Run Grype scan and return parsed JSON output."""
         cmd = [
-            self._trivy_path,
-            "image",
-            "--format",
-            "json",
-            "--severity",
-            "CRITICAL,HIGH,MEDIUM,LOW",
-            "--quiet",
+            self._grype_path,
             image_tag,
+            "-o",
+            "json",
+            "--fail-on",
+            "critical",
         ]
 
         process = await asyncio.create_subprocess_exec(
@@ -216,8 +212,8 @@ class ImageScanner:
             timeout=600,  # 10 min timeout for large images
         )
 
-        if process.returncode not in (0, 1):  # Trivy returns 1 when vulns found
-            raise RuntimeError(f"Trivy exited with code {process.returncode}: {stderr.decode()[:500]}")
+        if process.returncode not in (0, 1):  # Grype returns 1 when critical vulns found
+            raise RuntimeError(f"Grype exited with code {process.returncode}: {stderr.decode()[:500]}")
 
         return json.loads(stdout.decode())
 

@@ -243,7 +243,7 @@ CVE_RESULTS_LIMIT: int = 50
 OBSERVABILITY_MAX_RESULTS: int = 500
 
 #: Default API rate limit string (slowapi / redis-throttle format).
-API_RATE_LIMIT: str = "100/minute"
+API_RATE_LIMIT: str = "120/minute"
 
 #: Maximum findings IDs in a single bulk-status-update request.
 MAX_BULK_FINDINGS: int = 100

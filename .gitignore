@@ -45,7 +45,6 @@ cve_data/
 # =============================================================================
 # Build Artifacts
 # =============================================================================
-app/static/css/output.css
 *.log
 node_modules/
 
@@ -53,7 +52,6 @@ node_modules/
 # Local-only Copilot Customization (not tracked)
 # =============================================================================
 .github/copilot-instructions.md
-.github/agents/
 .github/instructions/
 .github/prompts/
 .markdownlint.json
@@ -63,3 +61,4 @@ node_modules/
 # =============================================================================
 docs/plan/
 memories/
+config/node_modules/

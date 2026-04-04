@@ -48,8 +48,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Trivy for container image scanning (pinned version, non-fatal if unavailable)
-RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.58.2/contrib/install.sh | sh -s -- -b /usr/local/bin v0.58.2 || echo "WARNING: Trivy install failed, container scanning disabled"
+# Install Grype for container image scanning (pinned version)
+RUN curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin v0.84.0 2>/dev/null || true
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"

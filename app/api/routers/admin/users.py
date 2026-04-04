@@ -230,7 +230,7 @@ async def admin_page(
 
         maintenance_active = bool(await get_runtime_setting_value("MAINTENANCE_MODE"))
     except OSError:
-        pass
+        logger.debug("Failed to load maintenance mode setting", exc_info=True)
 
     return templates.TemplateResponse(
         "admin.html",

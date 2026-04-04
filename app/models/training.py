@@ -1,5 +1,7 @@
 """Training dataset and fine-tuning job models."""
 
+from datetime import datetime
+
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -46,8 +48,8 @@ class FineTuningJob(Base):
     output_model_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     metrics: Mapped[dict | None] = mapped_column(JSONBType, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
-    started_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    completed_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
