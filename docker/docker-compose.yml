@@ -105,6 +105,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
+      target: api
     container_name: spectra-app
     expose:
       - "5000"
@@ -134,6 +135,7 @@ services:
       # Move limits to Caddy only if you intentionally want edge-only limiting.
       - RATE_LIMIT_STORAGE=redis://:${REDIS_PASSWORD:-change-me-redis-pass}@redis:6379/0
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
+      - SERVICE_MODE=api
     volumes:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins
@@ -174,10 +176,10 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
+      target: ai
     container_name: spectra-ai
     expose:
       - "5010"
-    command: ["python", "-m", "uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
     depends_on:
       db:
         condition: service_healthy
@@ -193,6 +195,7 @@ services:
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
       - SKIP_MIGRATIONS=true
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
+      - SERVICE_MODE=ai
     volumes:
       - spectra_data:/app/data
     healthcheck:
@@ -271,10 +274,10 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
+      target: scheduler
     container_name: spectra-scheduler
     expose:
       - "5011"
-    command: ["python", "-m", "uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "5011"]
     depends_on:
       db:
         condition: service_healthy
@@ -288,6 +291,7 @@ services:
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
       - BACKUP_ENABLED=${BACKUP_ENABLED:-false}
       - SKIP_MIGRATIONS=true
+      - SERVICE_MODE=scheduler
     volumes:
       - spectra_data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -327,6 +331,7 @@ services:
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:?set in .env}
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:?set in .env}
       - SKIP_MIGRATIONS=true
+      - SERVICE_MODE=worker
     volumes:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins

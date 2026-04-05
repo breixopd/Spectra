@@ -114,5 +114,4 @@ See [Scaling](scaling.md) for usage guide.
 | **Custom Model Fine-Tuning** | In-app LoRA adapter fine-tuning + A/B testing |
 | **Multi-User Missions** | Team assignments, role-based views, real-time collaboration |
 | **Compliance Templates** | PCI-DSS, HIPAA, SOC2, ISO 27001 report templates |
-| **Plugin Marketplace** | Community plugin repository with signed submissions |
 | **Notification Integrations** | Slack, Discord, Teams, PagerDuty webhooks |

@@ -73,6 +73,7 @@ services:
       RATE_LIMIT_STORAGE: redis://redis:6379/0
       TENSORZERO_GATEWAY_URL: http://tensorzero:3000
       SCHEDULER_URL: http://scheduler:5011
+      SERVICE_MODE: api
     expose:
       - "5000"
     networks:
@@ -89,7 +90,6 @@ services:
 
   ai-svc:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-ai-svc:${VERSION:-latest}
-    command: ["python", "-m", "uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
     deploy:
       replicas: 1
       placement:
@@ -105,6 +105,7 @@ services:
       S3_SECRET_KEY: ${GARAGE_SECRET_KEY}
       TENSORZERO_GATEWAY_URL: http://tensorzero:3000
       SKIP_MIGRATIONS: "true"
+      SERVICE_MODE: ai
     networks:
       - spectra-net
     healthcheck:
@@ -117,7 +118,6 @@ services:
 
   scheduler:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-scheduler:${VERSION:-latest}
-    command: ["python", "-m", "uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "5011"]
     deploy:
       replicas: 1
       placement:
@@ -133,6 +133,7 @@ services:
       S3_SECRET_KEY: ${GARAGE_SECRET_KEY}
       BACKUP_ENABLED: "true"
       SKIP_MIGRATIONS: "true"
+      SERVICE_MODE: scheduler
     networks:
       - spectra-net
     healthcheck:
@@ -160,6 +161,7 @@ services:
       S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-spectra}
       S3_SECRET_KEY: ${GARAGE_SECRET_KEY}
       SKIP_MIGRATIONS: "true"
+      SERVICE_MODE: worker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
