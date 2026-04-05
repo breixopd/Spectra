@@ -237,6 +237,9 @@ class Settings(BaseSettings):
     # --- Service Mode ---
     SERVICE_MODE: str = Field(default="api", description="Service mode: api, ai, scheduler, worker")
 
+    # --- MCP Server ---
+    MCP_API_KEY: str = ""  # API key for MCP server access (leave empty to disable)
+
     # --- External Service Gateways ---
     # URL to the AI microservice. Must be set for production.
     AI_SERVICE_URL: str = ""

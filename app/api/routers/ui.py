@@ -279,7 +279,7 @@ async def api_docs_page(request: Request):
                         return "string"
                     return getattr(ann, "__name__", str(ann))
 
-                for param in getattr(route.dependant, "path_params", []):
+                for param in getattr(route.dependant, "path_params", []):  # type: ignore[union-attr]
                     params.append(
                         {
                             "name": param.name,
@@ -288,7 +288,7 @@ async def api_docs_page(request: Request):
                             "type": _type_name(param.field_info),
                         }
                     )
-                for param in getattr(route.dependant, "query_params", []):
+                for param in getattr(route.dependant, "query_params", []):  # type: ignore[union-attr]
                     params.append(
                         {
                             "name": param.name,
@@ -300,7 +300,7 @@ async def api_docs_page(request: Request):
             routes.append(
                 {
                     "path": route.path,
-                    "methods": sorted(route.methods - {"HEAD", "OPTIONS"}),
+                    "methods": sorted((route.methods or set()) - {"HEAD", "OPTIONS"}),
                     "name": route.name or "",
                     "description": (route.endpoint.__doc__ or "").strip(),
                     "tags": getattr(route, "tags", []),

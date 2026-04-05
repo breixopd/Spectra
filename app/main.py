@@ -289,6 +289,11 @@ api_v1.include_router(user_settings.router, tags=["User Settings"])
 api_v1.include_router(billing.router, tags=["Billing"])
 app.include_router(api_v1)
 
+# MCP server endpoint (API key auth, not user-session auth)
+from app.api.mcp import router as mcp_router
+
+app.include_router(mcp_router)
+
 # Non-versioned health endpoint for Docker/LB probes
 app.include_router(health.router, prefix="/api", tags=["Health"], include_in_schema=False)
 
