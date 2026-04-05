@@ -732,7 +732,7 @@ function renderSeverityBreakdown(findings) {
 
 function renderTopVulns(findings) {
     const typeCounts = {};
-    findings.forEach(f => { const t = f.title || 'Unknown'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
+    findings.forEach(f => { const t = f.title || 'Untitled Finding'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
     const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
     const el = document.getElementById('top-vulns-list');
     if (!el) return;
@@ -743,7 +743,7 @@ function renderTopVulns(findings) {
 function renderTopTargets(findings, missions) {
     destroyChart('top-targets');
     const targetCounts = {};
-    findings.forEach(f => { const t = f._mission?.target || 'Unknown'; targetCounts[t] = (targetCounts[t] || 0) + 1; });
+    findings.forEach(f => { const t = f._mission?.target || 'Target not specified'; targetCounts[t] = (targetCounts[t] || 0) + 1; });
     const sorted = Object.entries(targetCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
     const ctx = document.getElementById('chart-top-targets');
     if (!ctx) return;

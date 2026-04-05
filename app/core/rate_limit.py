@@ -163,12 +163,13 @@ def _build_rate_limit_exceeded_response(
     """
     client_id = get_client_identifier(request)
     endpoint = request.url.path
+    detail = getattr(exc, "detail", None) or str(exc)
 
     logger.warning(
         "Rate limit exceeded: %s on %s (limit: %s)",
         client_id,
         endpoint,
-        exc.detail,
+        detail,
     )
 
     # Emit event for monitoring
@@ -177,14 +178,15 @@ def _build_rate_limit_exceeded_response(
         source="rate_limiter",
         client_id=client_id,
         endpoint=endpoint,
-        limit=str(exc.detail),
+        limit=str(detail),
     )
 
     # Compute retry-after from the limit window
     retry_after = 60  # Default fallback
-    if exc.limit:
+    limit = getattr(exc, "limit", None)
+    if limit:
         try:
-            retry_after = int(exc.limit.get_expiry())
+            retry_after = int(limit.get_expiry())
         except (OSError, RuntimeError, ValueError, AttributeError, TypeError):
             pass
 
@@ -192,12 +194,12 @@ def _build_rate_limit_exceeded_response(
         status_code=429,
         content={
             "error": "RATE_LIMIT_EXCEEDED",
-            "message": f"Rate limit exceeded: {exc.detail}",
+            "message": f"Rate limit exceeded: {detail}",
             "retry_after_seconds": retry_after,
         },
         headers={
             "Retry-After": str(retry_after),
-            "X-RateLimit-Limit": str(exc.detail),
+            "X-RateLimit-Limit": str(detail),
             "X-RateLimit-Remaining": "0",
             "X-RateLimit-Reset": str(retry_after),
         },

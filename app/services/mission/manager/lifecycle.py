@@ -90,7 +90,7 @@ class MissionLifecycleManager:
                     )
         except SQLAlchemyError as e:
             logger.error("Failed to persist mission start (DB error): %s", e)
-        except (OSError, RuntimeError) as e:
+        except (OSError, RuntimeError, TypeError, AttributeError) as e:
             logger.error("Failed to persist mission start (Unexpected): %s", e)
 
         return mission
@@ -167,7 +167,7 @@ class MissionLifecycleManager:
                     )
         except SQLAlchemyError as e:
             logger.error("Failed to update mission DB (DB error): %s", e)
-        except (OSError, RuntimeError) as e:
+        except (OSError, RuntimeError, TypeError, AttributeError) as e:
             logger.error("Failed to update mission DB (Unexpected): %s", e)
 
         # Sync to distributed state store

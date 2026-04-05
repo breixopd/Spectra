@@ -2,6 +2,18 @@
 # Runs security tools via the PostgreSQL-backed job queue.
 # Tools auto-install from plugin configs on first boot.
 
+# --- Go tools builder (compile security tools from source) ---
+FROM golang:1.25-bookworm AS go-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends libpcap-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV CGO_ENABLED=1
+
+RUN go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest && \
+    go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest && \
+    go install -v github.com/projectdiscovery/naabu/v2/cmd/naabu@latest
+
 # NOTE: kalilinux/kali-rolling uses date-based tags (e.g. 2024.4).
 # Use the rolling image tag that is actually published upstream.
 # Pinning to removed Kali release tags breaks fresh CI and image rebuilds.
@@ -25,16 +37,14 @@ RUN apt-get update && \
     curl wget git jq unzip \
     iputils-ping iproute2 netcat-openbsd iptables \
     wireguard-tools openvpn \
-    golang \
     seclists \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
     && rm -rf /usr/share/doc /usr/share/man
 
 # Security tools are NOT pre-installed. The plugin system auto-installs them on first boot.
-
-ENV GOPATH=/home/spectra/go
-ENV PATH=$PATH:/home/spectra/go/bin:/usr/local/go/bin
+# Go-based tools (httpx, subfinder, naabu) are pre-compiled in the builder stage.
+COPY --from=go-builder /go/bin/httpx /go/bin/subfinder /go/bin/naabu /usr/local/bin/
 
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:/opt/spectra_tools:$PATH"

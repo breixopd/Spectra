@@ -10,6 +10,9 @@ services:
   garage:
     image: dxflrs/garage:v2.2.0
     container_name: spectra-garage
+    labels:
+      spectra.managed: "true"
+      spectra.role: "storage"
     environment:
       GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
     ports:
@@ -33,6 +36,9 @@ services:
   db:
     image: pgvector/pgvector:pg16
     container_name: spectra-db
+    labels:
+      spectra.managed: "true"
+      spectra.role: "database"
     environment:
       POSTGRES_USER: spectra
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
@@ -57,6 +63,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: spectra-redis
+    labels:
+      spectra.managed: "true"
+      spectra.role: "cache"
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-change-me-redis-pass}"]
     volumes:
       - redis_data:/data
@@ -80,6 +89,9 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.caddy
     container_name: spectra-caddy
+    labels:
+      spectra.managed: "true"
+      spectra.role: "proxy"
     ports:
       - "${SPECTRA_PORT:-80}:80"
       - "${SPECTRA_HTTPS_PORT:-443}:443"
@@ -107,6 +119,9 @@ services:
       dockerfile: docker/Dockerfile.app
       target: api
     container_name: spectra-app
+    labels:
+      spectra.managed: "true"
+      spectra.role: "api"
     expose:
       - "5000"
     depends_on:
@@ -178,6 +193,9 @@ services:
       dockerfile: docker/Dockerfile.app
       target: ai
     container_name: spectra-ai
+    labels:
+      spectra.managed: "true"
+      spectra.role: "ai"
     expose:
       - "5010"
     depends_on:
@@ -216,6 +234,9 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:24.11-alpine
     container_name: spectra-clickhouse
+    labels:
+      spectra.managed: "true"
+      spectra.role: "analytics"
     restart: unless-stopped
     volumes:
       - clickhouse_data:/var/lib/clickhouse
@@ -242,6 +263,9 @@ services:
   tensorzero:
     image: tensorzero/gateway
     container_name: spectra-tensorzero
+    labels:
+      spectra.managed: "true"
+      spectra.role: "ai-gateway"
     command: ["--config-file", "/app/config/tensorzero.toml"]
     restart: unless-stopped
     depends_on:
@@ -276,6 +300,9 @@ services:
       dockerfile: docker/Dockerfile.app
       target: scheduler
     container_name: spectra-scheduler
+    labels:
+      spectra.managed: "true"
+      spectra.role: "scheduler"
     expose:
       - "5011"
     depends_on:
@@ -316,6 +343,9 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.tools
     container_name: spectra-worker
+    labels:
+      spectra.managed: "true"
+      spectra.role: "worker"
     expose:
       - "5012"
     command: ["python", "-m", "uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "5012"]

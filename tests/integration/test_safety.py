@@ -524,6 +524,9 @@ class TestIntegratedSafety:
         source = inspect.getsource(ToolExecutionService.execute_request)
 
         assert "safety" in source.lower(), "execute_request should reference safety"
-        assert "SafetyInput" in source or "safety_supervisor" in source or "_perform_safety_check" in source, (
-            "execute_request should use safety supervisor"
-        )
+        assert (
+            "SafetyInput" in source
+            or "safety_supervisor" in source
+            or "_perform_safety_check" in source
+            or "_apply_safety_and_consensus" in source
+        ), "execute_request should use safety supervisor"
