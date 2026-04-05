@@ -1,0 +1,49 @@
+# =============================================================================
+# Spectra AI Service Dependencies
+# =============================================================================
+# Minimal set for the AI microservice (LLM routing, embeddings, RAG).
+# Extends base deps shared by all Python services.
+
+# Core Framework
+fastapi==0.119.1
+uvicorn[standard]==0.34.2
+pydantic[email]==2.12.5
+pydantic-settings==2.13.1
+
+# Database
+sqlalchemy[asyncio]==2.0.48
+asyncpg==0.31.0
+
+# AI / LLM
+openai==2.26.0
+tensorzero==2025.6.0
+fastembed==0.4.0
+
+# HTTP client (gateway, health checks)
+httpx==0.28.1
+
+# JSON repair (LLM output cleanup)
+json-repair==0.58.5
+
+# Prompt templates
+jinja2==3.1.6
+
+# Auth (needed by shared core config)
+PyJWT[crypto]==2.10.1
+passlib[bcrypt]==1.7.4
+bcrypt==4.3.0
+cryptography==44.0.3
+
+# Utilities
+python-dotenv==1.2.2
+orjson==3.11.7
+aiofiles==25.1.0
+
+# Transitive deps (via app.services.tools imported by AI agents)
+jsonschema==4.26.0
+docker==7.0.0
+
+# Transitively needed by shared app code imports
+starlette==0.48.0
+python-multipart==0.0.22
+websockets==14.2

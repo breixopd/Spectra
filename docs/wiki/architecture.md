@@ -218,6 +218,58 @@ Anti-hallucination mechanisms:
 
 ## Service Architecture
 
+Spectra runs as four independently deployable microservices, each controlled by the `SERVICE_MODE` environment variable.
+
+### Services and Roles
+
+| Service | Mode | Port | Role |
+|---------|------|------|------|
+| **App (Core API)** | `api` | 5000 | Web UI, REST API, mission orchestration, user management |
+| **AI Service** | `ai` | 5010 | LLM routing, embeddings, RAG queries via TensorZero |
+| **Scheduler** | `scheduler` | 5011 | Background tasks — sandbox watchdog, backups, metrics |
+| **Worker** | `worker` | 5012 | Tool execution from PostgreSQL job queue in sandboxes |
+
+### Communication Patterns
+
+```text
+┌──────────┐    HTTP + Service Auth     ┌────────────┐
+│  Core API │ ─────────────────────────→ │ AI Service │
+│  (app)    │                            └────────────┘
+│           │    PG Job Queue (INSERT)
+│           │ ─────────────────────────→ ┌────────────┐
+│           │    PG LISTEN/NOTIFY        │   Worker   │
+│           │ ←────────────────────────  │            │
+└──────────┘                             └────────────┘
+      ↕  PG LISTEN/NOTIFY
+┌──────────┐
+│ Scheduler │
+└──────────┘
+```
+
+| Pattern | Mechanism | Used For |
+|---------|-----------|----------|
+| **HTTP + Service Auth** | `X-Service-Auth` header, `ServiceAuthMiddleware` | API → AI Service requests |
+| **PG Job Queue** | `SELECT ... FOR UPDATE SKIP LOCKED` on `job_queue` table | API → Worker task dispatch |
+| **PG LISTEN/NOTIFY** | `pg_notify()` on channels like `spectra_jobs_mission_{id}` | Real-time event delivery across all services |
+
+### Shared vs Service-Specific Code
+
+| Layer | Path | Rule |
+|-------|------|------|
+| **Shared** | `app/core/`, `app/models/`, `app/repositories/` | Used by all services. Must NOT import service-specific code. |
+| **Service: API** | `app/api/`, `app/main.py` | Routers, schemas, UI templates |
+| **Service: AI** | `app/ai_service.py`, `app/services/ai/` | LLM clients, agents, RAG |
+| **Service: Worker** | `app/worker_service.py`, `app/worker/` | Job queue consumer, tool execution |
+| **Service: Scheduler** | `app/scheduler_service.py` | Background task loops |
+
+Import boundaries are enforced by `scripts/check_import_boundaries.py` — shared packages cannot have top-level imports of service-specific modules.
+
+See [Microservices Architecture](microservices-split.md) for the full service split documentation.
+
+---
+
+## Service Architecture (Gateway Pattern)
+
 Spectra uses a **ServiceRegistry** pattern (`app/services/gateway/service_registry.py`) to transparently route between in-process and remote implementations. When a gateway URL is configured, the registry instantiates an HTTP client adapter; otherwise it creates the local implementation.
 
 ### Extractable Services

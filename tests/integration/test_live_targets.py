@@ -17,6 +17,7 @@ import httpx
 import pytest
 
 SPECTRA_URL = os.getenv("SPECTRA_URL", "http://app:5000")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin123!")
 TARGET_EASY = os.getenv("TARGET_EASY", "spectra-target-easy")  # hostname on docker network
 TARGET_MEDIUM = os.getenv("TARGET_MEDIUM", "spectra-target-medium")
@@ -47,7 +48,7 @@ def auth_headers():
             # Run first-time setup: create admin + configure LLM from env
             setup_payload = {
                 "user": {
-                    "username": "admin",
+                    "username": ADMIN_USERNAME,
                     "email": "admin@spectra.local",
                     "password": ADMIN_PASSWORD,
                 },
@@ -59,7 +60,7 @@ def auth_headers():
             setup_resp = client.post("/api/v1/auth/setup", json=setup_payload)
             assert setup_resp.status_code == 200, f"Setup failed: {setup_resp.text}"
 
-        resp = client.post("/api/v1/auth/token", data={"username": "admin", "password": ADMIN_PASSWORD})
+        resp = client.post("/api/v1/auth/token", data={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD})
         assert resp.status_code == 200, f"Auth failed: {resp.text}"
         token = resp.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
@@ -106,7 +107,7 @@ class TestAPISmoke:
 
     def test_auth_flow(self, client):
         # Get token
-        resp = client.post("/api/v1/auth/token", data={"username": "admin", "password": ADMIN_PASSWORD})
+        resp = client.post("/api/v1/auth/token", data={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD})
         assert resp.status_code == 200
         data = resp.json()
         assert "access_token" in data

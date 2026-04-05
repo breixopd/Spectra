@@ -384,7 +384,7 @@ function renderPlans() {
             </div>
             <div class="flex justify-end gap-2 pt-2 border-t border-white/5">
                 <button onclick='openEditPlanModal(${JSON.stringify(p).replace(/'/g,"&#39;")})' class="text-xs text-slate-400 hover:text-violet-400 transition-colors"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block mr-1"></i>Edit</button>
-                ${p.is_active ? `<button onclick="deactivatePlan('${p.id}','${escapeHtml(p.name)}')" class="text-xs text-slate-400 hover:text-red-400 transition-colors"><i data-lucide="ban" class="w-3.5 h-3.5 inline-block mr-1"></i>Deactivate</button>` : ''}
+                ${p.is_active ? `<button onclick="deactivatePlan('${p.id}','${escapeHtml(p.name)}')" class="text-xs text-slate-400 hover:text-red-400 transition-colors"><i data-lucide="ban" class="w-3.5 h-3.5 inline-block mr-1"></i>Deactivate</button>` : `<button onclick="activatePlan('${p.id}','${escapeHtml(p.name)}')" class="text-xs text-slate-400 hover:text-emerald-400 transition-colors"><i data-lucide="check-circle" class="w-3.5 h-3.5 inline-block mr-1"></i>Activate</button>`}
             </div>
         </div>`;
     }).join('');
@@ -415,6 +415,7 @@ function openEditPlanModal(p) {
     document.getElementById('plan-form-storage').value = p.max_storage_mb;
     document.getElementById('plan-form-sort').value = p.sort_order;
     document.getElementById('plan-form-default').checked = p.is_default;
+    document.getElementById('plan-form-active').checked = p.is_active;
     document.getElementById('plan-form-resource-tier').value = p.sandbox_resource_tier || 'medium';
     document.getElementById('plan-form-features').value = p.features ? JSON.stringify(p.features, null, 2) : '';
     // Set feature toggle checkboxes from features object
@@ -443,6 +444,7 @@ document.getElementById('plan-form').addEventListener('submit', async function(e
         is_default: document.getElementById('plan-form-default').checked,
         sandbox_resource_tier: document.getElementById('plan-form-resource-tier').value,
     };
+    if (isEdit) body.is_active = document.getElementById('plan-form-active').checked;
     // Merge feature toggles with JSON features
     const toggleFeatures = {};
     document.querySelectorAll('.plan-feature-toggle').forEach(cb => {
@@ -472,6 +474,17 @@ function deactivatePlan(planId, name) {
             const { error } = await spectraApi.delete(`/api/admin/plans/${planId}`);
             if (error) throw new Error(error);
             _spectraToast('Plan deactivated', 'success');
+            loadPlans();
+        } catch(e) { _spectraToast('Failed', 'error'); }
+    });
+}
+
+function activatePlan(planId, name) {
+    showConfirm('Activate Plan', `Activate plan "${name}"?`, async () => {
+        try {
+            const { error } = await spectraApi.put(`/api/admin/plans/${planId}`, { is_active: true });
+            if (error) throw new Error(error);
+            _spectraToast('Plan activated', 'success');
             loadPlans();
         } catch(e) { _spectraToast('Failed', 'error'); }
     });

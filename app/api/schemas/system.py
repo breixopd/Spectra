@@ -259,6 +259,7 @@ class PlanUpdate(BaseModel):
     max_storage_mb: int | None = Field(None, ge=1)
     sandbox_resource_tier: str | None = Field(None, pattern=r"^(light|medium|heavy|extreme)$")
     features: dict | None = None
+    is_active: bool | None = None
 
 
 class PlanResponse(BaseModel):

@@ -136,6 +136,7 @@ async def update_plan(
     for field in (
         "display_name",
         "description",
+        "is_active",
         "is_default",
         "sort_order",
         "max_concurrent_missions",

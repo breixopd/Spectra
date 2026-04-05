@@ -6,16 +6,31 @@
 
 ## Current Architecture
 
-Spectra runs as four independently deployable services sharing a PostgreSQL database. Each service has its own image (`spectra-app`, `spectra-ai-svc`, `spectra-scheduler`, `spectra-worker`) sharing the same codebase but deployed independently.
+Spectra runs as four independently deployable services sharing a PostgreSQL database. Each service has its own Docker build target and per-service requirements file, sharing the same codebase but deployed independently. The `SERVICE_MODE` environment variable controls which routers and background loops each container activates via the `ServiceMode` enum in `app/services_config.py`.
+
+### ServiceMode Routing
+
+The `ServiceMode` enum (`app/services_config.py`) defines six modes:
+
+| Mode | Value | Description |
+|------|-------|-------------|
+| `API` | `api` | Core API + auth + pages + WebSocket |
+| `AI` | `ai` | LLM + embeddings + RAG |
+| `WORKER` | `worker` | Tool execution from PG queue |
+| `SCHEDULER` | `scheduler` | Background tasks only (no HTTP routers) |
+| `TOOLS` | `tools` | Tool management (subset of API) |
+| `ALL` | `all` | Everything — development/single-node |
+
+Each mode maps to a specific set of router modules via `SERVICE_ROUTERS` in `app/services_config.py`. At startup, only the routers for the active mode are mounted.
 
 ### Implemented Services
 
-| Service | Entry Point | Port | Purpose | Status |
-|---------|-------------|------|---------|--------|
-| **App (Core API)** | `scripts/start.sh` | 5000 | Web UI, REST API, mission orchestration | **Done** |
-| **AI Service** | `app.ai_service:app` | 5010 | LLM routing, embeddings, RAG queries | **Done** |
-| **Scheduler** | `app.scheduler_service:app` | 5011 | Background tasks, backups, sandbox watchdog, metrics | **Done** |
-| **Worker** | `app.worker_service:app` | 5012 | Tool execution from PG job queue | **Done** |
+| Service | Entry Point | Port | Image Size | Purpose | Status |
+|---------|-------------|------|------------|---------|--------|
+| **App (Core API)** | `scripts/start.sh` | 5000 | ~1.34 GB | Web UI, REST API, mission orchestration | **Done** |
+| **AI Service** | `app.ai_service:app` | 5010 | ~1.13 GB | LLM routing, embeddings, RAG queries | **Done** |
+| **Scheduler** | `app.scheduler_service:app` | 5011 | ~558 MB | Background tasks, backups, sandbox watchdog, metrics | **Done** |
+| **Worker** | `app.worker_service:app` | 5012 | ~4.13 GB | Tool execution from PG job queue | **Done** |
 
 Supporting infrastructure:
 
@@ -25,6 +40,57 @@ Supporting infrastructure:
 | **Caddy** | `caddy:2-alpine` | Reverse proxy, TLS termination, security headers |
 | **Garage** | `dxflrs/garage:v2.2.0` | S3-compatible object storage |
 
+### Per-Service Dockerfile Targets
+
+The Dockerfile (`docker/Dockerfile.app`) uses multi-stage builds with per-service builder stages and runtime targets:
+
+```text
+builder-api        → installs requirements/app.txt
+builder-ai         → installs requirements/ai.txt
+builder-scheduler  → installs requirements/scheduler.txt
+app-base           → shared runtime (Python 3.11, Docker CLI, Grype, app code)
+  ├── ai           → COPY venv from builder-ai,  SERVICE_MODE=ai
+  ├── scheduler    → COPY venv from builder-scheduler, SERVICE_MODE=scheduler
+  └── api          → COPY venv from builder-api, SERVICE_MODE=api (default target)
+```
+
+Build a specific service:
+
+```bash
+docker build --target ai -f docker/Dockerfile.app .
+docker build --target scheduler -f docker/Dockerfile.app .
+docker build --target api -f docker/Dockerfile.app .
+```
+
+### Per-Service Requirements Files
+
+Each service has its own requirements file with only the dependencies it needs:
+
+| File | Service | Key Deps |
+|------|---------|----------|
+| `requirements/app.txt` | API (app) | Full stack — FastAPI, Jinja2, WeasyPrint, all services |
+| `requirements/ai.txt` | AI Service | LLM providers, embeddings, RAG, fastembed |
+| `requirements/scheduler.txt` | Scheduler | Minimal — DB, HTTP client, scheduling |
+| `requirements/worker.txt` | Worker | Tool execution, Docker SDK, parsing |
+| `requirements/base.txt` | Shared | Core deps included by all service files |
+
+### Import Boundary Enforcement
+
+Shared packages (`app/core/`, `app/models/`) must not import service-specific code. This is enforced by `scripts/check_import_boundaries.py`:
+
+```bash
+python3 scripts/check_import_boundaries.py
+```
+
+Forbidden top-level imports in shared packages:
+- `app.api.*`
+- `app.worker.*`
+- `app.ai_service`
+- `app.scheduler_service`
+- `app.worker_service`
+
+Lazy imports inside functions are allowed. This keeps the dependency direction clean: services depend on shared code, never the reverse.
+
 ### Running
 
 All services run as microservices by default:
@@ -33,7 +99,7 @@ All services run as microservices by default:
 docker compose -f docker/docker-compose.yml up -d
 ```
 
-The main compose file includes `app`, `ai-svc`, `scheduler`, and `worker` as separate containers.
+The main compose file includes `app`, `ai-svc`, `scheduler`, and `worker` as separate containers, each with `SERVICE_MODE` set in their environment.
 
 ---
 
@@ -45,7 +111,9 @@ The main service handling all user-facing functionality.
 
 | Attribute | Value |
 |-----------|-------|
-| **Source** | `app/main.py` (full monolith) or `SERVICE_MODE=api` (API-only) |
+| **Source** | `app/main.py` with `SERVICE_MODE=api` |
+| **Dockerfile Target** | `api` (default) |
+| **Requirements** | `requirements/app.txt` |
 | **Port** | 5000 |
 | **Responsibilities** | Web UI, REST API, mission orchestration, user management, admin panel |
 | **Dependencies** | PostgreSQL, AI Service (when `AI_SERVICE_URL` is set) |
@@ -59,6 +127,8 @@ Dedicated LLM routing, embedding generation, and RAG queries.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `app/ai_service.py` |
+| **Dockerfile Target** | `ai` |
+| **Requirements** | `requirements/ai.txt` |
 | **Port** | 5010 |
 | **API Surface** | `POST /api/v1/ai/chat`, `POST /api/v1/ai/embed`, `GET /health` |
 | **Dependencies** | PostgreSQL (pgvector for RAG), LLM provider (configurable) |
@@ -73,6 +143,8 @@ Headless background task runner.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `app/scheduler_service.py` |
+| **Dockerfile Target** | `scheduler` |
+| **Requirements** | `requirements/scheduler.txt` |
 | **Port** | 5011 (health endpoint only) |
 | **Responsibilities** | Sandbox watchdog (cleanup stale containers), warm pool maintenance, quota resets, metrics aggregation, automated backups |
 | **Dependencies** | PostgreSQL, Docker socket (for container cleanup) |
@@ -85,6 +157,8 @@ Executes tool jobs from the PostgreSQL job queue.
 | Attribute | Value |
 |-----------|-------|
 | **Source** | `app/worker_service.py` |
+| **Dockerfile Target** | Uses `api` target with `SERVICE_MODE=worker` override |
+| **Requirements** | `requirements/worker.txt` |
 | **Port** | 5012 (health endpoint only) |
 | **Responsibilities** | Pull jobs from PG queue, execute security tools in sandbox containers, parse output, write results |
 | **Dependencies** | PostgreSQL, Docker socket (for sandbox container management) |

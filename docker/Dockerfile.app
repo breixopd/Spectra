@@ -2,8 +2,10 @@
 # Multi-stage build: shared base → per-service targets (api, ai, scheduler).
 # Build a specific service with: docker build --target ai ...
 
-# --- Build Stage ---
-FROM python:3.11-slim AS builder
+# --- Build Stages (per-service wheel installs) ---
+
+# Builder: API (full deps)
+FROM python:3.11-slim AS builder-api
 
 WORKDIR /build
 
@@ -21,6 +23,44 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements/app.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r app.txt
+
+# Builder: AI service (LLM, embeddings, RAG — no UI/report deps)
+FROM python:3.11-slim AS builder-ai
+
+WORKDIR /build
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    pkg-config \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements/ai.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r ai.txt
+
+# Builder: Scheduler service (minimal — DB + HTTP only)
+FROM python:3.11-slim AS builder-scheduler
+
+WORKDIR /build
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    pkg-config \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements/scheduler.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r scheduler.txt
 
 # --- Shared Runtime Base (all Python services) ---
 FROM python:3.11-slim AS app-base
@@ -52,7 +92,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 # Install Grype for container image scanning (pinned version)
 RUN curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin v0.84.0 2>/dev/null || true
 
-COPY --from=builder /opt/venv /opt/venv
+# NOTE: venv is NOT copied here — each service target copies from its own builder.
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN useradd --create-home --shell /bin/bash spectra && \
@@ -83,6 +123,7 @@ ENTRYPOINT ["/app/scripts/start.sh"]
 
 # ── AI service target ──
 FROM app-base AS ai
+COPY --from=builder-ai /opt/venv /opt/venv
 EXPOSE 5010
 ENV SERVICE_MODE=ai
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
@@ -91,6 +132,7 @@ CMD ["uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
 
 # ── Scheduler service target ──
 FROM app-base AS scheduler
+COPY --from=builder-scheduler /opt/venv /opt/venv
 EXPOSE 5011
 ENV SERVICE_MODE=scheduler
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
@@ -99,6 +141,7 @@ CMD ["uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "501
 
 # ── API service target (default — must be last) ──
 FROM app-base AS api
+COPY --from=builder-api /opt/venv /opt/venv
 EXPOSE 5000
 ENV SERVICE_MODE=api
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
