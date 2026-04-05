@@ -87,7 +87,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
-    command: ["uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
+      target: ai
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
       SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
@@ -95,6 +95,7 @@ services:
       TENSORZERO_GATEWAY_URL: http://tensorzero:3000
       EMBEDDING_API_KEY: ${OPENAI_API_KEY}
       EMBEDDING_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
+      SERVICE_MODE: ai
     depends_on:
       db:
         condition: service_healthy
@@ -112,7 +113,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
-    command: ["uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "5011"]
+      target: scheduler
     environment:
       DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
       SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
@@ -120,6 +121,7 @@ services:
       S3_ENDPOINT_URL: http://garage:3900
       S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      SERVICE_MODE: scheduler
     depends_on:
       db:
         condition: service_healthy
@@ -143,6 +145,7 @@ services:
       S3_ENDPOINT_URL: http://garage:3900
       S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      SERVICE_MODE: worker
     depends_on:
       db:
         condition: service_healthy
@@ -160,6 +163,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
+      target: api
     env_file:
       - ../.env.test
     environment:
@@ -176,6 +180,7 @@ services:
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
+      - SERVICE_MODE=api
     volumes:
       - ../app:/app/app:ro
       - ../alembic:/app/alembic:ro
@@ -203,6 +208,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.app
+      target: api
     env_file:
       - ../.env.test
     environment:
@@ -219,6 +225,7 @@ services:
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
+      - SERVICE_MODE=api
     volumes:
       - ../app:/app/app:ro
       - ../alembic:/app/alembic:ro
@@ -349,6 +356,7 @@ services:
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
+      - SERVICE_MODE=all
     volumes:
       - ../app:/app/app:ro
       - ../tests:/app/tests:ro

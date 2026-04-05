@@ -1,5 +1,6 @@
-# Spectra App — FastAPI Backend
-# Multi-stage build for minimal image size.
+# Spectra App — FastAPI Backend (multi-service)
+# Multi-stage build: shared base → per-service targets (api, ai, scheduler).
+# Build a specific service with: docker build --target ai ...
 
 # --- Build Stage ---
 FROM python:3.11-slim AS builder
@@ -21,8 +22,8 @@ COPY requirements/app.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r app.txt
 
-# --- Runtime Stage ---
-FROM python:3.11-slim AS runtime
+# --- Shared Runtime Base (all Python services) ---
+FROM python:3.11-slim AS app-base
 
 LABEL org.opencontainers.image.title="Spectra App" \
       org.opencontainers.image.description="AI-Driven Security Assessment Platform" \
@@ -78,10 +79,28 @@ RUN curl -fsSLo tailwindcss-linux-x64 https://github.com/tailwindlabs/tailwindcs
     ./tailwindcss-linux-x64 -i app/static/css/input.css -o app/static/css/output.css --minify -c config/tailwind.config.js && \
     rm tailwindcss-linux-x64
 
-EXPOSE 5000
+ENTRYPOINT ["/app/scripts/start.sh"]
 
+# ── AI service target ──
+FROM app-base AS ai
+EXPOSE 5010
+ENV SERVICE_MODE=ai
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5010/health || exit 1
+CMD ["uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
+
+# ── Scheduler service target ──
+FROM app-base AS scheduler
+EXPOSE 5011
+ENV SERVICE_MODE=scheduler
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5011/health || exit 1
+CMD ["uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "5011"]
+
+# ── API service target (default — must be last) ──
+FROM app-base AS api
+EXPOSE 5000
+ENV SERVICE_MODE=api
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/api/health || exit 1
-
-ENTRYPOINT ["/app/scripts/start.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000", "--workers", "1", "--proxy-headers", "--forwarded-allow-ips", "*"]

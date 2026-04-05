@@ -210,12 +210,13 @@ async def limit_request_body_size(request: Request, call_next):
     return response
 
 
-# --- Static Files ---
-app.mount(
-    "/static",
-    StaticFiles(directory=str(STATIC_DIR), html=True),
-    name="static",
-)
+# --- Static Files (only for api/all modes that serve UI) ---
+if settings.SERVICE_MODE in ("", "all", "api"):
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(STATIC_DIR), html=True),
+        name="static",
+    )
 
 # --- Custom Error Handlers ---
 _error_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -265,120 +266,160 @@ _ERROR_HANDLERS: list[tuple] = [
 for _entry in _ERROR_HANDLERS:
     app.exception_handler(_entry[0])(_make_error_handler(*_entry))
 
-# --- Include Routers ---
-
-# --- API v1 (canonical versioned prefix) ---
-api_v1 = APIRouter(prefix="/api/v1")
-api_v1.include_router(health.router, tags=["Health"])
-api_v1.include_router(auth.router, prefix="/auth", tags=["Auth"])
-api_v1.include_router(tools.router, tags=["Tools"])
-api_v1.include_router(missions.router, tags=["Missions"])
-api_v1.include_router(targets.router, tags=["Targets"])
-api_v1.include_router(findings.router, tags=["Findings"])
-api_v1.include_router(exploits.router, tags=["Exploits"])
-api_v1.include_router(observability.router, tags=["Observability"])
-api_v1.include_router(export.router, tags=["Export"])
-api_v1.include_router(system.router, tags=["System"])
-api_v1.include_router(cve.router, tags=["CVE Intelligence"])
-api_v1.include_router(wordlists.router, tags=["Wordlists"])
-api_v1.include_router(pentest_sessions.router, tags=["Pentest Sessions"])
-api_v1.include_router(manual_helpers.router, prefix="/helpers", tags=["Manual Helpers"])
-api_v1.include_router(shell.router, tags=["Shell"])
-api_v1.include_router(vpn.router, tags=["VPN"])
-api_v1.include_router(user_settings.router, tags=["User Settings"])
-api_v1.include_router(billing.router, tags=["Billing"])
-app.include_router(api_v1)
-
-# MCP server endpoint (API key auth, not user-session auth)
-from app.api.mcp import router as mcp_router
-
-app.include_router(mcp_router)
-
-# Non-versioned health endpoint for Docker/LB probes
-app.include_router(health.router, prefix="/api", tags=["Health"], include_in_schema=False)
-
-# Backward-compatible auth routes at /api/auth/* (canonical: /api/v1/auth/*)
-app.include_router(auth.router, prefix="/api/auth", tags=["Auth"], include_in_schema=False)
-
-# --- Non-versioned routes (UI pages, public, admin) ---
-app.include_router(public.router, tags=["Public"])
-app.include_router(ui.router, tags=["UI"])
-app.include_router(admin.router, tags=["Admin"])
+# --- Include Routers (conditional on SERVICE_MODE) ---
 
 
-# --- WebSocket Endpoint ---
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> None:
+def _include_routers(app: FastAPI, mode: str) -> None:
+    """Include routers based on SERVICE_MODE setting.
+
+    Modes ``""``, ``"all"``, and ``"api"`` load the full router set so that
+    behaviour is identical to the previous unconditional setup.  Dedicated
+    service modes (``"ai"``, ``"worker"``, ``"scheduler"``) only mount a
+    health endpoint to keep the container's attack surface minimal.
     """
-    WebSocket endpoint for real-time communication.
+    _full_modes = ("", "all", "api")
 
-    Handles bidirectional messaging between the server and connected clients.
+    if mode in _full_modes:
+        # --- API v1 (canonical versioned prefix) ---
+        api_v1 = APIRouter(prefix="/api/v1")
+        api_v1.include_router(health.router, tags=["Health"])
+        api_v1.include_router(auth.router, prefix="/auth", tags=["Auth"])
+        api_v1.include_router(tools.router, tags=["Tools"])
+        api_v1.include_router(missions.router, tags=["Missions"])
+        api_v1.include_router(targets.router, tags=["Targets"])
+        api_v1.include_router(findings.router, tags=["Findings"])
+        api_v1.include_router(exploits.router, tags=["Exploits"])
+        api_v1.include_router(observability.router, tags=["Observability"])
+        api_v1.include_router(export.router, tags=["Export"])
+        api_v1.include_router(system.router, tags=["System"])
+        api_v1.include_router(cve.router, tags=["CVE Intelligence"])
+        api_v1.include_router(wordlists.router, tags=["Wordlists"])
+        api_v1.include_router(pentest_sessions.router, tags=["Pentest Sessions"])
+        api_v1.include_router(manual_helpers.router, prefix="/helpers", tags=["Manual Helpers"])
+        api_v1.include_router(shell.router, tags=["Shell"])
+        api_v1.include_router(vpn.router, tags=["VPN"])
+        api_v1.include_router(user_settings.router, tags=["User Settings"])
+        api_v1.include_router(billing.router, tags=["Billing"])
+        app.include_router(api_v1)
 
-    Authentication: Pass JWT token as query parameter ?token=<jwt>
-    If no token provided or invalid, connection is rejected.
-    """
-    from app.api.dependencies import validate_websocket_token
+        # MCP server endpoint (API key auth, not user-session auth)
+        from app.api.mcp import router as mcp_router
 
-    # Validate authentication: prefer query-param token, fall back to cookie
-    ws_token = token
-    if not ws_token:
-        ws_token = websocket.cookies.get("access_token")
-    user = await validate_websocket_token(ws_token)
-    if not user:
-        await websocket.close(code=4001, reason="Authentication required")
-        logger.warning("WebSocket connection rejected: invalid or missing token")
+        app.include_router(mcp_router)
+
+        # Non-versioned health endpoint for Docker/LB probes
+        app.include_router(health.router, prefix="/api", tags=["Health"], include_in_schema=False)
+
+        # Backward-compatible auth routes at /api/auth/* (canonical: /api/v1/auth/*)
+        app.include_router(auth.router, prefix="/api/auth", tags=["Auth"], include_in_schema=False)
+
+        # --- Non-versioned routes (UI pages, public, admin) ---
+        app.include_router(public.router, tags=["Public"])
+        app.include_router(ui.router, tags=["UI"])
+        app.include_router(admin.router, tags=["Admin"])
+
+    elif mode == "ai":
+        app.include_router(health.router, prefix="/api", tags=["Health"])
+
+    elif mode == "worker":
+        app.include_router(health.router, prefix="/api", tags=["Health"])
+
+    elif mode == "scheduler":
+        app.include_router(health.router, prefix="/api", tags=["Health"])
+
+    elif mode == "tools":
+        api_v1 = APIRouter(prefix="/api/v1")
+        api_v1.include_router(health.router, tags=["Health"])
+        api_v1.include_router(tools.router, tags=["Tools"])
+        app.include_router(api_v1)
+        app.include_router(health.router, prefix="/api", tags=["Health"], include_in_schema=False)
+
+    else:
+        logger.warning("Unknown SERVICE_MODE %r — loading all routers as fallback", mode)
+        _include_routers(app, "all")
         return
 
-    await manager.connect(websocket, require_auth=False)
-    # Auto-join user-specific room for scoped event delivery
-    await manager.join_room(websocket, f"user:{user.id}")
-    logger.debug("WebSocket connected for user: %s", user.username)
+    logger.info("Service mode: %s — routers loaded", mode or "all")
 
-    # Rate limiting state
-    from app.core.constants import WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
 
-    message_count = 0
-    last_reset = time.time()
+_include_routers(app, settings.SERVICE_MODE)
 
-    try:
-        while True:
-            data = await websocket.receive_text()
 
-            # Per-second message rate limiting
-            now = time.time()
-            if now - last_reset >= 1.0:
-                message_count = 0
-                last_reset = now
-            message_count += 1
-            if message_count > WS_MAX_MESSAGES_PER_SECOND:
-                await websocket.send_json({"type": "error", "message": "Rate limit exceeded"})
-                continue
+# --- WebSocket Endpoint (only for api/all modes) ---
+if settings.SERVICE_MODE in ("", "all", "api"):
 
-            # Validate message size (DoS protection)
-            if len(data) > WS_MAX_MESSAGE_SIZE:
-                logger.warning("WebSocket message too large from %s, ignoring", user.username)
-                continue
+    @app.websocket("/ws")
+    async def websocket_endpoint(websocket: WebSocket, token: str | None = None) -> None:
+        """
+        WebSocket endpoint for real-time communication.
 
-            try:
-                message_json = json.loads(data)
-                if not isinstance(message_json, dict) or "type" not in message_json:
-                    logger.warning("Invalid WebSocket message format from %s", user.username)
+        Handles bidirectional messaging between the server and connected clients.
+
+        Authentication: Pass JWT token as query parameter ?token=<jwt>
+        If no token provided or invalid, connection is rejected.
+        """
+        from app.api.dependencies import validate_websocket_token
+
+        # Validate authentication: prefer query-param token, fall back to cookie
+        ws_token = token
+        if not ws_token:
+            ws_token = websocket.cookies.get("access_token")
+        user = await validate_websocket_token(ws_token)
+        if not user:
+            await websocket.close(code=4001, reason="Authentication required")
+            logger.warning("WebSocket connection rejected: invalid or missing token")
+            return
+
+        await manager.connect(websocket, require_auth=False)
+        # Auto-join user-specific room for scoped event delivery
+        await manager.join_room(websocket, f"user:{user.id}")
+        logger.debug("WebSocket connected for user: %s", user.username)
+
+        # Rate limiting state
+        from app.core.constants import WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
+
+        message_count = 0
+        last_reset = time.time()
+
+        try:
+            while True:
+                data = await websocket.receive_text()
+
+                # Per-second message rate limiting
+                now = time.time()
+                if now - last_reset >= 1.0:
+                    message_count = 0
+                    last_reset = now
+                message_count += 1
+                if message_count > WS_MAX_MESSAGES_PER_SECOND:
+                    await websocket.send_json({"type": "error", "message": "Rate limit exceeded"})
                     continue
 
-                msg_type = message_json.get("type")
-                if msg_type == "ping":
-                    await websocket.send_text(json.dumps({"type": "pong"}))
-                else:
-                    logger.debug("Received WS message type: %s", msg_type)
-            except json.JSONDecodeError:
-                logger.warning("Invalid JSON in WebSocket message from %s", user.username)
+                # Validate message size (DoS protection)
+                if len(data) > WS_MAX_MESSAGE_SIZE:
+                    logger.warning("WebSocket message too large from %s, ignoring", user.username)
+                    continue
 
-    except WebSocketDisconnect:
-        await manager.disconnect(websocket)
-        logger.debug("WebSocket client %s disconnected normally", user.username)
-    except (OSError, RuntimeError, ConnectionError) as e:
-        logger.warning("WebSocket error for %s: %s", user.username, e)
-        await manager.disconnect(websocket)
+                try:
+                    message_json = json.loads(data)
+                    if not isinstance(message_json, dict) or "type" not in message_json:
+                        logger.warning("Invalid WebSocket message format from %s", user.username)
+                        continue
+
+                    msg_type = message_json.get("type")
+                    if msg_type == "ping":
+                        await websocket.send_text(json.dumps({"type": "pong"}))
+                    else:
+                        logger.debug("Received WS message type: %s", msg_type)
+                except json.JSONDecodeError:
+                    logger.warning("Invalid JSON in WebSocket message from %s", user.username)
+
+        except WebSocketDisconnect:
+            await manager.disconnect(websocket)
+            logger.debug("WebSocket client %s disconnected normally", user.username)
+        except (OSError, RuntimeError, ConnectionError) as e:
+            logger.warning("WebSocket error for %s: %s", user.username, e)
+            await manager.disconnect(websocket)
 
 
 # --- Root route is handled by public.router (landing page) ---

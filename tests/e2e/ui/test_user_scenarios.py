@@ -1,5 +1,8 @@
 """User scenario Playwright tests — end-to-end workflows covering registration,
 profile, admin management, mission launch, settings, navigation, and landing page.
+
+Tests are ordered so that all authenticated_page (session-scoped cookie) tests
+run before unauthenticated page tests to avoid rate-limit / cookie interference.
 """
 
 import time
@@ -10,47 +13,13 @@ from playwright.sync_api import Page, expect
 pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 
 
-# ---------------------------------------------------------------------------
-# 1. New user registration
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.timeout(30)
-def test_new_user_registration(page: Page, app_url: str):
-    """Register a new user and verify the registration flow works."""
-    unique_user = f"testuser_{int(time.time())}"
-    page.goto(f"{app_url}/register", wait_until="networkidle")
-
-    page.locator("#username").fill(unique_user)
-    page.locator("#email").fill(f"{unique_user}@example.com")
-    page.locator("#password").fill("SecurePass123!")
-
-    page.locator("#submitBtn").click()
-
-    # Wait for message to appear
-    msg = page.locator("#msg")
-    expect(msg).to_be_visible(timeout=10_000)
-    page.wait_for_timeout(1_000)
-
-    msg_text = msg.inner_text().lower()
-
-    # Valid outcomes: created, redirected to login/dashboard, or already exists (re-run)
-    valid = any([
-        "created" in msg_text,
-        "success" in msg_text,
-        "already" in msg_text,
-        "/login" in page.url,
-        "/dashboard" in page.url,
-    ])
-
-    assert valid, (
-        f"Registration did not produce expected outcome. "
-        f"URL={page.url}, message='{msg_text}'"
-    )
+# ===================================================================
+# Authenticated tests (use session-scoped admin cookies)
+# ===================================================================
 
 
 # ---------------------------------------------------------------------------
-# 2. Plan display on profile
+# 1. Plan display on profile
 # ---------------------------------------------------------------------------
 
 
@@ -75,7 +44,7 @@ def test_plan_displayed_on_profile(authenticated_page: Page, app_url: str):
 
 
 # ---------------------------------------------------------------------------
-# 3. Admin user management
+# 2. Admin user management
 # ---------------------------------------------------------------------------
 
 
@@ -109,7 +78,7 @@ def test_admin_create_user_modal(authenticated_page: Page, app_url: str):
 
 
 # ---------------------------------------------------------------------------
-# 4. Admin plan management
+# 3. Admin plan management
 # ---------------------------------------------------------------------------
 
 
@@ -145,7 +114,7 @@ def test_admin_plan_management(authenticated_page: Page, app_url: str):
 
 
 # ---------------------------------------------------------------------------
-# 5. Mission launch through UI
+# 4. Mission launch through UI
 # ---------------------------------------------------------------------------
 
 
@@ -176,7 +145,7 @@ def test_mission_launch_form(authenticated_page: Page, app_url: str):
 
 
 # ---------------------------------------------------------------------------
-# 6. Settings page all sections
+# 5. Settings page all sections
 # ---------------------------------------------------------------------------
 
 _SETTINGS_TABS = [
@@ -206,7 +175,7 @@ def test_settings_all_sections(authenticated_page: Page, app_url: str):
 
 
 # ---------------------------------------------------------------------------
-# 7. Admin link visible for admin user
+# 6. Admin link visible for admin user
 # ---------------------------------------------------------------------------
 
 
@@ -231,67 +200,7 @@ def test_admin_link_visible_for_admin(authenticated_page: Page, app_url: str):
 
 
 # ---------------------------------------------------------------------------
-# 7b. Regular user cannot access admin features
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.timeout(45)
-def test_regular_user_no_admin_access(page: Page, app_url: str):
-    """Regular user should not see admin navigation link."""
-    # Register a test user
-    unique_user = f"reguser_{int(time.time())}"
-    page.goto(f"{app_url}/register", wait_until="networkidle")
-    page.locator("#username").fill(unique_user)
-    page.locator("#email").fill(f"{unique_user}@example.com")
-    page.locator("#password").fill("SecurePass123!")
-    page.locator("#submitBtn").click()
-    page.wait_for_timeout(2_000)
-
-    # Login with the new user
-    page.goto(f"{app_url}/login", wait_until="networkidle")
-    page.locator("#username").fill(unique_user)
-    page.locator("#password").fill("SecurePass123!")
-    page.locator("button[type='submit']").click()
-    page.wait_for_load_state("networkidle")
-    page.wait_for_timeout(3_000)
-
-    # If we reached dashboard, check admin link is NOT visible
-    if "/dashboard" in page.url:
-        admin_link = page.locator("#admin-nav-link")
-        if admin_link.count() > 0:
-            # Admin link should be hidden for regular users
-            is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
-            assert not admin_link.is_visible() or is_hidden, (
-                "Regular user should not see the admin navigation link"
-            )
-
-
-# ---------------------------------------------------------------------------
-# 8. Rate limit recovery — normal login flow
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.timeout(30)
-def test_login_rate_limit_allows_normal_usage(page: Page, app_url: str):
-    """Verify that normal login flow doesn't trigger rate limits."""
-    # Login once
-    page.goto(f"{app_url}/login", wait_until="networkidle")
-    page.locator("#username").fill("admin")
-    page.locator("#password").fill("TestPassword123!")
-    page.locator("button[type='submit']").click()
-    page.wait_for_url("**/dashboard", timeout=10_000)
-
-    # Navigate to a few pages
-    for path in ["/history", "/targets", "/settings"]:
-        page.goto(f"{app_url}{path}", wait_until="networkidle")
-        # Should not see a 429 error page
-        error_code = page.locator(".error-code")
-        if error_code.count() > 0 and error_code.is_visible():
-            assert "429" not in error_code.inner_text(), f"Got 429 rate limit on {path}"
-
-
-# ---------------------------------------------------------------------------
-# 9. Navigation completeness — sidebar links
+# 7. Navigation completeness — sidebar links
 # ---------------------------------------------------------------------------
 
 _SIDEBAR_NAV_PATHS = [
@@ -324,31 +233,7 @@ def test_sidebar_navigation_all_links(authenticated_page: Page, app_url: str):
 
 
 # ---------------------------------------------------------------------------
-# 10. Landing page pricing section
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.timeout(30)
-def test_landing_page_pricing(page: Page, app_url: str):
-    """Verify pricing section exists on the landing page."""
-    page.goto(f"{app_url}/", wait_until="networkidle")
-
-    # Pricing section should be present
-    pricing = page.locator("#pricing")
-    expect(pricing).to_be_attached(timeout=10_000)
-
-    # Section should contain "Choose your plan" heading
-    heading = pricing.locator("h2")
-    expect(heading).to_be_visible(timeout=10_000)
-    expect(heading).to_contain_text("Choose your plan")
-
-    # Pricing nav link should exist
-    pricing_nav = page.locator("a[href='#pricing']")
-    expect(pricing_nav.first).to_be_attached(timeout=10_000)
-
-
-# ---------------------------------------------------------------------------
-# 11. Profile tabs — all sections accessible
+# 8. Profile tabs — all sections accessible
 # ---------------------------------------------------------------------------
 
 _PROFILE_SECTIONS = [
@@ -388,7 +273,7 @@ def test_profile_all_tabs(authenticated_page: Page, app_url: str):
 
 
 # ---------------------------------------------------------------------------
-# 12. Dashboard — getting started card
+# 9. Dashboard — getting started card
 # ---------------------------------------------------------------------------
 
 
@@ -404,3 +289,140 @@ def test_dashboard_getting_started(authenticated_page: Page, app_url: str):
     if getting_started.is_visible():
         settings_link = getting_started.locator("a[href='/settings']")
         expect(settings_link).to_be_visible(timeout=5_000)
+
+
+# ===================================================================
+# Unauthenticated tests (use plain page fixture — run LAST to avoid
+# rate-limit / cookie interference with authenticated_page tests)
+# ===================================================================
+
+
+# ---------------------------------------------------------------------------
+# 10. Landing page pricing section
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(30)
+def test_landing_page_pricing(page: Page, app_url: str):
+    """Verify pricing section exists on the landing page."""
+    page.goto(f"{app_url}/", wait_until="domcontentloaded")
+
+    # Pricing section should be present
+    pricing = page.locator("#pricing")
+    expect(pricing).to_be_attached(timeout=10_000)
+
+    # Section should contain "Choose your plan" heading
+    heading = pricing.locator("h2")
+    expect(heading).to_be_visible(timeout=10_000)
+    expect(heading).to_contain_text("Choose your plan")
+
+    # Pricing nav link should exist
+    pricing_nav = page.locator("a[href='#pricing']")
+    expect(pricing_nav.first).to_be_attached(timeout=10_000)
+
+
+# ---------------------------------------------------------------------------
+# 11. New user registration
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(30)
+def test_new_user_registration(page: Page, app_url: str):
+    """Register a new user and verify the registration flow works."""
+    unique_user = f"testuser_{int(time.time())}"
+    page.goto(f"{app_url}/register", wait_until="domcontentloaded")
+
+    page.locator("#username").fill(unique_user)
+    page.locator("#email").fill(f"{unique_user}@example.com")
+    page.locator("#password").fill("SecurePass123!")
+
+    page.locator("#submitBtn").click()
+
+    # Wait for message to appear
+    msg = page.locator("#msg")
+    expect(msg).to_be_visible(timeout=10_000)
+    page.wait_for_timeout(1_000)
+
+    msg_text = msg.inner_text().lower()
+
+    # Valid outcomes: created, redirected to login/dashboard, or already exists (re-run)
+    valid = any([
+        "created" in msg_text,
+        "success" in msg_text,
+        "already" in msg_text,
+        "/login" in page.url,
+        "/dashboard" in page.url,
+    ])
+
+    assert valid, (
+        f"Registration did not produce expected outcome. "
+        f"URL={page.url}, message='{msg_text}'"
+    )
+
+    # Clean up cookies to prevent leakage into subsequent tests
+    page.context.clear_cookies()
+
+
+# ---------------------------------------------------------------------------
+# 12. Regular user cannot access admin features
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(45)
+def test_regular_user_no_admin_access(page: Page, app_url: str):
+    """Regular user should not see admin navigation link."""
+    # Register a test user
+    unique_user = f"reguser_{int(time.time())}"
+    page.goto(f"{app_url}/register", wait_until="domcontentloaded")
+    page.locator("#username").fill(unique_user)
+    page.locator("#email").fill(f"{unique_user}@example.com")
+    page.locator("#password").fill("SecurePass123!")
+    page.locator("#submitBtn").click()
+    page.wait_for_timeout(2_000)
+
+    # Login with the new user
+    page.goto(f"{app_url}/login", wait_until="domcontentloaded")
+    page.locator("#username").fill(unique_user)
+    page.locator("#password").fill("SecurePass123!")
+    page.locator("button[type='submit']").click()
+    page.wait_for_url("**/dashboard", timeout=15_000)
+
+    # If we reached dashboard, check admin link is NOT visible
+    if "/dashboard" in page.url:
+        admin_link = page.locator("#admin-nav-link")
+        if admin_link.count() > 0:
+            # Admin link should be hidden for regular users
+            is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
+            assert not admin_link.is_visible() or is_hidden, (
+                "Regular user should not see the admin navigation link"
+            )
+
+    # Clean up cookies to prevent leakage into subsequent tests
+    page.context.clear_cookies()
+
+
+# ---------------------------------------------------------------------------
+# 13. Rate limit recovery — normal login flow
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.timeout(30)
+def test_login_rate_limit_allows_normal_usage(page: Page, app_url: str):
+    """Verify that normal login flow doesn't trigger rate limits."""
+    # Login once
+    page.goto(f"{app_url}/login", wait_until="domcontentloaded")
+    page.locator("#username").fill("admin")
+    page.locator("#password").fill("TestPassword123!")
+    page.locator("button[type='submit']").click()
+    page.wait_for_url("**/dashboard", timeout=10_000)
+
+    # Navigate to a few pages
+    for path in ["/history", "/targets", "/settings"]:
+        page.goto(f"{app_url}{path}", wait_until="domcontentloaded")
+        # Should not see a 429 error page
+        error_code = page.locator(".error-code")
+        if error_code.count() > 0 and error_code.is_visible():
+            assert "429" not in error_code.inner_text(), f"Got 429 rate limit on {path}"
+
+    # Clean up cookies to prevent leakage into subsequent tests
+    page.context.clear_cookies()
