@@ -23,7 +23,7 @@
 		}
 
 		handle @websocket {
-			reverse_proxy spectra-app:5000
+			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
 		}
 
 		# Thin IP-based edge guard for public auth traffic only.
@@ -48,7 +48,9 @@
 			}
 		}
 
-		reverse_proxy spectra-app:5000 {
+		reverse_proxy {$APP_UPSTREAM:spectra-app:5000} {
+			lb_policy cookie
+			lb_try_duration 5s
 			health_uri /api/health
 			health_interval 15s
 			health_timeout 5s

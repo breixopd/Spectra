@@ -476,3 +476,14 @@ async def get_node_deployment_logs(
     deployer = ServerDeployer()
     logs = deployer.get_deployment_logs(str(node_id))
     return {"logs": logs}
+
+
+@router.get("/api/admin/scaling/metrics")
+async def get_scaling_metrics(
+    queue_name: str = "default",
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Return queue depth, in-progress count, and wait stats for autoscaling decisions."""
+    from app.core.queue import queue_metrics
+
+    return await queue_metrics(queue_name=queue_name)

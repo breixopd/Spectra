@@ -118,7 +118,6 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.app
       target: api
-    container_name: spectra-app
     labels:
       spectra.managed: "true"
       spectra.role: "api"

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 # Stable advisory lock IDs for inter-replica coordination (PostgreSQL pg_advisory_lock)
 _BACKUP_LOCK_ID: int = hash("spectra_backup") & 0x7FFFFFFF
 _QUOTA_LOCK_ID: int = hash("spectra_quota_reset") & 0x7FFFFFFF
+_SCHEDULER_LEADER_LOCK_ID: int = 8675309  # Global leader election for the scheduler
 
 
 async def _try_advisory_lock(session, lock_id: int) -> bool:
@@ -231,7 +232,7 @@ _scheduler_instance: SchedulerService | None = None
 async def lifespan(fastapi_app: FastAPI):
     global _scheduler_instance
     _scheduler_instance = SchedulerService()
-    task = asyncio.create_task(_scheduler_instance.start())
+    task = asyncio.create_task(_leader_election_loop(_scheduler_instance))
     yield
     await _scheduler_instance.stop()
     task.cancel()
@@ -239,6 +240,26 @@ async def lifespan(fastapi_app: FastAPI):
         await task
     except asyncio.CancelledError:
         pass
+
+
+async def _leader_election_loop(scheduler: SchedulerService) -> None:
+    """Try to acquire the global scheduler leader lock; stand by if another replica holds it."""
+    while True:
+        try:
+            async with async_session_maker() as session:
+                is_leader = await _try_advisory_lock(session, _SCHEDULER_LEADER_LOCK_ID)
+            if is_leader:
+                logger.info("Scheduler acquired leader lock — starting tasks")
+                await scheduler.start()
+                return  # start() runs until stopped
+            else:
+                logger.info("Another scheduler is leader, standing by...")
+                await asyncio.sleep(15)
+        except asyncio.CancelledError:
+            raise
+        except (OSError, RuntimeError) as e:
+            logger.warning("Leader election error: %s — retrying in 15s", e)
+            await asyncio.sleep(15)
 
 
 app = FastAPI(title="Spectra Scheduler", version="1.0.0", lifespan=lifespan)
