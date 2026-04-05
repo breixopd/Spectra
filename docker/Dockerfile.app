@@ -77,26 +77,16 @@ WORKDIR /app
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     libpq5 \
-    libcairo2 \
     curl \
     netcat-openbsd \
     ca-certificates \
-    gnupg \
     gosu \
-    && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list \
-    && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
-
-# Install Grype for container image scanning (pinned version)
-RUN curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin v0.84.0 2>/dev/null || true
 
 # NOTE: venv is NOT copied here — each service target copies from its own builder.
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN useradd --create-home --shell /bin/bash spectra && \
-    groupadd -f docker && usermod -aG docker spectra && \
     mkdir -p /app/data /app/data/backups /app/logs && \
     chown -R spectra:spectra /app
 # NOTE: We do NOT set USER here — start.sh runs as root to fix Docker socket GID,
@@ -141,6 +131,18 @@ CMD ["uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "501
 
 # ── API service target (default — must be last) ──
 FROM app-base AS api
+# API-specific runtime deps: PDF rendering (libcairo2), Docker CLI (sandbox mgmt),
+# Grype (container image vulnerability scanning)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcairo2 gnupg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
+    && apt-get purge -y --auto-remove gnupg \
+    && rm -rf /var/lib/apt/lists/*
+RUN groupadd -f docker && usermod -aG docker spectra
+RUN curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin v0.84.0 2>/dev/null || true
 COPY --from=builder-api /opt/venv /opt/venv
 EXPOSE 5000
 ENV SERVICE_MODE=api

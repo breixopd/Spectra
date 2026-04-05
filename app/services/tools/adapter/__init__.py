@@ -156,6 +156,12 @@ class CommandToolAdapter(ToolAdapter):
                 logger.warning("Failed to parse tool output: %s", e)
 
             success = proc.returncode == 0
+
+            # Exit code 124 is produced by the `timeout` coreutils wrapper
+            if proc.returncode == 124 and not stderr:
+                stderr = f"Command timed out after {timeout}s"
+                success = False
+
             await record_tool_execution(
                 tool_id=request.tool_id,
                 duration_ms=duration * 1000,
