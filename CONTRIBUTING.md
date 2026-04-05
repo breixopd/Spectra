@@ -110,6 +110,43 @@ app/
 - **Plugin system**: Security tools are defined as JSON files in `plugins/`. The registry loads, validates, and manages them.
 - **Event-driven**: `app/core/events.py` provides pub/sub for decoupled communication.
 
+### Architecture Boundaries
+
+Spectra runs as four microservices controlled by `SERVICE_MODE`. Import boundaries between shared and service-specific code are enforced.
+
+**Shared packages** (used by all services — must NOT import service-specific code):
+- `app/core/` — config, database, security, cache, events
+- `app/models/` — SQLAlchemy ORM models
+- `app/repositories/` — data access layer
+
+**Service-specific packages** (only loaded by their respective service):
+- `app/api/` — routers, schemas, UI (API service)
+- `app/worker/` — job queue consumer (Worker service)
+- `app/ai_service.py` — AI service entry point
+- `app/scheduler_service.py` — Scheduler entry point
+- `app/worker_service.py` — Worker entry point
+
+**Verify boundaries before submitting a PR:**
+
+```bash
+python3 scripts/check_import_boundaries.py
+```
+
+This checks that `app/core/` and `app/models/` have no top-level imports of service-specific modules (`app.api`, `app.worker`, `app.ai_service`, etc.). Lazy imports inside functions are allowed.
+
+### Per-Service Requirements
+
+When adding a dependency, add it to the correct requirements file:
+
+| File | Service | When to Edit |
+|------|---------|--------------|
+| `requirements/base.txt` | All services | Core deps (SQLAlchemy, asyncpg, pydantic) |
+| `requirements/app.txt` | API | Web UI, reports, full API stack |
+| `requirements/ai.txt` | AI Service | LLM providers, embeddings, fastembed |
+| `requirements/scheduler.txt` | Scheduler | Scheduling, lightweight background tasks |
+| `requirements/worker.txt` | Worker | Tool execution, Docker SDK, parsing |
+| `requirements/dev.txt` | Development | pytest, ruff, dev-only tools |
+
 ## Code Style
 
 ### Python

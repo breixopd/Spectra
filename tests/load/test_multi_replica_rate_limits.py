@@ -26,7 +26,7 @@ def ensure_replica_targets_available() -> None:
 
 
 async def test_login_rate_limit_state_is_shared_across_app_replicas() -> None:
-    expected_limit = get_env_int("LOAD_TEST_SHARED_LOGIN_EXPECTED_LIMIT", 5)
+    expected_limit = get_env_int("LOAD_TEST_SHARED_LOGIN_EXPECTED_LIMIT", 15)
     primary_burst_count = max(1, expected_limit - 1)
     username = f"shared-limit-{uuid.uuid4().hex[:8]}"
 

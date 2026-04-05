@@ -17,6 +17,53 @@ By default, everything runs on a single host via Docker Compose. No gateway URLs
 
 ---
 
+## Scaling Individual Services with SERVICE_MODE
+
+Each Spectra service runs in its own container with `SERVICE_MODE` set. This allows independent scaling of individual services.
+
+### Scaling Workers
+
+Workers are the most common scaling target. Multiple worker instances safely share the job queue via `SELECT ... FOR UPDATE SKIP LOCKED`:
+
+```bash
+# Docker Compose — scale to 3 workers
+docker compose -f docker/docker-compose.yml up -d --scale worker=3
+```
+
+```yaml
+# Docker Swarm
+services:
+  worker:
+    deploy:
+      replicas: 3
+```
+
+### Scaling AI Service
+
+For high LLM throughput, scale the AI service:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d --scale ai-svc=2
+```
+
+The app service routes AI requests to `AI_SERVICE_URL`. With multiple replicas behind Docker's internal DNS round-robin, requests are distributed automatically.
+
+### Scheduler — Do Not Scale
+
+The scheduler should always run as a **single replica**. Multiple schedulers would cause duplicate background tasks (backups, watchdog, quota resets).
+
+### Scaling the Core API
+
+Scale the API service for more web/API capacity:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d --scale app=2
+```
+
+When scaling the API, ensure Caddy (or your reverse proxy) load-balances across all API instances.
+
+---
+
 ## Server Pool Concept
 
 Spectra includes a `ServerPoolManager` (`app/services/scaling/pool_manager.py`) that tracks server nodes across the infrastructure. Each node is stored in the `server_nodes` database table.

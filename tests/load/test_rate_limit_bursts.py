@@ -18,7 +18,7 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.live, pytest.mark.load]
 
 
 async def test_direct_app_login_burst_returns_structured_429() -> None:
-    expected_limit = get_env_int("LOAD_TEST_LOGIN_EXPECTED_LIMIT", 5)
+    expected_limit = get_env_int("LOAD_TEST_LOGIN_EXPECTED_LIMIT", 15)
 
     async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as client:
         await ensure_admin_setup(client)
@@ -47,7 +47,7 @@ async def test_direct_app_login_burst_returns_structured_429() -> None:
 
 
 async def test_direct_app_public_registration_burst_hits_limit() -> None:
-    expected_limit = get_env_int("LOAD_TEST_PUBLIC_REGISTER_EXPECTED_LIMIT", 3)
+    expected_limit = get_env_int("LOAD_TEST_PUBLIC_REGISTER_EXPECTED_LIMIT", 10)
     run_id = uuid.uuid4().hex[:8]
 
     async with httpx.AsyncClient(base_url=get_app_base_url(), timeout=15.0) as client:

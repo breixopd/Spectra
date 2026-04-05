@@ -41,6 +41,13 @@
     </div>
     <div class="app-layout">
         {% if not is_public_page %}
+        <!-- Mobile header -->
+        <div class="mobile-header">
+            <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle navigation">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <span class="text-white font-semibold text-lg">Spectra</span>
+        </div>
         <aside id="sidebar" class="sidebar">
             <div class="p-4 h-full flex flex-col">
                 <!-- Logo -->
@@ -116,6 +123,8 @@
                 </div>
             </div>
         </aside>
+        <!-- Sidebar overlay for mobile -->
+        <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
         {% endif %}
 
         <!-- Main Content -->

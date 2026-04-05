@@ -1,0 +1,34 @@
+# =============================================================================
+# Spectra Scheduler Service Dependencies
+# =============================================================================
+# Minimal set for the scheduler microservice (background task coordination).
+# This is the lightest service — no AI, no UI, no reports.
+
+# Core Framework
+fastapi==0.119.1
+uvicorn[standard]==0.34.2
+pydantic[email]==2.12.5
+pydantic-settings==2.13.1
+
+# Database
+sqlalchemy[asyncio]==2.0.48
+asyncpg==0.31.0
+
+# HTTP client (service health checks)
+httpx==0.28.1
+
+# Auth (needed by shared core config)
+PyJWT[crypto]==2.10.1
+passlib[bcrypt]==1.7.4
+bcrypt==4.3.0
+cryptography==44.0.3
+
+# Utilities
+python-dotenv==1.2.2
+orjson==3.11.7
+
+# Transitively needed by shared app code imports
+starlette==0.48.0
+python-multipart==0.0.22
+jinja2==3.1.6
+websockets==14.2

@@ -107,7 +107,7 @@ class RateLimits:
     ACCOUNT_DELETE = "2/hour"
     FORGOT_PASSWORD = "3/minute"
     RESET_PASSWORD = "5/minute"
-    PUBLIC_REGISTER = "5/minute"
+    PUBLIC_REGISTER = "10/minute"
 
     # Mission operations - moderate limits
     MISSION_START = "5/minute"

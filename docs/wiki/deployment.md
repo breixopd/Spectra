@@ -6,9 +6,83 @@
 
 > **See [Deployment Guide](deployment-guide.md) for the complete production deployment guide** — Docker Compose, Cloudflare, Docker Swarm, Portainer, scaling, backups, and monitoring. Use [Operations](operations.md) for day-2 runbooks and post-deploy incident handling.
 
-This page covers CI/CD pipeline configuration and versioning.
+This page covers CI/CD pipeline configuration, versioning, and per-service build and deployment.
 
 Current runtime contract: Docker Compose and Docker Swarm use the same internal service names and ports for the microservices split (`ai-svc:5010`, `scheduler:5011`, `worker:5012`). S3-compatible storage is required for missions, sessions, knowledge, and backups; use bundled Garage or point to an external S3 endpoint.
+
+## Per-Service Builds
+
+The Dockerfile (`docker/Dockerfile.app`) uses multi-stage builds with per-service targets. Each target copies only the dependencies its service needs, producing optimized images:
+
+### Building Individual Services
+
+```bash
+# Build a specific service target
+docker build --target ai -f docker/Dockerfile.app -t spectra-ai-svc .
+docker build --target scheduler -f docker/Dockerfile.app -t spectra-scheduler .
+docker build --target api -f docker/Dockerfile.app -t spectra-app .
+
+# Or via docker compose (builds all services)
+docker compose -f docker/docker-compose.yml build
+```
+
+### Image Sizes
+
+| Service | Target | Requirements File | Approx. Size |
+|---------|--------|-------------------|--------------|
+| **Scheduler** | `scheduler` | `requirements/scheduler.txt` | ~558 MB |
+| **AI Service** | `ai` | `requirements/ai.txt` | ~1.13 GB |
+| **API** | `api` | `requirements/app.txt` | ~1.34 GB |
+| **Worker** | `api` + override | `requirements/worker.txt` | ~4.13 GB |
+
+### SERVICE_MODE Configuration
+
+Each container sets `SERVICE_MODE` in its environment to control which routers and background loops are activated:
+
+```yaml
+# docker-compose.yml (simplified)
+services:
+  app:
+    environment:
+      - SERVICE_MODE=api
+
+  ai-svc:
+    environment:
+      - SERVICE_MODE=ai
+
+  scheduler:
+    environment:
+      - SERVICE_MODE=scheduler
+
+  worker:
+    environment:
+      - SERVICE_MODE=worker
+```
+
+For development or single-node deployments, `SERVICE_MODE=all` runs everything in one process.
+
+### Scaling Individual Services
+
+Services can be scaled independently. The most common scaling target is the worker:
+
+```bash
+# Scale workers horizontally
+docker compose -f docker/docker-compose.yml up -d --scale worker=3
+
+# Workers use SELECT ... FOR UPDATE SKIP LOCKED, so multiple instances
+# naturally distribute jobs without conflicts.
+```
+
+In Docker Swarm:
+
+```yaml
+services:
+  worker:
+    deploy:
+      replicas: 3
+```
+
+The AI service can also be scaled for high LLM throughput. The scheduler should remain at 1 replica to avoid duplicate background tasks.
 
 ## Services
 

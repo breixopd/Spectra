@@ -21,6 +21,8 @@ import pytest
 pytestmark = [pytest.mark.live]
 
 SPECTRA_URL = os.getenv("SPECTRA_URL", "http://app:5000")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Admin123!")
 VULN_WEB_HOST = os.getenv("VULN_WEB_HOST", "spectra-vuln-web")
 VULN_SSH_HOST = os.getenv("VULN_SSH_HOST", "spectra-vuln-ssh")
 VULN_NETWORK_HOST = os.getenv("VULN_NETWORK_HOST", "spectra-vuln-network")
@@ -38,9 +40,9 @@ def auth_headers():
                 "/api/v1/auth/setup",
                 json={
                     "user": {
-                        "username": "admin",
+                        "username": ADMIN_USERNAME,
                         "email": "admin@spectra.local",
-                        "password": "Admin123!",
+                        "password": ADMIN_PASSWORD,
                     },
                     "llm_provider": os.getenv("AI_PROVIDER", "mock"),
                     "llm_model": os.getenv("LLM_MODEL", ""),
@@ -49,7 +51,7 @@ def auth_headers():
             )
         resp = client.post(
             "/api/v1/auth/token",
-            data={"username": "admin", "password": "Admin123!"},
+            data={"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD},
         )
         assert resp.status_code == 200, f"Auth failed: {resp.text}"
         return {"Authorization": f"Bearer {resp.json()['access_token']}"}
