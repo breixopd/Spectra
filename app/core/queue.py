@@ -205,86 +205,158 @@ class WorkerState:
 async def worker_loop(functions: list, queue_name: str = "default", poll_delay: float = 1.0) -> None:
     """
     Main background loop that repeatedly polls for queued jobs and executes them.
+    Listens for NOTIFY events on the ``spectra_jobs`` channel to wake up
+    immediately when a job is enqueued, with a fallback poll every *poll_delay* seconds.
     Should be run in a separate container/process.
     """
     logger.info("Starting PostgresJobQueue worker for queue '%s'", queue_name)
     worker_state = WorkerState(functions)
     current_job_id: str | None = None
 
-    while True:
+    # Set up LISTEN for instant wake-up
+    notify_event: asyncio.Event = asyncio.Event()
+    _pg_listener_conn = None
+
+    async def _start_listener():
+        nonlocal _pg_listener_conn
         try:
-            # 1. Fetch next job (SKIP LOCKED prevents concurrent workers from taking the same job)
-            async with async_session_maker() as session:
-                query = (
-                    select(JobQueue)
-                    .where(JobQueue.status.in_(["queued", "pending"]), JobQueue.queue_name == queue_name)
-                    .order_by(JobQueue.priority.asc(), JobQueue.enqueued_at.asc())
-                    .with_for_update(skip_locked=True)
-                    .limit(1)
-                )
+            import asyncpg
 
-                result = await session.execute(query)
-                job = result.scalar_one_or_none()
+            from app.core.config import settings as _cfg
 
-                if not job:
-                    # No job found, sleep and try again
-                    await asyncio.sleep(poll_delay)
-                    continue
+            dsn = _cfg.DATABASE_URL.get_secret_value().replace(
+                "postgresql+asyncpg://", "postgresql://"
+            )
+            _pg_listener_conn = await asyncpg.connect(dsn)
+            await _pg_listener_conn.add_listener(
+                "spectra_jobs", lambda *_args: notify_event.set()
+            )
+            logger.info("Worker LISTEN on spectra_jobs channel active")
+        except Exception as exc:  # noqa: BLE001 — fallback to polling
+            logger.warning("LISTEN setup failed, falling back to polling: %s", exc)
 
-                # 2. Mark as in_progress
-                job.status = "in_progress"
-                job.started_at = datetime.now(UTC)
-                await session.commit()
+    await _start_listener()
 
-            current_job_id = job.id
-            logger.info("Executing job %s: %s", job.id, job.function)
-
-            # 3. Execute function
+    try:
+        while True:
             try:
-                func = worker_state.functions.get(job.function)
-                if not func:
-                    raise ValueError(f"Function {job.function} not registered")
-
-                if asyncio.iscoroutinefunction(func):
-                    res = await func(*job.args, **job.kwargs)
-                else:
-                    res = func(*job.args, **job.kwargs)
-
-                # 4. Success -> Completed
-                async with async_session_maker() as session:
-                    stmt = (
-                        update(JobQueue)
-                        .where(JobQueue.id == job.id)
-                        .values(status="completed", result=res, completed_at=datetime.now(UTC))
-                    )
-                    await session.execute(stmt)
-                    await session.commit()
-                logger.info("Job %s completed successfully", job.id)
-
-            except (OSError, RuntimeError, ValueError) as e:
-                # 5. Failure -> Retry or Dead Letter
-                logger.error("Job %s failed: %s", job.id, e)
-                queue = PostgresJobQueue(queue_name)
-                await queue.handle_job_failure(job.id, str(e))
-            finally:
-                current_job_id = None
-
-        except asyncio.CancelledError:
-            logger.info("Worker loop cancelled.")
-            if current_job_id:
+                # Wait for a NOTIFY or fall back after poll_delay
+                notify_event.clear()
                 try:
+                    await asyncio.wait_for(notify_event.wait(), timeout=poll_delay)
+                except asyncio.TimeoutError:
+                    pass
+
+                # 1. Fetch next job (SKIP LOCKED prevents concurrent workers from taking the same job)
+                async with async_session_maker() as session:
+                    query = (
+                        select(JobQueue)
+                        .where(JobQueue.status.in_(["queued", "pending"]), JobQueue.queue_name == queue_name)
+                        .order_by(JobQueue.priority.asc(), JobQueue.enqueued_at.asc())
+                        .with_for_update(skip_locked=True)
+                        .limit(1)
+                    )
+
+                    result = await session.execute(query)
+                    job = result.scalar_one_or_none()
+
+                    if not job:
+                        # No job found — the next iteration will wait on notify_event
+                        continue
+
+                    # 2. Mark as in_progress
+                    job.status = "in_progress"
+                    job.started_at = datetime.now(UTC)
+                    await session.commit()
+
+                current_job_id = job.id
+                logger.info("Executing job %s: %s", job.id, job.function)
+
+                # 3. Execute function
+                try:
+                    func = worker_state.functions.get(job.function)
+                    if not func:
+                        raise ValueError(f"Function {job.function} not registered")
+
+                    if asyncio.iscoroutinefunction(func):
+                        res = await func(*job.args, **job.kwargs)
+                    else:
+                        res = func(*job.args, **job.kwargs)
+
+                    # 4. Success -> Completed
                     async with async_session_maker() as session:
                         stmt = (
                             update(JobQueue)
-                            .where(JobQueue.id == current_job_id)
-                            .values(status="failed", error="Worker shutdown", completed_at=datetime.now(UTC))
+                            .where(JobQueue.id == job.id)
+                            .values(status="completed", result=res, completed_at=datetime.now(UTC))
                         )
                         await session.execute(stmt)
                         await session.commit()
-                    logger.info("Marked abandoned job %s as failed", current_job_id)
-                except (OSError, RuntimeError) as e:
-                    logger.warning("Failed to mark abandoned job as failed: %s", e)
-            break
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.error("Error in worker loop: %s", e)
-            await asyncio.sleep(poll_delay)
+                    logger.info("Job %s completed successfully", job.id)
+
+                except (OSError, RuntimeError, ValueError) as e:
+                    # 5. Failure -> Retry or Dead Letter
+                    logger.error("Job %s failed: %s", job.id, e)
+                    queue = PostgresJobQueue(queue_name)
+                    await queue.handle_job_failure(job.id, str(e))
+                finally:
+                    current_job_id = None
+
+            except asyncio.CancelledError:
+                logger.info("Worker loop cancelled.")
+                if current_job_id:
+                    try:
+                        async with async_session_maker() as session:
+                            stmt = (
+                                update(JobQueue)
+                                .where(JobQueue.id == current_job_id)
+                                .values(status="failed", error="Worker shutdown", completed_at=datetime.now(UTC))
+                            )
+                            await session.execute(stmt)
+                            await session.commit()
+                        logger.info("Marked abandoned job %s as failed", current_job_id)
+                    except (OSError, RuntimeError) as e:
+                        logger.warning("Failed to mark abandoned job as failed: %s", e)
+                break
+            except (OSError, RuntimeError, ValueError) as e:
+                logger.error("Error in worker loop: %s", e)
+                await asyncio.sleep(poll_delay)
+    finally:
+        if _pg_listener_conn is not None:
+            try:
+                await _pg_listener_conn.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+
+async def queue_metrics(queue_name: str = "default") -> dict:
+    """Return queue depth, in-progress count, and wait stats for scaling decisions."""
+    from sqlalchemy import text
+
+    async with async_session_maker() as session:
+        result = await session.execute(
+            text("""
+                SELECT
+                    COUNT(*) FILTER (WHERE status IN ('queued', 'pending')) AS depth,
+                    COUNT(*) FILTER (WHERE status = 'in_progress') AS in_progress,
+                    COUNT(*) FILTER (WHERE status IN ('completed', 'failed')) AS completed,
+                    EXTRACT(EPOCH FROM AVG(CASE
+                        WHEN status = 'in_progress' THEN NOW() - enqueued_at
+                    END)) AS avg_wait_seconds,
+                    EXTRACT(EPOCH FROM MAX(CASE
+                        WHEN status IN ('queued', 'pending') THEN NOW() - enqueued_at
+                    END)) AS oldest_job_age_seconds
+                FROM job_queue
+                WHERE queue_name = :queue_name
+            """),
+            {"queue_name": queue_name},
+        )
+        row = result.first()
+        return {
+            "queue_name": queue_name,
+            "depth": row.depth or 0,
+            "in_progress": row.in_progress or 0,
+            "completed": row.completed or 0,
+            "avg_wait_seconds": round(float(row.avg_wait_seconds or 0), 2),
+            "oldest_job_age_seconds": round(float(row.oldest_job_age_seconds or 0), 2),
+        }

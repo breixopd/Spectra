@@ -73,6 +73,22 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 10
 
+    @model_validator(mode="after")
+    def _adjust_pool_for_service(self):
+        """Auto-tune pool size based on SERVICE_MODE when not explicitly overridden."""
+        if self.DATABASE_POOL_SIZE == 20:  # Only if not explicitly overridden
+            mode = self.SERVICE_MODE
+            if mode == "scheduler":
+                self.DATABASE_POOL_SIZE = 3
+                self.DATABASE_MAX_OVERFLOW = 2
+            elif mode == "worker":
+                self.DATABASE_POOL_SIZE = 5
+                self.DATABASE_MAX_OVERFLOW = 5
+            elif mode == "ai":
+                self.DATABASE_POOL_SIZE = 10
+                self.DATABASE_MAX_OVERFLOW = 5
+        return self
+
     @field_validator("DATABASE_POOL_SIZE")
     @classmethod
     def validate_pool_size(cls, v: int) -> int:

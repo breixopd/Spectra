@@ -52,7 +52,7 @@ services:
   app:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:-latest}
     deploy:
-      replicas: 2
+      replicas: ${APP_REPLICAS:-2}
       placement:
         constraints:
           - node.labels.role == app
