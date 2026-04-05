@@ -41,7 +41,7 @@ async def seed_default_plans() -> None:
                     max_api_requests_per_day=200,
                     features={
                         "autonomous_mode": False,
-                        "manual_mode": False,
+                        "manual_mode": True,
                         "report_export": ["json"],
                         "custom_wordlists": False,
                         "pipeline_builder": False,

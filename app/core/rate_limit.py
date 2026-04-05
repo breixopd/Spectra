@@ -98,16 +98,16 @@ limiter = Limiter(
 class RateLimits:
     """Common rate limit configurations."""
 
-    # Authentication endpoints - strict limits
-    LOGIN = "5/minute"
-    SETUP = "3/minute"
-    TOKEN_REFRESH = "5/minute"
+    # Authentication endpoints - allows normal UI flow while preventing brute force
+    LOGIN = "15/minute"
+    SETUP = "10/minute"
+    TOKEN_REFRESH = "30/minute"
     PROFILE_UPDATE = "5/minute"
     PASSWORD_CHANGE = "5/minute"
     ACCOUNT_DELETE = "2/hour"
     FORGOT_PASSWORD = "3/minute"
     RESET_PASSWORD = "5/minute"
-    PUBLIC_REGISTER = "3/minute"
+    PUBLIC_REGISTER = "5/minute"
 
     # Mission operations - moderate limits
     MISSION_START = "5/minute"

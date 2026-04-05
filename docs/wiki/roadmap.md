@@ -49,17 +49,24 @@ See [Scaling](scaling.md) for usage guide.
 
 ## Planned
 
-### 1. MCP Server with API Key Auth
+### 1. MCP Server with API Key Auth ✅
+
+**Status**: Implemented
 
 **Goal**: Expose Spectra functionality as a Model Context Protocol (MCP) server so external AI agents can trigger assessments, query findings, and retrieve reports.
 
-**Scope**:
+**Delivered**:
 
-- MCP server endpoint (SSE or stdio transport) behind API key authentication
-- Tools exposed: `start_mission`, `get_findings`, `get_report`, `list_targets`, `search_rag`
-- Resources exposed: mission status, target inventory, knowledge base
+- MCP JSON-RPC 2.0 endpoint at `/api/mcp` with API key authentication (Bearer or X-API-Key)
+- Tools exposed: `start_mission`, `get_mission_status`, `get_findings`, `list_targets`, `search_knowledge_base`, `list_tools`
+- Constant-time API key comparison to prevent timing attacks
+- Configuration via `MCP_API_KEY` environment variable
+
+**Remaining** (future enhancements):
+
 - Per-key rate limiting and audit logging
 - Admin UI page to create/revoke API keys with granular permissions
+- SSE streaming transport for long-running operations
 
 **Complexity**: Medium | **Impact**: High
 

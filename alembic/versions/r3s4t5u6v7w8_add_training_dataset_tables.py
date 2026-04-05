@@ -5,9 +5,10 @@ Revises: q2r3s4t5u6v7
 Create Date: 2026-04-04 03:00:00
 """
 
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+
+from alembic import op
 
 revision = "r3s4t5u6v7w8"
 down_revision = "q2r3s4t5u6v7"
@@ -19,7 +20,13 @@ def upgrade() -> None:
     op.create_table(
         "training_samples",
         sa.Column("id", UUID(as_uuid=False), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("mission_id", UUID(as_uuid=False), sa.ForeignKey("missions.id", ondelete="SET NULL"), nullable=True, index=True),
+        sa.Column(
+            "mission_id",
+            UUID(as_uuid=False),
+            sa.ForeignKey("missions.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("user_id", UUID(as_uuid=False), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
         sa.Column("sample_type", sa.String(50), nullable=False, index=True),
         sa.Column("input_text", sa.Text, nullable=False),

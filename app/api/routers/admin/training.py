@@ -249,7 +249,7 @@ async def cancel_job(
         .where(FineTuningJob.id == job_id, FineTuningJob.status.in_(["pending", "preparing", "training"]))
         .values(status="cancelled")
     )
-    if result.rowcount == 0:
+    if result.rowcount == 0:  # type: ignore[union-attr]
         raise HTTPException(status_code=404, detail="Job not found or already completed")
     await session.commit()
     return {"status": "cancelled"}
