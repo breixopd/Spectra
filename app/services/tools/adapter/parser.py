@@ -23,6 +23,8 @@ from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from defusedxml import ElementTree as SafeET
+
 from app.services.tools.models import OutputFormat, ToolConfig
 
 if TYPE_CHECKING:
@@ -190,7 +192,7 @@ class UniversalParser:
     def _parse_xml(self, output: str) -> list[dict[str, Any]]:
         """Parse XML output using generic conversion."""
         try:
-            root = ET.fromstring(output)
+            root = SafeET.fromstring(output)
             return self._xml_to_findings(root)
         except ET.ParseError as e:
             logger.warning("Failed to parse XML: %s", e)

@@ -402,9 +402,9 @@ class TestWebhookFire:
         svc = WebhookService(session)
 
         with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
-            with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
+            with patch("app.core.tasks.create_safe_task") as mock_task:
 
-                def _close_coro(coro):
+                def _close_coro(coro, *, name=None):
                     if asyncio.iscoroutine(coro):
                         coro.close()
                     return MagicMock()
@@ -424,7 +424,7 @@ class TestWebhookFire:
 
         svc = WebhookService(session)
 
-        with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
+        with patch("app.core.tasks.create_safe_task") as mock_task:
             await svc.fire("mission.completed", {})
 
         mock_task.assert_not_called()
@@ -438,7 +438,7 @@ class TestWebhookFire:
 
         svc = WebhookService(session)
 
-        with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
+        with patch("app.core.tasks.create_safe_task") as mock_task:
             await svc.fire("mission.completed", {})
 
         mock_task.assert_not_called()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
+import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -59,7 +60,7 @@ def _resolve_output_dir(tool_id: str, output_dir: str | None) -> str:
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_id = f"{tool_id}_{timestamp}_{uuid.uuid4().hex[:4]}"
-    return f"/tmp/spectra_tool_outputs/{run_id}"
+    return tempfile.mkdtemp(prefix=f"spectra_tool_outputs_{run_id}_")
 
 
 def _estimate_timeout_multiplier(tool_id: str, args: dict[str, Any] | None) -> float:

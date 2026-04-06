@@ -146,8 +146,8 @@ class SchedulerService:
                         {"status": "running", "timestamp": datetime.utcnow().isoformat()},
                         ttl=60,
                     )
-            except OSError:
-                pass
+            except OSError as e:
+                logger.debug("Health reporter cache write failed: %s", e)
             await asyncio.sleep(15)
 
     async def _backup_scheduler(self):
@@ -181,8 +181,8 @@ class SchedulerService:
                                     logger.debug("Backup skipped — ran %.0f s ago", elapsed)
                                     await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
                                     continue
-                            except (ValueError, TypeError):
-                                pass
+                            except (ValueError, TypeError) as e:
+                                logger.debug("Could not parse last_backup_timestamp: %s", e)
 
                 from app.services.infrastructure.backup import BackupService
 
@@ -306,7 +306,8 @@ class SchedulerService:
             stats = await queue_metrics()
             metrics["queue_depth"] = stats.get("depth", 0)
             metrics["in_progress"] = stats.get("in_progress", 0)
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to collect queue metrics: %s", e)
             metrics["queue_depth"] = 0
             metrics["in_progress"] = 0
 
@@ -332,8 +333,8 @@ class SchedulerService:
                             metrics["api_replicas"] = count
                         elif "ai" in name.lower():
                             metrics["ai_replicas"] = count
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to query Docker Swarm replicas: %s", e)
 
         # Estimate utilization from queue stats
         worker_count = metrics.get("worker_replicas", 1)

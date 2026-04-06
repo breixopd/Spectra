@@ -135,12 +135,15 @@ async def list_wordlists(
 
 
 @router.post("/upload")
+@limiter.limit(RateLimits.TOOL_UPLOAD)
 async def upload_wordlist(
+    request: Request,
     file: UploadFile,
     _current_user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, str]:
     """Upload a custom wordlist file."""
+    _ = request
     await check_feature_allowed(_current_user, session, "custom_wordlists")
 
     if not file.filename:
@@ -194,11 +197,14 @@ async def download_preset(
 
 
 @router.delete("/{filename}")
+@limiter.limit(RateLimits.TOOL_UPLOAD)
 async def delete_wordlist(
+    request: Request,
     filename: str,
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, str]:
     """Delete a wordlist file (user scope only; admins can delete system wordlists)."""
+    _ = request
     safe_name = "".join(c for c in filename if c.isalnum() or c in "-_.")
 
     # Try user wordlist first

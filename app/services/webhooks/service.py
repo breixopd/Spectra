@@ -85,7 +85,9 @@ class WebhookService:
         hooks = result.scalars().all()
         for wh in hooks:
             if event in (wh.events or []):
-                asyncio.create_task(_deliver(wh, event, payload))
+                from app.core.tasks import create_safe_task
+
+                create_safe_task(_deliver(wh, event, payload), name=f"webhook-{wh.id}")
 
 
 async def _deliver(wh: Webhook, event: str, payload: dict[str, Any]) -> None:
