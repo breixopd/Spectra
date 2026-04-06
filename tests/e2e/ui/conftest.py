@@ -22,6 +22,7 @@ def pytest_collection_modifyitems(items):
         item.own_markers = [m for m in item.own_markers if m.name != "timeout"]
         item.add_marker(pytest.mark.timeout(timeout_val, method="thread"))
 
+
 APP_BASE_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 ADMIN_USERNAME = os.environ.get("APP_USERNAME", os.environ.get("APP_ADMIN_USER", "admin"))
 ADMIN_PASSWORD = os.environ.get("APP_PASSWORD", os.environ.get("APP_ADMIN_PASSWORD", "TestPassword123!"))
@@ -137,6 +138,7 @@ def _reset_user_activity(username: str) -> None:
     dsn = db_url.replace("postgresql+asyncpg://", "postgresql://")
     try:
         import asyncio
+
         import asyncpg
 
         async def _update():
@@ -256,6 +258,7 @@ def authenticated_page(
     # Brief pause to let any pending keepalive responses (e.g. from logout
     # tests) settle before we re-inject auth cookies.
     import time as _t
+
     _t.sleep(0.3)
 
     cookies_to_use = authenticated_cookies
@@ -307,12 +310,11 @@ def authenticated_page(
             except Exception:
                 pass
             import time as _t2
+
             _t2.sleep(1)
 
     # Lightweight assertion: verify we reached dashboard, not login.
-    assert "/login" not in _page.url, (
-        f"authenticated_page fixture failed to reach dashboard (url={_page.url})"
-    )
+    assert "/login" not in _page.url, f"authenticated_page fixture failed to reach dashboard (url={_page.url})"
 
     yield _page
     if not _page.is_closed():

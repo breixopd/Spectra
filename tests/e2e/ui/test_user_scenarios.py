@@ -37,6 +37,7 @@ def test_plan_displayed_on_profile(authenticated_page: Page, app_url: str):
         # Redirect loop — clear cookies, re-inject from context, retry
         page.context.clear_cookies()
         from tests.e2e.ui.conftest import _refresh_auth_cookies
+
         fresh = _refresh_auth_cookies(app_url)
         page.context.add_cookies(fresh)
         page.goto(f"{app_url}/profile", wait_until="domcontentloaded")
@@ -362,18 +363,17 @@ def test_new_user_registration(page: Page, app_url: str):
     msg_text = msg.inner_text().lower()
 
     # Valid outcomes: created, redirected to login/dashboard, or already exists (re-run)
-    valid = any([
-        "created" in msg_text,
-        "success" in msg_text,
-        "already" in msg_text,
-        "/login" in page.url,
-        "/dashboard" in page.url,
-    ])
-
-    assert valid, (
-        f"Registration did not produce expected outcome. "
-        f"URL={page.url}, message='{msg_text}'"
+    valid = any(
+        [
+            "created" in msg_text,
+            "success" in msg_text,
+            "already" in msg_text,
+            "/login" in page.url,
+            "/dashboard" in page.url,
+        ]
     )
+
+    assert valid, f"Registration did not produce expected outcome. URL={page.url}, message='{msg_text}'"
 
     # Clean up cookies to prevent leakage into subsequent tests
     page.context.clear_cookies()
@@ -412,9 +412,7 @@ def test_regular_user_no_admin_access(page: Page, app_url: str):
         if admin_link.count() > 0:
             # Admin link should be hidden for regular users
             is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
-            assert not admin_link.is_visible() or is_hidden, (
-                "Regular user should not see the admin navigation link"
-            )
+            assert not admin_link.is_visible() or is_hidden, "Regular user should not see the admin navigation link"
 
     # Clean up cookies to prevent leakage into subsequent tests
     page.context.clear_cookies()

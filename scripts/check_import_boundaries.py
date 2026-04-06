@@ -3,7 +3,7 @@
 
 Shared packages must not depend on:
 - app.api.*
-- app.worker.*  
+- app.worker.*
 - app.services.ai.* (except via lazy imports inside functions)
 - app.ai_service
 - app.scheduler_service
@@ -11,6 +11,7 @@ Shared packages must not depend on:
 
 This keeps the shared → service dependency direction clean for future extraction.
 """
+
 import ast
 import sys
 from pathlib import Path
@@ -50,17 +51,13 @@ def check_file(filepath: Path) -> list[str]:
             module = node.module
             for forbidden in FORBIDDEN_IMPORTS:
                 if module.startswith(forbidden):
-                    violations.append(
-                        f"{filepath}:{node.lineno}: top-level import of "
-                        f"'{module}' in shared package"
-                    )
+                    violations.append(f"{filepath}:{node.lineno}: top-level import of '{module}' in shared package")
         elif isinstance(node, ast.Import):
             for alias in node.names:
                 for forbidden in FORBIDDEN_IMPORTS:
                     if alias.name.startswith(forbidden):
                         violations.append(
-                            f"{filepath}:{node.lineno}: top-level import of "
-                            f"'{alias.name}' in shared package"
+                            f"{filepath}:{node.lineno}: top-level import of '{alias.name}' in shared package"
                         )
 
     return violations
@@ -86,7 +83,9 @@ def main() -> int:
             print(f"  {v}")
         return 1
 
-    print(f"Import boundaries clean: checked {sum(1 for pkg in SHARED_PACKAGES for _ in (Path(__file__).resolve().parent.parent / pkg).rglob('*.py'))} files")
+    print(
+        f"Import boundaries clean: checked {sum(1 for pkg in SHARED_PACKAGES for _ in (Path(__file__).resolve().parent.parent / pkg).rglob('*.py'))} files"
+    )
     return 0
 
 

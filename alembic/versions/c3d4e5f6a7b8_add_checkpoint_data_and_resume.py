@@ -5,6 +5,7 @@ Revises: b2c3d4e5f6a7
 Create Date: 2026-03-07 12:00:00.000000
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -20,9 +21,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.add_column("missions", sa.Column("checkpoint_data", sa.JSON(), nullable=True))
-    op.add_column(
-        "missions", sa.Column("resume", sa.Boolean(), nullable=False, server_default="false")
-    )
+    op.add_column("missions", sa.Column("resume", sa.Boolean(), nullable=False, server_default="false"))
 
 
 def downgrade() -> None:

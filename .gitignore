@@ -29,7 +29,6 @@ reports/coverage/
 # =============================================================================
 .env
 .env.test
-.env.test.local
 keys/plugin_signing.pem
 
 # =============================================================================
@@ -56,6 +55,7 @@ node_modules/
 .github/instructions/
 .github/prompts/
 .markdownlint.json
+.github/agents/
 
 # =============================================================================
 # Deprecated / Legacy
@@ -63,3 +63,4 @@ node_modules/
 docs/plan/
 memories/
 config/node_modules/
+

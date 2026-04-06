@@ -224,13 +224,9 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
 
             from app.core.config import settings as _cfg
 
-            dsn = _cfg.DATABASE_URL.get_secret_value().replace(
-                "postgresql+asyncpg://", "postgresql://"
-            )
+            dsn = _cfg.DATABASE_URL.get_secret_value().replace("postgresql+asyncpg://", "postgresql://")
             _pg_listener_conn = await asyncpg.connect(dsn)
-            await _pg_listener_conn.add_listener(
-                "spectra_jobs", lambda *_args: notify_event.set()
-            )
+            await _pg_listener_conn.add_listener("spectra_jobs", lambda *_args: notify_event.set())
             logger.info("Worker LISTEN on spectra_jobs channel active")
         except Exception as exc:  # noqa: BLE001 — fallback to polling
             logger.warning("LISTEN setup failed, falling back to polling: %s", exc)
@@ -244,7 +240,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                 notify_event.clear()
                 try:
                     await asyncio.wait_for(notify_event.wait(), timeout=poll_delay)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
 
                 # 1. Fetch next job (SKIP LOCKED prevents concurrent workers from taking the same job)
