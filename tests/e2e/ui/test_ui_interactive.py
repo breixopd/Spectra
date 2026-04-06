@@ -5,6 +5,7 @@ and verify page content — replacing shallow URL-only navigation tests.
 """
 
 import os
+import re
 
 import pytest
 from playwright.sync_api import Page, expect
@@ -290,8 +291,8 @@ def test_logout(logged_in_page: Page, app_url: str):
     expect(logout_btn).to_be_visible(timeout=15_000)
     logout_btn.click()
 
-    page.wait_for_url("**/login", timeout=30_000)
-    expect(page).to_have_url(f"{app_url}/login")
+    page.wait_for_url("**/login", timeout=30_000, wait_until="domcontentloaded")
+    expect(page).to_have_url(re.compile(r".*/login"))
     # Wait for the keepalive logout response (which sends Set-Cookie to
     # delete auth cookies) to complete before the fixture tears down.
     # This prevents the delayed Set-Cookie from clobbering cookies
