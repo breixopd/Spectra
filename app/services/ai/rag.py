@@ -83,6 +83,7 @@ class RAGService:
         "session_id": "session_id",
         "doc_type": "doc_type",
     }
+    _SAFE_COLUMNS: frozenset[str] = frozenset(FILTER_COLUMNS.values())
 
     def __init__(self, config: RAGConfig | None = None):
         self.config = config or RAGConfig()
@@ -351,6 +352,8 @@ class RAGService:
                 self.FILTER_COLUMNS[k]: v for k, v in (filters or {}).items() if k in self.FILTER_COLUMNS
             }
             for i, (field, value) in enumerate(normalized_filters.items()):
+                if field not in self._SAFE_COLUMNS:
+                    continue
                 placeholder = f"filter_{i}"
                 where_clauses.append(f"{field} = :{placeholder}")
                 params[placeholder] = value

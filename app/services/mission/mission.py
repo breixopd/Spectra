@@ -9,6 +9,7 @@ from typing import Any, ClassVar
 from app.core.enums import MissionStatus
 from app.core.paths import data_path
 from app.core.state_machine import MissionStateMachine
+from app.core.tasks import create_safe_task
 from app.core.websocket import manager as ws_manager
 from app.models.attack_surface import (
     AttackSurface,
@@ -195,9 +196,9 @@ class Mission:
     def _broadcast(self, msg_type: str, data: Any) -> None:
         """Broadcast a message to the owning user's WebSocket connections."""
         if self.user_id:
-            asyncio.create_task(ws_manager.broadcast_to_user_event(self.user_id, msg_type, data))
+            create_safe_task(ws_manager.broadcast_to_user_event(self.user_id, msg_type, data), name="ws-broadcast-user")
         else:
-            asyncio.create_task(ws_manager.broadcast_event(msg_type, data))
+            create_safe_task(ws_manager.broadcast_event(msg_type, data), name="ws-broadcast")
 
     # --- Attack Surface Management ---
 

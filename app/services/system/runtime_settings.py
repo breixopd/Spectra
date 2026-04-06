@@ -238,7 +238,8 @@ async def hydrate_runtime_settings_from_db(
                 reset_caches=reset_caches,
             )
 
-    assert session is not None
+    if session is None:
+        raise RuntimeError("Session is required")
     result = await session.execute(select(SystemConfig))
     rows = result.scalars().all()
     row_map = {

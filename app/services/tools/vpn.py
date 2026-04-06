@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -82,7 +83,7 @@ class VPNManager:
     """
 
     def __init__(self, config_dir: str | None = None):
-        self.config_dir = Path(config_dir or "/tmp/vpn_configs")
+        self.config_dir = Path(config_dir or tempfile.mkdtemp(prefix="spectra_vpn_configs_"))
         self.config_dir.mkdir(parents=True, exist_ok=True)
         self._bucket = settings.S3_BUCKET_VPN
         self._prefix = "vpn/"

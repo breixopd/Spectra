@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import tempfile
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -112,7 +113,7 @@ async def execute_script_job(
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_id = f"script_{timestamp}_{uuid.uuid4().hex[:4]}"
-    work_dir = Path(f"/tmp/spectra_scripts/{run_id}")
+    work_dir = Path(tempfile.mkdtemp(prefix=f"spectra_scripts_{run_id}_"))
     work_dir.mkdir(parents=True, exist_ok=True)
 
     try:

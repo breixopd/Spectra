@@ -28,7 +28,29 @@ async def lifespan(app: FastAPI):
         logger.warning("Embedding init failed (will retry on first use): %s", e)
 
     yield
-    logger.info("AI Service shutting down")
+    logger.info("AI Service shutting down...")
+
+    # Close httpx clients used by AI router
+    try:
+        from app.services.ai.router import get_smart_router
+
+        router = get_smart_router()
+        if hasattr(router, "close"):
+            await router.close()
+    except Exception:
+        logger.debug("AI router cleanup skipped", exc_info=True)
+
+    # Unload embedding model
+    try:
+        from app.services.ai.embeddings import EmbeddingService
+
+        svc = EmbeddingService()
+        if hasattr(svc, "unload"):
+            svc.unload()
+    except Exception:
+        logger.debug("Embedding cleanup skipped", exc_info=True)
+
+    logger.info("AI Service shutdown complete")
 
 
 app = FastAPI(

@@ -199,9 +199,9 @@ async def test_fire_only_delivers_to_matching_hooks():
     svc = WebhookService(session)
 
     with patch("app.services.webhooks.service._deliver", new_callable=AsyncMock):
-        with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
-            # Make create_task close the coroutine to avoid RuntimeWarning
-            def _close_coro(coro):
+        with patch("app.core.tasks.create_safe_task") as mock_task:
+            # Make create_safe_task close the coroutine to avoid RuntimeWarning
+            def _close_coro(coro, *, name=None):
                 if asyncio.iscoroutine(coro):
                     coro.close()
                 return MagicMock()
@@ -210,7 +210,7 @@ async def test_fire_only_delivers_to_matching_hooks():
 
             await svc.fire("mission.completed", {"id": "m-1"})
 
-    # create_task called once (only for subscribed hook)
+    # create_safe_task called once (only for subscribed hook)
     assert mock_task.call_count == 1
 
 
@@ -226,7 +226,7 @@ async def test_fire_no_delivery_when_no_matching_hooks():
 
     svc = WebhookService(session)
 
-    with patch("app.services.webhooks.service.asyncio.create_task") as mock_task:
+    with patch("app.core.tasks.create_safe_task") as mock_task:
         await svc.fire("finding.new", {"id": "f-1"})
 
     mock_task.assert_not_called()

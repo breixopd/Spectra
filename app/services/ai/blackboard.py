@@ -123,6 +123,12 @@ class MissionBlackboard:
 
         from app.core.database import async_session_maker
 
+        def _escape_like(value: str) -> str:
+            """Escape SQL LIKE metacharacters."""
+            return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+        safe_addr = _escape_like(target_address)
+
         async with async_session_maker() as session:
             result = await session.execute(
                 text("""
@@ -132,7 +138,7 @@ class MissionBlackboard:
                     AND (expires_at IS NULL OR expires_at > now())
                     ORDER BY key DESC LIMIT 5
                 """),
-                {"target_pattern": f"%{target_address}%"},
+                {"target_pattern": f"%{safe_addr}%"},
             )
             findings: list[dict] = []
             for row in result.fetchall():

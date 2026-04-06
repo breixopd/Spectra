@@ -27,6 +27,7 @@ class SystemConfigRepository(BaseRepository[SystemConfig]):
         existing = await self.get_by_key(key)
         if existing:
             updated = await self.update(existing.id, value=value, is_secret=is_secret)
-            assert updated is not None
+            if updated is None:
+                raise RuntimeError(f"Failed to update config key: {key}")
             return updated
         return await self.create(key=key, value=value, is_secret=is_secret)
