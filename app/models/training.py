@@ -19,7 +19,7 @@ class TrainingSample(Base):
         UUID(as_uuid=False), ForeignKey("missions.id", ondelete="SET NULL"), nullable=True, index=True
     )
     user_id: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     sample_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     input_text: Mapped[str] = mapped_column(Text, nullable=False)
@@ -51,5 +51,5 @@ class FineTuningJob(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_by: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+        UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )

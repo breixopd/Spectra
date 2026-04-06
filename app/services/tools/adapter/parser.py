@@ -23,7 +23,10 @@ from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from defusedxml import ElementTree as SafeET
+try:
+    from defusedxml import ElementTree as SafeET
+except ImportError:
+    SafeET = ET  # Fallback to stdlib; install defusedxml for XXE protection
 
 from app.services.tools.models import OutputFormat, ToolConfig
 
