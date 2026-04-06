@@ -4,8 +4,10 @@ Revision ID: q2r3s4t5u6v7
 Revises: p1q2r3s4t5u6
 Create Date: 2026-04-03
 """
-from alembic import op
+
 import sqlalchemy as sa
+
+from alembic import op
 
 revision = "q2r3s4t5u6v7"
 down_revision = "p1q2r3s4t5u6"

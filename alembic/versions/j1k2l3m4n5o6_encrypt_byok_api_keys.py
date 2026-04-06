@@ -5,17 +5,19 @@ Revises: w2x3y4z5a6b7
 Create Date: 2026-04-01
 
 """
+
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision: str = "j1k2l3m4n5o6"
-down_revision: Union[str, None] = "w2x3y4z5a6b7"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "w2x3y4z5a6b7"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -59,9 +61,7 @@ def upgrade() -> None:
                 set_clause = ", ".join(f"{k} = :{k}" for k in updates)
                 updates["user_id"] = user_id
                 bind.execute(
-                    sa.text(
-                        f"UPDATE user_preferences SET {set_clause} WHERE user_id = :user_id"
-                    ),
+                    sa.text(f"UPDATE user_preferences SET {set_clause} WHERE user_id = :user_id"),
                     updates,
                 )
     except Exception:

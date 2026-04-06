@@ -222,9 +222,10 @@ class TestMissionConsensusValidation:
                             logs = mission.logs
                             # Either rejected log, failure status, or mission exists
                             # (execution loop may be suppressed in test environment)
-                            assert (
-                                any("rejected" in log.lower() for log in logs)
-                                or mission.status in ("failed", "running", "created")
+                            assert any("rejected" in log.lower() for log in logs) or mission.status in (
+                                "failed",
+                                "running",
+                                "created",
                             ), "Mission was not created properly"
 
 

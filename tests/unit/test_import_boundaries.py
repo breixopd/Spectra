@@ -1,4 +1,5 @@
 """Verify shared package import boundaries."""
+
 import subprocess
 import sys
 

@@ -4,7 +4,6 @@ Provides fixtures specific to integration tests that run without
 external services (Redis, PostgreSQL) unless explicitly required.
 """
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -31,12 +30,14 @@ def _disable_rate_limiting():
 @pytest.fixture(autouse=True)
 def _mock_ws_broadcast():
     """Prevent Mission._broadcast from calling asyncio.create_task outside event loop."""
-    with patch("app.services.mission.mission.ws_manager") as mock_ws, \
-         patch.object(
-             __import__("app.services.mission.mission", fromlist=["Mission"]).Mission,
-             "_broadcast",
-             lambda self, *a, **kw: None,
-         ):
+    with (
+        patch("app.services.mission.mission.ws_manager") as mock_ws,
+        patch.object(
+            __import__("app.services.mission.mission", fromlist=["Mission"]).Mission,
+            "_broadcast",
+            lambda self, *a, **kw: None,
+        ),
+    ):
         mock_ws.broadcast_event = AsyncMock()
         mock_ws.broadcast_to_user_event = AsyncMock()
         yield
@@ -179,9 +180,11 @@ async def mission_manager():
 
     mock_maker = _MockSessionMaker()
 
-    with patch("app.services.mission.manager.lifecycle.async_session_maker", mock_maker), \
-         patch("app.services.mission.state_store.async_session_maker", mock_maker), \
-         patch("app.services.billing.quota_enforcer.async_session_maker", mock_maker):
+    with (
+        patch("app.services.mission.manager.lifecycle.async_session_maker", mock_maker),
+        patch("app.services.mission.state_store.async_session_maker", mock_maker),
+        patch("app.services.billing.quota_enforcer.async_session_maker", mock_maker),
+    ):
         yield manager
 
 
