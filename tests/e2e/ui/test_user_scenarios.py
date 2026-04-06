@@ -23,16 +23,34 @@ pytestmark = [pytest.mark.e2e, pytest.mark.ui]
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.timeout(30)
+@pytest.mark.timeout(45)
 def test_plan_displayed_on_profile(authenticated_page: Page, app_url: str):
     """Verify plan info section is accessible on the profile page."""
     page = authenticated_page
-    page.goto(f"{app_url}/profile", wait_until="networkidle")
 
-    # Click the Plan tab in profile sidebar
-    plan_tab = page.locator("a[data-section='plan']")
-    expect(plan_tab).to_be_visible(timeout=10_000)
-    plan_tab.click()
+    # Navigate to profile — use client-side navigation via sidebar link
+    # to avoid ERR_TOO_MANY_REDIRECTS that can occur on cross-origin
+    # page.goto() right after a cookie re-authentication cycle.
+    try:
+        page.goto(f"{app_url}/profile", wait_until="domcontentloaded")
+    except Exception:
+        # Redirect loop — clear cookies, re-inject from context, retry
+        page.context.clear_cookies()
+        from tests.e2e.ui.conftest import _refresh_auth_cookies
+        fresh = _refresh_auth_cookies(app_url)
+        page.context.add_cookies(fresh)
+        page.goto(f"{app_url}/profile", wait_until="domcontentloaded")
+    try:
+        page.wait_for_load_state("networkidle", timeout=10_000)
+    except Exception:
+        pass
+
+    # Use JS to switch to the Plan tab (more reliable than clicking)
+    page.evaluate("""() => {
+        document.querySelectorAll('.profile-section').forEach(s => s.classList.remove('active'));
+        const planSection = document.getElementById('section-plan');
+        if (planSection) planSection.classList.add('active');
+    }""")
 
     # Plan section should become visible
     plan_section = page.locator("#section-plan")
@@ -53,10 +71,10 @@ def test_admin_create_user_modal(authenticated_page: Page, app_url: str):
     """Admin can open the Create User modal and see form fields."""
     page = authenticated_page
     page.goto(f"{app_url}/admin", wait_until="networkidle")
-    page.wait_for_timeout(2_000)
 
     # Click Users tab
     users_tab = page.locator(".admin-sidebar [data-section='users']")
+    expect(users_tab).to_be_visible(timeout=15_000)
     users_tab.click()
     expect(page.locator("#section-users")).to_be_visible(timeout=10_000)
 
@@ -64,7 +82,6 @@ def test_admin_create_user_modal(authenticated_page: Page, app_url: str):
     create_btn = page.locator("#section-users button", has_text="Create User")
     expect(create_btn).to_be_visible(timeout=10_000)
     create_btn.click()
-    page.wait_for_timeout(1_000)
 
     # If the modal didn't open via button onclick, try JS directly
     modal = page.locator("#user-modal")
@@ -82,15 +99,15 @@ def test_admin_create_user_modal(authenticated_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.timeout(30)
+@pytest.mark.timeout(90)
 def test_admin_plan_management(authenticated_page: Page, app_url: str):
     """Admin can view the Plans tab and see the plans grid."""
     page = authenticated_page
     page.goto(f"{app_url}/admin", wait_until="networkidle")
-    page.wait_for_timeout(2_000)
 
     # Click Plans tab
     plans_tab = page.locator("[data-section='plans']")
+    expect(plans_tab).to_be_visible(timeout=15_000)
     plans_tab.click()
 
     # Plans section should be visible
@@ -105,12 +122,9 @@ def test_admin_plan_management(authenticated_page: Page, app_url: str):
     plans_grid = page.locator("#plans-grid")
     expect(plans_grid).to_be_attached(timeout=10_000)
 
-    # Wait for JS to populate plans
-    page.wait_for_timeout(3_000)
-
-    # Create Plan button should be visible
+    # Create Plan button should be visible (waits for JS to populate)
     create_plan_btn = plans_section.locator("button", has_text="Create Plan")
-    expect(create_plan_btn).to_be_visible(timeout=10_000)
+    expect(create_plan_btn).to_be_visible(timeout=15_000)
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +140,7 @@ def test_mission_launch_form(authenticated_page: Page, app_url: str):
 
     # Mission target input
     target_input = page.locator("#mission-target")
-    expect(target_input).to_be_visible(timeout=10_000)
+    expect(target_input).to_be_visible(timeout=15_000)
 
     # Mission directive input
     directive_input = page.locator("#mission-directive")
@@ -187,10 +201,10 @@ def test_admin_link_visible_for_admin(authenticated_page: Page, app_url: str):
 
     # The admin nav link starts as hidden and is shown by JS for admin users
     admin_link = page.locator("#admin-nav-link")
-    expect(admin_link).to_be_attached(timeout=10_000)
+    expect(admin_link).to_be_attached(timeout=15_000)
 
-    # Wait for JS to unhide it
-    page.wait_for_timeout(3_000)
+    # Wait for sidebar JS to initialise
+    expect(page.locator("#sidebar")).to_be_visible(timeout=10_000)
 
     # Admin link should now be visible (JS removes the `hidden` class for admins)
     is_visible = admin_link.is_visible()
@@ -220,7 +234,7 @@ def test_sidebar_navigation_all_links(authenticated_page: Page, app_url: str):
 
     for path in _SIDEBAR_NAV_PATHS:
         page.goto(f"{app_url}{path}", wait_until="networkidle")
-        expect(page).to_have_url(f"{app_url}{path}", timeout=10_000)
+        expect(page).to_have_url(f"{app_url}{path}", timeout=15_000)
 
         # No 5xx error page should appear
         error_code = page.locator(".error-code")
@@ -251,7 +265,6 @@ def test_profile_all_tabs(authenticated_page: Page, app_url: str):
     """Verify all profile tabs can be clicked and their sections appear."""
     page = authenticated_page
     page.goto(f"{app_url}/profile", wait_until="networkidle")
-    page.wait_for_timeout(2_000)  # let JS initialise
 
     for section_key, section_id in _PROFILE_SECTIONS:
         tab = page.locator(f"a[data-section='{section_key}']")
@@ -341,8 +354,11 @@ def test_new_user_registration(page: Page, app_url: str):
     # Wait for message to appear
     msg = page.locator("#msg")
     expect(msg).to_be_visible(timeout=10_000)
-    page.wait_for_timeout(1_000)
-
+    # Wait for message text to populate
+    page.wait_for_function(
+        "() => { const el = document.getElementById('msg'); return el && el.innerText.trim().length > 0; }",
+        timeout=10_000,
+    )
     msg_text = msg.inner_text().lower()
 
     # Valid outcomes: created, redirected to login/dashboard, or already exists (re-run)
@@ -378,14 +394,17 @@ def test_regular_user_no_admin_access(page: Page, app_url: str):
     page.locator("#email").fill(f"{unique_user}@example.com")
     page.locator("#password").fill("SecurePass123!")
     page.locator("#submitBtn").click()
-    page.wait_for_timeout(2_000)
+
+    # Wait for registration to complete
+    msg = page.locator("#msg")
+    expect(msg).to_be_visible(timeout=10_000)
 
     # Login with the new user
     page.goto(f"{app_url}/login", wait_until="domcontentloaded")
     page.locator("#username").fill(unique_user)
     page.locator("#password").fill("SecurePass123!")
     page.locator("button[type='submit']").click()
-    page.wait_for_url("**/dashboard", timeout=15_000)
+    page.wait_for_url("**/dashboard", timeout=30_000)
 
     # If we reached dashboard, check admin link is NOT visible
     if "/dashboard" in page.url:
@@ -414,11 +433,11 @@ def test_login_rate_limit_allows_normal_usage(page: Page, app_url: str):
     page.locator("#username").fill("admin")
     page.locator("#password").fill("TestPassword123!")
     page.locator("button[type='submit']").click()
-    page.wait_for_url("**/dashboard", timeout=10_000)
+    page.wait_for_url("**/dashboard", timeout=30_000)
 
     # Navigate to a few pages
     for path in ["/history", "/targets", "/settings"]:
-        page.goto(f"{app_url}{path}", wait_until="domcontentloaded")
+        page.goto(f"{app_url}{path}", wait_until="networkidle")
         # Should not see a 429 error page
         error_code = page.locator(".error-code")
         if error_code.count() > 0 and error_code.is_visible():

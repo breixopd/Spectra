@@ -26,6 +26,8 @@ Organisation:
 
 from __future__ import annotations
 
+import os
+
 # ===========================================================================
 # External URLs & APIs
 # ===========================================================================
@@ -243,7 +245,8 @@ CVE_RESULTS_LIMIT: int = 50
 OBSERVABILITY_MAX_RESULTS: int = 500
 
 #: Default API rate limit string (slowapi / redis-throttle format).
-API_RATE_LIMIT: str = "120/minute"
+#: Override via API_RATE_LIMIT env var in test or high-traffic environments.
+API_RATE_LIMIT: str = os.environ.get("API_RATE_LIMIT", "120/minute")
 
 #: Maximum findings IDs in a single bulk-status-update request.
 MAX_BULK_FINDINGS: int = 100

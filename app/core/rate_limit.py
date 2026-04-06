@@ -6,6 +6,7 @@ Protects sensitive endpoints from abuse.
 """
 
 import logging
+import os
 from collections.abc import Callable
 
 from fastapi import Request, Response
@@ -99,15 +100,16 @@ class RateLimits:
     """Common rate limit configurations."""
 
     # Authentication endpoints - allows normal UI flow while preventing brute force
-    LOGIN = "15/minute"
-    SETUP = "10/minute"
+    # Env-var overrides let test environments raise these without weakening production.
+    LOGIN = os.environ.get("RATE_LIMIT_LOGIN", "15/minute")
+    SETUP = os.environ.get("RATE_LIMIT_SETUP", "10/minute")
     TOKEN_REFRESH = "30/minute"
     PROFILE_UPDATE = "5/minute"
     PASSWORD_CHANGE = "5/minute"
     ACCOUNT_DELETE = "2/hour"
     FORGOT_PASSWORD = "3/minute"
     RESET_PASSWORD = "5/minute"
-    PUBLIC_REGISTER = "10/minute"
+    PUBLIC_REGISTER = os.environ.get("RATE_LIMIT_REGISTER", "10/minute")
 
     # Mission operations - moderate limits
     MISSION_START = "5/minute"

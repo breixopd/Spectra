@@ -177,6 +177,10 @@ services:
       - PLUGIN_SAFE_MODE=false
       - QUEUE_STARTUP_TOOL_INSTALL=false
       - RATE_LIMIT_STORAGE=redis://:spectra_test_redis@redis:6379/0
+      - API_RATE_LIMIT=1000/minute
+      - RATE_LIMIT_LOGIN=100/minute
+      - RATE_LIMIT_REGISTER=100/minute
+      - RATE_LIMIT_SETUP=100/minute
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}
@@ -222,6 +226,10 @@ services:
       - PLUGIN_SAFE_MODE=false
       - QUEUE_STARTUP_TOOL_INSTALL=false
       - RATE_LIMIT_STORAGE=redis://:spectra_test_redis@redis:6379/0
+      - API_RATE_LIMIT=1000/minute
+      - RATE_LIMIT_LOGIN=100/minute
+      - RATE_LIMIT_REGISTER=100/minute
+      - RATE_LIMIT_SETUP=100/minute
       - AI_SERVICE_URL=http://ai-svc:5010
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
       - SERVICE_AUTH_SECRET=${SERVICE_AUTH_SECRET:-test-service-secret-key}

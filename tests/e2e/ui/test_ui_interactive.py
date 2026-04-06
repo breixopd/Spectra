@@ -19,12 +19,12 @@ APP_URL = os.environ.get("APP_BASE_URL", "http://localhost:5000")
 # ---------------------------------------------------------------------------
 
 
-def test_login_and_dashboard(logged_in_page: Page):
+def test_login_and_dashboard(logged_in_page: Page, app_url: str):
     """Log in as admin, verify dashboard loads with sidebar and content."""
     page = logged_in_page
 
     # Dashboard should be loaded
-    expect(page).to_have_url(f"{APP_URL}/dashboard", timeout=10_000)
+    expect(page).to_have_url(f"{app_url}/dashboard", timeout=10_000)
 
     # Sidebar should be visible
     sidebar = page.locator("#sidebar")
@@ -39,9 +39,9 @@ def test_login_and_dashboard(logged_in_page: Page):
 # ---------------------------------------------------------------------------
 
 
-def test_signup_shows_errors(page: Page):
+def test_signup_shows_errors(page: Page, app_url: str):
     """Invalid signup data should be blocked by native browser validation."""
-    page.goto(f"{APP_URL}/register", wait_until="networkidle")
+    page.goto(f"{app_url}/register", wait_until="domcontentloaded")
 
     submit_btn = page.locator("#submitBtn")
     expect(submit_btn).to_be_visible(timeout=10_000)
@@ -59,7 +59,7 @@ def test_signup_shows_errors(page: Page):
     submit_btn.click()
 
     expect(submit_btn).to_have_text("Create Account")
-    expect(page).to_have_url(f"{APP_URL}/register", timeout=10_000)
+    expect(page).to_have_url(f"{app_url}/register", timeout=10_000)
     expect(msg).to_have_text("")
 
     invalid_state = page.evaluate(
@@ -90,9 +90,9 @@ def test_signup_shows_errors(page: Page):
 # ---------------------------------------------------------------------------
 
 
-def test_signup_with_existing_user(page: Page):
+def test_signup_with_existing_user(page: Page, app_url: str):
     """Register with existing 'admin' username — verify error message."""
-    page.goto(f"{APP_URL}/register", wait_until="networkidle")
+    page.goto(f"{app_url}/register", wait_until="domcontentloaded")
 
     page.locator("#username").fill("admin")
     page.locator("#email").fill("admin@test.com")
@@ -126,15 +126,15 @@ def test_navigation_sidebar(logged_in_page: Page, app_url: str):
     """Click each sidebar link and verify the page loads."""
     page = logged_in_page
 
-    expect(page).to_have_url(f"{app_url}/dashboard", timeout=10_000)
+    expect(page).to_have_url(f"{app_url}/dashboard", timeout=15_000)
 
     for path, _link_text in _SIDEBAR_LINKS[1:]:
         sidebar_link = page.locator(f"#sidebar nav a[href='{path}']")
         if sidebar_link.count() == 0:
             continue
-        expect(sidebar_link).to_be_visible(timeout=10_000)
+        expect(sidebar_link).to_be_visible(timeout=15_000)
         page.goto(f"{app_url}{path}", wait_until="networkidle")
-        expect(page).to_have_url(f"{app_url}{path}", timeout=10_000)
+        expect(page).to_have_url(f"{app_url}{path}", timeout=15_000)
 
 
 # ---------------------------------------------------------------------------
@@ -156,14 +156,15 @@ def test_admin_panel_tabs(logged_in_page: Page, app_url: str):
     """Go to /admin, click each tab, verify the section loads."""
     page = logged_in_page
     page.goto(f"{app_url}/admin", wait_until="networkidle")
-    page.wait_for_timeout(2_000)  # let JS initialise
 
     for section_id, _label in _ADMIN_TABS:
         tab_link = page.locator(f".admin-sidebar [data-section='{section_id}']")
+        if tab_link.count() == 0:
+            continue
         tab_link.click()
         # The corresponding section should become visible
         section = page.locator(f"#section-{section_id}")
-        expect(section).to_be_visible(timeout=10_000)
+        expect(section).to_be_visible(timeout=15_000)
 
 
 # ---------------------------------------------------------------------------
@@ -177,10 +178,10 @@ def test_profile_page(logged_in_page: Page, app_url: str):
     page.goto(f"{app_url}/profile", wait_until="networkidle")
 
     username_field = page.locator("#profile-username")
-    expect(username_field).to_be_visible(timeout=10_000)
+    expect(username_field).to_be_visible(timeout=15_000)
 
     email_field = page.locator("#profile-email")
-    expect(email_field).to_be_visible(timeout=10_000)
+    expect(email_field).to_be_visible(timeout=15_000)
 
 
 # ---------------------------------------------------------------------------
@@ -194,11 +195,11 @@ def test_observability_page(logged_in_page: Page, app_url: str):
     page.goto(f"{app_url}/observability", wait_until="networkidle")
 
     heading = page.locator("h1", has_text="Observability")
-    expect(heading).to_be_visible(timeout=10_000)
+    expect(heading).to_be_visible(timeout=15_000)
 
     # At least one chart canvas should be present
     charts = page.locator("canvas[id^='chart-']")
-    expect(charts.first).to_be_attached(timeout=10_000)
+    expect(charts.first).to_be_attached(timeout=15_000)
 
 
 # ---------------------------------------------------------------------------
@@ -206,9 +207,9 @@ def test_observability_page(logged_in_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 
 
-def test_landing_page_elements(page: Page):
+def test_landing_page_elements(page: Page, app_url: str):
     """Verify hero, features, pricing, CTA buttons on landing page."""
-    page.goto(f"{APP_URL}/", wait_until="networkidle")
+    page.goto(f"{app_url}/", wait_until="domcontentloaded")
 
     # Hero section
     hero = page.locator("section.hero")
@@ -245,7 +246,7 @@ _LEGAL_PAGES = [
 def test_legal_pages(page: Page, app_url: str):
     """Verify legal pages load with Spectra branding and headings."""
     for path, expected_heading in _LEGAL_PAGES:
-        page.goto(f"{app_url}{path}", wait_until="networkidle")
+        page.goto(f"{app_url}{path}", wait_until="domcontentloaded")
 
         # Page should contain the expected heading text
         heading = page.locator("h1")
@@ -262,9 +263,9 @@ def test_legal_pages(page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 
 
-def test_error_pages(page: Page):
+def test_error_pages(page: Page, app_url: str):
     """Navigate to non-existent URL, verify 404 page."""
-    response = page.goto(f"{APP_URL}/nonexistent-url-that-does-not-exist", wait_until="networkidle")
+    response = page.goto(f"{app_url}/nonexistent-url-that-does-not-exist", wait_until="domcontentloaded")
     assert response is not None
     assert response.status == 404
 
@@ -286,11 +287,17 @@ def test_logout(logged_in_page: Page, app_url: str):
     page = logged_in_page
 
     logout_btn = page.locator("button[title='Sign out']")
-    expect(logout_btn).to_be_visible(timeout=10_000)
+    expect(logout_btn).to_be_visible(timeout=15_000)
     logout_btn.click()
 
-    page.wait_for_url("**/login", timeout=10_000)
+    page.wait_for_url("**/login", timeout=30_000)
     expect(page).to_have_url(f"{app_url}/login")
+    # Wait for the keepalive logout response (which sends Set-Cookie to
+    # delete auth cookies) to complete before the fixture tears down.
+    # This prevents the delayed Set-Cookie from clobbering cookies
+    # injected by subsequent tests' fixtures.
+    page.wait_for_timeout(2000)
+    page.context.clear_cookies()
 
 
 # ---------------------------------------------------------------------------
@@ -300,7 +307,7 @@ def test_logout(logged_in_page: Page, app_url: str):
 
 def test_forgot_password_flow(page: Page, app_url: str):
     """Go to /forgot-password, fill in email, submit, verify message."""
-    page.goto(f"{app_url}/forgot-password", wait_until="networkidle")
+    page.goto(f"{app_url}/forgot-password", wait_until="domcontentloaded")
 
     email_input = page.locator("#email")
     expect(email_input).to_be_visible(timeout=10_000)

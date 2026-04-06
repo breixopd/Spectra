@@ -2,6 +2,8 @@
 
 from playwright.sync_api import Page, expect
 
+from tests.e2e.ui.conftest import ADMIN_PASSWORD, ADMIN_USERNAME
+
 
 def test_login_page_renders(login_page: Page):
     """Login page should render with form fields."""
@@ -22,26 +24,19 @@ def test_login_no_connecting_message(login_page: Page):
 
 def test_login_success_redirects_to_dashboard(login_page: Page, app_url: str):
     """Successful login should redirect to dashboard."""
-    login_page.fill("#username", "admin")
-    login_page.fill("#password", "TestPassword123!")
+    login_page.fill("#username", ADMIN_USERNAME)
+    login_page.fill("#password", ADMIN_PASSWORD)
     login_page.click("button[type='submit']")
-    login_page.wait_for_url("**/dashboard", timeout=10000)
+    login_page.wait_for_url("**/dashboard", timeout=30_000)
     expect(login_page).to_have_url(f"{app_url}/dashboard")
 
 
 def test_navigation_after_login(authenticated_page: Page, app_url: str):
     """After login, navigation to other sections should work (not redirect to login)."""
-    # Navigate to targets
-    authenticated_page.goto(f"{app_url}/targets")
-    authenticated_page.wait_for_load_state("networkidle")
-    expect(authenticated_page).to_have_url(f"{app_url}/targets")
-
-    # Navigate to history
-    authenticated_page.goto(f"{app_url}/history")
-    authenticated_page.wait_for_load_state("networkidle")
-    expect(authenticated_page).to_have_url(f"{app_url}/history")
-
-    # Navigate to settings
-    authenticated_page.goto(f"{app_url}/settings")
-    authenticated_page.wait_for_load_state("networkidle")
-    expect(authenticated_page).to_have_url(f"{app_url}/settings")
+    for path in ["/targets", "/history", "/settings"]:
+        try:
+            authenticated_page.goto(f"{app_url}{path}", wait_until="domcontentloaded")
+        except Exception:
+            # Retry once — a page-JS redirect may race with the navigation
+            authenticated_page.goto(f"{app_url}{path}", wait_until="domcontentloaded")
+        expect(authenticated_page).to_have_url(f"{app_url}{path}", timeout=15_000)
