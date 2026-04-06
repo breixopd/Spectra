@@ -178,7 +178,7 @@ def test_settings_all_sections(authenticated_page: Page, app_url: str):
     page = authenticated_page
     page.goto(f"{app_url}/settings", wait_until="networkidle")
 
-    for tab_id, section_name in _SETTINGS_TABS:
+    for tab_id, _section_name in _SETTINGS_TABS:
         tab_btn = page.locator(f"#{tab_id}")
         if tab_btn.count() == 0:
             continue

@@ -246,6 +246,35 @@ deploy() {
     fi
 }
 
+# ── Post-deploy: verify maintenance services ────────────────────
+
+verify_maintenance_services() {
+    log "Verifying maintenance services..."
+
+    # Ensure BACKUP_ENABLED is set if not already configured
+    if ! grep -q "BACKUP_ENABLED" "$PROJECT_DIR/.env" 2>/dev/null; then
+        log "Setting BACKUP_ENABLED=true in .env (not previously configured)"
+        echo "BACKUP_ENABLED=true" >> "$PROJECT_DIR/.env"
+    fi
+
+    # Verify scheduler service is running and healthy
+    local scheduler_healthy=false
+    for i in 1 2 3 4 5; do
+        local scheduler_url="http://localhost:5020/health"
+        if curl -sf --max-time 5 "$scheduler_url" 2>/dev/null | grep -q '"status"'; then
+            scheduler_healthy=true
+            break
+        fi
+        sleep 3
+    done
+
+    if [ "$scheduler_healthy" = true ]; then
+        log "Scheduler service is healthy — automated maintenance active"
+    else
+        log "WARN: Scheduler health check failed — maintenance tasks may not be running"
+    fi
+}
+
 # ── Main ─────────────────────────────────────────────────────────
 
 main() {
@@ -254,6 +283,7 @@ main() {
     pre_deploy_check
     backup_database
     deploy
+    verify_maintenance_services
     log "=== Deploy finished ==="
 }
 

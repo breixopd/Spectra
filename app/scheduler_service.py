@@ -23,6 +23,9 @@ logger = logging.getLogger(__name__)
 # Stable advisory lock IDs for inter-replica coordination (PostgreSQL pg_advisory_lock)
 _BACKUP_LOCK_ID: int = hash("spectra_backup") & 0x7FFFFFFF
 _QUOTA_LOCK_ID: int = hash("spectra_quota_reset") & 0x7FFFFFFF
+_DB_MAINTENANCE_LOCK_ID: int = hash("spectra_db_maint") & 0x7FFFFFFF
+_EXPLOIT_REFRESH_LOCK_ID: int = hash("spectra_exploit_refresh") & 0x7FFFFFFF
+_STALE_JOB_LOCK_ID: int = hash("spectra_stale_jobs") & 0x7FFFFFFF
 _SCHEDULER_LEADER_LOCK_ID: int = 8675309  # Global leader election for the scheduler
 
 
@@ -53,6 +56,9 @@ class SchedulerService:
             "backup_scheduler": asyncio.create_task(self._backup_scheduler()),
             "cache_cleanup": asyncio.create_task(self._cache_cleanup()),
             "periodic_cleanup": asyncio.create_task(self._periodic_cleanup()),
+            "db_maintenance": asyncio.create_task(self._db_maintenance()),
+            "stale_job_recovery": asyncio.create_task(self._stale_job_recovery()),
+            "exploit_db_refresh": asyncio.create_task(self._exploit_db_refresh()),
         }
         self.tasks = list(self._named_tasks.values())
 
@@ -211,6 +217,80 @@ class SchedulerService:
             await periodic_cleanup_loop()
         except (OSError, RuntimeError, ValueError) as e:
             logger.error("Periodic cleanup error: %s", e)
+
+    async def _db_maintenance(self):
+        """Weekly VACUUM ANALYZE on high-traffic tables."""
+        from app.core.config import get_settings
+
+        while self.running:
+            settings = get_settings()
+            await asyncio.sleep(settings.DB_MAINTENANCE_INTERVAL)
+            if not self.running:
+                break
+            try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _DB_MAINTENANCE_LOCK_ID):
+                        logger.debug("DB maintenance lock not acquired — skipping")
+                        continue
+
+                from sqlalchemy.ext.asyncio import create_async_engine
+
+                engine = create_async_engine(
+                    settings.DATABASE_URL.get_secret_value(), isolation_level="AUTOCOMMIT"
+                )
+                async with engine.connect() as conn:
+                    for table in ["missions", "findings", "audit_logs", "job_queue", "cache_entries"]:
+                        await conn.execute(text(f"VACUUM ANALYZE {table}"))  # noqa: S608 — table names are hardcoded
+                await engine.dispose()
+                logger.info("DB maintenance completed: VACUUM ANALYZE on key tables")
+            except Exception as e:
+                logger.warning("DB maintenance failed: %s", e)
+
+    async def _stale_job_recovery(self):
+        """Recover jobs stuck in 'in_progress' state. Runs every 5 minutes."""
+        from app.core.config import get_settings
+
+        while self.running:
+            settings = get_settings()
+            await asyncio.sleep(settings.STALE_JOB_RECOVERY_INTERVAL)
+            if not self.running:
+                break
+            try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _STALE_JOB_LOCK_ID):
+                        continue
+
+                from app.core.queue import JobQueueManager
+
+                mgr = JobQueueManager()
+                recovered = await mgr.recover_stale_jobs(max_age_minutes=30)
+                if recovered:
+                    logger.info("Recovered %d stale job(s)", recovered)
+            except Exception as e:
+                logger.warning("Stale job recovery failed: %s", e)
+
+    async def _exploit_db_refresh(self):
+        """Periodically refresh exploit database indexes."""
+        from app.core.config import get_settings
+
+        while self.running:
+            settings = get_settings()
+            await asyncio.sleep(settings.EXPLOIT_DB_REFRESH_HOURS * 3600)
+            if not self.running:
+                break
+            try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _EXPLOIT_REFRESH_LOCK_ID):
+                        logger.debug("Exploit DB refresh lock not acquired — skipping")
+                        continue
+
+                from app.services.ai.exploit_db import get_exploit_db
+
+                db = get_exploit_db()
+                stats = await db.update()
+                logger.info("Exploit DB refreshed: %s", stats)
+            except Exception as e:
+                logger.warning("Exploit DB refresh failed: %s", e)
 
 
 async def main():

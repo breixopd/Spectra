@@ -51,6 +51,9 @@
                 <a href="#" data-section="settings" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                     <i data-lucide="sliders-horizontal" class="w-4 h-4 inline-block mr-2 text-slate-500"></i> Settings
                 </a>
+                <a href="#" data-section="data-privacy" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
+                    <i data-lucide="shield" class="w-4 h-4 inline-block mr-2 text-slate-500"></i> Data &amp; Privacy
+                </a>
                 <a href="#" data-section="plan" class="flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium">
                     <i data-lucide="credit-card" class="w-4 h-4 inline-block mr-2 text-slate-500"></i> Plan
                 </a>
@@ -315,6 +318,49 @@
                         </select>
                     </div>
                     <button onclick="saveSettings()" class="mt-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">Save Settings</button>
+                </div>
+            </div>
+
+            <!-- Data & Privacy Section -->
+            <div class="profile-section" id="section-data-privacy">
+                <div class="glass-panel rounded-xl p-6 mb-4">
+                    <h2 class="text-lg font-semibold text-white mb-1">Your Data Rights</h2>
+                    <p class="text-sm text-slate-400 mb-4">Under GDPR and similar regulations you can access, export, restrict, or delete your personal data at any time. We collect account information (username, email), security assessment data (missions, targets, findings), and usage logs. See our <a href="/legal/privacy" class="text-violet-400 hover:underline">Privacy Policy</a> for full details.</p>
+                    <div class="space-y-4 max-w-lg">
+                        <div>
+                            <h3 class="text-sm font-medium text-white mb-2">Export Your Data</h3>
+                            <p class="text-xs text-slate-500 mb-2">Download a JSON file containing all data associated with your account: profile, missions, targets, findings, and audit logs.</p>
+                            <button onclick="downloadMyData()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                                <i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i> Download My Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel rounded-xl p-6 mb-4">
+                    <h2 class="text-lg font-semibold text-white mb-1">Restrict Processing</h2>
+                    <p class="text-sm text-slate-400 mb-4">Under GDPR Art.&nbsp;18 you can request restriction of processing. When enabled, your account remains active but new missions cannot be started and your data will not be used for analytics or training.</p>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="restrict-processing-toggle" class="accent-violet-500 w-4 h-4 rounded" onchange="toggleRestrictProcessing()">
+                        <span class="text-sm text-slate-300">Restrict processing of my data</span>
+                    </label>
+                </div>
+
+                <div class="glass-panel rounded-xl p-6 mb-4">
+                    <h2 class="text-lg font-semibold text-white mb-1">Training Data</h2>
+                    <p class="text-sm text-slate-400 mb-4">Choose whether your anonymized assessment data may be used to improve our AI models. This is entirely opt-in.</p>
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="share-training-toggle" class="accent-violet-500 w-4 h-4 rounded" onchange="toggleShareTraining()">
+                        <span class="text-sm text-slate-300">Allow anonymized data for model training</span>
+                    </label>
+                </div>
+
+                <div class="glass-panel rounded-xl p-6 border border-rose-500/20">
+                    <h2 class="text-lg font-semibold text-rose-400 mb-1">Delete Account</h2>
+                    <p class="text-sm text-slate-400 mb-2">Permanently delete your account and all associated data. This action is immediate and irreversible. We recommend exporting your data first.</p>
+                    <button onclick="deleteAccount()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium rounded-lg transition-colors">
+                        Delete My Account
+                    </button>
                 </div>
             </div>
 
