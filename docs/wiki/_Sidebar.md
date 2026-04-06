@@ -7,6 +7,8 @@
 - [Development](development.md)
 - [Testing Strategy](testing-strategy.md)
 - [Architecture](architecture.md)
+- [Microservices](microservices-split.md)
+- [System Topology](topology.md)
 - [Scaling](scaling.md)
 - [Sandboxes](sandboxes.md)
 - [Worker System](worker-system.md)

@@ -489,6 +489,28 @@ async def get_scaling_metrics(
     return await queue_metrics(queue_name=queue_name)
 
 
+@router.get("/api/admin/scaling/status")
+async def get_scaling_status(
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Get auto-scaling status, current policies, and queue metrics."""
+    from app.core.config import get_settings as _get_settings
+    from app.core.queue import queue_metrics
+
+    settings = _get_settings()
+    result: dict = {"enabled": settings.AUTOSCALE_ENABLED}
+
+    if settings.AUTOSCALE_ENABLED:
+        from app.services.scaling.auto_scaler import AutoScaler
+
+        scaler = AutoScaler(settings)
+        result["scaler"] = scaler.get_status()
+
+    stats = await queue_metrics()
+    result["queue"] = stats
+    return result
+
+
 @router.get("/api/admin/resources/capacity")
 async def get_resource_capacity(
     _perm=require_permission(Permission.MANAGE_SETTINGS),

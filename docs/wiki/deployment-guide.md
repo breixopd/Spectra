@@ -23,12 +23,16 @@ Spectra runs as microservices, all deployed via Docker:
 |---------|-----------|------|---------|----------|
 | **app** | `spectra-app` | 5000 | Web UI + REST API | 1–3 |
 | **ai-svc** | `spectra-ai` | 5010 | LLM routing, embeddings, RAG | 1 |
-| **scheduler** | `spectra-scheduler` | 5011 | Background jobs, backups, metrics, sandbox watchdog | 1 |
+| **scheduler** | `spectra-scheduler` | 5011 | Background jobs, backups, metrics, sandbox watchdog | 1+ (leader-elected) |
 | **worker** | `spectra-worker` | 5012 | Tool execution (manages ephemeral sandbox containers) | 1–3 |
 | **db** | `spectra-db` | 5432 | PostgreSQL + pgvector (persistent state, PostgreSQL-backed app cache, job queue, LISTEN/NOTIFY backbone) | 1 |
 | **redis** | `spectra-redis` | 6379 | Shared distributed rate-limiting backend | 1 |
 | **caddy** | `spectra-caddy` | 80/443 | Reverse proxy — TLS, security headers | 1 |
 | **garage** | `spectra-garage` | 3900 | Self-hosted S3-compatible object storage (required unless you point to external S3) | 0–1 |
+| **tensorzero** | `spectra-tensorzero` | 3000 | AI gateway — provider-agnostic model routing, observability, optimization | 1 |
+| **clickhouse** | `spectra-clickhouse` | 8123 | Analytics and inference storage for TensorZero | 1 |
+
+See [Topology](topology.md) for visual architecture diagrams.
 
 ### Inter-Service Communication
 
@@ -103,6 +107,8 @@ This starts all services as separate containers with health checks:
 - `spectra-worker` — Tool execution
 - `spectra-db` — PostgreSQL
 - `spectra-caddy` — Reverse proxy
+- `spectra-tensorzero` — AI gateway (routes LLM requests to providers)
+- `spectra-clickhouse` — Analytics storage for TensorZero
 
 ### 4. Setup Wizard
 
@@ -133,6 +139,26 @@ After the stack is up:
 - Run `./scripts/health_check.sh http://<host>/api/health` for the first operator smoke check.
 - Confirm backup visibility with `scripts/ops/backup_restore.sh list` once storage is configured.
 - Use [Deployment](deployment.md#rollback) for version rollback mechanics if the rollout needs to be reversed.
+
+---
+
+## Auto-Scaling Configuration
+
+Auto-scaling is opt-in and disabled by default. To enable it, add to your `.env`:
+
+```bash
+AUTOSCALE_ENABLED=true
+AUTOSCALE_WORKER_MIN=1
+AUTOSCALE_WORKER_MAX=10
+AUTOSCALE_QUEUE_THRESHOLD=10
+AUTOSCALE_COOLDOWN_SECS=300
+```
+
+The scheduler's capacity monitor evaluates metrics every 60 seconds and scales services via Docker CLI. See [Scaling](scaling.md#auto-scaling) for the full configuration reference and policy details.
+
+### Resource Calculations
+
+The `ResourceManager` (`app/services/resource_manager.py`) calculates how many sandbox containers each node can support based on available memory, CPU, and configured resource tiers. The capacity monitor uses these calculations for utilization alerts and auto-scaling decisions.
 
 ---
 

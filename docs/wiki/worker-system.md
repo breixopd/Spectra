@@ -6,7 +6,18 @@
 
 Spectra uses a PostgreSQL-backed job queue for background task processing. Workers run inside the tools container and handle tool execution, cleanup, notifications, and report generation.
 
-## Job Queue Architecture
+### Tools Container
+
+The tools container (`Dockerfile.tools`) is a minimal Kali Linux image (~1.1 GB) with Python, networking utilities, and VPN support. **Security tools are not preinstalled** — they are installed on demand from the plugin registry (`plugins/*.json`) when first needed.
+
+On startup, the worker:
+
+1. Initializes the tool plugin registry
+2. Auto-installs any pending tools (unless `WORKER_SKIP_STARTUP_AUTO_INSTALL=true`)
+3. Starts a heartbeat loop (for sandbox workers)
+4. Enters the main `worker_loop` — polling for and executing jobs
+
+This on-demand approach keeps the base image small and ensures tools are always the latest version defined in plugin configurations. When plugins are updated via the API, a `PLUGIN_UPDATED` event triggers an image rebuild (`SANDBOX_AUTO_BUILD_IMAGE=true`).
 
 The queue is implemented in `app/core/queue.py` using the `job_queue` database table. Jobs are claimed via `SELECT ... FOR UPDATE SKIP LOCKED` for safe concurrent processing.
 
@@ -33,12 +44,7 @@ Each job has:
 
 ### Worker Entry Point
 
-The worker runs as `python -m app.worker` inside the tools container. On startup it:
-
-1. Initializes the tool plugin registry
-2. Auto-installs any pending tools
-3. Starts a heartbeat loop (for sandbox workers)
-4. Enters the main `worker_loop` — polling for and executing jobs
+The worker runs as `python -m app.worker` inside the tools container. See "Tools Container" above for the startup sequence.
 
 ---
 

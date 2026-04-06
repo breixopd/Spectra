@@ -182,13 +182,6 @@ Critical decisions pass through quality gates with multi-model validation:
 - `no-new-privileges` applied to app and worker containers
 - Worker retains `NET_ADMIN`/`NET_RAW` for VPN/sandbox networking only
 
-## Container Hardening
-
-- App service runs with read-only root filesystem (tmpfs `/tmp`)
-- App Docker socket mount is read-only
-- `no-new-privileges` applied to app and worker containers
-- Worker retains `NET_ADMIN`/`NET_RAW` for VPN/sandbox networking only
-
 ---
 
 ## Security Headers
@@ -222,3 +215,55 @@ Key configuration for security hardening:
 | `DEBUG` | `false` | Never enable in production |
 
 See [Configuration](configuration.md) for all settings.
+
+---
+
+## GDPR Compliance
+
+Spectra includes built-in features for EU General Data Protection Regulation compliance.
+
+### Data Export (Article 20 — Portability)
+
+Users can export all their personal data as a downloadable JSON file via `GET /api/v1/auth/export-data`. The export includes: user profile, missions, targets, findings, and audit log entries.
+
+Available in the UI at Settings → Data & Privacy → "Download My Data".
+
+### Right to Erasure (Article 17 — Deletion)
+
+Users can permanently delete their account and all associated data via `DELETE /api/v1/auth/account`. Requires password confirmation. Audit logs are preserved with `user_id` set to NULL to maintain audit integrity. The last superuser account cannot be deleted.
+
+Available in the UI at Settings → Data & Privacy → "Delete Account".
+
+### Restriction of Processing (Article 18)
+
+Users can toggle a `processing_restricted` flag on their account via `POST /api/v1/auth/restrict-processing`. All restriction changes are recorded in the audit log.
+
+### Cookie Consent
+
+A cookie consent banner is displayed on all pages (`partials/_cookie_consent.html`). Users can choose:
+
+- **Accept All** — enables all cookies
+- **Essential Only** — limits to strictly necessary cookies
+
+Consent is stored in a `cookie_consent` cookie (1-year expiry). A cookie preferences link is available in the footer. The cookie policy page at `/legal/cookie` documents all cookies used.
+
+### Legal Pages
+
+Spectra includes standard legal pages:
+
+- `/legal/privacy` — Privacy policy with automated decision-making section
+- `/legal/terms` — Terms of service with data deletion section
+- `/legal/cookie` — Cookie policy with full cookie inventory
+
+### UI Controls
+
+The Settings → Data & Privacy tab provides:
+
+- Download My Data button
+- Restrict Processing toggle
+- Training Data opt-out toggle
+- Delete Account button (with password confirmation modal)
+
+All GDPR features are covered by dedicated Playwright tests (`tests/e2e/ui/test_gdpr_features.py`).
+
+See [Operations](operations.md#gdpr-data-management) for operator-facing GDPR commands.

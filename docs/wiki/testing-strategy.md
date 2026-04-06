@@ -52,6 +52,38 @@ Covered subsystems include:
 | Soak/stability tests | Long-running stability, leak detection, churn handling, retry behavior over time | `./tests/run_load_tests.sh soak` or `make test-soak` | Implemented, first pass |
 | Backup/restore and disaster recovery verification | Backup creation, backup verification, restore safety, rollback path | `scripts/ops/backup_restore.sh`, release pre-deploy backup, rollback workflow | Partial; restore drills are not automated end-to-end |
 
+### Current Test Inventory
+
+| Layer | Test Count | Location |
+| --- | --- | --- |
+| Unit tests | ~1920 | `tests/unit/` |
+| Integration tests | ~89 | `tests/integration/` |
+| E2E / UI tests (Playwright) | ~80 | `tests/e2e/ui/` |
+| Load/performance/soak harnesses | Available | `tests/load/`, `tests/performance/`, `tests/soak/` |
+
+### GDPR Test Coverage
+
+The `tests/e2e/ui/test_gdpr_features.py` suite (11 tests) verifies:
+
+- Data & Privacy tab visibility in settings
+- Download My Data button
+- Restrict Processing toggle
+- Training Data toggle
+- Delete Account button and confirmation modal
+- Cookie consent banner (appears, accept all, essential only)
+- Cookie preferences link in footer
+- Privacy policy automated decision-making section
+- Terms of Service data deletion section
+
+### Multi-Role Test Coverage
+
+The `tests/e2e/ui/test_multi_role.py` suite (7 tests) verifies:
+
+- Operators cannot see admin link or access admin page
+- Viewers cannot see admin link or launch missions
+- Admins can see and access admin link and page
+- Newly registered users get non-admin role by default
+
 ## Environments
 
 | Environment | Purpose | Minimum verification |

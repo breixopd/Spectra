@@ -87,3 +87,84 @@ Some destructive commands prompt for confirmation, but not all disruptive action
 - For CI/CD versioning and rollback mechanics, see [Deployment](deployment.md).
 - For queue internals, see [Worker System](worker-system.md).
 - For the platform-wide testing strategy, see [Testing Strategy](testing-strategy.md).
+
+---
+
+## Automated Maintenance (Scheduler)
+
+The scheduler service handles most recurring maintenance automatically. These tasks run on configurable intervals and use PostgreSQL advisory locks for safe multi-replica operation.
+
+| Task | Interval | What It Does |
+|------|----------|--------------|
+| Sandbox watchdog | 60s | Detects and cleans up stale sandbox containers |
+| Warm pool maintenance | Continuous | Maintains `SANDBOX_WARM_POOL_SIZE` pre-warmed containers |
+| Quota reset | Daily at midnight UTC | Resets daily API usage counters |
+| Metrics collection | 30s | Collects and aggregates system metrics |
+| Backup scheduler | `BACKUP_SCHEDULE_HOURS` | Creates S3-native database backups |
+| Cache cleanup | 10 min | Purges expired cache entries |
+| Periodic cleanup | 1 hour | Cleans completed/dead-letter jobs (>30 days), orphaned sandboxes |
+| DB maintenance | `DB_MAINTENANCE_INTERVAL` (7 days) | VACUUM ANALYZE on key tables |
+| Stale job recovery | `STALE_JOB_RECOVERY_INTERVAL` (5 min) | Recovers jobs stuck in `in_progress` for >30 min |
+| Exploit DB refresh | `EXPLOIT_DB_REFRESH_HOURS` (168h) | Updates exploit database indexes |
+| Docker cleanup | `DOCKER_CLEANUP_INTERVAL` (7 days) | Prunes exited containers, dangling images, orphaned volumes |
+| Disk monitor | Periodic | Monitors disk usage and warns on low space |
+| Capacity monitor | 60s | Tracks server pool utilization, drives auto-scaling |
+
+Manual scripts under `scripts/ops/` are still available for on-demand operations but are no longer the primary mechanism for recurring tasks.
+
+---
+
+## Auto-Scaling Management
+
+When `AUTOSCALE_ENABLED=true`, the scheduler's capacity monitor automatically adjusts replica counts. See [Scaling](scaling.md#auto-scaling) for configuration and policy details.
+
+To monitor auto-scaling activity:
+
+```bash
+# Check scheduler logs for scaling events
+docker compose -f docker/docker-compose.yml logs scheduler | grep -i "scale"
+```
+
+Capacity alerts (80% warning, 100% critical) are sent via `NOTIFICATION_WEBHOOK` regardless of whether auto-scaling is enabled.
+
+---
+
+## GDPR Data Management
+
+Spectra provides GDPR-compliant data management features accessible via API and UI.
+
+### User Data Export (Article 20)
+
+Users can export all their data from the Settings → Data & Privacy tab, or via API:
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:5000/api/v1/auth/export-data \
+  -o spectra-data-export.json
+```
+
+The export includes: user profile, missions, targets, findings, and audit log entries.
+
+### Restrict Processing (Article 18)
+
+Users can toggle a processing restriction flag on their account:
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"restricted": true}' \
+  http://localhost:5000/api/v1/auth/restrict-processing
+```
+
+### Account Deletion (Article 17)
+
+Users can permanently delete their account and all associated data. Requires password confirmation. Audit logs are preserved with `user_id` set to NULL.
+
+```bash
+curl -X DELETE -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"password": "current-password"}' \
+  http://localhost:5000/api/v1/auth/account
+```
+
+The last superuser account cannot be deleted.
