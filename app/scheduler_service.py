@@ -59,6 +59,7 @@ class SchedulerService:
             "db_maintenance": asyncio.create_task(self._db_maintenance()),
             "stale_job_recovery": asyncio.create_task(self._stale_job_recovery()),
             "exploit_db_refresh": asyncio.create_task(self._exploit_db_refresh()),
+            "capacity_monitor": asyncio.create_task(self._capacity_monitor()),
         }
         self.tasks = list(self._named_tasks.values())
 
@@ -217,6 +218,65 @@ class SchedulerService:
             await periodic_cleanup_loop()
         except (OSError, RuntimeError, ValueError) as e:
             logger.error("Periodic cleanup error: %s", e)
+
+    async def _capacity_monitor(self):
+        """Monitor network capacity and alert when nearing limits."""
+        while self.running:
+            await asyncio.sleep(60)
+            if not self.running:
+                break
+            try:
+                from app.models.server_node import ServerNode
+
+                async with async_session_maker() as session:
+                    from sqlalchemy import select as sa_select
+
+                    result = await session.execute(
+                        sa_select(ServerNode).where(ServerNode.is_active)
+                    )
+                    nodes = result.scalars().all()
+
+                if not nodes:
+                    continue
+
+                from app.services.resource_manager import ResourceManager
+
+                status = await ResourceManager.check_network_capacity(nodes)
+
+                if status["at_capacity"]:
+                    logger.critical(
+                        "CAPACITY ALERT: Network at full capacity (%d/%d containers, %.1f%%)",
+                        status["total_used"],
+                        status["total_capacity"],
+                        status["utilization_pct"],
+                    )
+                    await self._send_capacity_alert(status)
+                elif status["utilization_pct"] > 80:
+                    logger.warning(
+                        "Capacity warning: %.1f%% utilization (%d/%d)",
+                        status["utilization_pct"],
+                        status["total_used"],
+                        status["total_capacity"],
+                    )
+            except Exception as e:
+                logger.debug("Capacity monitor: %s", e)
+
+    async def _send_capacity_alert(self, status: dict) -> None:
+        """Send capacity alert via configured notification channels."""
+        try:
+            from app.services.notifications import send_notification
+
+            await send_notification(
+                title="Capacity Alert",
+                message=(
+                    f"Network at {status['utilization_pct']:.1f}% capacity "
+                    f"({status['total_used']}/{status['total_capacity']} containers)"
+                ),
+                priority="urgent",
+                tags=["warning", "capacity"],
+            )
+        except Exception as e:
+            logger.debug("Capacity alert send failed: %s", e)
 
     async def _db_maintenance(self):
         """Weekly VACUUM ANALYZE on high-traffic tables."""

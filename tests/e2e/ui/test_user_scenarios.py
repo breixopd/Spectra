@@ -208,10 +208,8 @@ def test_admin_link_visible_for_admin(authenticated_page: Page, app_url: str):
     expect(page.locator("#sidebar")).to_be_visible(timeout=10_000)
 
     # Admin link should now be visible (JS removes the `hidden` class for admins)
-    is_visible = admin_link.is_visible()
-    has_hidden = "hidden" in (admin_link.get_attribute("class") or "")
-    # For admin user, either visibly shown or at least present in DOM
-    assert is_visible or not has_hidden, "Admin nav link should be visible for admin users"
+    # Use Playwright auto-wait to handle async /api/v1/auth/me response timing
+    expect(admin_link).to_be_visible(timeout=15_000)
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +255,7 @@ _PROFILE_SECTIONS = [
     ("api-keys", "section-api-keys"),
     ("activity", "section-activity"),
     ("settings", "section-settings"),
+    ("data-privacy", "section-data-privacy"),
     ("plan", "section-plan"),
 ]
 
