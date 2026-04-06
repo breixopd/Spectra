@@ -281,9 +281,20 @@ async def _initialize_sandbox() -> None:
             set_warm_pool_manager(warm_manager)
 
             async def warm_pool_maintain_loop():
+                from sqlalchemy import text
+
+                _warm_pool_lock_id = hash("spectra_warm_pool") & 0x7FFFFFFF
                 while True:
                     try:
                         await asyncio.sleep(30)
+                        # Advisory lock prevents multiple API replicas from conflicting
+                        async with async_session_maker() as session:
+                            result = await session.execute(
+                                text("SELECT pg_try_advisory_lock(:lock_id)"),
+                                {"lock_id": _warm_pool_lock_id},
+                            )
+                            if not result.scalar():
+                                continue
                         await warm_manager.maintain()
                     except asyncio.CancelledError:
                         break

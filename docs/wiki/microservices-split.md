@@ -39,6 +39,9 @@ Supporting infrastructure:
 | **PostgreSQL** | `pgvector/pgvector:pg16` | Data store, cache, job queue, pub/sub, RAG vectors |
 | **Caddy** | `caddy:2-alpine` | Reverse proxy, TLS termination, security headers |
 | **Garage** | `dxflrs/garage:v2.2.0` | S3-compatible object storage |
+| **TensorZero** | `tensorzero/gateway` | AI gateway — provider-agnostic model routing, observability, optimization |
+| **ClickHouse** | `clickhouse/clickhouse-server:24.11-alpine` | Analytics and inference storage for TensorZero |
+| **Redis** | `redis:7-alpine` | Shared distributed rate-limiting backend |
 
 ### Per-Service Dockerfile Targets
 
@@ -297,7 +300,30 @@ docker compose -f docker/docker-compose.yml up -d
 docker stack deploy -c docker/docker-compose.swarm.yml spectra
 ```
 
-See [Deployment Guide](deployment-guide.md) for full instructions.
+See [Deployment Guide](deployment-guide.md) for full instructions. See [Topology](topology.md) for visual architecture diagrams.
+
+---
+
+## Auto-Scaling
+
+The scheduler includes a reactive auto-scaling engine that adjusts service replica counts based on queue depth and utilization metrics. Auto-scaling is opt-in (`AUTOSCALE_ENABLED=false` by default) and works with both Docker Compose and Docker Swarm.
+
+See [Scaling](scaling.md#auto-scaling) for full configuration and policy details.
+
+---
+
+## Communication Patterns Summary
+
+| Pattern | Used For | Mechanism |
+|---------|----------|-----------|
+| **Request/Response** | API calls, AI chat, embeddings | HTTP + `X-Service-Auth` header |
+| **Job Queue** | Tool execution, notifications, reports | PostgreSQL `job_queue` + `SELECT ... FOR UPDATE SKIP LOCKED` |
+| **Pub/Sub** | Cross-service events (mission lifecycle, sandbox events) | PostgreSQL `NOTIFY`/`LISTEN` |
+| **Health Polling** | Readiness, liveness, capacity monitoring | HTTP `GET /health` endpoints |
+| **Advisory Locks** | Scheduler leader election, task deduplication | PostgreSQL `pg_try_advisory_lock` |
+| **Rate-Limit Counters** | Distributed rate limiting across replicas | Redis |
+
+No external message broker is required — PostgreSQL handles queueing, pub/sub, and coordination.
 
 ---
 

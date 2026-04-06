@@ -16,10 +16,12 @@ Each mission runs in its own ephemeral Docker container with a dedicated worker.
 
 | Layer | Image | Contents |
 | ------- | ------- | ---------- |
-| Base | `spectra-tools:base` | Dockerfile.tools — Kali + core OS tools (nmap, nikto, sqlmap, etc.) |
-| Latest | `spectra-tools:latest` | Base + all plugin tools installed |
+| Base | `spectra-tools:base` | Dockerfile.tools — Kali rolling + OS essentials (curl, git, networking, VPN tools). No security tools preinstalled. |
+| Latest | `spectra-tools:latest` | Base + all plugin tools installed on demand |
 
-**Rebuild trigger**: When plugins change (upload/remove), the golden image is automatically rebuilt (`SANDBOX_AUTO_BUILD_IMAGE=true`).
+The base image is intentionally minimal (~1.1 GB). Security tools (nmap, nuclei, sqlmap, etc.) are **not** baked in — they are installed on demand at runtime from plugin definitions in `plugins/*.json`. This keeps images small, avoids stale tool versions, and lets operators control exactly which tools are available.
+
+**Rebuild trigger**: When plugins change (upload/remove via the API or `PLUGIN_UPDATED` event), the golden image is automatically rebuilt (`SANDBOX_AUTO_BUILD_IMAGE=true`).
 
 **Build process**:
 
@@ -114,8 +116,8 @@ See [Scaling](scaling.md) for Garage/S3 setup details.
 
 ## Wordlist Management
 
-- **Seclists** are baked into the golden image (~700MB, installed via apt)
-- Plugin `args_templates` reference `/usr/share/seclists/` paths
+- **Seclists** and other wordlists are installed on demand via plugin install commands — they are not baked into the base image
+- Plugin `args_templates` reference `/usr/share/seclists/` paths (available after the relevant tool installs its dependencies)
 - **User wordlists** go on a named volume `spectra_wordlists` mounted read-only into sandboxes
 - The app container mounts the same volume read-write for uploads via the API
 

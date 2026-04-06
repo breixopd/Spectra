@@ -26,6 +26,7 @@ _QUOTA_LOCK_ID: int = hash("spectra_quota_reset") & 0x7FFFFFFF
 _DB_MAINTENANCE_LOCK_ID: int = hash("spectra_db_maint") & 0x7FFFFFFF
 _EXPLOIT_REFRESH_LOCK_ID: int = hash("spectra_exploit_refresh") & 0x7FFFFFFF
 _STALE_JOB_LOCK_ID: int = hash("spectra_stale_jobs") & 0x7FFFFFFF
+_DOCKER_CLEANUP_LOCK_ID: int = hash("spectra_docker_cleanup") & 0x7FFFFFFF
 _SCHEDULER_LEADER_LOCK_ID: int = 8675309  # Global leader election for the scheduler
 
 
@@ -60,6 +61,8 @@ class SchedulerService:
             "stale_job_recovery": asyncio.create_task(self._stale_job_recovery()),
             "exploit_db_refresh": asyncio.create_task(self._exploit_db_refresh()),
             "capacity_monitor": asyncio.create_task(self._capacity_monitor()),
+            "docker_cleanup": asyncio.create_task(self._docker_cleanup()),
+            "disk_monitor": asyncio.create_task(self._disk_monitor()),
         }
         self.tasks = list(self._named_tasks.values())
 
@@ -220,12 +223,41 @@ class SchedulerService:
             logger.error("Periodic cleanup error: %s", e)
 
     async def _capacity_monitor(self):
-        """Monitor network capacity and alert when nearing limits."""
+        """Monitor network capacity and auto-scale services when enabled."""
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        scaler = None
+        if settings.AUTOSCALE_ENABLED:
+            from app.services.scaling.auto_scaler import AutoScaler
+
+            scaler = AutoScaler(settings)
+            logger.info("Auto-scaling engine enabled")
+
         while self.running:
             await asyncio.sleep(60)
             if not self.running:
                 break
             try:
+                # --- Auto-scaling ---
+                if scaler is not None:
+                    metrics = await self._collect_scaling_metrics()
+                    decisions = await scaler.evaluate(metrics)
+                    for decision in decisions:
+                        if decision.action != "none":
+                            success = await scaler.execute(decision)
+                            if success:
+                                await self._send_capacity_alert({
+                                    "event": f"auto_scaled_{decision.action}",
+                                    "service": decision.service,
+                                    "replicas": f"{decision.current_replicas} → {decision.desired_replicas}",
+                                    "reason": decision.reason,
+                                    "utilization_pct": 0,
+                                    "total_used": 0,
+                                    "total_capacity": 0,
+                                })
+
+                # --- Capacity warnings (always active) ---
                 from app.models.server_node import ServerNode
 
                 async with async_session_maker() as session:
@@ -260,6 +292,55 @@ class SchedulerService:
                     )
             except Exception as e:
                 logger.debug("Capacity monitor: %s", e)
+
+    async def _collect_scaling_metrics(self) -> dict:
+        """Collect metrics for auto-scaling decisions."""
+        import subprocess
+
+        metrics: dict = {}
+
+        # Queue depth from PostgresJobQueue
+        try:
+            from app.core.queue import queue_metrics
+
+            stats = await queue_metrics()
+            metrics["queue_depth"] = stats.get("depth", 0)
+            metrics["in_progress"] = stats.get("in_progress", 0)
+        except Exception:
+            metrics["queue_depth"] = 0
+            metrics["in_progress"] = 0
+
+        # Current replica counts from Docker Swarm
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                ["docker", "service", "ls", "--format", "{{.Name}} {{.Replicas}}"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                for line in result.stdout.strip().split("\n"):
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        name = parts[0]
+                        replicas = parts[1].split("/")
+                        count = int(replicas[-1]) if replicas else 1
+                        if "worker" in name.lower():
+                            metrics["worker_replicas"] = count
+                        elif "app" in name.lower():
+                            metrics["api_replicas"] = count
+                        elif "ai" in name.lower():
+                            metrics["ai_replicas"] = count
+        except Exception:
+            pass
+
+        # Estimate utilization from queue stats
+        worker_count = metrics.get("worker_replicas", 1)
+        in_progress = metrics.get("in_progress", 0)
+        metrics["worker_utilization"] = min(1.0, in_progress / max(1, worker_count))
+
+        return metrics
 
     async def _send_capacity_alert(self, status: dict) -> None:
         """Send capacity alert via configured notification channels."""
@@ -320,12 +401,25 @@ class SchedulerService:
                     if not await _try_advisory_lock(session, _STALE_JOB_LOCK_ID):
                         continue
 
-                from app.core.queue import JobQueueManager
+                from app.core.queue import PostgresJobQueue
 
-                mgr = JobQueueManager()
+                mgr = PostgresJobQueue()
                 recovered = await mgr.recover_stale_jobs(max_age_minutes=30)
                 if recovered:
                     logger.info("Recovered %d stale job(s)", recovered)
+
+                # Check for dead-letter jobs and alert
+                dlq_jobs = await mgr.list_dead_letter_jobs(limit=1)
+                if dlq_jobs:
+                    dlq_count = len(await mgr.list_dead_letter_jobs(limit=100))
+                    logger.warning("Dead-letter queue has %d jobs", dlq_count)
+                    await self._send_capacity_alert({
+                        "event": "dead_letter_alert",
+                        "message": f"{dlq_count} jobs in dead-letter queue",
+                        "utilization_pct": 0,
+                        "total_used": dlq_count,
+                        "total_capacity": 0,
+                    })
             except Exception as e:
                 logger.warning("Stale job recovery failed: %s", e)
 
@@ -351,6 +445,76 @@ class SchedulerService:
                 logger.info("Exploit DB refreshed: %s", stats)
             except Exception as e:
                 logger.warning("Exploit DB refresh failed: %s", e)
+
+
+    async def _docker_cleanup(self):
+        """Weekly Docker resource cleanup — prune dangling images and exited containers."""
+        from app.core.config import get_settings
+
+        while self.running:
+            settings = get_settings()
+            await asyncio.sleep(settings.DOCKER_CLEANUP_INTERVAL)
+            if not self.running:
+                break
+            try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _DOCKER_CLEANUP_LOCK_ID):
+                        logger.debug("Docker cleanup lock not acquired — skipping")
+                        continue
+
+                import subprocess
+
+                # Prune exited containers
+                await asyncio.to_thread(
+                    subprocess.run,
+                    ["docker", "container", "prune", "-f", "--filter", "until=48h"],
+                    capture_output=True, text=True, timeout=60,
+                )
+                # Prune dangling images
+                await asyncio.to_thread(
+                    subprocess.run,
+                    ["docker", "image", "prune", "-f", "--filter", "until=168h"],
+                    capture_output=True, text=True, timeout=120,
+                )
+                # Prune dangling volumes (only truly orphaned)
+                await asyncio.to_thread(
+                    subprocess.run,
+                    ["docker", "volume", "prune", "-f"],
+                    capture_output=True, text=True, timeout=60,
+                )
+                logger.info("Docker cleanup completed: pruned containers, images, volumes")
+            except Exception as e:
+                logger.warning("Docker cleanup failed: %s", e)
+
+    async def _disk_monitor(self):
+        """Monitor disk space and alert when low."""
+        while self.running:
+            await asyncio.sleep(300)  # 5 minutes
+            if not self.running:
+                break
+            try:
+                import shutil
+
+                usage = shutil.disk_usage("/")
+                free_pct = usage.free / usage.total * 100
+                if free_pct < 10:
+                    logger.critical(
+                        "DISK SPACE CRITICAL: %.1f%% free (%d MB remaining)",
+                        free_pct,
+                        usage.free // (1024 * 1024),
+                    )
+                    await self._send_capacity_alert({
+                        "event": "disk_space_critical",
+                        "free_pct": round(free_pct, 1),
+                        "free_mb": usage.free // (1024 * 1024),
+                        "utilization_pct": round(100 - free_pct, 1),
+                        "total_used": (usage.total - usage.free) // (1024 * 1024),
+                        "total_capacity": usage.total // (1024 * 1024),
+                    })
+                elif free_pct < 20:
+                    logger.warning("Disk space low: %.1f%% free", free_pct)
+            except Exception as e:
+                logger.debug("Disk monitor: %s", e)
 
 
 async def main():

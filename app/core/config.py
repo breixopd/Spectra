@@ -333,10 +333,27 @@ class Settings(BaseSettings):
     # Alias for S3_BUCKET_BACKUPS — used by BackupService (app/services/infrastructure/backup.py)
     BACKUP_S3_BUCKET: str = Field(default="spectra-backups", description="S3 bucket for backups")
 
+    # --- Auto-Scaling ---
+    AUTOSCALE_ENABLED: bool = False  # Opt-in, safe default
+    AUTOSCALE_WORKER_MIN: int = 1
+    AUTOSCALE_WORKER_MAX: int = 10
+    AUTOSCALE_API_MIN: int = 1
+    AUTOSCALE_API_MAX: int = 5
+    AUTOSCALE_AI_MAX: int = 3
+    AUTOSCALE_QUEUE_THRESHOLD: int = 10  # Queue depth to trigger scale-up
+    AUTOSCALE_COOLDOWN_SECS: int = 300  # 5 min between scale actions
+    AUTOSCALE_IDLE_SECS: int = 300  # 5 min idle before scale-down
+
+    # Service names (Docker Swarm or Compose)
+    SWARM_WORKER_SERVICE: str = "spectra_worker"
+    SWARM_API_SERVICE: str = "spectra_app"
+    SWARM_AI_SERVICE: str = "spectra_ai-svc"
+
     # --- Automated Maintenance ---
     DB_MAINTENANCE_INTERVAL: int = Field(default=604800, description="DB VACUUM ANALYZE interval in seconds (7 days)")
     STALE_JOB_RECOVERY_INTERVAL: int = Field(default=300, description="Stale job recovery interval in seconds")
     EXPLOIT_DB_REFRESH_HOURS: int = Field(default=168, description="Exploit DB refresh interval in hours (7 days)")
+    DOCKER_CLEANUP_INTERVAL: int = Field(default=604800, description="Docker resource pruning interval in seconds (7 days)")
 
     # --- Billing / Stripe ---
     PAYMENT_PROVIDER: str = Field(default="noop", description="Payment provider: noop, stripe, crypto, or manual")

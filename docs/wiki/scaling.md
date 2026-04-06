@@ -48,9 +48,11 @@ docker compose -f docker/docker-compose.yml up -d --scale ai-svc=2
 
 The app service routes AI requests to `AI_SERVICE_URL`. With multiple replicas behind Docker's internal DNS round-robin, requests are distributed automatically.
 
-### Scheduler — Do Not Scale
+### Scheduler — Leader Election (Safe Multi-Replica)
 
-The scheduler should always run as a **single replica**. Multiple schedulers would cause duplicate background tasks (backups, watchdog, quota resets).
+The scheduler uses **PostgreSQL advisory lock-based leader election** (`pg_try_advisory_lock`). Multiple scheduler replicas can run safely — only the one that acquires the global leader lock (`_SCHEDULER_LEADER_LOCK_ID`) starts background tasks. Other replicas stand by and retry every 15 seconds, taking over automatically if the leader fails.
+
+Individual tasks (backups, DB maintenance, stale job recovery, exploit DB refresh, Docker cleanup) each use their own advisory locks, providing an additional layer of protection against duplicate execution even during leader transitions.
 
 ### Scaling the Core API
 
@@ -287,6 +289,57 @@ Available via the observability endpoints:
 | `GET /api/v1/observability/stats` | Overall system metrics |
 | `GET /api/v1/observability/metrics` | Prometheus-style metrics |
 | `GET /api/v1/observability/services/health` | Per-service health |
+
+---
+
+## Auto-Scaling
+
+Spectra includes a reactive auto-scaling engine (`app/services/scaling/auto_scaler.py`) that monitors queue depth and service utilization to automatically adjust replica counts via Docker CLI.
+
+### How It Works
+
+1. The scheduler's `capacity_monitor` loop runs every 60 seconds
+2. When `AUTOSCALE_ENABLED=true`, the `AutoScaler` collects metrics (queue depth, replica counts, utilization)
+3. Per-service `ScalingPolicy` objects define thresholds that trigger scale-up or scale-down decisions
+4. Decisions execute via `docker service scale` (Swarm) or `docker compose up --scale` (Compose)
+5. A cooldown period prevents thrashing between scale actions
+
+### Scaling Policies
+
+| Service | Scale-Up Trigger | Scale-Down Trigger |
+|---------|------------------|--------------------|
+| **Worker** | Queue depth > `AUTOSCALE_QUEUE_THRESHOLD` | Queue idle for `AUTOSCALE_IDLE_SECS` |
+| **API** | Utilization > 85% | Utilization < 20% for idle period |
+| **AI** | Utilization > 80% | Utilization < 20% for idle period |
+
+Workers scale proportionally to queue depth (e.g., depth 30 with threshold 10 scales up by 3). Other services scale by one replica per evaluation.
+
+### Configuration
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `AUTOSCALE_ENABLED` | `false` | Enable auto-scaling (opt-in) |
+| `AUTOSCALE_WORKER_MIN` | `1` | Minimum worker replicas |
+| `AUTOSCALE_WORKER_MAX` | `10` | Maximum worker replicas |
+| `AUTOSCALE_API_MIN` | `1` | Minimum API replicas |
+| `AUTOSCALE_API_MAX` | `5` | Maximum API replicas |
+| `AUTOSCALE_AI_MAX` | `3` | Maximum AI service replicas |
+| `AUTOSCALE_QUEUE_THRESHOLD` | `10` | Queue depth to trigger worker scale-up |
+| `AUTOSCALE_COOLDOWN_SECS` | `300` | Minimum seconds between scale actions |
+| `AUTOSCALE_IDLE_SECS` | `300` | Seconds of idle before scale-down |
+| `SWARM_WORKER_SERVICE` | `spectra_worker` | Docker service name for worker |
+| `SWARM_API_SERVICE` | `spectra_app` | Docker service name for API |
+| `SWARM_AI_SERVICE` | `spectra_ai-svc` | Docker service name for AI |
+
+### Capacity Alerts
+
+Even without auto-scaling enabled, the capacity monitor tracks `ServerNode` utilization and sends alerts:
+- **Warning** at 80% utilization
+- **Critical** when at full capacity
+
+Alerts are sent via the configured `NOTIFICATION_WEBHOOK`.
+
+See [Topology](topology.md) for visual architecture diagrams.
 
 ---
 

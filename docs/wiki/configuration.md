@@ -248,3 +248,37 @@ AI/LLM settings are managed through the database-backed `SystemConfig` and are n
 |----------|------|---------|-------------|
 | `SCHEDULER_ENABLED` | bool | `true` | Set `false` when running a dedicated scheduler service to prevent maintenance loops from running twice in the main app |
 | `ENCRYPTION_KEY` | str | `""` | See Security section above |
+
+---
+
+## Auto-Scaling
+
+Auto-scaling is opt-in and disabled by default. See [Scaling](scaling.md#auto-scaling) for architecture and policy details.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `AUTOSCALE_ENABLED` | bool | `false` | Enable reactive auto-scaling |
+| `AUTOSCALE_WORKER_MIN` | int | `1` | Minimum worker replicas |
+| `AUTOSCALE_WORKER_MAX` | int | `10` | Maximum worker replicas |
+| `AUTOSCALE_API_MIN` | int | `1` | Minimum API replicas |
+| `AUTOSCALE_API_MAX` | int | `5` | Maximum API replicas |
+| `AUTOSCALE_AI_MAX` | int | `3` | Maximum AI service replicas |
+| `AUTOSCALE_QUEUE_THRESHOLD` | int | `10` | Queue depth to trigger worker scale-up |
+| `AUTOSCALE_COOLDOWN_SECS` | int | `300` | Minimum seconds between scale actions |
+| `AUTOSCALE_IDLE_SECS` | int | `300` | Seconds of idle before scale-down |
+| `SWARM_WORKER_SERVICE` | str | `"spectra_worker"` | Docker service name for workers |
+| `SWARM_API_SERVICE` | str | `"spectra_app"` | Docker service name for API |
+| `SWARM_AI_SERVICE` | str | `"spectra_ai-svc"` | Docker service name for AI |
+
+---
+
+## Automated Maintenance
+
+These settings control the scheduler's recurring maintenance tasks.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `DB_MAINTENANCE_INTERVAL` | int | `604800` | DB VACUUM ANALYZE interval in seconds (default: 7 days) |
+| `STALE_JOB_RECOVERY_INTERVAL` | int | `300` | Stale job recovery interval in seconds (default: 5 min) |
+| `EXPLOIT_DB_REFRESH_HOURS` | int | `168` | Exploit DB refresh interval in hours (default: 7 days) |
+| `DOCKER_CLEANUP_INTERVAL` | int | `604800` | Docker resource pruning interval in seconds (default: 7 days) |
