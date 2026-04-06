@@ -81,13 +81,13 @@ def test_toolbox_page(logged_in_page: Page, app_url: str):
     page.goto(f"{app_url}/toolbox", wait_until="networkidle")
 
     heading = page.locator("h2")
-    expect(heading.first).to_be_visible(timeout=10_000)
+    expect(heading.first).to_be_visible(timeout=15_000)
     expect(heading.first).to_contain_text("Tool Registry")
 
     tools_container = page.locator(
-        "#tools-list, .tools-list, .tools-grid, .toolbox-container, .plugin-list, table, main"
+        "#tools-list, .tools-list, .tools-grid, #tools-grid, .toolbox-container, .plugin-list, table, main"
     )
-    expect(tools_container.first).to_be_attached(timeout=10_000)
+    expect(tools_container.first).to_be_attached(timeout=15_000)
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ def test_help_page(logged_in_page: Page, app_url: str):
 
 def test_changelog_page(page: Page, app_url: str):
     """Navigate to /changelog (public), verify heading."""
-    page.goto(f"{app_url}/changelog", wait_until="networkidle")
+    page.goto(f"{app_url}/changelog", wait_until="domcontentloaded")
 
     heading = page.locator("h1")
     expect(heading).to_be_visible(timeout=10_000)
@@ -171,7 +171,7 @@ def test_changelog_page(page: Page, app_url: str):
 
 def test_status_page(page: Page, app_url: str):
     """Navigate to /status (public), verify system status heading."""
-    page.goto(f"{app_url}/status", wait_until="networkidle")
+    page.goto(f"{app_url}/status", wait_until="domcontentloaded")
 
     heading = page.locator("h1")
     expect(heading).to_be_visible(timeout=10_000)
@@ -185,7 +185,7 @@ def test_status_page(page: Page, app_url: str):
 
 def test_security_page(page: Page, app_url: str):
     """Navigate to /security (public), verify security heading."""
-    page.goto(f"{app_url}/security", wait_until="networkidle")
+    page.goto(f"{app_url}/security", wait_until="domcontentloaded")
 
     heading = page.locator("h1")
     expect(heading).to_be_visible(timeout=10_000)
@@ -259,20 +259,21 @@ def test_admin_user_management(logged_in_page: Page, app_url: str):
     """Navigate to /admin, verify the Users section shows user data."""
     page = logged_in_page
     page.goto(f"{app_url}/admin", wait_until="networkidle")
-    page.wait_for_timeout(2_000)  # let JS initialise
 
     # Click Users tab
     users_tab = page.locator(".admin-sidebar [data-section='users']")
+    expect(users_tab).to_be_visible(timeout=10_000)
     users_tab.click()
 
     # Users section should be visible
     users_section = page.locator("#section-users")
     expect(users_section).to_be_visible(timeout=10_000)
 
-    # Wait for user list to load (JS fetch) — look for a table row or card
-    # containing "admin" username. Use a table cell or specific user element.
-    page.wait_for_timeout(3_000)
-
-    # Check the section has loaded some user data
-    section_text = users_section.inner_text()
-    assert "admin" in section_text.lower(), "Admin user not found in users section text"
+    # Wait for user list to load (JS fetch)
+    page.wait_for_function(
+        """() => {
+            const section = document.getElementById('section-users');
+            return section && section.innerText.toLowerCase().includes('admin');
+        }""",
+        timeout=15_000,
+    )

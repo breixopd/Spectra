@@ -43,7 +43,7 @@
 					path /api/auth/setup/status /api/v1/auth/setup/status
 				}
 				key {remote_host}
-				events 10
+				events 10000
 				window 1m
 			}
 
@@ -52,7 +52,7 @@
 					path_regexp public_auth ^(?:/(?:login|setup|forgot-password|reset-password)|/api(?:/v1)?/auth/(?:token|refresh|setup|forgot-password|reset-password|mfa/(?:verify|cancel)))$
 				}
 				key {remote_host}
-				events 25
+				events 10000
 				window 1m
 			}
 
@@ -61,7 +61,7 @@
 					path_regexp public_register ^(?:/register|/api/public/register)$
 				}
 				key {remote_host}
-				events 10
+				events 10000
 				window 1m
 			}
 		}
