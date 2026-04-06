@@ -134,6 +134,11 @@ class ServerPoolManager:
         available = [n for n in nodes if n.current_load < n.max_capacity]
         if not available:
             # All at capacity — return least loaded anyway
+            logger.warning(
+                "All %d %s node(s) at capacity — routing to least loaded as fallback",
+                len(nodes),
+                service_type,
+            )
             available = list(nodes)
 
         # Weighted least-connections: score = current_load / weight (lower is better)

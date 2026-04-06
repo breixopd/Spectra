@@ -47,6 +47,7 @@ from app.api.schemas import (
 )
 from app.core.config import settings
 from app.core.database import async_session_maker
+from app.core.events import EventType, events
 from app.core.rate_limit import RateLimits, limiter
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
@@ -266,6 +267,7 @@ async def _set_tool_enabled(
         {"tool_id": tool_id},
     )
     action = "enabled" if enabled else "disabled"
+    await events.emit(EventType.PLUGIN_UPDATED, source="tools", tool_id=tool_id, action=action)
     return _build_install_response(tool_id, tool.status, f"Tool '{tool.config.name}' {action}")
 
 
@@ -403,6 +405,8 @@ async def save_plugin_unsigned(
 
         # Reload into registry
         await registry.load_plugins()
+
+        await events.emit(EventType.PLUGIN_UPDATED, source="tools", tool_id=tool_config.id, action="saved")
 
         return PluginSaveResponse(
             status="saved",
@@ -584,6 +588,8 @@ async def upload_plugin(
             failure_log=f"Failed to queue install for {tool.config.id}",
             tool_id=tool.config.id,
         )
+
+        await events.emit(EventType.PLUGIN_UPDATED, source="tools", tool_id=tool.config.id, action="uploaded")
 
         return PluginUploadResponse(
             success=True,

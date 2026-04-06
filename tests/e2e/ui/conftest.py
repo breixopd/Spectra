@@ -247,6 +247,10 @@ def authenticated_page(
     re-authenticate automatically to obtain fresh tokens.  Handles redirect
     loops caused by stale cookies gracefully.
     """
+    # Refresh last_activity so that the session idle timeout check passes
+    # for background API calls (e.g. /api/v1/auth/me from confirm.js).
+    _reset_user_activity(ADMIN_USERNAME)
+
     # Close any orphan pages left by timed-out tests.
     for p in shared_context.pages:
         if not p.is_closed():

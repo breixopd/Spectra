@@ -281,7 +281,7 @@ function openEditUserModal(u) {
 function populatePlanSelect(selectedId) {
     const sel = document.getElementById('user-form-plan');
     sel.innerHTML = '<option value="">None</option>';
-    allPlans.filter(p => p.is_active).forEach(p => {
+    (Array.isArray(allPlans) ? allPlans : []).filter(p => p.is_active).forEach(p => {
         sel.innerHTML += `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${escapeHtml(p.display_name)}</option>`;
     });
 }
@@ -343,7 +343,7 @@ async function loadPlans() {
     try {
         const { data, error } = await spectraApi.get('/api/admin/plans');
         if (error) throw new Error(error);
-        allPlans = data;
+        allPlans = Array.isArray(data) ? data : [];
         renderPlans();
     } catch(e) { console.error(e); _spectraToast('Error loading plans', 'error'); }
 }
@@ -1494,7 +1494,7 @@ async function performRollback(snapshotId) {
 // ---- Init ----
 loadStats();
 // Pre-load plans for user form plan select
-spectraApi.get('/api/admin/plans').then(r => !r.error ? r.data : []).then(p => { allPlans = p; }).catch(() => {});
+spectraApi.get('/api/admin/plans').then(r => !r.error ? r.data : []).then(p => { allPlans = Array.isArray(p) ? p : []; }).catch(() => {});
 
 // ---- Expose functions used by HTML onclick/onchange/onsubmit handlers ----
 window.toggleMaintenance = toggleMaintenance;
