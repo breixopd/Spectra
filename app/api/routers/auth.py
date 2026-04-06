@@ -704,6 +704,7 @@ async def get_current_profile(
         "role": user.role,
         "is_superuser": user.is_superuser,
         "mfa_enabled": user.mfa_enabled,
+        "processing_restricted": user.processing_restricted,
         "has_preferences": has_preferences,
         "preferences_url": "/api/v1/user/settings",
         "plan": {
@@ -821,6 +822,7 @@ async def export_user_data(
         "is_superuser": current_user.is_superuser,
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
         "mfa_enabled": current_user.mfa_enabled,
+        "processing_restricted": current_user.processing_restricted,
     }
 
     # Collect missions
@@ -899,6 +901,32 @@ async def export_user_data(
             "Content-Disposition": f'attachment; filename="spectra-data-export-{current_user.username}.json"',
         },
     )
+
+
+class RestrictProcessingRequest(BaseModel):
+    restricted: bool
+
+
+@router.post("/restrict-processing", tags=["Account"])
+async def toggle_restrict_processing(
+    request: Request,
+    body: RestrictProcessingRequest,
+    current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Toggle GDPR Art. 18 restriction-of-processing flag on the user account."""
+    current_user.processing_restricted = body.restricted
+    await session.commit()
+
+    await audit_log_event(
+        session,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=str(current_user.id),
+        details={"action": "processing_restricted", "value": body.restricted},
+        request=request,
+    )
+
+    return {"detail": "Processing restriction updated", "processing_restricted": body.restricted}
 
 
 @router.delete("/account", tags=["Auth"])

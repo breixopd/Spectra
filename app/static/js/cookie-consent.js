@@ -43,4 +43,11 @@
     }
 
     initCookieConsent();
+
+    window.reopenCookieConsent = function() {
+        var banner = document.getElementById('cookie-consent');
+        if (banner) {
+            banner.classList.remove('is-hidden');
+        }
+    };
 })();

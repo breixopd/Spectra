@@ -87,9 +87,10 @@
     <h2>11. Termination</h2>
     <p>Either party may terminate the agreement at any time. We may suspend or terminate your account immediately if you violate these Terms. Upon termination:</p>
     <ul>
-        <li>Your access to the Service will cease</li>
-        <li>You may request export of your data within 30 days</li>
-        <li>We may delete your data after 90 days</li>
+        <li>Your access to the Service will cease immediately</li>
+        <li>You may export your data before deletion using the data export feature in your profile settings</li>
+        <li>Account deletion is immediate and permanent — all associated data (missions, targets, findings, and preferences) is removed upon deletion</li>
+        <li>Audit log entries are anonymized (user references removed) but retained for security and compliance purposes</li>
     </ul>
 
     <h2>12. Modifications</h2>
@@ -105,6 +106,6 @@
 </div>
 
 {% include 'partials/_cookie_consent.html' %}
-<footer>&copy; 2026 {{ app_name }}. All rights reserved.</footer>
+<footer>&copy; 2026 {{ app_name }}. All rights reserved. | <a href="#" onclick="reopenCookieConsent();return false;" style="color:inherit;text-decoration:underline;">Cookie Preferences</a></footer>
 </body>
 </html>

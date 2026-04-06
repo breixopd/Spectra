@@ -487,3 +487,19 @@ async def get_scaling_metrics(
     from app.core.queue import queue_metrics
 
     return await queue_metrics(queue_name=queue_name)
+
+
+@router.get("/api/admin/resources/capacity")
+async def get_resource_capacity(
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Auto-calculated resource capacity for this node and network."""
+    from app.core.config import get_settings as _get_settings
+    from app.services.resource_manager import ResourceManager
+
+    s = _get_settings()
+    local = await ResourceManager.get_node_resources()
+    capacity = ResourceManager.calculate_node_capacity(
+        local["total_memory_mb"], local["cpu_cores"], s.SERVICE_MODE
+    )
+    return {"local": {**local, **capacity}, "service_mode": s.SERVICE_MODE}

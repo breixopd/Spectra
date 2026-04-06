@@ -92,6 +92,23 @@ limiter = Limiter(
     storage_uri=_rl_settings.RATE_LIMIT_STORAGE,
 )
 
+# Patch slowapi's _inject_headers to skip non-Response objects (WebSocket
+# upgrades, SSE/EventSource, StreamingResponse subclasses that don't behave
+# like a normal Response).  Without this, slowapi raises:
+#   "parameter response must be an instance of starlette.responses.Response"
+_original_inject_headers = Limiter._inject_headers
+
+
+def _safe_inject_headers(self, response, *args, **kwargs):
+    from starlette.responses import Response as _StarletteResponse
+
+    if not isinstance(response, _StarletteResponse):
+        return response
+    return _original_inject_headers(self, response, *args, **kwargs)
+
+
+Limiter._inject_headers = _safe_inject_headers
+
 
 # --- Rate Limit Presets ---
 

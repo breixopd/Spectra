@@ -127,10 +127,20 @@
     <h2>12. Children's Privacy</h2>
     <p>The Service is not directed to individuals under 18. We do not knowingly collect data from children.</p>
 
-    <h2>13. Changes to This Policy</h2>
+    <h2>13. Automated Decision-Making &amp; Profiling</h2>
+    <p>In accordance with GDPR Article 22, we provide the following information about automated processing:</p>
+    <ul>
+        <li><strong>AI-assisted analysis:</strong> The platform uses artificial intelligence to analyze security assessments, select appropriate testing tools, prioritize vulnerabilities, and generate findings reports.</li>
+        <li><strong>No solely automated legal decisions:</strong> No decisions that produce legal effects or similarly significant effects on you are made solely through automated means. All AI-generated security findings are advisory in nature.</li>
+        <li><strong>Human review:</strong> You may request human review of any AI-generated security finding or assessment result by contacting <a href="mailto:privacy@spectra.security">privacy@spectra.security</a>.</li>
+        <li><strong>Training data opt-in:</strong> Your assessment data is only used to improve our AI models if you explicitly enable the <em>share_training_data</em> preference in your account settings. This is disabled by default.</li>
+        <li><strong>Profiling:</strong> We do not build behavioral profiles for advertising or marketing purposes. The only profiling performed is within security assessments you initiate, which is core to the service contract.</li>
+    </ul>
+
+    <h2>14. Changes to This Policy</h2>
     <p>We may update this Privacy Policy periodically. Material changes will be communicated via email or in-app notification. The "Last updated" date at the top reflects the most recent revision.</p>
 
-    <h2>14. Contact Us</h2>
+    <h2>15. Contact Us</h2>
     <p>For privacy inquiries or to exercise your rights:<br>
     Email: <a href="mailto:privacy@spectra.security">privacy@spectra.security</a><br>
     Address: Spectra Security, EU</p>
@@ -140,6 +150,6 @@
 </div>
 
 {% include 'partials/_cookie_consent.html' %}
-<footer>&copy; 2026 {{ app_name }}. All rights reserved.</footer>
+<footer>&copy; 2026 {{ app_name }}. All rights reserved. | <a href="#" onclick="reopenCookieConsent();return false;" style="color:inherit;text-decoration:underline;">Cookie Preferences</a></footer>
 </body>
 </html>

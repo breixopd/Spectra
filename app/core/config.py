@@ -333,6 +333,11 @@ class Settings(BaseSettings):
     # Alias for S3_BUCKET_BACKUPS — used by BackupService (app/services/infrastructure/backup.py)
     BACKUP_S3_BUCKET: str = Field(default="spectra-backups", description="S3 bucket for backups")
 
+    # --- Automated Maintenance ---
+    DB_MAINTENANCE_INTERVAL: int = Field(default=604800, description="DB VACUUM ANALYZE interval in seconds (7 days)")
+    STALE_JOB_RECOVERY_INTERVAL: int = Field(default=300, description="Stale job recovery interval in seconds")
+    EXPLOIT_DB_REFRESH_HOURS: int = Field(default=168, description="Exploit DB refresh interval in hours (7 days)")
+
     # --- Billing / Stripe ---
     PAYMENT_PROVIDER: str = Field(default="noop", description="Payment provider: noop, stripe, crypto, or manual")
     STRIPE_SECRET_KEY: SecretStr = Field(default=SecretStr(""), description="Stripe API secret key")
