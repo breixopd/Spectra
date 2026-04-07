@@ -45,12 +45,17 @@ def test_dashboard_mobile_layout(authenticated_page: Page, app_url: str):
     # Main content should be visible
     main = page.locator("main, #main-content, .main-content, [role='main']")
     expect(main.first).to_be_visible(timeout=15_000)
-    # Sidebar should be hidden or collapsed on mobile
+    # On mobile the sidebar is off-screen (translateX(-100%)) and a hamburger
+    # button is shown instead.  The sidebar element still exists at full width
+    # but its bounding-box x position is negative (off-screen to the left).
+    hamburger = page.locator(".hamburger-btn")
+    expect(hamburger).to_be_visible(timeout=10_000)
     sidebar = page.locator("#sidebar, nav.sidebar, aside")
     if sidebar.count() > 0:
         box = sidebar.first.bounding_box()
-        assert box is None or box["width"] < 100, (
-            f"Sidebar should be collapsed on mobile, got width={box['width'] if box else 'N/A'}px"
+        # Sidebar either has no box (hidden) or is positioned off-screen
+        assert box is None or box["x"] < 0, (
+            f"Sidebar should be off-screen on mobile, got x={box['x'] if box else 'N/A'}px"
         )
 
 
