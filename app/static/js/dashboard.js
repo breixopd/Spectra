@@ -1,4 +1,5 @@
-// Dashboard Logic for Spectra
+// Dashboard Logic for Spectra — initialization and coordination
+// Sub-modules loaded via <script> tags: charts.js, findings.js, tasks.js
 
 function showSharedModal(id) {
     if (typeof window.showModal === 'function') {
@@ -37,6 +38,11 @@ function addTerminalLine(text, type = 'info') {
     terminalOutput.scrollTop = terminalOutput.scrollHeight;
 }
 
+// Expose shared helpers for sub-module functions (called at runtime after module init)
+window.showSharedModal = showSharedModal;
+window.closeSharedModal = closeSharedModal;
+window.addTerminalLine = addTerminalLine;
+
 // --- WebSocket Event Handlers ---
 function handleDashboardSocketMessage(data) {
     try {
@@ -73,48 +79,6 @@ function handleDashboardSocketMessageEvent(event) {
 }
 
 document.addEventListener('spectra:ws-message', handleDashboardSocketMessageEvent);
-
-function handleGeo(data) {
-    if (data.lat && data.lon) {
-        addMapMarker(data.lat, data.lon, `${data.city}, ${data.country}`);
-    }
-}
-
-function handleFinding(data) {
-    // Update finding counts
-    const severity = (data.severity || 'info').toLowerCase();
-    const countEl = document.getElementById(`count-${severity}`);
-    if (countEl) {
-        countEl.textContent = parseInt(countEl.textContent) + 1;
-    }
-    
-    // Add to graph - ensure graph is initialized
-    if (!cy) initGraph();
-    if (cy) {
-        addFindingNode(data);
-    }
-}
-
-function updateTaskList(data) {
-    // Currently no dedicated task list UI, logging to terminal
-    if (data && data.tasks) {
-        const active = data.tasks.filter(t => t.status === 'running').length;
-        const completed = data.tasks.filter(t => t.status === 'completed').length;
-        const total = data.tasks.length;
-        addTerminalLine(`[TASKS] Progress: ${completed}/${total} (${active} active)`, 'info');
-    }
-}
-
-function handleAttackSurface(data) {
-    // Update node count with attack surface info
-    const nodeCount = document.getElementById('node-count');
-    if (nodeCount && cy) {
-        nodeCount.textContent = `${cy.nodes().length} nodes`;
-    }
-    
-    // Log attack surface updates
-    addTerminalLine(`[SURFACE] ${data.services || 0} services, ${data.vulnerabilities || 0} vulns, ${data.vectors_total || 0} vectors`, 'info');
-}
 
 function handleExploitSuccess(data) {
     addTerminalLine(`Exploit confirmed: ${data.vector}`, 'success');
@@ -299,6 +263,9 @@ function startMission(target, directive, playbookId) {
     });
 }
 
+// Expose startMission for tasks.js launchPlaybook()
+window.startMission = startMission;
+
 // --- Scan Presets ---
 async function launchPreset(presetId) {
     const target = document.getElementById('mission-target')?.value?.trim();
@@ -401,182 +368,66 @@ async function switchModel(modelId) {
     }
 }
 
-// --- Network Graph (Cytoscape.js) ---
-let cy;
-let graphPlaceholderVisible = true;
+// Override handleFinding to track findings for click access
+const origHandleFinding = handleFinding;
+window.handleFinding = function(data) {
+    origHandleFinding(data);
+    // Store finding data for click access
+    if (!window._dashboardFindings) window._dashboardFindings = [];
+    window._dashboardFindings.push(data);
+};
 
-function showGraphPlaceholder() {
-    const container = document.getElementById('network-graph');
-    if (!container) return;
-    graphPlaceholderVisible = true;
-    container.innerHTML = '<div class="text-center text-slate-700"><i data-lucide="git-branch" class="w-5 h-5 inline-block mb-2"></i><p class="text-xs">Discovered services and hosts appear here</p></div>';
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
+// Event delegation for task tree clicks (replaces inline onclick for XSS safety)
+// Registered once at page load — not inside renderTaskTree() — to avoid duplicate handlers.
+document.getElementById('task-tree-content')?.addEventListener('click', function(e) {
+    const el = e.target.closest('[data-task-id]');
+    if (el && window._taskTreeData) {
+        const task = window._taskTreeData[el.dataset.taskId];
+        if (task) openFindingDetail(task);
+    }
+});
 
-function initGraph() {
-    const container = document.getElementById('network-graph');
-    if (!container) return;
+// Listen for task/path updates via WebSocket
+document.addEventListener('spectra:ws-message', (event) => {
+    try {
+        const msg = JSON.parse(event.detail);
+        if (msg.type === 'task_tree') renderTaskTree(msg.data);
+        if (msg.type === 'attack_paths') renderAttackPaths(msg.data);
+        if (msg.type === 'task_update' && msg.data?.tasks) renderTaskTree(msg.data.tasks);
+    } catch {}
+});
 
-    // Clear placeholder
-    container.innerHTML = '';
-    graphPlaceholderVisible = false;
-
-    cy = cytoscape({
-        container: container,
-        style: [
-            {
-                selector: 'node',
-                style: {
-                    'background-color': '#64748b',
-                    'label': 'data(label)',
-                    'color': '#94a3b8',
-                    'font-size': '10px',
-                    'font-family': 'JetBrains Mono',
-                    'text-valign': 'bottom',
-                    'text-margin-y': 5
-                }
-            },
-            {
-                selector: 'node[type="target"]',
-                style: {
-                    'background-color': '#8b5cf6', // Violet
-                    'width': 30,
-                    'height': 30
-                }
-            },
-            {
-                selector: 'node[type="service"]',
-                style: {
-                    'background-color': '#10b981', // Emerald
-                    'width': 20,
-                    'height': 20
-                }
-            },
-            {
-                selector: 'node[type="vuln"]',
-                style: {
-                    'background-color': '#f43f5e', // Rose
-                    'width': 15,
-                    'height': 15
-                }
-            },
-            {
-                selector: 'edge',
-                style: {
-                    'width': 1,
-                    'line-color': '#334155',
-                    'curve-style': 'bezier'
-                }
-            }
-        ],
-        layout: {
-            name: 'cose',
-            animate: true
-        }
-    });
-
-    updateNodeCount();
-
-    // Handle container resize
-    const observer = new ResizeObserver(() => { if (cy) cy.resize(); });
-    observer.observe(container);
-}
-
-function initGraphWithTarget(targetLabel) {
-    if (!cy) initGraph();
-    if (!cy) return;
-
-    // Add target node if not present
-    if (cy.getElementById('target').length === 0) {
-        cy.add({ group: 'nodes', data: { id: 'target', label: targetLabel || 'Target', type: 'target' } });
-        cy.layout({ name: 'cose', animate: true }).run();
-        updateNodeCount();
+// --- Presets dropdown toggle (keyboard accessible) ---
+function togglePresetsDropdown() {
+    const trigger = document.getElementById('presets-trigger');
+    const menu = document.getElementById('presets-menu');
+    if (!trigger || !menu) return;
+    const expanded = trigger.getAttribute('aria-expanded') === 'true';
+    trigger.setAttribute('aria-expanded', String(!expanded));
+    if (expanded) {
+        menu.classList.add('opacity-0', 'invisible');
+        menu.classList.remove('opacity-100', 'visible');
+    } else {
+        menu.classList.remove('opacity-0', 'invisible');
+        menu.classList.add('opacity-100', 'visible');
     }
 }
 
-// --- Threat Map (Leaflet) ---
-let map;
-let markers = {};
-
-function initMap() {
-    const mapContainer = document.getElementById('threat-map');
-    if (!mapContainer) return;
-
-    // Clean up placeholder before Leaflet init
-    const placeholder = document.getElementById('map-placeholder');
-    if (placeholder) placeholder.remove();
-
-    map = L.map('threat-map', {
-        zoomControl: false,
-        attributionControl: false,
-        minZoom: 1,
-        maxZoom: 18,
-        worldCopyJump: true
-    }).setView([25, 0], 2);
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 18,
-        subdomains: 'abcd',
-        errorTileUrl: ''
-    }).addTo(map);
-    map.getContainer().style.background = '#0f172a';
-
-    // Leaflet requires invalidateSize when container is resized or initially hidden
-    setTimeout(() => { if (map) map.invalidateSize(); }, 200);
-    window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
-    // Observer for container visibility changes
-    const observer = new ResizeObserver(() => { if (map) map.invalidateSize(); });
-    observer.observe(mapContainer);
-}
-
-function addMapMarker(lat, lng, title) {
-    if (!map) return;
-    
-    const marker = L.circleMarker([lat, lng], {
-        radius: 6,
-        fillColor: "#10b981",
-        color: "#fff",
-        weight: 1,
-        opacity: 1,
-        fillOpacity: 0.8
-    }).addTo(map);
-    
-    marker.bindPopup(`<b style="color:#333">${title}</b>`);
-}
-
-function addFindingNode(finding) {
-    if (!cy) return;
-    
-    // Simplified logic to add nodes based on finding
-    // In a real app, we'd parse the finding structure more carefully
-    const id = `vuln-${Math.random().toString(36).substr(2, 9)}`;
-    
-    cy.add({
-        group: 'nodes',
-        data: { id: id, label: finding.title || 'Vuln', type: 'vuln' }
+// Add info icon handler to adversary-playbook dropdown
+(function setupPlaybookInfo() {
+    const sel = document.getElementById('adversary-playbook');
+    if (!sel) return;
+    sel.addEventListener('dblclick', async () => {
+        const val = sel.value;
+        if (!val) return;
+        try {
+            const { data: playbooks, error } = await spectraApi.get('/api/v1/missions/adversary-playbooks');
+            if (error) return;
+            const pb = playbooks.find(p => p.id === val);
+            if (pb) showPlaybookDetail(pb);
+        } catch {}
     });
-    
-    // Ensure target node exists
-    if (cy.getElementById('target').length === 0) {
-        cy.add({ group: 'nodes', data: { id: 'target', label: 'Target', type: 'target' } });
-    }
-
-    // Link to target
-    cy.add({
-        group: 'edges',
-        data: { source: 'target', target: id }
-    });
-    
-    cy.layout({ name: 'cose', animate: true }).run();
-    updateNodeCount();
-}
-
-function updateNodeCount() {
-    if (cy) {
-        const count = cy.nodes().length;
-        document.getElementById('node-count').textContent = `${count} nodes`;
-    }
-}
+})();
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
@@ -619,338 +470,10 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(() => {
             showGraphPlaceholder();
         });
-});
 
-// --- Metrics & Trends (Chart.js) ---
-let chartInstances = {};
-
-async function loadMetrics() {
-    const days = parseInt(document.getElementById('metrics-timerange').value) || 0;
-    let missions = [], allFindings = [];
-    const errEl = document.getElementById('dashboard-error');
-    const findingsLoading = document.getElementById('findings-loading');
-    const findingsData = document.getElementById('findings-data');
-
-    try {
-        const { data: missionsData, error: missionsError } = await spectraApi.get('/api/v1/missions');
-        if (!missionsError) missions = missionsData.items || missionsData || [];
-        if (errEl) errEl.classList.add('hidden');
-    } catch {
-        if (errEl) errEl.classList.remove('hidden');
-    }
-
-    const cutoff = days > 0 ? new Date(Date.now() - days * 86400000) : null;
-    if (cutoff) missions = missions.filter(m => new Date(m.created_at) >= cutoff);
-
-    // Toggle getting started card based on mission existence
-    const gettingStarted = document.getElementById('getting-started');
-    if (gettingStarted) {
-        gettingStarted.classList.toggle('hidden', missions.length > 0);
-    }
-
-    // Show empty state for findings when none exist
-    if (findingsLoading && findingsData && missions.length === 0) {
-        findingsLoading.innerHTML = '<div class="col-span-4 dash-empty" style="padding:1rem 0.5rem;min-height:auto;"><i data-lucide="shield" class="w-5 h-5 inline-block"></i><p style="font-size:0.75rem;">No findings yet</p></div>';
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-    }
-
-    // Gather all findings
-    for (const m of missions) {
-        try {
-            const { data: f, error: fErr } = await spectraApi.get(`/api/v1/missions/${m.id}/findings`);
-            if (!fErr && f) { f.forEach(x => { x._mission = m; }); allFindings.push(...f); }
-        } catch {}
-    }
-
-    // Swap skeleton for real data
-    if (findingsLoading) findingsLoading.classList.add('hidden');
-    if (findingsData) findingsData.classList.remove('hidden');
-
-    // Show empty state for metrics when no data
-    const metricsSection = document.getElementById('metrics-section');
-    if (metricsSection && missions.length === 0 && allFindings.length === 0) {
-        const metricsBody = metricsSection.querySelector('.p-5');
-        if (metricsBody) {
-            metricsBody.innerHTML = '<div class="dash-empty" style="padding:3rem 1rem;"><i data-lucide="bar-chart-3" class="w-5 h-5 inline-block"></i><h3>No data yet</h3><p>Complete your first assessment to see trends and metrics here.</p></div>';
-            if (typeof lucide !== 'undefined') lucide.createIcons();
-        }
-    } else {
-        renderFindingsOverTime(allFindings, days);
-        renderMissionsPerWeek(missions);
-        renderSeverityBreakdown(allFindings);
-        renderTopVulns(allFindings);
-        renderTopTargets(allFindings, missions);
-    }
-}
-
-function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
-
-function renderFindingsOverTime(findings, days) {
-    destroyChart('findings-time');
-    const grouped = {};
-    findings.forEach(f => { const d = (f.created_at || '').split('T')[0]; if (d) grouped[d] = (grouped[d] || 0) + 1; });
-    const labels = Object.keys(grouped).sort();
-    const data = labels.map(l => grouped[l]);
-    const ctx = document.getElementById('chart-findings-time');
-    if (!ctx) return;
-    chartInstances['findings-time'] = new Chart(ctx, {
-        type: 'line', data: { labels, datasets: [{ label: 'Findings', data, borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.3, pointRadius: 2 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } }, y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } } } }
-    });
-}
-
-function renderMissionsPerWeek(missions) {
-    destroyChart('missions-week');
-    const grouped = {};
-    missions.forEach(m => {
-        const d = new Date(m.created_at);
-        const weekStart = new Date(d); weekStart.setDate(d.getDate() - d.getDay());
-        const key = weekStart.toISOString().split('T')[0];
-        grouped[key] = (grouped[key] || 0) + 1;
-    });
-    const labels = Object.keys(grouped).sort();
-    const data = labels.map(l => grouped[l]);
-    const ctx = document.getElementById('chart-missions-week');
-    if (!ctx) return;
-    chartInstances['missions-week'] = new Chart(ctx, {
-        type: 'bar', data: { labels, datasets: [{ label: 'Missions', data, backgroundColor: '#10b981', borderRadius: 4 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { display: false } }, y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } } } }
-    });
-}
-
-function renderSeverityBreakdown(findings) {
-    destroyChart('severity');
-    const counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
-    findings.forEach(f => { const s = (f.severity || 'info').toLowerCase(); if (s in counts) counts[s]++; });
-    const ctx = document.getElementById('chart-severity');
-    if (!ctx) return;
-    chartInstances['severity'] = new Chart(ctx, {
-        type: 'doughnut', data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: ['#f43f5e', '#f59e0b', '#3b82f6', '#64748b', '#475569'], borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 10, family: 'JetBrains Mono' }, padding: 8, usePointStyle: true, pointStyleWidth: 8 } } } }
-    });
-}
-
-function renderTopVulns(findings) {
-    const typeCounts = {};
-    findings.forEach(f => { const t = f.title || 'Untitled Finding'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
-    const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    const el = document.getElementById('top-vulns-list');
-    if (!el) return;
-    el.innerHTML = sorted.length === 0 ? '<div class="text-slate-600 text-center py-4">No findings</div>' :
-        sorted.map(([name, count], i) => `<div class="flex items-center gap-2"><span class="text-xs text-slate-600 w-4">${i + 1}.</span><span class="flex-1 text-slate-300 truncate">${escapeHtml(name)}</span><span class="text-xs font-mono text-slate-500">${count}</span></div>`).join('');
-}
-
-function renderTopTargets(findings, missions) {
-    destroyChart('top-targets');
-    const targetCounts = {};
-    findings.forEach(f => { const t = f._mission?.target || 'Target not specified'; targetCounts[t] = (targetCounts[t] || 0) + 1; });
-    const sorted = Object.entries(targetCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    const ctx = document.getElementById('chart-top-targets');
-    if (!ctx) return;
-    chartInstances['top-targets'] = new Chart(ctx, {
-        type: 'bar', data: { labels: sorted.map(s => s[0]), datasets: [{ label: 'Findings', data: sorted.map(s => s[1]), backgroundColor: '#8b5cf6', borderRadius: 4 }] },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } }, y: { ticks: { color: '#94a3b8', font: { size: 9, family: 'JetBrains Mono' } }, grid: { display: false } } } }
-    });
-}
-
-// --- Playbook Detail Modal ---
-let selectedPlaybookData = null;
-
-function showPlaybookDetail(playbook) {
-    selectedPlaybookData = playbook;
-    document.getElementById('pb-detail-title').textContent = playbook.name || 'Playbook';
-    document.getElementById('pb-detail-desc').textContent = playbook.description || '';
-    const phasesEl = document.getElementById('pb-detail-phases');
-    const steps = playbook.steps || playbook.phases || [];
-    phasesEl.innerHTML = steps.map((s, i) => `<div class="flex items-center gap-2 text-xs"><span class="w-5 h-5 rounded-full bg-violet-500/20 text-violet-400 flex items-center justify-center text-xs font-mono shrink-0">${i + 1}</span><span class="text-slate-300">${escapeHtml(typeof s === 'string' ? s : s.name || s.description || JSON.stringify(s))}</span></div>`).join('');
-    document.getElementById('pb-detail-stealth').textContent = playbook.stealth ? 'On' : 'Off';
-    document.getElementById('pb-detail-autoexploit').textContent = playbook.auto_exploit !== false ? 'Yes' : 'No';
-    showSharedModal('playbook-detail-modal');
-}
-function closePlaybookDetail() { closeSharedModal('playbook-detail-modal'); }
-function launchPlaybook() {
-    if (!selectedPlaybookData) return;
-    const target = document.getElementById('mission-target')?.value?.trim();
-    if (!target) { closePlaybookDetail(); document.getElementById('mission-target')?.focus(); return; }
-    closePlaybookDetail();
-    startMission(target, selectedPlaybookData.description || 'Playbook execution', selectedPlaybookData.id);
-}
-
-// Add info icon handler to adversary-playbook dropdown
-(function setupPlaybookInfo() {
-    const sel = document.getElementById('adversary-playbook');
-    if (!sel) return;
-    sel.addEventListener('dblclick', async () => {
-        const val = sel.value;
-        if (!val) return;
-        try {
-            const { data: playbooks, error } = await spectraApi.get('/api/v1/missions/adversary-playbooks');
-            if (error) return;
-            const pb = playbooks.find(p => p.id === val);
-            if (pb) showPlaybookDetail(pb);
-        } catch {}
-    });
-})();
-
-// --- Finding Detail Modal ---
-let currentFinding = null;
-
-function openFindingDetail(finding) {
-    currentFinding = finding;
-    document.getElementById('fd-title').textContent = finding.title || 'Finding';
-    const sevColors = { critical: 'text-rose-400', high: 'text-amber-400', medium: 'text-blue-400', low: 'text-slate-400', info: 'text-slate-500' };
-    const sev = (finding.severity || 'info').toLowerCase();
-
-    document.getElementById('fd-tab-details').innerHTML = `
-        <div class="space-y-3">
-            <div class="flex items-center gap-2"><span class="text-xs text-slate-500 uppercase w-20">Severity</span><span class="${sevColors[sev] || 'text-slate-400'} font-medium uppercase text-sm">${escapeHtml(sev)}</span></div>
-            <div class="flex items-center gap-2"><span class="text-xs text-slate-500 uppercase w-20">Tool</span><span class="text-sm text-white">${escapeHtml(finding.tool_source || 'N/A')}</span></div>
-            <div class="flex items-center gap-2"><span class="text-xs text-slate-500 uppercase w-20">Status</span><span class="text-sm text-white">${escapeHtml(finding.status || 'confirmed')}</span></div>
-            <div class="flex items-center gap-2"><span class="text-xs text-slate-500 uppercase w-20">Found</span><span class="text-sm text-white">${finding.created_at ? new Date(finding.created_at).toLocaleString() : 'N/A'}</span></div>
-            <div class="pt-2 border-t border-white/5"><span class="text-xs text-slate-500 uppercase block mb-1">Description</span><p class="text-sm text-slate-300">${escapeHtml(finding.description || 'No description available.')}</p></div>
-        </div>`;
-    document.getElementById('fd-tab-evidence').innerHTML = `<div class="text-sm text-slate-500">No evidence uploaded yet.</div>`;
-    document.getElementById('fd-tab-remediation').innerHTML = `<div class="space-y-2 text-sm text-slate-300">${finding.remediation ? `<p>${escapeHtml(finding.remediation)}</p>` : '<p class="text-slate-500">No remediation steps available.</p>'}</div>`;
-    document.getElementById('fd-tab-notes').innerHTML = `<textarea class="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-violet-500 outline-none resize-none" rows="4" placeholder="Add notes about this finding..."></textarea>`;
-
-    switchFDTab('details');
-    showSharedModal('finding-detail-modal');
-}
-function closeFindingDetail() { closeSharedModal('finding-detail-modal'); }
-
-function switchFDTab(tab) {
-    document.querySelectorAll('.fd-tab').forEach(t => { t.classList.remove('text-violet-400', 'border-violet-500'); t.classList.add('text-slate-400', 'border-transparent'); });
-    const active = document.querySelector(`.fd-tab[data-tab="${tab}"]`);
-    if (active) { active.classList.add('text-violet-400', 'border-violet-500'); active.classList.remove('text-slate-400', 'border-transparent'); }
-    ['details', 'evidence', 'remediation', 'notes'].forEach(t => {
-        const el = document.getElementById(`fd-tab-${t}`);
-        if (el) el.classList.toggle('hidden', t !== tab);
-    });
-}
-
-function markFalsePositive() {
-    if (!currentFinding) return;
-    spectraApi.request(`/api/v1/findings/${currentFinding.id}`, { method: 'PATCH', body: { status: 'false_positive' } });
-    closeFindingDetail();
-}
-function retestFinding() { closeFindingDetail(); }
-
-// Make findings clickable in the dashboard
-const origHandleFinding = handleFinding;
-handleFinding = function(data) {
-    origHandleFinding(data);
-    // Store finding data for click access
-    if (!window._dashboardFindings) window._dashboardFindings = [];
-    window._dashboardFindings.push(data);
-};
-
-// --- Task Tree ---
-function renderTaskTree(tasks) {
-    const panel = document.getElementById('task-tree-panel');
-    const content = document.getElementById('task-tree-content');
-    if (!tasks || tasks.length === 0) { panel.classList.add('hidden'); return; }
-    panel.classList.remove('hidden');
-
-    const icons = { completed: '☑', running: '●', pending: '○', failed: '✗' };
-    const colors = { completed: 'text-emerald-400', running: 'text-amber-400 animate-pulse', pending: 'text-slate-500', failed: 'text-rose-400' };
-
-    function renderNode(task, depth = 0) {
-        const indent = depth * 20;
-        const icon = icons[task.status] || '○';
-        const color = colors[task.status] || 'text-slate-500';
-        const taskId = task.id || Math.random().toString(36).slice(2);
-        if (!window._taskTreeData) window._taskTreeData = {};
-        window._taskTreeData[taskId] = task;
-        let html = `<div class="flex items-center gap-2 py-0.5 hover:bg-white/5 rounded px-2 cursor-pointer" style="padding-left:${indent + 8}px" data-task-id="${escapeHtml(String(taskId))}">
-            <span class="${color}">${icon}</span>
-            <span class="text-slate-300">${escapeHtml(task.name || task.tool || 'Task')}</span>
-            ${task.status === 'running' ? '<span class="text-xs text-amber-400 ml-auto">running...</span>' : ''}
-        </div>`;
-        if (task.children) task.children.forEach(c => { html += renderNode(c, depth + 1); });
-        return html;
-    }
-
-    content.innerHTML = tasks.map(t => renderNode(t)).join('');
-    const running = tasks.filter(t => t.status === 'running').length;
-    const completed = tasks.filter(t => t.status === 'completed').length;
-    document.getElementById('task-tree-status').textContent = `${completed}/${tasks.length} complete, ${running} active`;
-}
-
-// Event delegation for task tree clicks (replaces inline onclick for XSS safety)
-// Registered once at page load — not inside renderTaskTree() — to avoid duplicate handlers.
-document.getElementById('task-tree-content')?.addEventListener('click', function(e) {
-    const el = e.target.closest('[data-task-id]');
-    if (el && window._taskTreeData) {
-        const task = window._taskTreeData[el.dataset.taskId];
-        if (task) openFindingDetail(task);
-    }
-});
-
-// --- Attack Paths Graph ---
-let attackPathCy = null;
-
-function renderAttackPaths(paths) {
-    const panel = document.getElementById('attack-paths-panel');
-    if (!paths || paths.length === 0) { panel.classList.add('hidden'); return; }
-    panel.classList.remove('hidden');
-    const container = document.getElementById('attack-paths-graph');
-    container.innerHTML = '';
-
-    attackPathCy = cytoscape({
-        container,
-        style: [
-            { selector: 'node', style: { 'label': 'data(label)', 'color': '#94a3b8', 'font-size': '9px', 'font-family': 'JetBrains Mono', 'text-valign': 'bottom', 'text-margin-y': 4, 'width': 24, 'height': 24 } },
-            { selector: 'node[type="entry"]', style: { 'background-color': '#3b82f6' } },
-            { selector: 'node[type="exploit"]', style: { 'background-color': '#f43f5e' } },
-            { selector: 'node[type="pivot"]', style: { 'background-color': '#f59e0b' } },
-            { selector: 'node[type="goal"]', style: { 'background-color': '#10b981' } },
-            { selector: 'edge', style: { 'width': 2, 'line-color': '#475569', 'target-arrow-color': '#475569', 'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'label': 'data(label)', 'font-size': '8px', 'color': '#64748b' } }
-        ],
-        layout: { name: 'dagre', rankDir: 'LR', animate: true }
-    });
-
-    paths.forEach((path, pi) => {
-        path.forEach((step, si) => {
-            const nodeId = `ap-${pi}-${si}`;
-            attackPathCy.add({ group: 'nodes', data: { id: nodeId, label: step.name || step.title || 'Step', type: step.type || (si === 0 ? 'entry' : 'exploit') } });
-            if (si > 0) {
-                attackPathCy.add({ group: 'edges', data: { source: `ap-${pi}-${si-1}`, target: nodeId, label: step.technique || '' } });
-            }
-        });
-    });
-
-    try { attackPathCy.layout({ name: 'dagre', rankDir: 'LR', animate: true }).run(); } catch { attackPathCy.layout({ name: 'cose', animate: true }).run(); }
-}
-
-// Listen for task/path updates via WebSocket
-document.addEventListener('spectra:ws-message', (event) => {
-    try {
-        const msg = JSON.parse(event.detail);
-        if (msg.type === 'task_tree') renderTaskTree(msg.data);
-        if (msg.type === 'attack_paths') renderAttackPaths(msg.data);
-        if (msg.type === 'task_update' && msg.data?.tasks) renderTaskTree(msg.data.tasks);
-    } catch {}
-});
-
-// --- Presets dropdown toggle (keyboard accessible) ---
-function togglePresetsDropdown() {
-    const trigger = document.getElementById('presets-trigger');
-    const menu = document.getElementById('presets-menu');
-    if (!trigger || !menu) return;
-    const expanded = trigger.getAttribute('aria-expanded') === 'true';
-    trigger.setAttribute('aria-expanded', String(!expanded));
-    if (expanded) {
-        menu.classList.add('opacity-0', 'invisible');
-        menu.classList.remove('opacity-100', 'visible');
-    } else {
-        menu.classList.remove('opacity-0', 'invisible');
-        menu.classList.add('opacity-100', 'visible');
-    }
-}
-
-// Load metrics on page load
-document.addEventListener('DOMContentLoaded', () => {
+    // Load metrics
     loadMetrics();
+
     // Close presets dropdown on outside click
     document.addEventListener('click', (e) => {
         const wrapper = document.getElementById('presets-dropdown-wrapper');
@@ -970,10 +493,8 @@ window.togglePresetsDropdown = togglePresetsDropdown;
 window.launchFromForm = launchFromForm;
 window.launchPreset = launchPreset;
 window.pauseMission = pauseMission;
+window.resumeMission = resumeMission;
 window.stopMission = stopMission;
 window.connectShell = connectShell;
+window.switchModel = switchModel;
 window.loadMetrics = loadMetrics;
-window.closePlaybookDetail = closePlaybookDetail;
-window.launchPlaybook = launchPlaybook;
-window.closeFindingDetail = closeFindingDetail;
-window.switchFDTab = switchFDTab;
