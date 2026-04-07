@@ -9,12 +9,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user, validate_websocket_token
-from app.core.constants import WS_KEEPALIVE_INTERVAL
+from app.core.constants import WS_KEEPALIVE_INTERVAL, WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
 from app.core.database import async_session_maker
 from app.core.rate_limit import RateLimits, limiter
 from app.models.audit_log import AuditEventType
@@ -99,9 +100,27 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
     await session.connect_websocket(websocket)
 
     ping_task = asyncio.create_task(_keepalive(websocket))
+    message_count = 0
+    last_reset = time.time()
     try:
         while True:
             data = await websocket.receive_text()
+
+            # Per-second message rate limiting
+            now = time.time()
+            if now - last_reset >= 1.0:
+                message_count = 0
+                last_reset = now
+            message_count += 1
+            if message_count > WS_MAX_MESSAGES_PER_SECOND:
+                await websocket.send_json({"type": "error", "message": "Rate limit exceeded"})
+                continue
+
+            # Validate message size (DoS protection)
+            if len(data) > WS_MAX_MESSAGE_SIZE:
+                await websocket.send_json({"type": "error", "message": "Message too large"})
+                continue
+
             await session.write(data)
     except WebSocketDisconnect:
         await session.disconnect_websocket()

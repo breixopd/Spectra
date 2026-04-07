@@ -545,8 +545,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="module" src="/static/js/settings.js"></script>
-<script>
+<script type="module" src="/static/js/settings.js" nonce="{{ request.state.csp_nonce }}"></script>
+<script nonce="{{ request.state.csp_nonce }}">
     function clearToolStats() {
         _spectraConfirm('Clear all tool statistics?', async () => {
         try {
