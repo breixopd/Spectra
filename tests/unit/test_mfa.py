@@ -98,7 +98,7 @@ async def test_mfa_setup_returns_provisioning_uri(mock_session):
 
     user = _make_user()
 
-    with patch("app.api.routers.auth.encrypt_mfa_secret", side_effect=lambda s: f"enc:{s}"):
+    with patch("app.api.routers.auth.totp.encrypt_mfa_secret", side_effect=lambda s: f"enc:{s}"):
         result = await mfa_setup(user=user, session=mock_session)
 
     assert result.secret  # base32 string
@@ -123,7 +123,7 @@ async def test_mfa_verify_setup_enables_mfa(mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
+    with patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock):
         result = await mfa_verify_setup(request=request, body=body, user=user, session=mock_session)
 
     assert result["detail"] == "MFA enabled successfully"
@@ -211,7 +211,7 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
     code = pyotp.TOTP(secret).now()
     body = MFAVerifyRequest(code=code)
 
-    with patch("app.api.routers.auth.invalidate_token"):
+    with patch("app.api.routers.auth.totp.invalidate_token"):
         result = await mfa_verify_login(request=request, response=response, body=body, session=mock_session)
 
     assert "access_token" in result
@@ -244,7 +244,7 @@ async def test_mfa_disable_requires_password_and_code(mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.verify_password", return_value=False):
+    with patch("app.api.routers.auth.totp.verify_password", return_value=False):
         with pytest.raises(HTTPException) as exc_info:
             await mfa_disable(request=request, body=body, user=user, session=mock_session)
         assert exc_info.value.status_code == 400
@@ -268,8 +268,8 @@ async def test_mfa_disable_success(mock_session):
     request.client.host = "127.0.0.1"
 
     with (
-        patch("app.api.routers.auth.verify_password", return_value=True),
-        patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock),
+        patch("app.api.routers.auth.totp.verify_password", return_value=True),
+        patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock),
     ):
         result = await mfa_disable(request=request, body=body, user=user, session=mock_session)
 
@@ -293,7 +293,7 @@ async def test_mfa_verify_setup_rejects_replayed_code(mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock):
+    with patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock):
         await mfa_verify_setup(request=request, body=body, user=user, session=mock_session)
 
     user.mfa_enabled = False
@@ -328,7 +328,7 @@ async def test_mfa_verify_login_rejects_replayed_code(mock_session):
     mock_session.execute = AsyncMock(return_value=mock_result)
     body = MFAVerifyRequest(code=pyotp.TOTP(secret).now())
 
-    with patch("app.api.routers.auth.invalidate_token"):
+    with patch("app.api.routers.auth.totp.invalidate_token"):
         await mfa_verify_login(request=request, response=response, body=body, session=mock_session)
         with pytest.raises(HTTPException) as exc_info:
             await mfa_verify_login(request=request, response=response, body=body, session=mock_session)
@@ -353,14 +353,14 @@ async def test_mfa_disable_rejects_replayed_code(mock_session):
     request.client.host = "127.0.0.1"
 
     with (
-        patch("app.api.routers.auth.verify_password", return_value=True),
-        patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock),
+        patch("app.api.routers.auth.totp.verify_password", return_value=True),
+        patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock),
     ):
         await mfa_disable(request=request, body=body, user=user, session=mock_session)
 
     user.mfa_enabled = True
     user.mfa_secret = encrypted
-    with patch("app.api.routers.auth.verify_password", return_value=True):
+    with patch("app.api.routers.auth.totp.verify_password", return_value=True):
         with pytest.raises(HTTPException) as exc_info:
             await mfa_disable(request=request, body=body, user=user, session=mock_session)
 

@@ -100,7 +100,7 @@ class TestLogoutRevokesRefreshToken:
         response = MagicMock()
         response.delete_cookie = MagicMock()
 
-        with patch("app.api.routers.auth.invalidate_token"):
+        with patch("app.api.routers.auth.login.invalidate_token"):
             await logout(request=request, response=response, session=session)
 
         assert user.invalidated_before is not None
