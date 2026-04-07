@@ -135,14 +135,8 @@
     </div>
     <!-- Native WebSocket (for real-time updates) -->
     {% if not is_public_page %}
+    <script src="/static/js/reconnecting-ws.js"></script>
     <script nonce="{{ request.state.csp_nonce }}">
-        // Initialize WebSocket connection with cookie-based authentication
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        let socket;
-        let wsReconnectAttempts = 0;
-        const maxReconnectAttempts = 5;
-
         function clearSpectraLocalStorage() {
             try {
                 Object.keys(localStorage)
@@ -173,54 +167,39 @@
 
         document.getElementById('sidebar-signout-btn')?.addEventListener('click', logoutFromSpectra);
 
-        function connectWebSocket() {
-            socket = new WebSocket(wsUrl);
-
-            socket.onopen = () => {
-                console.log('Connected to Spectra');
-                wsReconnectAttempts = 0;  // Reset on successful connection
+        // Use ReconnectingWebSocket for automatic reconnection
+        const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${location.host}/ws`;
+        const socket = new ReconnectingWebSocket(wsUrl, {
+            maxRetries: 10,
+            baseDelay: 1000,
+            maxDelay: 30000,
+            onMessage: function(event) {
+                try {
+                    // Legacy callback support
+                    if (window.onSocketMessage) {
+                        window.onSocketMessage(event.data);
+                    }
+                    // Modern event-based API — allows multiple listeners without chaining
+                    document.dispatchEvent(new CustomEvent('spectra:ws-message', { detail: event.data }));
+                } catch (e) {
+                    console.error('[ws] parse error', e);
+                }
+            },
+            onOpen: function() {
+                console.log('[ws] Connected');
                 if (window.onSocketConnect) window.onSocketConnect();
-            };
-
-            socket.onclose = (event) => {
-                console.log('Disconnected from Spectra', event.code, event.reason);
-                
-                // Handle authentication rejection (4001)
+            },
+            onClose: function(event) {
                 if (event.code === 4001) {
-                    console.error('WebSocket auth failed - redirecting to login');
+                    // Auth failure — redirect to login
                     window.location.href = '/login';
-                    return;
                 }
-                
-                // Exponential backoff for reconnection
-                if (wsReconnectAttempts < maxReconnectAttempts) {
-                    const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), 30000);
-                    wsReconnectAttempts++;
-                    console.log(`Reconnecting in ${delay/1000}s (attempt ${wsReconnectAttempts}/${maxReconnectAttempts})`);
-                    setTimeout(connectWebSocket, delay);
-                } else {
-                    console.error('WebSocket: Max reconnection attempts reached');
-                }
-            };
-
-            socket.onerror = (error) => {
-                console.error('WebSocket error:', error);
-            };
-
-            socket.onmessage = (event) => {
-                // Legacy callback support
-                if (window.onSocketMessage) {
-                    window.onSocketMessage(event.data);
-                }
-                // Modern event-based API — allows multiple listeners without chaining
-                document.dispatchEvent(new CustomEvent('spectra:ws-message', { detail: event.data }));
-            };
-        }
-
-        connectWebSocket();
+            }
+        });
 
         // --- Global System Status Polling ---
-        let statusPollingInterval = null;
+        let statusTimer = null;
         let systemReady = false;
 
         async function checkSystemStatus() {
@@ -235,25 +214,39 @@
             if (!statusBar) return;
 
             try {
-                const { data, error } = await spectraApi.get('/api/v1/system/status');
+                const { data, error, status } = await spectraApi.get('/api/v1/system/status');
+
                 if (error) {
-                    // Server might be starting up
+                    if (status === 429) {
+                        // Rate limited — don't show "Connecting", just slow down polling
+                        statusMsg.textContent = 'Rate limited — retrying shortly...';
+                        statusDetails.textContent = '';
+                        clearTimeout(statusTimer);
+                        statusTimer = setTimeout(checkSystemStatus, 30000);
+                        return;
+                    }
+                    if (status === 401) {
+                        // Auth expired — spectraApi will handle redirect, don't show status bar
+                        statusBar.classList.add('hidden');
+                        return;
+                    }
+                    // Genuine connection issue
                     statusBar.classList.remove('hidden');
                     statusMsg.textContent = 'Connecting to server...';
+                    statusDetails.textContent = '';
+                    clearTimeout(statusTimer);
+                    statusTimer = setTimeout(checkSystemStatus, 3000);
                     return;
                 }
                 
                 if (data.status === 'ready' && !data.tools_installing && !data.embeddings_loading) {
-                    // System is ready - hide bar and stop frequent polling
+                    // System is ready - hide bar and slow down polling
                     statusBar.classList.add('hidden');
                     if (!systemReady) {
                         systemReady = true;
-                        // Slow down polling once ready
-                        if (statusPollingInterval) {
-                            clearInterval(statusPollingInterval);
-                            statusPollingInterval = setInterval(checkSystemStatus, 30000);
-                        }
                     }
+                    clearTimeout(statusTimer);
+                    statusTimer = setTimeout(checkSystemStatus, 30000);
                 } else {
                     // System is initializing
                     systemReady = false;
@@ -297,18 +290,30 @@
                     } else {
                         statusProgress.classList.add('hidden');
                     }
+                    clearTimeout(statusTimer);
+                    statusTimer = setTimeout(checkSystemStatus, 3000);
                 }
-            } catch (err) {
-                // Network error or server not ready
+            } catch (e) {
+                // Network error
                 statusBar.classList.remove('hidden');
-                statusMsg.textContent = 'Connecting to server...';
-                statusDetails.textContent = '';
+                statusMsg.textContent = 'Unable to reach server';
+                statusDetails.textContent = 'Check your connection';
+                clearTimeout(statusTimer);
+                statusTimer = setTimeout(checkSystemStatus, 5000);
             }
         }
 
-        // Start status polling (frequent at first)
+        // Start status polling
         checkSystemStatus();
-        statusPollingInterval = setInterval(checkSystemStatus, 3000);
+
+        // Pause polling when tab is hidden, resume when visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearTimeout(statusTimer);
+            } else {
+                checkSystemStatus();
+            }
+        });
     </script>
     <!-- Sidebar Toggle -->
     <script nonce="{{ request.state.csp_nonce }}">
@@ -332,7 +337,6 @@
             }
         });
     </script>
-    <script src="/static/js/reconnecting-ws.js"></script>
     <script src="/static/js/modules/accordion.js"></script>
     <script src="/static/js/modules/modal.js" type="module"></script>
     <script src="/static/js/modules/tabs.js" type="module"></script>

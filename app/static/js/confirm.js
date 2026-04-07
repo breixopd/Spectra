@@ -4,26 +4,6 @@
 // Public paths constant (shared with api.js)
 window.PUBLIC_PATHS = ['/login', '/setup', '/register', '/landing', '/forgot-password', '/reset-password', '/verify-email', '/status', '/legal/terms', '/legal/privacy', '/legal/cookies', '/security', '/changelog'];
 
-// Check if user is authenticated
-if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
-    spectraApi.get('/api/v1/auth/me')
-        .then(function(result) {
-            if (result.error === 'Unauthorized') {
-                // Check if setup is needed
-                spectraApi.get('/api/v1/auth/setup/status')
-                    .then(function(r2) {
-                        if (r2.data && !r2.data.is_setup) {
-                            window.location.href = '/setup';
-                        } else {
-                            window.location.href = '/login';
-                        }
-                    })
-                    .catch(function() { window.location.href = '/login'; });
-            }
-        })
-        .catch(function() {});
-}
-
 // _spectraToast stub — real implementation loaded from toast.js module
 function _spectraToast(msg, type) {
     // Queue until module loads
@@ -98,6 +78,20 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!window.PUBLIC_PATHS.includes(window.location.pathname)) {
         spectraApi.get('/api/v1/auth/me')
             .then(function(result) {
+                if (result.error) {
+                    // Check if setup is needed before redirecting
+                    spectraApi.get('/api/v1/auth/setup/status')
+                        .then(function(r2) {
+                            if (r2.data && !r2.data.is_setup) {
+                                window.location.href = '/setup';
+                            } else {
+                                window.location.href = '/login';
+                            }
+                        })
+                        .catch(function() { window.location.href = '/login'; });
+                    return;
+                }
+
                 var user = result.data;
                 var sidebarUser = document.getElementById('sidebar-username');
                 var adminNavLink = document.getElementById('admin-nav-link');
