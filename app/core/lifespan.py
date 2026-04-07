@@ -222,7 +222,10 @@ async def _initialize_database(app: FastAPI) -> None:
     logger.info("[OK] Storage service initialized (mode: s3)")
 
     # Verify S3 connectivity at startup
-    storage_health = await storage.health_check()
+    try:
+        storage_health = await storage.health_check()
+    except Exception as e:
+        storage_health = {"status": "unhealthy", "error": str(e)}
     if storage_health["status"] != "healthy":
         logger.error(
             "[FAIL] S3 storage is unreachable: %s. Configure S3_ENDPOINT_URL, S3_ACCESS_KEY, and S3_SECRET_KEY.",

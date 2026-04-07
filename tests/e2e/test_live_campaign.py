@@ -84,7 +84,7 @@ class TestLiveCampaign:
 
         try:
             res = subprocess.run(
-                ["docker", "ps", "--format", "{{.Names}}"],
+                ["docker", "ps", "--format", "{{.Names}}"],  # noqa: S607
                 capture_output=True,
                 text=True,
             )

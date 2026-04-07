@@ -254,9 +254,12 @@ class StorageService:
         settings = _settings()
         try:
             async with self._client() as s3:
-                await s3.list_buckets()
+                # Use head_bucket instead of list_buckets — requires only
+                # per-bucket permissions (works with Garage key ACLs).
+                bucket = getattr(settings, "S3_BUCKET_MISSIONS", "spectra-missions")
+                await s3.head_bucket(Bucket=bucket)
             return {"status": "healthy", "mode": "s3", "endpoint": settings.S3_ENDPOINT_URL}
-        except (OSError, RuntimeError, ConnectionError) as e:
+        except Exception as e:
             return {"status": "unhealthy", "mode": "s3", "endpoint": settings.S3_ENDPOINT_URL, "error": str(e)}
 
     async def close(self) -> None:

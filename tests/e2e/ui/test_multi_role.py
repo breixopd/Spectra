@@ -61,7 +61,7 @@ def _create_user_via_admin_api(
     return {"status": resp.status_code, "body": body}
 
 
-def _login_as(page: Page, app_url: str, username: str, password: str = "TestPassword123!"):
+def _login_as(page: Page, app_url: str, username: str, password: str = "TestPassword123!"):  # noqa: S107
     """Log in through the browser login form."""
     page.context.clear_cookies()
     page.goto(f"{app_url}/login", wait_until="domcontentloaded")
