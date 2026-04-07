@@ -6,22 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
-from app.api.schemas.auth import MFADisableRequest, MFASetupResponse, MFAVerifyRequest
-from app.core.database import get_async_session
-from app.core.rate_limit import RateLimits, limiter
-from app.core.security import (
-    decrypt_mfa_secret,
-    decode_token,
-    encrypt_mfa_secret,
-    invalidate_token,
-    JWTError,
-    verify_password,
-    verify_totp,
-)
-from app.models.audit_log import AuditEventType
-from app.models.user import User
-from app.services.system.audit import log_event as audit_log_event
-
 from app.api.routers.auth._helpers import (
     _consume_totp_code,
     _create_auth_token_pair,
@@ -31,6 +15,21 @@ from app.api.routers.auth._helpers import (
     _set_auth_cookies,
     _token_response_payload,
 )
+from app.api.schemas.auth import MFADisableRequest, MFASetupResponse, MFAVerifyRequest
+from app.core.database import get_async_session
+from app.core.rate_limit import RateLimits, limiter
+from app.core.security import (
+    JWTError,
+    decode_token,
+    decrypt_mfa_secret,
+    encrypt_mfa_secret,
+    invalidate_token,
+    verify_password,
+    verify_totp,
+)
+from app.models.audit_log import AuditEventType
+from app.models.user import User
+from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 

@@ -8,20 +8,6 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response, 
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import Token
-from app.core.config import settings
-from app.core.database import get_async_session
-from app.core.events import EventType, events
-from app.core.rate_limit import RateLimits, limiter
-from app.core.security import (
-    create_access_token,
-    invalidate_token,
-    verify_password,
-)
-from app.core.telemetry import telemetry
-from app.models.audit_log import AuditEventType
-from app.services.system.audit import log_event as audit_log_event
-
 from app.api.routers.auth._helpers import (
     ACCESS_COOKIE_KEY,
     DUMMY_PASSWORD_HASH,
@@ -40,6 +26,19 @@ from app.api.routers.auth._helpers import (
     _token_response_payload,
     _validate_refresh_token_payload,
 )
+from app.api.schemas import Token
+from app.core.config import settings
+from app.core.database import get_async_session
+from app.core.events import EventType, events
+from app.core.rate_limit import RateLimits, limiter
+from app.core.security import (
+    create_access_token,
+    invalidate_token,
+    verify_password,
+)
+from app.core.telemetry import telemetry
+from app.models.audit_log import AuditEventType
+from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
 

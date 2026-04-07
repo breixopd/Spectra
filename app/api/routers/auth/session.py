@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.api.routers.auth.schemas import RestrictProcessingRequest, UpdateProfileRequest
 from app.api.schemas.system import DeleteAccountRequest
 from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
@@ -17,8 +18,6 @@ from app.core.security import verify_password
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
-
-from app.api.routers.auth.schemas import RestrictProcessingRequest, UpdateProfileRequest
 
 logger = logging.getLogger(__name__)
 
