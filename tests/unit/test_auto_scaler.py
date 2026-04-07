@@ -34,12 +34,31 @@ def settings():
     mock.INFRA_MONITOR_PG_THRESHOLD = 80
     mock.INFRA_MONITOR_REDIS_THRESHOLD = 85
     mock.INFRA_MONITOR_STORAGE_THRESHOLD = 90
+    mock.AUTOSCALE_ENABLED = True
     return mock
 
 
 @pytest.fixture
 def scaler(settings):
     return AutoScaler(settings)
+
+
+@pytest.fixture
+def db_config():
+    """Sample DB config dict mirroring system_config table values."""
+    return {
+        "scaling.worker.min_replicas": "2",
+        "scaling.worker.max_replicas": "6",
+        "scaling.api.min_replicas": "1",
+        "scaling.api.max_replicas": "4",
+        "scaling.ai.max_replicas": "3",
+        "scaling.cooldown_secs": "120",
+        "scaling.idle_secs": "180",
+        "scaling.cpu_up_threshold": "80",
+        "scaling.cpu_down_threshold": "30",
+        "scaling.queue_threshold": "8",
+        "scaling.enabled": "true",
+    }
 
 
 class TestScalingPolicy:
@@ -155,3 +174,74 @@ class TestAutoScaler:
         alerts = await scaler.check_infrastructure()
         assert isinstance(alerts, list)
         assert len(alerts) == 0
+
+
+class TestDbConfigOverride:
+    """DB config takes precedence over env var defaults."""
+
+    def test_db_config_overrides_env_vars(self, settings, db_config):
+        scaler = AutoScaler(settings, db_config=db_config)
+        assert scaler.policies["worker"].min_replicas == 2
+        assert scaler.policies["worker"].max_replicas == 6
+        assert scaler.policies["api"].min_replicas == 1
+        assert scaler.policies["api"].max_replicas == 4
+        assert scaler.policies["ai"].max_replicas == 3
+        assert scaler.policies["worker"].scale_up_queue_depth == 8
+
+    def test_partial_db_config_falls_back_to_env(self, settings):
+        partial = {"scaling.worker.min_replicas": "3"}
+        scaler = AutoScaler(settings, db_config=partial)
+        # DB override applied
+        assert scaler.policies["worker"].min_replicas == 3
+        # Env var still used for max
+        assert scaler.policies["worker"].max_replicas == 10
+
+    def test_invalid_db_value_falls_back_to_env(self, settings):
+        bad = {"scaling.worker.min_replicas": "not_a_number"}
+        scaler = AutoScaler(settings, db_config=bad)
+        # Falls back to env var value
+        assert scaler.policies["worker"].min_replicas == 1
+
+
+class TestReloadConfig:
+    """reload_config() re-initializes policies from fresh DB config."""
+
+    def test_reload_changes_policies(self, settings):
+        scaler = AutoScaler(settings)
+        assert scaler.policies["worker"].max_replicas == 10
+
+        scaler.reload_config({"scaling.worker.max_replicas": "5"})
+        assert scaler.policies["worker"].max_replicas == 5
+
+    def test_reload_preserves_infra_monitors(self, settings):
+        scaler = AutoScaler(settings)
+        scaler.reload_config({"scaling.worker.max_replicas": "5"})
+        assert "postgres" in scaler.infra_monitors
+
+
+class TestGetConfigSnapshot:
+    """get_config_snapshot() returns expected format for admin UI."""
+
+    def test_snapshot_keys(self, scaler):
+        snap = scaler.get_config_snapshot()
+        expected_keys = {
+            "scaling.worker.min_replicas",
+            "scaling.worker.max_replicas",
+            "scaling.api.min_replicas",
+            "scaling.api.max_replicas",
+            "scaling.ai.max_replicas",
+            "scaling.cooldown_secs",
+            "scaling.idle_secs",
+            "scaling.cpu_up_threshold",
+            "scaling.cpu_down_threshold",
+            "scaling.queue_threshold",
+            "scaling.enabled",
+        }
+        assert set(snap.keys()) == expected_keys
+
+    def test_snapshot_reflects_db_config(self, settings, db_config):
+        scaler = AutoScaler(settings, db_config=db_config)
+        snap = scaler.get_config_snapshot()
+        assert snap["scaling.worker.max_replicas"] == 6
+        assert snap["scaling.api.max_replicas"] == 4
+        assert snap["scaling.enabled"] is True

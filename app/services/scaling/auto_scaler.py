@@ -62,54 +62,145 @@ _DEFAULT_INFRA_MONITORS: dict[str, InfraMonitorConfig] = {
 }
 
 
+def _as_bool(value) -> bool:
+    """Coerce a string/bool/int to bool for config values."""
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 class AutoScaler:
     """Reactive auto-scaler that adjusts Docker service replica counts."""
 
-    def __init__(self, settings) -> None:
+    def __init__(self, settings, db_config: dict | None = None) -> None:
         self.settings = settings
+        self._db_config: dict = db_config or {}
         self.policies: dict[str, ScalingPolicy] = {}
         self.infra_monitors: dict[str, InfraMonitorConfig] = {}
         self._init_policies()
         self._init_infra_monitors()
 
+    # ------------------------------------------------------------------
+    # Config resolution: DB → env var → default
+    # ------------------------------------------------------------------
+
+    def _get_cfg(self, db_key: str, env_attr: str, default, cast_fn=int):
+        """Read config from DB first, fall back to env var, then default.
+
+        ``db_key``   – key in the ``system_config`` table (e.g. ``scaling.worker.max_replicas``)
+        ``env_attr`` – attribute name on ``self.settings`` (e.g. ``AUTOSCALE_WORKER_MAX``)
+        ``default``  – hard-coded fallback value
+        ``cast_fn``  – callable used to coerce the DB string value (default ``int``)
+        """
+        # 1) DB config (passed in from caller, already dict[str, str])
+        if db_key in self._db_config:
+            try:
+                return cast_fn(self._db_config[db_key])
+            except (ValueError, TypeError):
+                pass
+        # 2) Env-var-backed settings object
+        val = getattr(self.settings, env_attr, None)
+        if val is not None:
+            try:
+                return cast_fn(val)
+            except (ValueError, TypeError):
+                pass
+        # 3) Hard-coded default
+        return default
+
+    # ------------------------------------------------------------------
+    # Reload / snapshot for admin UI
+    # ------------------------------------------------------------------
+
+    def reload_config(self, db_config: dict) -> None:
+        """Re-initialize scaling policies from fresh DB config."""
+        self._db_config = db_config
+        self._init_policies()
+
+    def get_config_snapshot(self) -> dict:
+        """Return all current scaling config values for the admin UI."""
+        return {
+            "scaling.worker.min_replicas": self.policies["worker"].min_replicas,
+            "scaling.worker.max_replicas": self.policies["worker"].max_replicas,
+            "scaling.api.min_replicas": self.policies["api"].min_replicas,
+            "scaling.api.max_replicas": self.policies["api"].max_replicas,
+            "scaling.ai.max_replicas": self.policies["ai"].max_replicas,
+            "scaling.cooldown_secs": self.policies["worker"].cooldown_secs,
+            "scaling.idle_secs": self.policies["worker"].scale_down_queue_idle_secs,
+            "scaling.cpu_up_threshold": self.policies["worker"].scale_up_threshold,
+            "scaling.cpu_down_threshold": self.policies["worker"].scale_down_threshold,
+            "scaling.queue_threshold": self.policies["worker"].scale_up_queue_depth,
+            "scaling.enabled": self._get_cfg(
+                "scaling.enabled", "AUTOSCALE_ENABLED", True, cast_fn=_as_bool,
+            ),
+        }
+
+    # ------------------------------------------------------------------
+    # Policy initialization
+    # ------------------------------------------------------------------
+
     def _init_policies(self) -> None:
-        """Initialize default policies per service from settings."""
-        cooldown = getattr(self.settings, "AUTOSCALE_COOLDOWN_SECS", 300)
-        idle_secs = getattr(self.settings, "AUTOSCALE_IDLE_SECS", 300)
-        cpu_up = getattr(self.settings, "AUTOSCALE_CPU_UP_THRESHOLD", 75) / 100.0
-        cpu_down = getattr(self.settings, "AUTOSCALE_CPU_DOWN_THRESHOLD", 25) / 100.0
+        """Initialize default policies per service from DB / settings."""
+        cooldown = self._get_cfg("scaling.cooldown_secs", "AUTOSCALE_COOLDOWN_SECS", 300)
+        idle_secs = self._get_cfg("scaling.idle_secs", "AUTOSCALE_IDLE_SECS", 300)
+        cpu_up = self._get_cfg(
+            "scaling.cpu_up_threshold", "AUTOSCALE_CPU_UP_THRESHOLD", 75,
+        ) / 100.0
+        cpu_down = self._get_cfg(
+            "scaling.cpu_down_threshold", "AUTOSCALE_CPU_DOWN_THRESHOLD", 25,
+        ) / 100.0
+        queue_threshold = self._get_cfg(
+            "scaling.queue_threshold", "AUTOSCALE_QUEUE_THRESHOLD", 5,
+        )
 
         self.policies = {
+            # Worker: more workers = more concurrent tool executions; each worker
+            # subprocess consumes ~512 MB, so max_replicas=10 is a safe ceiling.
             "worker": ScalingPolicy(
                 service_name=getattr(self.settings, "SWARM_WORKER_SERVICE", "spectra_worker"),
-                min_replicas=getattr(self.settings, "AUTOSCALE_WORKER_MIN", 1),
-                max_replicas=getattr(self.settings, "AUTOSCALE_WORKER_MAX", 10),
+                min_replicas=self._get_cfg(
+                    "scaling.worker.min_replicas", "AUTOSCALE_WORKER_MIN", 1,
+                ),
+                max_replicas=self._get_cfg(
+                    "scaling.worker.max_replicas", "AUTOSCALE_WORKER_MAX", 10,
+                ),
                 scale_up_threshold=cpu_up,
                 scale_down_threshold=cpu_down,
-                scale_up_queue_depth=getattr(self.settings, "AUTOSCALE_QUEUE_THRESHOLD", 5),
+                scale_up_queue_depth=queue_threshold,
                 cooldown_secs=cooldown,
                 scale_down_queue_idle_secs=max(idle_secs, 600),
             ),
+            # API: more replicas = more HTTP concurrency; beyond 8 the DB
+            # connection pool becomes the bottleneck.
             "api": ScalingPolicy(
                 service_name=getattr(self.settings, "SWARM_API_SERVICE", "spectra_app"),
-                min_replicas=getattr(self.settings, "AUTOSCALE_API_MIN", 2),
-                max_replicas=getattr(self.settings, "AUTOSCALE_API_MAX", 8),
+                min_replicas=self._get_cfg(
+                    "scaling.api.min_replicas", "AUTOSCALE_API_MIN", 2,
+                ),
+                max_replicas=self._get_cfg(
+                    "scaling.api.max_replicas", "AUTOSCALE_API_MAX", 8,
+                ),
                 scale_up_threshold=cpu_up,
                 scale_down_threshold=cpu_down,
                 scale_up_queue_depth=0,
                 cooldown_secs=min(cooldown, 120),
                 scale_down_queue_idle_secs=min(idle_secs, 300),
             ),
+            # AI: LLM inference is memory-heavy; each replica holds embedding
+            # models in RAM, so max_replicas=4 avoids OOM pressure.
             "ai": ScalingPolicy(
                 service_name=getattr(self.settings, "SWARM_AI_SERVICE", "spectra_ai-svc"),
                 min_replicas=1,
-                max_replicas=getattr(self.settings, "AUTOSCALE_AI_MAX", 4),
+                max_replicas=self._get_cfg(
+                    "scaling.ai.max_replicas", "AUTOSCALE_AI_MAX", 4,
+                ),
                 scale_up_threshold=0.80,
                 scale_down_threshold=0.20,
                 scale_up_queue_depth=3,
                 cooldown_secs=cooldown,
                 scale_down_queue_idle_secs=max(idle_secs, 900),
             ),
+            # Scheduler: leader-elected; 2nd replica is a hot standby only.
             "scheduler": ScalingPolicy(
                 service_name=getattr(self.settings, "SWARM_SCHEDULER_SERVICE", "spectra_scheduler"),
                 min_replicas=1,
