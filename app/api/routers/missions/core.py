@@ -61,10 +61,10 @@ class CreateChainRequest(BaseModel):
     stages: list[dict[str, Any]] = Field(default_factory=list)
 
 
-@router.get("/presets")
+@router.get("/presets", response_model=None)
 async def get_scan_presets(
     _current_user: User = Depends(get_current_active_user),
-) -> list[dict[str, Any]]:
+) -> dict[str, dict[str, Any]]:
     """Get available scan presets."""
     from app.services.mission.presets import SCAN_PRESETS
 
