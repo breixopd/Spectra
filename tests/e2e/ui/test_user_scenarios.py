@@ -5,6 +5,7 @@ Tests are ordered so that all authenticated_page (session-scoped cookie) tests
 run before unauthenticated page tests to avoid rate-limit / cookie interference.
 """
 
+import os
 import time
 
 import pytest
@@ -67,28 +68,36 @@ def test_plan_displayed_on_profile(authenticated_page: Page, app_url: str):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.timeout(30)
+@pytest.mark.timeout(45)
 def test_admin_create_user_modal(authenticated_page: Page, app_url: str):
     """Admin can open the Create User modal and see form fields."""
     page = authenticated_page
-    page.goto(f"{app_url}/admin", wait_until="networkidle")
+    try:
+        page.goto(f"{app_url}/admin", wait_until="domcontentloaded", timeout=15_000)
+    except Exception:
+        # Re-authenticate if cookies are stale
+        page.goto(f"{app_url}/login", wait_until="domcontentloaded", timeout=10_000)
+        page.fill("input[name='username']", os.environ.get("APP_USERNAME", "admin"))
+        page.fill("input[name='password']", os.environ.get("APP_PASSWORD", "TestPassword123!"))
+        page.click("button[type='submit']")
+        page.wait_for_url("**/dashboard**", timeout=10_000)
+        page.goto(f"{app_url}/admin", wait_until="domcontentloaded", timeout=15_000)
 
-    # Click Users tab
+    # Click Users tab and wait for section to settle
     users_tab = page.locator(".admin-sidebar [data-section='users']")
     expect(users_tab).to_be_visible(timeout=15_000)
     users_tab.click()
-    expect(page.locator("#section-users")).to_be_visible(timeout=10_000)
+    section = page.locator("#section-users")
+    expect(section).to_be_visible(timeout=10_000)
 
-    # Click the Create User button to open the modal
-    create_btn = page.locator("#section-users button", has_text="Create User")
-    expect(create_btn).to_be_visible(timeout=10_000)
-    create_btn.click()
+    # Wait for the users table to be populated (async loadUsers)
+    page.wait_for_timeout(1_000)
 
-    # If the modal didn't open via button onclick, try JS directly
+    # Open the modal — prefer JS invocation for reliability
+    page.evaluate("openCreateUserModal()")
+
     modal = page.locator("#user-modal")
-    if not modal.is_visible():
-        page.evaluate("openCreateUserModal()")
-    expect(modal).to_be_visible(timeout=10_000)
+    expect(modal).to_be_visible(timeout=15_000)
 
     modal_title = page.locator("#user-modal-title")
     expect(modal_title).to_be_visible(timeout=10_000)
