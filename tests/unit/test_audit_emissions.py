@@ -100,7 +100,7 @@ class TestMissionStopAuditEmission:
     async def test_mission_stop_emits_audit_event(self):
         from app.api.routers.missions import router
 
-        app = _make_app_with_router(router)
+        app = _make_app_with_router(router, prefix="/missions")
         user = _fake_user()
         mock_session = AsyncMock()
         _override_deps(app, user, mock_session)
@@ -108,9 +108,9 @@ class TestMissionStopAuditEmission:
         mission_id = "m-123"
 
         with (
-            patch("app.api.routers.missions.mission_manager") as mock_mm,
-            patch("app.api.routers.missions.audit_log_event", new_callable=AsyncMock) as mock_audit,
-            patch("app.api.routers.missions.check_resource_owner"),
+            patch("app.api.routers.missions.core.mission_manager") as mock_mm,
+            patch("app.api.routers.missions.core.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("app.api.routers.missions.core.check_resource_owner"),
         ):
             mock_mm.get_mission = AsyncMock(return_value=None)
             mock_mm.stop_mission = AsyncMock(return_value=True)
@@ -139,7 +139,7 @@ class TestMissionPauseAuditEmission:
     async def test_mission_pause_emits_audit_event(self):
         from app.api.routers.missions import router
 
-        app = _make_app_with_router(router)
+        app = _make_app_with_router(router, prefix="/missions")
         user = _fake_user()
         mock_session = AsyncMock()
         _override_deps(app, user, mock_session)
@@ -147,9 +147,9 @@ class TestMissionPauseAuditEmission:
         mission_id = "m-456"
 
         with (
-            patch("app.api.routers.missions.mission_manager") as mock_mm,
-            patch("app.api.routers.missions.audit_log_event", new_callable=AsyncMock) as mock_audit,
-            patch("app.api.routers.missions.check_resource_owner"),
+            patch("app.api.routers.missions.core.mission_manager") as mock_mm,
+            patch("app.api.routers.missions.core.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("app.api.routers.missions.core.check_resource_owner"),
         ):
             mock_mm.get_mission = AsyncMock(return_value=None)
             mock_mm.pause_mission = AsyncMock(return_value=True)
@@ -220,14 +220,14 @@ class TestFindingsExportAuditEmission:
     async def test_findings_export_csv_emits_audit_event(self):
         from app.api.routers.findings import router
 
-        app = _make_app_with_router(router)
+        app = _make_app_with_router(router, prefix="/findings")
         user = _fake_user()
         mock_session = AsyncMock()
         _override_deps(app, user, mock_session)
 
         with (
-            patch("app.api.routers.findings._fetch_all_findings", new_callable=AsyncMock, return_value=[]),
-            patch("app.api.routers.findings.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("app.api.routers.findings.bulk._fetch_all_findings", new_callable=AsyncMock, return_value=[]),
+            patch("app.api.routers.findings.bulk.audit_log_event", new_callable=AsyncMock) as mock_audit,
         ):
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
