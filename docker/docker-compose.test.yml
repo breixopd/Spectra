@@ -330,7 +330,7 @@ services:
   test-runner:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.app
+      dockerfile: docker/Dockerfile.test
     user: root
     cap_add:
       - NET_ADMIN
@@ -340,7 +340,6 @@ services:
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        pip install -q pytest pytest-asyncio pytest-dotenv &&
         python3 -m pytest tests/ -v --tb=short -x --ignore=tests/e2e/ui --ignore=tests/unit --ignore=tests/load --ignore=tests/performance --ignore=tests/soak
     env_file:
       - ../.env.test
@@ -395,12 +394,11 @@ services:
   load-test-runner:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.app
+      dockerfile: docker/Dockerfile.test
     user: root
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        pip install -q pytest pytest-asyncio pytest-dotenv httpx redis websockets &&
         python3 -m pytest tests/load tests/performance tests/soak tests/integration/test_queue.py
         -m "load or performance or soak" -q --override-ini=addopts=
     env_file:
@@ -448,12 +446,11 @@ services:
   settings-test-runner:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.app
+      dockerfile: docker/Dockerfile.test
     user: root
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        python -m pip install -q pytest pytest-asyncio pytest-dotenv &&
         python -m pytest
         tests/unit/test_runtime_settings.py
         tests/unit/test_system_setup.py
@@ -489,12 +486,11 @@ services:
   unit-test-runner:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.app
+      dockerfile: docker/Dockerfile.test
     user: root
     entrypoint: ["sh", "-c"]
     command:
       - >-
-        python -m pip install -q pytest pytest-asyncio pytest-dotenv pytest-cov aiosqlite &&
         python -m pytest tests/unit/ -q --override-ini=addopts=
     env_file:
       - ../.env.test

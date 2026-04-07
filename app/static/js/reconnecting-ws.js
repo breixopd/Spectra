@@ -10,6 +10,11 @@ class ReconnectingWebSocket {
         this.retries = 0;
         this.handlers = { message: [], open: [], close: [], error: [] };
         this._closed = false;
+        // Support callbacks passed via constructor options
+        if (options.onMessage) this.handlers.message.push(options.onMessage);
+        if (options.onOpen) this.handlers.open.push(options.onOpen);
+        if (options.onClose) this.handlers.close.push(options.onClose);
+        if (options.onError) this.handlers.error.push(options.onError);
         this.connect();
     }
 

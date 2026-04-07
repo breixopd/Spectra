@@ -118,7 +118,7 @@ const spectraApi = (() => {
                 }
                 _clearSpectraLocalStorage();
                 window.location.href = '/login';
-                return { data: null, response, error: 'Unauthorized' };
+                return { data: null, response, error: 'Unauthorized', status: response.status };
             }
 
             if (response.status === 429) {
@@ -126,7 +126,7 @@ const spectraApi = (() => {
                 if (typeof _spectraToast === 'function') {
                     _spectraToast(msg, 'warning');
                 }
-                return { data: null, response, error: msg };
+                return { data: null, response, error: msg, status: response.status };
             }
 
             // Parse JSON if content-type indicates it
@@ -140,13 +140,13 @@ const spectraApi = (() => {
 
             if (!response.ok) {
                 const detail = (typeof data === 'object' && data !== null && data.detail) || `HTTP ${response.status}`;
-                return { data, response, error: detail };
+                return { data, response, error: detail, status: response.status };
             }
 
-            return { data, response, error: null };
+            return { data, response, error: null, status: response.status };
         } catch (err) {
             const message = err && err.name === 'AbortError' ? 'Request timed out' : (err.message || 'Network error');
-            return { data: null, response: null, error: message };
+            return { data: null, response: null, error: message, status: null };
         } finally {
             window.clearTimeout(timeoutId);
             _activeRequests--;

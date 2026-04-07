@@ -307,3 +307,5 @@ configs:
     file: ./Caddyfile.prod
   tensorzero_config:
     file: ../config/tensorzero.toml
+  garage_config:
+    file: ./garage.toml

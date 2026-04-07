@@ -1,0 +1,32 @@
+# Lightweight test runner — not for production use.
+# Keeps test dependencies out of the app image.
+FROM python:3.11-slim AS test-runner
+
+WORKDIR /app
+
+# System deps for asyncpg, psycopg2, etc.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install all dependencies including test deps.
+# base.txt pins pytest 9 + pytest-asyncio 0.24 which have a resolver
+# conflict (pytest-asyncio 0.24 declares pytest<9). They're compatible at
+# runtime, so install deps first then force the asyncio pin.
+COPY requirements/ requirements/
+RUN grep -v 'pytest-asyncio' requirements/base.txt > /tmp/base-filtered.txt \
+    && pip install --no-cache-dir -r /tmp/base-filtered.txt numpy \
+    && pip install --no-cache-dir --no-deps pytest-asyncio==0.24.0 \
+    && pip install --no-cache-dir pytest-timeout httpx redis websockets
+
+# Copy source
+COPY app/ app/
+COPY tests/ tests/
+COPY scripts/ scripts/
+COPY plugins/ plugins/
+COPY config/ config/
+COPY alembic/ alembic/
+COPY pyproject.toml .
+
+# Default: run unit tests
+CMD ["python3", "-m", "pytest", "tests/unit/", "-q", "--no-cov"]
