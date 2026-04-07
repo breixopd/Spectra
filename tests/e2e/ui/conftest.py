@@ -35,6 +35,36 @@ ACCESS_COOKIE_PATH = "/"
 REFRESH_COOKIE_PATH = "/api/v1/auth/refresh"
 AUTH_COOKIE_SAMESITE = "Strict"
 
+_AUTH_SUPPRESSION_INIT_SCRIPT = """
+    (function() {
+        var _origFetch = window.fetch;
+        window.fetch = function(url, options) {
+            return _origFetch.apply(this, arguments).then(function(response) {
+                if (response.status === 401) {
+                    var u = (typeof url === 'string') ? url : '';
+                    if (u.indexOf('/api/') !== -1) {
+                        return new Response(
+                            JSON.stringify({data: null, detail: 'auth-suppressed'}),
+                            {status: 200, statusText: 'OK',
+                             headers: {'Content-Type': 'application/json'}}
+                        );
+                    }
+                }
+                return response;
+            });
+        };
+    })();
+    setTimeout(function() {
+        if (typeof socket !== 'undefined' && socket && socket.onclose) {
+            var _orig = socket.onclose;
+            socket.onclose = function(e) {
+                if (e && e.code === 4001) return;
+                _orig.call(socket, e);
+            };
+        }
+    }, 0);
+"""
+
 
 def normalize_app_base_url(app_base_url: str) -> str:
     """Normalize the configured app base URL and reject unsafe schemes."""
@@ -173,35 +203,7 @@ def shared_context(browser: Browser):
     # wraps window.fetch BEFORE page scripts load: any API 401 is silently
     # converted to 200 so the client treats it as a soft failure.
     # A deferred block patches the WebSocket close handler too.
-    context.add_init_script("""
-        (function() {
-            var _origFetch = window.fetch;
-            window.fetch = function(url, options) {
-                return _origFetch.apply(this, arguments).then(function(response) {
-                    if (response.status === 401) {
-                        var u = (typeof url === 'string') ? url : '';
-                        if (u.indexOf('/api/') !== -1) {
-                            return new Response(
-                                JSON.stringify({data: null, detail: 'auth-suppressed'}),
-                                {status: 200, statusText: 'OK',
-                                 headers: {'Content-Type': 'application/json'}}
-                            );
-                        }
-                    }
-                    return response;
-                });
-            };
-        })();
-        setTimeout(function() {
-            if (typeof socket !== 'undefined' && socket && socket.onclose) {
-                var _orig = socket.onclose;
-                socket.onclose = function(e) {
-                    if (e && e.code === 4001) return;
-                    _orig.call(socket, e);
-                };
-            }
-        }, 0);
-    """)
+    context.add_init_script(_AUTH_SUPPRESSION_INIT_SCRIPT)
 
     yield context
     context.close()
@@ -323,6 +325,42 @@ def authenticated_page(
     yield _page
     if not _page.is_closed():
         _page.close()
+
+
+@pytest.fixture
+def fresh_authenticated_page(
+    browser: Browser,
+    authenticated_cookies: list[dict[str, object]],
+    app_url: str,
+):
+    """Create a fully isolated authenticated page with its own browser context.
+
+    Use for tests that navigate to pages susceptible to redirect loops
+    (e.g. /admin) where shared context corruption is a risk.
+    """
+    _reset_user_activity(ADMIN_USERNAME)
+    context = browser.new_context()
+    context.set_default_navigation_timeout(30_000)
+    context.set_default_timeout(15_000)
+    context.add_init_script(_AUTH_SUPPRESSION_INIT_SCRIPT)
+
+    cookies_to_use = list(authenticated_cookies)  # defensive copy
+    context.add_cookies(cast(Any, cookies_to_use))
+    _page = context.new_page()
+
+    try:
+        _page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
+    except Exception:
+        # Refresh tokens if stale
+        cookies_to_use = _refresh_auth_cookies(app_url)
+        context.clear_cookies()
+        context.add_cookies(cast(Any, cookies_to_use))
+        _page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
+
+    yield _page
+    if not _page.is_closed():
+        _page.close()
+    context.close()
 
 
 @pytest.fixture
