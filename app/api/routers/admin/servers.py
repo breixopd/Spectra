@@ -493,18 +493,36 @@ async def get_scaling_metrics(
 async def get_scaling_status(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
-    """Get auto-scaling status, current policies, and queue metrics."""
+    """Get auto-scaling status, current policies, queue metrics, and current config values."""
     from app.core.config import get_settings as _get_settings
     from app.core.queue import queue_metrics
 
     settings = _get_settings()
     result: dict = {"enabled": settings.AUTOSCALE_ENABLED}
 
-    if settings.AUTOSCALE_ENABLED:
-        from app.services.scaling.auto_scaler import AutoScaler
+    # Always include current config values so the admin UI can populate the form
+    result["config"] = {
+        "autoscale_enabled": settings.AUTOSCALE_ENABLED,
+        "autoscale_worker_min": getattr(settings, "AUTOSCALE_WORKER_MIN", 1),
+        "autoscale_worker_max": getattr(settings, "AUTOSCALE_WORKER_MAX", 10),
+        "autoscale_api_min": getattr(settings, "AUTOSCALE_API_MIN", 2),
+        "autoscale_api_max": getattr(settings, "AUTOSCALE_API_MAX", 8),
+        "autoscale_ai_max": getattr(settings, "AUTOSCALE_AI_MAX", 4),
+        "autoscale_queue_threshold": getattr(settings, "AUTOSCALE_QUEUE_THRESHOLD", 5),
+        "autoscale_cooldown_secs": getattr(settings, "AUTOSCALE_COOLDOWN_SECS", 300),
+        "autoscale_idle_secs": getattr(settings, "AUTOSCALE_IDLE_SECS", 600),
+        "autoscale_cpu_up_threshold": getattr(settings, "AUTOSCALE_CPU_UP_THRESHOLD", 75),
+        "autoscale_cpu_down_threshold": getattr(settings, "AUTOSCALE_CPU_DOWN_THRESHOLD", 25),
+        "infra_monitor_enabled": getattr(settings, "INFRA_MONITOR_ENABLED", True),
+        "infra_monitor_pg_threshold": getattr(settings, "INFRA_MONITOR_PG_THRESHOLD", 80),
+        "infra_monitor_redis_threshold": getattr(settings, "INFRA_MONITOR_REDIS_THRESHOLD", 85),
+        "infra_monitor_storage_threshold": getattr(settings, "INFRA_MONITOR_STORAGE_THRESHOLD", 90),
+    }
 
-        scaler = AutoScaler(settings)
-        result["scaler"] = scaler.get_status()
+    from app.services.scaling.auto_scaler import AutoScaler
+
+    scaler = AutoScaler(settings)
+    result["scaler"] = scaler.get_status()
 
     stats = await queue_metrics()
     result["queue"] = stats
@@ -525,3 +543,88 @@ async def get_resource_capacity(
         local["total_memory_mb"], local["cpu_cores"], s.SERVICE_MODE
     )
     return {"local": {**local, **capacity}, "service_mode": s.SERVICE_MODE}
+
+
+# --- Scaling Configuration ---
+
+
+class ScalingConfigUpdate(BaseModel):
+    """Schema for updating auto-scaling configuration."""
+
+    autoscale_enabled: bool | None = None
+    autoscale_worker_min: int | None = Field(None, ge=1, le=20)
+    autoscale_worker_max: int | None = Field(None, ge=1, le=50)
+    autoscale_api_min: int | None = Field(None, ge=1, le=10)
+    autoscale_api_max: int | None = Field(None, ge=1, le=20)
+    autoscale_ai_max: int | None = Field(None, ge=1, le=10)
+    autoscale_queue_threshold: int | None = Field(None, ge=1, le=100)
+    autoscale_cooldown_secs: int | None = Field(None, ge=30, le=3600)
+    autoscale_idle_secs: int | None = Field(None, ge=60, le=7200)
+    autoscale_cpu_up_threshold: int | None = Field(None, ge=50, le=99)
+    autoscale_cpu_down_threshold: int | None = Field(None, ge=5, le=50)
+    infra_monitor_enabled: bool | None = None
+    infra_monitor_pg_threshold: int | None = Field(None, ge=50, le=99)
+    infra_monitor_redis_threshold: int | None = Field(None, ge=50, le=99)
+    infra_monitor_storage_threshold: int | None = Field(None, ge=50, le=99)
+
+
+# Map from ScalingConfigUpdate field names to DB config keys
+_SCALING_FIELD_TO_DB_KEY: dict[str, tuple[str, str]] = {
+    "autoscale_enabled": ("AUTOSCALE_ENABLED", "bool"),
+    "autoscale_worker_min": ("AUTOSCALE_WORKER_MIN", "int"),
+    "autoscale_worker_max": ("AUTOSCALE_WORKER_MAX", "int"),
+    "autoscale_api_min": ("AUTOSCALE_API_MIN", "int"),
+    "autoscale_api_max": ("AUTOSCALE_API_MAX", "int"),
+    "autoscale_ai_max": ("AUTOSCALE_AI_MAX", "int"),
+    "autoscale_queue_threshold": ("AUTOSCALE_QUEUE_THRESHOLD", "int"),
+    "autoscale_cooldown_secs": ("AUTOSCALE_COOLDOWN_SECS", "int"),
+    "autoscale_idle_secs": ("AUTOSCALE_IDLE_SECS", "int"),
+    "autoscale_cpu_up_threshold": ("AUTOSCALE_CPU_UP_THRESHOLD", "int"),
+    "autoscale_cpu_down_threshold": ("AUTOSCALE_CPU_DOWN_THRESHOLD", "int"),
+    "infra_monitor_enabled": ("INFRA_MONITOR_ENABLED", "bool"),
+    "infra_monitor_pg_threshold": ("INFRA_MONITOR_PG_THRESHOLD", "int"),
+    "infra_monitor_redis_threshold": ("INFRA_MONITOR_REDIS_THRESHOLD", "int"),
+    "infra_monitor_storage_threshold": ("INFRA_MONITOR_STORAGE_THRESHOLD", "int"),
+}
+
+
+@router.put("/api/admin/scaling/config")
+async def update_scaling_config(
+    update: ScalingConfigUpdate,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Update auto-scaling configuration. Changes take effect on next evaluation cycle."""
+    from app.services.system.runtime_settings import (
+        hydrate_runtime_settings_from_db,
+        upsert_system_config_values,
+    )
+
+    db_values: dict[str, tuple[str, bool]] = {}
+    for field_name, value in update.model_dump(exclude_unset=True).items():
+        mapping = _SCALING_FIELD_TO_DB_KEY.get(field_name)
+        if mapping is None:
+            continue
+        db_key, kind = mapping
+        if kind == "bool":
+            db_values[db_key] = (str(value).lower(), False)
+        else:
+            db_values[db_key] = (str(value), False)
+
+    if not db_values:
+        raise HTTPException(status_code=400, detail="No valid scaling fields provided")
+
+    await upsert_system_config_values(session, db_values)
+    await session.commit()
+    await hydrate_runtime_settings_from_db(session, persist_normalized=True, commit=True, reset_caches=False)
+
+    await audit_log_event(
+        session,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=current_user.id,
+        details={"action": "scaling_config_updated", "fields": list(db_values.keys())},
+        request=request,
+    )
+
+    return {"status": "updated", "message": "Scaling configuration updated — takes effect on next evaluation cycle"}

@@ -224,38 +224,37 @@ class SchedulerService:
 
     async def _capacity_monitor(self):
         """Monitor network capacity and auto-scale services when enabled."""
-        from app.core.config import get_settings
-
-        settings = get_settings()
-        scaler = None
-        if settings.AUTOSCALE_ENABLED:
-            from app.services.scaling.auto_scaler import AutoScaler
-
-            scaler = AutoScaler(settings)
-            logger.info("Auto-scaling engine enabled")
-
         while self.running:
             await asyncio.sleep(60)
             if not self.running:
                 break
             try:
+                from app.core.config import get_settings
+
+                settings = get_settings()
+
+                # Re-create AutoScaler each cycle to pick up runtime setting changes
+                scaler = None
+                if settings.AUTOSCALE_ENABLED:
+                    from app.services.scaling.auto_scaler import AutoScaler
+
+                    scaler = AutoScaler(settings)
+
                 # --- Auto-scaling ---
                 if scaler is not None:
                     metrics = await self._collect_scaling_metrics()
-                    decisions = await scaler.evaluate(metrics)
+                    decisions = await scaler.evaluate_and_execute(metrics)
                     for decision in decisions:
                         if decision.action != "none":
-                            success = await scaler.execute(decision)
-                            if success:
-                                await self._send_capacity_alert({
-                                    "event": f"auto_scaled_{decision.action}",
-                                    "service": decision.service,
-                                    "replicas": f"{decision.current_replicas} → {decision.desired_replicas}",
-                                    "reason": decision.reason,
-                                    "utilization_pct": 0,
-                                    "total_used": 0,
-                                    "total_capacity": 0,
-                                })
+                            await self._send_capacity_alert({
+                                "event": f"auto_scaled_{decision.action}",
+                                "service": decision.service,
+                                "replicas": f"{decision.current_replicas} → {decision.desired_replicas}",
+                                "reason": decision.reason,
+                                "utilization_pct": 0,
+                                "total_used": 0,
+                                "total_capacity": 0,
+                            })
 
                 # --- Capacity warnings (always active) ---
                 from app.models.server_node import ServerNode
@@ -333,6 +332,8 @@ class SchedulerService:
                             metrics["api_replicas"] = count
                         elif "ai" in name.lower():
                             metrics["ai_replicas"] = count
+                        elif "scheduler" in name.lower():
+                            metrics["scheduler_replicas"] = count
         except Exception as e:
             logger.debug("Failed to query Docker Swarm replicas: %s", e)
 

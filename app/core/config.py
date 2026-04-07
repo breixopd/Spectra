@@ -343,11 +343,20 @@ class Settings(BaseSettings):
     AUTOSCALE_QUEUE_THRESHOLD: int = 10  # Queue depth to trigger scale-up
     AUTOSCALE_COOLDOWN_SECS: int = 300  # 5 min between scale actions
     AUTOSCALE_IDLE_SECS: int = 300  # 5 min idle before scale-down
+    AUTOSCALE_CPU_UP_THRESHOLD: int = 75  # CPU % to trigger scale-up
+    AUTOSCALE_CPU_DOWN_THRESHOLD: int = 25  # CPU % to trigger scale-down
 
     # Service names (Docker Swarm or Compose)
     SWARM_WORKER_SERVICE: str = "spectra_worker"
     SWARM_API_SERVICE: str = "spectra_app"
     SWARM_AI_SERVICE: str = "spectra_ai-svc"
+    SWARM_SCHEDULER_SERVICE: str = "spectra_scheduler"
+
+    # Infrastructure monitoring
+    INFRA_MONITOR_ENABLED: bool = True
+    INFRA_MONITOR_PG_THRESHOLD: int = 80  # PostgreSQL connection % alert threshold
+    INFRA_MONITOR_REDIS_THRESHOLD: int = 85  # Redis memory % alert threshold
+    INFRA_MONITOR_STORAGE_THRESHOLD: int = 90  # Garage/S3 storage % alert threshold
 
     # --- Automated Maintenance ---
     DB_MAINTENANCE_INTERVAL: int = Field(default=604800, description="DB VACUUM ANALYZE interval in seconds (7 days)")
