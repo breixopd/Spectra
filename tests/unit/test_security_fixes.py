@@ -346,9 +346,9 @@ class TestAuditLoggingWired:
         assert hasattr(auth_mod, "audit_log_event")
 
     def test_missions_router_imports_audit(self):
-        import app.api.routers.missions as missions_mod
+        import app.api.routers.missions.core as missions_core_mod
 
-        assert hasattr(missions_mod, "audit_log_event")
+        assert hasattr(missions_core_mod, "audit_log_event")
 
 
 # ============================================================================

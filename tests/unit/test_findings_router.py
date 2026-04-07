@@ -51,7 +51,7 @@ def _make_app() -> FastAPI:
     app = FastAPI()
     app.state.limiter = limiter
     limiter.enabled = False
-    app.include_router(router, prefix="/api/v1")
+    app.include_router(router, prefix="/api/v1/findings")
     return app
 
 

@@ -196,9 +196,9 @@ class TestMissionCreationSetsUserId:
         fake_mission.attack_surface = None
 
         with (
-            patch("app.api.routers.missions.check_mission_limit", new_callable=AsyncMock),
-            patch("app.api.routers.missions.mission_manager") as mm,
-            patch("app.api.routers.missions.audit_log_event", new_callable=AsyncMock),
+            patch("app.api.routers.missions.core.check_mission_limit", new_callable=AsyncMock),
+            patch("app.api.routers.missions.core.mission_manager") as mm,
+            patch("app.api.routers.missions.core.audit_log_event", new_callable=AsyncMock),
         ):
             mm.start_mission = AsyncMock(side_effect=fake_start)
             mm.get_mission = AsyncMock(return_value=fake_mission)
