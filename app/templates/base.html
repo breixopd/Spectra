@@ -201,6 +201,12 @@
         // --- Global System Status Polling ---
         let statusTimer = null;
         let systemReady = false;
+        let statusRetryMs = 10000;
+        let statusFailCount = 0;
+        const STATUS_RETRY_BASE = 5000;
+        const STATUS_RETRY_MAX = 30000;
+        const STATUS_GIVEUP_MAX = 60000;
+        const STATUS_GIVEUP_AFTER = 20;
 
         async function checkSystemStatus() {
             if (window.PUBLIC_PATHS.includes(window.location.pathname)) return;
@@ -218,11 +224,14 @@
 
                 if (error) {
                     if (status === 429) {
-                        // Rate limited — don't show "Connecting", just slow down polling
-                        statusMsg.textContent = 'Rate limited — retrying shortly...';
+                        // Rate limited — back off immediately
+                        statusRetryMs = STATUS_GIVEUP_MAX;
+                        statusFailCount = 0;
+                        statusBar.classList.remove('hidden');
+                        statusMsg.textContent = 'Rate limited — retrying in 60s';
                         statusDetails.textContent = '';
                         clearTimeout(statusTimer);
-                        statusTimer = setTimeout(checkSystemStatus, 30000);
+                        statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
                         return;
                     }
                     if (status === 401) {
@@ -230,23 +239,34 @@
                         statusBar.classList.add('hidden');
                         return;
                     }
-                    // Genuine connection issue
+                    // Genuine server error — use backoff
+                    statusFailCount++;
                     statusBar.classList.remove('hidden');
-                    statusMsg.textContent = 'Connecting to server...';
+                    if (statusFailCount >= STATUS_GIVEUP_AFTER) {
+                        statusRetryMs = STATUS_GIVEUP_MAX;
+                        statusMsg.textContent = 'Connection lost \u2014 retrying every 60s';
+                    } else {
+                        statusRetryMs = Math.min(STATUS_RETRY_BASE * Math.pow(2, statusFailCount - 1), STATUS_RETRY_MAX);
+                        statusMsg.textContent = 'Checking server status\u2026';
+                    }
                     statusDetails.textContent = '';
                     clearTimeout(statusTimer);
-                    statusTimer = setTimeout(checkSystemStatus, 3000);
+                    statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
                     return;
                 }
+
+                // Success — reset backoff
+                statusRetryMs = 10000;
+                statusFailCount = 0;
                 
                 if (data.status === 'ready' && !data.tools_installing && !data.embeddings_loading) {
-                    // System is ready - hide bar and slow down polling
+                    // System is ready - hide bar and poll normally
                     statusBar.classList.add('hidden');
                     if (!systemReady) {
                         systemReady = true;
                     }
                     clearTimeout(statusTimer);
-                    statusTimer = setTimeout(checkSystemStatus, 30000);
+                    statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
                 } else {
                     // System is initializing
                     systemReady = false;
@@ -291,15 +311,22 @@
                         statusProgress.classList.add('hidden');
                     }
                     clearTimeout(statusTimer);
-                    statusTimer = setTimeout(checkSystemStatus, 3000);
+                    statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
                 }
             } catch (e) {
-                // Network error
+                // Network error — use backoff
+                statusFailCount++;
                 statusBar.classList.remove('hidden');
-                statusMsg.textContent = 'Unable to reach server';
+                if (statusFailCount >= STATUS_GIVEUP_AFTER) {
+                    statusRetryMs = STATUS_GIVEUP_MAX;
+                    statusMsg.textContent = 'Connection lost \u2014 retrying every 60s';
+                } else {
+                    statusRetryMs = Math.min(STATUS_RETRY_BASE * Math.pow(2, statusFailCount - 1), STATUS_RETRY_MAX);
+                    statusMsg.textContent = 'Checking server status\u2026';
+                }
                 statusDetails.textContent = 'Check your connection';
                 clearTimeout(statusTimer);
-                statusTimer = setTimeout(checkSystemStatus, 5000);
+                statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
             }
         }
 
