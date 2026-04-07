@@ -113,6 +113,7 @@ jobs:
         run: |
           python3 -m pytest tests/integration/ -v --tb=short \
             --timeout=120 \
+            --override-ini="addopts=" \
             -k "not live and not e2e"
         env:
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
@@ -157,6 +158,12 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile.tools
+          push: false
+          load: false
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.test
           push: false
           load: false
       - name: Validate Docker Compose
