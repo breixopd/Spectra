@@ -1,6 +1,6 @@
 """Tests for StorageMonitor."""
 import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
