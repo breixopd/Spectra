@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Clean up missions and cached data while preserving config."""
+"""DEV/RESET UTILITY — Clean up missions and cached data while preserving config.
+
+**NOT for production use.** Production mission retention is handled automatically
+by the scheduler service via the MISSION_RETENTION_DAYS setting.
+
+This script is a developer convenience tool for resetting a local or test
+environment to a clean state. It deletes ALL missions, findings, and cache
+entries without retention logic.
+
+Usage (dev only):
+    python scripts/cleanup_missions.py
+"""
 
 import asyncio
 import shutil

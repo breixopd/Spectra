@@ -281,7 +281,10 @@ class SchedulerService:
                         status["total_capacity"],
                         status["utilization_pct"],
                     )
-                    await self._send_capacity_alert(status)
+                    from app.services.infrastructure.storage_monitor import StorageMonitor
+
+                    if StorageMonitor.should_alert("capacity_at_full"):
+                        await self._send_capacity_alert(status)
                 elif status["utilization_pct"] > 80:
                     logger.warning(
                         "Capacity warning: %.1f%% utilization (%d/%d)",
@@ -489,7 +492,9 @@ class SchedulerService:
                 logger.warning("Docker cleanup failed: %s", e)
 
     async def _disk_monitor(self):
-        """Monitor disk space and alert when low."""
+        """Monitor disk space and alert when low (with dedup)."""
+        from app.services.infrastructure.storage_monitor import StorageMonitor
+
         while self.running:
             await asyncio.sleep(300)  # 5 minutes
             if not self.running:
@@ -505,14 +510,15 @@ class SchedulerService:
                         free_pct,
                         usage.free // (1024 * 1024),
                     )
-                    await self._send_capacity_alert({
-                        "event": "disk_space_critical",
-                        "free_pct": round(free_pct, 1),
-                        "free_mb": usage.free // (1024 * 1024),
-                        "utilization_pct": round(100 - free_pct, 1),
-                        "total_used": (usage.total - usage.free) // (1024 * 1024),
-                        "total_capacity": usage.total // (1024 * 1024),
-                    })
+                    if StorageMonitor.should_alert("disk_space_critical"):
+                        await self._send_capacity_alert({
+                            "event": "disk_space_critical",
+                            "free_pct": round(free_pct, 1),
+                            "free_mb": usage.free // (1024 * 1024),
+                            "utilization_pct": round(100 - free_pct, 1),
+                            "total_used": (usage.total - usage.free) // (1024 * 1024),
+                            "total_capacity": usage.total // (1024 * 1024),
+                        })
                 elif free_pct < 20:
                     logger.warning("Disk space low: %.1f%% free", free_pct)
             except Exception as e:

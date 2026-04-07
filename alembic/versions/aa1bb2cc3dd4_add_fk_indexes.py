@@ -1,13 +1,13 @@
 """Add indexes to foreign key columns.
 
-Revision ID: j0k1l2m3n4o5
+Revision ID: aa1bb2cc3dd4
 Revises: z5a6b7c8d9e0
 Create Date: 2026-04-06
 """
 
 from alembic import op
 
-revision = "j0k1l2m3n4o5"
+revision = "aa1bb2cc3dd4"
 down_revision = "z5a6b7c8d9e0"
 branch_labels = None
 depends_on = None
