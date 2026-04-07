@@ -350,7 +350,7 @@ class TestRealToolExecution:
         import subprocess
 
         result = subprocess.run(
-            ["nuclei", "-version"],
+            ["nuclei", "-version"],  # noqa: S607
             capture_output=True,
             text=True,
             timeout=10,
@@ -550,7 +550,7 @@ class TestPluginLoading:
                 else:
                     args = shlex.split(cmd)
 
-                result = subprocess.run(args, capture_output=True, text=True, timeout=10)
+                result = subprocess.run(args, capture_output=True, text=True, timeout=10)  # noqa: S603
 
                 success = result.returncode == 0
                 if not success and tool.config.installation.verification_regex:
@@ -567,7 +567,7 @@ class TestPluginLoading:
                     try:
                         await registry.install_tool(tool.config.id)
                         # Verify again with same safe approach
-                        result = subprocess.run(args, capture_output=True, text=True, timeout=10)
+                        result = subprocess.run(args, capture_output=True, text=True, timeout=10)  # noqa: S603
 
                         success = result.returncode == 0
                         if not success and tool.config.installation.verification_regex:

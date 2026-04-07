@@ -6,7 +6,7 @@ import sys
 
 def test_import_boundaries():
     """Shared packages (core, models) must not import service-specific code."""
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "scripts/check_import_boundaries.py"],
         capture_output=True,
         text=True,
