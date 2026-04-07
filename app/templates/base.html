@@ -345,6 +345,14 @@
     {% endif %}
     <script nonce="{{ request.state.csp_nonce }}">
     function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function escapeAttr(str) {
+        return String(str ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
     </script>
     <!-- Lucide Icons — locally hosted, same-origin (SRI would add no cross-origin benefit) -->
     <script src="/static/vendor/js/lucide.min.js"></script>
