@@ -189,6 +189,12 @@ async def apply_settings_update(
         await db.commit()
         await hydrate_runtime_settings_from_db(db, persist_normalized=True, commit=True)
 
+        # Notify other replicas of config change via PostgreSQL LISTEN/NOTIFY
+        from sqlalchemy import text
+
+        await db.execute(text("SELECT pg_notify('config_changes', 'settings_updated')"))
+        await db.commit()
+
     return {"status": "updated", "message": "Settings updated and saved"}
 
 

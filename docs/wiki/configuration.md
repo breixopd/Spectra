@@ -231,14 +231,20 @@ See [Security](security.md) for full security model.
 
 ## Runtime Settings
 
-Some settings can be changed at runtime through the web UI (Admin panel → Settings). These are saved to `data/config/runtime_settings.json` and override environment variables on next load:
+Some settings can be changed at runtime through the web UI (Admin panel → Settings). These are persisted to the database and override environment variables. The database is the source of truth after initial setup; environment variables serve only as initial defaults.
+
+Admin-UI-manageable settings include:
 
 - `LOG_LEVEL`, `PLUGIN_SAFE_MODE`, `CONNECT_BACK_HOST`
 - `REQUIRE_APPROVAL`, `FULLY_AUTOMATED`
 - `NOTIFICATION_WEBHOOK`
 - `PLATFORM_DOMAIN`, `PLATFORM_BASE_URL`, `PLATFORM_EXPOSED`
+- All `AUTOSCALE_*` and `INFRA_MONITOR_*` settings (via Scaling tab)
+- `BACKUP_ENABLED`, `BACKUP_SCHEDULE_HOURS`, `BACKUP_RETENTION_COUNT`
 
 AI/LLM settings are managed through the database-backed `SystemConfig` and are not saved to the runtime file.
+
+When a setting is changed via the Admin UI, all running replicas are notified via PostgreSQL `LISTEN`/`NOTIFY` and re-hydrate their in-memory settings automatically — no restart required.
 
 ---
 
@@ -255,20 +261,40 @@ AI/LLM settings are managed through the database-backed `SystemConfig` and are n
 
 Auto-scaling is opt-in and disabled by default. See [Scaling](scaling.md#auto-scaling) for architecture and policy details.
 
+> **Note:** Environment variables below serve as initial defaults. After first boot, the **database** (managed via Admin UI → Scaling tab) is the source of truth. Changes made in the Admin UI override `.env` values.
+
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `AUTOSCALE_ENABLED` | bool | `false` | Enable reactive auto-scaling |
 | `AUTOSCALE_WORKER_MIN` | int | `1` | Minimum worker replicas |
-| `AUTOSCALE_WORKER_MAX` | int | `10` | Maximum worker replicas |
+| `AUTOSCALE_WORKER_MAX` | int | `10` | Maximum worker replicas (4 GB+ each; diminishing returns beyond 10) |
 | `AUTOSCALE_API_MIN` | int | `1` | Minimum API replicas |
-| `AUTOSCALE_API_MAX` | int | `5` | Maximum API replicas |
-| `AUTOSCALE_AI_MAX` | int | `3` | Maximum AI service replicas |
+| `AUTOSCALE_API_MAX` | int | `8` | Maximum API replicas (connection pool bottleneck at 8 × 20 = 160 conns) |
+| `AUTOSCALE_AI_MAX` | int | `4` | Maximum AI service replicas (bounded by upstream LLM rate limits) |
 | `AUTOSCALE_QUEUE_THRESHOLD` | int | `10` | Queue depth to trigger worker scale-up |
 | `AUTOSCALE_COOLDOWN_SECS` | int | `300` | Minimum seconds between scale actions |
 | `AUTOSCALE_IDLE_SECS` | int | `300` | Seconds of idle before scale-down |
+| `AUTOSCALE_CPU_UP_THRESHOLD` | int | `75` | CPU % to trigger scale-up |
+| `AUTOSCALE_CPU_DOWN_THRESHOLD` | int | `25` | CPU % to trigger scale-down |
 | `SWARM_WORKER_SERVICE` | str | `"spectra_worker"` | Docker service name for workers |
 | `SWARM_API_SERVICE` | str | `"spectra_app"` | Docker service name for API |
 | `SWARM_AI_SERVICE` | str | `"spectra_ai-svc"` | Docker service name for AI |
+| `SWARM_SCHEDULER_SERVICE` | str | `"spectra_scheduler"` | Docker service name for scheduler |
+
+---
+
+## Infrastructure Monitoring
+
+Infrastructure monitoring tracks DB, Redis, and storage health and sends alerts when thresholds are approached. These components are **not auto-scaled** — alerts inform operators to take manual action.
+
+> **Note:** Like auto-scaling settings, these serve as initial defaults and can be managed via Admin UI after first boot.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `INFRA_MONITOR_ENABLED` | bool | `true` | Enable infrastructure monitoring |
+| `INFRA_MONITOR_PG_THRESHOLD` | int | `80` | PostgreSQL connection pool alert threshold (%) |
+| `INFRA_MONITOR_REDIS_THRESHOLD` | int | `85` | Redis memory alert threshold (%) |
+| `INFRA_MONITOR_STORAGE_THRESHOLD` | int | `90` | Storage disk usage alert threshold (%) |
 
 ---
 

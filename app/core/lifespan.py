@@ -450,6 +450,59 @@ async def _start_event_bridge() -> Any | None:
         return None
 
 
+async def _config_change_listener() -> None:
+    """Listen for config changes from other replicas and re-hydrate settings.
+
+    Uses a raw asyncpg connection with LISTEN so that PostgreSQL pushes
+    notifications instead of polling.
+    """
+    import asyncpg
+
+    db_url = str(settings.DATABASE_URL)
+    if isinstance(settings.DATABASE_URL, SecretStr):
+        db_url = settings.DATABASE_URL.get_secret_value()
+    # asyncpg needs a plain postgresql:// DSN, not the SQLAlchemy +asyncpg variant
+    dsn = db_url.replace("postgresql+asyncpg://", "postgresql://")
+
+    conn: asyncpg.Connection | None = None
+    while True:
+        try:
+            if conn is None or conn.is_closed():
+                conn = await asyncpg.connect(dsn)
+
+                def _on_config_notify(
+                    connection: asyncpg.Connection,
+                    pid: int,
+                    channel: str,
+                    payload: str,
+                ) -> None:
+                    asyncio.ensure_future(_handle_config_change())
+
+                await conn.add_listener("config_changes", _on_config_notify)
+                logger.info("[OK] Config change listener connected (PG LISTEN)")
+
+            # Keep the connection alive; reconnect on failure
+            await asyncio.sleep(5)
+        except asyncio.CancelledError:
+            if conn and not conn.is_closed():
+                await conn.close()
+            break
+        except (OSError, asyncpg.PostgresError) as exc:
+            logger.warning("Config change listener error (will retry): %s", exc)
+            conn = None
+            await asyncio.sleep(10)
+
+
+async def _handle_config_change() -> None:
+    """Re-hydrate settings from DB when another replica changes config."""
+    try:
+        async with async_session_maker() as session:
+            await hydrate_runtime_settings_from_db(session)
+        logger.info("Config re-hydrated from DB via LISTEN/NOTIFY")
+    except (SQLAlchemyError, OSError) as exc:
+        logger.warning("Failed to re-hydrate config on NOTIFY: %s", exc)
+
+
 async def _shutdown_services() -> None:
     """Gracefully shut down all services."""
     # Close storage service
@@ -540,11 +593,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await _initialize_services()
         logger.info("[READY] Spectra is ready!")
         _event_bridge = await _start_event_bridge()
+        _config_listener_task = asyncio.create_task(_config_change_listener())
     except (OSError, RuntimeError, ImportError) as e:
         logger.error("[ERROR] Startup failed: %s", e)
         raise
 
     yield
+
+    # Cancel config change listener
+    try:
+        _config_listener_task.cancel()
+        await asyncio.wait_for(_config_listener_task, timeout=3.0)
+    except (asyncio.CancelledError, TimeoutError, NameError):
+        pass
 
     if _event_bridge:
         try:
