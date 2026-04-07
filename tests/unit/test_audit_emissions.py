@@ -67,12 +67,12 @@ class TestLogoutAuditEmission:
         token_payload = {"sub": user.username, "exp": 9999999999}
 
         with (
-            patch("app.api.routers.auth._extract_bearer_token", return_value="fake-token"),
-            patch("app.api.routers.auth._decode_token_or_http_error", return_value=token_payload),
-            patch("app.api.routers.auth.invalidate_token"),
-            patch("app.api.routers.auth._get_user_by_username", new_callable=AsyncMock, return_value=user),
-            patch("app.api.routers.auth._clear_auth_cookies"),
-            patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("app.api.routers.auth.login._extract_bearer_token", return_value="fake-token"),
+            patch("app.api.routers.auth.login._decode_token_or_http_error", return_value=token_payload),
+            patch("app.api.routers.auth.login.invalidate_token"),
+            patch("app.api.routers.auth.login._get_user_by_username", new_callable=AsyncMock, return_value=user),
+            patch("app.api.routers.auth.login._clear_auth_cookies"),
+            patch("app.api.routers.auth.login.audit_log_event", new_callable=AsyncMock) as mock_audit,
         ):
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -186,12 +186,12 @@ class TestFailedMfaAuditEmission:
         mfa_payload = {"sub": user.username, "mfa_pending": True, "exp": 9999999999}
 
         with (
-            patch("app.api.routers.auth._extract_bearer_token", return_value="mfa-token"),
-            patch("app.api.routers.auth._decode_token_or_http_error", return_value=mfa_payload),
-            patch("app.api.routers.auth._get_user_by_username", new_callable=AsyncMock, return_value=user),
-            patch("app.api.routers.auth.decrypt_mfa_secret", return_value="raw-secret"),
-            patch("app.api.routers.auth.verify_totp", return_value=False),
-            patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock) as mock_audit,
+            patch("app.api.routers.auth.totp._extract_bearer_token", return_value="mfa-token"),
+            patch("app.api.routers.auth.totp._decode_token_or_http_error", return_value=mfa_payload),
+            patch("app.api.routers.auth.totp._get_user_by_username", new_callable=AsyncMock, return_value=user),
+            patch("app.api.routers.auth.totp.decrypt_mfa_secret", return_value="raw-secret"),
+            patch("app.api.routers.auth.totp.verify_totp", return_value=False),
+            patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock) as mock_audit,
         ):
             transport = ASGITransport(app=app)
             async with AsyncClient(transport=transport, base_url="http://test") as ac:

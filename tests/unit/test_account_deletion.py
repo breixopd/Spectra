@@ -60,7 +60,7 @@ async def test_delete_account_wrong_password(mock_user, mock_session):
     request = MagicMock()
     request.client.host = "127.0.0.1"
 
-    with patch("app.api.routers.auth.verify_password", return_value=False):
+    with patch("app.api.routers.auth.session.verify_password", return_value=False):
         with pytest.raises(HTTPException) as exc_info:
             await delete_account(
                 request=request,
@@ -89,7 +89,7 @@ async def test_delete_account_last_superuser_blocked(mock_user, mock_session):
     count_result.scalar_one.return_value = 1
     mock_session.execute.return_value = count_result
 
-    with patch("app.api.routers.auth.verify_password", return_value=True):
+    with patch("app.api.routers.auth.session.verify_password", return_value=True):
         with pytest.raises(HTTPException) as exc_info:
             await delete_account(
                 request=request,
@@ -111,8 +111,8 @@ async def test_delete_account_success(mock_user, mock_session):
     request.client.host = "127.0.0.1"
 
     with (
-        patch("app.api.routers.auth.verify_password", return_value=True),
-        patch("app.api.routers.auth.audit_log_event", new_callable=AsyncMock),
+        patch("app.api.routers.auth.session.verify_password", return_value=True),
+        patch("app.api.routers.auth.session.audit_log_event", new_callable=AsyncMock),
     ):
         result = await delete_account(
             request=request,
@@ -146,7 +146,7 @@ async def test_delete_account_superuser_with_others_succeeds(mock_user, mock_ses
     update_result = MagicMock()
     mock_session.execute.side_effect = [count_result, hash_result, update_result]
 
-    with patch("app.api.routers.auth.verify_password", return_value=True):
+    with patch("app.api.routers.auth.session.verify_password", return_value=True):
         result = await delete_account(
             request=request,
             body=body,
