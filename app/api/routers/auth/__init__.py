@@ -5,10 +5,10 @@ from fastapi import APIRouter
 router = APIRouter()
 
 from app.api.routers.auth.login import router as login_router
-from app.api.routers.auth.registration import router as registration_router
 from app.api.routers.auth.password import router as password_router
-from app.api.routers.auth.totp import router as totp_router
+from app.api.routers.auth.registration import router as registration_router
 from app.api.routers.auth.session import router as session_router
+from app.api.routers.auth.totp import router as totp_router
 
 router.include_router(login_router)
 router.include_router(registration_router)
@@ -37,12 +37,18 @@ from app.api.routers.auth._helpers import (  # noqa: E402, F401
 )
 from app.api.routers.auth.login import login_for_access_token, logout, refresh_token  # noqa: E402, F401
 from app.api.routers.auth.password import change_password  # noqa: E402, F401
+from app.api.routers.auth.registration import (  # noqa: E402, F401
+    check_setup_status,
+    setup_admin_user,
+)
 from app.api.routers.auth.session import (  # noqa: E402, F401
     delete_account,
     export_user_data,
     get_current_profile,
-    toggle_restrict_processing as restrict_processing,
     update_profile,
+)
+from app.api.routers.auth.session import (
+    toggle_restrict_processing as restrict_processing,
 )
 from app.api.routers.auth.totp import (  # noqa: E402, F401
     cancel_mfa,
@@ -50,9 +56,5 @@ from app.api.routers.auth.totp import (  # noqa: E402, F401
     mfa_setup,
     mfa_verify_login,
     mfa_verify_setup,
-)
-from app.api.routers.auth.registration import (  # noqa: E402, F401
-    setup_admin_user,
-    check_setup_status,
 )
 from app.services.system.audit import log_event as audit_log_event  # noqa: E402, F401

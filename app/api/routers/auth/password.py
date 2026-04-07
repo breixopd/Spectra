@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.api.routers.auth.schemas import ChangePasswordRequest
 from app.api.schemas.auth import ForgotPasswordRequest, ResetPasswordRequest
 from app.core.config import settings
 from app.core.database import get_async_session
@@ -20,8 +21,6 @@ from app.core.security import (
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
-
-from app.api.routers.auth.schemas import ChangePasswordRequest
 
 logger = logging.getLogger(__name__)
 
