@@ -61,6 +61,18 @@ _GENERAL_DB_FIELD_SPECS: tuple[GeneralDbFieldSpec, ...] = (
     ("s3_region", "S3_REGION", "str", False),
     ("tensorzero_gateway_url", "TENSORZERO_GATEWAY_URL", "str", False),
     ("tensorzero_api_key", "TENSORZERO_API_KEY", "str", True),
+    # Auto-scaling
+    ("autoscale_enabled", "AUTOSCALE_ENABLED", "bool", False),
+    ("autoscale_worker_min", "AUTOSCALE_WORKER_MIN", "int", False),
+    ("autoscale_worker_max", "AUTOSCALE_WORKER_MAX", "int", False),
+    ("autoscale_api_min", "AUTOSCALE_API_MIN", "int", False),
+    ("autoscale_api_max", "AUTOSCALE_API_MAX", "int", False),
+    ("autoscale_ai_max", "AUTOSCALE_AI_MAX", "int", False),
+    ("autoscale_queue_threshold", "AUTOSCALE_QUEUE_THRESHOLD", "int", False),
+    ("autoscale_cooldown_secs", "AUTOSCALE_COOLDOWN_SECS", "int", False),
+    ("autoscale_idle_secs", "AUTOSCALE_IDLE_SECS", "int", False),
+    # Infrastructure monitoring
+    ("infra_monitor_enabled", "INFRA_MONITOR_ENABLED", "bool", False),
 )
 
 _SETTINGS_SNAPSHOT_FIELDS_BEFORE_SANDBOX_STATUS: tuple[SettingsSnapshotSpec, ...] = (
@@ -103,6 +115,17 @@ _SETTINGS_SNAPSHOT_FIELDS_AFTER_SANDBOX_STATUS: tuple[SettingsSnapshotSpec, ...]
     ("s3_configured", "S3_ENDPOINT_URL", bool),
     ("embedding_model", "EMBEDDING_MODEL", None),
     ("embedding_api_base_url", "EMBEDDING_API_BASE_URL", None),
+    # Auto-scaling
+    ("autoscale_enabled", "AUTOSCALE_ENABLED", None),
+    ("autoscale_worker_min", "AUTOSCALE_WORKER_MIN", None),
+    ("autoscale_worker_max", "AUTOSCALE_WORKER_MAX", None),
+    ("autoscale_api_min", "AUTOSCALE_API_MIN", None),
+    ("autoscale_api_max", "AUTOSCALE_API_MAX", None),
+    ("autoscale_ai_max", "AUTOSCALE_AI_MAX", None),
+    ("autoscale_queue_threshold", "AUTOSCALE_QUEUE_THRESHOLD", None),
+    ("autoscale_cooldown_secs", "AUTOSCALE_COOLDOWN_SECS", None),
+    ("autoscale_idle_secs", "AUTOSCALE_IDLE_SECS", None),
+    ("infra_monitor_enabled", "INFRA_MONITOR_ENABLED", None),
 )
 
 
