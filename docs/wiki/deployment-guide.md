@@ -6,6 +6,12 @@
 
 Complete guide for deploying Spectra in production — from single-server Docker Compose to multi-host Docker Swarm with Cloudflare and Caddy.
 
+**Deployment modes:**
+
+- **Docker Compose** — single-server or small teams. Auto-scaling works via `docker compose up --scale`.
+- **Docker Swarm** (recommended for production) — multi-host, fully automatic auto-scaling. Admins add hosts to the server pool via the Admin UI; after initial setup, scaling is hands-off.
+- **Kubernetes** is not supported.
+
 S3-compatible object storage is part of the runtime contract. Missions, pentest sessions, knowledge assets, and backups are stored in S3; there is no local filesystem fallback.
 
 ## Prerequisites
@@ -154,7 +160,12 @@ AUTOSCALE_QUEUE_THRESHOLD=10
 AUTOSCALE_COOLDOWN_SECS=300
 ```
 
-The scheduler's capacity monitor evaluates metrics every 60 seconds and scales services via Docker CLI. See [Scaling](scaling.md#auto-scaling) for the full configuration reference and policy details.
+Auto-scaling works with both Docker Compose and Docker Swarm:
+
+- **Docker Compose**: scales services via `docker compose up --scale`.
+- **Docker Swarm** (recommended): scales services via `docker service scale`. Fully automatic across multiple hosts — admins only need to add servers to the pool via **Admin UI → Scaling tab**.
+
+After initial configuration, scaling is fully hands-off. The scheduler's capacity monitor evaluates metrics every 60 seconds and adjusts replicas automatically. See [Scaling](scaling.md#auto-scaling) for the full configuration reference and per-service policy details.
 
 ### Resource Calculations
 

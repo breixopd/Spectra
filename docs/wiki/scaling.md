@@ -23,15 +23,17 @@ Each Spectra service runs in its own container with `SERVICE_MODE` set. This all
 
 ### Scaling Workers
 
-Workers are the most common scaling target. Multiple worker instances safely share the job queue via `SELECT ... FOR UPDATE SKIP LOCKED`:
+Workers are the most common scaling target. Multiple worker instances safely share the job queue via `SELECT ... FOR UPDATE SKIP LOCKED`.
+
+When auto-scaling is enabled (`AUTOSCALE_ENABLED=true`), worker replicas are adjusted automatically based on queue depth. For manual scaling:
 
 ```bash
-# Docker Compose — scale to 3 workers
+# Docker Compose
 docker compose -f docker/docker-compose.yml up -d --scale worker=3
 ```
 
 ```yaml
-# Docker Swarm
+# Docker Swarm (replicas managed automatically when auto-scaling is on)
 services:
   worker:
     deploy:
@@ -294,7 +296,7 @@ Available via the observability endpoints:
 
 ## Auto-Scaling
 
-Spectra includes a reactive auto-scaling engine (`app/services/scaling/auto_scaler.py`) that monitors queue depth and service utilization to automatically adjust replica counts via Docker CLI.
+Spectra includes a reactive auto-scaling engine (`app/services/scaling/auto_scaler.py`) that monitors queue depth and service utilization to automatically adjust replica counts. Auto-scaling works with both Docker Compose and Docker Swarm; **Docker Swarm is the recommended production deployment** because it handles multi-host replica placement automatically.
 
 ### How It Works
 
@@ -303,18 +305,44 @@ Spectra includes a reactive auto-scaling engine (`app/services/scaling/auto_scal
 3. Per-service `ScalingPolicy` objects define thresholds that trigger scale-up or scale-down decisions
 4. Decisions execute via `docker service scale` (Swarm) or `docker compose up --scale` (Compose)
 5. A cooldown period prevents thrashing between scale actions
+6. Admins add new hosts via **Admin UI → Scaling tab**; the engine handles the rest
 
-### Scaling Policies
+After initial setup — enabling auto-scaling and adding hosts to the server pool — scaling is fully hands-off.
 
-| Service | Scale-Up Trigger | Scale-Down Trigger |
-|---------|------------------|--------------------|
-| **Worker** | Queue depth > `AUTOSCALE_QUEUE_THRESHOLD` | Queue idle for `AUTOSCALE_IDLE_SECS` |
-| **API** | Utilization > 85% | Utilization < 20% for idle period |
-| **AI** | Utilization > 80% | Utilization < 20% for idle period |
+### Per-Service Scaling Policies
+
+| Service | Min | Max | Scale-Up Trigger | Scale-Down Trigger | Max Rationale |
+|---------|-----|-----|------------------|--------------------|---------------|
+| **Worker** | `AUTOSCALE_WORKER_MIN` (1) | `AUTOSCALE_WORKER_MAX` (10) | Queue depth > `AUTOSCALE_QUEUE_THRESHOLD` | Queue idle for `AUTOSCALE_IDLE_SECS` | Each worker uses 4 GB+; diminishing returns beyond 10 |
+| **API** | `AUTOSCALE_API_MIN` (1) | `AUTOSCALE_API_MAX` (8) | Utilization > 85% | Utilization < 20% for idle period | Connection pool becomes bottleneck at 8 × 20 = 160 connections |
+| **AI** | 1 | `AUTOSCALE_AI_MAX` (4) | Utilization > 80% | Utilization < 20% for idle period | Bounded by upstream LLM rate limits |
+| **Scheduler** | 1 | 2 | Leader failure (automatic failover) | N/A | Leader election (`pg_try_advisory_lock`); second replica is hot standby only |
 
 Workers scale proportionally to queue depth (e.g., depth 30 with threshold 10 scales up by 3). Other services scale by one replica per evaluation.
 
+### Infrastructure Monitoring (Not Scaling)
+
+Database, Redis, and S3 are **monitored** by the infrastructure monitor but are **not auto-scaled** — they require operator-managed topology changes. The monitor sends alerts when utilization approaches configured thresholds:
+
+| Component | Threshold Setting | Default | Alert |
+|-----------|-------------------|---------|-------|
+| PostgreSQL | `INFRA_MONITOR_PG_THRESHOLD` | 80% | Connection pool near capacity |
+| Redis | `INFRA_MONITOR_REDIS_THRESHOLD` | 85% | Memory near limit |
+| S3 / Garage | `INFRA_MONITOR_STORAGE_THRESHOLD` | 90% | Disk usage high |
+
+Enable with `INFRA_MONITOR_ENABLED=true`. Alerts go to `NOTIFICATION_WEBHOOK`.
+
+### Adding Nodes via Admin UI
+
+1. Go to **Admin Panel → Scaling** tab
+2. Click **Add Server** and provide the host address + SSH credentials
+3. Select the service type (`sandbox_worker`, `db`, etc.)
+4. Spectra verifies connectivity, provisions Docker + images, and starts the service
+5. The node joins the server pool and the auto-scaler begins using it automatically
+
 ### Configuration
+
+All settings are initial defaults from environment variables. After first boot, the **Admin UI is the source of truth** — changes made in the UI are persisted to the database and override `.env` values.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -322,14 +350,21 @@ Workers scale proportionally to queue depth (e.g., depth 30 with threshold 10 sc
 | `AUTOSCALE_WORKER_MIN` | `1` | Minimum worker replicas |
 | `AUTOSCALE_WORKER_MAX` | `10` | Maximum worker replicas |
 | `AUTOSCALE_API_MIN` | `1` | Minimum API replicas |
-| `AUTOSCALE_API_MAX` | `5` | Maximum API replicas |
-| `AUTOSCALE_AI_MAX` | `3` | Maximum AI service replicas |
+| `AUTOSCALE_API_MAX` | `8` | Maximum API replicas |
+| `AUTOSCALE_AI_MAX` | `4` | Maximum AI service replicas |
 | `AUTOSCALE_QUEUE_THRESHOLD` | `10` | Queue depth to trigger worker scale-up |
 | `AUTOSCALE_COOLDOWN_SECS` | `300` | Minimum seconds between scale actions |
 | `AUTOSCALE_IDLE_SECS` | `300` | Seconds of idle before scale-down |
+| `AUTOSCALE_CPU_UP_THRESHOLD` | `75` | CPU % to trigger scale-up |
+| `AUTOSCALE_CPU_DOWN_THRESHOLD` | `25` | CPU % to trigger scale-down |
+| `INFRA_MONITOR_ENABLED` | `true` | Enable infrastructure monitoring |
+| `INFRA_MONITOR_PG_THRESHOLD` | `80` | PostgreSQL connection pool alert threshold (%) |
+| `INFRA_MONITOR_REDIS_THRESHOLD` | `85` | Redis memory alert threshold (%) |
+| `INFRA_MONITOR_STORAGE_THRESHOLD` | `90` | Storage disk alert threshold (%) |
 | `SWARM_WORKER_SERVICE` | `spectra_worker` | Docker service name for worker |
 | `SWARM_API_SERVICE` | `spectra_app` | Docker service name for API |
 | `SWARM_AI_SERVICE` | `spectra_ai-svc` | Docker service name for AI |
+| `SWARM_SCHEDULER_SERVICE` | `spectra_scheduler` | Docker service name for scheduler |
 
 ### Capacity Alerts
 
