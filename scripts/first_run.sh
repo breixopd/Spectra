@@ -48,7 +48,7 @@ check_prereqs() {
         sed -i "s|change-me-with-a-long-random-value|$(generate_secret)|" "${ENV_FILE}"
         sed -i "s|change-me-with-a-different-long-random-value|$(generate_secret)|" "${ENV_FILE}"
         sed -i "s|change-me-shared-between-app-ai-scheduler-worker|$(generate_secret)|" "${ENV_FILE}"
-        sed -i "s|change-me-db-password|${db_pass}|g" "${ENV_FILE}"
+        sed -i "s|change-me-db-password|${db_pass}|" "${ENV_FILE}"
         sed -i "s|change-me-redis-pass|$(generate_password)|" "${ENV_FILE}"
         sed -i "s|change-me-garage-secret|$(generate_secret)|" "${ENV_FILE}"
         sed -i "s|change-me-clickhouse|$(generate_password)|" "${ENV_FILE}"

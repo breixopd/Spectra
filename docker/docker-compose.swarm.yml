@@ -2,6 +2,10 @@
 # Docker Swarm stack for multi-host deployment
 # Usage: docker stack deploy -c docker-compose.swarm.yml spectra
 
+# NOTE: DB_PASSWORD is injected via Docker secrets (db_password) at deploy time,
+# NOT from .env. Create it with: echo "<password>" | docker secret create db_password -
+# See docs/wiki/deployment-guide.md for full instructions.
+
 services:
   redis:
     image: redis:7-alpine

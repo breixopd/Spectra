@@ -1,7 +1,7 @@
 # Spectra production Caddyfile.
 # The app owns CSP and other browser policies; Caddy terminates TLS and forwards traffic.
 
-{$SPECTRA_DOMAIN:localhost} {
+{$PLATFORM_DOMAIN:localhost} {
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
