@@ -152,7 +152,19 @@ async def upload_wordlist(
     safe_name = "".join(c for c in file.filename if c.isalnum() or c in "-_.")
     if not safe_name or safe_name in (".", "..") or safe_name.startswith("."):
         raise HTTPException(status_code=400, detail="Invalid filename")
+    # Validate file extension
+    _ALLOWED_EXTENSIONS = {".txt", ".csv", ".lst", ".wordlist", ""}
+    ext = Path(safe_name).suffix.lower()
+    if ext not in _ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Unsupported file extension")
 
+    # Sniff first chunk to verify it's text, not binary
+    chunk = await file.read(1024)
+    try:
+        chunk.decode("utf-8")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="File does not appear to be a text wordlist")
+    await file.seek(0)
     user_dir = _user_wordlists_dir(_current_user)
     dest = user_dir / safe_name
 

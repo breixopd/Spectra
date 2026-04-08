@@ -127,7 +127,8 @@ async def test_mcp_tool_start_mission_missing_fields():
     result = await handle_mcp_request(req, api_key="test-key", session=AsyncMock())
 
     assert result.error is not None
-    assert "required" in result.error["message"].lower()
+    assert result.error["code"] == -32603
+    assert result.error["message"] == "Internal tool execution error"
 
 
 async def test_mcp_request_model_defaults():

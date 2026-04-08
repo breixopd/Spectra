@@ -59,8 +59,9 @@ async def create_checkout(
     try:
         checkout_url = await svc.create_checkout(str(user.id), str(plan.id))
         return {"checkout_url": checkout_url}
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    except ValueError:
+        logger.exception("Checkout session initialization failed")
+        raise HTTPException(400, detail="Failed to initialize checkout session")
     except (OSError, RuntimeError):
         logger.exception("Payment checkout error")
         raise HTTPException(502, "Payment provider error")
@@ -77,8 +78,9 @@ async def get_billing_portal(
     try:
         url = await svc.get_portal_url(str(user.id))
         return {"portal_url": url}
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+    except ValueError:
+        logger.exception("Billing portal request failed")
+        raise HTTPException(400, detail="Failed to process billing portal request")
 
 
 @router.post("/webhook")
