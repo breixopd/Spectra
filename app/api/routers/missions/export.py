@@ -12,6 +12,7 @@ from app.api.dependencies import (
     _is_admin_user,
     check_resource_owner,
     get_current_active_user,
+    validate_uuid_param,
 )
 from app.core.database import get_async_session
 from app.models.audit_log import AuditEventType
@@ -38,6 +39,7 @@ async def download_pdf_report(
     _current_user: User = Depends(get_current_active_user),
 ) -> Response:
     """Download mission report as PDF."""
+    validate_uuid_param(mission_id, "mission_id")
     from fastapi.responses import Response as FastAPIResponse
 
     from app.services.mission.report_generator import generate_pdf_report
@@ -100,6 +102,7 @@ async def export_mission_json(
     _current_user: User = Depends(get_current_active_user),
 ) -> Response:
     """Export mission + findings as a JSON file."""
+    validate_uuid_param(mission_id, "mission_id")
     from fastapi.responses import Response as FastAPIResponse
 
     repo = MissionRepository(session)
@@ -173,6 +176,8 @@ async def diff_missions(
     the *old* mission (``mission_id``) and the *new* mission
     (``other_mission_id``).
     """
+    validate_uuid_param(mission_id, "mission_id")
+    validate_uuid_param(other_mission_id, "other_mission_id")
     from app.services.mission.target_diff import compare_missions, generate_diff_report
 
     repo = MissionRepository(db)

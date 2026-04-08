@@ -5,6 +5,7 @@ Provides dependency injection for database sessions and repositories.
 Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
+import uuid as _uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -26,6 +27,15 @@ if TYPE_CHECKING:
 logger = __import__("logging").getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=False)
+
+
+def validate_uuid_param(value: str, param_name: str = "id") -> str:
+    """Validate that a path/query parameter is a valid UUID format."""
+    try:
+        _uuid.UUID(value)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=400, detail=f"Invalid {param_name} format")
+    return value
 
 
 async def _decode_access_payload(token: str) -> dict[str, Any] | None:

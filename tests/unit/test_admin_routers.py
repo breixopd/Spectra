@@ -18,7 +18,7 @@ from app.models.audit_log import AuditEventType
 # ---------------------------------------------------------------------------
 
 
-def _make_user(role: str = "admin", user_id: str = "uid-1") -> MagicMock:
+def _make_user(role: str = "admin", user_id: str = "00000000-0000-4000-a000-000000000001") -> MagicMock:
     u = MagicMock()
     u.id = user_id
     u.username = "admin"
@@ -64,7 +64,7 @@ class TestListUsers:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target_user = _make_user("operator", user_id="uid-2")
+        target_user = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
         target_user.username = "operator1"
         target_user.email = "op@test.com"
 
@@ -98,7 +98,7 @@ class TestGetUser:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target = _make_user("operator", user_id="uid-2")
+        target = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
         mock_sess = _mock_session()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = target
@@ -109,10 +109,10 @@ class TestGetUser:
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            resp = await ac.get("/api/admin/users/uid-2")
+            resp = await ac.get("/api/admin/users/00000000-0000-4000-a000-000000000002")
 
         assert resp.status_code == 200
-        assert resp.json()["id"] == "uid-2"
+        assert resp.json()["id"] == "00000000-0000-4000-a000-000000000002"
 
     @pytest.mark.asyncio
     async def test_get_user_not_found(self):
@@ -129,7 +129,7 @@ class TestGetUser:
         app.dependency_overrides[get_async_session] = lambda: mock_sess
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            resp = await ac.get("/api/admin/users/nonexistent")
+            resp = await ac.get("/api/admin/users/00000000-0000-4000-a000-000000000099")
 
         assert resp.status_code == 404
 
@@ -140,7 +140,7 @@ class TestUpdateUserRole:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target = _make_user("operator", user_id="uid-2")
+        target = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
         mock_sess = _mock_session()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = target
@@ -154,7 +154,7 @@ class TestUpdateUserRole:
 
         with patch("app.api.routers.admin.users.audit_log_event", new_callable=AsyncMock):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.put("/api/admin/users/uid-2", json={"role": "viewer"})
+                resp = await ac.put("/api/admin/users/00000000-0000-4000-a000-000000000002", json={"role": "viewer"})
 
         assert resp.status_code == 200
 
@@ -163,7 +163,7 @@ class TestUpdateUserRole:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target = _make_user("operator", user_id="uid-2")
+        target = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
         mock_sess = _mock_session()
 
         mock_lookup = MagicMock()
@@ -184,7 +184,7 @@ class TestUpdateUserRole:
             patch("app.api.routers.admin.users.create_snapshot", new_callable=AsyncMock) as snapshot_mock,
         ):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.put("/api/admin/users/uid-2", json={"email": "updated@test.com"})
+                resp = await ac.put("/api/admin/users/00000000-0000-4000-a000-000000000002", json={"email": "updated@test.com"})
 
         assert resp.status_code == 200
         snapshot_mock.assert_not_awaited()
@@ -263,7 +263,7 @@ class TestPendingActivationGuard:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target = _make_user("operator", user_id="uid-2")
+        target = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
         target.is_active = False
         target.email_verified = False
 
@@ -278,7 +278,7 @@ class TestPendingActivationGuard:
 
         with patch("app.api.routers.admin.users.create_snapshot", new_callable=AsyncMock) as snapshot_mock:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.put("/api/admin/users/uid-2", json={"is_active": True})
+                resp = await ac.put("/api/admin/users/00000000-0000-4000-a000-000000000002", json={"is_active": True})
 
         assert resp.status_code == 400
         assert "activation" in resp.json()["detail"].lower()

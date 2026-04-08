@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import check_resource_owner, get_current_active_user
+from app.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
 from app.api.schemas import FindingResponse, PaginatedResponse
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
@@ -130,6 +130,7 @@ def _finding_status_audit_details(finding, action: str) -> dict[str, str]:
 
 
 async def _get_finding_or_404(repo: FindingRepository, finding_id: str):
+    validate_uuid_param(finding_id, "finding_id")
     finding = await repo.get_by_id(finding_id)
     if not finding:
         raise HTTPException(

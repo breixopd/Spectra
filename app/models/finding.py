@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, ForeignKey, Index, String, Text
+from sqlalchemy import JSON, CheckConstraint, ForeignKey, Index, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -50,7 +50,13 @@ class Finding(Base):
     """
 
     __tablename__ = "findings"
-    __table_args__ = (Index("ix_findings_user_id_severity", "user_id", "severity"),)
+    __table_args__ = (
+        Index("ix_findings_user_id_severity", "user_id", "severity"),
+        CheckConstraint(
+            "cvss_score IS NULL OR (cvss_score >= 0 AND cvss_score <= 10)",
+            name="ck_findings_cvss_range",
+        ),
+    )
 
     user_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True

@@ -12,7 +12,7 @@ from httpx import ASGITransport, AsyncClient
 # ---------------------------------------------------------------------------
 
 
-def _fake_user(role: str = "admin", user_id: str = "u-1", username: str = "testuser"):
+def _fake_user(role: str = "admin", user_id: str = "00000000-0000-4000-a000-000000000001", username: str = "testuser"):
     user = MagicMock()
     user.id = user_id
     user.username = username
@@ -105,7 +105,7 @@ class TestMissionStopAuditEmission:
         mock_session = AsyncMock()
         _override_deps(app, user, mock_session)
 
-        mission_id = "m-123"
+        mission_id = "00000000-0000-4000-a000-000000000123"
 
         with (
             patch("app.api.routers.missions.core.mission_manager") as mock_mm,
@@ -144,7 +144,7 @@ class TestMissionPauseAuditEmission:
         mock_session = AsyncMock()
         _override_deps(app, user, mock_session)
 
-        mission_id = "m-456"
+        mission_id = "00000000-0000-4000-a000-000000000456"
 
         with (
             patch("app.api.routers.missions.core.mission_manager") as mock_mm,

@@ -11,7 +11,7 @@ from httpx import ASGITransport, AsyncClient
 from app.api.routers.targets import router
 
 
-def _fake_user(is_superuser: bool = False, user_id: str = "u-1"):
+def _fake_user(is_superuser: bool = False, user_id: str = "00000000-0000-4000-a000-000000000001"):
     user = MagicMock()
     user.id = user_id
     user.is_superuser = is_superuser
@@ -21,12 +21,12 @@ def _fake_user(is_superuser: bool = False, user_id: str = "u-1"):
 
 def _fake_target(**overrides):
     defaults = {
-        "id": "t-1",
+        "id": "00000000-0000-4000-a000-100000000001",
         "address": "192.168.1.1",
         "description": "web server",
         "status": "pending",
         "os": "Linux",
-        "user_id": "u-1",
+        "user_id": "00000000-0000-4000-a000-000000000001",
         "created_at": datetime(2026, 1, 1, 12, 0),
     }
     defaults.update(overrides)
@@ -109,10 +109,10 @@ class TestGetTarget:
         target = _fake_target()
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=target))
-            resp = await ac.get("/api/v1/targets/t-1")
+            resp = await ac.get("/api/v1/targets/00000000-0000-4000-a000-100000000001")
 
         assert resp.status_code == 200
-        assert resp.json()["id"] == "t-1"
+        assert resp.json()["id"] == "00000000-0000-4000-a000-100000000001"
 
     async def test_get_target_not_found(self, client):
         ac, _session, _user = client
@@ -120,7 +120,7 @@ class TestGetTarget:
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=None))
-            resp = await ac.get("/api/v1/targets/bad-id")
+            resp = await ac.get("/api/v1/targets/00000000-0000-4000-a000-100000000099")
 
         assert resp.status_code == 404
 
@@ -131,7 +131,7 @@ class TestGetTarget:
         target = _fake_target(user_id="other-user")
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=target))
-            resp = await ac.get("/api/v1/targets/t-1")
+            resp = await ac.get("/api/v1/targets/00000000-0000-4000-a000-100000000001")
 
         assert resp.status_code == 403
 
@@ -191,7 +191,7 @@ class TestDeleteTarget:
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=target))
             mp.setattr(TargetRepository, "delete", AsyncMock())
-            resp = await ac.delete("/api/v1/targets/t-1")
+            resp = await ac.delete("/api/v1/targets/00000000-0000-4000-a000-100000000001")
 
         assert resp.status_code == 204
 
@@ -201,6 +201,6 @@ class TestDeleteTarget:
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(TargetRepository, "get_by_id", AsyncMock(return_value=None))
-            resp = await ac.delete("/api/v1/targets/bad-id")
+            resp = await ac.delete("/api/v1/targets/00000000-0000-4000-a000-100000000099")
 
         assert resp.status_code == 404

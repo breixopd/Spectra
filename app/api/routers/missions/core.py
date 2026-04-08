@@ -12,6 +12,7 @@ from app.api.dependencies import (
     check_mission_limit,
     check_resource_owner,
     get_current_active_user,
+    validate_uuid_param,
 )
 from app.api.schemas import (
     MissionDeleteResponse,
@@ -355,6 +356,7 @@ async def get_mission_findings(
     _current_user: User = Depends(get_current_active_user),
 ) -> list[MissionFindingSummary]:
     """Get all findings for a specific mission."""
+    validate_uuid_param(mission_id, "mission_id")
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
     if not mission:
@@ -388,6 +390,7 @@ async def get_mission(
     _current_user: User = Depends(get_current_active_user),
 ) -> MissionResponse:
     """Get mission status."""
+    validate_uuid_param(mission_id, "mission_id")
     # Try active missions first
     mission = await mission_manager.get_mission(mission_id)
 
@@ -448,6 +451,7 @@ async def delete_mission(
     _current_user: User = require_permission(Permission.MANAGE_MISSIONS),
 ) -> MissionDeleteResponse:
     """Delete a mission and clean up associated filesystem data."""
+    validate_uuid_param(mission_id, "mission_id")
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
     if not mission:
@@ -510,6 +514,7 @@ async def stop_mission(
     session: AsyncSession = Depends(get_async_session),
 ) -> StatusResponse:
     """Stop a running mission. Requires superuser privileges."""
+    validate_uuid_param(mission_id, "mission_id")
     active = await mission_manager.get_mission(mission_id)
     if active:
         check_resource_owner(active, _current_user, "mission")
@@ -543,6 +548,7 @@ async def pause_mission(
     session: AsyncSession = Depends(get_async_session),
 ) -> StatusResponse:
     """Pause a running mission."""
+    validate_uuid_param(mission_id, "mission_id")
     active = await mission_manager.get_mission(mission_id)
     if active:
         check_resource_owner(active, _current_user, "mission")
@@ -576,6 +582,7 @@ async def resume_mission(
     session: AsyncSession = Depends(get_async_session),
 ) -> StatusResponse:
     """Resume a paused mission."""
+    validate_uuid_param(mission_id, "mission_id")
     active = await mission_manager.get_mission(mission_id)
     if active:
         check_resource_owner(active, _current_user, "mission")

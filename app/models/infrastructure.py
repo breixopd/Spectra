@@ -1,7 +1,7 @@
 import json
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, TypeDecorator, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, TypeDecorator, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import String as SAString
@@ -66,7 +66,10 @@ class JobQueue(InfrastructureBase):
     """
 
     __tablename__ = "job_queue"
-    __table_args__ = (Index("ix_job_queue_status_queue", "status", "queue_name"),)
+    __table_args__ = (
+        Index("ix_job_queue_status_queue", "status", "queue_name"),
+        CheckConstraint("priority >= 1 AND priority <= 10", name="ck_job_queue_priority_range"),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     queue_name: Mapped[str] = mapped_column(String, nullable=False, default="default", index=True)

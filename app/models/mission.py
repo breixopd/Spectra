@@ -6,7 +6,7 @@ Tracks security assessment missions, their status, logs, and results.
 
 from __future__ import annotations
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Index, String, Text
+from sqlalchemy import JSON, Boolean, CheckConstraint, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,7 +27,13 @@ class Mission(Base):
     """
 
     __tablename__ = "missions"
-    __table_args__ = (Index("ix_missions_user_id_status", "user_id", "status"),)
+    __table_args__ = (
+        Index("ix_missions_user_id_status", "user_id", "status"),
+        CheckConstraint(
+            "feedback_rating IS NULL OR (feedback_rating >= 1 AND feedback_rating <= 5)",
+            name="ck_missions_feedback_rating_range",
+        ),
+    )
 
     user_id: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
