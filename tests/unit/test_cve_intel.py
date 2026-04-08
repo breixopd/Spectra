@@ -222,7 +222,8 @@ class TestCVECache:
         assert " " not in expected_key
         assert "/" not in expected_key
 
-    def test_save_and_load_cache(self):
+    @pytest.mark.asyncio
+    async def test_save_and_load_cache(self):
         results = [{"cve": "CVE-2021-1234", "severity": "high"}]
         _store = {}
 
@@ -237,13 +238,14 @@ class TestCVECache:
         mock_db._cache_get = AsyncMock(side_effect=mock_get)
 
         with patch("app.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
-            _save_cache("test_keyword", results)
-            loaded = _load_cache("test_keyword")
+            await _save_cache("test_keyword", results)
+            loaded = await _load_cache("test_keyword")
             assert loaded is not None
             assert len(loaded) == 1
             assert loaded[0]["cve"] == "CVE-2021-1234"
 
-    def test_load_expired_cache(self):
+    @pytest.mark.asyncio
+    async def test_load_expired_cache(self):
         _store = {}
 
         async def mock_set(key, data, ttl=86400):
@@ -257,25 +259,27 @@ class TestCVECache:
         mock_db._cache_get = AsyncMock(side_effect=mock_get)
 
         with patch("app.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
-            _save_cache("old_keyword", [{"cve": "CVE-2020-0001"}])
+            await _save_cache("old_keyword", [{"cve": "CVE-2020-0001"}])
             # Make it expired by modifying the stored data
             for k in list(_store):
                 if _store[k] and isinstance(_store[k], dict):
                     _store[k]["cached_at"] = time.time() - CVE_CACHE_TTL - 100
-            loaded = _load_cache("old_keyword")
+            loaded = await _load_cache("old_keyword")
             assert loaded is None
 
-    def test_load_missing_cache(self):
+    @pytest.mark.asyncio
+    async def test_load_missing_cache(self):
         mock_db = MagicMock()
         mock_db._cache_get = AsyncMock(return_value=None)
         with patch("app.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
-            assert _load_cache("nonexistent") is None
+            assert await _load_cache("nonexistent") is None
 
-    def test_load_corrupt_cache(self):
+    @pytest.mark.asyncio
+    async def test_load_corrupt_cache(self):
         mock_db = MagicMock()
         mock_db._cache_get = AsyncMock(return_value=None)
         with patch("app.services.ai.cve_intel.get_exploit_db", return_value=mock_db):
-            assert _load_cache("corrupt") is None
+            assert await _load_cache("corrupt") is None
 
 
 class TestFetchCVEsFromNVD:
@@ -363,12 +367,13 @@ class TestFetchCVEsFromNVD:
 
 
 class TestReloadKnowledgeBase:
-    def test_reload_resets_cache(self):
+    @pytest.mark.asyncio
+    async def test_reload_resets_cache(self):
         import app.services.ai.cve_intel as mod
 
         old = mod._cve_knowledge_base
-        with patch("app.services.ai.cve_intel._load_cve_knowledge_base", return_value=_TEST_CVE_KB):
-            count = reload_cve_knowledge_base()
+        with patch("app.services.ai.cve_intel._load_cve_knowledge_base_async", new_callable=AsyncMock, return_value=_TEST_CVE_KB):
+            count = await reload_cve_knowledge_base()
             assert count == len(_TEST_CVE_KB)
         mod._cve_knowledge_base = old
 

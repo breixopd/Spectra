@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.api.routers.findings.core import FindingUpdate
-from app.core.constants import MAX_BULK_FINDINGS
+from app.core.constants import MAX_BULK_FINDINGS, MAX_EXPORT_ROWS
 from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
 from app.models.audit_log import AuditEventType
@@ -55,8 +55,8 @@ def _sanitize_csv_value(val: object) -> str:
 async def _fetch_all_findings(db: AsyncSession, user: User | None = None) -> list:
     repo = FindingRepository(db)
     if user and not user.is_superuser:
-        return list(await repo.find_many_by(user_id=str(user.id), skip=0, limit=10_000))
-    return list(await repo.get_all(skip=0, limit=10_000))
+        return list(await repo.find_many_by(user_id=str(user.id), skip=0, limit=MAX_EXPORT_ROWS))
+    return list(await repo.get_all(skip=0, limit=MAX_EXPORT_ROWS))
 
 
 def _finding_to_export_dict(finding) -> dict[str, object]:

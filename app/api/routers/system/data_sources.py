@@ -55,7 +55,7 @@ async def download_data_sources(
     # Reload CVE knowledge base in memory
     from app.services.ai.cve_intel import reload_cve_knowledge_base
 
-    reload_cve_knowledge_base()
+    await reload_cve_knowledge_base()
 
     # Download exploit sources
     stats = await db.update()

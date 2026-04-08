@@ -38,37 +38,14 @@ _cve_knowledge_base: list[dict[str, Any]] | None = None
 
 
 def _load_cve_knowledge_base() -> list[dict[str, Any]]:
-    """Load CVE knowledge base from PostgreSQL cache (sync version).
+    """Return cached CVE knowledge base (sync, non-blocking).
 
-    Returns empty list if data hasn't been downloaded yet.
-    Use Settings → Data Sources or ``python scripts/update_exploit_db.py``
-    to populate.
+    Returns whatever is already loaded in memory.  Use
+    ``_load_cve_knowledge_base_async()`` to populate from the database.
     """
-    global _cve_knowledge_base
     if _cve_knowledge_base is not None:
         return _cve_knowledge_base
-
-    db = get_exploit_db()
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is None:
-        try:
-            data = asyncio.run(db._cache_get("cve_knowledge_base"))
-        except Exception as exc:
-            logger.warning("Failed to load CVE knowledge base: %s", exc)
-            data = None
-        _cve_knowledge_base = data if isinstance(data, list) else []
-        if _cve_knowledge_base:
-            logger.info("Loaded CVE knowledge base: %d entries", len(_cve_knowledge_base))
-    else:
-        # In async context — return whatever is cached without blocking.
-        # Callers in async context should use _load_cve_knowledge_base_async().
-        return _cve_knowledge_base or []
-
-    return _cve_knowledge_base
+    return []
 
 
 async def _load_cve_knowledge_base_async() -> list[dict[str, Any]]:
@@ -90,11 +67,12 @@ async def _load_cve_knowledge_base_async() -> list[dict[str, Any]]:
     return _cve_knowledge_base
 
 
-def reload_cve_knowledge_base() -> int:
-    """Force reload of the CVE knowledge base from disk. Returns entry count."""
+async def reload_cve_knowledge_base() -> int:
+    """Force reload of the CVE knowledge base from DB. Returns entry count."""
     global _cve_knowledge_base
     _cve_knowledge_base = None
-    return len(_load_cve_knowledge_base())
+    loaded = await _load_cve_knowledge_base_async()
+    return len(loaded)
 
 
 # =============================================================================
@@ -118,7 +96,7 @@ async def fetch_cves_from_nvd(
     global _last_nvd_request
 
     # Check cache first
-    cached = _load_cache(keyword)
+    cached = await _load_cache(keyword)
     if cached is not None:
         return cached
 
@@ -198,7 +176,7 @@ async def fetch_cves_from_nvd(
             )
 
         # Cache results
-        _save_cache(keyword, results)
+        await _save_cache(keyword, results)
 
         logger.info("Fetched %d CVEs from NVD for '%s'", len(results), keyword)
         return results
@@ -243,22 +221,14 @@ def _infer_vuln_type(description: str) -> str:
 # =============================================================================
 
 
-def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
+async def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
     """Load cached CVE results if still fresh."""
     db = get_exploit_db()
     cache_key = f"cve_cache:{keyword.lower().replace(' ', '_').replace('/', '_')[:50]}"
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is None:
-        try:
-            data = asyncio.run(db._cache_get(cache_key))
-        except Exception:
-            logger.debug("CVE cache read failed for %s", cache_key, exc_info=True)
-            return None
-    else:
+        data = await db._cache_get(cache_key)
+    except Exception:
+        logger.debug("CVE cache read failed for %s", cache_key, exc_info=True)
         return None
 
     if data is None:
@@ -269,7 +239,7 @@ def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
     return data.get("results", [])
 
 
-def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
+async def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
     """Save CVE results to cache."""
     db = get_exploit_db()
     cache_key = f"cve_cache:{keyword.lower().replace(' ', '_').replace('/', '_')[:50]}"
@@ -279,18 +249,9 @@ def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
         "results": results,
     }
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is None:
-        try:
-            asyncio.run(db._cache_set(cache_key, payload, CVE_CACHE_TTL))
-        except Exception as e:
-            logger.debug("Failed to cache CVEs: %s", e)
-    else:
-        from app.core.tasks import create_safe_task
-        create_safe_task(db._cache_set(cache_key, payload, CVE_CACHE_TTL), name="cve_cache_set")
+        await db._cache_set(cache_key, payload, CVE_CACHE_TTL)
+    except Exception as e:
+        logger.debug("Failed to cache CVEs: %s", e)
 
 
 # =============================================================================
