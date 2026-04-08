@@ -534,7 +534,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
                 from app.services.ai.feedback import send_task_feedback
 
                 await send_task_feedback(self._last_inference_id, success=result.success)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.debug("Failed to send TZ feedback", exc_info=True)
 
         return result

@@ -111,7 +111,7 @@ class MockLLMClient(LLMClient):
 
             annotation = field_info.annotation
             if isinstance(annotation, type) and issubclass(annotation, Enum):
-                data[prop_name] = list(annotation)[0]
+                data[prop_name] = next(iter(annotation))
                 continue
 
             prop_info = props.get(prop_name, {})

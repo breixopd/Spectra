@@ -68,35 +68,35 @@ _WORKER_FUNCTIONS = [
 ]
 
 __all__ = [
+    # Registry
+    "_WORKER_FUNCTIONS",
+    "execute_script_job",
     # Tool jobs
     "execute_tool_job",
-    "install_tool_job",
-    "uninstall_tool_job",
-    "install_all_tools_job",
-    "reload_plugins_job",
+    "generate_executive_summary",
+    # Report jobs
+    "generate_mission_report",
     "get_tool_status_job",
-    "sync_all_status_job",
+    "heartbeat_loop",
+    "install_all_tools_job",
+    "install_tool_job",
+    "reload_plugins_job",
+    # Cleanup jobs
+    "run_all_cleanup",
     # Command jobs
     "run_command_job",
-    "execute_script_job",
+    "send_critical_finding_alert",
+    "send_mission_completion_notification",
+    # Notification jobs
+    "send_webhook_notification",
+    "shutdown",
+    # Lifecycle
+    "startup",
+    "sync_all_status_job",
+    "uninstall_tool_job",
     # VPN jobs
     "vpn_connect_job",
     "vpn_disconnect_job",
     "vpn_status_job",
     "vpn_test_job",
-    # Cleanup jobs
-    "run_all_cleanup",
-    # Notification jobs
-    "send_webhook_notification",
-    "send_mission_completion_notification",
-    "send_critical_finding_alert",
-    # Report jobs
-    "generate_mission_report",
-    "generate_executive_summary",
-    # Lifecycle
-    "startup",
-    "shutdown",
-    "heartbeat_loop",
-    # Registry
-    "_WORKER_FUNCTIONS",
 ]

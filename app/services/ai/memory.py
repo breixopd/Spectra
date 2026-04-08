@@ -19,6 +19,7 @@ How it's used:
 - On mission end: persist everything to disk
 """
 
+import contextlib
 import json
 import logging
 import time
@@ -209,10 +210,8 @@ class MissionMemory:
             older = filepath.parent / f"{filepath.name}.{i}.bak"
             newer = filepath.parent / f"{filepath.name}.{i - 1}.bak"
             if newer.exists():
-                try:
+                with contextlib.suppress(OSError):
                     newer.rename(older)
-                except OSError:
-                    pass
         # Current file becomes .1.bak
         bak1 = filepath.parent / f"{filepath.name}.1.bak"
         try:

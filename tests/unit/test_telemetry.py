@@ -17,7 +17,7 @@ class TestIncrementCounter:
     def test_basic_increment(self, collector):
         collector.increment_counter("requests", 1)
         summary = collector.get_metrics_summary()
-        assert "requests:" in list(summary["counters"].keys())[0] or summary["counters"].get("requests:") == 1
+        assert "requests:" in next(iter(summary["counters"].keys())) or summary["counters"].get("requests:") == 1
 
     def test_increment_with_labels(self, collector):
         collector.increment_counter("http_requests", 1, {"method": "GET"})

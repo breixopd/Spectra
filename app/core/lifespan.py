@@ -48,7 +48,7 @@ def _should_queue_startup_tool_install() -> bool:
     return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
-from app.services.billing.seed_plans import seed_default_plans  # noqa: E402
+from app.services.billing.seed_plans import seed_default_plans
 
 
 async def run_startup_checks() -> None:

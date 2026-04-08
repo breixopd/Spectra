@@ -3,9 +3,9 @@
 from fastapi import APIRouter
 
 # Re-export schemas used by tests for backward compatibility
-from app.api.routers.findings.bulk import BulkUpdateRequest, BulkUpdateResponse  # noqa: F401
+from app.api.routers.findings.bulk import BulkUpdateRequest, BulkUpdateResponse
 from app.api.routers.findings.bulk import router as bulk_router
-from app.api.routers.findings.core import (  # noqa: F401
+from app.api.routers.findings.core import (
     FindingCreate,
     FindingDetailResponse,
     FindingUpdate,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import shutil
@@ -82,10 +83,7 @@ def _is_tool_installed(tool) -> bool:
 
     # Check persistence path
     persistence_path = Path("/opt/spectra_tools") / executable
-    if persistence_path.exists() and os.access(persistence_path, os.X_OK):
-        return True
-
-    return False
+    return bool(persistence_path.exists() and os.access(persistence_path, os.X_OK))
 
 
 def _build_process_env() -> dict[str, str]:
@@ -158,10 +156,8 @@ async def _run_command(
             _decode_process_output(stderr_bytes),
         )
     except TimeoutError:
-        try:
+        with contextlib.suppress(ProcessLookupError):
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        except ProcessLookupError:
-            pass
         await proc.wait()
         return (-1, "", f"Command timed out after {timeout}s")
 

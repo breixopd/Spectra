@@ -443,24 +443,24 @@ class TestNonSuperuserAccessDenied:
 
 def _make_plan(**overrides):
     """Return a MagicMock that looks like a Plan ORM object."""
-    defaults = dict(
-        id="plan-1",
-        name="pro",
-        display_name="Pro",
-        description="Pro plan",
-        is_active=True,
-        is_default=False,
-        sort_order=1,
-        max_concurrent_missions=5,
-        max_missions_per_month=100,
-        max_targets=50,
-        max_api_requests_per_hour=1000,
-        max_api_requests_per_day=10000,
-        sandbox_max_containers=3,
-        max_storage_mb=5000,
-        sandbox_resource_tier="medium",
-        features={},
-    )
+    defaults = {
+        "id": "plan-1",
+        "name": "pro",
+        "display_name": "Pro",
+        "description": "Pro plan",
+        "is_active": True,
+        "is_default": False,
+        "sort_order": 1,
+        "max_concurrent_missions": 5,
+        "max_missions_per_month": 100,
+        "max_targets": 50,
+        "max_api_requests_per_hour": 1000,
+        "max_api_requests_per_day": 10000,
+        "sandbox_max_containers": 3,
+        "max_storage_mb": 5000,
+        "sandbox_resource_tier": "medium",
+        "features": {},
+    }
     defaults.update(overrides)
     p = MagicMock()
     for k, v in defaults.items():

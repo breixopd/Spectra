@@ -223,7 +223,6 @@ Respond ONLY with the JSON object. No markdown, no explanation, just the JSON.""
 
     async def close(self) -> None:
         """Close any open resources (e.g., HTTP clients)."""
-        pass
 
 
 # --- Factory Function ---

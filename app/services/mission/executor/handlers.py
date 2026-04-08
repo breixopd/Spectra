@@ -151,14 +151,15 @@ class TaskDispatcher:
             "vector_generator": self._handle_vector_generator,
         }
         handler = handlers.get(agent_type)
-        if not handler:
-            # Fallback for unknown agents (often hallucinations of specific tool agents)
-            if agent_type.endswith("_agent") or agent_type in [
+        if not handler and (
+            agent_type.endswith("_agent")
+            or agent_type in [
                 "discovery",
                 "enumeration",
                 "vulnerability",
-            ]:
-                return self._handle_tool_selector
+            ]
+        ):
+            return self._handle_tool_selector
         return handler
 
     def _extract_tool_hint_from_description(self, description: str) -> str | None:
@@ -759,13 +760,14 @@ class TaskDispatcher:
             return True
         if trigger == "vulnerabilities_found" and mission.attack_surface.vulnerabilities:
             return True
-        if trigger == "shell_obtained":
-            # Check exploit success in logs
-            if any("session" in log.lower() or "shell" in log.lower() for log in mission.logs[-10:]):
-                return True
-        if trigger == "privesc_achieved":
-            if any("root" in log.lower() or "system" in log.lower() for log in mission.logs[-10:]):
-                return True
+        if trigger == "shell_obtained" and any(
+            "session" in log.lower() or "shell" in log.lower() for log in mission.logs[-10:]
+        ):
+            return True
+        if trigger == "privesc_achieved" and any(
+            "root" in log.lower() or "system" in log.lower() for log in mission.logs[-10:]
+        ):
+            return True
 
         # Check max failures for exploitation
         max_failures = rules.get("max_failures")
@@ -849,7 +851,6 @@ class TaskDispatcher:
                     mission.log(f"Generated vector: {vector.name} ({vector.priority})")
                     # Broadcast vector update? Mission handles it internally via add_vector logging?
                     # Executor used _broadcast("vector_update").
-                    pass
 
         except (OSError, RuntimeError, ValueError, TypeError, AttributeError) as e:
             logger.error("Dynamic vector generation failed: %s", e)

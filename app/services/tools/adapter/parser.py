@@ -64,9 +64,8 @@ class UniversalParser:
         outputs = self._collect_output_content(stdout, output_file)
 
         # Include stderr for TEXT format
-        if parsing_config.capture_stderr and stderr.strip():
-            if parsing_config.format == OutputFormat.TEXT:
-                outputs.append(stderr)
+        if parsing_config.capture_stderr and stderr.strip() and parsing_config.format == OutputFormat.TEXT:
+            outputs.append(stderr)
 
         if not outputs:
             return []
@@ -106,9 +105,8 @@ class UniversalParser:
                     outputs.append(content)
 
         # Add stdout if no file output or combining is enabled
-        if not outputs or parsing_config.combine_outputs:
-            if stdout.strip():
-                outputs.append(stdout)
+        if (not outputs or parsing_config.combine_outputs) and stdout.strip():
+            outputs.append(stdout)
 
         return outputs
 

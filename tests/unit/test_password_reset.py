@@ -74,7 +74,7 @@ class TestForgotPasswordEndpoint:
     """POST /api/v1/auth/forgot-password always returns 204."""
 
     def test_returns_204_for_existing_email(self):
-        client, mock_session = _build_test_client()
+        client, _mock_session = _build_test_client()
         try:
             fake_user = MagicMock()
             fake_user.id = "user-1"
@@ -97,7 +97,7 @@ class TestForgotPasswordEndpoint:
             app.dependency_overrides.clear()
 
     def test_returns_204_for_nonexistent_email(self):
-        client, mock_session = _build_test_client()
+        client, _mock_session = _build_test_client()
         try:
             with (
                 patch("app.api.routers.auth.password.limiter") as mock_limiter,
@@ -122,7 +122,7 @@ class TestResetPasswordEndpoint:
         from app.core.security import create_password_reset_token
 
         token = create_password_reset_token("user-reset")
-        client, mock_session = _build_test_client()
+        client, _mock_session = _build_test_client()
         try:
             fake_user = MagicMock()
             fake_user.id = "user-reset"

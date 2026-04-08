@@ -303,7 +303,7 @@ class ToolConfig(BaseModel):
 
     # NEW: Rich metadata for AI
     metadata: ToolMetadata = Field(
-        default_factory=lambda: ToolMetadata(),
+        default_factory=ToolMetadata,
         description="Rich metadata for AI-driven tool selection",
     )
 
@@ -323,7 +323,7 @@ class ToolConfig(BaseModel):
 
     # NEW: Stealth configuration
     stealth: StealthConfig = Field(
-        default_factory=lambda: StealthConfig(),
+        default_factory=StealthConfig,
         description="Stealth mode configuration",
     )
 

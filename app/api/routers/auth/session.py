@@ -289,7 +289,7 @@ async def list_api_keys(
 
     stmt = (
         select(ApiKey)
-        .where(ApiKey.user_id == str(user.id), ApiKey.is_active == True)  # noqa: E712
+        .where(ApiKey.user_id == str(user.id), ApiKey.is_active.is_(True))
         .order_by(ApiKey.created_at.desc())
     )
     result = await session.execute(stmt)

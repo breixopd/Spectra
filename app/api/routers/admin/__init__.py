@@ -20,7 +20,7 @@ _ADMIN_ROUTER_MODULES = {
     "training_router": "app.api.routers.admin.training",
 }
 
-__all__ = ["router", *list(_ADMIN_ROUTER_MODULES)]
+__all__ = ["router", *list(_ADMIN_ROUTER_MODULES)]  # noqa: PLE0604
 
 
 def _load_router(name: str):

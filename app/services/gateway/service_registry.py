@@ -159,14 +159,14 @@ _registry: ServiceRegistry | None = None
 
 
 def get_service_registry() -> ServiceRegistry:
-    global _registry  # noqa: PLW0603
+    global _registry
     if _registry is None:
         _registry = ServiceRegistry()
     return _registry
 
 
 async def close_service_registry() -> None:
-    global _registry  # noqa: PLW0603
+    global _registry
     if _registry:
         await _registry.close_all()
         _registry = None

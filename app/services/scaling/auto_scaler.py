@@ -87,10 +87,10 @@ class AutoScaler:
     def _get_cfg(self, db_key: str, env_attr: str, default, cast_fn=int):
         """Read config from DB first, fall back to env var, then default.
 
-        ``db_key``   – key in the ``system_config`` table (e.g. ``scaling.worker.max_replicas``)
-        ``env_attr`` – attribute name on ``self.settings`` (e.g. ``AUTOSCALE_WORKER_MAX``)
-        ``default``  – hard-coded fallback value
-        ``cast_fn``  – callable used to coerce the DB string value (default ``int``)
+        ``db_key``   - key in the ``system_config`` table (e.g. ``scaling.worker.max_replicas``)
+        ``env_attr`` - attribute name on ``self.settings`` (e.g. ``AUTOSCALE_WORKER_MAX``)
+        ``default``  - hard-coded fallback value
+        ``cast_fn``  - callable used to coerce the DB string value (default ``int``)
         """
         # 1) DB config (passed in from caller, already dict[str, str])
         if db_key in self._db_config:
@@ -257,19 +257,18 @@ class AutoScaler:
         queue_depth = metrics.get("queue_depth", 0)
 
         # --- Scale UP ---
-        if role == "worker" and queue_depth > policy.scale_up_queue_depth:
-            if current < policy.max_replicas:
-                desired = min(
-                    current + max(1, queue_depth // policy.scale_up_queue_depth),
-                    policy.max_replicas,
-                )
-                return ScalingDecision(
-                    policy.service_name,
-                    "scale_up",
-                    current,
-                    desired,
-                    f"Queue depth {queue_depth} > threshold {policy.scale_up_queue_depth}",
-                )
+        if role == "worker" and queue_depth > policy.scale_up_queue_depth and current < policy.max_replicas:
+            desired = min(
+                current + max(1, queue_depth // policy.scale_up_queue_depth),
+                policy.max_replicas,
+            )
+            return ScalingDecision(
+                policy.service_name,
+                "scale_up",
+                current,
+                desired,
+                f"Queue depth {queue_depth} > threshold {policy.scale_up_queue_depth}",
+            )
 
         if utilization > policy.scale_up_threshold and current < policy.max_replicas:
             return ScalingDecision(

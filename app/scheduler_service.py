@@ -10,7 +10,7 @@ Runs as a FastAPI microservice with a /health endpoint. Handles:
 import asyncio
 import logging
 import signal
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI
@@ -395,7 +395,7 @@ class SchedulerService:
                 )
                 async with engine.connect() as conn:
                     for table in ["missions", "findings", "audit_logs", "job_queue", "cache_entries"]:
-                        await conn.execute(text(f"VACUUM ANALYZE {table}"))  # noqa: S608 — table names are hardcoded
+                        await conn.execute(text(f"VACUUM ANALYZE {table}"))
                 await engine.dispose()
                 logger.info("DB maintenance completed: VACUUM ANALYZE on key tables")
             except Exception as e:
@@ -557,10 +557,8 @@ async def lifespan(fastapi_app: FastAPI):
     yield
     await _scheduler_instance.stop()
     task.cancel()
-    try:
+    with suppress(asyncio.CancelledError):
         await task
-    except asyncio.CancelledError:
-        pass
 
 
 async def _leader_election_loop(scheduler: SchedulerService) -> None:

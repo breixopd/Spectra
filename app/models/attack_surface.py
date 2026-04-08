@@ -315,9 +315,7 @@ class AttackSurface(BaseModel):
     def prioritize_vectors(self, target_refs: list[str]) -> None:
         """Boost priority of vectors targeting specific refs."""
         for vector in self.vectors:
-            if vector.status == VectorStatus.PENDING:
-                # Check if vector targets one of the prioritized refs
-                if any(ref in vector.target_ref for ref in target_refs):
+            if vector.status == VectorStatus.PENDING and any(ref in vector.target_ref for ref in target_refs):
                     # Boost priority
                     if vector.priority == VectorPriority.LOW:
                         vector.priority = VectorPriority.MEDIUM

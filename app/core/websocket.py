@@ -363,7 +363,7 @@ class ConnectionManager:
         Silently exits if asyncpg is unavailable or database is not PostgreSQL.
         """
         try:
-            import asyncpg  # noqa: F811
+            import asyncpg
 
             from app.core.database import engine
 

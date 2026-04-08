@@ -124,7 +124,7 @@ class ServerDeployer:
 
     async def _run_ssh(self, ssh_base: list[str], command: str, logs: list[str]) -> int:
         """Execute a command over SSH and capture output."""
-        full_cmd = ssh_base + [command]
+        full_cmd = [*ssh_base, command]
         proc = await asyncio.create_subprocess_exec(
             *full_cmd,
             stdout=asyncio.subprocess.PIPE,

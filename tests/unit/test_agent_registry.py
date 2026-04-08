@@ -160,18 +160,6 @@ def test_registry_missing_role_raises():
 def test_all_agents_registered():
     """All 12 concrete agent modules register themselves."""
     # Force every agent module to import (triggers @register_agent)
-    import app.services.ai.agents.debrief  # noqa: F401
-    import app.services.ai.agents.exploit_crafter  # noqa: F401
-    import app.services.ai.agents.exploit_verifier  # noqa: F401
-    import app.services.ai.agents.mission_controller  # noqa: F401
-    import app.services.ai.agents.poc_developer  # noqa: F401
-    import app.services.ai.agents.post_exploitation  # noqa: F401
-    import app.services.ai.agents.recon_intel  # noqa: F401
-    import app.services.ai.agents.reporter  # noqa: F401
-    import app.services.ai.agents.safety  # noqa: F401
-    import app.services.ai.agents.scope  # noqa: F401
-    import app.services.ai.agents.tool_selector  # noqa: F401
-    import app.services.ai.agents.vector_generator  # noqa: F401
 
     expected_roles = {
         AgentRole.DEBRIEF,

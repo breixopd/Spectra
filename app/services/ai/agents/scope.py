@@ -236,16 +236,15 @@ class ScopeAgent(Agent[ScopeInput, ScopeAction]):
             value = word.lower()
             if value not in seen and (
                 "-" in value or value.startswith(("target", "host", "server", "vm", "container"))
-            ):
-                if value not in _skip_words:
-                    seen.add(value)
-                    targets.append(
-                        TargetSpec(
-                            value=value,
-                            target_type="hostname",
-                            notes="Bare hostname (no domain suffix)",
-                        )
+            ) and value not in _skip_words:
+                seen.add(value)
+                targets.append(
+                    TargetSpec(
+                        value=value,
+                        target_type="hostname",
+                        notes="Bare hostname (no domain suffix)",
                     )
+                )
 
         return targets, warnings
 

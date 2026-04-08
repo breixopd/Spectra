@@ -42,7 +42,7 @@ async def log_event(
         # Compute integrity hash chain
         try:
             prev_hash = await repo.get_latest_hash() or "genesis"
-        except Exception:  # noqa: BLE001
+        except Exception:
             prev_hash = "genesis"
         timestamp = entry.created_at.isoformat() if entry.created_at else ""
         hash_input = f"{prev_hash}|{entry.event_type}|{entry.user_id}|{entry.details}|{timestamp}"

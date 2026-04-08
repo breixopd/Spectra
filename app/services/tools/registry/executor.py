@@ -8,6 +8,7 @@ It ONLY runs in the tools container - no docker exec wrapping.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import shlex
@@ -109,16 +110,12 @@ async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, 
         for task in (stdout_task, stderr_task):
             if task is not None:
                 task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
 
         # Kill the entire process group
-        try:
+        with contextlib.suppress(ProcessLookupError):
             os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        except ProcessLookupError:
-            pass
 
         await proc.wait()
 
@@ -129,15 +126,11 @@ async def run_command_safe(command: str, timeout: int = 300) -> tuple[int, str, 
         for task in (stdout_task, stderr_task):
             if task is not None:
                 task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
 
-        try:
+        with contextlib.suppress(ProcessLookupError):
             proc.kill()
-        except ProcessLookupError:
-            pass
 
         await proc.wait()
 

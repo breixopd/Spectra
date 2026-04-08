@@ -165,12 +165,10 @@ class CircuitBreaker:
     async def _check_state(self) -> None:
         """Check and potentially transition state."""
         async with self._lock:
-            if self._state.state == CircuitState.OPEN:
-                # Check if recovery timeout has passed
-                if self._state.opened_at:
-                    elapsed = time.time() - self._state.opened_at
-                    if elapsed >= self.config.recovery_timeout:
-                        self._transition_to_half_open()
+            if self._state.state == CircuitState.OPEN and self._state.opened_at:
+                elapsed = time.time() - self._state.opened_at
+                if elapsed >= self.config.recovery_timeout:
+                    self._transition_to_half_open()
 
     def _transition_to_open(self) -> None:
         """Transition circuit to OPEN state."""
@@ -221,9 +219,8 @@ class CircuitBreaker:
             self._state.total_successes += 1
             self._state.last_success_time = time.time()
 
-            if self._state.state == CircuitState.HALF_OPEN:
-                if self._state.success_count >= self.config.success_threshold:
-                    self._transition_to_closed()
+            if self._state.state == CircuitState.HALF_OPEN and self._state.success_count >= self.config.success_threshold:
+                self._transition_to_closed()
 
             await self._save_persisted_state()
 
@@ -237,20 +234,14 @@ class CircuitBreaker:
             if self._state.state == CircuitState.HALF_OPEN:
                 # Any failure in half-open immediately opens
                 self._transition_to_open()
-            elif self._state.state == CircuitState.CLOSED:
-                if self._state.failure_count >= self.config.failure_threshold:
-                    self._transition_to_open()
+            elif self._state.state == CircuitState.CLOSED and self._state.failure_count >= self.config.failure_threshold:
+                self._transition_to_open()
 
             await self._save_persisted_state()
 
     def _should_allow_request(self) -> bool:
         """Determine if a request should be allowed."""
-        if self._state.state == CircuitState.CLOSED:
-            return True
-        elif self._state.state == CircuitState.OPEN:
-            return False
-        else:  # HALF_OPEN
-            return True
+        return self._state.state != CircuitState.OPEN
 
     async def call(self, func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
         """
@@ -322,9 +313,8 @@ class CircuitBreaker:
         """Async context manager exit."""
         if exc_type is None:
             await self._record_success()
-        elif issubclass(exc_type, self.config.expected_exceptions):
-            if not issubclass(exc_type, self.config.excluded_exceptions):
-                await self._record_failure(exc_val)
+        elif issubclass(exc_type, self.config.expected_exceptions) and not issubclass(exc_type, self.config.excluded_exceptions):
+            await self._record_failure(exc_val)
         return False  # Don't suppress exceptions
 
     def get_stats(self) -> dict[str, Any]:
@@ -408,11 +398,11 @@ def get_cache_circuit_breaker() -> CircuitBreaker:
 
 
 __all__ = [
-    "CircuitState",
-    "CircuitBreakerConfig",
     "CircuitBreaker",
+    "CircuitBreakerConfig",
     "CircuitBreakerRegistry",
+    "CircuitState",
     "circuit_breakers",
-    "get_llm_circuit_breaker",
     "get_cache_circuit_breaker",
+    "get_llm_circuit_breaker",
 ]

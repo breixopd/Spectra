@@ -260,7 +260,7 @@ async def update_server_node(
     """Update a server node's configuration."""
     from app.services.scaling import get_pool_manager
 
-    filtered = {k: v for k, v in body.model_dump(exclude_unset=True).items()}
+    filtered = dict(body.model_dump(exclude_unset=True).items())
     pool = get_pool_manager()
     node = await pool.update_node(session, node_id, **filtered)
     if not node:

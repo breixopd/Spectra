@@ -76,26 +76,28 @@ async def resolve_ip(ip: str) -> GeoLocation | None:
 
     try:
         timeout = aiohttp.ClientTimeout(total=GEOIP_TIMEOUT)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(f"{GEOIP_API_URL}/{ip}") as response:
-                if response.status == 200:
-                    data = await response.json()
+        async with (
+            aiohttp.ClientSession(timeout=timeout) as session,
+            session.get(f"{GEOIP_API_URL}/{ip}") as response,
+        ):
+            if response.status == 200:
+                data = await response.json()
 
-                    if data.get("success", False):
-                        return GeoLocation(
-                            lat=data.get("latitude", 0.0),
-                            lon=data.get("longitude", 0.0),
-                            city=data.get("city", "Unknown"),
-                            country=data.get("country", "Unknown"),
-                            region=data.get("region"),
-                            isp=data.get("connection", {}).get("isp"),
-                        )
-                    else:
-                        logger.debug("GeoIP lookup failed: %s", data.get("message"))
-                elif response.status == 429:
-                    logger.warning("GeoIP rate limit exceeded")
+                if data.get("success", False):
+                    return GeoLocation(
+                        lat=data.get("latitude", 0.0),
+                        lon=data.get("longitude", 0.0),
+                        city=data.get("city", "Unknown"),
+                        country=data.get("country", "Unknown"),
+                        region=data.get("region"),
+                        isp=data.get("connection", {}).get("isp"),
+                    )
                 else:
-                    logger.warning("GeoIP API returned status %d", response.status)
+                    logger.debug("GeoIP lookup failed: %s", data.get("message"))
+            elif response.status == 429:
+                logger.warning("GeoIP rate limit exceeded")
+            else:
+                logger.warning("GeoIP API returned status %d", response.status)
 
     except TimeoutError:
         logger.warning("GeoIP lookup timed out for %s", ip)

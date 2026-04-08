@@ -113,7 +113,7 @@ async def _auto_install_pending() -> None:
             await _sync_install_result(tool_id, result)
         except (OSError, RuntimeError, ValueError) as e:
             await _sync_install_failure(tool_id, e)
-        except Exception as e:  # noqa: BLE001 – unknown plugin errors must not crash worker
+        except Exception as e:
             await _sync_install_failure(tool_id, e, unexpected=True)
 
 

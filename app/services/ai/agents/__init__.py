@@ -41,40 +41,40 @@ from app.services.ai.agents.tool_selector import (
 )
 
 __all__ = [
+    "ActionRisk",
     # Base
     "Agent",
-    "AgentRole",
-    "AgentContext",
     "AgentAction",
-    "AgentResult",
-    "ActionRisk",
-    "ToolAction",
-    "SteeringAction",
-    "ApprovalRequest",
+    "AgentContext",
+    "AgentInfo",
     # Registry
     "AgentRegistry",
-    "AgentInfo",
-    "get_agent_registry",
-    "register_agent",
-    # Scope
-    "ScopeAgent",
-    "ScopeInput",
-    "ScopeAction",
-    "TargetSpec",
-    # Tool Selector
-    "ToolSelectorAgent",
-    "ToolSelectorInput",
-    "ToolSelectorOutput",
-    # Recon Intel
-    "ReconIntelAgent",
-    "ReconIntelInput",
-    "ReconIntelOutput",
-    "OsintSanitizer",
+    "AgentResult",
+    "AgentRole",
+    "ApprovalRequest",
+    "AssessmentPhase",
     # Mission Controller
     "MissionController",
     "MissionInput",
     "MissionPlan",
-    "Task",
-    "AssessmentPhase",
     "MissionType",
+    "OsintSanitizer",
+    # Recon Intel
+    "ReconIntelAgent",
+    "ReconIntelInput",
+    "ReconIntelOutput",
+    "ScopeAction",
+    # Scope
+    "ScopeAgent",
+    "ScopeInput",
+    "SteeringAction",
+    "TargetSpec",
+    "Task",
+    "ToolAction",
+    # Tool Selector
+    "ToolSelectorAgent",
+    "ToolSelectorInput",
+    "ToolSelectorOutput",
+    "get_agent_registry",
+    "register_agent",
 ]

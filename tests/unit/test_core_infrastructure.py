@@ -332,7 +332,7 @@ class TestTelemetryCollector:
 
         collector.increment_counter("api_calls", 5)
 
-        assert "api_calls:" in list(collector._counters.keys())[0]
+        assert "api_calls:" in next(iter(collector._counters.keys()))
 
     def test_overview_stats(self):
         """Test overview statistics."""

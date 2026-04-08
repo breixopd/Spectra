@@ -82,7 +82,7 @@ class MissionBlackboard:
         key = f"blackboard:{mid}"
         data = json.dumps(
             {
-                "data": {k: v for k, v in self._data.items()},
+                "data": dict(self._data.items()),
                 "history": self._history,
             }
         )

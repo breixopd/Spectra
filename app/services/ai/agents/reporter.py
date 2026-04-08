@@ -264,7 +264,7 @@ Immediate attention is required for critical and high severity findings.
         severity_order = ["critical", "high", "medium", "low", "info"]
 
         for severity in severity_order:
-            if severity in by_severity and by_severity[severity]:
+            if by_severity.get(severity):
                 items = by_severity[severity]
                 content = "\n\n".join(self._format_finding(f) for f in items)
 

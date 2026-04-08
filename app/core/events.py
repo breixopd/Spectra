@@ -287,13 +287,13 @@ tool_executed = Signal("tool_executed")
 
 __all__ = [
     "Event",
-    "EventType",
     "EventBus",
+    "EventType",
     "events",
-    "on_event",
-    "mission_started",
+    "finding_discovered",
     "mission_completed",
     "mission_failed",
-    "finding_discovered",
+    "mission_started",
+    "on_event",
     "tool_executed",
 ]

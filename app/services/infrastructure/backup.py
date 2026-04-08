@@ -58,7 +58,7 @@ class BackupService:
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
+                _stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
 
                 if proc.returncode != 0:
                     error_msg = stderr.decode() if stderr else "Unknown error"
@@ -80,7 +80,7 @@ class BackupService:
                 storage = get_storage_service()
                 await storage.upload_file(self._bucket, s3_key, str(dump_file))
                 logger.info("Backup uploaded to S3: %s/%s", self._bucket, s3_key)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.error("S3 upload failed for backup %s: %s", backup_id, exc)
                 return {"status": "failed", "error": f"S3 upload failed: {exc}"}
 
@@ -112,7 +112,7 @@ class BackupService:
             dump_file = Path(tmpdir) / f"{backup_id}.dump"
             try:
                 await storage.download_file(self._bucket, s3_key, str(dump_file))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 return {"status": "failed", "error": f"S3 download failed: {exc}"}
 
             try:
@@ -142,7 +142,7 @@ class BackupService:
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
+                _stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=600)
 
                 if proc.returncode != 0:
                     error_msg = stderr.decode() if stderr else "Unknown error"

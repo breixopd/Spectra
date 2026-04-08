@@ -227,14 +227,13 @@ class PluginInstaller:
                             }
                         )
 
-                    returncode, stdout, stderr = await run_command_safe(cmd)
+                    returncode, _stdout, stderr = await run_command_safe(cmd)
 
                     if returncode != 0:
                         raise PluginInstallationError(f"Uninstall command failed (exit {returncode}): {stderr}")
             except (OSError, RuntimeError, ValueError, PluginInstallationError) as e:
                 logger.error("Failed to uninstall %s: %s", tool_id, e)
                 # We still try to remove the plugin file even if commands fail
-                pass
 
         return True
 

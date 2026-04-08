@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.agents.safety import SafetyAction, SafetyInput
-from app.services.tools.consensus import perform_consensus_check  # noqa: F401
 from app.services.tools.models import ToolExecutionRequest
 
 if TYPE_CHECKING:
@@ -53,10 +52,13 @@ async def perform_safety_check(
 
         safety_result = await safety_supervisor.execute(safety_context, safety_input)
 
-        if safety_result.success and isinstance(safety_result.action, SafetyAction):
-            if not safety_result.action.allowed:
-                mission.log(f"[BLOCK] Safety check blocked: {safety_result.action.reason}")
-                return False, safety_result.action.reason
+        if (
+            safety_result.success
+            and isinstance(safety_result.action, SafetyAction)
+            and not safety_result.action.allowed
+        ):
+            mission.log(f"[BLOCK] Safety check blocked: {safety_result.action.reason}")
+            return False, safety_result.action.reason
         return True, "Safe"
     except (OSError, RuntimeError, ValueError, TimeoutError) as e:
         mission.log(f"Safety check failed verification: {e}")
@@ -160,10 +162,7 @@ Example response format:
 
         import json
 
-        if hasattr(llm_response, "content"):
-            response_text = llm_response.content
-        else:
-            response_text = str(llm_response)
+        response_text = llm_response.content if hasattr(llm_response, "content") else str(llm_response)
 
         response_text = response_text.strip()
         if response_text.startswith("```"):

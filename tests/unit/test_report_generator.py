@@ -192,7 +192,7 @@ class TestSaveReport:
                 assert "m1" in path
                 mock_storage.upload.assert_called_once()
                 call_args = mock_storage.upload.call_args
-                assert "m1/reports/report.html" == call_args[0][1]
+                assert call_args[0][1] == "m1/reports/report.html"
 
 
 class TestSeverityConstants:

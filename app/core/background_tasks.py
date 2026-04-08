@@ -82,10 +82,7 @@ async def sandbox_watchdog_loop() -> None:
                 if age < settings.SANDBOX_HEARTBEAT_INTERVAL * 2:
                     continue
 
-                if sb.last_heartbeat:
-                    idle_seconds = (now - sb.last_heartbeat).total_seconds()
-                else:
-                    idle_seconds = age
+                idle_seconds = (now - sb.last_heartbeat).total_seconds() if sb.last_heartbeat else age
 
                 if idle_seconds > settings.SANDBOX_IDLE_TIMEOUT:
                     logger.warning(

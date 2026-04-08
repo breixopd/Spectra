@@ -297,9 +297,9 @@ async def reload_plugins_job(
     logger.info("Reloading plugins from disk...")
     registry = get_registry()
 
-    old_tool_ids = set(t.config.id for t in registry.list_tools())
+    old_tool_ids = {t.config.id for t in registry.list_tools()}
     await registry.load_plugins()
-    new_tool_ids = set(t.config.id for t in registry.list_tools())
+    new_tool_ids = {t.config.id for t in registry.list_tools()}
     added = new_tool_ids - old_tool_ids
 
     await sync_all_status_job()

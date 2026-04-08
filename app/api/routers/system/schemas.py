@@ -159,37 +159,35 @@ async def get_system_operations(cache: CacheService | None) -> list[OngoingOpera
 
         # Check for tool installation progress
         install_progress = await cache.get(SystemKeys.INSTALL_PROGRESS)
-        if install_progress:
-            if isinstance(install_progress, dict) and install_progress.get("active"):
-                operations.append(
-                    OngoingOperation(
-                        id="tool_installation",
-                        type="installing_tools",
-                        description=f"Installing tools: {install_progress.get('current', 'unknown')}",
-                        started_at=install_progress.get("started_at"),
-                        progress=install_progress.get("progress", 0),
-                        details={
-                            "current_tool": install_progress.get("current"),
-                            "total": install_progress.get("total", 0),
-                            "completed": install_progress.get("completed", 0),
-                        },
-                    )
+        if install_progress and isinstance(install_progress, dict) and install_progress.get("active"):
+            operations.append(
+                OngoingOperation(
+                    id="tool_installation",
+                    type="installing_tools",
+                    description=f"Installing tools: {install_progress.get('current', 'unknown')}",
+                    started_at=install_progress.get("started_at"),
+                    progress=install_progress.get("progress", 0),
+                    details={
+                        "current_tool": install_progress.get("current"),
+                        "total": install_progress.get("total", 0),
+                        "completed": install_progress.get("completed", 0),
+                    },
                 )
+            )
 
         # Check for embeddings loading
         embeddings_status = await cache.get(SystemKeys.EMBEDDINGS_STATUS)
-        if embeddings_status:
-            if isinstance(embeddings_status, dict) and embeddings_status.get("loading"):
-                operations.append(
-                    OngoingOperation(
-                        id="embeddings_loading",
-                        type="loading_embeddings",
-                        description="Loading knowledge base embeddings",
-                        started_at=embeddings_status.get("started_at"),
-                        progress=embeddings_status.get("progress"),
-                        details=embeddings_status.get("details"),
-                    )
+        if embeddings_status and isinstance(embeddings_status, dict) and embeddings_status.get("loading"):
+            operations.append(
+                OngoingOperation(
+                    id="embeddings_loading",
+                    type="loading_embeddings",
+                    description="Loading knowledge base embeddings",
+                    started_at=embeddings_status.get("started_at"),
+                    progress=embeddings_status.get("progress"),
+                    details=embeddings_status.get("details"),
                 )
+            )
 
     except (OSError, RuntimeError, ValueError) as e:
         logger.warning("Failed to retrieve operations from cache: %s", e)

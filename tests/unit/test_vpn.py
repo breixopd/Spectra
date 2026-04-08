@@ -79,19 +79,19 @@ class TestOpenVPNValidation:
             _validate_openvpn_config("client\ndev tun\nproto udp\n")
 
     def test_rejects_up_directive(self):
-        with pytest.raises(ValueError, match="forbidden directive.*up"):
+        with pytest.raises(ValueError, match=r"forbidden directive.*up"):
             _validate_openvpn_config("remote vpn.example.com 1194\nup /bin/sh\n")
 
     def test_rejects_down_directive(self):
-        with pytest.raises(ValueError, match="forbidden directive.*down"):
+        with pytest.raises(ValueError, match=r"forbidden directive.*down"):
             _validate_openvpn_config("remote vpn.example.com 1194\ndown /bin/sh\n")
 
     def test_rejects_script_security(self):
-        with pytest.raises(ValueError, match="forbidden directive.*script-security"):
+        with pytest.raises(ValueError, match=r"forbidden directive.*script-security"):
             _validate_openvpn_config("remote vpn.example.com 1194\nscript-security 2\n")
 
     def test_rejects_client_connect(self):
-        with pytest.raises(ValueError, match="forbidden directive.*client-connect"):
+        with pytest.raises(ValueError, match=r"forbidden directive.*client-connect"):
             _validate_openvpn_config("remote vpn.example.com 1194\nclient-connect /tmp/evil.sh\n")
 
     def test_allows_comments(self):

@@ -21,10 +21,10 @@ def _make_webhook(**overrides):
     wh.id = overrides.get("id", "wh-1")
     wh.user_id = overrides.get("user_id", "user-1")
     wh.url = overrides.get("url", "https://hook.example.com/callback")
-    wh.secret = overrides.get("secret", None)
+    wh.secret = overrides.get("secret")
     wh.events = overrides.get("events", ["mission.completed"])
     wh.is_active = overrides.get("is_active", True)
-    wh.description = overrides.get("description", None)
+    wh.description = overrides.get("description")
     return wh
 
 

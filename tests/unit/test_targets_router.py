@@ -139,7 +139,7 @@ class TestGetTarget:
 @pytest.mark.asyncio
 class TestCreateTarget:
     async def test_create_target_success(self, client):
-        ac, _session, user = client
+        ac, _session, _user = client
         from app.repositories.target import TargetRepository
 
         created = _fake_target()

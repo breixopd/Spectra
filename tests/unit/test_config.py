@@ -14,7 +14,7 @@ class TestSettingsValidators:
 
         for level in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
             s = Settings(LOG_LEVEL=level, _env_file=None)
-            assert s.LOG_LEVEL == level
+            assert level == s.LOG_LEVEL
 
     def test_invalid_log_level_rejected(self):
         from app.core.config import Settings

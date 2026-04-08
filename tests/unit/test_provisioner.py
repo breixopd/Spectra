@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 asyncssh = pytest.importorskip("asyncssh", reason="asyncssh not installed")
-from app.services.provisioning.provisioner import ServerConfig, ServerProvisioner  # noqa: E402
+from app.services.provisioning.provisioner import ServerConfig, ServerProvisioner
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ class TestFormatEnvVars:
             part = part.strip()
             if part:
                 # shlex.quote produces 'KEY=val; rm -rf /' which is safe
-                assert part.startswith("'") or part.startswith('"') or ";" not in part
+                assert part.startswith(("'", '"')) or ";" not in part
 
     def test_empty_dict(self, provisioner: ServerProvisioner):
         assert provisioner._format_env_vars({}) == ""

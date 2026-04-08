@@ -145,10 +145,7 @@ class TestToolRegistry:
         assert resp.status_code == 200
         data = resp.json()
         # API wraps tools in a dict with 'tools' key and 'total'
-        if isinstance(data, dict):
-            tools = data.get("tools", [])
-        else:
-            tools = data
+        tools = data.get("tools", []) if isinstance(data, dict) else data
         assert isinstance(tools, list)
         if len(tools) > 0:
             # Check our new plugins are loaded when tools are available
@@ -222,9 +219,7 @@ class TestManualHelpers:
         data = resp.json()
         assert isinstance(data, (list, dict))
         # Should have at least OWASP and network checklists
-        if isinstance(data, list):
-            assert len(data) >= 2
-        elif isinstance(data, dict):
+        if isinstance(data, (list, dict)):
             assert len(data) >= 2
 
     def test_get_owasp_checklist(self, client, auth_headers):

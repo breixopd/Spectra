@@ -83,7 +83,7 @@ _all_imported = False
 
 def _ensure_all_agents_imported() -> None:
     """Import every agent module so their @register_agent decorators fire."""
-    global _all_imported  # noqa: PLW0603
+    global _all_imported
     if _all_imported:
         return
     import importlib

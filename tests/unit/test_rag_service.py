@@ -136,7 +136,7 @@ class TestRAGBatchIndex:
         rag_service.index_document = AsyncMock(return_value=True)
 
         mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=AsyncMock(mappings=lambda: AsyncMock(all=lambda: [])))
+        mock_session.execute = AsyncMock(return_value=AsyncMock(mappings=lambda: AsyncMock(all=list)))
         mock_session_maker = AsyncMock()
         mock_session_maker.__aenter__ = AsyncMock(return_value=mock_session)
         mock_session_maker.__aexit__ = AsyncMock(return_value=False)

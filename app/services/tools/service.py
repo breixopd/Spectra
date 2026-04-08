@@ -26,20 +26,17 @@ from app.core.constants import (
     TOOL_MAX_STDERR_CHARS,
     TOOL_MAX_STDOUT_CHARS,
 )
-from app.services.ai.agents.base import AgentContext, ToolAction  # noqa: F401
-from app.services.ai.agents.safety import SafetySupervisorAgent  # noqa: F401
-from app.services.ai.consensus import VotingSystem  # noqa: F401
-from app.services.tools.adapter import CommandToolAdapter  # noqa: F401
+from app.services.ai.agents.base import AgentContext, ToolAction
+from app.services.ai.agents.safety import SafetySupervisorAgent
+from app.services.ai.consensus import VotingSystem
 from app.services.tools.consensus import perform_consensus_check
 from app.services.tools.dispatch import build_execution_request, dispatch_and_process_result
-from app.services.tools.execution import execute_via_worker  # noqa: F401
-from app.services.tools.models import ToolExecutionRequest, ToolExecutionResult  # noqa: F401
+from app.services.tools.models import ToolExecutionResult
 from app.services.tools.output import (
     create_error_result,
     normalize_tool_name,
     record_to_memory,
 )
-from app.services.tools.registry import get_registry  # noqa: F401
 from app.services.tools.safety_checks import (
     perform_safety_check,
     perform_safety_check_with_retry,

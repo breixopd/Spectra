@@ -119,7 +119,7 @@ async def mission_manager():
     # coroutines that escape test patch scopes.
     async def _init_only(mission):
         """Run mission init (produces logs) but skip execution loop."""
-        try:
+        try:  # noqa: SIM105
             await manager.lifecycle.initialize_mission(mission)
         except (OSError, RuntimeError, TypeError, AttributeError):
             pass  # Swallow DB/mock errors during init

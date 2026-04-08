@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 
@@ -24,10 +24,8 @@ async def lifespan(app: FastAPI):
     logger.info("Worker service shutting down...")
     if _worker_task:
         _worker_task.cancel()
-        try:
+        with suppress(asyncio.CancelledError):
             await _worker_task
-        except asyncio.CancelledError:
-            pass
 
 
 app = FastAPI(title="Spectra Worker", version="1.0.0", lifespan=lifespan)

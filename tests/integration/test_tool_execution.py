@@ -350,10 +350,11 @@ class TestRealToolExecution:
         import subprocess
 
         result = subprocess.run(
-            ["nuclei", "-version"],  # noqa: S607
+            ["nuclei", "-version"],
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
 
         assert "nuclei" in result.stdout.lower() or "nuclei" in result.stderr.lower()
@@ -550,12 +551,10 @@ class TestPluginLoading:
                 else:
                     args = shlex.split(cmd)
 
-                result = subprocess.run(args, capture_output=True, text=True, timeout=10)  # noqa: S603
+                result = subprocess.run(args, capture_output=True, text=True, timeout=10, check=False)
 
                 success = result.returncode == 0
-                if not success and tool.config.installation.verification_regex:
-                    # Check regex if provided
-                    if re.search(
+                if not success and tool.config.installation.verification_regex and re.search(
                         tool.config.installation.verification_regex,
                         result.stdout + result.stderr,
                     ):
@@ -567,15 +566,14 @@ class TestPluginLoading:
                     try:
                         await registry.install_tool(tool.config.id)
                         # Verify again with same safe approach
-                        result = subprocess.run(args, capture_output=True, text=True, timeout=10)  # noqa: S603
+                        result = subprocess.run(args, capture_output=True, text=True, timeout=10, check=False)
 
                         success = result.returncode == 0
-                        if not success and tool.config.installation.verification_regex:
-                            if re.search(
+                        if not success and tool.config.installation.verification_regex and re.search(
                                 tool.config.installation.verification_regex,
                                 result.stdout + result.stderr,
                             ):
-                                success = True
+                            success = True
 
                         if not success:
                             failed_tools.append(
@@ -584,13 +582,13 @@ class TestPluginLoading:
                         else:
                             print(f"  OK (after install): {tool.config.id}")
                     except Exception as e:
-                        failed_tools.append(f"{tool.config.id} (install failed): {str(e)}")
+                        failed_tools.append(f"{tool.config.id} (install failed): {e!s}")
                 else:
                     print(f"  OK: {tool.config.id}")
 
             except subprocess.TimeoutExpired:
                 failed_tools.append(f"{tool.config.id}: Timeout")
             except Exception as e:
-                failed_tools.append(f"{tool.config.id}: {str(e)}")
+                failed_tools.append(f"{tool.config.id}: {e!s}")
 
         assert not failed_tools, f"Tool verification failed for: {', '.join(failed_tools)}"
