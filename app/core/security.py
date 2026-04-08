@@ -38,6 +38,7 @@ __all__ = [
     "invalidate_all_user_tokens",
     "invalidate_token",
     "is_token_blacklisted",
+    "sync_blacklist_from_db",
     "verify_email_verification_token",
     "verify_password",
     "verify_password_reset_token",
@@ -189,11 +190,13 @@ async def invalidate_token(token: str) -> None:
     """Add a token to the blacklist and persist."""
     await _ensure_blacklist_loaded()
     expiry = _get_token_expiry(token)
+    token_h = _token_hash(token)
     async with _blacklist_lock:
         if len(_blacklisted_tokens) >= JWT_BLACKLIST_MAX_SIZE:
             _cleanup_expired()
-        _blacklisted_tokens[_token_hash(token)] = expiry
+        _blacklisted_tokens[token_h] = expiry
         _persist_blacklist()
+    _notify_blacklist_change(f"token:{token_h}")
 
 
 _cleanup_counter = 0
@@ -255,6 +258,7 @@ async def invalidate_all_user_tokens(username: str) -> None:
     async with _blacklist_lock:
         _user_token_blacklist[username] = now
         _persist_blacklist()
+    _notify_blacklist_change(f"user:{username}")
 
 
 def create_access_token(
@@ -506,3 +510,38 @@ def verify_totp(secret: str, code: str) -> bool:
     """Verify a TOTP code against a secret with 1-step tolerance."""
     totp = pyotp.TOTP(secret)
     return totp.verify(code, valid_window=1)
+
+
+# --- Cross-replica blacklist propagation ---
+
+
+def _notify_blacklist_change(payload: str) -> None:
+    """Send a PG NOTIFY so other replicas refresh their blacklist cache."""
+    try:
+        asyncio.get_running_loop()
+        from app.core.tasks import create_safe_task
+        create_safe_task(_send_blacklist_notify(payload), name="blacklist_notify")
+    except RuntimeError:
+        pass
+
+
+async def _send_blacklist_notify(payload: str) -> None:
+    """Execute pg_notify for blacklist changes."""
+    try:
+        from sqlalchemy import text
+
+        from app.core.database import async_session_maker
+
+        async with async_session_maker() as session:
+            await session.execute(
+                text("SELECT pg_notify('token_blacklist_changed', :payload)"),
+                {"payload": payload},
+            )
+            await session.commit()
+    except (OSError, RuntimeError) as e:
+        _logger.warning("Failed to send blacklist NOTIFY: %s", e)
+
+
+async def sync_blacklist_from_db() -> None:
+    """Reload blacklist state from DB. Called by the PG LISTEN handler."""
+    await _load_from_db()

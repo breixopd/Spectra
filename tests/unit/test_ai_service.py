@@ -52,9 +52,21 @@ async def test_lifespan_tolerates_embedding_init_failure():
 
 @pytest.mark.asyncio
 async def test_health_returns_ai_service_status():
+    from unittest.mock import AsyncMock, patch
+
     from app import ai_service
 
-    assert await ai_service.health() == {"status": "healthy", "service": "ai"}
+    mock_response = SimpleNamespace(status_code=200)
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=SimpleNamespace(get=AsyncMock(return_value=mock_response)))
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        result = await ai_service.health()
+
+    assert result["service"] == "ai"
+    assert result["status"] == "healthy"
+    assert result["tensorzero"] == "reachable"
 
 
 @pytest.mark.asyncio
