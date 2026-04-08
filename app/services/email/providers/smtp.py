@@ -43,6 +43,7 @@ class SMTPProvider(AbstractEmailProvider):
                 username=settings.SMTP_USER or None,
                 password=settings.SMTP_PASSWORD.get_secret_value() or None,
                 use_tls=settings.SMTP_USE_TLS,
+                timeout=30,
             )
             logger.info("Email sent to %s: %s", to, subject)
             return True

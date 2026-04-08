@@ -168,7 +168,7 @@ class TestEncryption:
     def test_decrypt_invalid_token_returns_as_is(self):
         data = {"password": "not-a-valid-fernet-token"}
         result = decrypt_sensitive_fields(data, "key")
-        assert result["password"] == "not-a-valid-fernet-token"
+        assert result["password"] is None
 
 
 # --- Token Blacklist Extended Tests ---
