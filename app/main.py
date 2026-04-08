@@ -98,9 +98,21 @@ app.add_middleware(SlowAPIMiddleware)
 
 # --- Spectra Exception Handler ---
 @app.exception_handler(SpectraError)
-async def spectra_error_handler(request: Request, exc: SpectraError) -> JSONResponse:
+async def spectra_error_handler(request: Request, exc: SpectraError) -> HTMLResponse | JSONResponse:
     """Map SpectraError subclasses to appropriate HTTP responses."""
     status_code = get_status_code_for_exception(exc)
+    if _wants_html(request):
+        # Use matching template if available, otherwise fall back to 500
+        template_name = f"errors/{status_code}.html"
+        try:
+            _error_templates.get_template(template_name)
+        except Exception:
+            template_name = "errors/500.html"
+        detail = exc.message if status_code < 500 else "Something went wrong. Please try again."
+        return HTMLResponse(
+            content=_error_templates.get_template(template_name).render(detail=detail),
+            status_code=status_code,
+        )
     return JSONResponse(exc.to_dict(), status_code=status_code)
 
 
@@ -193,6 +205,13 @@ async def request_timeout(request: Request, call_next):
     try:
         return await asyncio.wait_for(call_next(request), timeout=timeout)
     except TimeoutError:
+        if _wants_html(request):
+            return HTMLResponse(
+                content=_error_templates.get_template("errors/504.html").render(
+                    detail="The request took too long to process. Please try again or reduce the scope of your request."
+                ),
+                status_code=504,
+            )
         return JSONResponse(
             {"detail": "Request timeout"},
             status_code=504,
@@ -231,10 +250,15 @@ def _make_error_handler(status_code: int, default_detail: str, template: str, lo
     async def handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
         if log:
             logger.exception("Internal server error: %s", exc)
+
+        # Extract detail from exception; sanitize for 5xx
+        detail = getattr(exc, "detail", None) or default_detail
+        if status_code >= 500:
+            detail = default_detail
+
         if status_code == 429 and request.url.path.startswith("/api/"):
             if isinstance(exc, RateLimitExceeded):
                 return rate_limit_exceeded_handler_sync(request, exc)
-            detail = getattr(exc, "detail", default_detail)
             exc_headers = getattr(exc, "headers", None)
             return JSONResponse(
                 {"detail": detail},
@@ -243,10 +267,10 @@ def _make_error_handler(status_code: int, default_detail: str, template: str, lo
             )
         if _wants_html(request):
             return HTMLResponse(
-                content=_error_templates.get_template(template).render(),
+                content=_error_templates.get_template(template).render(detail=detail),
                 status_code=status_code,
             )
-        return JSONResponse({"detail": default_detail}, status_code=status_code)
+        return JSONResponse({"detail": detail}, status_code=status_code)
 
     return handler
 
@@ -261,6 +285,7 @@ _ERROR_HANDLERS: list[tuple] = [
     (500, "Internal server error", "errors/500.html", True),
     (502, "Bad gateway", "errors/502.html"),
     (503, "Service unavailable", "errors/503.html"),
+    (504, "Request timeout", "errors/504.html"),
 ]
 
 for _entry in _ERROR_HANDLERS:
