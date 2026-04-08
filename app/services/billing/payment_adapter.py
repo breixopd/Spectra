@@ -196,6 +196,8 @@ class StripePaymentAdapter(PaymentAdapter):
         from app.core.config import get_settings
 
         base_url = get_settings().PLATFORM_BASE_URL or "http://localhost:5000"
+        if not get_settings().PLATFORM_BASE_URL:
+            logger.warning("PLATFORM_BASE_URL not set — using localhost fallback for billing portal")
         loop = asyncio.get_running_loop()
         portal = await loop.run_in_executor(
             None,
@@ -416,6 +418,8 @@ class PaymentService:
         from app.core.config import get_settings
 
         base_url = get_settings().PLATFORM_BASE_URL or "http://localhost:5000"
+        if not get_settings().PLATFORM_BASE_URL:
+            logger.warning("PLATFORM_BASE_URL not set — using localhost fallback for checkout")
         return await self._adapter.create_checkout_session(
             user_id,
             plan_id,

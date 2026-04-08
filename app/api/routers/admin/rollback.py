@@ -52,3 +52,6 @@ async def apply_rollback(
         return {"status": "rolled_back", "restored": before_state}
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error("Rollback failed for snapshot %s: %s", snapshot_id, e, exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Rollback failed")

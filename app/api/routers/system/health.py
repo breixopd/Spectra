@@ -128,7 +128,8 @@ async def get_system_status(
         storage = get_storage_service()
         storage_health = await storage.health_check()
     except (OSError, RuntimeError, ValueError) as e:
-        storage_health = {"status": "unavailable", "error": str(e)}
+        logger.error("Storage health check failed: %s", e, exc_info=True)
+        storage_health = {"status": "unavailable", "error": "Storage health check failed"}
 
     overall_status = "ready"
     status_messages: list[str] = []

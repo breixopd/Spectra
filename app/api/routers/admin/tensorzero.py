@@ -83,7 +83,7 @@ async def tz_status(
 
     except (httpx.HTTPError, OSError) as e:
         logger.warning("TensorZero health check failed: %s", e)
-        return JSONResponse({"online": False, "error": str(e)}, status_code=503)
+        return JSONResponse({"online": False, "error": "TensorZero gateway unavailable"}, status_code=503)
 
 
 @router.get("/api/v1/admin/tensorzero/inferences")
@@ -318,7 +318,7 @@ async def tz_analytics(
             }
     except (httpx.HTTPError, OSError) as e:
         logger.warning("TensorZero analytics fetch failed: %s", e)
-        return {"analytics": {}, "available": False, "error": str(e)}
+        return {"analytics": {}, "available": False, "error": "Analytics unavailable"}
 
 
 @router.get("/api/v1/admin/tensorzero/model-performance")
