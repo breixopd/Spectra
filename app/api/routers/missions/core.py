@@ -44,15 +44,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-class SteerMissionRequest(BaseModel):
-    """Schema for steering a mission."""
-
-    action: str = Field(..., description="Steering action: skip_phase, prioritize_target, focus_vuln")
-    phase: str | None = Field(None, description="Phase to skip (for skip_phase action)")
-    target: str | None = Field(None, description="Target to prioritize")
-    vulnerability: str | None = Field(None, description="Vulnerability to focus on")
-
-
 class CreateChainRequest(BaseModel):
     """Schema for creating a custom exploit chain."""
 
@@ -575,6 +566,7 @@ async def resume_mission(
     response: Response,
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
 ) -> StatusResponse:
     """Resume a paused mission."""
     active = await mission_manager.get_mission(mission_id)
@@ -583,4 +575,13 @@ async def resume_mission(
     result = await mission_manager.resume_mission(mission_id)
     if not result:
         raise HTTPException(status_code=404, detail="Mission not found or not active")
+
+    await audit_log_event(
+        session,
+        AuditEventType.MISSION_STATUS_CHANGED,
+        user_id=str(_current_user.id),
+        details={"mission_id": str(mission_id), "action": "resumed"},
+        request=request,
+    )
+
     return StatusResponse(message="Mission resumed")

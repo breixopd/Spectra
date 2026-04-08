@@ -148,6 +148,8 @@ def _validate_production_secrets() -> None:
         "password",
         "default",
     }
+    _placeholder_prefixes = ("change-me", "change_me", "your-", "sk-or-")
+
     jwt_val = settings.JWT_SECRET_KEY.get_secret_value()
     secret_val = (
         settings.SECRET_KEY.get_secret_value()
@@ -168,6 +170,19 @@ def _validate_production_secrets() -> None:
             "SECRET_KEY is empty or using the default 'change-me-in-production'. "
             "Set a strong secret via the SECRET_KEY environment variable before running in production."
         )
+
+    # Warn about any remaining placeholder secrets
+    for field in ("JWT_SECRET_KEY", "SECRET_KEY", "SERVICE_AUTH_SECRET"):
+        val = getattr(settings, field, "")
+        if isinstance(val, SecretStr):
+            val = val.get_secret_value()
+        if any(val.startswith(p) for p in _placeholder_prefixes):
+            logger.warning(
+                "[SECURITY] %s contains a placeholder value — "
+                "run scripts/first_run.sh or set a real secret",
+                field,
+            )
+
     db_url = str(settings.DATABASE_URL)
     if "sqlite" in db_url.lower():
         logger.warning(

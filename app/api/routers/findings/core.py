@@ -304,7 +304,7 @@ async def update_finding(
     finding_in: FindingUpdate,
     request: Request = None,
     db: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> FindingDetailResponse:
     """Update a finding."""
     repo = FindingRepository(db)

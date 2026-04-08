@@ -18,4 +18,5 @@ for _sub in (_core, _export, _feedback):
     router.routes.extend(_sub.routes)
 
 # Re-export schemas used by tests for backward compatibility
-from app.api.routers.missions.core import CreateChainRequest, SteerMissionRequest  # noqa: E402, F401
+from app.api.routers.missions.core import CreateChainRequest  # noqa: E402, F401
+from app.api.routers.missions.feedback import SteerMissionRequest  # noqa: E402, F401

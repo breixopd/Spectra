@@ -131,7 +131,7 @@ async def export_findings_csv(
 
     await audit_log_event(
         db,
-        AuditEventType.SETTINGS_CHANGED,
+        AuditEventType.DATA_EXPORTED,
         user_id=str(_current_user.id),
         details={"action": "findings_exported", "format": "csv", "count": len(findings)},
         request=request,
@@ -171,7 +171,7 @@ async def export_findings_json(
 
     await audit_log_event(
         db,
-        AuditEventType.SETTINGS_CHANGED,
+        AuditEventType.DATA_EXPORTED,
         user_id=str(_current_user.id),
         details={"action": "findings_exported", "format": "json", "count": len(findings)},
         request=request,

@@ -35,6 +35,26 @@ check_prereqs() {
         fi
     fi
     log "Prerequisites OK"
+
+    # ── Auto-generate secrets ──
+    if grep -q "change-me-with-a-long-random-value" "${ENV_FILE}"; then
+        log "Generating cryptographic secrets..."
+        generate_secret() { openssl rand -hex 32; }
+        generate_password() { openssl rand -base64 18 | tr -d '/+=' | head -c 24; }
+
+        local db_pass
+        db_pass="$(generate_password)"
+
+        sed -i "s|change-me-with-a-long-random-value|$(generate_secret)|" "${ENV_FILE}"
+        sed -i "s|change-me-with-a-different-long-random-value|$(generate_secret)|" "${ENV_FILE}"
+        sed -i "s|change-me-shared-between-app-ai-scheduler-worker|$(generate_secret)|" "${ENV_FILE}"
+        sed -i "s|change-me-db-password|${db_pass}|g" "${ENV_FILE}"
+        sed -i "s|change-me-redis-pass|$(generate_password)|" "${ENV_FILE}"
+        sed -i "s|change-me-clickhouse|$(generate_password)|" "${ENV_FILE}"
+        log "  ✓ Secrets generated"
+    else
+        log ".env already has real secrets, skipping generation"
+    fi
 }
 
 # Start core services (DB, Redis, Garage)
