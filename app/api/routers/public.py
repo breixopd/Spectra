@@ -399,6 +399,7 @@ def _public_base_url(request: Request | None) -> str:
         return settings.PLATFORM_BASE_URL.rstrip("/")
     if request is not None:
         return str(request.base_url).rstrip("/")
+    logger.warning("PLATFORM_BASE_URL not set — using localhost fallback")
     return "http://localhost:5000"
 
 
@@ -408,6 +409,8 @@ async def _send_registration_welcome_email(username: str, email: str) -> None:
 
         email_svc = EmailService()
         base_url = settings.PLATFORM_BASE_URL or "http://localhost:5000"
+        if not settings.PLATFORM_BASE_URL:
+            logger.warning("PLATFORM_BASE_URL not set — using localhost fallback for welcome email")
         await email_svc.send_template(
             to=email,
             template_name="welcome",

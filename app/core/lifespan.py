@@ -606,6 +606,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     _validate_production_secrets()
     _validate_noop_payment()
 
+    if settings.PAYMENT_PROVIDER and not settings.PLATFORM_BASE_URL:
+        logger.warning(
+            "PLATFORM_BASE_URL is not set — payment callbacks and emails will use localhost fallback"
+        )
+
     try:
         await _initialize_database(app)
         await _seed_default_data()

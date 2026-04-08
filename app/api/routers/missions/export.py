@@ -72,7 +72,8 @@ async def download_pdf_report(
     except ImportError:
         raise HTTPException(status_code=501, detail="PDF export requires xhtml2pdf")
     except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error("PDF report generation failed: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Report generation failed")
 
     await audit_log_event(
         session,

@@ -266,7 +266,7 @@ function renderMarkdown(text) {
         .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>')
         .replace(/\*(.+?)\*/g, '<em>$1</em>')
         .replace(/`(.+?)`/g, '<code class="px-1 py-0.5 bg-black/30 rounded text-violet-300 text-xs font-mono">$1</code>')
-        .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-violet-400 underline" target="_blank">$1</a>')
+        .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-violet-400 underline" target="_blank" rel="noopener noreferrer">$1</a>')
         .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
         .replace(/\n/g, '<br>');
 }
