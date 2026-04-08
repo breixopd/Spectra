@@ -150,7 +150,7 @@ async def upload_wordlist(
         raise HTTPException(status_code=400, detail="No filename provided")
 
     safe_name = "".join(c for c in file.filename if c.isalnum() or c in "-_.")
-    if not safe_name:
+    if not safe_name or safe_name in (".", "..") or safe_name.startswith("."):
         raise HTTPException(status_code=400, detail="Invalid filename")
 
     user_dir = _user_wordlists_dir(_current_user)
@@ -192,8 +192,8 @@ async def download_preset(
             logger.info("Downloaded preset wordlist: %s (%d bytes)", preset_id, len(resp.content))
             return {"status": "downloaded", "filename": f"{preset_id}.txt", "lines": resp.text.count("\n")}
     except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
-        logger.error("Failed to download preset %s: %s", preset_id, e)
-        raise HTTPException(status_code=502, detail=f"Download failed: {e}") from e
+        logger.exception("Failed to download preset %s: %s", preset_id, e)
+        raise HTTPException(status_code=502, detail="Download failed \u2014 check URL and try again") from e
 
 
 @router.delete("/{filename}")

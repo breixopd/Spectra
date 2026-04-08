@@ -108,7 +108,8 @@ async def api_calculate_cvss(
     try:
         return calculate_cvss31(req.vector)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("CVSS calculation failed: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid CVSS vector string")
 
 
 # --- Report Templates ---
@@ -189,4 +190,5 @@ async def api_generate_report(
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Session not found")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("Report generation failed: %s", e)
+        raise HTTPException(status_code=400, detail="Report generation failed \u2014 check parameters")
