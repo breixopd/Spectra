@@ -259,6 +259,8 @@ class Settings(BaseSettings):
     # --- External Service Gateways ---
     # URL to the AI microservice. Must be set for production.
     AI_SERVICE_URL: str = ""
+    SCHEDULER_SERVICE_URL: str = "http://scheduler:5011"
+    WORKER_SERVICE_URL: str = "http://worker:5012"
 
     # Sandbox Orchestrator — external container management (for multi-node)
     SANDBOX_ORCHESTRATOR_URL: str | None = None  # e.g. "http://orchestrator:8084"

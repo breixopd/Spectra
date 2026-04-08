@@ -44,8 +44,8 @@ async def test_periodic_cleanup_loop_runs_single_cleanup_cycle():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.worker.cleanup_jobs",
-            make_module("app.worker.cleanup_jobs", run_all_cleanup=cleanup),
+            "app.services.maintenance",
+            make_module("app.services.maintenance", run_all_cleanup=cleanup),
         )
         mp.setattr(
             background_tasks.asyncio,
@@ -86,8 +86,8 @@ async def test_periodic_cleanup_loop_handles_runtime_errors():
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
             sys.modules,
-            "app.worker.cleanup_jobs",
-            make_module("app.worker.cleanup_jobs", run_all_cleanup=cleanup),
+            "app.services.maintenance",
+            make_module("app.services.maintenance", run_all_cleanup=cleanup),
         )
         mp.setattr(
             background_tasks.asyncio,

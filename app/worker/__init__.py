@@ -17,7 +17,7 @@ Split into submodules:
 
 from __future__ import annotations
 
-from app.worker.cleanup_jobs import run_all_cleanup
+from app.services.maintenance import run_all_cleanup
 from app.worker.command_jobs import execute_script_job, run_command_job
 from app.worker.lifecycle import heartbeat_loop, shutdown, startup
 from app.worker.notification_jobs import (
