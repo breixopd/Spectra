@@ -72,6 +72,17 @@ class RAGConfig:
     distance_metric: str = "COSINE"
 
 
+def _validate_vector_dimension(dim: int) -> int:
+    """Validate and return a safe integer dimension for vector operations.
+
+    Raises ValueError if out of range.
+    """
+    dim = int(dim)
+    if not 1 <= dim <= 8192:
+        raise ValueError(f"Vector dimension must be 1-8192, got {dim}")
+    return dim
+
+
 class RAGService:
     """Retrieval-Augmented Generation service backed by PostgreSQL."""
 
@@ -104,10 +115,7 @@ class RAGService:
                 await self.embeddings._load_model()
                 dim = self.embeddings.embedding_dim or 384
                 self.config.embedding_dim = dim
-            # Validate dim is a safe integer to prevent SQL injection
-            dim = int(dim)
-            if not (1 <= dim <= 8192):
-                raise ValueError(f"Invalid embedding dimension: {dim}")
+            dim = _validate_vector_dimension(dim)
             async with async_session_maker() as session:
                 await session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
                 await session.execute(

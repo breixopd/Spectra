@@ -50,8 +50,9 @@ async def apply_rollback(
         # audit_log_event already commits; this is a safe no-op if nothing remains
         await session.commit()
         return {"status": "rolled_back", "restored": before_state}
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except ValueError:
+        logger.exception("Rollback operation failed for snapshot %s", snapshot_id)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rollback operation failed")
     except Exception as e:
         logger.error("Rollback failed for snapshot %s: %s", snapshot_id, e, exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Rollback failed")

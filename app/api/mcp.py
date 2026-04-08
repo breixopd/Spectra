@@ -224,11 +224,11 @@ async def handle_mcp_request(
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception("MCP tool execution failed")
+    except Exception:
+        logger.exception("MCP tool execution failed: %s", request.method)
         return MCPResponse(
             id=request.id,
-            error={"code": -32603, "message": str(e)},
+            error={"code": -32603, "message": "Internal tool execution error"},
         )
 
 
