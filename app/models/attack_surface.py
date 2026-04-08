@@ -7,7 +7,6 @@ for iterative exploitation attempts.
 
 from datetime import UTC, datetime
 
-UTC = UTC
 try:
     from enum import StrEnum
 except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner

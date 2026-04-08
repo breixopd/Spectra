@@ -7,8 +7,6 @@ import logging
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
-UTC = UTC
-
 from sqlalchemy import select
 
 from app.core.database import async_session_maker

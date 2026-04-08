@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 
+from app.core.tasks import create_safe_task
 from app.worker import _WORKER_FUNCTIONS, heartbeat_loop, shutdown, startup
 
 
@@ -18,7 +19,7 @@ async def _main() -> None:
 
     try:
         if queue_name != "default":
-            heartbeat_task = asyncio.create_task(heartbeat_loop(queue_name, interval=heartbeat_interval))
+            heartbeat_task = create_safe_task(heartbeat_loop(queue_name, interval=heartbeat_interval), name="heartbeat")
         await worker_loop(_WORKER_FUNCTIONS, queue_name=queue_name)
     finally:
         if heartbeat_task:

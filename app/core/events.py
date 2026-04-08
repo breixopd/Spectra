@@ -210,8 +210,9 @@ class EventBus:
         Creates an async task if there's a running event loop.
         """
         try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self.emit(event_type, source, **data))
+            asyncio.get_running_loop()
+            from app.core.tasks import create_safe_task
+            create_safe_task(self.emit(event_type, source, **data), name="event_emit")
         except RuntimeError:
             # No running loop - skip async handlers
             event_name = event_type.value if isinstance(event_type, EventType) else event_type

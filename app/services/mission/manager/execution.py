@@ -274,7 +274,7 @@ class MissionExecutionManager:
         try:
             shell_manager.notify_mission_complete(str(mission.id))
         except (OSError, RuntimeError) as e:
-            logger.error(f"Failed to notify shell manager of mission completion: {e}")
+            logger.error("Failed to notify shell manager of mission completion: %s", e)
 
         cleanup_mission_workspace(mission.id)
 

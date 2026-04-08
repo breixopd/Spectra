@@ -206,7 +206,7 @@ async def check_tools_installing(cache: CacheService | None) -> bool:
         if isinstance(progress, dict):
             return progress.get("active", False)
     except (OSError, RuntimeError) as e:
-        logger.debug("System status check failed: %s", e)
+        logger.warning("System status check failed: %s", e)
     return False
 
 

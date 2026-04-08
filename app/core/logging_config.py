@@ -12,8 +12,6 @@ import re
 import sys
 from contextvars import ContextVar
 from datetime import UTC, datetime
-
-UTC = UTC
 from typing import Any
 from uuid import uuid4
 
@@ -104,15 +102,13 @@ class HumanFormatter(logging.Formatter):
     """Human-readable formatter that includes correlation ID when present."""
 
     FMT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
-    FMT_CID = "%(asctime)s | %(levelname)-8s | %(name)s | [%(correlation_id)s] %(message)s"
     DATEFMT = "%Y-%m-%d %H:%M:%S"
 
     def format(self, record: logging.LogRecord) -> str:
         cid = getattr(record, "correlation_id", "")
         if cid:
-            self._style._fmt = self.FMT_CID
-        else:
-            self._style._fmt = self.FMT
+            record.msg = f"[{cid}] {record.msg}"
+        self._style._fmt = self.FMT
         self.datefmt = self.DATEFMT
         return super().format(record)
 

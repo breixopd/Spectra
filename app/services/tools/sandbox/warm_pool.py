@@ -89,7 +89,8 @@ class WarmPoolManager:
             logger.info("Claimed warm container for mission %s (tier=%s)", mission_id[:8], resource_tier)
 
             # Spawn replacement in background
-            asyncio.create_task(self._spawn_warm_container())
+            from app.core.tasks import create_safe_task
+            create_safe_task(self._spawn_warm_container(), name="warm_spawn")
 
             return info
         except (OSError, RuntimeError) as exc:

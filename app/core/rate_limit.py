@@ -207,7 +207,7 @@ def _build_rate_limit_exceeded_response(
         try:
             retry_after = int(limit.get_expiry())
         except (OSError, RuntimeError, ValueError, AttributeError, TypeError):
-            pass
+            logger.debug("Rate limit retry-after computation failed", exc_info=True)
 
     return JSONResponse(
         status_code=429,

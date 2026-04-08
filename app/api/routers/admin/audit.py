@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-
-UTC = UTC
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request

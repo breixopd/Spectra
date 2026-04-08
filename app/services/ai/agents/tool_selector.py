@@ -599,7 +599,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
             # Remove Python list syntax that LLM might generate
             # e.g., "-t ['cves/']" -> "" (invalid), "['*']" -> "" (invalid)
             if "[" in val_str or "]" in val_str:
-                logger.warning(f"Removing malformed list syntax from arg {key}: {val_str}")
+                logger.warning("Removing malformed list syntax from arg %s: %s", key, val_str)
                 import re
 
                 items = re.findall(r"'([^']+)'", val_str)
@@ -656,7 +656,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 try:
                     args[key] = int(args[key])
                 except (ValueError, TypeError):
-                    logger.warning(f"Invalid integer for {key}: {args[key]}, using default")
+                    logger.warning("Invalid integer for %s: %s, using default", key, args[key])
                     args.pop(key)
 
         # Apply argument modifiers from tool configuration

@@ -36,12 +36,12 @@ async def test_lifespan_starts_and_cancels_worker_task():
 
     task = _AwaitableTask(exc=asyncio.CancelledError())
 
-    def fake_create_task(coro):
+    def fake_create_safe_task(coro, *, name=None, logger_=None):
         coro.close()
         return task
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(worker_service.asyncio, "create_task", fake_create_task)
+        mp.setattr(worker_service, "create_safe_task", fake_create_safe_task)
         async with worker_service.lifespan(worker_service.app):
             assert worker_service._worker_task is task
 

@@ -6,8 +6,6 @@ Follows the Dependency Inversion Principle (DIP) from SOLID.
 """
 
 from datetime import UTC, datetime
-
-UTC = UTC
 from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import Depends, HTTPException, Request, status
