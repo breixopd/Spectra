@@ -330,8 +330,6 @@ class Settings(BaseSettings):
     )
     MISSION_RETENTION_DAYS: int = 0  # 0 = keep forever, >0 = auto-delete completed missions after N days
     ADMIN_IP_ALLOWLIST: str = ""  # Comma-separated list of allowed IPs/CIDRs for admin routes, empty = disabled
-    # Alias for S3_BUCKET_BACKUPS — used by BackupService (app/services/infrastructure/backup.py)
-    BACKUP_S3_BUCKET: str = Field(default="spectra-backups", description="S3 bucket for backups")
 
     # --- Auto-Scaling ---
     AUTOSCALE_ENABLED: bool = False  # Opt-in, safe default
