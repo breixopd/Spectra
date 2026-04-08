@@ -522,6 +522,54 @@ async def _handle_config_change() -> None:
         logger.warning("Failed to re-hydrate config on NOTIFY: %s", exc)
 
 
+async def _blacklist_change_listener() -> None:
+    """Listen for token blacklist changes from other replicas via PG LISTEN/NOTIFY."""
+    import asyncpg
+
+    db_url = str(settings.DATABASE_URL)
+    if isinstance(settings.DATABASE_URL, SecretStr):
+        db_url = settings.DATABASE_URL.get_secret_value()
+    dsn = db_url.replace("postgresql+asyncpg://", "postgresql://")
+
+    conn: asyncpg.Connection | None = None
+    while True:
+        try:
+            if conn is None or conn.is_closed():
+                conn = await asyncpg.connect(dsn)
+
+                def _on_blacklist_notify(
+                    connection: asyncpg.Connection,
+                    pid: int,
+                    channel: str,
+                    payload: str,
+                ) -> None:
+                    create_safe_task(_handle_blacklist_change(), name="blacklist_change_handler")
+
+                await conn.add_listener("token_blacklist_changed", _on_blacklist_notify)
+                logger.info("[OK] Blacklist change listener connected (PG LISTEN)")
+
+            await asyncio.sleep(5)
+        except asyncio.CancelledError:
+            if conn and not conn.is_closed():
+                await conn.close()
+            break
+        except (OSError, asyncpg.PostgresError) as exc:
+            logger.warning("Blacklist change listener error (will retry): %s", exc)
+            conn = None
+            await asyncio.sleep(10)
+
+
+async def _handle_blacklist_change() -> None:
+    """Reload blacklist from DB when another replica invalidates a token."""
+    try:
+        from app.core.security import sync_blacklist_from_db
+
+        await sync_blacklist_from_db()
+        logger.info("Blacklist synced from DB via LISTEN/NOTIFY")
+    except (SQLAlchemyError, OSError) as exc:
+        logger.warning("Failed to sync blacklist on NOTIFY: %s", exc)
+
+
 async def _shutdown_services() -> None:
     """Gracefully shut down all services."""
     # Close storage service
@@ -624,18 +672,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("[READY] Spectra is ready!")
         _event_bridge = await _start_event_bridge()
         _config_listener_task = create_safe_task(_config_change_listener(), name="config_listener")
+        _blacklist_listener_task = create_safe_task(
+            _blacklist_change_listener(), name="blacklist_listener"
+        )
     except (OSError, RuntimeError, ImportError) as e:
         logger.error("[ERROR] Startup failed: %s", e)
         raise
 
     yield
 
-    # Cancel config change listener
-    try:
-        _config_listener_task.cancel()
-        await asyncio.wait_for(_config_listener_task, timeout=3.0)
-    except (asyncio.CancelledError, TimeoutError, NameError):
-        pass
+    # Cancel PG LISTEN tasks
+    for _task in (_config_listener_task, _blacklist_listener_task):
+        try:
+            _task.cancel()
+            await asyncio.wait_for(_task, timeout=3.0)
+        except (asyncio.CancelledError, TimeoutError, NameError):
+            pass
 
     if _event_bridge:
         try:

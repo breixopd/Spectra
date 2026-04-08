@@ -50,16 +50,27 @@ async def test_lifespan_starts_and_cancels_worker_task():
 
 @pytest.mark.asyncio
 async def test_health_reports_worker_task_state():
+    from unittest.mock import AsyncMock, patch
+
     from app import worker_service
 
     task = MagicMock()
     task.done.return_value = False
     worker_service._worker_task = task
 
-    assert await worker_service.health() == {
+    mock_session = AsyncMock()
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+    mock_session.execute = AsyncMock()
+
+    with patch("app.core.database.async_session_maker", return_value=mock_session):
+        result = await worker_service.health()
+
+    assert result == {
         "status": "healthy",
         "service": "worker",
         "task_alive": True,
+        "database": "connected",
     }
 
 

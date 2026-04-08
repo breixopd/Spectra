@@ -92,7 +92,18 @@ if _secret:
 # --- Health ---
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "service": "ai"}
+    import httpx
+
+    status = {"status": "healthy", "service": "ai"}
+    try:
+        tz_url = getattr(_settings, "TENSORZERO_GATEWAY_URL", "") or "http://tensorzero:3000"
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(f"{tz_url.rstrip('/')}/health")
+            status["tensorzero"] = "reachable" if resp.status_code == 200 else "degraded"
+    except Exception:
+        status["tensorzero"] = "unreachable"
+        status["status"] = "degraded"
+    return status
 
 
 # --- LLM Chat ---

@@ -1,5 +1,6 @@
 """Tests for app.core.lifespan module."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -86,6 +87,15 @@ class TestAddRemoveSystemOperation:
             mock_cache.delete.assert_called_once()
 
 
+def _make_done_task(coro):
+    """Create a real asyncio.Task from *coro* so shutdown can cancel/await it."""
+    if asyncio.iscoroutine(coro):
+        coro.close()
+    fut = asyncio.get_event_loop().create_future()
+    fut.set_result(None)
+    return fut
+
+
 class TestLifespanContextManager:
     @pytest.mark.asyncio
     @patch("app.core.lifespan.engine")
@@ -151,6 +161,12 @@ class TestLifespanContextManager:
             patch(
                 "app.services.scaling.get_pool_manager",
                 return_value=MagicMock(start_health_loop=AsyncMock(), stop_health_loop=AsyncMock()),
+            ),
+            patch("app.core.lifespan._config_change_listener", new_callable=AsyncMock),
+            patch("app.core.lifespan._blacklist_change_listener", new_callable=AsyncMock),
+            patch(
+                "app.core.lifespan.create_safe_task",
+                side_effect=lambda coro, **kw: _make_done_task(coro),
             ),
             patch("app.core.bridge.EventWebSocketBridge", return_value=MagicMock()),
         ):

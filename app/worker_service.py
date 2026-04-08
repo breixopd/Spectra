@@ -42,11 +42,23 @@ if _secret:
 
 @app.get("/health")
 async def health():
-    return {
+    status = {
         "status": "healthy",
         "service": "worker",
         "task_alive": _worker_task is not None and not _worker_task.done(),
     }
+    try:
+        from sqlalchemy import text
+
+        from app.core.database import async_session_maker
+
+        async with async_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+        status["database"] = "connected"
+    except Exception:
+        status["database"] = "disconnected"
+        status["status"] = "degraded"
+    return status
 
 
 async def work_loop():
