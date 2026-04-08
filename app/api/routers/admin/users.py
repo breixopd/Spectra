@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +13,6 @@ from app.api.dependencies import (
     _decode_access_payload,
     _extract_request_token,
     _load_active_user_from_payload_with_session,
-    get_ui_user,
 )
 from app.api.schemas import (
     AdminUserCreate,
@@ -29,21 +26,15 @@ from app.core.constants import API_DEFAULT_PAGE_SIZE, API_MAX_PAGE_SIZE
 from app.core.database import get_async_session
 from app.core.rbac import Permission, require_permission
 from app.core.security import create_password_reset_token, get_password_hash
+from app.core.templates import templates
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
 from app.services.system.rollback import create_snapshot
-from app.version import __version__
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-APP_DIR = Path(__file__).resolve().parent.parent.parent.parent
-templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
-templates.env.globals["app_name"] = settings.APP_NAME
-templates.env.globals["version"] = __version__
-templates.env.globals["get_nav_user"] = get_ui_user
 
 UserBeforeState = dict[str, str | bool | None]
 UserAuditDetail = str | bool | None | list[str]

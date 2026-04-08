@@ -3,11 +3,9 @@ UI router for serving the frontend dashboard.
 """
 
 import logging
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.routing import Route
@@ -17,6 +15,7 @@ from app.api.schemas import SettingsUpdate
 from app.core.config import settings
 from app.core.database import async_session_maker, get_async_session
 from app.core.rbac import Permission, require_permission
+from app.core.templates import templates
 from app.models.user import User
 from app.services.shell.session_manager import shell_manager
 from app.services.system.settings_service import (
@@ -24,16 +23,10 @@ from app.services.system.settings_service import (
     get_ai_status_snapshot,
     get_current_settings,
 )
-from app.version import __version__
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Templates directory
-APP_DIR = Path(__file__).resolve().parent.parent.parent
-templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
-templates.env.globals["app_name"] = settings.APP_NAME
-templates.env.globals["version"] = __version__
 templates.env.globals["get_nav_user"] = get_ui_user
 
 
