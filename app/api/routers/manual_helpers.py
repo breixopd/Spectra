@@ -179,9 +179,9 @@ async def api_generate_report(
             report_data["source_type"] = "mission"
             return report_data
 
-        from app.api.routers.pentest_sessions import _load_session
+        from app.services.pentest.session_loader import load_session
 
-        session = await _load_session(req.session_id)
+        session = await load_session(req.session_id)
         if session.get("owner_id") != str(_current_user.id) and not getattr(_current_user, "is_superuser", False):
             raise HTTPException(status_code=403, detail="Forbidden")
         report_data = build_report_data(session, template_id)

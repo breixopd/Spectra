@@ -21,7 +21,6 @@ cryptography==44.0.3
 
 # Auth (needed by shared config)
 PyJWT[crypto]==2.10.1
-passlib[bcrypt]==1.7.4
 bcrypt==4.3.0
 
 # Events (shared with app)

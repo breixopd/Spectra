@@ -63,7 +63,6 @@ orjson==3.11.7
 # Authentication & Security (PINNED for security auditing)
 # -----------------------------------------------------------------------------
 bcrypt==4.3.0
-passlib[bcrypt]==1.7.4  # Unmaintained but stable; no CVEs, no replacement needed yet
 PyJWT[crypto]==2.10.1
 cryptography==44.0.3
 pyotp==2.9.0

@@ -19,7 +19,6 @@ httpx==0.28.1
 
 # Auth (needed by shared core config)
 PyJWT[crypto]==2.10.1
-passlib[bcrypt]==1.7.4
 bcrypt==4.3.0
 cryptography==44.0.3
 

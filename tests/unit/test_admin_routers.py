@@ -231,10 +231,10 @@ class TestCreateUser:
             patch("app.api.routers.admin.users.audit_log_event", new_callable=AsyncMock),
             patch.object(type(users_module.settings), "smtp_configured", new_callable=PropertyMock, return_value=True),
             patch(
-                "app.api.routers.public._send_registration_verification_email", new=AsyncMock(return_value=False)
+                "app.services.auth.email_verification.send_registration_verification_email", new=AsyncMock(return_value=False)
             ) as send_mock,
             patch(
-                "app.api.routers.public._build_email_verification_url",
+                "app.services.auth.email_verification.build_email_verification_url",
                 return_value="http://test/verify-email?token=abc123",
             ),
         ):
