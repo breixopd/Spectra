@@ -13,7 +13,7 @@ Agents get real CVE data instead of hallucinating IDs.
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -193,7 +193,7 @@ async def fetch_cves_from_nvd(
                     "product": keyword.lower(),
                     "type": _infer_vuln_type(desc),
                     "source": "nvd_api",
-                    "fetched_at": datetime.now().isoformat(),
+                    "fetched_at": datetime.now(UTC).isoformat(),
                 }
             )
 

@@ -6,7 +6,7 @@ import ipaddress
 import logging
 import tempfile
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -58,7 +58,7 @@ def _resolve_output_dir(tool_id: str, output_dir: str | None) -> str:
     if output_dir:
         return output_dir
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     run_id = f"{tool_id}_{timestamp}_{uuid.uuid4().hex[:4]}"
     return tempfile.mkdtemp(prefix=f"spectra_tool_outputs_{run_id}_")
 

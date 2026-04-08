@@ -23,8 +23,6 @@ function updateSafetyDisplay(options = {}) {
 
 function getSafetyStatsErrorMessage(error, fallback) {
     if (typeof error === 'string' && error.trim()) return error;
-    if (error && typeof error.detail === 'string' && error.detail.trim()) return error.detail;
-    if (error && typeof error.message === 'string' && error.message.trim()) return error.message;
     return fallback;
 }
 

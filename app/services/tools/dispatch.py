@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
 
 from app.services.ai.context import truncate_for_llm
@@ -40,7 +40,7 @@ def build_execution_request(
     if not isinstance(configured_timeout, (int, float)):
         configured_timeout = 0
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     run_id = f"{tool_name}_{timestamp}_{uuid.uuid4().hex[:4]}"
     output_dir = prepare_output_directory(mission.id, run_id)
 

@@ -425,7 +425,7 @@ class PlaybookEngine:
         args: dict[str, Any] | None = None,
     ) -> None:
         """Record a successful exploit pattern for learning."""
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         existing = next(
             (p for p in self.exploit_patterns if p.service == service and p.tool == tool),
@@ -434,7 +434,7 @@ class PlaybookEngine:
 
         if existing:
             existing.success_rate = min(existing.success_rate + 0.1, 1.0)
-            existing.last_used = datetime.now().isoformat()
+            existing.last_used = datetime.now(UTC).isoformat()
         else:
             self.exploit_patterns.append(
                 ExploitPattern(
@@ -443,7 +443,7 @@ class PlaybookEngine:
                     tool=tool,
                     args=args or {},
                     success_rate=0.5,
-                    last_used=datetime.now().isoformat(),
+                    last_used=datetime.now(UTC).isoformat(),
                 )
             )
 

@@ -128,7 +128,7 @@ async function changePassword() {
             document.getElementById('new-password').value = '';
             document.getElementById('confirm-password').value = '';
         } else {
-            _spectraToast(error.detail || 'Failed to change password', 'error');
+            _spectraToast(error || 'Failed to change password', 'error');
         }
     } catch (e) { _spectraToast('Network error', 'error'); }
 }
@@ -362,7 +362,7 @@ function getSafeExternalHttpsUrl(urlValue) {
 async function startCheckout(planId) {
     try {
         const { data, error } = await spectraApi.post('/api/v1/billing/checkout?plan_id=' + encodeURIComponent(planId));
-        if (error) throw new Error(error.detail || 'Checkout failed');
+        if (error) throw new Error(error || 'Checkout failed');
         if (data.checkout_url) {
             const checkoutUrl = getSafeExternalHttpsUrl(data.checkout_url);
             if (!checkoutUrl) {
@@ -379,7 +379,7 @@ async function startCheckout(planId) {
 async function openBillingPortal() {
     try {
         const { data, error } = await spectraApi.get('/api/v1/billing/portal');
-        if (error) throw new Error(error.detail || 'Could not open portal');
+        if (error) throw new Error(error || 'Could not open portal');
         if (data.portal_url) {
             const portalUrl = getSafeExternalHttpsUrl(data.portal_url);
             if (!portalUrl) {
@@ -446,7 +446,7 @@ async function saveByok() {
     try {
         const { error } = await spectraApi.put('/api/v1/user/settings', body);
         if (!error) { _spectraToast('BYOK settings saved'); loadUserSettings(); }
-        else { _spectraToast(error.detail || 'Failed to save BYOK', 'error'); }
+        else { _spectraToast(error || 'Failed to save BYOK', 'error'); }
     } catch (e) { _spectraToast('Network error', 'error'); }
 }
 
@@ -473,7 +473,7 @@ async function saveSettings() {
     try {
         const { error } = await spectraApi.put('/api/v1/user/settings', body);
         if (!error) _spectraToast('Settings saved');
-        else { _spectraToast(error.detail || 'Failed to save settings', 'error'); }
+        else { _spectraToast(error || 'Failed to save settings', 'error'); }
     } catch (e) { _spectraToast('Network error', 'error'); }
 }
 
@@ -494,7 +494,7 @@ async function deleteAccount() {
                 if (!error) {
                     window.location.href = '/login?msg=account_deleted';
                 } else {
-                    _spectraToast(error.detail || 'Failed to delete account', 'error');
+                    _spectraToast(error || 'Failed to delete account', 'error');
                 }
             } catch (e) { _spectraToast('Network error', 'error'); }
         }, { title: 'Delete Account', confirmLabel: 'Delete Permanently' });
@@ -541,7 +541,7 @@ async function loadMfaStatus() {
 async function startMfaSetup() {
     try {
         const { data, error } = await spectraApi.post('/api/v1/auth/mfa/setup');
-        if (error) { _spectraToast(error.detail || 'Failed to start MFA setup', 'error'); return; }
+        if (error) { _spectraToast(error || 'Failed to start MFA setup', 'error'); return; }
         document.getElementById('mfa-secret-display').textContent = data.secret;
         const qrArea = document.getElementById('mfa-qr-code');
         qrArea.innerHTML = '';
@@ -572,7 +572,7 @@ async function verifyMfaSetup() {
             document.getElementById('mfa-status-area').classList.remove('hidden');
             loadMfaStatus();
         } else {
-            _spectraToast(error.detail || 'Verification failed', 'error');
+            _spectraToast(error || 'Verification failed', 'error');
         }
     } catch (e) { _spectraToast('Network error', 'error'); }
 }
@@ -604,7 +604,7 @@ async function confirmDisableMfa() {
             document.getElementById('mfa-disable-code').value = '';
             loadMfaStatus();
         } else {
-            _spectraToast(error.detail || 'Failed to disable MFA', 'error');
+            _spectraToast(error || 'Failed to disable MFA', 'error');
         }
     } catch (e) { _spectraToast('Network error', 'error'); }
 }
@@ -650,7 +650,7 @@ async function toggleRestrictProcessing() {
     try {
         const { error } = await spectraApi.post('/api/v1/auth/restrict-processing', { restricted: checked });
         if (!error) _spectraToast(checked ? 'Processing restricted' : 'Processing restriction removed');
-        else { _spectraToast(error.detail || 'Failed to update', 'error'); document.getElementById('restrict-processing-toggle').checked = !checked; }
+        else { _spectraToast(error || 'Failed to update', 'error'); document.getElementById('restrict-processing-toggle').checked = !checked; }
     } catch (e) { _spectraToast('Network error', 'error'); document.getElementById('restrict-processing-toggle').checked = !checked; }
 }
 
@@ -659,7 +659,7 @@ async function toggleShareTraining() {
     try {
         const { error } = await spectraApi.put('/api/v1/user/settings', { share_training_data: checked });
         if (!error) _spectraToast(checked ? 'Training data sharing enabled' : 'Training data sharing disabled');
-        else { _spectraToast(error.detail || 'Failed to update', 'error'); document.getElementById('share-training-toggle').checked = !checked; }
+        else { _spectraToast(error || 'Failed to update', 'error'); document.getElementById('share-training-toggle').checked = !checked; }
     } catch (e) { _spectraToast('Network error', 'error'); document.getElementById('share-training-toggle').checked = !checked; }
 }
 

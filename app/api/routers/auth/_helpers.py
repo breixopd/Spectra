@@ -140,6 +140,7 @@ def _clear_auth_cookies(request: Request, response: Response) -> None:
         secure=secure,
         samesite=AUTH_COOKIE_SAMESITE,
     )
+    response.delete_cookie("csrf_token", path="/")
 
 
 def _token_response_payload(

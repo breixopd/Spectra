@@ -15,7 +15,7 @@ from collections import deque
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
@@ -34,7 +34,7 @@ class SpanData:
     name: str
     service: str = "spectra"
     parent_id: str | None = None
-    start_time: datetime = field(default_factory=datetime.now)
+    start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
     end_time: datetime | None = None
     duration_ms: float = 0.0
     status: str = "ok"
@@ -64,7 +64,7 @@ class MetricData:
 
     name: str
     value: float
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     labels: dict[str, str] = field(default_factory=dict)
     metric_type: str = "gauge"  # gauge, counter, histogram
 
@@ -114,11 +114,11 @@ class TelemetryCollector:
         self._request_count = 0
         self._error_count = 0
         self._total_latency = 0.0
-        self._last_cleanup = datetime.now()
+        self._last_cleanup = datetime.now(UTC)
 
     def _cleanup_expired(self) -> None:
         """Remove expired traces and metrics based on TTL."""
-        now = datetime.now()
+        now = datetime.now(UTC)
 
         # Run cleanup every 10 seconds
         if (now - self._last_cleanup).total_seconds() < 10:
@@ -165,7 +165,7 @@ class TelemetryCollector:
 
     def end_span(self, span: SpanData, status: str = "ok", error: str | None = None) -> None:
         """End a span and record it."""
-        span.end_time = datetime.now()
+        span.end_time = datetime.now(UTC)
         span.duration_ms = (span.end_time - span.start_time).total_seconds() * 1000
         span.status = status
 
@@ -245,7 +245,7 @@ class TelemetryCollector:
         """Update service health status."""
         self._service_status[service] = {
             "healthy": healthy,
-            "last_check": datetime.now().isoformat(),
+            "last_check": datetime.now(UTC).isoformat(),
             "latency_ms": latency_ms,
             "error": error,
         }
@@ -413,7 +413,7 @@ class TelemetryCollector:
             {"key": "telemetry.sdk.language", "value": {"stringValue": "python"}},
         ]
         resource = {"attributes": resource_attrs}
-        now_ns = int(datetime.now().timestamp() * 1e9)
+        now_ns = int(datetime.now(UTC).timestamp() * 1e9)
 
         # --- metrics ---
         otlp_metrics: list[dict[str, Any]] = []

@@ -221,8 +221,8 @@ async function installTool(id) {
     _setInstallLogs(`Queuing installation for ${id}...`, 'info');
     const { data, error } = await spectraApi.post(`/api/v1/tools/${encodeURIComponent(id)}/install`);
     if (error) {
-        _setInstallLogs(String(error.detail || error), 'error');
-        _spectraToast(String(error.detail || error), 'error');
+        _setInstallLogs(String(error), 'error');
+        _spectraToast(String(error), 'error');
         return;
     }
     _setInstallLogs(data?.message || 'Installation queued in tools container', 'success');
@@ -234,8 +234,8 @@ async function toggleTool(id, enabled) {
     _setInstallLogs(`${enabled ? 'Enabling' : 'Disabling'} ${id}...`, 'info');
     const { data, error } = await spectraApi.post(`/api/v1/tools/${encodeURIComponent(id)}/${action}`);
     if (error) {
-        _setInstallLogs(String(error.detail || error), 'error');
-        _spectraToast(String(error.detail || error), 'error');
+        _setInstallLogs(String(error), 'error');
+        _spectraToast(String(error), 'error');
         return;
     }
     _setInstallLogs(data?.message || `Tool ${enabled ? 'enabled' : 'disabled'}`, 'success');
@@ -246,7 +246,7 @@ async function deleteTool(id) {
     _spectraConfirm('Delete this tool and remove it from the registry?', async function() {
         try {
             const { error } = await spectraApi.delete(`/api/v1/tools/${encodeURIComponent(id)}`);
-            if (error) throw new Error(error.detail || error);
+            if (error) throw new Error(error);
             currentTool = null;
             document.getElementById('tool-details').innerHTML = '<p class="text-gray-500 italic text-center mt-10">Select a tool to view details</p>';
             _setInstallLogs(`Deleted tool ${id}`, 'success');

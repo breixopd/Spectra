@@ -8,9 +8,6 @@ function getHistoryErrorMessage(error, fallback) {
     if (typeof error === 'string' && error.trim()) {
         return error;
     }
-    if (error && typeof error.detail === 'string' && error.detail.trim()) {
-        return error.detail;
-    }
     return fallback;
 }
 
@@ -284,7 +281,7 @@ async function confirmDeleteMission() {
     hideDeleteModal();
     const { error } = await spectraApi.delete(`/api/v1/missions/${currentMissionId}`);
     if (error) {
-        _spectraToast(error.detail || 'Failed to delete mission', 'error');
+        _spectraToast(error || 'Failed to delete mission', 'error');
         return;
     }
     window.location.reload();

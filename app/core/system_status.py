@@ -6,7 +6,7 @@ Extracted from lifespan.py for reuse and testability.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ async def set_system_status(status: str, message: str) -> None:
                 {
                     "status": status,
                     "message": message,
-                    "timestamp": datetime.now().isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
                 ttl=3600,
             )
@@ -42,7 +42,7 @@ async def add_system_operation(op_id: str, op_type: str, desc: str) -> None:
                 "id": op_id,
                 "type": op_type,
                 "description": desc,
-                "started_at": datetime.now().isoformat(),
+                "started_at": datetime.now(UTC).isoformat(),
             }
             await cache.set(f"spectra:system:operations:{op_id}", op, ttl=3600)
     except (OSError, RuntimeError) as e:

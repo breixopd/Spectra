@@ -23,7 +23,7 @@ import contextlib
 import json
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -299,7 +299,7 @@ class MissionMemory:
             success=success,
             findings_count=findings_count,
             finding_types=finding_types or [],
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
         # Deduplicate: update existing entry if same tool+service+product+outcome
         deduplicated = False
@@ -347,7 +347,7 @@ class MissionMemory:
                 access_level=access_level,
                 attack_chain=attack_chain or [],
                 cve_id=cve_id,
-                timestamp=datetime.now().isoformat(),
+                timestamp=datetime.now(UTC).isoformat(),
             )
         )
         self._save()
@@ -364,7 +364,7 @@ class MissionMemory:
             target_service=context,
             success=True,
             notes=lesson,
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
         idx = len(self.tool_lessons)
         self.tool_lessons.append(entry)
@@ -615,7 +615,7 @@ class MissionMemory:
 
         result = {
             "service_profiles": service_profiles,
-            "last_aggregated": datetime.now().isoformat(),
+            "last_aggregated": datetime.now(UTC).isoformat(),
         }
 
         # Persist aggregated knowledge

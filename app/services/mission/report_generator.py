@@ -327,7 +327,7 @@ async def save_pdf_report(mission_id: str, pdf_bytes: bytes) -> str:
         encrypted = f.encrypt(pdf_bytes)
 
         storage = get_storage_service()
-        filename = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filename = f"report_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.pdf"
         key = f"{mission_id}/reports/{filename}"
         location = await storage.upload(settings.S3_BUCKET_MISSIONS, key, encrypted)
         return location

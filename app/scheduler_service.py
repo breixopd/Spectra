@@ -144,7 +144,7 @@ class SchedulerService:
                 if cache:
                     await cache.set(
                         "spectra:service:scheduler:heartbeat",
-                        {"status": "running", "timestamp": datetime.utcnow().isoformat()},
+                        {"status": "running", "timestamp": datetime.now(UTC).isoformat()},
                         ttl=60,
                     )
             except OSError as e:

@@ -6,7 +6,7 @@ Ensures only valid state changes occur and provides audit trail.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from app.core.enums import MissionStatus
@@ -104,7 +104,7 @@ class StateTransition:
 
     from_state: MissionStatus
     to_state: MissionStatus
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     reason: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -135,7 +135,7 @@ class MissionStateMachine:
         self.mission_id = mission_id
         self._state = initial_state
         self._history: list[StateTransition] = []
-        self._created_at = datetime.now()
+        self._created_at = datetime.now(UTC)
 
     @property
     def state(self) -> MissionState:
@@ -260,7 +260,7 @@ class MissionStateMachine:
 
     def get_duration(self) -> float:
         """Get total duration in seconds."""
-        return (datetime.now() - self._created_at).total_seconds()
+        return (datetime.now(UTC) - self._created_at).total_seconds()
 
     def get_time_in_state(self, state: MissionStatus) -> float:
         """Get total time spent in a specific state."""
@@ -274,7 +274,7 @@ class MissionStateMachine:
                     duration = (next_transition.timestamp - transition.timestamp).total_seconds()
                 else:
                     # Still in this state
-                    duration = (datetime.now() - transition.timestamp).total_seconds()
+                    duration = (datetime.now(UTC) - transition.timestamp).total_seconds()
                 total += duration
 
         return total

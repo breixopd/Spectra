@@ -21,6 +21,10 @@
 	}
 
 	route {
+		request_body {
+			max_size 50MB
+		}
+
 		handle /static/* {
 			header Cache-Control "public, max-age=3600"
 			reverse_proxy app:5000 app-replica:5000

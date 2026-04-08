@@ -8,7 +8,7 @@ async function clearToolStats() {
             if (!error) {
                 _spectraToast(`Cleared ${data.cleared_count || 0} tool stat entries`, 'success');
             } else {
-                _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
+                _spectraToast('Error: ' + (error || 'Failed to clear'), 'error');
             }
         } catch (e) {
             _spectraToast('Error: ' + e.message, 'error');
@@ -31,7 +31,7 @@ async function confirmClearMissions() {
         if (!error) {
             _spectraToast(`Deleted ${data.cleared_count || 0} missions`, 'success');
         } else {
-            _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
+            _spectraToast('Error: ' + (error || 'Failed to clear'), 'error');
         }
     } catch (e) {
         _spectraToast('Error: ' + e.message, 'error');
@@ -45,7 +45,7 @@ async function clearCache() {
             if (!error) {
                 _spectraToast(`Cleared ${data.cleared_count || 0} cache entries`, 'success');
             } else {
-                _spectraToast('Error: ' + (error.detail || 'Failed to clear'), 'error');
+                _spectraToast('Error: ' + (error || 'Failed to clear'), 'error');
             }
         } catch (e) {
             _spectraToast('Error: ' + e.message, 'error');
@@ -60,7 +60,7 @@ async function reinstallTools() {
             if (!error) {
                 _spectraToast('Tool installation queued. Check system status for progress.', 'success');
             } else {
-                _spectraToast('Error: ' + (error.detail || 'Failed to queue'), 'error');
+                _spectraToast('Error: ' + (error || 'Failed to queue'), 'error');
             }
         } catch (e) {
             _spectraToast('Error: ' + e.message, 'error');
@@ -160,7 +160,7 @@ async function downloadDataSources() {
             status.className = 'text-xs text-emerald-400';
             loadDataSourceStatus();
         } else {
-            status.textContent = 'Error: ' + (error.detail || 'Download failed');
+            status.textContent = 'Error: ' + (error || 'Download failed');
             status.className = 'text-xs text-rose-400';
         }
     } catch (e) {
