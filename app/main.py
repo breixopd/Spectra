@@ -14,7 +14,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.responses import Response as StarletteResponse
@@ -225,8 +224,10 @@ if settings.SERVICE_MODE in ("", "all", "api"):
     )
 
 # --- Custom Error Handlers ---
-_error_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-_maint_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+from app.core.templates import templates as _shared_templates
+
+_error_templates = _shared_templates
+_maint_templates = _shared_templates
 
 
 def _wants_html(request: Request) -> bool:

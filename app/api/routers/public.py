@@ -10,7 +10,6 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +22,7 @@ from app.core.security import (
     decode_token,
     get_password_hash,
 )
+from app.core.templates import templates
 from app.models.plan import Plan, Subscription
 from app.models.user import User
 from app.services.auth.email_verification import (
@@ -36,18 +36,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 APP_DIR = Path(__file__).resolve().parent.parent.parent
-templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
-templates.env.globals["app_name"] = settings.APP_NAME
-templates.env.globals["version"] = __version__
-
-from app.core.constants import format_feature_label
-
-templates.env.filters["feature_label"] = format_feature_label
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 
 def _get_user_from_cookie(request: Request) -> dict | None:
@@ -59,9 +47,6 @@ def _get_user_from_cookie(request: Request) -> dict | None:
         return decode_token(token)
     except (JWTError, Exception):
         return None
-
-
-templates.env.globals["get_nav_user"] = _get_user_from_cookie
 
 
 def _extract_legal_html(raw: object) -> object:

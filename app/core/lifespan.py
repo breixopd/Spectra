@@ -584,6 +584,12 @@ async def _shutdown_services() -> None:
         await close_service_registry()
         logger.info("[OK] Service registry closed")
 
+        # Close smart router (TensorZero httpx client)
+        from app.services.ai.router import close_smart_router
+
+        await close_smart_router()
+        logger.info("[OK] Smart router closed")
+
         # Close LLM Client
         await close_global_llm_client()
         logger.info("[OK] LLM client closed")
