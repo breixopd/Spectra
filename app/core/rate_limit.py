@@ -7,6 +7,7 @@ Protects sensitive endpoints from abuse.
 
 import logging
 import os
+import re
 from collections.abc import Callable
 
 from fastapi import Request, Response
@@ -130,6 +131,8 @@ class RateLimits:
 
     # Authentication endpoints - allows normal UI flow while preventing brute force
     # Env-var overrides let test environments raise these without weakening production.
+    _RATE_FMT = re.compile(r'^\d+/(second|minute|hour|day)$')
+
     LOGIN = os.environ.get("RATE_LIMIT_LOGIN", "15/minute")
     SETUP = os.environ.get("RATE_LIMIT_SETUP", "10/minute")
     TOKEN_REFRESH = "30/minute"
@@ -190,6 +193,20 @@ class RateLimits:
     # Session / account management
     SESSION_READ = "30/minute"
     SESSION_WRITE = "10/minute"
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        super().__init_subclass__(**kwargs)
+        cls._validate_env_rates()
+
+    @classmethod
+    def _validate_env_rates(cls) -> None:
+        for attr in ("LOGIN", "SETUP", "PUBLIC_REGISTER"):
+            val = getattr(cls, attr, None)
+            if val and not cls._RATE_FMT.match(val):
+                raise ValueError(f"Invalid rate limit format for {attr}: {val!r}")
+
+
+RateLimits._validate_env_rates()
 
 
 async def rate_limit_exceeded_handler(

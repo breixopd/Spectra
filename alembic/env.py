@@ -25,11 +25,12 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 # Import all models to ensure they are registered with Base.metadata
-from app.models import (  # noqa: E402, F401
+from app.models import (  # noqa: F401
     ApiKey,
     AuditLog,
     Exploit,
     Finding,
+    FineTuningJob,
     Mission,
     PentestSession,
     Plan,
@@ -37,19 +38,23 @@ from app.models import (  # noqa: E402, F401
     Subscription,
     SystemConfig,
     Target,
+    TrainingSample,
     UsageRecord,
     User,
+    UserPreferences,
 )
-from app.models.base import Base  # noqa: E402
+from app.models.base import Base
 
 # Infrastructure models share Base.metadata via InfrastructureBase
-from app.models.infrastructure import (  # noqa: E402, F401
+from app.models.infrastructure import (  # noqa: F401
     CacheEntry,
     JobQueue,
     Sandbox,
     SystemCache,
+    SystemContent,
     SystemStatus,
 )
+from app.models.rollback_snapshot import RollbackSnapshot  # noqa: F401
 
 target_metadata = Base.metadata
 

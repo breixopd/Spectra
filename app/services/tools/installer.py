@@ -121,7 +121,13 @@ class ToolInstaller:
         # 2. If configured, try verification command (stronger check)
         if tool.config.installation.verification_command:
             try:
+                import re as _re
+
                 cmd = tool.config.installation.verification_command
+                # Only allow simple commands: alphanumeric, -, _, /, ., space, =
+                if not _re.match(r'^[\w\s./=-]+$', cmd):
+                    logger.warning("Skipping suspicious verification command: %s", cmd[:80])
+                    return False
                 logger.debug("Verifying %s with: %s", tool.config.id, cmd)
 
                 # Run verification command with timeout
