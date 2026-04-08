@@ -46,12 +46,15 @@ class MissionRepository(BaseRepository[Mission]):
             kwargs["user_id"] = user_id
         return await self.find_many_by(**kwargs)
 
-    async def get_active_missions(self, user_id: str | None = None) -> Sequence[Mission]:
+    async def get_active_missions(
+        self, user_id: str | None = None, *, limit: int = 500,
+    ) -> Sequence[Mission]:
         """
         Find missions that are currently running.
 
         Args:
             user_id: Optional user ID to filter by (None = no filter, for admin access).
+            limit: Maximum rows returned (default 500).
 
         Returns:
             List of missions with active status (running, scanning, analyzing, etc.).
@@ -64,7 +67,12 @@ class MissionRepository(BaseRepository[Mission]):
             MissionStatus.EXPLOITING.value,
         ]
 
-        stmt = select(self.model).where(self.model.status.in_(active_statuses)).order_by(self.model.created_at.desc())
+        stmt = (
+            select(self.model)
+            .where(self.model.status.in_(active_statuses))
+            .order_by(self.model.created_at.desc())
+            .limit(limit)
+        )
         if user_id:
             stmt = stmt.where(self.model.user_id == user_id)
 

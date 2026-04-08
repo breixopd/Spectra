@@ -11,7 +11,7 @@ import ipaddress
 import logging
 import re
 import socket
-from functools import lru_cache
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -103,14 +103,31 @@ def is_target_in_scope(
     return False
 
 
-@lru_cache(maxsize=256)
+_dns_cache: dict[str, tuple[float, tuple[str, ...]]] = {}
+_DNS_CACHE_MAX = 256
+_DNS_CACHE_TTL = 300  # seconds
+
+
 def _resolve_hostname(hostname: str) -> tuple[str, ...]:
-    """Resolve hostname to IP addresses with caching."""
+    """Resolve hostname to IP addresses with TTL-based caching."""
+    now = time.monotonic()
+    entry = _dns_cache.get(hostname)
+    if entry is not None:
+        ts, ips = entry
+        if now - ts < _DNS_CACHE_TTL:
+            return ips
+        del _dns_cache[hostname]
     try:
         results = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
-        return tuple({str(r[4][0]) for r in results})
+        ips = tuple({str(r[4][0]) for r in results})
     except (OSError, socket.gaierror):
-        return ()
+        ips = ()
+    # Evict oldest if over limit
+    if len(_dns_cache) >= _DNS_CACHE_MAX:
+        oldest = min(_dns_cache, key=lambda k: _dns_cache[k][0])
+        del _dns_cache[oldest]
+    _dns_cache[hostname] = (now, ips)
+    return ips
 
 
 def validate_command_target(

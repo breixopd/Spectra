@@ -5,34 +5,14 @@ Sends notifications via webhook (ntfy.sh, Slack, Discord, etc.)
 when key mission events occur.
 """
 
-import ipaddress
 import logging
-import socket
-import urllib.parse
 
 import httpx
 
 from app.core.config import settings
+from app.utils.url_validation import is_safe_url
 
 logger = logging.getLogger(__name__)
-
-
-def _is_safe_url(url: str) -> bool:
-    """Validate webhook URL is not targeting internal/private networks."""
-    try:
-        parsed = urllib.parse.urlparse(url)
-        if parsed.scheme not in ("http", "https"):
-            return False
-        hostname = parsed.hostname
-        if not hostname:
-            return False
-        for info in socket.getaddrinfo(hostname, None):
-            ip = ipaddress.ip_address(info[4][0])
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
-                return False
-        return True
-    except (socket.gaierror, ValueError, OSError):
-        return False
 
 
 async def send_notification(
@@ -46,7 +26,7 @@ async def send_notification(
     if not url:
         return False
 
-    if not _is_safe_url(url):
+    if not is_safe_url(url):
         logger.warning("Blocked notification to unsafe webhook URL: %s", url)
         return False
 

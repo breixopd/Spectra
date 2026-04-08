@@ -101,10 +101,10 @@ S3-compatible object storage is required for mission data, sessions, knowledge b
 | `S3_ACCESS_KEY` | str | `""` | Access key ID |
 | `S3_SECRET_KEY` | SecretStr | `""` | Secret access key |
 | `S3_REGION` | str | `"us-east-1"` | S3 region |
-| `S3_BUCKET_MISSIONS` | str | `"spectra-missions"` | Bucket for mission artifacts |
-| `S3_BUCKET_SESSIONS` | str | `"spectra-sessions"` | Bucket for pentest sessions |
-| `S3_BUCKET_KNOWLEDGE` | str | `"spectra-knowledge"` | Bucket for knowledge base |
-| `S3_BUCKET_BACKUPS` | str | `"spectra-backups"` | Bucket for database backups |
+| `S3_BUCKET_MISSIONS` | str | `"spectra-missions"` | Bucket for mission artifacts (auto-created by garage-init.sh) |
+| `S3_BUCKET_SESSIONS` | str | `"spectra-sessions"` | Bucket for pentest sessions (auto-created by garage-init.sh) |
+| `S3_BUCKET_KNOWLEDGE` | str | `"spectra-knowledge"` | Bucket for knowledge base (auto-created by garage-init.sh) |
+| `S3_BUCKET_BACKUPS` | str | `"spectra-backups"` | Bucket for database backups (auto-created by garage-init.sh) |
 
 See [Scaling](scaling.md) for Garage setup and cloud S3 migration.
 

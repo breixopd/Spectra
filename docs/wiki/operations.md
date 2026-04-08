@@ -39,7 +39,7 @@ Canonical operator-facing runbook index for day-2 work. Use this page for health
 | [Deployment](deployment.md#rollback) | Version rollback mechanics and database downgrade path | Reference |
 
 - Automated backups are created by the scheduler when `BACKUP_ENABLED=true`.
-- Backups are stored in `S3_BUCKET_BACKUPS`; there is no local filesystem fallback.
+- Backups are stored in the `spectra-backups` bucket (configured via `S3_BUCKET_BACKUPS`); there is no local filesystem fallback.
 
 ### Queue And Worker Recovery
 
