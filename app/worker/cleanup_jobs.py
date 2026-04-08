@@ -140,9 +140,9 @@ async def cleanup_old_missions(session=None) -> int:
 
     close_session = False
     if session is None:
-        from app.core.database import async_session_factory
+        from app.core.database import async_session_maker
 
-        session = async_session_factory()
+        session = async_session_maker()
         close_session = True
 
     try:

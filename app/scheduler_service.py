@@ -205,22 +205,30 @@ class SchedulerService:
             await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
 
     async def _cache_cleanup(self):
-        """Delegate to the shared cache_cleanup_loop from background_tasks."""
-        try:
-            from app.core.background_tasks import cache_cleanup_loop
+        """Delegate to the shared cache_cleanup_loop with automatic restart on failure."""
+        while self.running:
+            try:
+                from app.core.background_tasks import cache_cleanup_loop
 
-            await cache_cleanup_loop()
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.error("Cache cleanup error: %s", e)
+                await cache_cleanup_loop()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception("Cache cleanup crashed, restarting in 60s")
+                await asyncio.sleep(60)
 
     async def _periodic_cleanup(self):
-        """Delegate to the shared periodic_cleanup_loop from background_tasks."""
-        try:
-            from app.core.background_tasks import periodic_cleanup_loop
+        """Delegate to the shared periodic_cleanup_loop with automatic restart on failure."""
+        while self.running:
+            try:
+                from app.core.background_tasks import periodic_cleanup_loop
 
-            await periodic_cleanup_loop()
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.error("Periodic cleanup error: %s", e)
+                await periodic_cleanup_loop()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception("Periodic cleanup crashed, restarting in 60s")
+                await asyncio.sleep(60)
 
     async def _capacity_monitor(self):
         """Monitor network capacity and auto-scale services when enabled."""
