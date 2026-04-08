@@ -103,7 +103,7 @@ async def mfa_verify_login(
     if not token:
         raise HTTPException(status_code=401, detail="Missing bearer token")
 
-    payload = _decode_token_or_http_error(token, "Invalid or expired MFA token")
+    payload = await _decode_token_or_http_error(token, "Invalid or expired MFA token")
 
     if not payload.get("mfa_pending"):
         raise HTTPException(status_code=400, detail="Token is not an MFA pending token")
@@ -131,7 +131,7 @@ async def mfa_verify_login(
         raise HTTPException(status_code=401, detail="TOTP code has already been used")
 
     # Invalidate the partial MFA token
-    invalidate_token(token)
+    await invalidate_token(token)
 
     access_token, refresh_token = _create_auth_token_pair(user)
     _set_auth_cookies(request, response, access_token, refresh_token)
@@ -147,12 +147,12 @@ async def cancel_mfa(request: Request):
     if not token:
         return Response(status_code=204)
     try:
-        payload = decode_token(token)
+        payload = await decode_token(token)
     except (JWTError, Exception):
         return Response(status_code=204)
 
     if payload.get("mfa_pending"):
-        invalidate_token(token)
+        await invalidate_token(token)
 
     return Response(status_code=204)
 

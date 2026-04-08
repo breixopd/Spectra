@@ -21,7 +21,6 @@ from app.core.encryption import (
 )
 from app.core.rbac import ROLE_PERMISSIONS, Permission, has_permission
 from app.core.security import (
-    _blacklist_lock,
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
@@ -178,30 +177,30 @@ class TestEncryption:
 @pytest.fixture(autouse=True)
 def _clear_blacklist_state():
     """Clear in-memory token blacklist state between tests."""
-    with _blacklist_lock:
-        _blacklisted_tokens.clear()
-        _user_token_blacklist.clear()
+    _blacklisted_tokens.clear()
+    _user_token_blacklist.clear()
     yield
-    with _blacklist_lock:
-        _blacklisted_tokens.clear()
-        _user_token_blacklist.clear()
+    _blacklisted_tokens.clear()
+    _user_token_blacklist.clear()
 
 
 class TestTokenBlacklistExtended:
-    def test_multiple_tokens_blacklisted(self):
+    @pytest.mark.asyncio
+    async def test_multiple_tokens_blacklisted(self):
         t1 = create_access_token(data={"sub": "user1"})
         t2 = create_access_token(data={"sub": "user2"})
-        invalidate_token(t1)
-        invalidate_token(t2)
-        assert is_token_blacklisted(t1)
-        assert is_token_blacklisted(t2)
+        await invalidate_token(t1)
+        await invalidate_token(t2)
+        assert await is_token_blacklisted(t1)
+        assert await is_token_blacklisted(t2)
 
-    def test_blacklist_does_not_affect_other_tokens(self):
+    @pytest.mark.asyncio
+    async def test_blacklist_does_not_affect_other_tokens(self):
         t1 = create_access_token(data={"sub": "user1"})
         t2 = create_access_token(data={"sub": "user2"})
-        invalidate_token(t1)
-        assert is_token_blacklisted(t1)
-        assert not is_token_blacklisted(t2)
+        await invalidate_token(t1)
+        assert await is_token_blacklisted(t1)
+        assert not await is_token_blacklisted(t2)
 
 
 # --- Account Lockout Tests (DB-based) ---

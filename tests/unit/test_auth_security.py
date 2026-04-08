@@ -124,7 +124,7 @@ class TestLogoutRevokesRefreshToken:
 
         await logout(request=request, response=response, session=session)
 
-        assert is_token_blacklisted(token)
+        assert await is_token_blacklisted(token)
 
     @pytest.mark.asyncio
     async def test_logout_uses_access_token_cookie_when_bearer_missing(self):
@@ -142,7 +142,7 @@ class TestLogoutRevokesRefreshToken:
 
         await logout(request=request, response=response, session=session)
 
-        assert is_token_blacklisted(token)
+        assert await is_token_blacklisted(token)
         session.commit.assert_awaited()
 
     @pytest.mark.asyncio
@@ -199,7 +199,7 @@ class TestMfaCancelBlocklist:
 
         await cancel_mfa.__wrapped__(request)
 
-        assert is_token_blacklisted(token)
+        assert await is_token_blacklisted(token)
 
     @pytest.mark.asyncio
     async def test_cancel_mfa_does_not_blacklist_normal_token(self):
@@ -211,7 +211,7 @@ class TestMfaCancelBlocklist:
 
         await cancel_mfa.__wrapped__(request)
 
-        assert not is_token_blacklisted(token)
+        assert not await is_token_blacklisted(token)
 
     @pytest.mark.asyncio
     async def test_cancel_mfa_without_token_returns_204(self):

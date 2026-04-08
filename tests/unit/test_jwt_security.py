@@ -8,7 +8,6 @@ from fastapi import Response
 from starlette.requests import Request
 
 from app.core.security import (
-    _blacklist_lock,
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
@@ -20,13 +19,11 @@ from app.core.security import (
 
 @pytest.fixture(autouse=True)
 def _clear_blacklist():
-    with _blacklist_lock:
-        _blacklisted_tokens.clear()
-        _user_token_blacklist.clear()
+    _blacklisted_tokens.clear()
+    _user_token_blacklist.clear()
     yield
-    with _blacklist_lock:
-        _blacklisted_tokens.clear()
-        _user_token_blacklist.clear()
+    _blacklisted_tokens.clear()
+    _user_token_blacklist.clear()
 
 
 def _make_request(
@@ -73,15 +70,17 @@ def _set_cookie_headers(response: Response) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def test_access_token_has_type_access():
+@pytest.mark.asyncio
+async def test_access_token_has_type_access():
     token = create_access_token(data={"sub": "testuser"})
-    payload = decode_token(token)
+    payload = await decode_token(token)
     assert payload["type"] == "access"
 
 
-def test_refresh_token_has_type_refresh():
+@pytest.mark.asyncio
+async def test_refresh_token_has_type_refresh():
     token = create_refresh_token(data={"sub": "testuser"})
-    payload = decode_token(token)
+    payload = await decode_token(token)
     assert payload["type"] == "refresh"
 
 
@@ -166,7 +165,8 @@ async def test_get_current_user_accepts_cookie_auth_without_bearer_header():
 # ---------------------------------------------------------------------------
 
 
-def test_token_without_type_claim_still_decodes():
+@pytest.mark.asyncio
+async def test_token_without_type_claim_still_decodes():
     """A legacy token without 'type' can still be decoded by decode_token,
     but get_current_user will reject it since type != 'access'."""
     from datetime import UTC, datetime
@@ -185,7 +185,7 @@ def test_token_without_type_claim_still_decodes():
         settings.JWT_SECRET_KEY.get_secret_value(),
         algorithm=settings.JWT_ALGORITHM,
     )
-    decoded = decode_token(token)
+    decoded = await decode_token(token)
     assert "type" not in decoded
 
 
@@ -224,7 +224,7 @@ async def test_get_ui_user_and_validate_websocket_token_reject_refresh_tokens():
     refresh = create_refresh_token(data={"sub": "testuser"})
     request = _make_request(cookies={"access_token": refresh}, path="/dashboard")
 
-    assert get_ui_user(request) is None
+    assert await get_ui_user(request) is None
     assert await validate_websocket_token(refresh) is None
 
 
@@ -238,7 +238,7 @@ async def test_get_ui_user_and_validate_websocket_token_reject_mfa_pending_token
     )
     request = _make_request(cookies={"access_token": pending}, path="/dashboard")
 
-    assert get_ui_user(request) is None
+    assert await get_ui_user(request) is None
     assert await validate_websocket_token(pending) is None
 
 
@@ -249,9 +249,9 @@ async def test_get_ui_user_and_validate_websocket_token_reject_invalidated_token
     access = create_access_token(data={"sub": "revoked-user"})
     request = _make_request(cookies={"access_token": access}, path="/dashboard")
 
-    invalidate_all_user_tokens("revoked-user")
+    await invalidate_all_user_tokens("revoked-user")
 
-    assert get_ui_user(request) is None
+    assert await get_ui_user(request) is None
     assert await validate_websocket_token(access) is None
 
 
@@ -260,7 +260,7 @@ async def test_validate_websocket_token_rejects_user_invalidated_before():
     from app.api.dependencies import validate_websocket_token
 
     access = create_access_token(data={"sub": "db-invalidated-user"})
-    payload = decode_token(access)
+    payload = await decode_token(access)
 
     mock_user = MagicMock()
     mock_user.username = "db-invalidated-user"

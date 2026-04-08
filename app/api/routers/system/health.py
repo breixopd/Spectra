@@ -36,8 +36,7 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Lightweight cached status for high-frequency polling
 # ---------------------------------------------------------------------------
-_status_cache: dict = {"status": "initializing"}
-_status_cache_time: float = 0.0
+_cache_entry: tuple[dict, float] | None = None
 
 
 @router.get("/status/quick")
@@ -50,7 +49,10 @@ async def get_system_status_quick(
     This endpoint never hits the DB, tool registry, RAG, or storage.
     It returns whatever the last full ``/status`` call computed.
     """
-    return _status_cache
+    cache = _cache_entry
+    if cache:
+        return cache[0]
+    return {"status": "initializing"}
 
 
 @router.get("/safety-stats")
@@ -229,17 +231,19 @@ async def get_system_status(
         storage_health=storage_health,
     )
 
-    # Update lightweight cache for /status/quick
-    global _status_cache, _status_cache_time
-    _status_cache = {
-        "status": overall_status,
-        "message": message,
-        "tools_installing": tools_installing,
-        "embeddings_loading": embeddings_loading,
-        "setup_complete": setup_complete,
-        "setup_message": setup_message,
-    }
-    _status_cache_time = time.monotonic()
+    # Update lightweight cache for /status/quick — atomic swap
+    global _cache_entry
+    _cache_entry = (
+        {
+            "status": overall_status,
+            "message": message,
+            "tools_installing": tools_installing,
+            "embeddings_loading": embeddings_loading,
+            "setup_complete": setup_complete,
+            "setup_message": setup_message,
+        },
+        time.monotonic(),
+    )
 
     return result
 

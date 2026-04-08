@@ -19,21 +19,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-
-try:
-    from enum import StrEnum
-except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
-
-    class StrEnum(str, __import__("enum").Enum):
-        pass
-
-
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from app.services.ai.agents.base import ActionRisk, AgentAction
 from app.services.ai.llm import LLMClient
+from app.utils.compat import StrEnum
 
 if TYPE_CHECKING:
     from app.models.mission import Mission

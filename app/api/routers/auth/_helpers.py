@@ -189,9 +189,9 @@ async def _get_user_by_username(
     return result.scalar_one_or_none()
 
 
-def _decode_token_or_http_error(token: str, detail: str) -> dict[str, object]:
+async def _decode_token_or_http_error(token: str, detail: str) -> dict[str, object]:
     try:
-        return decode_token(token)
+        return await decode_token(token)
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -199,11 +199,11 @@ def _decode_token_or_http_error(token: str, detail: str) -> dict[str, object]:
         )
 
 
-def _validate_refresh_token_payload(
+async def _validate_refresh_token_payload(
     refresh_token: str,
 ) -> tuple[dict[str, object], str]:
     try:
-        payload = decode_token(refresh_token)
+        payload = await decode_token(refresh_token)
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

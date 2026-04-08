@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_resource_owner, get_current_active_user
 from app.core.database import get_async_session
+from app.core.exceptions import NotFoundError, ValidationError
 from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 from app.repositories.mission import MissionRepository
@@ -187,8 +188,8 @@ async def api_generate_report(
         report_data = build_report_data(session, template_id)
         report_data["source_type"] = "session"
         return report_data
-    except FileNotFoundError:
+    except (FileNotFoundError, NotFoundError):
         raise HTTPException(status_code=404, detail="Session not found")
-    except ValueError as e:
+    except (ValueError, ValidationError) as e:
         logger.warning("Report generation failed: %s", e)
         raise HTTPException(status_code=400, detail="Report generation failed \u2014 check parameters")
