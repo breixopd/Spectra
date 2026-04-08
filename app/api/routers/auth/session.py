@@ -25,7 +25,9 @@ router = APIRouter()
 
 
 @router.get("/me", tags=["Auth"])
+@limiter.limit(RateLimits.SESSION_READ)
 async def get_current_profile(
+    request: Request,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -211,6 +213,7 @@ async def export_user_data(
 
 
 @router.post("/restrict-processing", tags=["Account"])
+@limiter.limit(RateLimits.SESSION_WRITE)
 async def toggle_restrict_processing(
     request: Request,
     body: RestrictProcessingRequest,
@@ -280,7 +283,9 @@ async def delete_account(
 
 
 @router.get("/api-keys", summary="List API keys")
+@limiter.limit(RateLimits.SESSION_READ)
 async def list_api_keys(
+    request: Request,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -309,6 +314,7 @@ async def list_api_keys(
 
 
 @router.post("/api-keys", summary="Create API key", status_code=201)
+@limiter.limit(RateLimits.SESSION_WRITE)
 async def create_api_key(
     request: Request,
     body: dict = Body(...),
@@ -351,6 +357,7 @@ async def create_api_key(
 
 
 @router.delete("/api-keys/{key_id}", summary="Revoke API key")
+@limiter.limit(RateLimits.SESSION_WRITE)
 async def revoke_api_key(
     key_id: str,
     request: Request,
@@ -384,7 +391,9 @@ async def revoke_api_key(
 
 
 @router.get("/activity", summary="Get recent activity")
+@limiter.limit(RateLimits.SESSION_READ)
 async def get_user_activity(
+    request: Request,
     limit: int = 20,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),

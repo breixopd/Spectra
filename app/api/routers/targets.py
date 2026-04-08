@@ -5,8 +5,6 @@ Endpoints for managing assessment targets (IPs, domains, URLs).
 Provides CRUD operations and finding associations.
 """
 
-from __future__ import annotations
-
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -18,6 +16,7 @@ from app.api.schemas import FindingResponse, PaginatedResponse, TargetCreate, Ta
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
 from app.core.database import get_async_session
+from app.core.rate_limit import RateLimits, limiter
 from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
@@ -77,9 +76,10 @@ async def _get_owned_target_or_404(repo: TargetRepository, target_id: str, curre
     summary="Create target",
     description="Register a new assessment target (IP, CIDR, domain, or URL).",
 )
+@limiter.limit(RateLimits.TARGET_WRITE)
 async def create_target(
+    request: Request,
     target_in: TargetCreate,
-    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> TargetResponse:
@@ -129,7 +129,9 @@ async def create_target(
     summary="List targets",
     description="Retrieve all targets for the authenticated user. Superusers see all targets.",
 )
+@limiter.limit(RateLimits.TARGET_READ)
 async def list_targets(
+    request: Request,
     page: int = Query(default=1, ge=1, description="Page number"),
     per_page: int = Query(
         default=DEFAULT_PAGE_SIZE,
@@ -166,7 +168,9 @@ async def list_targets(
     summary="Get target",
     description="Retrieve a single target by its ID.",
 )
+@limiter.limit(RateLimits.TARGET_READ)
 async def get_target(
+    request: Request,
     target_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
@@ -183,9 +187,10 @@ async def get_target(
     summary="Delete target",
     description="Permanently delete a target and disassociate its findings.",
 )
+@limiter.limit(RateLimits.TARGET_WRITE)
 async def delete_target(
+    request: Request,
     target_id: str,
-    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> None:
@@ -210,10 +215,11 @@ async def delete_target(
     summary="Update target",
     description="Partially update a target's fields such as description, status, or OS.",
 )
+@limiter.limit(RateLimits.TARGET_WRITE)
 async def update_target(
+    request: Request,
     target_id: str,
     target_in: TargetUpdate,
-    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> TargetResponse:
@@ -254,7 +260,9 @@ async def update_target(
     summary="List target findings",
     description="Retrieve all security findings associated with a specific target.",
 )
+@limiter.limit(RateLimits.TARGET_READ)
 async def get_target_findings(
+    request: Request,
     target_id: str,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
@@ -307,9 +315,10 @@ class BulkImportResponse(BaseModel):
     summary="Bulk import targets",
     description="Import up to 500 targets at once. Duplicates are skipped.",
 )
+@limiter.limit(RateLimits.TARGET_WRITE)
 async def bulk_import_targets(
+    request: Request,
     payload: BulkImportRequest,
-    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> BulkImportResponse:
@@ -365,9 +374,10 @@ class BulkDeleteResponse(BaseModel):
 
 
 @router.post("/bulk-delete", response_model=BulkDeleteResponse)
+@limiter.limit(RateLimits.TARGET_WRITE)
 async def bulk_delete_targets(
+    request: Request,
     payload: BulkDeleteRequest,
-    request: Request = None,
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> BulkDeleteResponse:

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.core.database import get_async_session
+from app.core.rate_limit import RateLimits, limiter
 from app.models.plan import Plan
 from app.models.user import User
 from app.services.billing import PaymentService
@@ -18,7 +19,8 @@ router = APIRouter(prefix="/billing", tags=["Billing"])
 
 
 @router.get("/plans")
-async def list_available_plans(session: AsyncSession = Depends(get_async_session)):
+@limiter.limit(RateLimits.BILLING)
+async def list_available_plans(request: Request, session: AsyncSession = Depends(get_async_session)):
     """List all active plans available for subscription."""
     plans = (
         (await session.execute(select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order))).scalars().all()
@@ -41,7 +43,9 @@ async def list_available_plans(session: AsyncSession = Depends(get_async_session
 
 
 @router.post("/checkout")
+@limiter.limit(RateLimits.BILLING)
 async def create_checkout(
+    request: Request,
     plan_id: str,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -63,7 +67,9 @@ async def create_checkout(
 
 
 @router.get("/portal")
+@limiter.limit(RateLimits.BILLING)
 async def get_billing_portal(
+    request: Request,
     user: User = Depends(get_current_active_user),
 ):
     """Get Stripe Customer Portal URL for managing billing."""
@@ -76,6 +82,7 @@ async def get_billing_portal(
 
 
 @router.post("/webhook")
+@limiter.limit(RateLimits.BILLING)
 async def stripe_webhook(request: Request):
     """Handle Stripe webhook events (checkout.session.completed, etc.)."""
     from app.core.config import get_settings

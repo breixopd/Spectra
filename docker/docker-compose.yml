@@ -30,6 +30,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
   # PostgreSQL (persistent state, PostgreSQL-backed app cache, job queue,
   # LISTEN/NOTIFY backbone, pgvector/RAG)
@@ -58,6 +60,8 @@ services:
           memory: 512M
     networks:
       - spectra-network
+    security_opt:
+      - no-new-privileges:true
 
   # Redis (shared distributed rate-limiting backend)
   redis:
@@ -81,6 +85,8 @@ services:
           memory: 512M
     networks:
       - spectra-network
+    security_opt:
+      - no-new-privileges:true
 
   # Caddy Reverse Proxy (thin edge rate limiting; Redis remains primary)
   caddy:
@@ -110,6 +116,8 @@ services:
     restart: unless-stopped
     networks:
       - spectra-network
+    security_opt:
+      - no-new-privileges:true
 
   # Spectra API (FastAPI)
   app:
@@ -216,6 +224,11 @@ services:
       - SERVICE_MODE=ai
     volumes:
       - spectra_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
       interval: 10s
@@ -259,6 +272,8 @@ services:
           memory: 512M
     networks:
       - spectra-network
+    security_opt:
+      - no-new-privileges:true
 
   # TensorZero Gateway (AI routing, observability, optimization)
   tensorzero:
@@ -292,6 +307,8 @@ services:
           memory: 512M
     networks:
       - spectra-network
+    security_opt:
+      - no-new-privileges:true
 
   # Scheduler (Backups, Metrics, Cleanup)
   scheduler:
@@ -323,6 +340,11 @@ services:
     volumes:
       - spectra_data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
       interval: 10s
@@ -384,6 +406,8 @@ services:
           memory: 512M
     stop_grace_period: 30s
     restart: unless-stopped
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
       - NET_RAW

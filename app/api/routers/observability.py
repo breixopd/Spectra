@@ -7,13 +7,14 @@ Provides endpoints for telemetry, metrics, and system health monitoring.
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from typing_extensions import TypedDict
 
 from app.core.cache import get_cache
 from app.core.circuit_breaker import circuit_breakers
 from app.core.constants import API_MAX_PAGE_SIZE, OBSERVABILITY_MAX_RESULTS
 from app.core.events import events
+from app.core.rate_limit import RateLimits, limiter
 from app.core.rbac import Permission, require_permission
 from app.core.telemetry import telemetry
 from app.models.user import User
@@ -37,7 +38,9 @@ router = APIRouter(prefix="/observability", tags=["Observability"])
 
 
 @router.get("/stats")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_observability_stats(
+    request: Request,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> SystemStatsResponse:
     """
@@ -67,7 +70,9 @@ async def get_observability_stats(
 
 
 @router.get("/traces")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_traces(
+    request: Request,
     limit: int = Query(
         default=API_MAX_PAGE_SIZE, ge=1, le=OBSERVABILITY_MAX_RESULTS, description="Max traces to return"
     ),
@@ -79,7 +84,9 @@ async def get_traces(
 
 
 @router.get("/traces/{trace_id}")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_trace_by_id(
+    request: Request,
     trace_id: str,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
@@ -88,7 +95,9 @@ async def get_trace_by_id(
 
 
 @router.get("/slow-operations")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_slow_operations(
+    request: Request,
     threshold_ms: float = 1000,
     limit: int = 20,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
@@ -98,7 +107,9 @@ async def get_slow_operations(
 
 
 @router.get("/errors")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_error_traces(
+    request: Request,
     limit: int = 50,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
@@ -107,7 +118,9 @@ async def get_error_traces(
 
 
 @router.get("/metrics")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_metrics_summary(
+    request: Request,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """Get aggregated metrics summary."""
@@ -115,7 +128,9 @@ async def get_metrics_summary(
 
 
 @router.get("/services/health")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_service_health(
+    request: Request,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, dict[str, Any]]:
     """Get all service health statuses."""
@@ -123,7 +138,9 @@ async def get_service_health(
 
 
 @router.get("/circuit-breakers")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_circuit_breakers(
+    request: Request,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, dict[str, Any]]:
     """Get circuit breaker statuses."""
@@ -131,7 +148,9 @@ async def get_circuit_breakers(
 
 
 @router.post("/circuit-breakers/reset")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def reset_circuit_breakers(
+    request: Request,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, str]:
     """Reset all circuit breakers.
@@ -146,7 +165,9 @@ async def reset_circuit_breakers(
 
 
 @router.get("/cache/stats")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_cache_stats(
+    request: Request,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """Get cache statistics."""
@@ -162,7 +183,9 @@ async def get_cache_stats(
 
 
 @router.get("/events")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_events(
+    request: Request,
     limit: int = Query(
         default=API_MAX_PAGE_SIZE, ge=1, le=OBSERVABILITY_MAX_RESULTS, description="Max events to return"
     ),
@@ -184,7 +207,9 @@ async def get_events(
 
 
 @router.get("/events/stats")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_event_stats(
+    request: Request,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """Get event statistics."""
@@ -192,7 +217,9 @@ async def get_event_stats(
 
 
 @router.get("/export/otlp")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def export_otlp(
+    request: Request,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """Export metrics and traces in OTLP JSON format for external collectors."""
@@ -200,7 +227,9 @@ async def export_otlp(
 
 
 @router.get("/metrics/history")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_metrics_history(
+    request: Request,
     minutes: int = Query(default=60, ge=1, le=1440, description="Minutes of history"),
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> list[dict[str, Any]]:
@@ -212,7 +241,9 @@ async def get_metrics_history(
 
 
 @router.get("/saas-metrics")
+@limiter.limit(RateLimits.OBSERVABILITY)
 async def get_saas_metrics(
+    request: Request,
     _current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """Get aggregated SaaS KPI metrics."""

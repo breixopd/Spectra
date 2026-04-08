@@ -18,6 +18,16 @@ def _make_admin_user():
     return user
 
 
+def _make_mock_request():
+    req = MagicMock()
+    req.url.path = "/api/v1/observability/test"
+    req.client.host = "127.0.0.1"
+    req.headers = {}
+    req.state = MagicMock()
+    req.state.user = None
+    return req
+
+
 def _make_regular_user():
     user = MagicMock()
     user.is_superuser = False
@@ -41,7 +51,7 @@ class TestOtlpExportEndpoint:
         collector.end_span(span)
 
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await export_otlp(_current_user=_make_admin_user())
+            result = await export_otlp(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert "resourceMetrics" in result
         assert "resourceSpans" in result
@@ -56,7 +66,7 @@ class TestOtlpExportEndpoint:
 
         collector = TelemetryCollector()
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await export_otlp(_current_user=_make_admin_user())
+            result = await export_otlp(request=_make_mock_request(), _current_user=_make_admin_user())
 
         metrics = result["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]
         spans = result["resourceSpans"][0]["scopeSpans"][0]["spans"]
@@ -80,7 +90,7 @@ class TestSaasMetricsEndpoint:
         collector.increment_counter("mission_events_total", 3, {"event": "completed"})
 
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await get_saas_metrics(_current_user=_make_admin_user())
+            result = await get_saas_metrics(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert result["active_users"] == 10
         assert result["missions"]["started"] == 5
@@ -92,7 +102,7 @@ class TestSaasMetricsEndpoint:
 
         collector = TelemetryCollector()
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await get_saas_metrics(_current_user=_make_admin_user())
+            result = await get_saas_metrics(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert result["active_users"] == 0
         assert result["missions"]["started"] == 0
@@ -115,7 +125,7 @@ class TestMetricsSummaryEndpoint:
         collector.observe_histogram("dur", 100.0)
 
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await get_metrics_summary(_current_user=_make_admin_user())
+            result = await get_metrics_summary(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert "counters" in result
         assert "gauges" in result
@@ -137,7 +147,7 @@ class TestTracesEndpoints:
         collector.end_span(span)
 
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await get_traces(limit=10, status=None, _current_user=_make_admin_user())
+            result = await get_traces(request=_make_mock_request(), limit=10, status=None, _current_user=_make_admin_user())
 
         assert len(result) == 1
         assert result[0]["name"] == "op1"
@@ -153,8 +163,8 @@ class TestTracesEndpoints:
         collector.end_span(err_span, "error", "fail")
 
         with patch("app.api.routers.observability.telemetry", collector):
-            errors = await get_traces(limit=10, status="error", _current_user=_make_admin_user())
-            oks = await get_traces(limit=10, status="ok", _current_user=_make_admin_user())
+            errors = await get_traces(request=_make_mock_request(), limit=10, status="error", _current_user=_make_admin_user())
+            oks = await get_traces(request=_make_mock_request(), limit=10, status="ok", _current_user=_make_admin_user())
 
         assert len(errors) == 1
         assert errors[0]["name"] == "err_op"
@@ -176,7 +186,7 @@ class TestTracesEndpoints:
         collector.end_span(other)
 
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await get_trace_by_id(trace_id=trace_id, _current_user=_make_admin_user())
+            result = await get_trace_by_id(request=_make_mock_request(), trace_id=trace_id, _current_user=_make_admin_user())
 
         assert len(result) == 2
         assert all(r["trace_id"] == trace_id for r in result)
@@ -199,7 +209,7 @@ class TestErrorAndSlowEndpoints:
         collector.end_span(ok, "ok")
 
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await get_error_traces(limit=10, _current_user=_make_admin_user())
+            result = await get_error_traces(request=_make_mock_request(), limit=10, _current_user=_make_admin_user())
 
         assert len(result) == 1
         assert result[0]["name"] == "fail"
@@ -216,7 +226,7 @@ class TestErrorAndSlowEndpoints:
         collector._traces.append(span)
 
         with patch("app.api.routers.observability.telemetry", collector):
-            result = await get_slow_operations(threshold_ms=1000, limit=5, _current_user=_make_admin_user())
+            result = await get_slow_operations(request=_make_mock_request(), threshold_ms=1000, limit=5, _current_user=_make_admin_user())
 
         assert len(result) == 1
         assert result[0]["name"] == "slow_op"
@@ -234,7 +244,7 @@ class TestCircuitBreakerReset:
 
         mock_cbs = MagicMock()
         with patch("app.api.routers.observability.circuit_breakers", mock_cbs):
-            result = await reset_circuit_breakers(_current_user=_make_admin_user())
+            result = await reset_circuit_breakers(request=_make_mock_request(), _current_user=_make_admin_user())
 
         assert result["status"] == "ok"
         mock_cbs.reset_all.assert_called_once()
@@ -246,6 +256,6 @@ class TestCircuitBreakerReset:
         from app.api.routers.observability import reset_circuit_breakers
 
         with pytest.raises(HTTPException) as exc_info:
-            await reset_circuit_breakers(_current_user=_make_regular_user())
+            await reset_circuit_breakers(request=_make_mock_request(), _current_user=_make_regular_user())
 
         assert exc_info.value.status_code == 403
