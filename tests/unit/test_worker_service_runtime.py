@@ -71,9 +71,16 @@ async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
     startup = AsyncMock(side_effect=lambda: order.append("startup"))
     shutdown = AsyncMock(side_effect=lambda: order.append("shutdown"))
 
+    call_count = 0
+
     async def fake_worker_loop(functions, queue_name):
+        nonlocal call_count
+        call_count += 1
         order.append(f"worker:{queue_name}:{sorted(functions)}")
-        raise RuntimeError("stop")
+        if call_count == 1:
+            raise RuntimeError("stop")
+        # Second call: simulate normal exit
+        raise asyncio.CancelledError
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setitem(
@@ -92,9 +99,15 @@ async def test_work_loop_calls_startup_worker_loop_and_shutdown_in_finally():
             make_module("app.worker.lifecycle", startup=startup, shutdown=shutdown),
         )
         mp.setenv("QUEUE_NAME", "priority")
-        with pytest.raises(RuntimeError, match="stop"):
+        # Patch asyncio.sleep to avoid real delay
+        mp.setattr(asyncio, "sleep", AsyncMock())
+        with pytest.raises(asyncio.CancelledError):
             await worker_service.work_loop()
 
-    assert order == ["startup", "worker:priority:['alpha']", "shutdown"]
+    assert order[0] == "startup"
+    assert order[1] == "worker:priority:['alpha']"
+    # After crash, it restarts and calls worker_loop again
+    assert order[2] == "worker:priority:['alpha']"
+    assert order[-1] == "shutdown"
     startup.assert_awaited_once()
     shutdown.assert_awaited_once()
