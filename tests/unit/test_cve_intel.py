@@ -379,7 +379,7 @@ class TestEnrichCVE:
         with patch(
             "app.services.ai.cve_intel.get_metasploit_modules",
             return_value=[{"source": "metasploit", "module": "test"}],
-        ), patch("app.services.ai.exploit_db.get_exploit_db") as mock_db:
+        ), patch("app.services.exploit_db.get_exploit_db") as mock_db:
             db = mock_db.return_value
             db.is_kev.return_value = True
 
@@ -392,7 +392,7 @@ class TestEnrichCVE:
     def test_enrich_no_exploits(self):
         cve = {"cve": "CVE-9999-0001", "severity": "low"}
         with patch("app.services.ai.cve_intel.get_metasploit_modules", return_value=[]):
-            with patch("app.services.ai.exploit_db.get_exploit_db") as mock_db:
+            with patch("app.services.exploit_db.get_exploit_db") as mock_db:
                 db = mock_db.return_value
                 db.is_kev.return_value = False
 

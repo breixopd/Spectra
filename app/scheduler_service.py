@@ -452,7 +452,7 @@ class SchedulerService:
                         logger.debug("Exploit DB refresh lock not acquired — skipping")
                         continue
 
-                from app.services.ai.exploit_db import get_exploit_db
+                from app.services.exploit_db import get_exploit_db
 
                 db = get_exploit_db()
                 stats = await db.update()

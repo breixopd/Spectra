@@ -1,34 +1,10 @@
-"""Worker entry point: python -m app.worker"""
+"""Worker service entry point (python -m app.worker).
 
-from __future__ import annotations
+Launches the same FastAPI-based worker service used by docker compose,
+ensuring health endpoints are available regardless of how the worker starts.
+"""
 
-import asyncio
-import contextlib
-import os
-
-from app.core.tasks import create_safe_task
-from app.worker import _WORKER_FUNCTIONS, heartbeat_loop, shutdown, startup
-
-
-async def _main() -> None:
-    await startup()
-    queue_name = os.environ.get("QUEUE_NAME", "default")
-    heartbeat_interval = int(os.environ.get("SANDBOX_HEARTBEAT_INTERVAL", "30"))
-    heartbeat_task = None
-
-    from app.core.queue import worker_loop
-
-    try:
-        if queue_name != "default":
-            heartbeat_task = create_safe_task(heartbeat_loop(queue_name, interval=heartbeat_interval), name="heartbeat")
-        await worker_loop(_WORKER_FUNCTIONS, queue_name=queue_name)
-    finally:
-        if heartbeat_task:
-            heartbeat_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await heartbeat_task
-        await shutdown()
-
+import uvicorn
 
 if __name__ == "__main__":
-    asyncio.run(_main())
+    uvicorn.run("app.worker_service:app", host="0.0.0.0", port=5012)

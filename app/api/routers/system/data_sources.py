@@ -23,7 +23,7 @@ async def get_data_source_status(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get status of all managed data sources (exploit DB, CVE KB, etc.)."""
-    from app.services.ai.exploit_db import get_exploit_db
+    from app.services.exploit_db import get_exploit_db
 
     db = get_exploit_db()
     return await db.data_status()
@@ -38,7 +38,7 @@ async def download_data_sources(
 
     Refreshes MSF modules, CISA KEV, and the CVE knowledge base.
     """
-    from app.services.ai.exploit_db import get_exploit_db
+    from app.services.exploit_db import get_exploit_db
 
     db = get_exploit_db()
 

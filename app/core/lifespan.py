@@ -387,7 +387,7 @@ async def _initialize_services() -> None:
     # Initialize exploit database in background (loads from DB cache or downloads)
     if settings.EXPLOIT_DB_AUTO_INIT:
         try:
-            from app.services.ai.exploit_db import get_exploit_db
+            from app.services.exploit_db import get_exploit_db
 
             async def _init_exploit_db() -> None:
                 try:
