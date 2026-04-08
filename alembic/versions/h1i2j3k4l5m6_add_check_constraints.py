@@ -1,6 +1,6 @@
 """Add check constraints to numeric model columns.
 
-Revision ID: g7h8i9j0k1l2
+Revision ID: h1i2j3k4l5m6
 Revises: j1k2l3m4n5o6
 Create Date: 2026-04-08
 
@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "g7h8i9j0k1l2"
+revision: str = "h1i2j3k4l5m6"
 down_revision: str = "j1k2l3m4n5o6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

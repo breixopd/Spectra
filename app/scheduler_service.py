@@ -16,6 +16,7 @@ from datetime import UTC, datetime, timedelta
 from fastapi import FastAPI
 from sqlalchemy import text
 
+from app.core.constants import SECONDS_PER_HOUR
 from app.core.database import async_session_maker
 from app.core.tasks import create_safe_task
 
@@ -102,7 +103,7 @@ class SchedulerService:
             now = datetime.now(UTC)
             tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
             sleep_seconds = (tomorrow - now).total_seconds()
-            await asyncio.sleep(min(sleep_seconds, 3600))
+            await asyncio.sleep(min(sleep_seconds, SECONDS_PER_HOUR))
 
             if not self.running:
                 break
@@ -158,14 +159,14 @@ class SchedulerService:
         while self.running:
             settings = get_settings()
             if not settings.BACKUP_ENABLED:
-                await asyncio.sleep(3600)  # Check every hour if enabled
+                await asyncio.sleep(SECONDS_PER_HOUR)  # Check every hour if enabled
                 continue
 
             try:
                 async with async_session_maker() as session:
                     if not await _try_advisory_lock(session, _BACKUP_LOCK_ID):
                         logger.debug("Backup scheduler lock not acquired — skipping this iteration")
-                        await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
+                        await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR)
                         continue
 
                     # Skip if a backup ran recently enough on another replica
@@ -178,9 +179,9 @@ class SchedulerService:
                             try:
                                 last_dt = datetime.fromisoformat(str(last_ts))
                                 elapsed = (datetime.now(UTC) - last_dt).total_seconds()
-                                if elapsed < settings.BACKUP_SCHEDULE_HOURS * 3600:
+                                if elapsed < settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR:
                                     logger.debug("Backup skipped — ran %.0f s ago", elapsed)
-                                    await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
+                                    await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR)
                                     continue
                             except (ValueError, TypeError) as e:
                                 logger.debug("Could not parse last_backup_timestamp: %s", e)
@@ -198,12 +199,12 @@ class SchedulerService:
                     await _cache.set(
                         "last_backup_timestamp",
                         datetime.now(UTC).isoformat(),
-                        ttl=int(settings.BACKUP_SCHEDULE_HOURS * 3600 * 2),
+                        ttl=int(settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR * 2),
                     )
             except Exception:
                 logger.exception("Scheduled backup failed")
 
-            await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
+            await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR)
 
     async def _cache_cleanup(self):
         """Delegate to the shared cache_cleanup_loop with automatic restart on failure."""
@@ -443,7 +444,7 @@ class SchedulerService:
 
         while self.running:
             settings = get_settings()
-            await asyncio.sleep(settings.EXPLOIT_DB_REFRESH_HOURS * 3600)
+            await asyncio.sleep(settings.EXPLOIT_DB_REFRESH_HOURS * SECONDS_PER_HOUR)
             if not self.running:
                 break
             try:
