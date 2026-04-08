@@ -18,7 +18,7 @@ err() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 # Check prerequisites
 check_prereqs() {
-    log "Checking prerequisites..."
+    log "[1/5] Checking prerequisites..."
     for cmd in docker curl jq openssl; do
         command -v "$cmd" >/dev/null 2>&1 || { err "Required command not found: $cmd"; exit 1; }
     done
@@ -50,7 +50,6 @@ check_prereqs() {
         sed -i "s|change-me-shared-between-app-ai-scheduler-worker|$(generate_secret)|" "${ENV_FILE}"
         sed -i "s|change-me-db-password|${db_pass}|" "${ENV_FILE}"
         sed -i "s|change-me-redis-pass|$(generate_password)|" "${ENV_FILE}"
-        sed -i "s|change-me-garage-secret|$(generate_secret)|" "${ENV_FILE}"
         sed -i "s|change-me-clickhouse|$(generate_password)|" "${ENV_FILE}"
         log "  ✓ Secrets generated"
     else
@@ -60,7 +59,7 @@ check_prereqs() {
 
 # Start core services (DB, Redis, Garage)
 start_core() {
-    log "Starting core services (database, redis, garage)..."
+    log "[2/5] Starting core services..."
     docker compose -f "${COMPOSE_FILE}" up -d db redis garage
 
     log "Waiting for services to be healthy..."
@@ -80,7 +79,7 @@ start_core() {
 
 # Bootstrap Garage S3
 bootstrap_garage() {
-    log "Bootstrapping S3 storage (Garage)..."
+    log "[3/5] Bootstrapping S3 storage..."
 
     # Check if already bootstrapped
     if docker compose -f "${COMPOSE_FILE}" exec -T garage /garage status 2>/dev/null | grep -q "CONFIGURED"; then
@@ -93,13 +92,31 @@ bootstrap_garage() {
         fi
     fi
 
-    # Run the garage-init script
-    if [[ -f "${PROJECT_ROOT}/docker/garage-init.sh" ]]; then
-        log "Running garage-init.sh..."
-        bash "${PROJECT_ROOT}/docker/garage-init.sh"
-    else
+    # Run the garage-init script and capture credentials
+    if [[ ! -f "${PROJECT_ROOT}/docker/garage-init.sh" ]]; then
         err "garage-init.sh not found"
         exit 1
+    fi
+
+    local init_output
+    init_output="$(bash "${PROJECT_ROOT}/docker/garage-init.sh" 2>&1)" || {
+        err "Garage bootstrap failed:"
+        echo "$init_output" >&2
+        exit 1
+    }
+
+    # Parse garage keys from init output and write to .env
+    local access_key secret_key
+    access_key="$(echo "$init_output" | sed -n 's/.*GARAGE_ACCESS_KEY=//p' | tail -1 | tr -d '[:space:]')"
+    secret_key="$(echo "$init_output" | sed -n 's/.*GARAGE_SECRET_KEY=//p' | tail -1 | tr -d '[:space:]')"
+
+    if [[ -n "$access_key" && -n "$secret_key" ]]; then
+        sed -i "s|^GARAGE_ACCESS_KEY=.*|GARAGE_ACCESS_KEY=${access_key}|" "${ENV_FILE}"
+        sed -i "s|^GARAGE_SECRET_KEY=.*|GARAGE_SECRET_KEY=${secret_key}|" "${ENV_FILE}"
+        log "  ✓ S3 credentials auto-configured"
+    else
+        warn "Could not parse Garage credentials — check garage-init output"
+        echo "$init_output"
     fi
 
     log "S3 storage bootstrapped"
@@ -107,7 +124,7 @@ bootstrap_garage() {
 
 # Run database migrations
 run_migrations() {
-    log "Running database migrations..."
+    log "[4/5] Running database migrations..."
     docker compose -f "${COMPOSE_FILE}" run --rm -e SKIP_MIGRATIONS=false app \
         python3 -m alembic -c /app/config/alembic.ini upgrade heads 2>&1 | tail -5
     log "Migrations complete"
@@ -115,7 +132,7 @@ run_migrations() {
 
 # Start all services
 start_all() {
-    log "Starting all services..."
+    log "[5/5] Starting all services..."
     docker compose -f "${COMPOSE_FILE}" up -d
 
     log "Waiting for application to be healthy..."
@@ -131,32 +148,26 @@ start_all() {
     warn "Application health check timed out — check docker logs"
 }
 
-# Create admin account
-setup_admin() {
+# Print summary
+print_summary() {
     local port="${APP_PORT:-443}"
     local scheme="https"
     [[ "$port" == "80" || "$port" == "15080" ]] && scheme="http"
+    local url="${scheme}://localhost:${port}"
 
-    log "Open ${scheme}://localhost:${port}/setup to create your admin account."
-    log "If accessing remotely, use your server's IP or domain instead of localhost."
-}
-
-# Print summary
-print_summary() {
     echo ""
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}  Spectra First-Run Setup Complete${NC}"
+    echo -e "${GREEN}  ✓ Spectra is ready!${NC}"
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
     echo ""
-    echo -e "  ${BLUE}Services:${NC}    docker compose -f docker/docker-compose.yml ps"
-    echo -e "  ${BLUE}Logs:${NC}        docker compose -f docker/docker-compose.yml logs -f app"
-    echo -e "  ${BLUE}Stop:${NC}        docker compose -f docker/docker-compose.yml down"
-    echo -e "  ${BLUE}Health:${NC}      curl -sf http://localhost/api/health | python3 -m json.tool"
+    echo -e "  ${GREEN}Open:${NC}  ${url}/setup"
     echo ""
-    echo -e "  ${YELLOW}Next steps:${NC}"
-    echo -e "    1. Create admin account at the /setup page"
-    echo -e "    2. Verify health at /api/health"
-    echo -e "    3. Start your first assessment"
+    echo -e "  Create your admin account, then start your first assessment."
+    echo ""
+    echo -e "  ${BLUE}Useful commands:${NC}"
+    echo -e "    Logs:    docker compose -f docker/docker-compose.yml logs -f app"
+    echo -e "    Stop:    docker compose -f docker/docker-compose.yml down"
+    echo -e "    Health:  curl -sf ${url}/api/health | python3 -m json.tool"
     echo ""
 }
 
@@ -172,7 +183,6 @@ main() {
     bootstrap_garage
     run_migrations
     start_all
-    setup_admin
     print_summary
 }
 

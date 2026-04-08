@@ -25,6 +25,23 @@ while ! nc -z db 5432 2>/dev/null; do
 done
 echo "Database is ready!"
 
+# ── Validate environment ──
+_check_placeholder() {
+    local val="${!1:-}"
+    if [[ "$val" == change-me* || "$val" == "your-"* || -z "$val" ]]; then
+        echo "WARNING: $1 is not set or still a placeholder"
+        return 1
+    fi
+}
+
+warn_count=0
+for var in JWT_SECRET_KEY SECRET_KEY POSTGRES_PASSWORD REDIS_PASSWORD; do
+    _check_placeholder "$var" || ((++warn_count))
+done
+if [[ $warn_count -gt 0 ]]; then
+    echo "WARNING: $warn_count secret(s) need to be set. Run scripts/first_run.sh or set them in .env"
+fi
+
 # Run migrations as spectra user (skip for non-app microservices)
 if [ "${SKIP_MIGRATIONS:-false}" = "true" ]; then
     echo "Skipping migrations (SKIP_MIGRATIONS=true)"
