@@ -18,7 +18,7 @@ _METRIC_MAP: dict[str, tuple[str, str, str]] = {
     "api_requests": ("api_requests", "max_api_requests_per_hour", "hourly"),
     "missions_started": ("missions_started", "max_missions_per_month", "monthly"),
     "sandbox_minutes": ("sandbox_minutes", "sandbox_max_containers", "monthly"),
-    "llm_tokens": ("llm_tokens_used", "max_api_requests_per_day", "daily"),
+    "llm_tokens": ("llm_tokens_used", "max_llm_tokens_per_day", "daily"),
 }
 
 

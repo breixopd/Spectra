@@ -18,6 +18,7 @@ import csv
 import json
 import logging
 import re
+import warnings
 import xml.etree.ElementTree as ET
 from io import StringIO
 from pathlib import Path
@@ -27,6 +28,12 @@ try:
     from defusedxml import ElementTree as SafeET
 except ImportError:
     SafeET = ET  # Fallback to stdlib; install defusedxml for XXE protection
+    warnings.warn(
+        "defusedxml not installed — XML parsing is vulnerable to XXE attacks. "
+        "Install defusedxml: pip install defusedxml",
+        RuntimeWarning,
+        stacklevel=2,
+    )
 
 from app.services.tools.models import OutputFormat, ToolConfig
 

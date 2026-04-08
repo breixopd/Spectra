@@ -2,6 +2,8 @@
 
 import ipaddress
 
+import pytest
+
 from app.services.tools.scope_validator import (
     is_target_in_scope,
     parse_scope,
@@ -31,70 +33,84 @@ class TestParseScope:
 
 
 class TestIsTargetInScope:
-    def test_ip_in_cidr(self):
+    @pytest.mark.asyncio
+    async def test_ip_in_cidr(self):
         networks, domains = parse_scope(["10.0.0.0/24"])
-        assert is_target_in_scope("10.0.0.50", networks, domains) is True
+        assert await is_target_in_scope("10.0.0.50", networks, domains) is True
 
-    def test_ip_outside_cidr(self):
+    @pytest.mark.asyncio
+    async def test_ip_outside_cidr(self):
         networks, domains = parse_scope(["10.0.0.0/24"])
-        assert is_target_in_scope("10.0.1.1", networks, domains) is False
+        assert await is_target_in_scope("10.0.1.1", networks, domains) is False
 
-    def test_exact_ip_match(self):
+    @pytest.mark.asyncio
+    async def test_exact_ip_match(self):
         networks, domains = parse_scope(["192.168.1.100"])
-        assert is_target_in_scope("192.168.1.100", networks, domains) is True
+        assert await is_target_in_scope("192.168.1.100", networks, domains) is True
 
-    def test_domain_exact_match(self):
+    @pytest.mark.asyncio
+    async def test_domain_exact_match(self):
         networks, domains = parse_scope(["example.com"])
-        assert is_target_in_scope("example.com", networks, domains) is True
+        assert await is_target_in_scope("example.com", networks, domains) is True
 
-    def test_subdomain_match(self):
+    @pytest.mark.asyncio
+    async def test_subdomain_match(self):
         networks, domains = parse_scope(["example.com"])
-        assert is_target_in_scope("sub.example.com", networks, domains) is True
+        assert await is_target_in_scope("sub.example.com", networks, domains) is True
 
-    def test_domain_no_match(self):
+    @pytest.mark.asyncio
+    async def test_domain_no_match(self):
         networks, domains = parse_scope(["example.com"])
-        assert is_target_in_scope("evil.com", networks, domains) is False
+        assert await is_target_in_scope("evil.com", networks, domains) is False
 
-    def test_empty_target(self):
+    @pytest.mark.asyncio
+    async def test_empty_target(self):
         networks, domains = parse_scope(["10.0.0.0/24"])
-        assert is_target_in_scope("", networks, domains) is False
+        assert await is_target_in_scope("", networks, domains) is False
 
 
 class TestValidateCommandTarget:
-    def test_nmap_in_scope(self):
-        ok, _reason = validate_command_target("nmap -sV 192.168.1.1", ["192.168.1.0/24"])
+    @pytest.mark.asyncio
+    async def test_nmap_in_scope(self):
+        ok, _reason = await validate_command_target("nmap -sV 192.168.1.1", ["192.168.1.0/24"])
         assert ok is True
 
-    def test_nmap_out_of_scope(self):
-        ok, reason = validate_command_target("nmap -sV 10.0.0.1", ["192.168.1.0/24"])
+    @pytest.mark.asyncio
+    async def test_nmap_out_of_scope(self):
+        ok, reason = await validate_command_target("nmap -sV 10.0.0.1", ["192.168.1.0/24"])
         assert ok is False
         assert "outside declared scope" in reason
 
-    def test_localhost_allowed(self):
-        ok, _reason = validate_command_target("curl http://127.0.0.1", ["10.0.0.0/24"])
+    @pytest.mark.asyncio
+    async def test_localhost_allowed(self):
+        ok, _reason = await validate_command_target("curl http://127.0.0.1", ["10.0.0.0/24"])
         assert ok is True
 
-    def test_no_targets_in_command(self):
-        ok, _reason = validate_command_target("whoami", ["10.0.0.0/24"])
+    @pytest.mark.asyncio
+    async def test_no_targets_in_command(self):
+        ok, _reason = await validate_command_target("whoami", ["10.0.0.0/24"])
         assert ok is True
 
-    def test_file_extensions_not_treated_as_domains(self):
+    @pytest.mark.asyncio
+    async def test_file_extensions_not_treated_as_domains(self):
         """File names like common.txt should not trigger scope violations."""
-        result, _reason = validate_command_target(
+        result, _reason = await validate_command_target(
             "ffuf -u http://172.21.0.50 -w /usr/share/seclists/common.txt -o output.json",
             ["172.21.0.50"],
         )
         assert result is True
 
-    def test_real_domains_still_checked(self):
+    @pytest.mark.asyncio
+    async def test_real_domains_still_checked(self):
         """Actual domains should still be validated against scope."""
-        result, reason = validate_command_target(
+        result, reason = await validate_command_target(
             "curl http://evil.com/payload",
             ["172.21.0.50"],
         )
         assert result is False
         assert "evil.com" in reason
 
-    def test_empty_scope(self):
-        ok, _reason = validate_command_target("nmap 10.0.0.1", [])
+    @pytest.mark.asyncio
+    async def test_empty_scope(self):
+        ok, _reason = await validate_command_target("nmap 10.0.0.1", [])
         assert ok is False

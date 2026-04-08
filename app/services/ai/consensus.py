@@ -378,16 +378,17 @@ class VotingSystem:
         context: dict[str, Any] | None,
         voter_id: str,
         temperature: float,
+        system_prompt: str | None = None,
     ) -> Vote:
         """Get a vote from a single LLM instance."""
         prompt = self._build_voting_prompt(action, context)
-        system_prompt = SAFETY_VALIDATOR_PROMPT
+        effective_prompt = system_prompt or SAFETY_VALIDATOR_PROMPT
 
         try:
             response = await self.llm.generate_structured(
                 prompt=prompt,
                 response_model=VoteResponse,
-                system_prompt=system_prompt,
+                system_prompt=effective_prompt,
                 temperature=temperature,
             )
 
@@ -584,8 +585,8 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
 
         votes: list[Vote] = []
         for _round in range(num_rounds):
-            for voter_id, _system_prompt, temperature in perspectives:
-                vote = await self._get_vote(action, context, voter_id, temperature)
+            for voter_id, role_system_prompt, temperature in perspectives:
+                vote = await self._get_vote(action, context, voter_id, temperature, system_prompt=role_system_prompt)
                 votes.append(vote)
 
         return self._analyze_votes_with_params(votes, action, k_threshold=len(votes), min_confidence=0.6)
