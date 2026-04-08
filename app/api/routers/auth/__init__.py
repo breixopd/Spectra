@@ -29,6 +29,7 @@ from app.api.routers.auth._helpers import (
     _check_lockout,
     _clear_auth_cookies,
     _consume_totp_code,
+    _consume_totp_code_async,
     _record_failure,
     _record_success,
     _set_auth_cookies,

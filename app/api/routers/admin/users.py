@@ -6,7 +6,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import (
@@ -29,7 +29,14 @@ from app.core.rbac import Permission, require_permission
 from app.core.security import create_password_reset_token, get_password_hash
 from app.core.templates import templates
 from app.models.audit_log import AuditEventType
+from app.models.exploit import Exploit
+from app.models.finding import Finding
+from app.models.mission import Mission
+from app.models.pentest_session import PentestSession
+from app.models.plan import ApiKey, Subscription, UsageRecord
+from app.models.target import Target
 from app.models.user import User
+from app.models.user_preferences import UserPreferences
 from app.services.system.audit import log_event as audit_log_event
 from app.services.system.rollback import create_snapshot
 
@@ -495,6 +502,17 @@ async def purge_user(
         details={"action": "user_purged", "target_user": target_user.username, "target_user_id": str(target_user.id)},
         request=request,
     )
+
+    # Delete user-owned data explicitly (child → parent order)
+    await session.execute(delete(Exploit).where(Exploit.user_id == user_id))
+    await session.execute(delete(Finding).where(Finding.user_id == user_id))
+    await session.execute(delete(Target).where(Target.user_id == user_id))
+    await session.execute(delete(Mission).where(Mission.user_id == user_id))
+    await session.execute(delete(PentestSession).where(PentestSession.user_id == user_id))
+    await session.execute(delete(Subscription).where(Subscription.user_id == user_id))
+    await session.execute(delete(ApiKey).where(ApiKey.user_id == user_id))
+    await session.execute(delete(UsageRecord).where(UsageRecord.user_id == user_id))
+    await session.execute(delete(UserPreferences).where(UserPreferences.user_id == user_id))
 
     await session.delete(target_user)
     await session.commit()

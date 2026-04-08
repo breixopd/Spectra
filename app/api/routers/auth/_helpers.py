@@ -1,5 +1,6 @@
 """Shared helpers for auth sub-modules."""
 
+import contextlib
 import hashlib
 import logging
 import threading
@@ -34,8 +35,42 @@ AUTH_COOKIE_SAMESITE = "strict"
 REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
 DUMMY_PASSWORD_HASH = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCJzFhWMu"
 _TOTP_REPLAY_WINDOW_SECONDS = 90
+# In-memory fallback when Redis is unavailable
 _used_totp_codes: dict[str, float] = {}
 _used_totp_codes_lock = threading.Lock()
+
+
+def _get_redis_for_totp():
+    """Return an async Redis client for TOTP replay tracking, or None."""
+    try:
+        import redis.asyncio as aioredis
+
+        url = settings.RATE_LIMIT_STORAGE
+        if url and url.startswith(("redis://", "rediss://")):
+            return aioredis.from_url(url, socket_timeout=2)
+    except Exception:
+        pass
+    return None
+
+
+async def _consume_totp_code_async(user_id: str, code: str) -> bool:
+    """Check TOTP replay via Redis. Falls back to in-memory if Redis is down."""
+    code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()
+    redis_key = f"totp_used:{user_id}:{code_hash}"
+
+    r = _get_redis_for_totp()
+    if r is not None:
+        try:
+            existing = await r.set(redis_key, "1", nx=True, ex=_TOTP_REPLAY_WINDOW_SECONDS)
+            await r.aclose()
+            return existing is not None  # True if key was newly set (not a replay)
+        except Exception:
+            logger.debug("Redis TOTP replay check failed, falling back to in-memory", exc_info=True)
+            with contextlib.suppress(Exception):
+                await r.aclose()
+
+    # In-memory fallback
+    return _consume_totp_code(user_id, code)
 
 
 def _consume_totp_code(user_id: str, code: str) -> bool:

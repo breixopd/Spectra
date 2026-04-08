@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.api.routers.auth._helpers import (
-    _consume_totp_code,
+    _consume_totp_code_async,
     _create_auth_token_pair,
     _decode_token_or_http_error,
     _extract_bearer_token,
@@ -73,7 +73,7 @@ async def mfa_verify_setup(
     secret = decrypt_mfa_secret(user.mfa_secret)
     if not verify_totp(secret, body.code):
         raise HTTPException(status_code=400, detail="Invalid TOTP code")
-    if not _consume_totp_code(str(user.id), body.code):
+    if not await _consume_totp_code_async(str(user.id), body.code):
         raise HTTPException(status_code=400, detail="TOTP code has already been used")
 
     user.mfa_enabled = True
@@ -127,7 +127,7 @@ async def mfa_verify_login(
             request=request,
         )
         raise HTTPException(status_code=401, detail="Invalid TOTP code")
-    if not _consume_totp_code(str(user.id), body.code):
+    if not await _consume_totp_code_async(str(user.id), body.code):
         raise HTTPException(status_code=401, detail="TOTP code has already been used")
 
     # Invalidate the partial MFA token
@@ -182,7 +182,7 @@ async def mfa_disable(
     secret = decrypt_mfa_secret(user.mfa_secret)
     if not verify_totp(secret, body.code):
         raise HTTPException(status_code=400, detail="Invalid TOTP code")
-    if not _consume_totp_code(str(user.id), body.code):
+    if not await _consume_totp_code_async(str(user.id), body.code):
         raise HTTPException(status_code=400, detail="TOTP code has already been used")
 
     user.mfa_enabled = False
