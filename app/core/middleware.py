@@ -113,7 +113,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         }
         # HSTS only in production (non-DEBUG) to avoid issues with local HTTP
         if not settings.DEBUG:
-            headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         for key, value in headers.items():
             response.headers[key] = value
 

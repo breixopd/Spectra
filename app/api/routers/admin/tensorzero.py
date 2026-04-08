@@ -8,6 +8,8 @@ import re
 import tempfile
 from pathlib import Path
 
+import aiofiles
+
 try:
     import tomllib
 except ModuleNotFoundError:  # Python 3.10 test runner
@@ -146,8 +148,9 @@ async def tz_config(
         return {"models": {}, "provider_type": "openai"}
     if tomllib is None:
         return JSONResponse({"detail": "TOML parsing support is unavailable"}, status_code=503)
-    with open(_CONFIG_PATH, "rb") as f:
-        config = tomllib.load(f)
+    async with aiofiles.open(_CONFIG_PATH, "rb") as f:
+        raw = await f.read()
+    config = tomllib.loads(raw.decode())
     models = {}
     provider_type = "openai"
     for tier in ("fast", "balanced", "capable"):
@@ -182,8 +185,9 @@ async def tz_update_config(
     if _CONFIG_PATH.exists():
         if tomllib is None:
             raise HTTPException(status_code=503, detail="TOML parsing support is unavailable")
-        with open(_CONFIG_PATH, "rb") as f:
-            current = tomllib.load(f)
+        async with aiofiles.open(_CONFIG_PATH, "rb") as f:
+            raw = await f.read()
+        current = tomllib.loads(raw.decode())
 
     # Normalize model values: accept either string or {primary, fallback} dict
     tiers: dict[str, dict[str, str]] = {}
