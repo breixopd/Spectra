@@ -76,6 +76,19 @@ GEOIP_API_URL: str = "https://ipwho.is"
 SANDBOX_BASE_IMAGE: str = "kalilinux/kali-rolling:latest"
 
 # ===========================================================================
+# Time Conversion
+# ===========================================================================
+
+#: Seconds in one hour.
+SECONDS_PER_HOUR: int = 3_600
+
+#: Seconds in one day.
+SECONDS_PER_DAY: int = 86_400
+
+#: Seconds in one week.
+SECONDS_PER_WEEK: int = 604_800
+
+# ===========================================================================
 # HTTP & Networking
 # ===========================================================================
 

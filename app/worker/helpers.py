@@ -14,7 +14,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any
 
-from app.core.constants import HTTP_CLIENT_MAX_RETRIES
+from app.core.constants import HTTP_CLIENT_MAX_RETRIES, SECONDS_PER_HOUR, SECONDS_PER_WEEK
 
 logger = logging.getLogger(__name__)
 TOOLS_PATH_PREFIX = "/opt/spectra_tools"
@@ -189,7 +189,7 @@ async def _track_tool_stats(
         stats["total_duration"] += duration
         stats["last_run"] = datetime.now(UTC).isoformat()
         stats["last_duration"] = str(duration)
-        await cache.set(stats_key, stats, ttl=604800)  # 7 days
+        await cache.set(stats_key, stats, ttl=SECONDS_PER_WEEK)  # 7 days
     except (OSError, RuntimeError, ConnectionError, ValueError) as e:
         logger.warning("Failed to track tool stats for %s: %s", tool_id, e)
 
@@ -242,5 +242,5 @@ async def _sync_tool_status(
     await cache.set(
         key,
         _build_tool_status_payload(existing, result),
-        ttl=3600,  # 1 hour
+        ttl=SECONDS_PER_HOUR,  # 1 hour
     )

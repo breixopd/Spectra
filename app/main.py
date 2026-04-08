@@ -42,6 +42,7 @@ from app.api.routers import (
     wordlists,
 )
 from app.core.config import settings
+from app.core.constants import SECONDS_PER_DAY
 from app.core.exceptions import SpectraError, get_status_code_for_exception
 from app.core.lifespan import lifespan
 from app.core.logging_config import CorrelationIdMiddleware, configure_logging
@@ -128,7 +129,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID", "Accept"],
-    max_age=86400,
+    max_age=SECONDS_PER_DAY,
 )
 
 # --- Admin IP Allowlist ---
