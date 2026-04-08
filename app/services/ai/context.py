@@ -34,7 +34,7 @@ class ContextSection:
 class ContextManager:
     """Manages token budget across context sections for LLM prompts."""
 
-    CHARS_PER_TOKEN = 4  # Conservative estimate
+    CHARS_PER_TOKEN = 3.5  # Conservative estimate (closer to reality for code/JSON)
 
     def __init__(self, max_context_tokens: int = 6000):
         self.max_context_tokens = max_context_tokens
@@ -59,7 +59,7 @@ class ContextManager:
 
             # Apply per-section cap
             if section.max_tokens and section_tokens > section.max_tokens:
-                max_chars = section.max_tokens * self.CHARS_PER_TOKEN
+                max_chars = int(section.max_tokens * self.CHARS_PER_TOKEN)
                 content = content[:max_chars] + "\n[... truncated]"
                 section_tokens = section.max_tokens
 
@@ -68,7 +68,7 @@ class ContextManager:
             if section_tokens > remaining:
                 if section.priority <= Priority.HIGH:
                     # High-priority: truncate to fit
-                    max_chars = remaining * self.CHARS_PER_TOKEN
+                    max_chars = int(remaining * self.CHARS_PER_TOKEN)
                     if max_chars > 100:
                         content = content[:max_chars] + "\n[... truncated]"
                         section_tokens = remaining
@@ -84,8 +84,8 @@ class ContextManager:
 
     @staticmethod
     def estimate_tokens(text: str) -> int:
-        """Estimate token count using character-based heuristic (4 chars ≈ 1 token)."""
-        return max(1, len(text) // ContextManager.CHARS_PER_TOKEN)
+        """Estimate token count using character-based heuristic (~3.5 chars per token)."""
+        return max(1, len(text) * 10 // 35)
 
 
 def truncate_for_llm(text: str, max_chars: int = 3000, label: str = "output") -> str:

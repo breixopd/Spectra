@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 
 from app.services.ai.agents.base import ActionRisk, AgentAction
 from app.services.ai.llm import LLMClient
+from app.services.ai.prompts import BLUE_TEAM_VOTER_PROMPT, RED_TEAM_VOTER_PROMPT, SAFETY_VALIDATOR_PROMPT
 from app.utils.compat import StrEnum
 
 if TYPE_CHECKING:
@@ -380,18 +381,7 @@ class VotingSystem:
     ) -> Vote:
         """Get a vote from a single LLM instance."""
         prompt = self._build_voting_prompt(action, context)
-        system_prompt = """You are a security assessment validator. Your role is to evaluate proposed actions for safety and appropriateness.
-
-Consider:
-1. Is this action safe to execute?
-2. Could it cause unintended damage?
-3. Is it appropriate for the stated mission?
-4. Are there any red flags or concerns?
-
-Vote APPROVE if the action is safe and appropriate.
-Vote REJECT if the action is dangerous or inappropriate.
-Vote ABSTAIN if you cannot make a determination.
-Vote NEEDS_INFO if more context is required."""
+        system_prompt = SAFETY_VALIDATOR_PROMPT
 
         try:
             response = await self.llm.generate_structured(
@@ -584,16 +574,8 @@ Vote REJECT only if it is clearly dangerous (e.g. destructive, out of scope) or 
         Gets perspectives from both attacker and defender viewpoints
         to validate the exploit approach before execution.
         """
-        attacker_system = (
-            "You are an experienced RED TEAM operator. Evaluate this exploit plan. "
-            "Consider: Will it work? Is the payload correct? Are there edge cases? "
-            "Vote APPROVE only if the exploit is technically sound and likely to succeed."
-        )
-        defender_system = (
-            "You are a BLUE TEAM defender. Evaluate this exploit plan. "
-            "Consider: Is this within scope? Could it cause unintended damage? "
-            "Are there safer alternatives? Vote APPROVE if it's safe to execute."
-        )
+        attacker_system = RED_TEAM_VOTER_PROMPT
+        defender_system = BLUE_TEAM_VOTER_PROMPT
 
         perspectives = [
             ("attacker", attacker_system, 0.3),

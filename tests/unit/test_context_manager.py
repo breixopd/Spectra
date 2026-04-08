@@ -74,8 +74,8 @@ class TestContextManager:
         assert "[... truncated]" in result
 
     def test_estimate_tokens(self):
-        assert ContextManager.estimate_tokens("A" * 400) == 100
+        assert ContextManager.estimate_tokens("A" * 400) == 114
 
     def test_section_token_estimate(self):
         s = ContextSection("x", "A" * 100, Priority.CRITICAL)
-        assert s.token_estimate == 25
+        assert s.token_estimate == 28

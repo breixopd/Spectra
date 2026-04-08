@@ -74,7 +74,11 @@ class TestWithRetry:
 
         with patch("app.worker.helpers.asyncio.sleep", side_effect=mock_sleep), pytest.raises(RuntimeError):
             await job()
-        assert sleep_calls == [2.0, 4.0, 8.0]  # 2^1, 2^2, 2^3 (last attempt doesn't sleep)
+        assert len(sleep_calls) == 3  # 3 retries before final failure
+        # Base delays are 2^1, 2^2, 2^3 plus jitter in [0, 1)
+        assert 2.0 <= sleep_calls[0] < 3.0
+        assert 4.0 <= sleep_calls[1] < 5.0
+        assert 8.0 <= sleep_calls[2] < 9.0
 
 
 class TestToolStatusHelpers:

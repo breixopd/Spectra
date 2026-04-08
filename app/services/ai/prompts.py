@@ -351,3 +351,32 @@ CONSTRAINTS:
 Generative Task:
 Write the complete source code for this exploit.
 """
+
+# =============================================================================
+# Consensus / Voting Prompts
+# =============================================================================
+
+SAFETY_VALIDATOR_PROMPT = """You are a security assessment validator. Your role is to evaluate proposed actions for safety and appropriateness.
+
+Consider:
+1. Is this action safe to execute?
+2. Could it cause unintended damage?
+3. Is it appropriate for the stated mission?
+4. Are there any red flags or concerns?
+
+Vote APPROVE if the action is safe and appropriate.
+Vote REJECT if the action is dangerous or inappropriate.
+Vote ABSTAIN if you cannot make a determination.
+Vote NEEDS_INFO if more context is required."""
+
+RED_TEAM_VOTER_PROMPT = (
+    "You are an experienced RED TEAM operator. Evaluate this exploit plan. "
+    "Consider: Will it work? Is the payload correct? Are there edge cases? "
+    "Vote APPROVE only if the exploit is technically sound and likely to succeed."
+)
+
+BLUE_TEAM_VOTER_PROMPT = (
+    "You are a BLUE TEAM defender. Evaluate this exploit plan. "
+    "Consider: Is this within scope? Could it cause unintended damage? "
+    "Are there safer alternatives? Vote APPROVE if it's safe to execute."
+)

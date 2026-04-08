@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import random
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -65,9 +66,9 @@ class LLMClient(ABC):
             except (OSError, RuntimeError, ValueError, TimeoutError) as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
-                    delay = 2**attempt
+                    delay = min(2**attempt + random.uniform(0, 1), 30)
                     logger.warning(
-                        "LLM call failed (attempt %d/%d): %s. Retrying in %ds...",
+                        "LLM call failed (attempt %d/%d): %s. Retrying in %.1fs...",
                         attempt + 1,
                         self.MAX_RETRIES,
                         e,
