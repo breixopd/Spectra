@@ -393,7 +393,7 @@ async def test_main_registers_signal_handlers_and_starts_scheduler():
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(scheduler_service, "SchedulerService", lambda: service)
-        mp.setattr(scheduler_service.asyncio, "get_event_loop", lambda: loop)
+        mp.setattr(scheduler_service.asyncio, "get_running_loop", lambda: loop)
         await scheduler_service.main()
 
     assert loop.add_signal_handler.call_count == 2

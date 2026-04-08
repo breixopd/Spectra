@@ -64,9 +64,12 @@ def upgrade() -> None:
                     sa.text(f"UPDATE user_preferences SET {set_clause} WHERE user_id = :user_id"),
                     updates,
                 )
-    except Exception:
-        # Skip if encryption module is unavailable (e.g., minimal CI environment)
-        pass
+    except Exception as exc:
+        import logging
+
+        logging.getLogger("alembic").warning(
+            "BYOK key encryption skipped during migration: %s", type(exc).__name__
+        )
 
 
 def downgrade() -> None:
