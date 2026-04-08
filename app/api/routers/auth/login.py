@@ -181,6 +181,14 @@ async def refresh_token(
     _raise_if_token_invalidated(user, payload)
     await invalidate_token(provided_refresh_token)
 
+    await audit_log_event(
+        session,
+        AuditEventType.TOKEN_REVOKED,
+        user_id=str(user.id),
+        details={"username": user.username, "reason": "token_refresh"},
+        request=request,
+    )
+
     access_token, new_refresh_token = _create_auth_token_pair(user)
     _set_auth_cookies(request, response, access_token, new_refresh_token)
 

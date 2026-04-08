@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json as _json
 import logging
+import random
 import time
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Callable
@@ -485,7 +486,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
             except (OSError, RuntimeError, ValueError, TimeoutError) as exc:
                 last_error = exc
                 if attempt < max_retries:
-                    delay = backoff_factor**attempt
+                    delay = backoff_factor**attempt + random.uniform(0, 1)
                     logger.warning(
                         "%s retry %d/%d after error: %s (backoff %.1fs)",
                         self.name,

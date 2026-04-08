@@ -133,6 +133,14 @@ async def mfa_verify_login(
     # Invalidate the partial MFA token
     await invalidate_token(token)
 
+    await audit_log_event(
+        session,
+        AuditEventType.TOKEN_REVOKED,
+        user_id=str(user.id),
+        details={"username": username, "reason": "mfa_verified"},
+        request=request,
+    )
+
     access_token, refresh_token = _create_auth_token_pair(user)
     _set_auth_cookies(request, response, access_token, refresh_token)
 

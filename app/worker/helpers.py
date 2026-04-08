@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import random
 import shutil
 import signal
 from datetime import UTC, datetime
@@ -34,7 +35,7 @@ def with_retry(max_retries: int = HTTP_CLIENT_MAX_RETRIES, backoff_base: float =
                 except (OSError, RuntimeError, ValueError) as exc:
                     last_exc = exc
                     if attempt < max_retries:
-                        wait = min(backoff_base**attempt, max_backoff)
+                        wait = min(backoff_base**attempt + random.uniform(0, 1), max_backoff)
                         logger.warning(
                             "Job %s attempt %d/%d failed, retrying in %.1fs: %s",
                             func.__name__,
