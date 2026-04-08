@@ -35,7 +35,6 @@ redis[hiredis]==5.2.1
 
 # Security (all services)
 bcrypt==4.3.0
-passlib[bcrypt]==1.7.4
 PyJWT[crypto]==2.10.1
 cryptography==44.0.3
 

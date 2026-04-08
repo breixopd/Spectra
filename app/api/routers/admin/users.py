@@ -323,18 +323,21 @@ async def create_user(
 
     activation_url = None
     try:
-        from app.api.routers.public import _build_email_verification_url, _send_registration_verification_email
+        from app.services.auth.email_verification import (
+            build_email_verification_url,
+            send_registration_verification_email,
+        )
 
         email_sent = False
         if settings.smtp_configured:
-            email_sent = await _send_registration_verification_email(request, user.username, user.email, str(user.id))
+            email_sent = await send_registration_verification_email(request, user.username, user.email, str(user.id))
         if not email_sent:
-            activation_url = _build_email_verification_url(request, str(user.id))
+            activation_url = build_email_verification_url(request, str(user.id))
     except Exception:
         logger.exception("Failed to prepare admin-created user activation flow for %s", user.username)
-        from app.api.routers.public import _build_email_verification_url
+        from app.services.auth.email_verification import build_email_verification_url
 
-        activation_url = _build_email_verification_url(request, str(user.id))
+        activation_url = build_email_verification_url(request, str(user.id))
 
     return _to_admin_user_create_response(user, activation_url)
 

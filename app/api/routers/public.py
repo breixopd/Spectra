@@ -25,6 +25,9 @@ from app.core.security import (
 )
 from app.models.plan import Plan, Subscription
 from app.models.user import User
+from app.services.auth.email_verification import (
+    send_registration_verification_email as _send_registration_verification_email,
+)
 from app.utils.html_sanitization import sanitize_legal_html
 from app.version import __version__
 
@@ -397,39 +400,6 @@ def _public_base_url(request: Request | None) -> str:
     if request is not None:
         return str(request.base_url).rstrip("/")
     return "http://localhost:5000"
-
-
-def _build_email_verification_url(request: Request | None, user_id: str) -> str | None:
-    if request is None and not settings.PLATFORM_BASE_URL:
-        return None
-
-    from app.core.security import create_email_verification_token
-
-    token = create_email_verification_token(user_id)
-    base_url = settings.PLATFORM_BASE_URL or str(request.base_url).rstrip("/")
-    return f"{base_url}/verify-email?token={token}"
-
-
-async def _send_registration_verification_email(request: Request, username: str, email: str, user_id: str) -> bool:
-    try:
-        from app.services.email import EmailService
-
-        verify_url = _build_email_verification_url(request, user_id)
-        if not verify_url:
-            return False
-
-        email_svc = EmailService()
-        sent = await email_svc.send_template(
-            to=email,
-            template_name="email_verification",
-            subject="Verify your Spectra account",
-            username=username,
-            verify_url=verify_url,
-        )
-        return bool(sent)
-    except (OSError, RuntimeError, ConnectionError):
-        logger.exception("Failed to send verification email to %s", username)
-        return False
 
 
 async def _send_registration_welcome_email(username: str, email: str) -> None:
