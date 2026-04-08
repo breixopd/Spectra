@@ -39,6 +39,12 @@ SERVICE_BOUNDARIES: dict[str, list[str]] = {
     "app/worker": ["app.api", "app.scheduler_service", "app.ai_service"],
 }
 
+# Known cross-service couplings (lazy imports) — emitted as warnings, not failures.
+# worker → app.services.ai: tool jobs use AI service for RAG/LLM features at runtime.
+WARN_LAZY_IMPORTS: dict[str, list[str]] = {
+    "app/worker": ["app.services.ai"],
+}
+
 # Allowed exceptions (lazy imports inside functions are OK)
 ALLOWED_FILES = set()
 
@@ -79,6 +85,36 @@ def check_file(filepath: Path, forbidden: list[str] | None = None, label: str = 
     return violations
 
 
+def check_lazy_imports(filepath: Path, warned: list[str]) -> list[str]:
+    """Detect lazy (non-top-level) imports matching warned prefixes. Returns warnings, not errors."""
+    warnings = []
+    try:
+        tree = ast.parse(filepath.read_text(), filename=str(filepath))
+    except SyntaxError:
+        return []
+
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Import, ast.ImportFrom)):
+            continue
+        # Only interested in indented (lazy) imports
+        if node.col_offset == 0:
+            continue
+        if isinstance(node, ast.ImportFrom) and node.module:
+            for prefix in warned:
+                if node.module.startswith(prefix):
+                    warnings.append(
+                        f"{filepath}:{node.lineno}: lazy import of '{node.module}' (known coupling)"
+                    )
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                for prefix in warned:
+                    if alias.name.startswith(prefix):
+                        warnings.append(
+                            f"{filepath}:{node.lineno}: lazy import of '{alias.name}' (known coupling)"
+                        )
+    return warnings
+
+
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
     all_violations = []
@@ -112,6 +148,21 @@ def main() -> int:
                 violations = check_file(py_file, forbidden=forbidden, label=f"service boundary ({target})")
                 all_violations.extend(violations)
                 files_checked += 1
+
+    # Warn about known lazy cross-service imports (non-blocking)
+    all_warnings: list[str] = []
+    for target, warned_prefixes in WARN_LAZY_IMPORTS.items():
+        target_path = root / target
+        if not target_path.exists():
+            continue
+        py_files = [target_path] if target_path.is_file() else target_path.rglob("*.py")
+        for py_file in py_files:
+            all_warnings.extend(check_lazy_imports(py_file, warned_prefixes))
+
+    if all_warnings:
+        print(f"Cross-service coupling warnings ({len(all_warnings)}):")
+        for w in sorted(all_warnings):
+            print(f"  WARNING: {w}")
 
     if all_violations:
         print("Import boundary violations found:")

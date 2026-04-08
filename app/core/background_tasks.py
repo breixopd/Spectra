@@ -49,7 +49,7 @@ async def periodic_cleanup_loop() -> None:
     while True:
         try:
             await asyncio.sleep(SYSTEM_CLEANUP_INTERVAL)
-            from app.worker.cleanup_jobs import run_all_cleanup
+            from app.services.maintenance import run_all_cleanup
 
             await run_all_cleanup()
         except asyncio.CancelledError:

@@ -38,7 +38,7 @@ test-performance: ## Run the performance smoke harness in Docker
 test-soak: ## Run the soak/stability harness in Docker
 	@./scripts/test.sh soak
 
-lint: ## Run ruff linter on app/
+lint: import-boundaries ## Run import boundary check + ruff linter on app/
 	@ruff check app/
 
 format: ## Format code with ruff

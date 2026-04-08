@@ -288,7 +288,7 @@ async def service_health(
     services: dict[str, Any] = {}
 
     # Check AI service
-    ai_url = getattr(settings, "AI_SERVICE_URL", "")
+    ai_url = settings.AI_SERVICE_URL
     if ai_url:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
@@ -308,7 +308,7 @@ async def service_health(
             services["tensorzero"] = {"status": "unreachable", "error": type(e).__name__}
 
     # Check Scheduler
-    scheduler_url = getattr(settings, "SCHEDULER_SERVICE_URL", "")
+    scheduler_url = settings.SCHEDULER_SERVICE_URL
     if scheduler_url:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
@@ -316,6 +316,16 @@ async def service_health(
                 services["scheduler"] = {"status": "healthy" if r.status_code == 200 else "degraded"}
         except Exception as e:
             services["scheduler"] = {"status": "unreachable", "error": type(e).__name__}
+
+    # Check Worker
+    worker_url = settings.WORKER_SERVICE_URL
+    if worker_url:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.get(f"{worker_url.rstrip('/')}/api/health")
+                services["worker"] = {"status": "healthy" if r.status_code == 200 else "degraded"}
+        except Exception as e:
+            services["worker"] = {"status": "unreachable", "error": type(e).__name__}
 
     return {
         "status": "healthy" if all(s.get("status") == "healthy" for s in services.values()) else "degraded",
