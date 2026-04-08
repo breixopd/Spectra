@@ -113,7 +113,10 @@ async def spectra_error_handler(request: Request, exc: SpectraError) -> HTMLResp
             content=_error_templates.get_template(template_name).render(detail=detail),
             status_code=status_code,
         )
-    return JSONResponse(exc.to_dict(), status_code=status_code)
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": exc.message},
+    )
 
 
 # --- GZip Compression ---
@@ -159,7 +162,6 @@ async def maintenance_mode_check(request: Request, call_next):
             if path.startswith("/api/"):
                 return JSONResponse({"detail": msg}, status_code=503)
             else:
-                _maint_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
                 return HTMLResponse(
                     content=_maint_templates.get_template("errors/maintenance.html").render(message=msg),
                     status_code=503,
@@ -224,6 +226,7 @@ if settings.SERVICE_MODE in ("", "all", "api"):
 
 # --- Custom Error Handlers ---
 _error_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+_maint_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 def _wants_html(request: Request) -> bool:

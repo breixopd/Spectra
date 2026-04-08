@@ -1,3 +1,9 @@
+[project]
+name = "spectra"
+version = "0.1.0"
+description = "AI-powered penetration testing platform"
+requires-python = ">=3.11"
+
 [tool.bandit]
 exclude_dirs = ["tests", "alembic"]
 skips = ["B101"]  # assert is fine in non-production code
