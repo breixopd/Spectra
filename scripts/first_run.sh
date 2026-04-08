@@ -19,7 +19,7 @@ err() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 # Check prerequisites
 check_prereqs() {
     log "Checking prerequisites..."
-    for cmd in docker curl jq; do
+    for cmd in docker curl jq openssl; do
         command -v "$cmd" >/dev/null 2>&1 || { err "Required command not found: $cmd"; exit 1; }
     done
 
@@ -50,6 +50,7 @@ check_prereqs() {
         sed -i "s|change-me-shared-between-app-ai-scheduler-worker|$(generate_secret)|" "${ENV_FILE}"
         sed -i "s|change-me-db-password|${db_pass}|g" "${ENV_FILE}"
         sed -i "s|change-me-redis-pass|$(generate_password)|" "${ENV_FILE}"
+        sed -i "s|change-me-garage-secret|$(generate_secret)|" "${ENV_FILE}"
         sed -i "s|change-me-clickhouse|$(generate_password)|" "${ENV_FILE}"
         log "  ✓ Secrets generated"
     else

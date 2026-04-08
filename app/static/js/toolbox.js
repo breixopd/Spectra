@@ -14,7 +14,8 @@ function _faToLucide(faIcon) {
     };
     if (!faIcon) return 'wrench';
     const name = faIcon.replace(/^fa-/, '');
-    return map[faIcon] || map['fa-' + name] || name;
+    const resolved = map[faIcon] || map['fa-' + name] || name;
+    return /^[a-z0-9-]+$/i.test(resolved) ? resolved : 'box';
 }
 
 function _sanitizeToolColor(value) {
@@ -354,15 +355,15 @@ async function runToolTest(toolId) {
         if (error) throw new Error(error);
         if (result.success) {
             resultDiv.innerHTML = `
-                <div class="text-green-400 mb-2">[SUCCESS] Exit code: ${result.exit_code} | Duration: ${result.duration_seconds?.toFixed(2)}s</div>
-                <div class="text-gray-300 mb-2">Parsed Findings: ${result.parsed_findings_count}</div>
+                <div class="text-green-400 mb-2">[SUCCESS] Exit code: ${escapeHtml(String(result.exit_code))} | Duration: ${escapeHtml(String(result.duration_seconds?.toFixed(2)))}s</div>
+                <div class="text-gray-300 mb-2">Parsed Findings: ${escapeHtml(String(result.parsed_findings_count))}</div>
                 ${result.parsed_findings?.length > 0 ? `<div class="text-violet-400 mb-2">Sample Findings:</div><pre class="text-xs text-gray-400 overflow-x-auto">${escapeHtml(JSON.stringify(result.parsed_findings.slice(0, 5), null, 2))}</pre>` : ''}
                 <div class="text-gray-500 mt-4 border-t border-gray-700 pt-2">STDOUT (truncated):</div>
                 <pre class="text-xs text-gray-400 overflow-x-auto whitespace-pre-wrap max-h-48">${escapeHtml(result.stdout?.slice(0, 2000) || '(empty)')}</pre>
                 ${result.stderr ? `<div class="text-yellow-500 mt-2">STDERR:</div><pre class="text-xs text-yellow-400/70 overflow-x-auto whitespace-pre-wrap">${escapeHtml(result.stderr)}</pre>` : ''}`;
         } else {
             resultDiv.innerHTML = `
-                <div class="text-red-400 mb-2">[FAILED] Exit code: ${result.exit_code}</div>
+                <div class="text-red-400 mb-2">[FAILED] Exit code: ${escapeHtml(String(result.exit_code))}</div>
                 <div class="text-gray-500 mt-2">STDOUT:</div>
                 <pre class="text-xs text-gray-400 overflow-x-auto whitespace-pre-wrap">${escapeHtml(result.stdout || '(empty)')}</pre>
                 <div class="text-red-500 mt-2">STDERR:</div>
