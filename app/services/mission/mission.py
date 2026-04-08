@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, ClassVar
 
 from app.core.enums import MissionStatus
@@ -73,7 +73,7 @@ class Mission:
         self.user_id = user_id
         self.requires_approval = requires_approval
         self.status = "created"
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(UTC)
         self.plan: MissionPlan | None = None
         self.current_task_index = 0
         self.findings: list[dict[str, Any]] = []
@@ -186,7 +186,7 @@ class Mission:
 
     def log(self, message: str) -> None:
         """Add a log message and broadcast to UI."""
-        timestamp = datetime.now().strftime("%H:%M:%S")
+        timestamp = datetime.now(UTC).strftime("%H:%M:%S")
         entry = f"[{timestamp}] [{self.id[:8]}] {message}"
         self.logs.append(entry)
         self._logger.info("%s", message)
@@ -333,7 +333,7 @@ class Mission:
             "command": command,
             "success": success,
             "error": error,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         self.tool_executions.append(record)
 

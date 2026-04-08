@@ -310,10 +310,13 @@ def test_logout_deletes_cookie_with_secure_flags():
     _clear_auth_cookies(request, response)
 
     headers = _set_cookie_headers(response)
-    assert len(headers) == 2
+    assert len(headers) == 3
     assert any(f"Path={ACCESS_COOKIE_PATH}" in header for header in headers)
     assert any(f"Path={REFRESH_COOKIE_PATH}" in header for header in headers)
+    assert any("csrf_token" in header for header in headers)
     assert all("Max-Age=0" in header for header in headers)
-    assert all("HttpOnly" in header for header in headers)
-    assert all("Secure" in header for header in headers)
-    assert all("samesite=strict" in header.lower() for header in headers)
+    # csrf_token is not HttpOnly (JS needs to read it), so check only auth cookies
+    auth_headers = [h for h in headers if "csrf_token" not in h]
+    assert all("HttpOnly" in header for header in auth_headers)
+    assert all("Secure" in header for header in auth_headers)
+    assert all("samesite=strict" in header.lower() for header in auth_headers)

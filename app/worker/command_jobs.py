@@ -6,7 +6,7 @@ import logging
 import shutil
 import tempfile
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -111,7 +111,7 @@ async def execute_script_job(
         logger.warning("Script blocked by safety check: %s", reason)
         return _error_job_result(f"Blocked by safety check: {reason}")
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     run_id = f"script_{timestamp}_{uuid.uuid4().hex[:4]}"
     work_dir = Path(tempfile.mkdtemp(prefix=f"spectra_scripts_{run_id}_"))
     work_dir.mkdir(parents=True, exist_ok=True)

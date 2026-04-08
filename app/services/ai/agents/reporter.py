@@ -336,14 +336,14 @@ Immediate attention is required for critical and high severity findings.
     async def _save_report(self, mission_id: str, report: ReportOutput, input_data: ReporterInput) -> str:
         """Save report to storage in multiple formats."""
         import json
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         from app.core.config import settings
         from app.services.storage import get_storage_service
 
         storage = get_storage_service()
         bucket = settings.S3_BUCKET_MISSIONS
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         base_name = f"report_{timestamp}"
 
         # Save JSON format
@@ -351,7 +351,7 @@ Immediate attention is required for critical and high severity findings.
             "mission_id": mission_id,
             "target": report.target,
             "assessment_date": report.assessment_date,
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "executive_summary": report.executive_summary,
             "statistics": {
                 "critical": report.critical_count,
@@ -386,12 +386,12 @@ Immediate attention is required for critical and high severity findings.
 
     def _generate_markdown_report(self, report: ReportOutput, input_data: ReporterInput) -> str:
         """Generate markdown formatted report."""
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         md = f"""# Security Assessment Report
 
 ## Target: {report.target}
-**Date:** {datetime.now().strftime("%Y-%m-%d %H:%M")}
+**Date:** {datetime.now(UTC).strftime("%Y-%m-%d %H:%M")}
 
 ---
 
@@ -423,7 +423,7 @@ Immediate attention is required for critical and high severity findings.
 
     def _generate_html_report(self, report: ReportOutput, input_data: ReporterInput) -> str:
         """Generate HTML formatted report."""
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         sections_html = ""
         for section in report.sections:
@@ -469,7 +469,7 @@ Immediate attention is required for critical and high severity findings.
     <div class="container">
         <h1>Security Assessment Report</h1>
         <p><strong>Target:</strong> {report.target}</p>
-        <p><strong>Date:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
+        <p><strong>Date:</strong> {datetime.now(UTC).strftime("%Y-%m-%d %H:%M")}</p>
 
         <div class="summary">
             <h2>Executive Summary</h2>

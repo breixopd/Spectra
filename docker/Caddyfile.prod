@@ -15,6 +15,10 @@
 		header Upgrade websocket
 	}
 	route {
+		request_body {
+			max_size 50MB
+		}
+
 		handle /static/* {
 			header Cache-Control "public, max-age=604800, immutable"
 			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}

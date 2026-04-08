@@ -5,8 +5,6 @@ const generatedReports = new Map();
 
 function getReportsErrorMessage(error, fallback) {
     if (typeof error === 'string' && error.trim()) return error;
-    if (error && typeof error.detail === 'string' && error.detail.trim()) return error.detail;
-    if (error && typeof error.message === 'string' && error.message.trim()) return error.message;
     return fallback;
 }
 
@@ -320,7 +318,7 @@ async function confirmDeleteMission() {
     hideDeleteMissionModal();
     const { error } = await spectraApi.delete(`/api/v1/missions/${deleteMissionId}`);
     if (error) {
-        _spectraToast(error.detail || 'Failed to delete mission', 'error');
+        _spectraToast(error || 'Failed to delete mission', 'error');
         return;
     }
     generatedReports.delete(String(deleteMissionId));

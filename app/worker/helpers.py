@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 import signal
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import wraps
 from pathlib import Path
 from typing import Any
@@ -186,7 +186,7 @@ async def _track_tool_stats(
         else:
             stats["fail_count"] += 1
         stats["total_duration"] += duration
-        stats["last_run"] = datetime.now().isoformat()
+        stats["last_run"] = datetime.now(UTC).isoformat()
         stats["last_duration"] = str(duration)
         await cache.set(stats_key, stats, ttl=604800)  # 7 days
     except (OSError, RuntimeError, ConnectionError, ValueError) as e:
@@ -204,7 +204,7 @@ def _status_field(
 def _merge_status_logs(existing_logs: Any, log_entry: Any) -> list[str]:
     logs = existing_logs if isinstance(existing_logs, list) else []
     if isinstance(log_entry, str) and log_entry.strip():
-        return [*logs, f"{datetime.now().isoformat()} {log_entry.strip()}"][-40:]
+        return [*logs, f"{datetime.now(UTC).isoformat()} {log_entry.strip()}"][-40:]
     return logs
 
 
@@ -214,7 +214,7 @@ def _build_tool_status_payload(
 ) -> dict[str, Any]:
     return {
         "status": str(result.get("status") or "unknown"),
-        "last_updated": datetime.now().isoformat(),
+        "last_updated": datetime.now(UTC).isoformat(),
         "error": str(result.get("error") or ""),
         "message": _status_field(result, existing, "message"),
         "phase": _status_field(result, existing, "phase"),
