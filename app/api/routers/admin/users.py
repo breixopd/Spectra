@@ -354,12 +354,16 @@ async def update_user(
 
     effective_is_superuser = body.role == "admin" if body.role is not None else row.is_superuser
     effective_is_active = body.is_active if body.is_active is not None else row.is_active
-    if row.is_superuser and row.is_active and not (effective_is_superuser and effective_is_active):
-        if await _active_superuser_count(session) <= 1:
-            raise HTTPException(
-                status_code=409,
-                detail="Cannot remove or deactivate the last active superuser",
-            )
+    if (
+        row.is_superuser
+        and row.is_active
+        and not (effective_is_superuser and effective_is_active)
+        and await _active_superuser_count(session) <= 1
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot remove or deactivate the last active superuser",
+        )
     if body.is_active and not row.email_verified:
         raise HTTPException(status_code=400, detail="User must complete account activation before being activated")
 

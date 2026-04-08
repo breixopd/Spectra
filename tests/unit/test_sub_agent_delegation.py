@@ -16,7 +16,7 @@ from tests.mocks.llm import MockLLMClient
 
 
 def _ctx(**overrides) -> AgentContext:
-    defaults = dict(mission_id="m-1", target="10.0.0.1", phase="exploitation")
+    defaults = {"mission_id": "m-1", "target": "10.0.0.1", "phase": "exploitation"}
     defaults.update(overrides)
     return AgentContext(**defaults)
 

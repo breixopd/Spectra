@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 
 from app.core.tasks import create_safe_task
@@ -24,10 +25,8 @@ async def _main() -> None:
     finally:
         if heartbeat_task:
             heartbeat_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await heartbeat_task
-            except asyncio.CancelledError:
-                pass
         await shutdown()
 
 

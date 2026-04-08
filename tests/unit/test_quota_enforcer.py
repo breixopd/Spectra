@@ -125,7 +125,7 @@ class TestCheckMissionQuota:
 
         with patch("app.services.billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
-            allowed, reason = await enforcer.check_mission_quota("user-1", plan)
+            allowed, _reason = await enforcer.check_mission_quota("user-1", plan)
 
         assert allowed is True
 
@@ -182,7 +182,7 @@ class TestCheckApiQuota:
 
         with patch("app.services.billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
-            allowed, reason = await enforcer.check_api_quota("user-1", plan)
+            allowed, _reason = await enforcer.check_api_quota("user-1", plan)
 
         assert allowed is True
 
@@ -192,7 +192,7 @@ class TestCheckApiQuota:
         plan = _make_plan(max_api_requests_per_hour=0)
 
         enforcer = QuotaEnforcer()
-        allowed, reason = await enforcer.check_api_quota("user-1", plan)
+        allowed, _reason = await enforcer.check_api_quota("user-1", plan)
 
         assert allowed is True
 
@@ -213,7 +213,7 @@ class TestCheckStorageQuota:
 
         with patch("app.services.billing.quota_enforcer.async_session_maker", return_value=session):
             enforcer = QuotaEnforcer()
-            allowed, reason = await enforcer.check_storage_quota("user-1", plan)
+            allowed, _reason = await enforcer.check_storage_quota("user-1", plan)
 
         assert allowed is True
 

@@ -5,6 +5,7 @@ Tests are ordered so that all authenticated_page (session-scoped cookie) tests
 run before unauthenticated page tests to avoid rate-limit / cookie interference.
 """
 
+import contextlib
 import time
 
 import pytest
@@ -41,10 +42,8 @@ def test_plan_displayed_on_profile(authenticated_page: Page, app_url: str):
         fresh = _refresh_auth_cookies(app_url)
         page.context.add_cookies(fresh)
         page.goto(f"{app_url}/profile", wait_until="domcontentloaded")
-    try:
+    with contextlib.suppress(Exception):
         page.wait_for_load_state("networkidle", timeout=10_000)
-    except Exception:
-        pass
 
     # Use JS to switch to the Plan tab (more reliable than clicking)
     page.evaluate("""() => {

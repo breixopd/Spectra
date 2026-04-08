@@ -11,10 +11,7 @@ class TestDangerousDirectiveDetection:
     def _check_rejected(self, content: str) -> bool:
         """Return True if content would be rejected by the directive check."""
         content_lower = content.lower()
-        for directive in DANGEROUS_OPENVPN_DIRECTIVES:
-            if directive in content_lower:
-                return True
-        return False
+        return any(directive in content_lower for directive in DANGEROUS_OPENVPN_DIRECTIVES)
 
     def test_rejects_script_security(self):
         config = "client\nscript-security 2\nremote vpn.example.com 1194\n"

@@ -173,7 +173,7 @@ class TestMissionFilterImports:
         from app.api.routers.missions import router
 
         routes = [r.path for r in router.routes]
-        assert any("" == r or "/{mission_id}" in r for r in routes)
+        assert any(r == "" or "/{mission_id}" in r for r in routes)
 
     def test_create_chain_request_schema(self):
         from app.api.routers.missions import CreateChainRequest

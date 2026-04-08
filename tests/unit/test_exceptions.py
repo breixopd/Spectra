@@ -118,7 +118,7 @@ class TestOtherErrors:
 
     def test_not_found_error_with_identifier(self):
         err = NotFoundError("User", "42")
-        assert "User not found: 42" == err.message
+        assert err.message == "User not found: 42"
 
     def test_not_found_error_without_identifier(self):
         err = NotFoundError("User")

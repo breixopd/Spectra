@@ -53,11 +53,10 @@ async def test_db_connectivity_success(caplog):
         ctx.__aexit__ = AsyncMock(return_value=False)
         return ctx
 
-    with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
-        with caplog.at_level("INFO"):
-            from app.core.lifespan import run_startup_checks
+    with patch("app.core.lifespan.async_session_maker", side_effect=session_factory), caplog.at_level("INFO"):
+        from app.core.lifespan import run_startup_checks
 
-            await run_startup_checks()
+        await run_startup_checks()
 
     assert any("Database connectivity verified" in r.message for r in caplog.records)
 
@@ -108,11 +107,10 @@ async def test_missing_tables_warning(caplog):
         ctx.__aexit__ = AsyncMock(return_value=False)
         return ctx
 
-    with patch("app.core.lifespan.async_session_maker", side_effect=session_factory):
-        with caplog.at_level("WARNING"):
-            from app.core.lifespan import run_startup_checks
+    with patch("app.core.lifespan.async_session_maker", side_effect=session_factory), caplog.at_level("WARNING"):
+        from app.core.lifespan import run_startup_checks
 
-            await run_startup_checks()
+        await run_startup_checks()
 
     assert any("Missing database tables" in r.message for r in caplog.records)
 

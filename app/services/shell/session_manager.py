@@ -11,6 +11,7 @@ Supports multiple routing modes:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import socket
 import threading
@@ -127,10 +128,8 @@ class ShellSessionManager:
 
     def _ensure_loop(self) -> None:
         if not self.loop:
-            try:
+            with contextlib.suppress(RuntimeError):
                 self.loop = asyncio.get_running_loop()
-            except RuntimeError:
-                pass
 
     def allocate_port(self) -> int:
         """Find a free port in the range."""
@@ -298,10 +297,8 @@ class ShellSessionManager:
                 logger.info("Sandbox shell session %s ended", session_id)
                 self.sessions.pop(session_id, None)
                 self.listeners.pop(port, None)
-                try:
+                with contextlib.suppress(OSError):
                     raw_sock.close()
-                except OSError:
-                    pass  # Socket already closed
             except OSError as e:
                 logger.error("Sandbox listener error for session %s: %s", session_id, e)
                 self.listeners.pop(port, None)
@@ -354,10 +351,8 @@ class ShellSessionManager:
                 except OSError as e:
                     logger.warning("Error closing socket for session %s: %s", session_id, e)
             if session._exec_handle:
-                try:
+                with contextlib.suppress(OSError):
                     session._exec_handle.output.close()
-                except OSError:
-                    pass  # Handle already closed
             session.active = False
             del self.sessions[session_id]
 
@@ -379,10 +374,8 @@ class ShellSessionManager:
                         except OSError as e:
                             logger.debug("Socket cleanup error for expired session: %s", e)
                     if session._exec_handle:
-                        try:
+                        with contextlib.suppress(OSError):
                             session._exec_handle.output.close()
-                        except OSError:
-                            pass  # Handle already closed
 
 
 shell_manager = ShellSessionManager()

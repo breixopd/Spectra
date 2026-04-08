@@ -25,12 +25,12 @@ def _mock_webhook(**overrides):
     wh.id = overrides.get("id", "wh-test-1")
     wh.user_id = overrides.get("user_id", "user-1")
     wh.url = overrides.get("url", "https://hooks.example.com/callback")
-    wh.secret = overrides.get("secret", None)
+    wh.secret = overrides.get("secret")
     wh.events = overrides.get("events", ["mission.completed"])
     wh.is_active = overrides.get("is_active", True)
     wh.description = overrides.get("description", "Test webhook")
-    wh.created_at = overrides.get("created_at", None)
-    wh.updated_at = overrides.get("updated_at", None)
+    wh.created_at = overrides.get("created_at")
+    wh.updated_at = overrides.get("updated_at")
     return wh
 
 

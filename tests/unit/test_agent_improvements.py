@@ -256,13 +256,13 @@ class TestConfigurableConsensus:
 
     def test_medium_risk_requires_2_of_3(self):
         config = VotingConfig()
-        n, k, c = config.consensus_threshold["medium"]
+        n, k, _c = config.consensus_threshold["medium"]
         assert n == 3
         assert k == 2
 
     def test_high_risk_requires_3_of_3(self):
         config = VotingConfig()
-        n, k, c = config.consensus_threshold["high"]
+        n, k, _c = config.consensus_threshold["high"]
         assert n == 3
         assert k == 3
 

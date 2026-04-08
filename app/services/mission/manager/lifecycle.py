@@ -74,20 +74,19 @@ class MissionLifecycleManager:
 
         # Persist to DB
         try:
-            async with async_session_maker() as session:
-                async with session.begin():
-                    repo = MissionRepository(session)
-                    await repo.create(
-                        id=mission.id,
-                        target=target,
-                        directive=directive,
-                        status="created",
-                        logs=[],
-                        summary={},
-                        vpn_config=vpn_config,
-                        user_id=user_id,
-                        requires_approval=requires_approval,
-                    )
+            async with async_session_maker() as session, session.begin():
+                repo = MissionRepository(session)
+                await repo.create(
+                    id=mission.id,
+                    target=target,
+                    directive=directive,
+                    status="created",
+                    logs=[],
+                    summary={},
+                    vpn_config=vpn_config,
+                    user_id=user_id,
+                    requires_approval=requires_approval,
+                )
         except SQLAlchemyError as e:
             logger.error("Failed to persist mission start (DB error): %s", e)
         except (OSError, RuntimeError, TypeError, AttributeError) as e:
@@ -154,17 +153,16 @@ class MissionLifecycleManager:
     async def update_db_status(self, mission: Mission) -> None:
         """Update mission status in database."""
         try:
-            async with async_session_maker() as session:
-                async with session.begin():
-                    repo = MissionRepository(session)
-                    await repo.update(
-                        mission.id,
-                        status=mission.status,
-                        logs=mission.logs,
-                        # Mission.summary is the persisted authoritative mission-output read model for API, report, and notification consumers.
-                        summary=mission.to_dict(),
-                        attack_surface=mission.attack_surface.model_dump(),
-                    )
+            async with async_session_maker() as session, session.begin():
+                repo = MissionRepository(session)
+                await repo.update(
+                    mission.id,
+                    status=mission.status,
+                    logs=mission.logs,
+                    # Mission.summary is the persisted authoritative mission-output read model for API, report, and notification consumers.
+                    summary=mission.to_dict(),
+                    attack_surface=mission.attack_surface.model_dump(),
+                )
         except SQLAlchemyError as e:
             logger.error("Failed to update mission DB (DB error): %s", e)
         except (OSError, RuntimeError, TypeError, AttributeError) as e:
@@ -190,14 +188,13 @@ class MissionLifecycleManager:
         """Save mission checkpoint state to DB."""
         try:
             checkpoint = mission.save_checkpoint()
-            async with async_session_maker() as session:
-                async with session.begin():
-                    repo = MissionRepository(session)
-                    await repo.update(
-                        mission.id,
-                        checkpoint_data=checkpoint,
-                        resume=True,
-                    )
+            async with async_session_maker() as session, session.begin():
+                repo = MissionRepository(session)
+                await repo.update(
+                    mission.id,
+                    checkpoint_data=checkpoint,
+                    resume=True,
+                )
             logger.info("Checkpoint saved for mission %s", mission.id)
         except (OSError, RuntimeError) as e:
             logger.error("Failed to save checkpoint for mission %s: %s", mission.id, e)
@@ -210,17 +207,16 @@ class MissionLifecycleManager:
             RuntimeError: If checkpoint deserialization fails.
         """
         try:
-            async with async_session_maker() as session:
-                async with session.begin():
-                    repo = MissionRepository(session)
-                    db_mission = await repo.get_by_id(mission_id)
-                    if not db_mission or not db_mission.checkpoint_data:
-                        raise ValueError(f"No checkpoint data for mission {mission_id}")
+            async with async_session_maker() as session, session.begin():
+                repo = MissionRepository(session)
+                db_mission = await repo.get_by_id(mission_id)
+                if not db_mission or not db_mission.checkpoint_data:
+                    raise ValueError(f"No checkpoint data for mission {mission_id}")
 
-                    mission = Mission.from_checkpoint(db_mission.checkpoint_data)
-                    self.active_missions[mission.id] = mission
-                    mission.log("[RESUME] Mission resumed from checkpoint")
-                    return mission
+                mission = Mission.from_checkpoint(db_mission.checkpoint_data)
+                self.active_missions[mission.id] = mission
+                mission.log("[RESUME] Mission resumed from checkpoint")
+                return mission
         except ValueError:
             raise
         except (OSError, RuntimeError) as e:

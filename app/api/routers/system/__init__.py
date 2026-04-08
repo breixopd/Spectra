@@ -16,12 +16,12 @@ from fastapi import APIRouter
 from .data_sources import router as data_sources_router
 
 # Re-export endpoint functions for backward compatibility (e.g. tests)
-from .health import get_safety_stats  # noqa: F401
+from .health import get_safety_stats
 from .health import router as health_router
 from .operations import router as operations_router
 
 # Re-export schemas and helpers for backward compatibility
-from .schemas import (  # noqa: F401
+from .schemas import (
     ClearMissionsRequest,
     ClearResponse,
     ComponentStatus,

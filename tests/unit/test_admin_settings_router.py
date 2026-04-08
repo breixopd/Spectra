@@ -31,7 +31,7 @@ def _build_app() -> FastAPI:
 
     from app.api.dependencies import get_current_active_user
 
-    app.dependency_overrides[get_current_active_user] = lambda: _make_admin()
+    app.dependency_overrides[get_current_active_user] = _make_admin
     return app
 
 

@@ -159,9 +159,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         """Check whether parallel execution is appropriate for current context."""
         if context.stealth_mode:
             return False
-        if context.max_concurrency < 2:
-            return False
-        return True
+        return not context.max_concurrency < 2
 
     def select_parallel_tools(
         self,

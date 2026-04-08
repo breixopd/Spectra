@@ -320,9 +320,9 @@ def phase_to_state(phase: str) -> MissionState:
 
 
 __all__ = [
+    "VALID_TRANSITIONS",
     "MissionState",
     "MissionStateMachine",
     "StateTransition",
-    "VALID_TRANSITIONS",
     "phase_to_state",
 ]

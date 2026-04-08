@@ -54,7 +54,7 @@ async def get_email_templates(
     """Return all email templates."""
     from app.services.email.templates import TEMPLATES
 
-    return {name: tpl for name, tpl in TEMPLATES.items()}
+    return dict(TEMPLATES.items())
 
 
 @router.put("/api/admin/email/templates/{name}")

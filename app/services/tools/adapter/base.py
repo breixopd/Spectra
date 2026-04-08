@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 class ToolExecutionError(Exception):
     """Raised when tool execution fails."""
 
-    pass
 
 
 class ToolAdapter(ABC):

@@ -150,15 +150,7 @@ async def maintenance_mode_check(request: Request, call_next):
 
     path = request.url.path
     exempt = (
-        path == "/"
-        or path.startswith("/static")
-        or path.startswith("/api/health")
-        or path.startswith("/api/admin")
-        or path == "/admin"
-        or path == "/login"
-        or path.startswith("/api/auth")
-        or path.startswith("/api/v1/auth")
-        or path.startswith("/legal/")
+        path == "/" or path.startswith(("/static", "/api/health", "/api/admin", "/api/auth", "/api/v1/auth", "/legal/")) or path == "/admin" or path == "/login"
     )
     if not exempt:
         try:
@@ -343,13 +335,7 @@ def _include_routers(app: FastAPI, mode: str) -> None:
         app.include_router(ui.router, tags=["UI"])
         app.include_router(admin.router, tags=["Admin"])
 
-    elif mode == "ai":
-        app.include_router(health.router, prefix="/api", tags=["Health"])
-
-    elif mode == "worker":
-        app.include_router(health.router, prefix="/api", tags=["Health"])
-
-    elif mode == "scheduler":
+    elif mode == "ai" or mode == "worker" or mode == "scheduler":
         app.include_router(health.router, prefix="/api", tags=["Health"])
 
     elif mode == "tools":

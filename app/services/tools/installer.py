@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import shutil
 from pathlib import Path
@@ -140,21 +141,16 @@ class ToolInstaller:
                         import re
 
                         output = (stdout + stderr).decode(errors="replace")
-                        if re.search(tool.config.installation.verification_regex, output):
-                            return True
-                        return False
+                        return bool(re.search(tool.config.installation.verification_regex, output))
 
                 except TimeoutError:
                     logger.warning("Verification timed out for %s", tool.config.id)
-                    try:
+                    with contextlib.suppress(ProcessLookupError):
                         proc.kill()
-                    except ProcessLookupError:
-                        pass
                     return False
 
             except (OSError, RuntimeError, ValueError) as e:
                 logger.warning("Verification failed for %s: %s", tool.config.id, e)
                 # Fallback to shutil check if verification command fails to run
-                pass
 
         return pass_check

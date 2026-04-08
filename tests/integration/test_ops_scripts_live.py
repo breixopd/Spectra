@@ -15,8 +15,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _docker_inspect_running(container_name: str) -> bool:
-    result = subprocess.run(  # noqa: S603
-        ["docker", "inspect", "--format", "{{.State.Running}}", container_name],  # noqa: S607
+    result = subprocess.run(
+        ["docker", "inspect", "--format", "{{.State.Running}}", container_name],
         capture_output=True,
         text=True,
         check=False,
@@ -71,7 +71,7 @@ def ops_env() -> dict[str, str]:
 
 
 def _run_script(ops_env: dict[str, str], script_path: str, *args: str) -> str:
-    result = subprocess.run(  # noqa: S603, S607
+    result = subprocess.run(
         [script_path, *args],
         cwd=REPO_ROOT,
         env=ops_env,

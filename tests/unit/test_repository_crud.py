@@ -65,7 +65,7 @@ class TestBaseRepositoryCreate:
 
     @pytest.mark.asyncio
     async def test_create_passes_kwargs_to_model(self):
-        repo, model, session = _make_base_repo(("id", "name", "status"))
+        repo, model, _session = _make_base_repo(("id", "name", "status"))
         model.return_value = MagicMock()
         await repo.create(name="a", status="active")
         model.assert_called_once_with(name="a", status="active")

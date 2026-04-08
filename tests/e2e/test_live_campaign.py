@@ -5,7 +5,6 @@ import os
 import pytest
 import pytest_asyncio
 
-import app.models  # noqa
 from app.core.config import settings
 from app.core.database import engine
 from app.models.base import Base
@@ -84,9 +83,10 @@ class TestLiveCampaign:
 
         try:
             res = subprocess.run(
-                ["docker", "ps", "--format", "{{.Names}}"],  # noqa: S607
+                ["docker", "ps", "--format", "{{.Names}}"],
                 capture_output=True,
                 text=True,
+                check=False,
             )
             if "spectra-tools" in res.stdout:
                 print("DEBUG: specialized 'spectra-tools' container found.")
@@ -101,7 +101,6 @@ class TestLiveCampaign:
         # If we don't have a container and not root, we can't install.
         # But the User wants us to "look at logs and fix issues".
         # This implies we *should* be able to install.
-        pass
 
         for tool_id in critical_tools:
             if tool_id in registry._tools:
@@ -116,7 +115,6 @@ class TestLiveCampaign:
                     except Exception as e:
                         print(f"Failed to install {tool_id}: {e}")
                         # Continue anyway, maybe it was already there or we want to see it fail later
-                        pass
 
         # Reset DB
         async with engine.begin() as conn:

@@ -25,11 +25,11 @@ from tests.mocks.llm import MockLLMClient
 
 
 def _make_context(**overrides) -> AgentContext:
-    defaults = dict(
-        mission_id="m-1",
-        target="192.168.1.1",
-        phase="discovery",
-    )
+    defaults = {
+        "mission_id": "m-1",
+        "target": "192.168.1.1",
+        "phase": "discovery",
+    }
     defaults.update(overrides)
     return AgentContext(**defaults)
 
@@ -417,7 +417,7 @@ class TestScopeAgentExtraction:
         from app.services.ai.agents.scope import ScopeAgent
 
         agent = ScopeAgent(MockLLMClient())
-        targets, warnings = agent._extract_targets("scan 10.0.0.1")  # type: ignore[attr-defined]
+        targets, _warnings = agent._extract_targets("scan 10.0.0.1")  # type: ignore[attr-defined]
         values = [t.value for t in targets]
         assert "10.0.0.1" in values
 

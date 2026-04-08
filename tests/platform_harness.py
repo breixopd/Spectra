@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import time
 import uuid
@@ -137,10 +138,8 @@ async def reset_rate_limit_state_if_requested() -> None:
             f"Preflight failed: {exc.__class__.__name__}"
         )
     finally:
-        try:
+        with contextlib.suppress(redis_exceptions.RedisError):
             await client.aclose()
-        except redis_exceptions.RedisError:
-            pass
 
 
 def percentile(values: list[float], pct: float) -> float:

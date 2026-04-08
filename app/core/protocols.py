@@ -31,7 +31,6 @@ class Closeable(Protocol):
 class AgentInput(Protocol):
     """Base protocol for agent input types."""
 
-    pass
 
 
 class AgentOutput(Protocol):
@@ -189,16 +188,16 @@ class NotificationServiceProtocol(Protocol):
 
 
 __all__ = [
-    "HealthCheckable",
-    "Closeable",
     "AgentInput",
     "AgentOutput",
     "CacheBackend",
-    "EventHandler",
-    "ToolAdapter",
-    "LLMServiceProtocol",
+    "Closeable",
     "EmbeddingServiceProtocol",
+    "EventHandler",
+    "HealthCheckable",
+    "LLMServiceProtocol",
+    "NotificationServiceProtocol",
     "RAGServiceProtocol",
     "SandboxServiceProtocol",
-    "NotificationServiceProtocol",
+    "ToolAdapter",
 ]

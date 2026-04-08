@@ -89,10 +89,7 @@ class OsintSanitizer:
         if cls._IP_PATTERN.search(serialized):
             return False
         # Check for non-safe domains
-        for match in cls._DOMAIN_PATTERN.finditer(serialized):
-            if match.group(0).lower() not in cls._SAFE_DOMAINS:
-                return False
-        return True
+        return all(match.group(0).lower() in cls._SAFE_DOMAINS for match in cls._DOMAIN_PATTERN.finditer(serialized))
 
 
 # ---------------------------------------------------------------------------
@@ -388,11 +385,10 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
             # Build concurrent tasks depending on query_type
             tasks: dict[str, Any] = {}
 
-            if qt in ("cve_lookup", "technology_intel", "service_fingerprint"):
-                if cve_ids:
-                    tasks["nvd"] = self._query_nvd(cve_ids)
-                    tasks["kev"] = self._check_kev(cve_ids)
-                    tasks["epss"] = self._query_epss(cve_ids)
+            if qt in ("cve_lookup", "technology_intel", "service_fingerprint") and cve_ids:
+                tasks["nvd"] = self._query_nvd(cve_ids)
+                tasks["kev"] = self._check_kev(cve_ids)
+                tasks["epss"] = self._query_epss(cve_ids)
 
             if qt in ("technology_intel", "service_fingerprint", "exploit_search"):
                 tasks["exploitdb"] = self._query_exploitdb(technology, version)
@@ -419,9 +415,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
                 if key == "nvd":
                     cve_details.extend(result)
                     all_findings.extend(result)
-                elif key == "kev":
-                    all_findings.extend(result)
-                elif key == "epss":
+                elif key == "kev" or key == "epss":
                     all_findings.extend(result)
                 elif key == "exploitdb":
                     exploit_refs.extend(result)

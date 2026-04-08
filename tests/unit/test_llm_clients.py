@@ -275,10 +275,9 @@ class TestGetDefaultLLMClient:
 
         with (
             patch("app.services.ai.llm.settings", mock_settings),
-            patch("app.services.ai.router.settings", mock_settings),
+            patch("app.services.ai.router.settings", mock_settings),pytest.raises((ValueError, RuntimeError))
         ):
-            with pytest.raises((ValueError, RuntimeError)):
-                get_default_llm_client()
+            get_default_llm_client()
 
 
 # ===================================================================

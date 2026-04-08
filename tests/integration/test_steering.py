@@ -153,59 +153,58 @@ class TestUserSteering:
             mission_manager.execution.consensus,
             "validate_at_gate",
             side_effect=mock_validate,
-        ):
-            with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-                with patch("app.core.events.events.emit_sync"):
-                    mission_id = await mission_manager.start_mission(
-                        target=test_target_ip,
-                        directive="Test steering validation",
+        ), patch("app.services.mission.manager.lifecycle.async_session_maker"):
+            with patch("app.core.events.events.emit_sync"):
+                mission_id = await mission_manager.start_mission(
+                    target=test_target_ip,
+                    directive="Test steering validation",
+                )
+
+                mission = await mission_manager.get_mission(mission_id)
+
+                # Simulate task failure to trigger replanning
+                if mission:
+                    from app.services.ai.agents.mission_controller import (
+                        AssessmentPhase,
+                        Task,
                     )
 
-                    mission = await mission_manager.get_mission(mission_id)
+                    task = Task(
+                        task_id="test-task",
+                        description="Test task",
+                        agent_type="tool_selector",
+                        phase=AssessmentPhase.DISCOVERY,
+                        priority=1,
+                    )
 
-                    # Simulate task failure to trigger replanning
-                    if mission:
-                        from app.services.ai.agents.mission_controller import (
-                            AssessmentPhase,
-                            Task,
+                    from app.services.ai.agents.base import AgentContext
+
+                    context = AgentContext(
+                        mission_id=mission_id,
+                        session_id=mission_id,
+                        target=test_target_ip,
+                        mission="Test",
+                        phase="discovery",
+                        stealth_mode=False,
+                        max_concurrency=1,
+                    )
+
+                    # Mock controller to return a steering action
+                    # Since we are bypassing LLM client, we need to mock controller internal execution
+                    if mission_manager.execution.mission_controller:
+                        mock_controller_result = AsyncMock()
+                        mock_controller_result.success = True
+                        mock_controller_result.action = SteeringAction(
+                            confidence=0.9,
+                            risk_level=ActionRisk.LOW,
+                            reasoning="Test Replan",
+                            new_phase="discovery",
+                        )
+                        mission_manager.execution.mission_controller.execute = AsyncMock(
+                            return_value=mock_controller_result
                         )
 
-                        task = Task(
-                            task_id="test-task",
-                            description="Test task",
-                            agent_type="tool_selector",
-                            phase=AssessmentPhase.DISCOVERY,
-                            priority=1,
-                        )
-
-                        from app.services.ai.agents.base import AgentContext
-
-                        context = AgentContext(
-                            mission_id=mission_id,
-                            session_id=mission_id,
-                            target=test_target_ip,
-                            mission="Test",
-                            phase="discovery",
-                            stealth_mode=False,
-                            max_concurrency=1,
-                        )
-
-                        # Mock controller to return a steering action
-                        # Since we are bypassing LLM client, we need to mock controller internal execution
-                        if mission_manager.execution.mission_controller:
-                            mock_controller_result = AsyncMock()
-                            mock_controller_result.success = True
-                            mock_controller_result.action = SteeringAction(
-                                confidence=0.9,
-                                risk_level=ActionRisk.LOW,
-                                reasoning="Test Replan",
-                                new_phase="discovery",
-                            )
-                            mission_manager.execution.mission_controller.execute = AsyncMock(
-                                return_value=mock_controller_result
-                            )
-
-                        await mission_manager.execution._handle_task_failure(mission, task, "Test error", context)
+                    await mission_manager.execution._handle_task_failure(mission, task, "Test error", context)
 
         # If replan was successful and validated, this should be true
         assert replan_validated, "REPLAN gate was not validated"

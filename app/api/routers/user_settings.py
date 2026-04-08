@@ -1,5 +1,6 @@
 """User-facing settings API — preferences and BYOK configuration."""
 
+import contextlib
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -110,7 +111,7 @@ async def _audit_with_swallow(
     details: dict,
     request: Request,
 ) -> None:
-    try:
+    with contextlib.suppress(OSError):
         await audit_log_event(
             session,
             event_type,
@@ -118,8 +119,6 @@ async def _audit_with_swallow(
             details=details,
             request=request,
         )
-    except OSError:
-        pass
 
 
 async def _commit_and_audit_with_swallow(

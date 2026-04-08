@@ -600,5 +600,5 @@ class TestConsensusEdgeCases:
 
     def test_voting_config_consensus_threshold_low_risk_skips(self):
         cfg = VotingConfig()
-        n, k, c = cfg.consensus_threshold[ActionRisk.LOW.value]
+        n, _k, _c = cfg.consensus_threshold[ActionRisk.LOW.value]
         assert n == 0  # Skip consensus for LOW risk

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import re
 import uuid
@@ -226,7 +227,7 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
             _pg_listener_conn = await asyncpg.connect(dsn)
             await _pg_listener_conn.add_listener("spectra_jobs", lambda *_args: notify_event.set())
             logger.info("Worker LISTEN on spectra_jobs channel active")
-        except Exception as exc:  # noqa: BLE001 — fallback to polling
+        except Exception as exc:
             logger.warning("LISTEN setup failed, falling back to polling: %s", exc)
 
     await _start_listener()
@@ -236,10 +237,8 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
             try:
                 # Wait for a NOTIFY or fall back after poll_delay
                 notify_event.clear()
-                try:
+                with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(notify_event.wait(), timeout=poll_delay)
-                except TimeoutError:
-                    pass
 
                 # 1. Fetch next job (SKIP LOCKED prevents concurrent workers from taking the same job)
                 async with async_session_maker() as session:
@@ -317,10 +316,8 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                 await asyncio.sleep(poll_delay)
     finally:
         if _pg_listener_conn is not None:
-            try:
+            with contextlib.suppress(Exception):
                 await _pg_listener_conn.close()
-            except Exception:  # noqa: BLE001
-                pass
 
 
 async def queue_metrics(queue_name: str = "default") -> dict:

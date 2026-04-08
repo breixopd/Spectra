@@ -379,16 +379,15 @@ class TestEnrichCVE:
         with patch(
             "app.services.ai.cve_intel.get_metasploit_modules",
             return_value=[{"source": "metasploit", "module": "test"}],
-        ):
-            with patch("app.services.ai.exploit_db.get_exploit_db") as mock_db:
-                db = mock_db.return_value
-                db.is_kev.return_value = True
+        ), patch("app.services.ai.exploit_db.get_exploit_db") as mock_db:
+            db = mock_db.return_value
+            db.is_kev.return_value = True
 
-                enriched = enrich_cve_with_exploits(cve)
-                assert enriched["exploit_available"]
-                assert enriched["exploit_count"] == 1
-                assert enriched["kev_exploited"]
-                assert len(enriched["metasploit_modules"]) == 1
+            enriched = enrich_cve_with_exploits(cve)
+            assert enriched["exploit_available"]
+            assert enriched["exploit_count"] == 1
+            assert enriched["kev_exploited"]
+            assert len(enriched["metasploit_modules"]) == 1
 
     def test_enrich_no_exploits(self):
         cve = {"cve": "CVE-9999-0001", "severity": "low"}
@@ -432,7 +431,6 @@ class TestLookupCVEsLive:
     async def test_live_failure_falls_back(self):
         with patch(
             "app.services.ai.cve_intel.fetch_cves_from_nvd", new_callable=AsyncMock, side_effect=RuntimeError("fail")
-        ):
-            with patch("app.services.ai.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
-                results = await lookup_cves_live(product="Apache")
-                assert len(results) > 0  # Falls back to builtin
+        ), patch("app.services.ai.cve_intel.enrich_cve_with_exploits", side_effect=lambda x: x):
+            results = await lookup_cves_live(product="Apache")
+            assert len(results) > 0  # Falls back to builtin

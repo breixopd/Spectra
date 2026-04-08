@@ -48,8 +48,8 @@ def _make_user(**overrides):
     user.is_superuser = overrides.get("is_superuser", False)
     user.role = overrides.get("role", "operator")
     user.mfa_enabled = overrides.get("mfa_enabled", False)
-    user.mfa_secret = overrides.get("mfa_secret", None)
-    user.plan_id = overrides.get("plan_id", None)
+    user.mfa_secret = overrides.get("mfa_secret")
+    user.plan_id = overrides.get("plan_id")
     return user
 
 

@@ -1,5 +1,6 @@
 """Playwright UI test fixtures."""
 
+import contextlib
 import os
 import urllib.parse
 from typing import Any, cast
@@ -256,10 +257,8 @@ def authenticated_page(
     # Close any orphan pages left by timed-out tests.
     for p in shared_context.pages:
         if not p.is_closed():
-            try:
+            with contextlib.suppress(Exception):
                 p.close()
-            except Exception:
-                pass
 
     # Brief pause to let any pending keepalive responses (e.g. from logout
     # tests) settle before we re-inject auth cookies.
@@ -279,10 +278,8 @@ def authenticated_page(
     # complete so any auth-triggered redirects resolve before the test body.
     try:
         _page.goto(f"{app_url}/dashboard", wait_until="domcontentloaded")
-        try:
+        with contextlib.suppress(Exception):
             _page.wait_for_load_state("networkidle", timeout=10_000)
-        except Exception:
-            pass
         # Check if redirected to login (stale cookies).
         if "/login" in _page.url or "/dashboard" not in _page.url:
             needs_reauth = True

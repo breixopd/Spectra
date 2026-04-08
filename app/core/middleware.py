@@ -24,7 +24,7 @@ class AdminIPAllowlistMiddleware(BaseHTTPMiddleware):
 
         # Only apply to admin routes
         path = request.url.path
-        if not (path.startswith("/api/admin") or path.startswith("/api/v1/admin") or path == "/admin"):
+        if not (path.startswith(("/api/admin", "/api/v1/admin")) or path == "/admin"):
             return await call_next(request)
 
         # Parse allowlist

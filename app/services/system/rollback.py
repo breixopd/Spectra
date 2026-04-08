@@ -47,7 +47,7 @@ async def get_snapshots_by_actor(
     result = await session.execute(
         select(RollbackSnapshot)
         .where(RollbackSnapshot.actor_user_id == actor_user_id)
-        .where(RollbackSnapshot.rolled_back == False)  # noqa: E712
+        .where(RollbackSnapshot.rolled_back.is_(False))
         .order_by(RollbackSnapshot.created_at.desc())
         .limit(limit)
     )
@@ -61,7 +61,7 @@ async def get_all_snapshots(
     """Get all recent snapshots for admin view."""
     result = await session.execute(
         select(RollbackSnapshot)
-        .where(RollbackSnapshot.rolled_back == False)  # noqa: E712
+        .where(RollbackSnapshot.rolled_back.is_(False))
         .order_by(RollbackSnapshot.created_at.desc())
         .limit(limit)
     )

@@ -86,10 +86,7 @@ def calculate_cvss31(vector: str) -> dict:
         (1 - _WEIGHTS["C"][metrics["C"]]) * (1 - _WEIGHTS["I"][metrics["I"]]) * (1 - _WEIGHTS["A"][metrics["A"]])
     )
 
-    if scope_changed:
-        impact = 7.52 * (isc_base - 0.029) - 3.25 * (isc_base - 0.02) ** 15
-    else:
-        impact = 6.42 * isc_base
+    impact = 7.52 * (isc_base - 0.029) - 3.25 * (isc_base - 0.02) ** 15 if scope_changed else 6.42 * isc_base
 
     # Base score
     if impact <= 0:

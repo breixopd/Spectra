@@ -31,22 +31,22 @@ def _make_request():
 
 def _make_prefs(**overrides):
     """Return a mock UserPreferences row."""
-    defaults = dict(
-        user_id="user-1",
-        llm_api_key=None,
-        llm_api_base_url=None,
-        llm_model=None,
-        embedding_api_key=None,
-        embedding_api_base_url=None,
-        embedding_model=None,
-        email_notifications=True,
-        webhook_url=None,
-        notify_on_mission_complete=True,
-        notify_on_critical_finding=True,
-        default_scan_mode="autonomous",
-        default_report_format="pdf",
-        timezone="UTC",
-    )
+    defaults = {
+        "user_id": "user-1",
+        "llm_api_key": None,
+        "llm_api_base_url": None,
+        "llm_model": None,
+        "embedding_api_key": None,
+        "embedding_api_base_url": None,
+        "embedding_model": None,
+        "email_notifications": True,
+        "webhook_url": None,
+        "notify_on_mission_complete": True,
+        "notify_on_critical_finding": True,
+        "default_scan_mode": "autonomous",
+        "default_report_format": "pdf",
+        "timezone": "UTC",
+    }
     defaults.update(overrides)
     m = MagicMock(**defaults)
     # Ensure attribute access works
@@ -161,7 +161,7 @@ class TestUpdateUserSettings:
         session.execute = AsyncMock(return_value=result_mock)
 
         added = []
-        session.add = lambda obj: added.append(obj)
+        session.add = added.append
 
         # After commit + refresh, simulate the prefs having been created
         _make_prefs(timezone="Asia/Tokyo")

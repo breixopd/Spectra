@@ -357,49 +357,47 @@ class TestTaskFailureHandling:
             mission_manager.execution.mission_controller,
             "execute",
             side_effect=mock_execute,
-        ):
-            with patch.object(
-                mission_manager.execution.consensus,
-                "validate_at_gate",
-                side_effect=mock_consensus,
-            ):
-                with patch("app.services.mission.manager.lifecycle.async_session_maker"):
-                    with patch("app.core.events.events.emit_sync"):
-                        # Create a mission manually without going through start_mission
-                        mission = Mission(target=test_target_ip, directive="Test failure handling")
-                        mission_manager.active_missions[mission.id] = mission
+        ), patch.object(
+            mission_manager.execution.consensus,
+            "validate_at_gate",
+            side_effect=mock_consensus,
+        ), patch("app.services.mission.manager.lifecycle.async_session_maker"):
+            with patch("app.core.events.events.emit_sync"):
+                # Create a mission manually without going through start_mission
+                mission = Mission(target=test_target_ip, directive="Test failure handling")
+                mission_manager.active_missions[mission.id] = mission
 
-                        from app.services.ai.agents.mission_controller import (
-                            AssessmentPhase,
-                            Task,
-                        )
+                from app.services.ai.agents.mission_controller import (
+                    AssessmentPhase,
+                    Task,
+                )
 
-                        # Create a failed task
-                        task = Task(
-                            task_id="failed-task",
-                            description="This task will fail",
-                            agent_type="tool_selector",
-                            phase=AssessmentPhase.DISCOVERY,
-                            priority=1,
-                        )
+                # Create a failed task
+                task = Task(
+                    task_id="failed-task",
+                    description="This task will fail",
+                    agent_type="tool_selector",
+                    phase=AssessmentPhase.DISCOVERY,
+                    priority=1,
+                )
 
-                        context = AgentContext(
-                            mission_id=mission.id,
-                            session_id=mission.id,
-                            target=test_target_ip,
-                            mission="Test",
-                            phase="discovery",
-                            stealth_mode=False,
-                            max_concurrency=1,
-                        )
+                context = AgentContext(
+                    mission_id=mission.id,
+                    session_id=mission.id,
+                    target=test_target_ip,
+                    mission="Test",
+                    phase="discovery",
+                    stealth_mode=False,
+                    max_concurrency=1,
+                )
 
-                        # Trigger failure handling directly via execution manager
-                        await mission_manager.execution._handle_task_failure(
-                            mission,
-                            task,
-                            "Connection refused",
-                            context,
-                        )
+                # Trigger failure handling directly via execution manager
+                await mission_manager.execution._handle_task_failure(
+                    mission,
+                    task,
+                    "Connection refused",
+                    context,
+                )
 
         # Replan should have been triggered
         assert replan_triggered, "Replanning was not triggered on task failure"

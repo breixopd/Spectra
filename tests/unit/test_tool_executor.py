@@ -10,64 +10,64 @@ from app.services.tools.registry.executor import _read_stream_limit, run_command
 class TestRunCommandSafe:
     @pytest.mark.asyncio
     async def test_empty_command_returns_error(self):
-        rc, stdout, stderr = await run_command_safe("")
+        rc, _stdout, stderr = await run_command_safe("")
         assert rc == -1
         assert "Empty command" in stderr
 
     @pytest.mark.asyncio
     async def test_whitespace_command_returns_error(self):
-        rc, stdout, stderr = await run_command_safe("   ")
+        rc, _stdout, stderr = await run_command_safe("   ")
         assert rc == -1
         assert "Empty command" in stderr
 
     @pytest.mark.asyncio
     async def test_successful_command(self):
-        rc, stdout, stderr = await run_command_safe("echo hello")
+        rc, stdout, _stderr = await run_command_safe("echo hello")
         assert rc == 0
         assert "hello" in stdout
 
     @pytest.mark.asyncio
     async def test_failed_command_returns_nonzero(self):
-        rc, stdout, stderr = await run_command_safe("false")
+        rc, _stdout, _stderr = await run_command_safe("false")
         assert rc != 0
 
     @pytest.mark.asyncio
     async def test_timeout_kills_process(self):
-        rc, stdout, stderr = await run_command_safe("sleep 30", timeout=1)
+        rc, _stdout, stderr = await run_command_safe("sleep 30", timeout=1)
         assert rc == -1
         assert "timed out" in stderr.lower()
 
     @pytest.mark.asyncio
     async def test_stderr_captured(self):
-        rc, stdout, stderr = await run_command_safe("echo error >&2")
+        _rc, _stdout, stderr = await run_command_safe("echo error >&2")
         assert "error" in stderr
 
     @pytest.mark.asyncio
     async def test_env_has_debian_frontend(self):
-        rc, stdout, stderr = await run_command_safe("echo $DEBIAN_FRONTEND")
+        _rc, stdout, _stderr = await run_command_safe("echo $DEBIAN_FRONTEND")
         assert "noninteractive" in stdout
 
     @pytest.mark.asyncio
     async def test_path_includes_spectra_tools(self):
-        rc, stdout, stderr = await run_command_safe("echo $PATH")
+        _rc, stdout, _stderr = await run_command_safe("echo $PATH")
         assert "/opt/spectra_tools" in stdout
 
     @pytest.mark.asyncio
     async def test_subprocess_creation_failure(self):
         with patch("asyncio.create_subprocess_shell", side_effect=OSError("spawn failed")):
-            rc, stdout, stderr = await run_command_safe("echo test")
+            rc, _stdout, stderr = await run_command_safe("echo test")
             assert rc == -1
             assert "spawn failed" in stderr
 
     @pytest.mark.asyncio
     async def test_stdout_and_stderr_both_captured(self):
-        rc, stdout, stderr = await run_command_safe("echo out && echo err >&2")
+        _rc, stdout, stderr = await run_command_safe("echo out && echo err >&2")
         assert "out" in stdout
         assert "err" in stderr
 
     @pytest.mark.asyncio
     async def test_exit_code_preserved(self):
-        rc, stdout, stderr = await run_command_safe("exit 42")
+        rc, _stdout, _stderr = await run_command_safe("exit 42")
         assert rc == 42
 
     @pytest.mark.asyncio
@@ -78,7 +78,7 @@ class TestRunCommandSafe:
         mock_proc.wait = AsyncMock()
 
         with patch("asyncio.create_subprocess_shell", return_value=mock_proc):
-            rc, stdout, stderr = await run_command_safe("echo test")
+            rc, _stdout, stderr = await run_command_safe("echo test")
             assert rc == -1
             assert "Failed to capture" in stderr
 

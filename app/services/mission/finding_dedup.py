@@ -22,10 +22,7 @@ def are_related_cves(cve_a: str | None, cve_b: str | None) -> bool:
         return False
     a_upper = cve_a.upper()
     b_upper = cve_b.upper()
-    for group in RELATED_CVE_GROUPS:
-        if a_upper in group and b_upper in group:
-            return True
-    return False
+    return any(a_upper in group and b_upper in group for group in RELATED_CVE_GROUPS)
 
 
 def finding_dedup_key(finding: dict[str, Any]) -> str:

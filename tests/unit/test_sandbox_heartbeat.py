@@ -1,6 +1,7 @@
 """Tests for sandbox idle watchdog and worker heartbeat."""
 
 import asyncio
+import contextlib
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
@@ -65,10 +66,8 @@ class TestHeartbeatLoop:
             task = asyncio.create_task(heartbeat_loop("test_queue", interval=0))
             await asyncio.sleep(0.05)
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
 
         assert call_count > 0
 

@@ -34,10 +34,7 @@ def get_mission_findings(mission_or_summary: Any) -> list[dict[str, Any]]:
             return [finding for finding in findings if isinstance(finding, dict)]
 
         nested_summary = mission_or_summary.get("summary")
-        if isinstance(nested_summary, dict):
-            findings = nested_summary.get("findings")
-        else:
-            findings = None
+        findings = nested_summary.get("findings") if isinstance(nested_summary, dict) else None
     else:
         summary = get_mission_summary_dict(mission_or_summary)
         findings = summary.get("findings")
@@ -49,7 +46,7 @@ def get_mission_findings(mission_or_summary: Any) -> list[dict[str, Any]]:
 
 def get_mission_finding_counts(mission_or_summary: Any) -> dict[str, int]:
     """Count mission findings by normalized severity."""
-    counts = {severity: 0 for severity in _SEVERITY_KEYS}
+    counts = dict.fromkeys(_SEVERITY_KEYS, 0)
     counts["total"] = 0
 
     for finding in get_mission_findings(mission_or_summary):

@@ -331,9 +331,8 @@ class TestPreSetupRegistrationBlocked:
         }
         request = Request(scope)
 
-        with patch("app.api.routers.public.async_session_maker", maker):
-            with pytest.raises(HTTPException) as exc:
-                await register_user.__wrapped__(request, body, Response())
+        with patch("app.api.routers.public.async_session_maker", maker), pytest.raises(HTTPException) as exc:
+            await register_user.__wrapped__(request, body, Response())
 
         assert exc.value.status_code == 403
 

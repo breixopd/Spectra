@@ -347,7 +347,7 @@ class CacheService:
                         default=str,
                     )
                     key_hash = hashlib.sha256(arg_str.encode()).hexdigest()[:16]
-                    cache_key = ":".join(key_parts + [key_hash])
+                    cache_key = ":".join([*key_parts, key_hash])
 
                 # Try cache
                 cached_value = await self.get(cache_key)
@@ -437,7 +437,7 @@ __all__ = [
     "CacheConfig",
     "CacheService",
     "get_cache",
-    "set_cache",
     "get_cached_tool",
     "invalidate_tool_cache",
+    "set_cache",
 ]

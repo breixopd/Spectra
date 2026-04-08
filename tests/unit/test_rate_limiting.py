@@ -237,7 +237,7 @@ async def test_check_rate_limit_no_plan_limit_always_allowed():
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
     with patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session):
-        within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
+        within, _current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
     assert within is True
     assert maximum == 0

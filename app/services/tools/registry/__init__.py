@@ -35,15 +35,15 @@ from app.services.tools.registry.loader import PluginLoader
 from app.services.tools.registry.validator import PluginValidator
 
 __all__ = [
-    "ToolRegistry",
-    "get_registry",
-    "initialize_registry",
-    "RegisteredTool",
-    "ToolConfig",
-    "ToolStatus",
     "PluginInstallationError",
     "PluginSignatureError",
     "PluginValidationError",
+    "RegisteredTool",
+    "ToolConfig",
+    "ToolRegistry",
+    "ToolStatus",
+    "get_registry",
+    "initialize_registry",
 ]
 
 if TYPE_CHECKING:

@@ -114,7 +114,7 @@ class ServerProvisioner:
                         else:
                             result.logs.append("  OK")
 
-                    except TimeoutError:  # noqa: PERF203
+                    except TimeoutError:
                         if step.required:
                             result.error = f"Step '{step.name}' timed out after {step.timeout}s"
                             result.logs.append(f"TIMEOUT: {result.error}")

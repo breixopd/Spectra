@@ -27,9 +27,8 @@ async def test_tz_update_config_rejects_invalid_provider_type(tmp_path: Path):
         }
     )
 
-    with patch.object(tensorzero, "_CONFIG_PATH", config_path):
-        with pytest.raises(HTTPException) as excinfo:
-            await tensorzero.tz_update_config(request=request, _user=MagicMock())
+    with patch.object(tensorzero, "_CONFIG_PATH", config_path), pytest.raises(HTTPException) as excinfo:
+        await tensorzero.tz_update_config(request=request, _user=MagicMock())
 
     assert excinfo.value.status_code == 422
     assert not config_path.exists()
@@ -45,9 +44,8 @@ async def test_tz_update_config_rejects_invalid_model_name(tmp_path: Path):
         }
     )
 
-    with patch.object(tensorzero, "_CONFIG_PATH", config_path):
-        with pytest.raises(HTTPException) as excinfo:
-            await tensorzero.tz_update_config(request=request, _user=MagicMock())
+    with patch.object(tensorzero, "_CONFIG_PATH", config_path), pytest.raises(HTTPException) as excinfo:
+        await tensorzero.tz_update_config(request=request, _user=MagicMock())
 
     assert excinfo.value.status_code == 422
     assert not config_path.exists()
