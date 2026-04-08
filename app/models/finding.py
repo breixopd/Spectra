@@ -80,7 +80,7 @@ class Finding(Base):
     evidence: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Relationship
-    target: Mapped[Target] = relationship("Target", back_populates="findings")
+    target: Mapped[Target] = relationship("Target", back_populates="findings", lazy="selectin")
 
     def __repr__(self) -> str:
         return f"<Finding id={self.id} title={self.title!r} severity={self.severity}>"
