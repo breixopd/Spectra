@@ -215,7 +215,7 @@ async def update_target(
     target_in: TargetUpdate,
     request: Request = None,
     db: AsyncSession = Depends(get_async_session),
-    _current_user: User = Depends(get_current_active_user),
+    _current_user: User = require_permission(Permission.MANAGE_TARGETS),
 ) -> TargetResponse:
     """Update a target."""
     repo = TargetRepository(db)

@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import logging
+import time
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_current_superuser
 from app.core.database import get_async_session
+from app.core.rate_limit import limiter
 from app.models.user import User
 from app.services.tools.models import ToolStatus
 from app.services.tools.registry import ToolRegistry
@@ -30,6 +32,25 @@ from .schemas import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Lightweight cached status for high-frequency polling
+# ---------------------------------------------------------------------------
+_status_cache: dict = {"status": "initializing"}
+_status_cache_time: float = 0.0
+
+
+@router.get("/status/quick")
+async def get_system_status_quick(
+    request: Request,
+    _current_user: User = Depends(get_current_active_user),
+) -> dict:
+    """Return cached system status for lightweight polling.
+
+    This endpoint never hits the DB, tool registry, RAG, or storage.
+    It returns whatever the last full ``/status`` call computed.
+    """
+    return _status_cache
 
 
 @router.get("/safety-stats")
@@ -83,7 +104,9 @@ async def get_public_system_status(
 
 
 @router.get("/status", response_model=SystemStatusResponse)
+@limiter.limit("20/minute")
 async def get_system_status(
+    request: Request,
     db: AsyncSession = Depends(get_async_session),
     registry: ToolRegistry = Depends(get_tool_registry),
     _current_user: User = Depends(get_current_active_user),
@@ -188,7 +211,7 @@ async def get_system_status(
     else:
         message = ", ".join(status_messages) if status_messages else "Unknown status"
 
-    return SystemStatusResponse(
+    result = SystemStatusResponse(
         status=overall_status,
         message=message,
         timestamp=timestamp,
@@ -204,6 +227,20 @@ async def get_system_status(
         tool_cache_stats=_get_tool_cache_stats(),
         storage_health=storage_health,
     )
+
+    # Update lightweight cache for /status/quick
+    global _status_cache, _status_cache_time
+    _status_cache = {
+        "status": overall_status,
+        "message": message,
+        "tools_installing": tools_installing,
+        "embeddings_loading": embeddings_loading,
+        "setup_complete": setup_complete,
+        "setup_message": setup_message,
+    }
+    _status_cache_time = time.monotonic()
+
+    return result
 
 
 @router.get("/services/health")

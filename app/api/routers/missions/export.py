@@ -76,7 +76,7 @@ async def download_pdf_report(
 
     await audit_log_event(
         session,
-        AuditEventType.SETTINGS_CHANGED,
+        AuditEventType.DATA_EXPORTED,
         user_id=str(_current_user.id),
         details={"action": "mission_exported", "mission_id": str(mission_id), "format": "pdf"},
         request=request,
@@ -132,7 +132,7 @@ async def export_mission_json(
 
     await audit_log_event(
         session,
-        AuditEventType.SETTINGS_CHANGED,
+        AuditEventType.DATA_EXPORTED,
         user_id=str(_current_user.id),
         details={"action": "mission_exported", "mission_id": str(mission_id), "format": "json"},
         request=request,

@@ -199,146 +199,168 @@
         });
 
         // --- Global System Status Polling ---
-        let statusTimer = null;
-        let systemReady = false;
-        let statusRetryMs = 10000;
+        const STATUS_BASE_MS = 30000;       // 30s normal interval
+        const STATUS_BACKOFF_BASE = 5000;   // 5s initial backoff
+        const STATUS_BACKOFF_MAX = 60000;   // 60s max backoff
+        const STATUS_GIVEUP_MS = 120000;    // 120s after giving up
+        const STATUS_GIVEUP_AFTER = 15;     // 15 consecutive failures
+
+        let statusRetryMs = STATUS_BASE_MS;
         let statusFailCount = 0;
-        const STATUS_RETRY_BASE = 5000;
-        const STATUS_RETRY_MAX = 30000;
-        const STATUS_GIVEUP_MAX = 60000;
-        const STATUS_GIVEUP_AFTER = 20;
+        let statusTimer = null;
+        let statusInFlight = false;
+        let systemReady = false;
 
-        async function checkSystemStatus() {
-            if (window.PUBLIC_PATHS.includes(window.location.pathname)) return;
+        // Cross-tab coordination via BroadcastChannel
+        let statusChannel = null;
+        try { statusChannel = new BroadcastChannel('spectra-status'); } catch(e) {}
+        if (statusChannel) {
+            statusChannel.onmessage = (e) => {
+                if (e.data?.type === 'status-update') {
+                    updateStatusUI(e.data.payload);
+                    statusFailCount = 0;
+                    rescheduleStatus(STATUS_BASE_MS);
+                }
+            };
+        }
 
+        function addJitter(ms) {
+            return Math.round(ms * (0.8 + Math.random() * 0.4));
+        }
+
+        function rescheduleStatus(ms) {
+            clearTimeout(statusTimer);
+            statusTimer = setTimeout(checkSystemStatus, addJitter(ms));
+        }
+
+        function updateStatusUI(data) {
             const statusBar = document.getElementById('global-status-bar');
             const statusMsg = document.getElementById('status-message');
             const statusDetails = document.getElementById('status-details');
             const statusProgress = document.getElementById('status-progress');
             const progressBar = document.getElementById('progress-bar');
-            
             if (!statusBar) return;
 
-            try {
-                const { data, error, status } = await spectraApi.get('/api/v1/system/status');
-
-                if (error) {
-                    if (status === 429) {
-                        // Rate limited — back off immediately
-                        statusRetryMs = STATUS_GIVEUP_MAX;
-                        statusFailCount = 0;
-                        statusBar.classList.remove('hidden');
-                        statusMsg.textContent = 'Rate limited — retrying in 60s';
-                        statusDetails.textContent = '';
-                        clearTimeout(statusTimer);
-                        statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
-                        return;
-                    }
-                    if (status === 401) {
-                        // Auth expired — spectraApi will handle redirect, don't show status bar
-                        statusBar.classList.add('hidden');
-                        return;
-                    }
-                    // Genuine server error — use backoff
-                    statusFailCount++;
-                    statusBar.classList.remove('hidden');
-                    if (statusFailCount >= STATUS_GIVEUP_AFTER) {
-                        statusRetryMs = STATUS_GIVEUP_MAX;
-                        statusMsg.textContent = 'Connection lost \u2014 retrying every 60s';
-                    } else {
-                        statusRetryMs = Math.min(STATUS_RETRY_BASE * Math.pow(2, statusFailCount - 1), STATUS_RETRY_MAX);
-                        statusMsg.textContent = 'Checking server status\u2026';
-                    }
-                    statusDetails.textContent = '';
-                    clearTimeout(statusTimer);
-                    statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
-                    return;
+            if (data.status === 'ready' && !data.tools_installing && !data.embeddings_loading) {
+                statusBar.classList.add('hidden');
+                if (!systemReady) {
+                    systemReady = true;
                 }
+            } else {
+                systemReady = false;
+                statusBar.classList.remove('hidden');
+                statusMsg.textContent = data.message || data.setup_message || 'System initializing...';
 
-                // Success — reset backoff
-                statusRetryMs = 10000;
-                statusFailCount = 0;
-                
-                if (data.status === 'ready' && !data.tools_installing && !data.embeddings_loading) {
-                    // System is ready - hide bar and poll normally
-                    statusBar.classList.add('hidden');
-                    if (!systemReady) {
-                        systemReady = true;
+                const detailParts = [];
+                if (data.tool_stats) {
+                    const ts = data.tool_stats;
+                    if (ts.installing > 0) {
+                        detailParts.push(`Installing: ${ts.installing}/${ts.total}`);
+                    } else {
+                        detailParts.push(`Tools: ${ts.ready}/${ts.total} ready`);
                     }
-                    clearTimeout(statusTimer);
-                    statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
-                } else {
-                    // System is initializing
-                    systemReady = false;
-                    statusBar.classList.remove('hidden');
-                    statusMsg.textContent = data.message || 'System initializing...';
-                    
-                    // Show details
-                    const detailParts = [];
-                    if (data.tool_stats) {
-                        const ts = data.tool_stats;
-                        if (ts.installing > 0) {
-                            detailParts.push(`Installing: ${ts.installing}/${ts.total}`);
-                        } else {
-                            detailParts.push(`Tools: ${ts.ready}/${ts.total} ready`);
-                        }
-                    }
-                    if (data.embeddings_loading) {
-                        detailParts.push('Loading AI models...');
-                    }
-                    statusDetails.textContent = detailParts.join(' | ');
-                    
-                    // Show progress if we have operations
-                    if (data.operations && data.operations.length > 0) {
-                        const op = data.operations[0];
-                        if (op.progress != null) {
-                            statusProgress.classList.remove('hidden');
-                            progressBar.style.width = `${Math.round(op.progress * 100)}%`;
-                        } else {
-                            statusProgress.classList.add('hidden');
-                        }
-                    } else if (data.tool_stats && data.tool_stats.total > 0) {
-                        // Calculate progress from tool stats
-                        const ts = data.tool_stats;
-                        const progress = (ts.ready + ts.failed) / ts.total;
-                        if (progress < 1) {
-                            statusProgress.classList.remove('hidden');
-                            progressBar.style.width = `${Math.round(progress * 100)}%`;
-                        } else {
-                            statusProgress.classList.add('hidden');
-                        }
+                }
+                if (data.embeddings_loading) {
+                    detailParts.push('Loading AI models...');
+                }
+                statusDetails.textContent = detailParts.join(' | ');
+
+                if (data.operations && data.operations.length > 0) {
+                    const op = data.operations[0];
+                    if (op.progress != null) {
+                        statusProgress.classList.remove('hidden');
+                        progressBar.style.width = `${Math.round(op.progress * 100)}%`;
                     } else {
                         statusProgress.classList.add('hidden');
                     }
-                    clearTimeout(statusTimer);
-                    statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
-                }
-            } catch (e) {
-                // Network error — use backoff
-                statusFailCount++;
-                statusBar.classList.remove('hidden');
-                if (statusFailCount >= STATUS_GIVEUP_AFTER) {
-                    statusRetryMs = STATUS_GIVEUP_MAX;
-                    statusMsg.textContent = 'Connection lost \u2014 retrying every 60s';
+                } else if (data.tool_stats && data.tool_stats.total > 0) {
+                    const ts = data.tool_stats;
+                    const progress = (ts.ready + ts.failed) / ts.total;
+                    if (progress < 1) {
+                        statusProgress.classList.remove('hidden');
+                        progressBar.style.width = `${Math.round(progress * 100)}%`;
+                    } else {
+                        statusProgress.classList.add('hidden');
+                    }
                 } else {
-                    statusRetryMs = Math.min(STATUS_RETRY_BASE * Math.pow(2, statusFailCount - 1), STATUS_RETRY_MAX);
-                    statusMsg.textContent = 'Checking server status\u2026';
+                    statusProgress.classList.add('hidden');
                 }
-                statusDetails.textContent = 'Check your connection';
-                clearTimeout(statusTimer);
-                statusTimer = setTimeout(checkSystemStatus, statusRetryMs);
             }
         }
 
-        // Start status polling
-        checkSystemStatus();
+        function showStatusBanner(msg, _level) {
+            const statusBar = document.getElementById('global-status-bar');
+            const statusMsg = document.getElementById('status-message');
+            const statusDetails = document.getElementById('status-details');
+            if (!statusBar) return;
+            statusBar.classList.remove('hidden');
+            statusMsg.textContent = msg;
+            statusDetails.textContent = '';
+        }
 
-        // Pause polling when tab is hidden, resume when visible
+        async function checkSystemStatus() {
+            if (window.PUBLIC_PATHS && window.PUBLIC_PATHS.includes(window.location.pathname)) return;
+            if (statusInFlight) return;
+            statusInFlight = true;
+
+            const statusBar = document.getElementById('global-status-bar');
+            if (!statusBar) { statusInFlight = false; return; }
+
+            try {
+                const { data, error, status } = await spectraApi.get('/api/v1/system/status/quick');
+
+                if (error) {
+                    if (status === 429) {
+                        statusRetryMs = STATUS_GIVEUP_MS;
+                        showStatusBanner('Rate limited \u2014 retrying shortly', 'warning');
+                        return;
+                    }
+                    if (status === 401) {
+                        statusBar.classList.add('hidden');
+                        return;
+                    }
+                    throw new Error(error);
+                }
+
+                // Success — ramp down slowly if recovering from backoff
+                statusFailCount = 0;
+                statusRetryMs = statusRetryMs > STATUS_BASE_MS
+                    ? Math.max(STATUS_BASE_MS, Math.round(statusRetryMs * 0.7))
+                    : STATUS_BASE_MS;
+
+                updateStatusUI(data);
+
+                // Broadcast to other tabs
+                if (statusChannel) {
+                    try { statusChannel.postMessage({ type: 'status-update', payload: data }); } catch(e) {}
+                }
+            } catch (e) {
+                statusFailCount++;
+                if (statusFailCount >= STATUS_GIVEUP_AFTER) {
+                    statusRetryMs = STATUS_GIVEUP_MS;
+                    showStatusBanner('Connection lost \u2014 retrying every 2 min', 'error');
+                } else {
+                    statusRetryMs = Math.min(
+                        STATUS_BACKOFF_BASE * Math.pow(2, statusFailCount - 1),
+                        STATUS_BACKOFF_MAX
+                    );
+                    showStatusBanner('Checking server status\u2026', 'warning');
+                }
+            } finally {
+                statusInFlight = false;
+                rescheduleStatus(statusRetryMs);
+            }
+        }
+
+        // Start polling — first check 1s after page load
+        rescheduleStatus(1000);
+
+        // Pause polling when tab is hidden, resume with small delay when visible
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 clearTimeout(statusTimer);
             } else {
-                checkSystemStatus();
+                rescheduleStatus(2000);
             }
         });
     </script>

@@ -252,7 +252,8 @@ async def list_users(
     count_stmt = select(func.count()).select_from(User)
 
     if search:
-        like_pat = f"%{search}%"
+        escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like_pat = f"%{escaped}%"
         filt = or_(User.username.ilike(like_pat), User.email.ilike(like_pat))
         stmt = stmt.where(filt)
         count_stmt = count_stmt.where(filt)
