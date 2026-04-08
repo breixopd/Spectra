@@ -28,6 +28,7 @@ def _encrypt_config_value(value: str) -> str:
 
         return encrypt_field(value, _get_default_secret())
     except Exception:
+        logger.debug("Value encryption failed", exc_info=True)
         return value
 
 
@@ -40,6 +41,7 @@ def _decrypt_config_value(value: str) -> str:
 
         return decrypt_field(value, _get_default_secret())
     except Exception:
+        logger.debug("Value decryption failed", exc_info=True)
         return value  # legacy unencrypted value — return as-is
 
 

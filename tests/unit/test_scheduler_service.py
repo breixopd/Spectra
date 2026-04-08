@@ -35,7 +35,7 @@ async def test_start_schedules_expected_background_tasks():
     tasks: list[MagicMock] = []
     scheduled_loops: list[str] = []
 
-    def fake_create_task(coro):
+    def fake_create_safe_task(coro, *, name=None, logger_=None):
         scheduled_loops.append(coro.cr_code.co_name)
         coro.close()
         task = MagicMock()
@@ -43,7 +43,7 @@ async def test_start_schedules_expected_background_tasks():
         return task
 
     with pytest.MonkeyPatch.context() as mp:
-        mp.setattr(scheduler_service.asyncio, "create_task", fake_create_task)
+        mp.setattr(scheduler_service, "create_safe_task", fake_create_safe_task)
         mp.setattr(scheduler_service.asyncio, "gather", AsyncMock(return_value=None))
         await service.start()
 
@@ -370,13 +370,13 @@ async def test_lifespan_starts_and_stops_scheduler_service():
     service = SimpleNamespace(start=AsyncMock(), stop=AsyncMock(), running=True)
     task = _AwaitableTask(exc=asyncio.CancelledError())
 
-    def fake_create_task(coro):
+    def fake_create_safe_task(coro, *, name=None, logger_=None):
         coro.close()
         return task
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(scheduler_service, "SchedulerService", lambda: service)
-        mp.setattr(scheduler_service.asyncio, "create_task", fake_create_task)
+        mp.setattr(scheduler_service, "create_safe_task", fake_create_safe_task)
         async with scheduler_service.lifespan(scheduler_service.app):
             assert scheduler_service._scheduler_instance is service
 

@@ -256,6 +256,7 @@ def _load_cache(keyword: str) -> list[dict[str, Any]] | None:
         try:
             data = asyncio.run(db._cache_get(cache_key))
         except Exception:
+            logger.debug("CVE cache read failed for %s", cache_key, exc_info=True)
             return None
     else:
         return None
@@ -288,7 +289,8 @@ def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
         except Exception as e:
             logger.debug("Failed to cache CVEs: %s", e)
     else:
-        asyncio.create_task(db._cache_set(cache_key, payload, CVE_CACHE_TTL))
+        from app.core.tasks import create_safe_task
+        create_safe_task(db._cache_set(cache_key, payload, CVE_CACHE_TTL), name="cve_cache_set")
 
 
 # =============================================================================

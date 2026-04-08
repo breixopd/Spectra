@@ -17,6 +17,7 @@ from fastapi import FastAPI
 from sqlalchemy import text
 
 from app.core.database import async_session_maker
+from app.core.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)
 
@@ -50,19 +51,19 @@ class SchedulerService:
 
         # Start scheduled loops
         self._named_tasks = {
-            "sandbox_watchdog": asyncio.create_task(self._sandbox_watchdog()),
-            "quota_reset": asyncio.create_task(self._quota_reset()),
-            "metrics_collector": asyncio.create_task(self._metrics_collector()),
-            "health_reporter": asyncio.create_task(self._health_reporter()),
-            "backup_scheduler": asyncio.create_task(self._backup_scheduler()),
-            "cache_cleanup": asyncio.create_task(self._cache_cleanup()),
-            "periodic_cleanup": asyncio.create_task(self._periodic_cleanup()),
-            "db_maintenance": asyncio.create_task(self._db_maintenance()),
-            "stale_job_recovery": asyncio.create_task(self._stale_job_recovery()),
-            "exploit_db_refresh": asyncio.create_task(self._exploit_db_refresh()),
-            "capacity_monitor": asyncio.create_task(self._capacity_monitor()),
-            "docker_cleanup": asyncio.create_task(self._docker_cleanup()),
-            "disk_monitor": asyncio.create_task(self._disk_monitor()),
+            "sandbox_watchdog": create_safe_task(self._sandbox_watchdog(), name="sandbox_watchdog"),
+            "quota_reset": create_safe_task(self._quota_reset(), name="quota_reset"),
+            "metrics_collector": create_safe_task(self._metrics_collector(), name="metrics_collector"),
+            "health_reporter": create_safe_task(self._health_reporter(), name="health_reporter"),
+            "backup_scheduler": create_safe_task(self._backup_scheduler(), name="backup_scheduler"),
+            "cache_cleanup": create_safe_task(self._cache_cleanup(), name="cache_cleanup"),
+            "periodic_cleanup": create_safe_task(self._periodic_cleanup(), name="periodic_cleanup"),
+            "db_maintenance": create_safe_task(self._db_maintenance(), name="db_maintenance"),
+            "stale_job_recovery": create_safe_task(self._stale_job_recovery(), name="stale_job_recovery"),
+            "exploit_db_refresh": create_safe_task(self._exploit_db_refresh(), name="exploit_db_refresh"),
+            "capacity_monitor": create_safe_task(self._capacity_monitor(), name="capacity_monitor"),
+            "docker_cleanup": create_safe_task(self._docker_cleanup(), name="docker_cleanup"),
+            "disk_monitor": create_safe_task(self._disk_monitor(), name="disk_monitor"),
         }
         self.tasks = list(self._named_tasks.values())
 
@@ -147,7 +148,7 @@ class SchedulerService:
                         ttl=60,
                     )
             except OSError as e:
-                logger.debug("Health reporter cache write failed: %s", e)
+                logger.warning("Health reporter cache write failed: %s", e)
             await asyncio.sleep(15)
 
     async def _backup_scheduler(self):
@@ -317,7 +318,7 @@ class SchedulerService:
             metrics["queue_depth"] = stats.get("depth", 0)
             metrics["in_progress"] = stats.get("in_progress", 0)
         except Exception as e:
-            logger.debug("Failed to collect queue metrics: %s", e)
+            logger.warning("Failed to collect queue metrics: %s", e)
             metrics["queue_depth"] = 0
             metrics["in_progress"] = 0
 
@@ -346,7 +347,7 @@ class SchedulerService:
                         elif "scheduler" in name.lower():
                             metrics["scheduler_replicas"] = count
         except Exception as e:
-            logger.debug("Failed to query Docker Swarm replicas: %s", e)
+            logger.warning("Failed to query Docker Swarm replicas: %s", e)
 
         # Estimate utilization from queue stats
         worker_count = metrics.get("worker_replicas", 1)
@@ -370,7 +371,7 @@ class SchedulerService:
                 tags=["warning", "capacity"],
             )
         except Exception as e:
-            logger.debug("Capacity alert send failed: %s", e)
+            logger.warning("Capacity alert send failed: %s", e)
 
     async def _db_maintenance(self):
         """Weekly VACUUM ANALYZE on high-traffic tables."""
@@ -552,7 +553,7 @@ _scheduler_instance: SchedulerService | None = None
 async def lifespan(fastapi_app: FastAPI):
     global _scheduler_instance
     _scheduler_instance = SchedulerService()
-    task = asyncio.create_task(_leader_election_loop(_scheduler_instance))
+    task = create_safe_task(_leader_election_loop(_scheduler_instance), name="leader_election")
     yield
     await _scheduler_instance.stop()
     task.cancel()

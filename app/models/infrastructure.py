@@ -1,8 +1,6 @@
 import json
 from datetime import UTC, datetime
 
-UTC = UTC
-
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, TypeDecorator, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column

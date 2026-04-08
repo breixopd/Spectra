@@ -225,7 +225,8 @@ class ServerPoolManager:
                     logger.exception("Health check loop error")
                 await asyncio.sleep(self._health_interval)
 
-        self._health_task = asyncio.create_task(_loop())
+        from app.core.tasks import create_safe_task
+        self._health_task = create_safe_task(_loop(), name="pool_health_check")
         logger.info("Health check loop started (interval=%ds)", self._health_interval)
 
     async def stop_health_loop(self) -> None:

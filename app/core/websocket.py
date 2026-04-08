@@ -396,7 +396,8 @@ class ConnectionManager:
             data = msg.get("data", {})
             if ws_channel:
                 # Forward to local connections only (don't re-broadcast to PG)
-                asyncio.create_task(self._local_room_broadcast(ws_channel, data))
+                from app.core.tasks import create_safe_task
+                create_safe_task(self._local_room_broadcast(ws_channel, data), name="pg_ws_broadcast")
         except (ValueError, TypeError) as e:
             logger.debug("PG notification parse error: %s", e)
 

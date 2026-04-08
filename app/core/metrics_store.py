@@ -19,7 +19,8 @@ class MetricsStore:
 
     async def start(self) -> None:
         """Start periodic snapshotting."""
-        self._task = asyncio.create_task(self._snapshot_loop())
+        from app.core.tasks import create_safe_task
+        self._task = create_safe_task(self._snapshot_loop(), name="metrics_snapshot")
         logger.info(
             "MetricsStore started (interval=%ds, max_history=%d)",
             self._interval,

@@ -13,8 +13,6 @@ import logging
 import threading
 import time as _time
 from datetime import UTC, datetime, timedelta
-
-UTC = UTC
 from typing import Any
 
 import bcrypt
@@ -70,8 +68,9 @@ def _ensure_blacklist_loaded() -> None:
         # schedule, but the coroutine will reset it on failure.
         _blacklist_loaded = True
         try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(_load_from_db())
+            asyncio.get_running_loop()
+            from app.core.tasks import create_safe_task
+            create_safe_task(_load_from_db(), name="blacklist_load")
         except RuntimeError:
             # Not in an async context; will be retried on next request.
             _blacklist_loaded = False
@@ -80,8 +79,9 @@ def _ensure_blacklist_loaded() -> None:
 def _persist_blacklist() -> None:
     """Persist blacklist to DB."""
     try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(_persist_to_db())
+        asyncio.get_running_loop()
+        from app.core.tasks import create_safe_task
+        create_safe_task(_persist_to_db(), name="blacklist_persist")
     except RuntimeError:
         pass
 

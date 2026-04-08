@@ -7,6 +7,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.core.tasks import create_safe_task
+
 logger = logging.getLogger(__name__)
 
 _worker_task: asyncio.Task | None = None
@@ -17,7 +19,7 @@ async def lifespan(app: FastAPI):
     """Start worker loops on startup."""
     global _worker_task
     logger.info("Worker service starting...")
-    _worker_task = asyncio.create_task(work_loop())
+    _worker_task = create_safe_task(work_loop(), name="worker_loop")
     yield
     logger.info("Worker service shutting down...")
     if _worker_task:

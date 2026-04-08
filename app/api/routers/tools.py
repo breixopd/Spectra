@@ -110,7 +110,7 @@ async def _get_cached_status(tool_id: str) -> dict[str, str | list[str] | None]:
     try:
         payload = await cache.get(f"spectra:tool_status:{tool_id}")
     except (OSError, ConnectionError, RuntimeError) as e:
-        logger.debug("Tool status lookup failed for %s: %s", tool_id, e)
+        logger.warning("Tool status lookup failed for %s: %s", tool_id, e)
         return {}
 
     return payload if isinstance(payload, dict) else {}
@@ -163,7 +163,7 @@ async def _sync_registry_status_from_cache(registry: ToolRegistry) -> None:
     try:
         await registry.sync_status_from_cache()
     except (OSError, ConnectionError, RuntimeError) as e:
-        logger.debug("Tool status sync failed: %s", e)
+        logger.warning("Tool status sync failed: %s", e)
 
 
 def _get_tool_or_404(registry: ToolRegistry, tool_id: str) -> RegisteredTool:

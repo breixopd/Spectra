@@ -280,7 +280,7 @@ class GoldenImageBuilder:
                         session.add(SystemStatus(key="golden_image_build", value=result))
                     await session.commit()
             except (OSError, RuntimeError) as exc:
-                logger.debug("Failed to store build status: %s", exc)
+                logger.warning("Failed to store build status: %s", exc)
 
             # Scan the image if scanning is enabled
             from app.core.config import get_settings as _get_settings
@@ -318,7 +318,7 @@ class GoldenImageBuilder:
             try:
                 await asyncio.to_thread(self._client.images.remove, temp_tag, force=True)
             except OSError:
-                logger.debug("Failed to clean up temp image %s", temp_tag)
+                logger.warning("Failed to clean up temp image %s", temp_tag)
 
             return result
         finally:

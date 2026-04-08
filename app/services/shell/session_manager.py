@@ -368,10 +368,10 @@ class ShellSessionManager:
         for session_id, session in list(self.sessions.items()):
             if session.mission_id != finished_mission_id:
                 session.missions_survived += 1
-                logger.info(f"Session {session_id} survived {session.missions_survived} missions")
+                logger.info("Session %s survived %d missions", session_id, session.missions_survived)
 
                 if session.missions_survived >= 2:
-                    logger.info(f"Session {session_id} TTL expired (survived 2 missions). Killing.")
+                    logger.info("Session %s TTL expired (survived 2 missions). Killing.", session_id)
                     if session.socket:
                         try:
                             session.socket.shutdown(socket.SHUT_RDWR)

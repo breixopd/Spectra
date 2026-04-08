@@ -35,6 +35,7 @@ from app.core.system_status import (
     remove_system_operation,
     set_system_status,
 )
+from app.core.tasks import create_safe_task
 from app.core.telemetry import telemetry
 from app.services.ai.llm import close_global_llm_client
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
@@ -319,8 +320,8 @@ async def _initialize_sandbox() -> None:
                     except (OSError, RuntimeError) as e:
                         logger.error("Warm pool maintain error: %s", e)
 
-            asyncio.create_task(warm_pool_maintain_loop())
-            asyncio.create_task(warm_manager.maintain())
+            create_safe_task(warm_pool_maintain_loop(), name="warm_pool_maintain")
+            create_safe_task(warm_manager.maintain(), name="warm_pool_initial")
             logger.info("[OK] Warm pool manager initialized (size=%d)", settings.SANDBOX_WARM_POOL_SIZE)
 
             # Initialize golden image builder
@@ -332,7 +333,7 @@ async def _initialize_sandbox() -> None:
 
                 async def on_plugin_change(**kwargs: Any) -> None:
                     """Trigger golden image rebuild when plugins change."""
-                    asyncio.create_task(builder.build())
+                    create_safe_task(builder.build(), name="golden_image_build")
 
                 events.subscribe(EventType.PLUGIN_UPDATED, on_plugin_change)
                 logger.info("[OK] Golden image builder initialized (auto-build on plugin changes)")
@@ -376,7 +377,7 @@ async def _initialize_services() -> None:
                 finally:
                     await remove_system_operation("embeddings")
 
-            asyncio.create_task(load_embeddings_with_status())
+            create_safe_task(load_embeddings_with_status(), name="embedding_preload")
             logger.info("Triggered embedding model preloading")
         except (OSError, RuntimeError, ImportError) as e:
             logger.warning("Failed to trigger embedding preloading: %s", e)
@@ -397,7 +398,7 @@ async def _initialize_services() -> None:
                 except (OSError, RuntimeError) as e:
                     logger.warning("Exploit database initialization failed (data will load on demand): %s", e)
 
-            asyncio.create_task(_init_exploit_db())
+            create_safe_task(_init_exploit_db(), name="exploit_db_init")
             logger.info("Triggered exploit database initialization")
         except (ImportError, OSError) as e:
             logger.warning("Failed to trigger exploit database init: %s", e)
@@ -427,7 +428,7 @@ async def _initialize_services() -> None:
     await _initialize_scaling()
 
     # Trigger background setup tasks (including tool installation)
-    asyncio.create_task(run_startup_tasks())
+    create_safe_task(run_startup_tasks(), name="startup_tasks")
 
     # Start periodic maintenance loops (deferred to scheduler service)
     logger.info("[SKIP] Maintenance loops deferred to scheduler service")
@@ -442,7 +443,7 @@ async def _initialize_services() -> None:
     # Start OTLP export loop if configured
     otel_endpoint = getattr(settings, "OTEL_EXPORTER_ENDPOINT", "")
     if otel_endpoint and isinstance(otel_endpoint, str) and otel_endpoint.strip():
-        asyncio.create_task(telemetry.start_export_loop())
+        create_safe_task(telemetry.start_export_loop(), name="otlp_export")
         logger.info("[OK] OTLP export loop started (endpoint=%s)", otel_endpoint)
 
     # Emit startup event
@@ -494,7 +495,7 @@ async def _config_change_listener() -> None:
                     channel: str,
                     payload: str,
                 ) -> None:
-                    asyncio.ensure_future(_handle_config_change())
+                    create_safe_task(_handle_config_change(), name="config_change_handler")
 
                 await conn.add_listener("config_changes", _on_config_notify)
                 logger.info("[OK] Config change listener connected (PG LISTEN)")
@@ -611,7 +612,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await _initialize_services()
         logger.info("[READY] Spectra is ready!")
         _event_bridge = await _start_event_bridge()
-        _config_listener_task = asyncio.create_task(_config_change_listener())
+        _config_listener_task = create_safe_task(_config_change_listener(), name="config_listener")
     except (OSError, RuntimeError, ImportError) as e:
         logger.error("[ERROR] Startup failed: %s", e)
         raise

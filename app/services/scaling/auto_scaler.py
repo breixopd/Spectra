@@ -395,7 +395,7 @@ class AutoScaler:
                 elif name == "garage":
                     alerts.extend(await self._check_garage(config))
             except Exception as e:
-                logger.debug("Infra check %s failed: %s", name, e)
+                logger.warning("Infra check %s failed: %s", name, e)
         return alerts
 
     async def _check_postgres(self, config: InfraMonitorConfig) -> list[str]:
@@ -423,7 +423,7 @@ class AutoScaler:
                             f"({current}/{max_conn})"
                         )
         except Exception as e:
-            logger.debug("PostgreSQL health check failed: %s", e)
+            logger.warning("PostgreSQL health check failed: %s", e)
         return alerts
 
     async def _check_redis(self, config: InfraMonitorConfig) -> list[str]:
@@ -451,7 +451,7 @@ class AutoScaler:
                             f"({used // (1024 * 1024)}MB/{maxmem // (1024 * 1024)}MB)"
                         )
         except Exception as e:
-            logger.debug("Redis health check failed: %s", e)
+            logger.warning("Redis health check failed: %s", e)
         return alerts
 
     async def _check_garage(self, config: InfraMonitorConfig) -> list[str]:
@@ -488,11 +488,11 @@ class AutoScaler:
                     if count > 0:
                         bucket_sizes.append(bucket["Name"])
                 except Exception:
-                    pass
+                    logger.debug("S3 bucket check failed for %s", bucket.get("Name", "?"), exc_info=True)
             # Storage usage is informational — alert if any bucket check fails
             # In production, actual byte-level tracking would use CloudWatch/metrics
         except Exception as e:
-            logger.debug("Garage/S3 health check failed: %s", e)
+            logger.warning("Garage/S3 health check failed: %s", e)
         return alerts
 
     async def evaluate_and_execute(self, metrics: dict) -> list[ScalingDecision]:
@@ -516,7 +516,7 @@ class AutoScaler:
                     tags=["warning", "infrastructure"],
                 )
             except Exception as e:
-                logger.debug("Failed to send infra alert: %s", e)
+                logger.warning("Failed to send infra alert: %s", e)
 
         return decisions
 

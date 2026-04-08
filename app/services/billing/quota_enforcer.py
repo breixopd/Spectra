@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-UTC = UTC
-
 from sqlalchemy import func, select
 
 from app.core.database import async_session_maker
