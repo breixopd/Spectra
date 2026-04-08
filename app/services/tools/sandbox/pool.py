@@ -252,6 +252,7 @@ class SandboxPool:
                 environment=environment,
                 mounts=mounts,
                 mem_limit=memory_limit,
+                memswap_limit=memory_limit,  # No swap
                 cpu_shares=cpu_shares,
                 labels={
                     "spectra.sandbox": "true",

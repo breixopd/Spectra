@@ -271,8 +271,9 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                     if not func:
                         raise ValueError(f"Function {job.function} not registered")
 
+                    job_timeout = job.timeout or 1800  # Default 30 min
                     if asyncio.iscoroutinefunction(func):
-                        res = await func(*job.args, **job.kwargs)
+                        res = await asyncio.wait_for(func(*job.args, **job.kwargs), timeout=job_timeout)
                     else:
                         res = func(*job.args, **job.kwargs)
 
@@ -287,11 +288,16 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                         await session.commit()
                     logger.info("Job %s completed successfully", job.id)
 
-                except (OSError, RuntimeError, ValueError) as e:
-                    # 5. Failure -> Retry or Dead Letter
-                    logger.error("Job %s failed: %s", job.id, e)
+                except TimeoutError:
+                    logger.error("Job %s timed out after %ds", job.id, job.timeout or 1800)
                     queue = PostgresJobQueue(queue_name)
-                    await queue.handle_job_failure(job.id, str(e))
+                    await queue.handle_job_failure(job.id, f"Job timed out after {job.timeout or 1800}s")
+
+                except Exception as exc:
+                    # 5. Failure -> Retry or Dead Letter
+                    logger.exception("Job %s failed: %s", job.id, type(exc).__name__)
+                    queue = PostgresJobQueue(queue_name)
+                    await queue.handle_job_failure(job.id, str(exc))
                 finally:
                     current_job_id = None
 
@@ -311,8 +317,8 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                     except (OSError, RuntimeError) as e:
                         logger.warning("Failed to mark abandoned job as failed: %s", e)
                 break
-            except (OSError, RuntimeError, ValueError) as e:
-                logger.error("Error in worker loop: %s", e)
+            except Exception as exc:
+                logger.exception("Error in worker loop: %s", type(exc).__name__)
                 await asyncio.sleep(poll_delay)
     finally:
         if _pg_listener_conn is not None:

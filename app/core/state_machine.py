@@ -76,6 +76,7 @@ VALID_TRANSITIONS: dict[MissionStatus, set[MissionStatus]] = {
     MissionStatus.PAUSED: {
         MissionStatus.EXECUTING,
         MissionStatus.EXPLOITING,
+        MissionStatus.FAILED,
         MissionStatus.CANCELLED,
     },
     MissionStatus.RUNNING: {

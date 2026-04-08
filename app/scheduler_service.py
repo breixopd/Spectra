@@ -92,8 +92,8 @@ class SchedulerService:
                 from app.core.background_tasks import sandbox_watchdog_loop
 
                 await sandbox_watchdog_loop()
-            except (OSError, RuntimeError, ValueError) as e:
-                logger.error("Sandbox watchdog error: %s", e)
+            except Exception:
+                logger.exception("Sandbox watchdog error")
             await asyncio.sleep(60)
 
     async def _quota_reset(self):
@@ -118,8 +118,8 @@ class SchedulerService:
                 tracker = UsageTracker()
                 await tracker.reset_daily_counters()
                 logger.info("Daily quota counters reset")
-            except (OSError, RuntimeError, ValueError) as e:
-                logger.error("Quota reset error: %s", e)
+            except Exception:
+                logger.exception("Quota reset error")
 
     async def _metrics_collector(self):
         """Collect and aggregate metrics. Runs every 30s."""
@@ -130,8 +130,8 @@ class SchedulerService:
                 store = get_metrics_store()
                 if store:
                     await store.collect()
-            except (OSError, RuntimeError, ValueError) as e:
-                logger.error("Metrics collection error: %s", e)
+            except Exception:
+                logger.exception("Metrics collection error")
             await asyncio.sleep(30)
 
     async def _health_reporter(self):
@@ -147,8 +147,8 @@ class SchedulerService:
                         {"status": "running", "timestamp": datetime.now(UTC).isoformat()},
                         ttl=60,
                     )
-            except OSError as e:
-                logger.warning("Health reporter cache write failed: %s", e)
+            except Exception:
+                logger.exception("Health reporter cache write failed")
             await asyncio.sleep(15)
 
     async def _backup_scheduler(self):
@@ -200,8 +200,8 @@ class SchedulerService:
                         datetime.now(UTC).isoformat(),
                         ttl=int(settings.BACKUP_SCHEDULE_HOURS * 3600 * 2),
                     )
-            except (OSError, RuntimeError, ValueError) as e:
-                logger.error("Scheduled backup failed: %s", e)
+            except Exception:
+                logger.exception("Scheduled backup failed")
 
             await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * 3600)
 
@@ -567,17 +567,23 @@ async def _leader_election_loop(scheduler: SchedulerService) -> None:
         try:
             async with async_session_maker() as session:
                 is_leader = await _try_advisory_lock(session, _SCHEDULER_LEADER_LOCK_ID)
-            if is_leader:
-                logger.info("Scheduler acquired leader lock — starting tasks")
-                await scheduler.start()
-                return  # start() runs until stopped
-            else:
-                logger.info("Another scheduler is leader, standing by...")
-                await asyncio.sleep(15)
+                if is_leader:
+                    logger.info("Scheduler acquired leader lock — starting tasks")
+                    try:
+                        await scheduler.start()
+                    finally:
+                        await session.execute(
+                            text("SELECT pg_advisory_unlock(:lock_id)"),
+                            {"lock_id": _SCHEDULER_LEADER_LOCK_ID},
+                        )
+                    return  # start() runs until stopped
+            # Not leader — stand by
+            logger.info("Another scheduler is leader, standing by...")
+            await asyncio.sleep(15)
         except asyncio.CancelledError:
             raise
-        except (OSError, RuntimeError) as e:
-            logger.warning("Leader election error: %s — retrying in 15s", e)
+        except Exception:
+            logger.exception("Leader election error — retrying in 15s")
             await asyncio.sleep(15)
 
 

@@ -59,7 +59,15 @@ async def work_loop():
 
     await startup()
     try:
-        await worker_loop(_WORKER_FUNCTIONS, queue_name=queue_name)
+        while True:
+            try:
+                await worker_loop(_WORKER_FUNCTIONS, queue_name=queue_name)
+                break  # Normal exit (e.g. cancelled)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Work loop crashed unexpectedly, restarting in 5s")
+                await asyncio.sleep(5)
     finally:
         await shutdown()
 

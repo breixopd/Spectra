@@ -227,6 +227,7 @@ class WarmPoolManager:
                 environment=environment,
                 mounts=mounts,
                 mem_limit="512m",  # Warm containers use minimal resources
+                memswap_limit="512m",  # No swap
                 cpu_shares=256,
                 labels={
                     "spectra.sandbox": "true",
