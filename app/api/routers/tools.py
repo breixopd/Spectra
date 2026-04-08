@@ -13,6 +13,7 @@ import logging
 import re
 from pathlib import Path
 
+import aiofiles
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -340,8 +341,9 @@ async def sign_plugin_config(
             if not key_path.exists():
                 raise HTTPException(status_code=503, detail="Signing key not available on server")
 
-            with open(key_path, "rb") as f:
-                loaded_key = serialization.load_pem_private_key(f.read(), password=None)
+            async with aiofiles.open(key_path, "rb") as f:
+                key_data = await f.read()
+            loaded_key = serialization.load_pem_private_key(key_data, password=None)
 
             if not isinstance(loaded_key, Ed25519PrivateKey):
                 raise HTTPException(status_code=500, detail="Invalid server key type")
@@ -400,8 +402,8 @@ async def save_plugin_unsigned(
 
         # Save to file
         plugin_path = Path("plugins") / f"{tool_config.id}.json"
-        with open(plugin_path, "w") as f:
-            json.dump(config, f, indent=2)
+        async with aiofiles.open(plugin_path, "w") as f:
+            await f.write(json.dumps(config, indent=2))
 
         # Reload into registry
         await registry.load_plugins()

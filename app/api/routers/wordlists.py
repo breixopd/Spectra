@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,8 +90,9 @@ async def list_wordlists(
         if f.is_file() and not f.name.startswith("."):
             lines = 0
             try:
-                with f.open("r", errors="ignore") as fh:
-                    lines = sum(1 for _ in fh)
+                async with aiofiles.open(f, errors="ignore") as fh:
+                    content = await fh.read()
+                lines = len(content.splitlines())
             except (OSError, ValueError) as e:
                 logger.debug("Failed to count wordlist lines: %s", e)
             system.append(
@@ -111,8 +113,9 @@ async def list_wordlists(
         if f.is_file() and not f.name.startswith("."):
             lines = 0
             try:
-                with f.open("r", errors="ignore") as fh:
-                    lines = sum(1 for _ in fh)
+                async with aiofiles.open(f, errors="ignore") as fh:
+                    content = await fh.read()
+                lines = len(content.splitlines())
             except (OSError, ValueError) as e:
                 logger.debug("Failed to count wordlist lines: %s", e)
             user_local.append(
