@@ -19,6 +19,11 @@
 	}
 
 	route {
+		handle /static/* {
+			header Cache-Control "public, max-age=3600"
+			reverse_proxy spectra-app:5000
+		}
+
 		handle @websocket {
 			reverse_proxy spectra-app:5000
 		}

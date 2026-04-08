@@ -144,25 +144,49 @@ class StorageService:
 
     async def upload(self, bucket: str, key: str, data: bytes) -> str:
         """Upload data to S3. Returns the s3:// URI."""
+        from botocore.exceptions import BotoCoreError, ClientError
+
+        from app.core.exceptions import StorageError
+
         await self._ensure_bucket(bucket)
-        async with self._client() as s3:
-            await s3.put_object(Bucket=bucket, Key=key, Body=data)
+        try:
+            async with self._client() as s3:
+                await s3.put_object(Bucket=bucket, Key=key, Body=data)
+        except (ClientError, BotoCoreError) as exc:
+            logger.error("S3 upload failed: bucket=%s key=%s: %s", bucket, key, exc)
+            raise StorageError(f"Failed to upload {key}") from exc
         logger.debug("S3 upload: %s/%s (%d bytes)", bucket, key, len(data))
         return f"s3://{bucket}/{key}"
 
     async def upload_file(self, bucket: str, key: str, file_path: str) -> str:
         """Upload a local file to S3."""
+        from botocore.exceptions import BotoCoreError, ClientError
+
+        from app.core.exceptions import StorageError
+
         await self._ensure_bucket(bucket)
-        async with self._client() as s3:
-            await s3.upload_file(str(file_path), bucket, key)
+        try:
+            async with self._client() as s3:
+                await s3.upload_file(str(file_path), bucket, key)
+        except (ClientError, BotoCoreError) as exc:
+            logger.error("S3 upload_file failed: bucket=%s key=%s: %s", bucket, key, exc)
+            raise StorageError(f"Failed to upload file {key}") from exc
         logger.debug("S3 upload_file: %s → %s/%s", file_path, bucket, key)
         return f"s3://{bucket}/{key}"
 
     async def download(self, bucket: str, key: str) -> bytes:
         """Download data from S3."""
-        async with self._client() as s3:
-            response = await s3.get_object(Bucket=bucket, Key=key)
-            data = await response["Body"].read()
+        from botocore.exceptions import BotoCoreError, ClientError
+
+        from app.core.exceptions import StorageError
+
+        try:
+            async with self._client() as s3:
+                response = await s3.get_object(Bucket=bucket, Key=key)
+                data = await response["Body"].read()
+        except (ClientError, BotoCoreError) as exc:
+            logger.error("S3 download failed: bucket=%s key=%s: %s", bucket, key, exc)
+            raise StorageError(f"Failed to download {key}") from exc
         logger.debug("S3 download: %s/%s (%d bytes)", bucket, key, len(data))
         return data
 
@@ -170,10 +194,18 @@ class StorageService:
         """Download an S3 object to a local path."""
         from pathlib import Path
 
+        from botocore.exceptions import BotoCoreError, ClientError
+
+        from app.core.exceptions import StorageError
+
         dest = Path(dest_path)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        async with self._client() as s3:
-            await s3.download_file(bucket, key, str(dest))
+        try:
+            async with self._client() as s3:
+                await s3.download_file(bucket, key, str(dest))
+        except (ClientError, BotoCoreError) as exc:
+            logger.error("S3 download_file failed: bucket=%s key=%s: %s", bucket, key, exc)
+            raise StorageError(f"Failed to download file {key}") from exc
         logger.debug("S3 download_file: %s/%s → %s", bucket, key, dest)
         return str(dest)
 
