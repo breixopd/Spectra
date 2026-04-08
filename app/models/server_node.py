@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Integer, String, Text
+from sqlalchemy import JSON, Boolean, CheckConstraint, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -18,6 +18,11 @@ class ServerNode(Base):
     """Tracks registered server nodes across the infrastructure."""
 
     __tablename__ = "server_nodes"
+    __table_args__ = (
+        CheckConstraint("weight >= 0", name="ck_server_nodes_weight_nonneg"),
+        CheckConstraint("current_load >= 0", name="ck_server_nodes_current_load_nonneg"),
+        CheckConstraint("max_capacity > 0", name="ck_server_nodes_max_capacity_pos"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)  # type: ignore[assignment]
     service_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)

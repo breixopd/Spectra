@@ -13,6 +13,7 @@ from app.api.dependencies import (
     _decode_access_payload,
     _extract_request_token,
     _load_active_user_from_payload_with_session,
+    validate_uuid_param,
 )
 from app.api.schemas import (
     AdminUserCreate,
@@ -60,6 +61,7 @@ def _to_admin_user_create_response(user: User, activation_url: str | None) -> Ad
 
 
 async def _get_user_or_404(session: AsyncSession, user_id: str) -> User:
+    validate_uuid_param(user_id, "user_id")
     user = (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

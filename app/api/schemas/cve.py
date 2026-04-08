@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CVEItem(BaseModel):
@@ -11,7 +11,7 @@ class CVEItem(BaseModel):
     cve_id: str | None = None
     description: str | None = None
     severity: str | None = None
-    cvss_score: float | None = None
+    cvss_score: float | None = Field(None, ge=0, le=10)
     published: str | None = None
     references: list[str] = []
 

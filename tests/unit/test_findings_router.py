@@ -15,7 +15,7 @@ from app.core.enums import Severity
 from app.models.finding import FindingStatus
 
 
-def _fake_user(is_superuser: bool = False, user_id: str = "u-1", role: str = "operator"):
+def _fake_user(is_superuser: bool = False, user_id: str = "00000000-0000-4000-a000-000000000001", role: str = "operator"):
     user = MagicMock()
     user.id = user_id
     user.is_superuser = is_superuser
@@ -25,8 +25,8 @@ def _fake_user(is_superuser: bool = False, user_id: str = "u-1", role: str = "op
 
 def _fake_finding(**overrides):
     defaults = {
-        "id": "f-1",
-        "target_id": "t-1",
+        "id": "00000000-0000-4000-a000-f00000000001",
+        "target_id": "00000000-0000-4000-a000-100000000001",
         "title": "SQL Injection",
         "description": "Parameterised query missing",
         "severity": Severity.HIGH,
@@ -35,7 +35,7 @@ def _fake_finding(**overrides):
         "cve_id": "CVE-2026-0001",
         "tool_source": "sqlmap",
         "evidence": {"payload": "' OR 1=1--"},
-        "user_id": "u-1",
+        "user_id": "00000000-0000-4000-a000-000000000001",
         "created_at": datetime(2026, 1, 1, 12, 0),
     }
     defaults.update(overrides)
@@ -162,10 +162,10 @@ class TestGetFinding:
         finding = _fake_finding()
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=finding))
-            resp = await ac.get("/api/v1/findings/f-1")
+            resp = await ac.get("/api/v1/findings/00000000-0000-4000-a000-f00000000001")
 
         assert resp.status_code == 200
-        assert resp.json()["id"] == "f-1"
+        assert resp.json()["id"] == "00000000-0000-4000-a000-f00000000001"
         assert resp.json()["severity"] == "high"
 
     async def test_get_finding_not_found(self, client):
@@ -174,7 +174,7 @@ class TestGetFinding:
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=None))
-            resp = await ac.get("/api/v1/findings/bad-id")
+            resp = await ac.get("/api/v1/findings/00000000-0000-4000-a000-f00000000099")
 
         assert resp.status_code == 404
 
@@ -182,10 +182,10 @@ class TestGetFinding:
         ac, _session, _user = client
         from app.repositories.finding import FindingRepository
 
-        finding = _fake_finding(user_id="other-user")
+        finding = _fake_finding(user_id="00000000-0000-4000-a000-000000000099")
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=finding))
-            resp = await ac.get("/api/v1/findings/f-1")
+            resp = await ac.get("/api/v1/findings/00000000-0000-4000-a000-f00000000001")
 
         assert resp.status_code == 403
 
@@ -268,7 +268,7 @@ class TestUpdateFinding:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=existing))
             mp.setattr(FindingRepository, "update", AsyncMock(return_value=updated))
             resp = await ac.patch(
-                "/api/v1/findings/f-1",
+                "/api/v1/findings/00000000-0000-4000-a000-f00000000001",
                 json={"title": "Updated Title"},
             )
 
@@ -282,7 +282,7 @@ class TestUpdateFinding:
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=None))
             resp = await ac.patch(
-                "/api/v1/findings/bad-id",
+                "/api/v1/findings/00000000-0000-4000-a000-f00000000099",
                 json={"title": "x"},
             )
 
@@ -304,7 +304,7 @@ class TestDeleteFinding:
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=finding))
             mp.setattr(FindingRepository, "delete", AsyncMock(return_value=None))
-            resp = await ac.delete("/api/v1/findings/f-1")
+            resp = await ac.delete("/api/v1/findings/00000000-0000-4000-a000-f00000000001")
 
         assert resp.status_code == 204
 
@@ -314,7 +314,7 @@ class TestDeleteFinding:
 
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=None))
-            resp = await ac.delete("/api/v1/findings/bad-id")
+            resp = await ac.delete("/api/v1/findings/00000000-0000-4000-a000-f00000000099")
 
         assert resp.status_code == 404
 
@@ -391,7 +391,7 @@ class TestFindingExportsAndStatusPaths:
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=finding))
             mp.setattr(FindingRepository, "update", AsyncMock(return_value=None))
-            resp = await ac.post("/api/v1/findings/f-1/verify")
+            resp = await ac.post("/api/v1/findings/00000000-0000-4000-a000-f00000000001/verify")
 
         assert resp.status_code == 500
         assert resp.json()["detail"] == "Update failed unexpectedly"
@@ -420,7 +420,7 @@ class TestFindingExportsAndStatusPaths:
             with pytest.MonkeyPatch.context() as mp:
                 mp.setattr(FindingRepository, "get_by_id", AsyncMock(return_value=finding))
                 mp.setattr(FindingRepository, "update", AsyncMock(return_value=None))
-                resp = await ac.post("/api/v1/findings/f-1/confirm")
+                resp = await ac.post("/api/v1/findings/00000000-0000-4000-a000-f00000000001/confirm")
 
         assert resp.status_code == 500
         assert resp.text == "Internal Server Error"
@@ -438,7 +438,7 @@ class TestFindingsAuth:
         assert resp.status_code == 401
 
     async def test_get_finding_no_auth(self, unauth_client):
-        resp = await unauth_client.get("/api/v1/findings/f-1")
+        resp = await unauth_client.get("/api/v1/findings/00000000-0000-4000-a000-f00000000001")
         assert resp.status_code == 401
 
     async def test_create_finding_no_auth(self, unauth_client):
@@ -446,7 +446,7 @@ class TestFindingsAuth:
         assert resp.status_code == 401
 
     async def test_delete_finding_no_auth(self, unauth_client):
-        resp = await unauth_client.delete("/api/v1/findings/f-1")
+        resp = await unauth_client.delete("/api/v1/findings/00000000-0000-4000-a000-f00000000001")
         assert resp.status_code == 401
 
 

@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import check_resource_owner, check_target_limit, get_current_active_user
+from app.api.dependencies import check_resource_owner, check_target_limit, get_current_active_user, validate_uuid_param
 from app.api.schemas import FindingResponse, PaginatedResponse, TargetCreate, TargetResponse, TargetUpdate
 from app.core.constants import API_DEFAULT_PAGE_SIZE as DEFAULT_PAGE_SIZE
 from app.core.constants import API_MAX_PAGE_SIZE as MAX_PAGE_SIZE
@@ -51,6 +51,7 @@ def _target_audit_details(target) -> dict[str, str]:
 
 
 async def _get_target_or_404(repo: TargetRepository, target_id: str):
+    validate_uuid_param(target_id, "target_id")
     target = await repo.get_by_id(target_id)
     if not target:
         raise HTTPException(

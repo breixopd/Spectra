@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import check_resource_owner, get_current_active_user
+from app.api.dependencies import check_resource_owner, get_current_active_user, validate_uuid_param
 from app.api.schemas import ActionApprovalResponse
 from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
@@ -60,6 +60,7 @@ async def steer_mission(
     - prioritize_target: Focus on a specific target/service
     - focus_vuln: Prioritize a specific vulnerability
     """
+    validate_uuid_param(mission_id, "mission_id")
 
     try:
         active = await mission_manager.get_mission(mission_id)
@@ -86,6 +87,7 @@ async def get_task_tree(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get the task tree for a mission."""
+    validate_uuid_param(mission_id, "mission_id")
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
@@ -99,6 +101,7 @@ async def get_mission_progress(
     _current_user: User = Depends(get_current_active_user),
 ) -> dict[str, Any]:
     """Get estimated mission progress."""
+    validate_uuid_param(mission_id, "mission_id")
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
@@ -113,6 +116,7 @@ async def approve_action(
     _current_user: User = Depends(get_current_active_user),
 ) -> ActionApprovalResponse:
     """Approve or reject a pending action in a mission that requires approval."""
+    validate_uuid_param(mission_id, "mission_id")
     mission = await mission_manager.get_mission(mission_id)
     if not mission:
         raise HTTPException(status_code=404, detail="Mission not found")
@@ -142,6 +146,7 @@ async def submit_mission_feedback(
     current_user: User = Depends(get_current_active_user),
 ):
     """Submit feedback for a completed mission. Helps improve AI performance via TensorZero."""
+    validate_uuid_param(mission_id, "mission_id")
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
     if not mission:
@@ -172,6 +177,7 @@ async def get_mission_feedback(
     current_user: User = Depends(get_current_active_user),
 ):
     """Get feedback for a mission."""
+    validate_uuid_param(mission_id, "mission_id")
     repo = MissionRepository(db)
     mission = await repo.get_by_id(mission_id)
     if not mission:
