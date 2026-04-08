@@ -207,6 +207,12 @@ def _cleanup_expired() -> None:
     for h in expired:
         del _blacklisted_tokens[h]
 
+    # Evict stale user-level blacklist entries older than max token lifetime + buffer
+    max_lifetime_secs = (settings.ACCESS_TOKEN_EXPIRE_MINUTES + 60) * 60
+    stale = [uid for uid, ts in _user_token_blacklist.items() if now - ts > max_lifetime_secs]
+    for uid in stale:
+        del _user_token_blacklist[uid]
+
 
 def is_token_blacklisted(token: str) -> bool:
     """Check if a token is blacklisted (by direct blacklist or user-level invalidation)."""

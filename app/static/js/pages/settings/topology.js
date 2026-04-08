@@ -54,4 +54,8 @@ async function loadServiceTopology() {
 document.addEventListener('DOMContentLoaded', () => {
     loadServiceTopology();
     svcTopologyTimer = setInterval(loadServiceTopology, 60000);
+
+    window.addEventListener('pagehide', () => {
+        clearInterval(svcTopologyTimer);
+    });
 });

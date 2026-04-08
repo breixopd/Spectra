@@ -125,10 +125,15 @@ function initMap() {
 
     // Leaflet requires invalidateSize when container is resized or initially hidden
     setTimeout(() => { if (map) map.invalidateSize(); }, 200);
-    window.addEventListener('resize', () => { if (map) map.invalidateSize(); });
+    const _mapResizeHandler = () => { if (map) map.invalidateSize(); };
+    window.addEventListener('resize', _mapResizeHandler);
     // Observer for container visibility changes
     const observer = new ResizeObserver(() => { if (map) map.invalidateSize(); });
     observer.observe(mapContainer);
+
+    window.addEventListener('pagehide', () => {
+        window.removeEventListener('resize', _mapResizeHandler);
+    });
 }
 
 function addMapMarker(lat, lng, title) {

@@ -175,6 +175,10 @@ async function downloadDataSources() {
 
 document.addEventListener('DOMContentLoaded', () => {
     loadSystemStatus();
-    setInterval(loadSystemStatus, 10000);
+    const dataStatusInterval = setInterval(loadSystemStatus, 10000);
     loadDataSourceStatus();
+
+    window.addEventListener('pagehide', () => {
+        clearInterval(dataStatusInterval);
+    });
 });
