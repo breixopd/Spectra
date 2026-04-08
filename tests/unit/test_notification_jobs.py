@@ -20,7 +20,7 @@ async def test_send_webhook_makes_http_post():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("app.services.notifications._is_safe_url", return_value=True),
+        patch("app.utils.url_validation.is_safe_url", return_value=True),
         patch("httpx.AsyncClient", return_value=mock_client),
     ):
         result = await send_webhook_notification({"event": "test"}, "https://hooks.example.com/test")
@@ -42,7 +42,7 @@ async def test_send_webhook_handles_http_error_gracefully():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("app.services.notifications._is_safe_url", return_value=True),
+        patch("app.utils.url_validation.is_safe_url", return_value=True),
         patch("httpx.AsyncClient", return_value=mock_client),
     ):
         result = await send_webhook_notification({"event": "fail"}, "https://hooks.example.com/fail")
@@ -60,7 +60,7 @@ async def test_send_webhook_handles_network_exception():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with (
-        patch("app.services.notifications._is_safe_url", return_value=True),
+        patch("app.utils.url_validation.is_safe_url", return_value=True),
         patch("httpx.AsyncClient", return_value=mock_client),
     ):
         result = await send_webhook_notification({"event": "err"}, "https://hooks.example.com/err")
@@ -72,7 +72,7 @@ async def test_send_webhook_handles_network_exception():
 async def test_send_webhook_blocks_unsafe_url():
     from app.worker.notification_jobs import send_webhook_notification
 
-    with patch("app.services.notifications._is_safe_url", return_value=False):
+    with patch("app.utils.url_validation.is_safe_url", return_value=False):
         result = await send_webhook_notification({"event": "bad"}, "http://169.254.169.254/metadata")
 
     assert result is False

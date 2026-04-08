@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 async def send_webhook_notification(payload: dict, webhook_url: str) -> bool:
     """Deliver a webhook notification (POST JSON)."""
-    from app.services.notifications import _is_safe_url
+    from app.utils.url_validation import is_safe_url
 
-    if not _is_safe_url(webhook_url):
+    if not is_safe_url(webhook_url):
         logger.warning("Blocked webhook to unsafe URL: %s", webhook_url)
         return False
 

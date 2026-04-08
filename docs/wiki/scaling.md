@@ -152,7 +152,7 @@ S3-compatible storage is now required in every deployment mode.
 
 - There is no local filesystem fallback for missions, pentest sessions, knowledge assets, or backups.
 - Single-host deployments can use the bundled Garage service; multi-host deployments can use Garage or any external S3-compatible endpoint.
-- Automated backups are S3-native and stored in `S3_BUCKET_BACKUPS` when `BACKUP_ENABLED=true`.
+- Automated backups are S3-native and stored in the `spectra-backups` bucket (configured via `S3_BUCKET_BACKUPS`) when `BACKUP_ENABLED=true`.
 
 ### Garage Setup (Self-Hosted)
 
@@ -178,10 +178,11 @@ Configure in `.env`:
 S3_ENDPOINT_URL=http://garage:3900
 S3_ACCESS_KEY=spectra
 S3_SECRET_KEY=your-garage-secret-key
-S3_BUCKET_MISSIONS=spectra-missions
-S3_BUCKET_SESSIONS=spectra-sessions
-S3_BUCKET_KNOWLEDGE=spectra-knowledge
-S3_BUCKET_BACKUPS=spectra-backups
+# Bucket names below use hardcoded defaults; override only for custom setups
+# S3_BUCKET_MISSIONS=spectra-missions
+# S3_BUCKET_SESSIONS=spectra-sessions
+# S3_BUCKET_KNOWLEDGE=spectra-knowledge
+# S3_BUCKET_BACKUPS=spectra-backups
 ```
 
 ### Cloud S3 Migration

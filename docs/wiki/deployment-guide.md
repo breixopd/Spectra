@@ -78,7 +78,7 @@ JWT_SECRET_KEY=<generate with: openssl rand -hex 32>
 SERVICE_AUTH_SECRET=<generate with: openssl rand -hex 32>
 
 # --- Domain (for Caddy TLS) ---
-SPECTRA_DOMAIN=spectra.example.com
+PLATFORM_DOMAIN=spectra.example.com
 
 # --- AI Provider (TensorZero) ---
 TENSORZERO_GATEWAY_URL=http://tensorzero:3000
@@ -286,7 +286,7 @@ docker compose -f docker/docker-compose.yml --env-file .env.prod up -d
 | `POSTGRES_PASSWORD` | Database authentication |
 | `JWT_SECRET_KEY` | Token signing — sessions invalidate on restart if unset |
 | `SERVICE_AUTH_SECRET` | Inter-service authentication (microservices mode) |
-| `SPECTRA_DOMAIN` | TLS certificate provisioning via Let's Encrypt |
+| `PLATFORM_DOMAIN` | TLS certificate provisioning via Let's Encrypt |
 | `GARAGE_SECRET_KEY` | S3 storage authentication (if Garage is used) |
 
 ### SSL/TLS with Caddy
@@ -299,10 +299,10 @@ docker compose -f docker/docker-compose.yml --env-file .env.prod up -d
 | **Health checks** | Polls `/api/health` every 15s |
 | **Timeouts** | 300s read/write for long-running operations |
 
-Set `SPECTRA_DOMAIN` in `.env`:
+Set `PLATFORM_DOMAIN` in `.env`:
 
 ```bash
-SPECTRA_DOMAIN=spectra.example.com
+PLATFORM_DOMAIN=spectra.example.com
 ```
 
 When using `localhost`, Caddy serves on port 443 with a self-signed certificate.
@@ -343,7 +343,7 @@ docker node update --label-add role=ai <GPU_NODE_HOSTNAME>    # Optional: GPU no
 Swarm secrets are encrypted at rest and only available to services that reference them:
 
 ```bash
-echo "$(openssl rand -hex 16)" | docker secret create db_password -
+echo "$(openssl rand -hex 16)" | docker secret create postgres_password -
 echo "$(openssl rand -hex 32)" | docker secret create service_auth -
 echo "$(openssl rand -hex 32)" | docker secret create jwt_secret -
 ```
@@ -382,8 +382,8 @@ The `docker-compose.swarm.yml` defines these services with placement constraints
 
 | Service | Placement | Replicas | Secrets |
 |---------|-----------|----------|---------|
-| `db` | `node.labels.role == db` | 1 | `db_password` |
-| `app` | `node.labels.role == app` | 2 | `db_password`, `service_auth`, `jwt_secret` |
+| `db` | `node.labels.role == db` | 1 | `postgres_password` |
+| `app` | `node.labels.role == app` | 2 | `postgres_password`, `service_auth`, `jwt_secret` |
 | `ai-svc` | `node.labels.role == ai` | 1 | `service_auth` |
 | `scheduler` | `node.labels.role == app` | 1 | `service_auth` |
 | `worker` | `node.labels.role == worker` | 2 | `service_auth` |
@@ -440,7 +440,7 @@ In the Portainer UI: **Environments → Add environment → Docker (Agent)** →
 
 1. In Portainer, go to **Stacks → Add stack**
 2. Paste the contents of `docker/docker-compose.yml` (or the swarm file for multi-host)
-3. Under **Environment variables**, add `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`, `SERVICE_AUTH_SECRET`, `SPECTRA_DOMAIN`, etc.
+3. Under **Environment variables**, add `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`, `SERVICE_AUTH_SECRET`, `PLATFORM_DOMAIN`, etc.
 4. Click **Deploy the stack**
 
 Portainer provides:
@@ -528,7 +528,6 @@ The scheduler service handles automated backups:
 BACKUP_ENABLED=true
 BACKUP_SCHEDULE_HOURS=24
 BACKUP_RETENTION_COUNT=10
-BACKUP_S3_BUCKET=spectra-backups    # Required S3 bucket for automated backups
 ```
 
 ### Manual Backup via Admin API
@@ -680,7 +679,7 @@ python version.py --patch 1      # 2026.03.13.1
 | Database connection fails | Verify `POSTGRES_PASSWORD` matches between `.env` and compose |
 | Migrations fail | Check `docker logs spectra-app` for migration errors |
 | Setup page not loading | Ensure all services are healthy: `docker compose ps` |
-| Caddy TLS errors | Ensure `SPECTRA_DOMAIN` is set and DNS points to this server |
+| Caddy TLS errors | Ensure `PLATFORM_DOMAIN` is set and DNS points to this server |
 | WebSocket disconnects | Check Caddy logs; verify firewall allows WebSocket upgrades |
 | Services can't communicate | Ensure `SERVICE_AUTH_SECRET` is the same across all services |
 | Worker not processing jobs | Check `docker logs spectra-worker`; verify DB connectivity |

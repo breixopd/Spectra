@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import WEBHOOK_MAX_RETRIES
 from app.services.webhooks.models import Webhook
+from app.utils.url_validation import is_safe_url
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,8 @@ class WebhookService:
         description: str | None = None,
     ) -> Webhook:
         """Register a new webhook endpoint."""
+        if not is_safe_url(url):
+            raise ValueError("Webhook URL points to a private/internal address")
         invalid = set(events) - SUPPORTED_EVENTS
         if invalid:
             raise ValueError(f"Unsupported webhook events: {invalid}")
