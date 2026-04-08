@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import random
+import secrets
 from datetime import UTC, datetime
 
 from sqlalchemy import and_, select, update
@@ -144,7 +144,7 @@ class ServerPoolManager:
         # Weighted least-connections: score = current_load / weight (lower is better)
         min_score = min(n.current_load / max(n.weight, 1) for n in available)
         best = [n for n in available if n.current_load / max(n.weight, 1) <= min_score + 0.1]
-        chosen = random.choice(best)
+        chosen = secrets.choice(best)
         return chosen.to_dict()
 
     async def increment_load(self, node_id: int) -> None:
