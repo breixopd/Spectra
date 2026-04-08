@@ -104,6 +104,15 @@ async def _start_process(
     cwd: str | None,
     env: dict[str, str],
 ):
+    """Start a subprocess for command execution.
+
+    When *command* is a ``list``, ``create_subprocess_exec`` is used (no shell).
+    When *command* is a ``str``, ``create_subprocess_shell`` is **intentionally**
+    kept because callers (tool_jobs, command_jobs) build command strings that rely
+    on shell features such as ``timeout … cmd`` wrapping and tool-specific
+    pipelines / redirects.  All user-controlled fragments that are interpolated
+    into these strings MUST be escaped with ``shlex.quote()`` at the call-site.
+    """
     if isinstance(command, list):
         return await asyncio.create_subprocess_exec(
             *command,

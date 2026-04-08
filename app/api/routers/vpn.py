@@ -124,7 +124,8 @@ async def upload_vpn_config(
         result["name"] = name  # Return user-facing name
         return VPNConfigResponse(**result)
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        logger.warning("VPN config upload validation failed: %s", e)
+        raise HTTPException(status_code=422, detail="Invalid VPN configuration")
 
 
 @router.get("/configs", response_model=list[VPNConfigListItem])
@@ -151,7 +152,8 @@ async def delete_vpn_config(
     try:
         deleted = await mgr.delete_config(_scoped_name(_user, name))
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        logger.warning("VPN config delete failed for %s: %s", name, e)
+        raise HTTPException(status_code=422, detail="Failed to delete VPN configuration")
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Config '{name}' not found")
     return {"deleted": True, "name": name}
@@ -172,7 +174,8 @@ async def connect_vpn(
         result = await mgr.connect(_scoped_name(_user, name))
         return VPNActionResponse(**result)
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        logger.warning("VPN connect failed for %s: %s", name, e)
+        raise HTTPException(status_code=422, detail="VPN connection failed")
 
 
 @router.post("/disconnect/{name}", response_model=VPNActionResponse)
@@ -186,7 +189,8 @@ async def disconnect_vpn(
         result = await mgr.disconnect(_scoped_name(_user, name))
         return VPNActionResponse(**result)
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        logger.warning("VPN disconnect failed for %s: %s", name, e)
+        raise HTTPException(status_code=422, detail="VPN disconnect failed")
 
 
 @router.get("/status", response_model=VPNActionResponse)

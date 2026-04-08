@@ -419,7 +419,8 @@ async def test_llm_connection(request: Request):
                 return {"status": "ok", "message": "TensorZero gateway is healthy"}
             return {"status": "error", "message": f"Gateway returned status {resp.status_code}"}
     except Exception as e:
-        return {"status": "error", "message": f"Cannot reach gateway at {gw_url}: {str(e)}"}
+        logger.warning("TensorZero gateway health check failed: %s", e)
+        return {"status": "error", "message": "Cannot reach LLM gateway \u2014 check configuration"}
 
 
 @router.post("/test-tz-gateway")
@@ -436,4 +437,5 @@ async def test_tz_gateway(request: Request):
                 return {"success": True}
             return {"success": False, "error": f"Gateway returned status {resp.status_code}"}
     except Exception as e:
-        return {"success": False, "error": f"Cannot reach gateway at {gw_url}: {str(e)}"}
+        logger.warning("TensorZero gateway test failed for %s: %s", gw_url, e)
+        return {"success": False, "error": "Cannot reach LLM gateway \u2014 check URL and try again"}

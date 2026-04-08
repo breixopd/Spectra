@@ -290,8 +290,8 @@ async def validate_plugin_config(
 
         return ValidationResponse(valid=True, message="Plugin configuration is valid")
     except ValueError as e:
-        # Pydantic validation errors are safe to expose
-        raise HTTPException(status_code=400, detail=str(e)) from e
+        logger.warning("Plugin schema validation failed: %s", e)
+        raise HTTPException(status_code=400, detail="Plugin configuration validation failed") from e
     except (TypeError, KeyError, AttributeError) as e:
         logger.warning("Plugin validation failed: %s", e)
         raise HTTPException(status_code=400, detail="Invalid plugin configuration") from e
@@ -576,7 +576,8 @@ async def upload_plugin(
             raise HTTPException(status_code=413, detail="Plugin file too large (max 5MB)")
         data = json.loads(content.decode("utf-8"))
     except json.JSONDecodeError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid JSON: {e}") from e
+        logger.warning("Plugin upload JSON parse error: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid JSON in plugin file") from e
 
     # Add to registry
     try:
@@ -597,9 +598,11 @@ async def upload_plugin(
             message=f"Plugin '{tool.config.name}' uploaded successfully. Installation queued in background.",
         )
     except PluginSignatureError as e:
-        raise HTTPException(status_code=403, detail=f"Signature verification failed: {e}") from e
+        logger.warning("Plugin signature verification failed: %s", e)
+        raise HTTPException(status_code=403, detail="Plugin signature verification failed") from e
     except PluginValidationError as e:
-        raise HTTPException(status_code=400, detail=f"Plugin validation failed: {e}") from e
+        logger.warning("Plugin validation failed: %s", e)
+        raise HTTPException(status_code=400, detail="Plugin validation failed") from e
 
 
 @router.post("/install-all", response_model=ToolQueueResponse)
