@@ -30,6 +30,7 @@ class Plan(Base):
     max_targets: Mapped[int | None] = mapped_column(Integer, nullable=True)
     max_api_requests_per_hour: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
     max_api_requests_per_day: Mapped[int] = mapped_column(Integer, default=1000, nullable=False)
+    max_llm_tokens_per_day: Mapped[int] = mapped_column(Integer, default=500_000, nullable=False, server_default="500000")
     sandbox_resource_tier: Mapped[str] = mapped_column(
         String(50), default="medium", nullable=False, server_default="medium"
     )

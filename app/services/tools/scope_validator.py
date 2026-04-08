@@ -7,6 +7,7 @@ a secondary layer.
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import logging
 import re
@@ -61,7 +62,7 @@ def parse_scope(scope_targets: list[str]) -> tuple[list[ipaddress.IPv4Network | 
     return networks, domains
 
 
-def is_target_in_scope(
+async def is_target_in_scope(
     target: str,
     scope_networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network],
     scope_domains: list[str],
@@ -89,7 +90,7 @@ def is_target_in_scope(
 
     # Try resolving hostname to IP and check
     try:
-        resolved_ips = _resolve_hostname(target)
+        resolved_ips = await _resolve_hostname(target)
         for ip_str in resolved_ips:
             try:
                 ip = ipaddress.ip_address(ip_str)
@@ -108,7 +109,7 @@ _DNS_CACHE_MAX = 256
 _DNS_CACHE_TTL = 300  # seconds
 
 
-def _resolve_hostname(hostname: str) -> tuple[str, ...]:
+async def _resolve_hostname(hostname: str) -> tuple[str, ...]:
     """Resolve hostname to IP addresses with TTL-based caching."""
     now = time.monotonic()
     entry = _dns_cache.get(hostname)
@@ -118,7 +119,10 @@ def _resolve_hostname(hostname: str) -> tuple[str, ...]:
             return ips
         del _dns_cache[hostname]
     try:
-        results = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        loop = asyncio.get_running_loop()
+        results = await loop.run_in_executor(
+            None, socket.getaddrinfo, hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM,
+        )
         ips = tuple({str(r[4][0]) for r in results})
     except (OSError, socket.gaierror):
         ips = ()
@@ -130,7 +134,7 @@ def _resolve_hostname(hostname: str) -> tuple[str, ...]:
     return ips
 
 
-def validate_command_target(
+async def validate_command_target(
     command: str,
     scope_targets: list[str],
 ) -> tuple[bool, str]:
@@ -194,7 +198,7 @@ def validate_command_target(
         # Skip common non-target IPs
         if target in ("127.0.0.1", "0.0.0.0", "255.255.255.255"):
             continue
-        if not is_target_in_scope(target, scope_networks, scope_domains):
+        if not await is_target_in_scope(target, scope_networks, scope_domains):
             return False, f"Target {target} is outside declared scope"
 
     return True, "All targets within scope"

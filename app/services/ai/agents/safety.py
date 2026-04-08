@@ -111,7 +111,7 @@ class SafetySupervisorAgent(Agent[SafetyInput, SafetyAction]):
         if input_data.scope_targets:
             from app.services.tools.scope_validator import validate_command_target
 
-            is_valid, reason = validate_command_target(input_data.command, input_data.scope_targets)
+            is_valid, reason = await validate_command_target(input_data.command, input_data.scope_targets)
             if not is_valid:
                 logger.warning("Scope violation: %s (tool=%s)", reason, input_data.tool_id)
                 return AgentResult(
