@@ -19,7 +19,7 @@ from typing import Any
 import httpx
 
 from app.core.constants import CVE_CACHE_TTL, EXTERNAL_HTTP_TIMEOUT, NVD_API_BASE_URL, NVD_RATE_LIMIT_DELAY
-from app.services.ai.exploit_db import get_exploit_db
+from app.services.exploit_db import get_exploit_db
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +300,7 @@ def _save_cache(keyword: str, results: list[dict[str, Any]]) -> None:
 
 def get_metasploit_modules(cve_id: str) -> list[dict]:
     """Get exploit modules for a CVE ID from all sources."""
-    from app.services.ai.exploit_db import get_exploit_db
+    from app.services.exploit_db import get_exploit_db
 
     db = get_exploit_db()
     return db.lookup(cve_id)
@@ -311,7 +311,7 @@ def enrich_cve_with_exploits(cve: dict) -> dict:
     cve_id = cve.get("cve", "")
     modules = get_metasploit_modules(cve_id)
 
-    from app.services.ai.exploit_db import get_exploit_db
+    from app.services.exploit_db import get_exploit_db
 
     db = get_exploit_db()
 
@@ -325,7 +325,7 @@ def enrich_cve_with_exploits(cve: dict) -> dict:
 
 async def search_exploitdb(query: str) -> list[dict]:
     """Search ExploitDB from local index."""
-    from app.services.ai.exploit_db import get_exploit_db
+    from app.services.exploit_db import get_exploit_db
 
     db = get_exploit_db()
     return db.search_exploitdb(query)

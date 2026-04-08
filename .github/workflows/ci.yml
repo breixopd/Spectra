@@ -20,6 +20,8 @@ jobs:
           python-version: "3.11"
       - run: pip install ruff
       - run: ruff check app/
+      - name: Check import boundaries
+        run: python3 scripts/check_import_boundaries.py
 
   test:
     name: Unit Tests

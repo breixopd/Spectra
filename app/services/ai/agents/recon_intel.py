@@ -204,7 +204,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
 
     async def _query_cisa_kev(self) -> dict[str, Any]:
         """Load CISA KEV catalog, caching in PostgreSQL for 24h."""
-        from app.services.ai.exploit_db import get_exploit_db
+        from app.services.exploit_db import get_exploit_db
 
         db = get_exploit_db()
 
@@ -283,7 +283,7 @@ class ReconIntelAgent(Agent[ReconIntelInput, ReconIntelOutput]):
 
     async def _query_exploitdb(self, technology: str | None, version: str | None) -> list[dict[str, Any]]:
         """Search local ExploitDB index."""
-        from app.services.ai.exploit_db import ExploitDatabase
+        from app.services.exploit_db import ExploitDatabase
 
         query_parts = [p for p in (technology, version) if p]
         if not query_parts:

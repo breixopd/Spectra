@@ -95,7 +95,7 @@ class TestCveEnriched:
         enriched = {"cve_id": "CVE-2026-0001", "epss": 0.5, "kev": False}
         mock_db = MagicMock()
         mock_db.enrich = AsyncMock(return_value=enriched)
-        with patch("app.services.ai.exploit_db.get_exploit_db", return_value=mock_db):
+        with patch("app.services.exploit_db.get_exploit_db", return_value=mock_db):
             resp = await client.get("/api/v1/cve/CVE-2026-0001/enriched")
         assert resp.status_code == 200
         assert resp.json()["cve_id"] == "CVE-2026-0001"

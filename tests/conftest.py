@@ -284,7 +284,7 @@ def reset_service_singletons():
     """Reset service singletons and caches between tests to prevent state leakage."""
     yield
     try:
-        import app.services.ai.exploit_db as _edb_mod
+        import app.services.exploit_db as _edb_mod
 
         _edb_mod._instance = None
     except Exception:
