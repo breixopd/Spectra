@@ -254,7 +254,7 @@ class TestTargetCreationSetsUserId:
             repo_instance.find_one_by = AsyncMock(return_value=None)
             repo_instance.create = AsyncMock(return_value=fake_target)
 
-            await create_target(target_in=target_in, db=mock_db, _current_user=user)
+            await create_target(request=MagicMock(), target_in=target_in, db=mock_db, _current_user=user)
 
             repo_instance.create.assert_called_once()
             call_kwargs = repo_instance.create.call_args

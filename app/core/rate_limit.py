@@ -156,6 +156,29 @@ class RateLimits:
     # WebSocket - connection limits
     WS_CONNECT = "10/minute"
 
+    # Pentest sessions — S3-backed, heavier reads
+    PENTEST_SESSION_LIST = "10/minute"
+    PENTEST_SESSION_READ = "30/minute"
+    PENTEST_SESSION_WRITE = "20/minute"
+
+    # VPN management
+    VPN_READ = "20/minute"
+    VPN_WRITE = "10/minute"
+
+    # Target management
+    TARGET_READ = "60/minute"
+    TARGET_WRITE = "30/minute"
+
+    # Observability (internal admin data)
+    OBSERVABILITY = "30/minute"
+
+    # Billing
+    BILLING = "20/minute"
+
+    # Session / account management
+    SESSION_READ = "30/minute"
+    SESSION_WRITE = "10/minute"
+
 
 async def rate_limit_exceeded_handler(
     request: Request,

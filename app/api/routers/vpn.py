@@ -4,17 +4,16 @@ Provides endpoints for uploading, managing, and connecting VPN configs
 (WireGuard and OpenVPN) in the tools container.
 """
 
-from __future__ import annotations
-
 import logging
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Request, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user
 from app.core.config import settings
 from app.core.database import get_async_session
+from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 from app.services.tools.vpn import VPNManager
 
@@ -91,7 +90,9 @@ class VPNConfigListItem(BaseModel):
     response_model=VPNConfigResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit(RateLimits.VPN_WRITE)
 async def upload_vpn_config(
+    request: Request,
     file: UploadFile = File(...),
     name: str = Form(..., min_length=1, max_length=64, pattern=VPN_NAME_PATTERN),
     vpn_type: str = Form(..., pattern=r"^(wireguard|openvpn)$"),
@@ -129,7 +130,9 @@ async def upload_vpn_config(
 
 
 @router.get("/configs", response_model=list[VPNConfigListItem])
+@limiter.limit(RateLimits.VPN_READ)
 async def list_vpn_configs(
+    request: Request,
     _user: User = Depends(get_current_active_user),
 ) -> list[VPNConfigListItem]:
     """List VPN configurations owned by the current user."""
@@ -143,7 +146,9 @@ async def list_vpn_configs(
 
 
 @router.delete("/configs/{name}", status_code=status.HTTP_200_OK)
+@limiter.limit(RateLimits.VPN_WRITE)
 async def delete_vpn_config(
+    request: Request,
     name: str = Path(..., pattern=VPN_NAME_PATTERN),
     _user: User = Depends(get_current_active_user),
 ) -> dict:
@@ -160,7 +165,9 @@ async def delete_vpn_config(
 
 
 @router.post("/connect/{name}", response_model=VPNActionResponse)
+@limiter.limit(RateLimits.VPN_WRITE)
 async def connect_vpn(
+    request: Request,
     name: str = Path(..., pattern=VPN_NAME_PATTERN),
     _user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_async_session),
@@ -179,7 +186,9 @@ async def connect_vpn(
 
 
 @router.post("/disconnect/{name}", response_model=VPNActionResponse)
+@limiter.limit(RateLimits.VPN_WRITE)
 async def disconnect_vpn(
+    request: Request,
     name: str = Path(..., pattern=VPN_NAME_PATTERN),
     _user: User = Depends(get_current_active_user),
 ) -> VPNActionResponse:
@@ -194,7 +203,9 @@ async def disconnect_vpn(
 
 
 @router.get("/status", response_model=VPNActionResponse)
+@limiter.limit(RateLimits.VPN_READ)
 async def vpn_status(
+    request: Request,
     _user: User = Depends(get_current_active_user),
 ) -> VPNActionResponse:
     """Get current VPN connection status."""
@@ -204,7 +215,9 @@ async def vpn_status(
 
 
 @router.post("/test", response_model=VPNActionResponse)
+@limiter.limit(RateLimits.VPN_WRITE)
 async def test_vpn_connection(
+    request: Request,
     _user: User = Depends(get_current_active_user),
 ) -> VPNActionResponse:
     """Test VPN connectivity."""
