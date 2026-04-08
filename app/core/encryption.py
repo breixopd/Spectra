@@ -107,8 +107,8 @@ def decrypt_sensitive_fields(data: dict, secret: str) -> dict:
             try:
                 out[k] = decrypt_field(v, secret)
             except (InvalidToken, Exception):
-                logger.warning("Failed to decrypt field '%s', returning raw value", k)
-                out[k] = v  # Return as-is if decryption fails
+                logger.error("Failed to decrypt field '%s' — returning None to avoid leaking ciphertext", k)
+                out[k] = None
         elif isinstance(v, dict):
             out[k] = decrypt_sensitive_fields(v, secret)
         else:
@@ -206,21 +206,13 @@ class EncryptedString(TypeDecorator):
             return None
         if isinstance(value, str) and value.startswith(_FERNET_TOKEN_PREFIX):
             return value  # already encrypted, leave it
-        try:
-            from app.core.security import encrypt_byok_key
+        from app.core.security import encrypt_byok_key
 
-            return encrypt_byok_key(value)
-        except Exception:
-            logger.warning("BYOK key encryption failed", exc_info=True)
-            return value
+        return encrypt_byok_key(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        try:
-            from app.core.security import decrypt_byok_key
+        from app.core.security import decrypt_byok_key
 
-            return decrypt_byok_key(value)
-        except Exception:
-            logger.warning("BYOK key decryption failed, returning raw value", exc_info=True)
-            return value  # fallback: return raw (may be unencrypted legacy value)
+        return decrypt_byok_key(value)

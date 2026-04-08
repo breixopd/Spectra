@@ -62,7 +62,7 @@ class Subscription(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    external_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    external_subscription_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     external_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     payment_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
     metadata_: Mapped[dict | None] = mapped_column(JSONBType, nullable=True)

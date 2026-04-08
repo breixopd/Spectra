@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.core.database import async_session_maker
 from app.models.plan import Plan, Subscription
@@ -461,5 +462,10 @@ class PaymentService:
                 payment_provider="stripe",
             )
             session.add(sub)
-            await session.commit()
+            try:
+                await session.commit()
+            except IntegrityError:
+                await session.rollback()
+                logger.warning("Duplicate checkout for subscription %s — ignoring", subscription_id)
+                return False
             return True

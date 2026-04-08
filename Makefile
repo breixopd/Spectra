@@ -44,7 +44,7 @@ lint: ## Run ruff linter on app/
 format: ## Format code with ruff
 	@ruff format app/ tests/
 
-check: lint test-unit ## Run lint + unit tests in sequence
+check: lint import-boundaries test-unit ## Run lint + import boundaries + unit tests in sequence
 
 clean: ## Clean caches and build artifacts
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
@@ -82,6 +82,10 @@ deploy-check: ## Run pre-deploy checks without deploying
 css-build: ## Build Tailwind CSS (production, minified)
 	@npx tailwindcss -i app/static/css/input.css -o app/static/css/output.css --minify 2>/dev/null || \
 	 tailwindcss -i app/static/css/input.css -o app/static/css/output.css --minify
+
+.PHONY: import-boundaries
+import-boundaries: ## Check import boundary enforcement
+	@python3 scripts/check_import_boundaries.py
 
 css-watch: ## Watch and rebuild Tailwind CSS on changes
 	@npx tailwindcss -i app/static/css/input.css -o app/static/css/output.css --watch 2>/dev/null || \
