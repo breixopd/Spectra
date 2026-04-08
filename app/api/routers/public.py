@@ -38,13 +38,13 @@ router = APIRouter()
 APP_DIR = Path(__file__).resolve().parent.parent.parent
 
 
-def _get_user_from_cookie(request: Request) -> dict | None:
+async def _get_user_from_cookie(request: Request) -> dict | None:
     """Try to decode the JWT from the access_token cookie. Returns claims or None."""
     token = request.cookies.get("access_token")
     if not token:
         return None
     try:
-        return decode_token(token)
+        return await decode_token(token)
     except (JWTError, Exception):
         return None
 
@@ -76,7 +76,7 @@ def _extract_legal_html(raw: object) -> object:
 @router.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def landing_page(request: Request):
     """Landing page — redirects authenticated users to /dashboard."""
-    if _get_user_from_cookie(request):
+    if await _get_user_from_cookie(request):
         return RedirectResponse(url="/dashboard", status_code=302)
 
     async with async_session_maker() as session:
@@ -264,7 +264,7 @@ async def legal_cookies(request: Request):
 
 @router.get("/register", response_class=HTMLResponse, include_in_schema=False)
 async def register_page(request: Request):
-    if _get_user_from_cookie(request):
+    if await _get_user_from_cookie(request):
         return RedirectResponse(url="/dashboard", status_code=302)
     # Block registration until setup is complete (a superuser exists)
     async with async_session_maker() as session:
@@ -276,14 +276,14 @@ async def register_page(request: Request):
 
 @router.get("/forgot-password", response_class=HTMLResponse, include_in_schema=False)
 async def forgot_password_page(request: Request):
-    if _get_user_from_cookie(request):
+    if await _get_user_from_cookie(request):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse("forgot_password.html", {"request": request})
 
 
 @router.get("/reset-password", response_class=HTMLResponse, include_in_schema=False)
 async def reset_password_page(request: Request):
-    if _get_user_from_cookie(request):
+    if await _get_user_from_cookie(request):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse("reset_password.html", {"request": request})
 

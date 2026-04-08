@@ -113,7 +113,7 @@ async def health_check(
 
     if verbose:
         resolved_token, _source = _extract_request_token(request)
-        payload = _decode_access_payload(resolved_token) if resolved_token else None
+        payload = (await _decode_access_payload(resolved_token)) if resolved_token else None
         user = await _load_active_user_from_payload_with_session(payload, db) if payload else None
         if user is None:
             raise HTTPException(
@@ -274,7 +274,7 @@ async def service_health(
 ) -> dict[str, Any]:
     """Health of all backend services. Requires authentication."""
     resolved_token, _source = _extract_request_token(request)
-    payload = _decode_access_payload(resolved_token) if resolved_token else None
+    payload = (await _decode_access_payload(resolved_token)) if resolved_token else None
     user = await _load_active_user_from_payload_with_session(payload, db) if payload else None
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")

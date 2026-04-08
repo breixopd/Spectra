@@ -108,45 +108,50 @@ class TestJWTTokens:
         with pytest.raises(ValueError, match="must have a 'sub' claim"):
             create_access_token({"email": "user@example.com"})
 
-    def test_create_access_token_preserves_claims(self):
+    @pytest.mark.asyncio
+    async def test_create_access_token_preserves_claims(self):
         """create_access_token should preserve additional claims."""
         data = {"sub": "user123", "role": "admin", "permissions": ["read", "write"]}
         token = create_access_token(data)
-        decoded = decode_token(token)
+        decoded = await decode_token(token)
 
         assert decoded["sub"] == "user123"
         assert decoded["role"] == "admin"
         assert decoded["permissions"] == ["read", "write"]
 
-    def test_create_access_token_adds_exp_and_iat(self):
+    @pytest.mark.asyncio
+    async def test_create_access_token_adds_exp_and_iat(self):
         """create_access_token should add exp and iat claims."""
         token = create_access_token({"sub": "user"})
-        decoded = decode_token(token)
+        decoded = await decode_token(token)
 
         assert "exp" in decoded
         assert "iat" in decoded
         assert decoded["exp"] > decoded["iat"]
 
-    def test_create_access_token_custom_expiry(self):
+    @pytest.mark.asyncio
+    async def test_create_access_token_custom_expiry(self):
         """create_access_token should respect custom expiry."""
         # Create token with 1 minute expiry
         token = create_access_token({"sub": "user"}, expires_delta=timedelta(minutes=1))
-        decoded = decode_token(token)
+        decoded = await decode_token(token)
 
         # exp - iat should be approximately 60 seconds
         assert (decoded["exp"] - decoded["iat"]) == 60
 
-    def test_decode_token_valid(self):
+    @pytest.mark.asyncio
+    async def test_decode_token_valid(self):
         """decode_token should decode a valid token."""
         original_data = {"sub": "testuser", "custom": "value"}
         token = create_access_token(original_data)
 
-        decoded = decode_token(token)
+        decoded = await decode_token(token)
 
         assert decoded["sub"] == "testuser"
         assert decoded["custom"] == "value"
 
-    def test_decode_token_invalid_signature(self):
+    @pytest.mark.asyncio
+    async def test_decode_token_invalid_signature(self):
         """decode_token should raise JWTError for invalid signature."""
         # Create a token with a different secret
         token = jwt.encode(
@@ -156,9 +161,10 @@ class TestJWTTokens:
         )
 
         with pytest.raises(JWTError):
-            decode_token(token)
+            await decode_token(token)
 
-    def test_decode_token_expired(self):
+    @pytest.mark.asyncio
+    async def test_decode_token_expired(self):
         """decode_token should raise JWTError for expired token."""
         # Create an already-expired token
         token = create_access_token(
@@ -167,12 +173,13 @@ class TestJWTTokens:
         )
 
         with pytest.raises(JWTError):
-            decode_token(token)
+            await decode_token(token)
 
-    def test_decode_token_malformed(self):
+    @pytest.mark.asyncio
+    async def test_decode_token_malformed(self):
         """decode_token should raise JWTError for malformed token."""
         with pytest.raises(JWTError):
-            decode_token("not.a.valid.jwt.token")
+            await decode_token("not.a.valid.jwt.token")
 
     def test_token_does_not_contain_original_dict(self):
         """Token should not modify the original data dict."""
@@ -187,7 +194,8 @@ class TestJWTTokens:
 class TestSecurityIntegration:
     """Integration tests for security functions."""
 
-    def test_full_auth_flow(self):
+    @pytest.mark.asyncio
+    async def test_full_auth_flow(self):
         """Test complete authentication flow."""
         # Register: hash password
         password = "SecureP@ssw0rd!"
@@ -200,7 +208,7 @@ class TestSecurityIntegration:
         token = create_access_token({"sub": "user@example.com", "user_id": 123})
 
         # Verify token
-        decoded = decode_token(token)
+        decoded = await decode_token(token)
         assert decoded["sub"] == "user@example.com"
         assert decoded["user_id"] == 123
 

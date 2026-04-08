@@ -4,13 +4,13 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.ai.llm as llm_module
 from app.api.schemas import SystemSetupRequest
 from app.core.config import settings
+from app.core.exceptions import SpectraError
 from app.core.paths import data_path
 from app.core.security import get_password_hash
 from app.models.user import User
@@ -70,9 +70,9 @@ class SystemSetupService:
         except (OSError, RuntimeError, ValueError) as e:
             await self.session.rollback()
             logger.error("Setup failed: %s", e, exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Setup failed due to an internal error.",
+            raise SpectraError(
+                "Setup failed due to an internal error.",
+                code="SETUP_FAILED",
             ) from e
 
     async def _generate_signing_keys(self) -> None:

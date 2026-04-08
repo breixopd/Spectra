@@ -28,10 +28,10 @@ logger = __import__("logging").getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token", auto_error=False)
 
 
-def _decode_access_payload(token: str) -> dict[str, Any] | None:
+async def _decode_access_payload(token: str) -> dict[str, Any] | None:
     """Decode a JWT and return only valid, non-pending access-token payloads."""
     try:
-        payload = decode_token(token)
+        payload = await decode_token(token)
     except (JWTError, OSError, RuntimeError, ValueError):
         logger.debug("Access token decode failed", exc_info=True)
         return None
@@ -92,12 +92,12 @@ def _extract_request_token(request: Request) -> tuple[str | None, str | None]:
     return None, None
 
 
-def get_ui_user(request: Request) -> dict | None:
+async def get_ui_user(request: Request) -> dict | None:
     """Extract and validate user from cookie. Returns None if not authenticated."""
     token = request.cookies.get("access_token")
     if not token:
         return None
-    return _decode_access_payload(token)
+    return await _decode_access_payload(token)
 
 
 async def get_current_user(
@@ -120,7 +120,7 @@ async def get_current_user(
     if not resolved_token:
         raise credentials_exception
 
-    payload = _decode_access_payload(resolved_token)
+    payload = await _decode_access_payload(resolved_token)
     if payload is None:
         raise credentials_exception
 
@@ -360,7 +360,7 @@ async def validate_websocket_token(token: str | None) -> User | None:
     if not token:
         return None
 
-    payload = _decode_access_payload(token)
+    payload = await _decode_access_payload(token)
     if payload is None:
         return None
 

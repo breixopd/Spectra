@@ -6,14 +6,6 @@ Represents security findings discovered during assessments.
 
 from __future__ import annotations
 
-try:
-    from enum import StrEnum
-except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
-
-    class StrEnum(str, __import__("enum").Enum):
-        pass
-
-
 from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, ForeignKey, Index, String, Text
@@ -23,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import Severity
 from app.models.base import Base
+from app.utils.compat import StrEnum
 
 if TYPE_CHECKING:
     from app.models.target import Target

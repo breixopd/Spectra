@@ -174,7 +174,7 @@ async def test_login_with_mfa_requires_code():
     # The token should be a valid JWT with mfa_pending claim
     from app.core.security import decode_token
 
-    payload = decode_token(mfa_token)
+    payload = await decode_token(mfa_token)
     assert payload["mfa_pending"] is True
     assert payload["sub"] == "testuser"
 
@@ -222,7 +222,7 @@ async def test_login_with_mfa_returns_token_after_verify(mock_session):
     assert len(set_cookie_headers) == 2
     assert all("Secure" in header for header in set_cookie_headers)
     # Verify the returned token is a proper access token (no mfa_pending)
-    payload = decode_token(result["access_token"])
+    payload = await decode_token(result["access_token"])
     assert "mfa_pending" not in payload
     assert payload["sub"] == "testuser"
 

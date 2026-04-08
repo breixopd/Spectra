@@ -167,7 +167,7 @@ async def refresh_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token required",
         )
-    payload, username = _validate_refresh_token_payload(provided_refresh_token)
+    payload, username = await _validate_refresh_token_payload(provided_refresh_token)
 
     # Check if user exists and is active
     user = await _get_user_by_username(session, username)
@@ -179,7 +179,7 @@ async def refresh_token(
         )
 
     _raise_if_token_invalidated(user, payload)
-    invalidate_token(provided_refresh_token)
+    await invalidate_token(provided_refresh_token)
 
     access_token, new_refresh_token = _create_auth_token_pair(user)
     _set_auth_cookies(request, response, access_token, new_refresh_token)
@@ -204,8 +204,8 @@ async def logout(request: Request, response: Response, session: AsyncSession = D
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing bearer token",
         )
-    payload = _decode_token_or_http_error(token, "Invalid token")
-    invalidate_token(token)
+    payload = await _decode_token_or_http_error(token, "Invalid token")
+    await invalidate_token(token)
 
     # Invalidate all tokens issued before now (covers refresh tokens too)
     username = payload.get("sub")

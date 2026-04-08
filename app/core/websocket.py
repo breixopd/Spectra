@@ -66,7 +66,7 @@ class ConnectionManager:
             try:
                 from app.core.security import decode_token
 
-                payload = decode_token(token)
+                payload = await decode_token(token)
                 user_id = payload.get("sub")
             except (JWTError, ValueError, KeyError):
                 await websocket.close(code=4001, reason="Invalid or expired token")

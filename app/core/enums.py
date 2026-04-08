@@ -5,12 +5,7 @@ Centralizes enum definitions to avoid duplication and ensure consistency.
 Follows the DRY (Don't Repeat Yourself) principle.
 """
 
-try:
-    from enum import StrEnum
-except ImportError:  # pragma: no cover - Python < 3.11 fallback for UI runner
-
-    class StrEnum(str, __import__("enum").Enum):
-        pass
+from app.utils.compat import StrEnum
 
 
 class AssessmentPhase(StrEnum):

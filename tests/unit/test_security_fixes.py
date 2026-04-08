@@ -124,33 +124,36 @@ class TestPersistentTokenBlacklist:
         sec._user_token_blacklist.clear()
         sec._blacklist_loaded = True  # Skip file loading
 
-    def test_invalidate_token_adds_with_expiry(self):
+    @pytest.mark.asyncio
+    async def test_invalidate_token_adds_with_expiry(self):
         import app.core.security as sec
 
         token = "test-token-123"
         with patch.object(sec, "_persist_blacklist"):
             with patch.object(sec, "_get_token_expiry", return_value=time.time() + 3600):
-                sec.invalidate_token(token)
+                await sec.invalidate_token(token)
         token_h = sec._token_hash(token)
         assert token_h in sec._blacklisted_tokens
         assert sec._blacklisted_tokens[token_h] > time.time()
 
-    def test_is_token_blacklisted_checks_expiry(self):
+    @pytest.mark.asyncio
+    async def test_is_token_blacklisted_checks_expiry(self):
         import app.core.security as sec
 
         token = "expired-token"
         token_h = sec._token_hash(token)
         # Set expired entry
         sec._blacklisted_tokens[token_h] = time.time() - 100
-        assert sec.is_token_blacklisted(token) is False
+        assert await sec.is_token_blacklisted(token) is False
 
-    def test_is_token_blacklisted_valid_entry(self):
+    @pytest.mark.asyncio
+    async def test_is_token_blacklisted_valid_entry(self):
         import app.core.security as sec
 
         token = "valid-blacklisted-token"
         token_h = sec._token_hash(token)
         sec._blacklisted_tokens[token_h] = time.time() + 3600
-        assert sec.is_token_blacklisted(token) is True
+        assert await sec.is_token_blacklisted(token) is True
 
     def test_persist_blacklist_calls_db(self):
         import app.core.security as sec
@@ -170,22 +173,22 @@ class TestPersistentTokenBlacklist:
         mock_db.return_value = None
         sec._persist_blacklist()
 
-    def test_ensure_blacklist_loaded_sets_flag(self):
+    @pytest.mark.asyncio
+    async def test_ensure_blacklist_loaded_sets_flag(self):
         import app.core.security as sec
 
         sec._blacklist_loaded = False
-        fake_loop = MagicMock()
-        with patch.object(sec.asyncio, "get_running_loop", return_value=fake_loop), \
-             patch("app.core.tasks.create_safe_task") as mock_safe_task:
-            sec._ensure_blacklist_loaded()
+        with patch("app.core.tasks.create_safe_task") as mock_safe_task:
+            await sec._ensure_blacklist_loaded()
         assert sec._blacklist_loaded is True
         mock_safe_task.assert_called_once()
 
-    def test_invalidate_all_user_tokens_persists(self):
+    @pytest.mark.asyncio
+    async def test_invalidate_all_user_tokens_persists(self):
         import app.core.security as sec
 
         with patch.object(sec, "_persist_blacklist") as mock_persist:
-            sec.invalidate_all_user_tokens("testuser")
+            await sec.invalidate_all_user_tokens("testuser")
         mock_persist.assert_called_once()
         assert "testuser" in sec._user_token_blacklist
 

@@ -15,7 +15,6 @@ from app.api.routers.auth import (
     _record_failure,
 )
 from app.core.security import (
-    _blacklist_lock,
     _blacklisted_tokens,
     _user_token_blacklist,
     create_access_token,
@@ -29,49 +28,51 @@ from app.core.websocket import ConnectionManager
 
 @pytest.fixture(autouse=True)
 def _clear_blacklist():
-    with _blacklist_lock:
-        _blacklisted_tokens.clear()
-        _user_token_blacklist.clear()
+    _blacklisted_tokens.clear()
+    _user_token_blacklist.clear()
     yield
-    with _blacklist_lock:
-        _blacklisted_tokens.clear()
-        _user_token_blacklist.clear()
+    _blacklisted_tokens.clear()
+    _user_token_blacklist.clear()
 
 
 class TestTokenBlacklist:
-    def test_invalidate_token_blocks_decode(self):
+    @pytest.mark.asyncio
+    async def test_invalidate_token_blocks_decode(self):
         token = create_access_token(data={"sub": "testuser"})
-        payload = decode_token(token)
+        payload = await decode_token(token)
         assert payload["sub"] == "testuser"
 
-        invalidate_token(token)
-        assert is_token_blacklisted(token) is True
+        await invalidate_token(token)
+        assert await is_token_blacklisted(token) is True
         with pytest.raises(JWTError, match="revoked"):
-            decode_token(token)
+            await decode_token(token)
 
-    def test_non_blacklisted_token_works(self):
+    @pytest.mark.asyncio
+    async def test_non_blacklisted_token_works(self):
         token = create_access_token(data={"sub": "testuser"})
-        assert is_token_blacklisted(token) is False
-        payload = decode_token(token)
+        assert await is_token_blacklisted(token) is False
+        payload = await decode_token(token)
         assert payload["sub"] == "testuser"
 
-    def test_invalidate_all_user_tokens(self):
+    @pytest.mark.asyncio
+    async def test_invalidate_all_user_tokens(self):
         token = create_access_token(data={"sub": "victimuser"})
-        assert is_token_blacklisted(token) is False
+        assert await is_token_blacklisted(token) is False
 
         time.sleep(0.1)
-        invalidate_all_user_tokens("victimuser")
+        await invalidate_all_user_tokens("victimuser")
 
-        assert is_token_blacklisted(token) is True
+        assert await is_token_blacklisted(token) is True
         with pytest.raises(JWTError, match="revoked"):
-            decode_token(token)
+            await decode_token(token)
 
-    def test_new_token_after_user_invalidation_works(self):
-        invalidate_all_user_tokens("someuser")
+    @pytest.mark.asyncio
+    async def test_new_token_after_user_invalidation_works(self):
+        await invalidate_all_user_tokens("someuser")
         time.sleep(1.1)
         new_token = create_access_token(data={"sub": "someuser"})
-        assert is_token_blacklisted(new_token) is False
-        payload = decode_token(new_token)
+        assert await is_token_blacklisted(new_token) is False
+        payload = await decode_token(new_token)
         assert payload["sub"] == "someuser"
 
 
@@ -160,7 +161,7 @@ class TestWebSocketAuth:
     async def test_reject_blacklisted_token(self):
         manager = ConnectionManager()
         token = create_access_token(data={"sub": "testuser"})
-        invalidate_token(token)
+        await invalidate_token(token)
 
         ws = AsyncMock()
         ws.query_params = {"token": token}

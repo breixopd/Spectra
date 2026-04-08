@@ -16,9 +16,21 @@ from slowapi.util import get_remote_address
 from starlette.responses import JSONResponse
 
 from app.core.events import EventType, events
-from app.core.security import decode_token
 
 logger = logging.getLogger(__name__)
+
+
+def _decode_token_sync_no_blacklist(token: str) -> dict:
+    """Sync JWT decode for rate-limiter key function (no blacklist check)."""
+    import jwt as _jwt
+
+    from app.core.config import settings
+
+    return _jwt.decode(
+        token,
+        settings.JWT_SECRET_KEY.get_secret_value(),
+        algorithms=[settings.JWT_ALGORITHM],
+    )
 
 
 def get_client_identifier(request: Request) -> str:
@@ -49,7 +61,7 @@ def get_user_identifier(request: Request) -> str:
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header.split(" ")[1]
         try:
-            payload = decode_token(token)
+            payload = _decode_token_sync_no_blacklist(token)
             username = payload.get("sub")
             if username:
                 return f"user:{username}"

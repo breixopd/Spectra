@@ -10,7 +10,6 @@ import base64
 import hashlib
 import json
 import logging
-import threading
 import time as _time
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -52,16 +51,16 @@ _logger = logging.getLogger(__name__)
 # In-memory caches loaded from DB on startup
 _blacklisted_tokens: dict[str, float] = {}  # token_hash -> expiry timestamp
 _user_token_blacklist: dict[str, float] = {}  # username -> invalidated_before timestamp
-_blacklist_lock = threading.Lock()
+_blacklist_lock = asyncio.Lock()
 _blacklist_loaded = False
 
 
-def _ensure_blacklist_loaded() -> None:
+async def _ensure_blacklist_loaded() -> None:
     """Schedule a one-time DB load; flag is only set inside the coroutine itself."""
     global _blacklist_loaded
     if _blacklist_loaded:
         return
-    with _blacklist_lock:
+    async with _blacklist_lock:
         if _blacklist_loaded:
             return
         # Mark loaded *before* scheduling so concurrent callers don't also
@@ -147,7 +146,7 @@ async def _load_from_db() -> None:
         now = _time.time()
         loaded_tokens = 0
         loaded_users = 0
-        with _blacklist_lock:
+        async with _blacklist_lock:
             for row in rows:
                 data = json.loads(row["value"])
                 key: str = row["key"]
@@ -186,11 +185,11 @@ def _get_token_expiry(token: str) -> float:
         return _time.time() + 3600
 
 
-def invalidate_token(token: str) -> None:
+async def invalidate_token(token: str) -> None:
     """Add a token to the blacklist and persist."""
-    _ensure_blacklist_loaded()
+    await _ensure_blacklist_loaded()
     expiry = _get_token_expiry(token)
-    with _blacklist_lock:
+    async with _blacklist_lock:
         if len(_blacklisted_tokens) >= JWT_BLACKLIST_MAX_SIZE:
             _cleanup_expired()
         _blacklisted_tokens[_token_hash(token)] = expiry
@@ -214,17 +213,16 @@ def _cleanup_expired() -> None:
         del _user_token_blacklist[uid]
 
 
-def is_token_blacklisted(token: str) -> bool:
+async def is_token_blacklisted(token: str) -> bool:
     """Check if a token is blacklisted (by direct blacklist or user-level invalidation)."""
-    _ensure_blacklist_loaded()
-    with _blacklist_lock:
+    await _ensure_blacklist_loaded()
+    token_h = _token_hash(token)
+    async with _blacklist_lock:
         global _cleanup_counter
         _cleanup_counter += 1
         if _cleanup_counter >= 100:
             _cleanup_counter = 0
             _cleanup_expired()
-    token_h = _token_hash(token)
-    with _blacklist_lock:
         exp = _blacklisted_tokens.get(token_h)
         if exp is not None and exp > _time.time():
             return True
@@ -238,7 +236,7 @@ def is_token_blacklisted(token: str) -> bool:
         username = payload.get("sub")
         iat = payload.get("iat")
         if username and iat:
-            with _blacklist_lock:
+            async with _blacklist_lock:
                 invalidated_before = _user_token_blacklist.get(username)
             if invalidated_before and iat < invalidated_before:
                 return True
@@ -247,14 +245,14 @@ def is_token_blacklisted(token: str) -> bool:
     return False
 
 
-def invalidate_all_user_tokens(username: str) -> None:
+async def invalidate_all_user_tokens(username: str) -> None:
     """Invalidate all tokens for a user by recording current timestamp.
 
     Uses int(time) + 1 to account for JWT iat being stored as integer seconds.
     """
-    _ensure_blacklist_loaded()
+    await _ensure_blacklist_loaded()
     now = int(datetime.now(UTC).timestamp()) + 1
-    with _blacklist_lock:
+    async with _blacklist_lock:
         _user_token_blacklist[username] = now
         _persist_blacklist()
 
@@ -388,7 +386,7 @@ def verify_email_verification_token(token: str) -> str | None:
         return None
 
 
-def decode_token(token: str) -> dict[str, Any]:
+async def decode_token(token: str) -> dict[str, Any]:
     """
     Decode and validate a JWT token.
 
@@ -401,7 +399,7 @@ def decode_token(token: str) -> dict[str, Any]:
     Raises:
         JWTError: If the token is invalid, expired, or blacklisted.
     """
-    if is_token_blacklisted(token):
+    if await is_token_blacklisted(token):
         raise JWTError("Token has been revoked")
 
     return jwt.decode(

@@ -204,7 +204,7 @@ async def admin_page(
     if not token:
         return RedirectResponse(url="/login", status_code=303)
 
-    payload = _decode_access_payload(token)
+    payload = await _decode_access_payload(token)
     if payload is None:
         return RedirectResponse(url="/login", status_code=303)
 
