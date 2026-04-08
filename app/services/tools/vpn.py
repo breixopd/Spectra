@@ -39,6 +39,12 @@ _DANGEROUS_OPENVPN_DIRECTIVES = frozenset(
     }
 )
 
+# Dangerous WireGuard directives that allow arbitrary command execution or routing manipulation
+_WIREGUARD_DANGEROUS_DIRECTIVES = frozenset({
+    "postup", "postdown", "predown", "saveconfig",
+    "dns", "table", "fwmark",  # Can manipulate routing
+})
+
 _VPN_EXTENSIONS = {"wireguard": ".conf", "openvpn": ".ovpn"}
 
 
@@ -50,11 +56,18 @@ def _validate_config_name(name: str) -> str:
 
 
 def _validate_wireguard_config(content: str) -> None:
-    """Validate WireGuard config has required sections."""
+    """Validate WireGuard config has required sections and no dangerous directives."""
     if "[Interface]" not in content:
         raise ValueError("WireGuard config must contain [Interface] section")
     if "[Peer]" not in content:
         raise ValueError("WireGuard config must contain [Peer] section")
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith(("#", "[")):
+            continue
+        key = stripped.split("=", 1)[0].strip().lower()
+        if key in _WIREGUARD_DANGEROUS_DIRECTIVES:
+            raise ValueError(f"Dangerous WireGuard directive blocked: {key}")
 
 
 def _validate_openvpn_config(content: str) -> None:

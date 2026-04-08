@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
+import time
 from typing import Any
 
 import httpx
@@ -94,14 +95,23 @@ class WebhookService:
 
 
 async def _deliver(wh: Webhook, event: str, payload: dict[str, Any]) -> None:
-    """Deliver a webhook with retries."""
+    """Deliver a webhook with retries.
+
+    Includes ``X-Spectra-Timestamp`` in the payload and HMAC computation so
+    receivers can reject replays older than 5 minutes.
+    """
     body = {"event": event, "data": payload}
-    headers: dict[str, str] = {"Content-Type": "application/json"}
+    timestamp = str(int(time.time()))
+    headers: dict[str, str] = {
+        "Content-Type": "application/json",
+        "X-Spectra-Timestamp": timestamp,
+    }
     if wh.secret:
         import json
 
         raw = json.dumps(body, separators=(",", ":"), sort_keys=True).encode()
-        sig = hmac.new(wh.secret.encode(), raw, hashlib.sha256).hexdigest()
+        sig_payload = f"{timestamp}.".encode() + raw
+        sig = hmac.new(wh.secret.encode(), sig_payload, hashlib.sha256).hexdigest()
         headers["X-Spectra-Signature"] = f"sha256={sig}"
 
     async with httpx.AsyncClient(timeout=10) as client:

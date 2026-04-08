@@ -73,14 +73,16 @@ async def test_register_webhook_rejects_invalid_events():
 
 @pytest.mark.asyncio
 async def test_deliver_includes_hmac_signature():
-    """When webhook has a secret, X-Spectra-Signature header is set."""
+    """When webhook has a secret, X-Spectra-Signature header is set with timestamp."""
     wh = _make_webhook(secret="mysecret")
     payload = {"key": "value"}
     event = "mission.completed"
+    fixed_ts = 1700000000
 
     body = {"event": event, "data": payload}
     raw = json.dumps(body, separators=(",", ":"), sort_keys=True).encode()
-    expected_sig = "sha256=" + hmac.new(b"mysecret", raw, hashlib.sha256).hexdigest()
+    sig_payload = f"{fixed_ts}.".encode() + raw
+    expected_sig = "sha256=" + hmac.new(b"mysecret", sig_payload, hashlib.sha256).hexdigest()
 
     mock_response = MagicMock()
     mock_response.status_code = 200
@@ -91,7 +93,8 @@ async def test_deliver_includes_hmac_signature():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with patch("app.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-        await _deliver(wh, event, payload)
+        with patch("app.services.webhooks.service.time.time", return_value=float(fixed_ts)):
+            await _deliver(wh, event, payload)
 
     _, kwargs = mock_client.post.call_args
     assert kwargs["headers"]["X-Spectra-Signature"] == expected_sig

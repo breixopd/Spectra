@@ -335,11 +335,24 @@ class TestWebhookSignature:
         mock_client = _mock_http_client(status_code=200)
 
         with patch("app.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            await _deliver(wh, "mission.completed", {"id": "m-1"})
+            with patch("app.services.webhooks.service.time.time", return_value=1700000000.0):
+                await _deliver(wh, "mission.completed", {"id": "m-1"})
 
         _, kwargs = mock_client.post.call_args
         sig = kwargs["headers"]["X-Spectra-Signature"]
         assert sig.startswith("sha256=")
+
+    @pytest.mark.asyncio
+    async def test_timestamp_header_always_present(self):
+        wh = _mock_webhook(secret=None)
+        mock_client = _mock_http_client(status_code=200)
+
+        with patch("app.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
+            with patch("app.services.webhooks.service.time.time", return_value=1700000000.0):
+                await _deliver(wh, "mission.completed", {})
+
+        _, kwargs = mock_client.post.call_args
+        assert kwargs["headers"]["X-Spectra-Timestamp"] == "1700000000"
 
     @pytest.mark.asyncio
     async def test_signature_absent_without_secret(self):
@@ -358,14 +371,17 @@ class TestWebhookSignature:
         wh = _mock_webhook(secret=secret)
         event = "finding.new"
         payload = {"z": 2, "a": 1}
+        fixed_ts = 1700000000
 
         body = {"event": event, "data": payload}
         raw = json.dumps(body, separators=(",", ":"), sort_keys=True).encode()
-        expected = "sha256=" + hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+        sig_payload = f"{fixed_ts}.".encode() + raw
+        expected = "sha256=" + hmac.new(secret.encode(), sig_payload, hashlib.sha256).hexdigest()
 
         mock_client = _mock_http_client(status_code=200)
         with patch("app.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-            await _deliver(wh, event, payload)
+            with patch("app.services.webhooks.service.time.time", return_value=float(fixed_ts)):
+                await _deliver(wh, event, payload)
 
         _, kwargs = mock_client.post.call_args
         assert kwargs["headers"]["X-Spectra-Signature"] == expected

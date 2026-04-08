@@ -104,15 +104,17 @@ async def test_deliver_succeeds_after_transient_failure():
 
 @pytest.mark.asyncio
 async def test_signature_matches_canonical_json():
-    """HMAC signature is computed over canonical (compact, sorted) JSON."""
+    """HMAC signature is computed over canonical (compact, sorted) JSON with timestamp."""
     secret = "test-secret-key"
     wh = _make_webhook(secret=secret)
     event = "finding.new"
     payload = {"z": 2, "a": 1}
+    fixed_ts = 1700000000
 
     body = {"event": event, "data": payload}
     raw = json.dumps(body, separators=(",", ":"), sort_keys=True).encode()
-    expected_sig = "sha256=" + hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
+    sig_payload = f"{fixed_ts}.".encode() + raw
+    expected_sig = "sha256=" + hmac.new(secret.encode(), sig_payload, hashlib.sha256).hexdigest()
 
     ok_resp = MagicMock()
     ok_resp.status_code = 200
@@ -123,7 +125,8 @@ async def test_signature_matches_canonical_json():
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
     with patch("app.services.webhooks.service.httpx.AsyncClient", return_value=mock_client):
-        await _deliver(wh, event, payload)
+        with patch("app.services.webhooks.service.time.time", return_value=float(fixed_ts)):
+            await _deliver(wh, event, payload)
 
     _, kwargs = mock_client.post.call_args
     assert kwargs["headers"]["X-Spectra-Signature"] == expected_sig
