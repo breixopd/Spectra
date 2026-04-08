@@ -12,7 +12,7 @@ from fastapi.responses import Response as FastAPIResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import check_resource_owner, get_current_active_user
+from app.api.dependencies import get_current_active_user
 from app.api.routers.findings.core import FindingUpdate
 from app.core.constants import MAX_BULK_FINDINGS
 from app.core.database import get_async_session
@@ -219,13 +219,16 @@ async def bulk_update_findings(
     _current_user: User = Depends(get_current_active_user),
 ):
     """Bulk update multiple findings. Max 100 per request."""
+    from sqlalchemy import func, update
+
+    from app.models.finding import Finding
+
     if len(request.finding_ids) > MAX_BULK_FINDINGS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Maximum {MAX_BULK_FINDINGS} findings per batch",
         )
 
-    repo = FindingRepository(db)
     update_data = request.update.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(
@@ -233,15 +236,18 @@ async def bulk_update_findings(
             detail="No fields to update",
         )
 
-    updated_count = 0
-    for fid in request.finding_ids:
-        finding = await repo.get_by_id(fid)
-        if not finding:
-            continue
-        check_resource_owner(finding, _current_user, "finding")
-        result = await repo.update(fid, **update_data)
-        if result:
-            updated_count += 1
+    update_data["updated_at"] = func.now()
+
+    stmt = (
+        update(Finding)
+        .where(Finding.id.in_(request.finding_ids))
+    )
+    # Non-superusers may only update their own findings
+    if not _current_user.is_superuser:
+        stmt = stmt.where(Finding.user_id == str(_current_user.id))
+
+    stmt = stmt.values(**update_data)
+    result = await db.execute(stmt)
     await db.commit()
 
-    return BulkUpdateResponse(updated=updated_count)
+    return BulkUpdateResponse(updated=result.rowcount)

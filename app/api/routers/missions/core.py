@@ -66,17 +66,24 @@ async def get_scan_presets(
 async def get_missions_summary(
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
 ) -> dict[str, Any]:
-    """Get aggregated mission summary with finding counts — single query, no N+1."""
-    from sqlalchemy import select
+    """Get aggregated mission summary with finding counts — paginated."""
+    from sqlalchemy import func, select
 
     from app.models.mission import Mission
 
-    stmt = select(Mission).order_by(Mission.created_at.desc())
-
+    base = select(Mission)
     if not _current_user.is_superuser:
-        stmt = stmt.where(Mission.user_id == str(_current_user.id))
+        base = base.where(Mission.user_id == str(_current_user.id))
 
+    # Total count
+    count_result = await db.execute(select(func.count()).select_from(base.subquery()))
+    total = count_result.scalar() or 0
+
+    # Paginated results
+    stmt = base.order_by(Mission.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
     db_missions = result.scalars().all()
 
@@ -101,7 +108,7 @@ async def get_missions_summary(
             totals[sev] += counts[sev]
         totals["total"] += counts["total"]
 
-    return {"missions": missions, "totals": totals, "count": len(missions)}
+    return {"missions": missions, "totals": totals, "count": len(missions), "total": total, "skip": skip, "limit": limit}
 
 
 @router.get("/adversary-playbooks")

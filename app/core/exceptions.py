@@ -130,6 +130,15 @@ class ToolNotAvailableError(ToolError):
         )
 
 
+# --- Storage Errors ---
+
+
+class StorageError(SpectraError):
+    """Base exception for storage-related errors."""
+
+    code = "STORAGE_ERROR"
+
+
 # --- Mission Errors ---
 
 

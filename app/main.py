@@ -146,31 +146,24 @@ app.add_middleware(TelemetryMiddleware)
 @app.middleware("http")
 async def maintenance_mode_check(request: Request, call_next):
     """Return 503 for all authenticated pages when maintenance mode is on."""
-    from app.services.system.runtime_settings import get_runtime_setting_value
+    from app.core.config import settings
 
     path = request.url.path
     exempt = (
         path == "/" or path.startswith(("/static", "/api/health", "/api/admin", "/api/auth", "/api/v1/auth", "/legal/")) or path == "/admin" or path == "/login"
     )
     if not exempt:
-        try:
-            is_maintenance = await get_runtime_setting_value("MAINTENANCE_MODE")
-            if is_maintenance:
-                if path.startswith("/api/"):
-                    msg = await get_runtime_setting_value("MAINTENANCE_MESSAGE") or "Maintenance in progress"
-                    return JSONResponse({"detail": msg}, status_code=503)
-                else:
-                    msg = (
-                        await get_runtime_setting_value("MAINTENANCE_MESSAGE")
-                        or "We're performing scheduled maintenance. Please check back shortly."
-                    )
-                    _maint_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-                    return HTMLResponse(
-                        content=_maint_templates.get_template("errors/maintenance.html").render(message=msg),
-                        status_code=503,
-                    )
-        except (OSError, RuntimeError):
-            pass  # If DB is down, don't block requests
+        is_maintenance = getattr(settings, "MAINTENANCE_MODE", False)
+        if is_maintenance:
+            msg = getattr(settings, "MAINTENANCE_MESSAGE", "") or "We're performing scheduled maintenance. Please check back shortly."
+            if path.startswith("/api/"):
+                return JSONResponse({"detail": msg}, status_code=503)
+            else:
+                _maint_templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+                return HTMLResponse(
+                    content=_maint_templates.get_template("errors/maintenance.html").render(message=msg),
+                    status_code=503,
+                )
     return await call_next(request)
 
 

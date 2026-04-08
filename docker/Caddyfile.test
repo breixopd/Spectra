@@ -21,6 +21,11 @@
 	}
 
 	route {
+		handle /static/* {
+			header Cache-Control "public, max-age=3600"
+			reverse_proxy app:5000 app-replica:5000
+		}
+
 		handle @websocket {
 			reverse_proxy app:5000 app-replica:5000 {
 				lb_policy round_robin
