@@ -531,7 +531,7 @@ function showASNodeDetails(data) {
             <div><span class="text-slate-500">Status:</span> <span class="text-white">${escapeHtml(t.status || 'N/A')}</span></div>
             <div><span class="text-slate-500">Description:</span> <span class="text-white">${escapeHtml(t.description || 'None')}</span></div>
             <div class="pt-2 flex gap-2">
-                <button onclick="window.location.href='/targets'" class="px-2 py-1 bg-violet-600 hover:bg-violet-500 rounded text-xs text-white transition-colors">View Findings</button>
+                <button data-action="navigateToTargets" class="px-2 py-1 bg-violet-600 hover:bg-violet-500 rounded text-xs text-white transition-colors">View Findings</button>
             </div>`;
     } else if (data.type === 'finding') {
         const f = data.raw || {};
@@ -561,3 +561,17 @@ window.changeASLayout = changeASLayout;
 window.fitASGraph = fitASGraph;
 window.resetASGraph = resetASGraph;
 window.exportASGraph = exportASGraph;
+
+// Delegate helpers for CSP-safe event binding
+window.triggerImportFileInput = function() { document.getElementById('import-file-input').click(); };
+window.navigateToTargets = function() { window.location.href = '/targets'; };
+
+// Drop/dragover on import area (can't use data-action for these events)
+const _importUploadArea = document.getElementById('import-upload-area');
+if (_importUploadArea) {
+    _importUploadArea.addEventListener('drop', e => handleImportDrop(e));
+    _importUploadArea.addEventListener('dragover', e => e.preventDefault());
+}
+
+// Search input delegation
+document.getElementById('target-search')?.addEventListener('input', function() { filterTargets(this.value); });

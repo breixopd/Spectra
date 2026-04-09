@@ -42,7 +42,7 @@ async function loadServiceTopology() {
 
         const localCount = entries.filter(([, i]) => i.mode === 'local').length;
         const remoteCount = entries.length - localCount;
-        refreshInfo.textContent = `${localCount} local, ${remoteCount} remote \u00b7 last checked ${new Date().toLocaleTimeString()}`;
+        refreshInfo.textContent = `${localCount} local, ${remoteCount} remote \u00b7 last checked ${new Date().toLocaleTimeString('en-US')}`;
 
         if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch {

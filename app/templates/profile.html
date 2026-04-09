@@ -82,7 +82,7 @@
                             <label for="profile-role" class="form-label">Role</label>
                             <input type="text" id="profile-role" class="form-input" readonly>
                         </div>
-                        <button onclick="saveProfile()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                        <button data-action="saveProfile" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
                             Save Changes
                         </button>
                     </div>
@@ -91,7 +91,7 @@
                 <div class="glass-panel rounded-xl p-6 mt-4 border border-rose-500/20">
                     <h2 class="text-lg font-semibold text-rose-400 mb-1">Danger Zone</h2>
                     <p class="text-sm text-slate-400 mb-4">Permanently delete your account and all associated data. This cannot be undone.</p>
-                    <button onclick="deleteAccount()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium rounded-lg transition-colors">
+                    <button data-action="deleteAccount" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium rounded-lg transition-colors">
                         Delete My Account
                     </button>
                 </div>
@@ -116,7 +116,7 @@
                             <label for="confirm-password" class="form-label">Confirm New Password</label>
                             <input type="password" id="confirm-password" class="form-input" autocomplete="new-password">
                         </div>
-                        <button onclick="changePassword()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                        <button data-action="changePassword" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
                             Update Password
                         </button>
                     </div>
@@ -146,10 +146,10 @@
                             <input type="text" id="mfa-verify-code" class="form-input" maxlength="6" pattern="\d{6}" placeholder="Enter 6-digit code" inputmode="numeric" autocomplete="one-time-code">
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="verifyMfaSetup()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors">
+                            <button data-action="verifyMfaSetup" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition-colors">
                                 Verify &amp; Enable
                             </button>
-                            <button onclick="cancelMfaSetup()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+                            <button data-action="cancelMfaSetup" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
                                 Cancel
                             </button>
                         </div>
@@ -166,10 +166,10 @@
                             <input type="text" id="mfa-disable-code" class="form-input" maxlength="6" pattern="\d{6}" placeholder="Enter 6-digit code" inputmode="numeric" autocomplete="one-time-code">
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="confirmDisableMfa()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
+                            <button data-action="confirmDisableMfa" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
                                 Disable MFA
                             </button>
-                            <button onclick="cancelDisableMfa()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+                            <button data-action="cancelDisableMfa" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
                                 Cancel
                             </button>
                         </div>
@@ -185,7 +185,7 @@
                             <h2 class="text-lg font-semibold text-white mb-1">API Keys</h2>
                             <p class="text-sm text-slate-400">Manage keys for programmatic API access.</p>
                         </div>
-                        <button onclick="generateApiKey()" class="px-3 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">
+                        <button data-action="generateApiKey" class="px-3 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">
                             <i data-lucide="plus" class="w-3.5 h-3.5 inline-block mr-1"></i> Generate Key
                         </button>
                     </div>
@@ -247,8 +247,8 @@
                             <input type="text" id="settings-emb-model" class="form-input" placeholder="text-embedding-3-small">
                         </div>
                         <div class="flex gap-2 mt-4">
-                            <button onclick="saveByok()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">Save BYOK</button>
-                            <button onclick="clearByok()" class="px-4 py-2 text-rose-400 hover:bg-rose-500/10 text-sm rounded-lg border border-rose-500/20 transition-colors">Clear BYOK</button>
+                            <button data-action="saveByok" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">Save BYOK</button>
+                            <button data-action="clearByok" class="px-4 py-2 text-rose-400 hover:bg-rose-500/10 text-sm rounded-lg border border-rose-500/20 transition-colors">Clear BYOK</button>
                         </div>
                     </div>
                 </div>
@@ -317,7 +317,7 @@
                             <option value="Australia/Sydney">Australia Eastern</option>
                         </select>
                     </div>
-                    <button onclick="saveSettings()" class="mt-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">Save Settings</button>
+                    <button data-action="saveSettings" class="mt-4 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors">Save Settings</button>
                 </div>
             </div>
 
@@ -330,7 +330,7 @@
                         <div>
                             <h3 class="text-sm font-medium text-white mb-2">Export Your Data</h3>
                             <p class="text-xs text-slate-500 mb-2">Download a JSON file containing all data associated with your account: profile, missions, targets, findings, and audit logs.</p>
-                            <button onclick="downloadMyData()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+                            <button data-action="downloadMyData" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
                                 <i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i> Download My Data
                             </button>
                         </div>
@@ -341,7 +341,7 @@
                     <h2 class="text-lg font-semibold text-white mb-1">Restrict Processing</h2>
                     <p class="text-sm text-slate-400 mb-4">Under GDPR Art.&nbsp;18 you can request restriction of processing. When enabled, your account remains active but new missions cannot be started and your data will not be used for analytics or training.</p>
                     <label class="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" id="restrict-processing-toggle" class="accent-violet-500 w-4 h-4 rounded" onchange="toggleRestrictProcessing()">
+                        <input type="checkbox" id="restrict-processing-toggle" class="accent-violet-500 w-4 h-4 rounded" data-on-change="toggleRestrictProcessing">
                         <span class="text-sm text-slate-300">Restrict processing of my data</span>
                     </label>
                 </div>
@@ -350,7 +350,7 @@
                     <h2 class="text-lg font-semibold text-white mb-1">Training Data</h2>
                     <p class="text-sm text-slate-400 mb-4">Choose whether your anonymized assessment data may be used to improve our AI models. This is entirely opt-in.</p>
                     <label class="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" id="share-training-toggle" class="accent-violet-500 w-4 h-4 rounded" onchange="toggleShareTraining()">
+                        <input type="checkbox" id="share-training-toggle" class="accent-violet-500 w-4 h-4 rounded" data-on-change="toggleShareTraining">
                         <span class="text-sm text-slate-300">Allow anonymized data for model training</span>
                     </label>
                 </div>
@@ -358,7 +358,7 @@
                 <div class="glass-panel rounded-xl p-6 border border-rose-500/20">
                     <h2 class="text-lg font-semibold text-rose-400 mb-1">Delete Account</h2>
                     <p class="text-sm text-slate-400 mb-2">Permanently delete your account and all associated data. This action is immediate and irreversible. We recommend exporting your data first.</p>
-                    <button onclick="deleteAccount()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium rounded-lg transition-colors">
+                    <button data-action="deleteAccount" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium rounded-lg transition-colors">
                         Delete My Account
                     </button>
                 </div>

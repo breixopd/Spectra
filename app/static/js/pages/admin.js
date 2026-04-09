@@ -5,6 +5,10 @@ function formatDate(iso) {
     return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
 }
 
+// Quick-action wrappers for data-action delegation
+function quickCreateUser() { switchSection('users'); openCreateUserModal(); }
+function quickCreatePlan() { switchSection('plans'); openCreatePlanModal(); }
+
 function formatDateTime(iso) {
     if (!iso) return '—';
     const d = new Date(iso);
@@ -220,14 +224,16 @@ async function loadUsage() {
 // ---- Content Management ----
 let currentContentType = 'review';
 
-function switchContentType(type) {
+function switchContentType(type, el) {
     currentContentType = type;
     document.querySelectorAll('.content-type-btn').forEach(b => {
         b.classList.remove('active', 'bg-violet-600/20', 'text-violet-300', 'border-violet-500/30');
         b.classList.add('bg-white/5', 'text-slate-400', 'border-white/10');
     });
-    event.target.classList.add('active', 'bg-violet-600/20', 'text-violet-300', 'border-violet-500/30');
-    event.target.classList.remove('bg-white/5', 'text-slate-400', 'border-white/10');
+    if (el) {
+        el.classList.add('active', 'bg-violet-600/20', 'text-violet-300', 'border-violet-500/30');
+        el.classList.remove('bg-white/5', 'text-slate-400', 'border-white/10');
+    }
     loadContent();
 }
 
@@ -245,8 +251,8 @@ async function loadContent() {
                     <span class="text-xs ${item.is_active ? 'text-emerald-400' : 'text-slate-500'}">${item.is_active ? 'Active' : 'Inactive'}</span>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="editContent('${item.id}')" class="text-xs text-violet-400 hover:text-violet-300"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block"></i></button>
-                    <button onclick="deleteContent('${item.id}')" class="text-xs text-red-400 hover:text-red-300"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block"></i></button>
+                    <button data-action="editContent" data-value="${item.id}" class="text-xs text-violet-400 hover:text-violet-300"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block"></i></button>
+                    <button data-action="deleteContent" data-value="${item.id}" class="text-xs text-red-400 hover:text-red-300"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block"></i></button>
                 </div>
             </div>
         `).join('');
@@ -442,9 +448,9 @@ async function loadBackups() {
             <tr class="border-b border-white/5 hover:bg-white/[0.02]">
                 <td class="px-4 py-3 font-mono text-xs text-slate-300">${b.filename || b.path?.split('/').pop() || '—'}</td>
                 <td class="px-4 py-3 text-xs text-slate-400">${b.size ? formatBytes(b.size) : '—'}</td>
-                <td class="px-4 py-3 text-xs text-slate-400">${b.created_at ? new Date(b.created_at).toLocaleString() : '—'}</td>
+                <td class="px-4 py-3 text-xs text-slate-400">${b.created_at ? new Date(b.created_at).toLocaleString('en-US') : '—'}</td>
                 <td class="px-4 py-3 text-right">
-                    <button onclick="restoreBackup('${b.path || b.filename}')" class="px-2.5 py-1 rounded bg-amber-600/20 text-amber-300 text-xs hover:bg-amber-600/30 transition-colors">
+                    <button data-action="restoreBackup" data-value="${b.path || b.filename}" class="px-2.5 py-1 rounded bg-amber-600/20 text-amber-300 text-xs hover:bg-amber-600/30 transition-colors">
                         <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i>Restore
                     </button>
                 </td>
@@ -637,10 +643,10 @@ async function loadRollbackSnapshots() {
                     <i data-lucide="undo-2" class="w-4 h-4 shrink-0 text-slate-400"></i>
                     <div class="min-w-0">
                         <p class="text-sm text-white truncate">${escapeHtml(s.action)}</p>
-                        <p class="text-xs text-slate-500">${escapeHtml(s.entity_type)} &middot; ${new Date(s.created_at).toLocaleString()}</p>
+                        <p class="text-xs text-slate-500">${escapeHtml(s.entity_type)} &middot; ${new Date(s.created_at).toLocaleString('en-US')}</p>
                     </div>
                 </div>
-                <button onclick="performRollback('${s.id}')" class="ml-4 px-3 py-1.5 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg border border-amber-500/30 transition-colors whitespace-nowrap flex items-center gap-1.5">
+                <button data-action="performRollback" data-value="${s.id}" class="ml-4 px-3 py-1.5 text-xs bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 rounded-lg border border-amber-500/30 transition-colors whitespace-nowrap flex items-center gap-1.5">
                     <i data-lucide="rotate-ccw" class="w-3 h-3 inline-block"></i> Revert
                 </button>
             </div>
@@ -697,6 +703,8 @@ window.refreshNodesList = refreshNodesList;
 window.deployToNode = deployToNode;
 window.viewNodeLogs = viewNodeLogs;
 window.switchContentType = switchContentType;
+window.quickCreateUser = quickCreateUser;
+window.quickCreatePlan = quickCreatePlan;
 window.openContentModal = openContentModal;
 window.closeContentModal = closeContentModal;
 window.editContent = editContent;

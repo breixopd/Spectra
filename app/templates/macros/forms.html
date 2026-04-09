@@ -25,7 +25,7 @@
     <label for="{{ id }}" class="form-label">{{ label }}</label>
     <div class="relative">
         <input id="{{ id }}" name="{{ id }}" type="password" class="form-input pr-10" placeholder="{{ placeholder }}">
-        <button type="button" onclick="this.previousElementSibling.type = this.previousElementSibling.type === 'password' ? 'text' : 'password'" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+        <button type="button" data-action="togglePasswordVisibility" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
             <i data-lucide="eye" class="w-3.5 h-3.5"></i>
         </button>
     </div>
@@ -64,20 +64,20 @@
 </div>
 {% endmacro %}
 
-{% macro btn_primary(text, onclick="", type="button", id="", icon="", disabled=false) %}
-<button type="{{ type }}" {{ 'id="' + id + '"' if id }} onclick="{{ onclick }}" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors" {{ 'disabled' if disabled }}>
+{% macro btn_primary(text, action="", type="button", id="", icon="", disabled=false) %}
+<button type="{{ type }}" {{ 'id="' + id + '"' if id }} {{ 'data-action="' + action + '"' if action }} class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors" {{ 'disabled' if disabled }}>
     {% if icon %}<i data-lucide="{{ icon }}" class="w-4 h-4 inline-block mr-1.5"></i>{% endif %}{{ text }}
 </button>
 {% endmacro %}
 
-{% macro btn_secondary(text, onclick="", type="button", id="", icon="") %}
-<button type="{{ type }}" {{ 'id="' + id + '"' if id }} onclick="{{ onclick }}" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg text-sm font-medium border border-emerald-500/30 transition-colors">
+{% macro btn_secondary(text, action="", type="button", id="", icon="") %}
+<button type="{{ type }}" {{ 'id="' + id + '"' if id }} {{ 'data-action="' + action + '"' if action }} class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 rounded-lg text-sm font-medium border border-emerald-500/30 transition-colors">
     {% if icon %}<i data-lucide="{{ icon }}" class="w-4 h-4 inline-block mr-1.5"></i>{% endif %}{{ text }}
 </button>
 {% endmacro %}
 
-{% macro btn_danger(text, onclick="", type="button", id="", icon="") %}
-<button type="{{ type }}" {{ 'id="' + id + '"' if id }} onclick="{{ onclick }}" class="px-4 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 rounded-lg text-sm font-medium border border-rose-500/30 transition-colors">
+{% macro btn_danger(text, action="", type="button", id="", icon="") %}
+<button type="{{ type }}" {{ 'id="' + id + '"' if id }} {{ 'data-action="' + action + '"' if action }} class="px-4 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 rounded-lg text-sm font-medium border border-rose-500/30 transition-colors">
     {% if icon %}<i data-lucide="{{ icon }}" class="w-4 h-4 inline-block mr-1.5"></i>{% endif %}{{ text }}
 </button>
 {% endmacro %}

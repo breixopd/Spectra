@@ -4,7 +4,7 @@
 <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3 animate-fade-in-up">
     <h1 class="text-2xl font-semibold text-white tracking-tight">Assessment Reports</h1>
     <div class="flex space-x-2">
-        <button onclick="openNewReportModal()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+        <button data-action="openNewReportModal" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
             <i data-lucide="plus" class="w-4 h-4 inline-block mr-2"></i>
             New Report
         </button>
@@ -14,14 +14,14 @@
 <!-- Filters -->
 <div class="glass-panel rounded-xl p-4 mb-4 animate-fade-in-up stagger-1">
     <div class="flex flex-wrap items-center gap-3">
-        <select id="filter-status" onchange="applyFilters()" class="px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all">
+        <select id="filter-status" data-on-change="applyFilters" class="px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all">
             <option value="">All Statuses</option>
             <option value="completed">Completed</option>
             <option value="running">Running</option>
             <option value="failed">Failed</option>
             <option value="paused">Paused</option>
         </select>
-        <select id="filter-severity" onchange="applyFilters()" class="px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all">
+        <select id="filter-severity" data-on-change="applyFilters" class="px-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-slate-300 focus:outline-none focus:border-violet-500/50 transition-all">
             <option value="">All Severities</option>
             <option value="critical">Has Critical</option>
             <option value="high">Has High</option>
@@ -33,7 +33,7 @@
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i data-lucide="search" class="w-4 h-4 inline-block text-slate-500"></i>
                 </div>
-                <input type="text" id="filter-search" oninput="debouncedApplyFilters()" placeholder="Search missions..."
+                <input type="text" id="filter-search" data-on-input="debouncedApplyFilters" placeholder="Search missions..."
                     class="w-full pl-9 pr-3 py-2 bg-slate-900/50 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-all">
             </div>
         </div>
@@ -61,7 +61,7 @@
 
 <!-- New Report Modal -->
 <div id="new-report-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="new-report-title">
-    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeNewReportModal()"></div>
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" data-action="closeNewReportModal"></div>
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md glass-panel rounded-xl p-6 border border-white/10 shadow-2xl">
         <h2 id="new-report-title" class="text-lg font-semibold text-white mb-4">Generate New Report</h2>
         <div class="space-y-4">
@@ -81,8 +81,8 @@
             </div>
         </div>
         <div class="flex justify-end space-x-3 mt-6">
-            <button type="button" onclick="closeNewReportModal()" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
-            <button onclick="generateReport()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
+            <button type="button" data-action="closeNewReportModal" class="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors">Cancel</button>
+            <button data-action="generateReport" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-colors">
                 <i data-lucide="sparkles" class="w-4 h-4 inline-block mr-2"></i>Generate
             </button>
         </div>
@@ -91,15 +91,15 @@
 
 <!-- View Report Modal -->
 <div id="view-report-modal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="view-report-title">
-    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeViewReportModal()"></div>
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" data-action="closeViewReportModal"></div>
     <div class="absolute inset-4 md:inset-10 glass-panel rounded-xl flex flex-col overflow-hidden border border-white/10 shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-white/5 shrink-0">
             <h2 class="text-lg font-semibold text-white" id="view-report-title">Report</h2>
             <div class="flex items-center gap-2">
-                <button onclick="printReport()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs transition-colors">
+                <button data-action="printReport" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs transition-colors">
                     <i data-lucide="printer" class="w-4 h-4 inline-block mr-1"></i> Print / PDF
                 </button>
-                <button onclick="closeViewReportModal()" class="text-slate-400 hover:text-white transition-colors" aria-label="Close report dialog" title="Close report dialog">
+                <button data-action="closeViewReportModal" class="text-slate-400 hover:text-white transition-colors" aria-label="Close report dialog" title="Close report dialog">
                     <i data-lucide="x" class="w-5 h-5 inline-block"></i>
                 </button>
             </div>

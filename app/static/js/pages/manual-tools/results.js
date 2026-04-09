@@ -15,18 +15,19 @@ function renderEvidenceGrid() {
     }
     grid.innerHTML = filtered.map((e, i) => {
         const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e.name) || e.type?.startsWith('image/');
-        const thumb = isImage && e.dataUrl
-            ? `<img src="${e.dataUrl}" class="w-full h-32 object-cover rounded-t-lg" alt="${escapeHtml(e.name)}">`
+        const safeThumbUrl = e.dataUrl?.startsWith('data:image/') ? e.dataUrl : '';
+        const thumb = isImage && safeThumbUrl
+            ? `<img src="${safeThumbUrl}" class="w-full h-32 object-cover rounded-t-lg" alt="${escapeHtml(e.name)}">`
             : `<div class="w-full h-32 flex items-center justify-center bg-slate-800 rounded-t-lg"><i data-lucide="file" class="w-8 h-8 inline-block text-slate-500"></i></div>`;
         const size = e.size ? formatFileSize(e.size) : '-';
         const ago = e.uploaded ? timeAgo(new Date(e.uploaded)) : '';
-        return `<div class="evidence-card rounded-lg bg-slate-800/50 cursor-pointer" onclick="previewEvidence(${i})">
+        return `<div class="evidence-card rounded-lg bg-slate-800/50 cursor-pointer" data-action="previewEvidence" data-value="${i}">
             ${thumb}
             <div class="p-2">
                 <div class="text-xs text-white truncate">${escapeHtml(e.name)}</div>
                 <div class="text-xs text-slate-500">${size} - ${ago}</div>
             </div>
-            <button onclick="event.stopPropagation();removeEvidence(${i})" class="absolute top-1 right-1 w-5 h-5 bg-black/50 hover:bg-rose-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
+            <button data-action="removeEvidenceStop" data-value="${i}" class="absolute top-1 right-1 w-5 h-5 bg-black/50 hover:bg-rose-600 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>`;
     }).join('');
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -112,9 +113,11 @@ function previewEvidence(idx) {
     const e = evidenceFiles[idx];
     if (!e) return;
     const isImage = /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e.name) || e.type?.startsWith('image/');
+    const safeUrl = e.dataUrl?.startsWith('data:image/') ? e.dataUrl : '';
+    const safeDownload = e.dataUrl?.startsWith('data:') ? e.dataUrl : '';
     const content = isImage
-        ? `<img src="${e.dataUrl}" class="max-w-full max-h-[70vh] mx-auto block p-4">`
-        : `<div class="p-8 text-center"><i data-lucide="file" class="w-10 h-10 inline-block text-slate-500 mb-3"></i><p class="text-slate-300">${escapeHtml(e.name)}</p><a href="${e.dataUrl}" download="${escapeHtml(e.name)}" class="mt-3 inline-block px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm transition-colors">Download</a></div>`;
+        ? `<img src="${safeUrl}" class="max-w-full max-h-[70vh] mx-auto block p-4">`
+        : `<div class="p-8 text-center"><i data-lucide="file" class="w-10 h-10 inline-block text-slate-500 mb-3"></i><p class="text-slate-300">${escapeHtml(e.name)}</p><a href="${safeDownload}" download="${escapeHtml(e.name)}" class="mt-3 inline-block px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm transition-colors">Download</a></div>`;
     showModal(e.name, content, 'max-w-4xl');
 }
 
@@ -188,7 +191,7 @@ function renderLFI() {
             html += `<div class="text-xs font-bold uppercase text-slate-500 mt-3 mb-1">${escapeHtml(currentCat)}</div>`;
         }
         const osColor = p.os === 'linux' ? 'text-emerald-400' : 'text-blue-400';
-        html += `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs cursor-pointer" onclick="navigator.clipboard.writeText('${escapeAttr(p.payload)}')">
+        html += `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs cursor-pointer" data-action="clipCopy" data-value="${escapeAttr(p.payload)}">
             <span class="${osColor} text-xs uppercase w-12 shrink-0">${p.os}</span>
             <code class="text-violet-300 font-mono flex-1 truncate">${escapeHtml(p.payload)}</code>
             <span class="text-slate-500 text-xs shrink-0 truncate max-w-[150px]">${escapeHtml(p.desc)}</span>
@@ -240,7 +243,7 @@ let sqliCatFilter = 'All';
 
 function initSQLi() {
     document.getElementById('sqli-cat-filters').innerHTML = SQLI_CATEGORIES.map(c =>
-        `<button class="sqli-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${c === 'All' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 border border-white/5'}" data-cat="${c}" onclick="filterSQLiCat('${c}')">${c}</button>`
+        `<button class="sqli-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${c === 'All' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 border border-white/5'}" data-cat="${c}"  data-action="filterSQLiCat" data-value="${c}">${c}</button>`
     ).join('');
     renderSQLi();
 }
@@ -255,7 +258,7 @@ function renderSQLi() {
     let html = '';
     filtered.forEach(p => {
         if (p.cat !== currentCat) { currentCat = p.cat; html += `<div class="text-xs font-bold uppercase text-slate-500 mt-3 mb-1">${escapeHtml(currentCat)}</div>`; }
-        html += `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs cursor-pointer" onclick="navigator.clipboard.writeText(this.querySelector('code').textContent)">
+        html += `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs cursor-pointer"  data-action="clipCopyCode">
             <code class="text-rose-300 font-mono flex-1 truncate">${escapeHtml(p.payload)}</code>
             <span class="text-slate-500 text-xs shrink-0 truncate max-w-[200px]">${escapeHtml(p.desc)}</span>
             <span class="copy-btn text-slate-400 text-xs"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></span>
@@ -300,7 +303,7 @@ let privescFnFilter = 'All';
 
 function initPrivEsc() {
     document.getElementById('privesc-fn-filters').innerHTML = PRIVESC_FUNCTIONS.map(f =>
-        `<button class="privesc-fn-btn px-2 py-1 rounded text-[11px] transition-colors ${f === 'All' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 border border-white/5'}" data-fn="${f}" onclick="filterPrivEscFn('${f}')">${f === 'All' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1).replace('-',' ')}</button>`
+        `<button class="privesc-fn-btn px-2 py-1 rounded text-[11px] transition-colors ${f === 'All' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 border border-white/5'}" data-fn="${f}"  data-action="filterPrivEscFn" data-value="${f}">${f === 'All' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1).replace('-',' ')}</button>`
     ).join('');
     renderPrivEsc();
 }
@@ -319,7 +322,7 @@ function renderPrivEsc() {
         const cmds = Object.entries(b.cmds).map(([fn, cmd]) =>
             `<div class="mt-1"><span class="text-xs text-slate-500 uppercase">${fn}:</span>
             <div class="flex items-center gap-1 mt-0.5"><code class="text-[11px] text-violet-300 font-mono bg-black/30 rounded px-1.5 py-0.5 flex-1 truncate">${escapeHtml(cmd)}</code>
-            <button onclick="event.stopPropagation();navigator.clipboard.writeText('${escapeAttr(cmd)}')" class="text-slate-400 hover:text-white text-xs shrink-0 px-1"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></button></div></div>`
+            <button data-action="clipCopyStop" data-value="${escapeAttr(cmd)}" class="text-slate-400 hover:text-white text-xs shrink-0 px-1"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></button></div></div>`
         ).join('');
         return `<div class="border border-white/5 rounded-lg p-3 bg-slate-800/30">
             <div class="flex items-center gap-2 mb-2">
@@ -395,11 +398,11 @@ function renderADCommands() {
             return `<div class="payload-row flex items-center gap-2 px-2 py-1.5 rounded text-xs">
                 <code class="text-violet-300 font-mono flex-1 truncate">${escapeHtml(resolved)}</code>
                 <span class="text-slate-500 text-xs shrink-0 truncate max-w-[180px]">${escapeHtml(c.desc)}</span>
-                <button onclick="navigator.clipboard.writeText(this.closest('.payload-row').querySelector('code').textContent)" class="copy-btn text-slate-400 hover:text-white text-xs shrink-0"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></button>
+                <button  data-action="clipCopyPayloadCode" class="copy-btn text-slate-400 hover:text-white text-xs shrink-0"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></button>
             </div>`;
         }).join('');
         return `<div class="border border-white/5 rounded-lg overflow-hidden">
-            <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between px-4 py-2.5 bg-slate-800/50 hover:bg-slate-800 text-left transition-colors">
+            <button data-action="toggleAccordion" class="w-full flex items-center justify-between px-4 py-2.5 bg-slate-800/50 hover:bg-slate-800 text-left transition-colors">
                 <span class="text-xs font-medium text-white">${escapeHtml(section.name)}</span>
                 <i data-lucide="chevron-down" class="w-3.5 h-3.5 inline-block text-slate-500 transition-transform"></i>
             </button>

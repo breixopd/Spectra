@@ -43,8 +43,8 @@ function renderPlans() {
                 <div class="flex justify-between"><span class="text-slate-500">Sandboxes</span><span class="text-white">${p.sandbox_max_containers}</span></div>
             </div>
             <div class="flex justify-end gap-2 pt-2 border-t border-white/5">
-                <button onclick='openEditPlanModal(${JSON.stringify(p).replace(/'/g,"&#39;")})' class="text-xs text-slate-400 hover:text-violet-400 transition-colors"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block mr-1"></i>Edit</button>
-                ${p.is_active ? `<button onclick="deactivatePlan('${p.id}','${escapeHtml(p.name)}')" class="text-xs text-slate-400 hover:text-red-400 transition-colors"><i data-lucide="ban" class="w-3.5 h-3.5 inline-block mr-1"></i>Deactivate</button>` : `<button onclick="activatePlan('${p.id}','${escapeHtml(p.name)}')" class="text-xs text-slate-400 hover:text-emerald-400 transition-colors"><i data-lucide="check-circle" class="w-3.5 h-3.5 inline-block mr-1"></i>Activate</button>`}
+                <button data-action="openEditPlanModal" data-value='${JSON.stringify(p).replace(/'/g,"&#39;")}' class="text-xs text-slate-400 hover:text-violet-400 transition-colors"><i data-lucide="edit" class="w-3.5 h-3.5 inline-block mr-1"></i>Edit</button>
+                ${p.is_active ? `<button data-action="deactivatePlan" data-value="${p.id}" data-plan-name="${escapeHtml(p.name)}" class="text-xs text-slate-400 hover:text-red-400 transition-colors"><i data-lucide="ban" class="w-3.5 h-3.5 inline-block mr-1"></i>Deactivate</button>` : `<button data-action="activatePlan" data-value="${p.id}" data-plan-name="${escapeHtml(p.name)}" class="text-xs text-slate-400 hover:text-emerald-400 transition-colors"><i data-lucide="check-circle" class="w-3.5 h-3.5 inline-block mr-1"></i>Activate</button>`}
             </div>
         </div>`;
     }).join('');
@@ -60,6 +60,7 @@ function openCreatePlanModal() {
 }
 
 function openEditPlanModal(p) {
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch(_) { return; } }
     document.getElementById('plan-modal-title').textContent = 'Edit Plan';
     document.getElementById('plan-form-id').value = p.id;
     document.getElementById('plan-form-name').value = p.name;
@@ -128,7 +129,8 @@ document.getElementById('plan-form').addEventListener('submit', async function(e
     } catch(e) { _spectraToast(e.message, 'error'); }
 });
 
-function deactivatePlan(planId, name) {
+function deactivatePlan(planId, el) {
+    const name = (typeof el === 'object' && el?.dataset?.planName) ? el.dataset.planName : '';
     showConfirm('Deactivate Plan', `Deactivate plan "${name}"?`, async () => {
         try {
             const { error } = await spectraApi.delete(`/api/admin/plans/${planId}`);
@@ -139,7 +141,8 @@ function deactivatePlan(planId, name) {
     });
 }
 
-function activatePlan(planId, name) {
+function activatePlan(planId, el) {
+    const name = (typeof el === 'object' && el?.dataset?.planName) ? el.dataset.planName : '';
     showConfirm('Activate Plan', `Activate plan "${name}"?`, async () => {
         try {
             const { error } = await spectraApi.put(`/api/admin/plans/${planId}`, { is_active: true });

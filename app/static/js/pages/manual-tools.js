@@ -50,7 +50,7 @@ let selectedShellIdx = null;
 function initRevShells() {
     const filterContainer = document.getElementById('revshell-cat-filters');
     filterContainer.innerHTML = SHELL_CATEGORIES.map(c =>
-        `<button onclick="filterShells('${c.id}')" class="revshell-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${
+        `<button data-action="filterShells" data-value="${c.id}" class="revshell-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${
             c.id === 'all' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-violet-500/10 border border-white/5'
         }" data-cat="${c.id}">${c.label}</button>`
     ).join('');
@@ -78,7 +78,7 @@ function renderShellList() {
             html += `<div class="text-xs font-bold uppercase text-slate-500 mt-2 mb-1">${escapeHtml(catLabel)}</div>`;
         }
         const sel = realIdx === selectedShellIdx ? 'bg-violet-500/10 border-violet-500/30' : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05]';
-        html += `<div class="flex items-center gap-2 px-2.5 py-1.5 rounded border cursor-pointer ${sel}" onclick="selectShell(${realIdx})">
+        html += `<div class="flex items-center gap-2 px-2.5 py-1.5 rounded border cursor-pointer ${sel}" data-action="selectShell" data-value="${realIdx}">
             <span class="text-xs text-white font-medium">${escapeHtml(s.name)}</span>
             <span class="text-xs text-slate-500 truncate flex-1">${escapeHtml(s.description)}</span>
         </div>`;
@@ -134,7 +134,7 @@ let activeEncoderCategory = 'all';
 function initEncoder() {
     const filterContainer = document.getElementById('encoder-cat-filters');
     filterContainer.innerHTML = ENCODER_CATEGORIES.map(c =>
-        `<button onclick="filterEncoder('${c.id}')" class="encoder-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${
+        `<button data-action="filterEncoder" data-value="${c.id}" class="encoder-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${
             c.id === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-blue-500/10 border border-white/5'
         }" data-cat="${c.id}">${c.label}</button>`
     ).join('');
@@ -153,7 +153,7 @@ function filterEncoder(cat) {
 function renderEncoderOps() {
     const ops = activeEncoderCategory === 'all' ? ENCODER_OPERATIONS : ENCODER_OPERATIONS.filter(o => o.category === activeEncoderCategory);
     document.getElementById('encoder-ops').innerHTML = ops.map(o =>
-        `<button onclick="runEncoder('${o.fn_name}')" class="px-2.5 py-1 bg-slate-800 hover:bg-blue-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors" title="${escapeAttr(o.description)}">${escapeHtml(o.name)}</button>`
+        `<button data-action="runEncoder" data-value="${o.fn_name}" class="px-2.5 py-1 bg-slate-800 hover:bg-blue-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors" title="${escapeAttr(o.description)}">${escapeHtml(o.name)}</button>`
     ).join('');
 }
 
@@ -367,7 +367,7 @@ const encoderFunctions = {
         if (/^\d{8,}$/.test(trimmed)) {
             const ts = parseInt(trimmed);
             const d = ts > 1e12 ? new Date(ts) : new Date(ts * 1000);
-            return `UTC:   ${d.toUTCString()}\nLocal: ${d.toLocaleString()}\nISO:   ${d.toISOString()}`;
+            return `UTC:   ${d.toUTCString()}\nLocal: ${d.toLocaleString('en-US')}\nISO:   ${d.toISOString()}`;
         }
         const d = new Date(trimmed || Date.now());
         if (isNaN(d.getTime())) throw new Error('Invalid date');
@@ -415,7 +415,7 @@ let activePortCategory = 'all';
 function initPorts() {
     const filterContainer = document.getElementById('port-cat-filters');
     filterContainer.innerHTML = PORT_CATEGORIES.map(c =>
-        `<button onclick="filterPortCat('${c.id}')" class="port-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${
+        `<button data-action="filterPortCat" data-value="${c.id}" class="port-cat-btn px-2 py-1 rounded text-[11px] transition-colors ${
             c.id === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-emerald-500/10 border border-white/5'
         }" data-cat="${c.id}">${c.label}</button>`
     ).join('');
@@ -435,7 +435,7 @@ function renderPorts(ports) {
     document.getElementById('port-count').textContent = ports.length + ' ports';
     document.getElementById('port-list').innerHTML = ports.map(p => {
         const vulnClass = p.common_vulns.includes('RCE') || p.common_vulns.includes('CVE') ? 'text-rose-400' : 'text-amber-400/80';
-        const toolLinks = p.tools.split(', ').map(t => `<span class="text-violet-400 hover:text-violet-300 cursor-pointer" onclick="jumpToTool('${escapeAttr(t.trim())}')">${escapeHtml(t.trim())}</span>`).join(', ');
+        const toolLinks = p.tools.split(', ').map(t => `<span class="text-violet-400 hover:text-violet-300 cursor-pointer" data-action="jumpToTool" data-value="${escapeAttr(t.trim())}">${escapeHtml(t.trim())}</span>`).join(', ');
         return `<tr class="border-b border-white/[0.03] hover:bg-white/[0.03]">
             <td class="px-2 py-1.5 text-violet-400 font-bold">${p.port}</td>
             <td class="px-2 py-1.5 text-emerald-400">${escapeHtml(p.service)}</td>
@@ -484,7 +484,7 @@ async function loadWordlists() {
                     <i data-lucide="file-text" class="w-4 h-4 inline-block text-amber-400/60 shrink-0"></i>
                     <span class="text-white truncate flex-1 font-mono">${escapeHtml(w.name || w)}</span>
                     ${w.size ? `<span class="text-slate-500 text-xs shrink-0">${w.size}</span>` : ''}
-                    <button onclick="navigator.clipboard.writeText('${escapeAttr(w.path || w.name || w)}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white transition-all" title="Copy path"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></button>
+                    <button || w.name || w)}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white transition-all" title="Copy path"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i></button>
                 </div>
             `).join('');
         }
@@ -495,7 +495,7 @@ async function loadWordlists() {
                 <div class="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-white/[0.02] ${p.downloaded ? 'opacity-50' : 'hover:bg-white/[0.05]'}">
                     <i data-lucide="download" class="w-4 h-4 inline-block text-blue-400/60 shrink-0"></i>
                     <span class="text-slate-300 truncate flex-1">${escapeHtml(p.name)} <span class="text-slate-500">(${p.entries} entries)</span></span>
-                    ${!p.downloaded ? `<button onclick="downloadPreset('${escapeAttr(p.id)}')" class="px-1.5 py-0.5 bg-blue-600/80 hover:bg-blue-500 text-white rounded text-xs transition-colors">Get</button>` : '<span class="text-emerald-400 text-xs">\u2713</span>'}
+                    ${!p.downloaded ? `<button data-action="downloadPreset" data-value="${escapeAttr(p.id)}" class="px-1.5 py-0.5 bg-blue-600/80 hover:bg-blue-500 text-white rounded text-xs transition-colors">Get</button>` : '<span class="text-emerald-400 text-xs">\u2713</span>'}
                 </div>
             `).join('');
         }
@@ -608,6 +608,7 @@ window.saveCurrentNote = saveCurrentNote;
 window.uploadEvidence = uploadEvidence;
 window.pasteEvidence = pasteEvidence;
 window.filterEvidence = filterEvidence;
+window.dismissTipsBanner = function() { document.getElementById('tips-banner')?.classList.add('hidden'); };
 window.switchHelperTab = switchHelperTab;
 window.copyToClipboard = copyToClipboard;
 window.copyListenerCmd = copyListenerCmd;
@@ -652,3 +653,6 @@ window.filterSQLiCat = filterSQLiCat;
 window.filterPrivEscFn = filterPrivEscFn;
 window.refreshWordlistOptions = refreshWordlistOptions;
 window.showModal = showModal;
+window.updatePipelineStepFromEl = updatePipelineStepFromEl;
+window.toggleChecklistItemFromEl = toggleChecklistItemFromEl;
+window.saveChecklistNoteFromEl = saveChecklistNoteFromEl;

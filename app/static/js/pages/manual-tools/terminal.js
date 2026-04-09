@@ -18,9 +18,9 @@ function addPipelineStep() {
     node.innerHTML = `
         <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-mono text-slate-500">Step ${stepNum + 1}</span>
-            <button onclick="removePipelineStep(${id})" class="text-slate-600 hover:text-rose-400 text-xs transition-colors" aria-label="Remove step"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
+            <button data-action="removePipelineStep" data-value="${id}" class="text-slate-600 hover:text-rose-400 text-xs transition-colors" aria-label="Remove step"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>
-        <select onchange="updatePipelineStep(${id}, this.value)" class="w-full px-2 py-1.5 bg-black/30 border border-white/10 rounded text-sm text-white mb-2 focus:outline-none focus:border-violet-500">
+        <select data-on-change="updatePipelineStepFromEl" data-step-id="${id}" class="w-full px-2 py-1.5 bg-black/30 border border-white/10 rounded text-sm text-white mb-2 focus:outline-none focus:border-violet-500">
             <option value="">Select tool...</option>
             ${allTools.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('')}
         </select>
@@ -41,6 +41,10 @@ function removePipelineStep(id) {
     rebuildPipelineCanvas();
 }
 
+function updatePipelineStepFromEl(el) {
+    const id = parseInt(el.dataset.stepId, 10);
+    updatePipelineStep(id, el.value);
+}
 function updatePipelineStep(id, toolId) {
     const step = pipelineSteps.find(s => s.id === id);
     if (step) step.toolId = toolId;
@@ -250,10 +254,10 @@ async function searchCVEs() {
                                 <span class="px-1 py-0.5 rounded text-xs font-mono uppercase ${m.type === 'exploit' ? 'bg-rose-500/20 text-rose-400' : 'bg-blue-500/20 text-blue-400'}">${escapeHtml(m.type)}</span>
                                 <code class="text-slate-300 font-mono truncate flex-1">${escapeHtml(m.module)}</code>
                                 <span class="text-xs text-slate-500 font-mono">${escapeHtml(m.rank || '')}</span>
-                                <button onclick="navigator.clipboard.writeText('${escapeAttr(m.module)}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-all" title="Copy module path">
+                                <button data-action="clipCopy" data-value="${escapeAttr(m.module)}" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-all" title="Copy module path">
                                     <i data-lucide="copy" class="w-3.5 h-3.5 inline-block"></i>
                                 </button>
-                                <button onclick="launchMetasploit('${escapeAttr(m.module)}', '${escapeAttr(cveId)}')" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-all" title="Use in Metasploit">
+                                <button data-action="launchMetasploit" data-value="${escapeAttr(m.module)}" data-cve="${escapeAttr(cveId)}" class="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-all" title="Use in Metasploit">
                                     <i data-lucide="rocket" class="w-3.5 h-3.5 inline-block"></i>
                                 </button>
                             </div>
@@ -400,7 +404,7 @@ async function startSession() {
             document.getElementById('session-start-btn').disabled = true;
             document.getElementById('session-export-btn').classList.remove('hidden');
         }).catch(e => { _spectraToast('Failed to start session', 'error'); });
-    }, { title: 'Start Session', placeholder: `Pentest ${new Date().toLocaleDateString()}` });
+    }, { title: 'Start Session', placeholder: `Pentest ${new Date().toLocaleDateString('en-US')}` });
 }
 
 function logToSession(action, tool, findings) {
@@ -425,7 +429,8 @@ async function exportSession() {
 }
 
 // === Launch Metasploit from CVE ===
-function launchMetasploit(modulePath, cveId) {
+function launchMetasploit(modulePath, el) {
+    const cveId = (typeof el === 'object' && el?.dataset?.cve) ? el.dataset.cve : (typeof el === 'string' ? el : '');
     switchManualTab('execute');
     selectManualTool('metasploit');
     setTimeout(() => {
@@ -493,8 +498,8 @@ function renderHistory() {
             <td class="px-3 py-1.5">${statusIcon}</td>
             <td class="px-3 py-1.5 text-slate-400 font-mono">${dur}</td>
             <td class="px-3 py-1.5 text-right">
-                <button onclick="viewHistoryOutput(${i})" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors mr-1">View</button>
-                <button onclick="rerunFromHistory(${i})" class="px-1.5 py-0.5 bg-violet-600/60 hover:bg-violet-500 text-white rounded text-xs transition-colors">Re-run</button>
+                <button data-action="viewHistoryOutput" data-value="${i}" class="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors mr-1">View</button>
+                <button data-action="rerunFromHistory" data-value="${i}" class="px-1.5 py-0.5 bg-violet-600/60 hover:bg-violet-500 text-white rounded text-xs transition-colors">Re-run</button>
             </td>
         </tr>`;
     }).join('') || '<tr><td colspan="6" class="px-3 py-4 text-center text-slate-500 text-xs">No history yet</td></tr>';
@@ -551,7 +556,7 @@ function openDiffModal() {
                 <div class="flex-1"><label class="text-xs text-slate-500 uppercase font-bold">Right</label>
                     <select id="diff-right" class="w-full px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none"><option value="1" selected>${commandHistory.length > 1 ? '' : ''}</option>${options}</select></div>
             </div>
-            <button onclick="runDiff()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs mb-3">Compare</button>
+            <button data-action="runDiff" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs mb-3">Compare</button>
             <div id="diff-output" class="flex gap-2 max-h-[50vh] overflow-y-auto"></div>
         </div>`, 'max-w-5xl');
     if (commandHistory.length > 1) document.getElementById('diff-right').value = '1';
@@ -592,7 +597,7 @@ function showModal(title, content, widthClass) {
     modal.innerHTML = `<div class="modal-content ${widthClass || 'max-w-3xl'} w-full">
         <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <h3 class="text-sm font-bold text-white">${escapeHtml(title)}</h3>
-            <button onclick="document.getElementById('spectra-modal').remove()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
+            <button  data-action="closeSpectraModal" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>
         <div>${content}</div>
     </div>`;
@@ -637,7 +642,7 @@ function renderScopeTargets() {
             <span class="text-xs text-slate-500 uppercase w-12">${t.type}</span>
             <span class="text-white font-mono flex-1 truncate">${escapeHtml(t.value)}</span>
             <span class="text-slate-500 text-xs truncate max-w-[100px]">${escapeHtml(t.notes)}</span>
-            <button onclick="removeScopeTarget(${i})" class="text-slate-600 hover:text-rose-400 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
+            <button data-action="removeScopeTarget" data-value="${i}" class="text-slate-600 hover:text-rose-400 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>`
     ).join('') || '<div class="text-slate-500 text-xs py-1">No targets defined</div>';
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -670,7 +675,7 @@ function renderScopeExclusions() {
             <span class="text-xs text-slate-500 uppercase w-12">${e.type}</span>
             <span class="text-rose-300 font-mono flex-1 truncate">${escapeHtml(e.value)}</span>
             <span class="text-slate-500 text-xs truncate max-w-[100px]">${escapeHtml(e.reason)}</span>
-            <button onclick="removeScopeExclusion(${i})" class="text-slate-600 hover:text-rose-400 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
+            <button data-action="removeScopeExclusion" data-value="${i}" class="text-slate-600 hover:text-rose-400 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>`
     ).join('') || '<div class="text-slate-500 text-xs py-1">No exclusions defined</div>';
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -694,7 +699,7 @@ function showModal(title, content, widthClass) {
     modal.innerHTML = `<div class="modal-content ${widthClass || 'max-w-3xl'} w-full">
         <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <h3 class="text-sm font-bold text-white">${escapeHtml(title)}</h3>
-            <button onclick="document.getElementById('spectra-modal').remove()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
+            <button  data-action="closeSpectraModal" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5 inline-block"></i></button>
         </div>
         <div>${content}</div>
     </div>`;

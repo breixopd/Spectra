@@ -111,7 +111,7 @@
                 <!-- Optional: Customize AI Models -->
                 <div class="mt-4">
                     <label class="flex items-center gap-2 cursor-pointer group">
-                        <input type="checkbox" id="customize-ai" class="rounded border-white/20 bg-black/30 text-violet-500 focus:ring-violet-500" onchange="document.getElementById('ai-custom-panel').classList.toggle('hidden')">
+                        <input type="checkbox" id="customize-ai" class="rounded border-white/20 bg-black/30 text-violet-500 focus:ring-violet-500" data-on-change="toggleAiCustomPanel">
                         <span class="text-sm text-gray-300 group-hover:text-violet-300 transition-colors">Customize AI model configuration</span>
                     </label>
                     <p class="text-xs text-gray-500 mt-1 ml-6">Leave unchecked to use optimized defaults (recommended for first setup)</p>
@@ -212,6 +212,8 @@
 </div>
 
 <script nonce="{{ request.state.csp_nonce }}">
+    function toggleAiCustomPanel() { document.getElementById('ai-custom-panel').classList.toggle('hidden'); }
+
     const setupForm = document.getElementById('setup-form');
     const errorMsg = document.getElementById('error-msg');
     const infraToggle = document.getElementById('toggle-infra');

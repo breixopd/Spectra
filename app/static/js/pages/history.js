@@ -3,6 +3,7 @@ let missionCache = [];
 let historyRefreshIntervalId = null;
 let missionListRefreshErrorShown = false;
 let missionDetailsRefreshErrorShown = false;
+function reloadPage() { window.location.reload(); }
 
 function getHistoryErrorMessage(error, fallback) {
     if (typeof error === 'string' && error.trim()) {
@@ -18,7 +19,7 @@ function renderMissionListError(message) {
         <div class="text-center text-rose-400 py-8 px-4 space-y-2">
             <p class="text-sm font-medium">Failed to load assessments</p>
             <p class="text-xs text-slate-500">${escapeHtml(message)}</p>
-            <button type="button" onclick="window.location.reload()" class="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-xs transition-colors">
+            <button type="button" data-action="reloadPage" class="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 text-xs transition-colors">
                 Retry
             </button>
         </div>
@@ -112,7 +113,8 @@ function renderMissionList(missions) {
     });
 }
 
-function filterMissions(query) {
+function filterMissions(queryOrEl) {
+    const query = typeof queryOrEl === 'object' ? queryOrEl.value : queryOrEl;
     const q = query.toLowerCase();
     document.querySelectorAll('[data-mission-card]').forEach(card => {
         const text = card.textContent.toLowerCase();

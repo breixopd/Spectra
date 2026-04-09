@@ -93,7 +93,7 @@ function updateServices(services) {
             </div>
             <div class="service-metrics">
                 ${info.latency_ms ? `<span>Latency: ${escapeHtml(info.latency_ms)}ms</span>` : ''}
-                ${info.last_check ? `<span>Last check: ${escapeHtml(new Date(info.last_check).toLocaleTimeString())}</span>` : ''}
+                ${info.last_check ? `<span>Last check: ${escapeHtml(new Date(info.last_check).toLocaleTimeString('en-US'))}</span>` : ''}
             </div>
             ${info.error ? `<div style="color: #f43f5e; font-size: 0.875rem; margin-top: 0.25rem;">${escapeHtml(info.error)}</div>` : ''}
         </div>
@@ -112,7 +112,7 @@ function updateTraces(traces) {
         const durationClass = trace.duration_ms > 5000 ? 'very-slow' : trace.duration_ms > 1000 ? 'slow' : '';
         return `
             <tr>
-                <td>${escapeHtml(new Date(trace.start_time).toLocaleTimeString())}</td>
+                <td>${escapeHtml(new Date(trace.start_time).toLocaleTimeString('en-US'))}</td>
                 <td class="trace-name">${escapeHtml(trace.name)}</td>
                 <td class="trace-duration ${durationClass}">${escapeHtml(trace.duration_ms.toFixed(2))}ms</td>
                 <td><span class="trace-status ${trace.status === 'ok' ? 'ok' : 'error'}">${escapeHtml(trace.status)}</span></td>
@@ -158,7 +158,7 @@ function updateEvents(events) {
     
     container.innerHTML = events.slice(-100).reverse().map(event => `
         <div class="event-item">
-            <span class="event-time">${escapeHtml(new Date(event.timestamp).toLocaleTimeString())}</span>
+            <span class="event-time">${escapeHtml(new Date(event.timestamp).toLocaleTimeString('en-US'))}</span>
             <span class="event-type">${escapeHtml(event.type)}</span>
             <span>${escapeHtml(event.source)}</span>
         </div>

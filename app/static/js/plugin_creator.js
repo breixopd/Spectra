@@ -3,6 +3,8 @@
  * Handles form processing, preview generation, validation, and submission.
  */
 
+function removeInstallCmd(el) { el.closest('.flex.gap-2')?.remove(); }
+
 function renderActionStatus(container, message, tone = 'info') {
     if (!container) return;
     const color = {
@@ -24,7 +26,7 @@ function addInstallCmd() {
     div.className = 'flex gap-2';
     div.innerHTML = `
         <input type="text" class="install-cmd w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono text-sm" placeholder="Command">
-        <button onclick="this.parentElement.remove()" class="px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"><i data-lucide="trash-2" class="w-4 h-4 inline-block"></i></button>
+        <button data-action="removeInstallCmd" class="px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"><i data-lucide="trash-2" class="w-4 h-4 inline-block"></i></button>
     `;
     container.appendChild(div);
 }

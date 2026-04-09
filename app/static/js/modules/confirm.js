@@ -12,7 +12,7 @@ function _ensureConfirmModal() {
     const div = document.createElement('div');
     div.innerHTML = `
     <div id="spectra-confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="spectra-confirm-title" data-modal>
-      <div class="fixed inset-0 bg-black/60 backdrop-filter backdrop-blur-sm" onclick="closeModal('spectra-confirm-modal')"></div>
+      <div class="fixed inset-0 bg-black/60 backdrop-filter backdrop-blur-sm" data-action="closeModal" data-value="spectra-confirm-modal"></div>
       <div class="relative w-full max-w-md glass-panel rounded-2xl shadow-2xl animate-fade-in-up">
         <div class="p-6">
           <h3 id="spectra-confirm-title" class="text-lg font-semibold text-white mb-2"></h3>

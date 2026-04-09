@@ -43,7 +43,7 @@
         {% if not is_public_page %}
         <!-- Mobile header -->
         <div class="mobile-header">
-            <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle navigation">
+            <button class="hamburger-btn" data-action="toggleSidebar" aria-label="Toggle navigation">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <span class="text-white font-semibold text-lg">Spectra</span>
@@ -124,7 +124,7 @@
             </div>
         </aside>
         <!-- Sidebar overlay for mobile -->
-        <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+        <div id="sidebar-overlay" class="sidebar-overlay" data-action="toggleSidebar"></div>
         {% endif %}
 
         <!-- Main Content -->
@@ -387,6 +387,7 @@
         });
     </script>
     <script src="/static/js/modules/accordion.js"></script>
+    <script src="/static/js/modules/delegated-events.js"></script>
     <script src="/static/js/modules/modal.js" type="module"></script>
     <script src="/static/js/modules/tabs.js" type="module"></script>
     <script src="/static/js/modules/confirm.js" type="module"></script>
@@ -401,6 +402,10 @@
             .replace(/'/g, '&#39;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
+    }
+    function togglePasswordVisibility(el) {
+        const input = el.previousElementSibling;
+        if (input) input.type = input.type === 'password' ? 'text' : 'password';
     }
     </script>
     <!-- Lucide Icons — locally hosted, same-origin (SRI would add no cross-origin benefit) -->
