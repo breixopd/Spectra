@@ -6,6 +6,7 @@ import logging
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.database import async_session_maker
 from app.core.telemetry import telemetry
@@ -50,6 +51,39 @@ class UsageTracker:
     async def record_llm_tokens(self, user_id: str, tokens: int) -> None:
         await self.record(user_id, "llm_tokens", tokens)
 
+    async def record_storage_usage(self, user_id: str, size_bytes: int) -> None:
+        """Increment the user's cumulative storage usage.
+
+        Storage is cumulative (not periodic), so we use a single
+        ``period_type='cumulative'`` record per user that grows over time.
+        """
+        size_mb = size_bytes // (1024 * 1024)
+        if size_mb <= 0:
+            return
+
+        sentinel = datetime(2000, 1, 1, tzinfo=UTC)
+
+        async with async_session_maker() as session:
+            stmt = (
+                pg_insert(UsageRecord)
+                .values(
+                    user_id=user_id,
+                    period_type="cumulative",
+                    period_start=sentinel,
+                    storage_used_mb=size_mb,
+                )
+                .on_conflict_do_update(
+                    index_elements=["user_id", "period_type", "period_start"],
+                    set_={"storage_used_mb": UsageRecord.storage_used_mb + size_mb},
+                )
+            )
+            await session.execute(stmt)
+            await session.commit()
+
+        telemetry.increment_counter(
+            "billing.usage.storage_mb", size_mb, {"user_id": user_id}
+        )
+
     # ---- core ----
 
     async def record(self, user_id: str, metric: str, amount: int) -> None:
@@ -64,8 +98,6 @@ class UsageTracker:
         async with async_session_maker() as session:
             # Use an atomic server-side increment to avoid read-modify-write races.
             # INSERT ... ON CONFLICT DO UPDATE SET col = col + amount
-            from sqlalchemy.dialects.postgresql import insert as pg_insert
-
             stmt = (
                 pg_insert(UsageRecord)
                 .values(

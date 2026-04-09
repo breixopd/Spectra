@@ -131,7 +131,7 @@ class TestBuildExecutionRequest:
 
 class TestDispatchAndProcessResult:
     @pytest.mark.asyncio
-    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock)
+    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
     @patch("app.services.tools.dispatch.cleanup_output_directory")
     @patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
     @patch("app.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
@@ -181,7 +181,7 @@ class TestDispatchAndProcessResult:
         mock_cleanup.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock)
+    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
     @patch("app.services.tools.dispatch.cleanup_output_directory")
     @patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
     async def test_failed_dispatch_records_error(self, mock_execute, mock_cleanup, mock_persist):
@@ -226,7 +226,7 @@ class TestDispatchAndProcessResult:
         assert "Connection refused" in call_kwargs[1]["error"]
 
     @pytest.mark.asyncio
-    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock)
+    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
     @patch("app.services.tools.dispatch.cleanup_output_directory")
     @patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
     @patch("app.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)
@@ -274,7 +274,7 @@ class TestDispatchAndProcessResult:
         mock_update_surface.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock)
+    @patch("app.services.tools.dispatch.persist_output_directory", new_callable=AsyncMock, return_value=0)
     @patch("app.services.tools.dispatch.cleanup_output_directory")
     @patch("app.services.tools.dispatch.execute_via_worker", new_callable=AsyncMock)
     @patch("app.services.tools.dispatch.truncate_for_llm", side_effect=lambda s, **kw: s)

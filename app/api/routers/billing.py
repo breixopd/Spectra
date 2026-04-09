@@ -1,6 +1,7 @@
 """Self-service billing — plan upgrade/downgrade via Stripe Checkout."""
 
 import logging
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
@@ -9,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_active_user
 from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
-from app.models.plan import Plan
+from app.models.plan import Plan, Subscription, UsageRecord
 from app.models.user import User
 from app.services.billing import PaymentService
 
@@ -40,6 +41,44 @@ async def list_available_plans(request: Request, session: AsyncSession = Depends
         }
         for p in plans
     ]
+
+
+@router.get("/usage")
+@limiter.limit(RateLimits.BILLING)
+async def get_usage(
+    request: Request,
+    user: User = Depends(get_current_active_user),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Return the authenticated user's current usage and plan limits."""
+    # Fetch plan
+    sub = (
+        await session.execute(
+            select(Subscription).where(Subscription.user_id == str(user.id), Subscription.status == "active")
+        )
+    ).scalar_one_or_none()
+    plan = await session.get(Plan, sub.plan_id) if sub else None
+
+    # Fetch cumulative storage record
+    sentinel = datetime(2000, 1, 1, tzinfo=UTC)
+    rec_result = await session.execute(
+        select(UsageRecord).where(
+            UsageRecord.user_id == str(user.id),
+            UsageRecord.period_type == "cumulative",
+            UsageRecord.period_start == sentinel,
+        )
+    )
+    record = rec_result.scalar_one_or_none()
+
+    storage_used_mb = record.storage_used_mb if record else 0
+    max_storage_mb = plan.max_storage_mb if plan else 0
+
+    return {
+        "storage_used_mb": storage_used_mb,
+        "max_storage_mb": max_storage_mb,
+        "storage_pct": round(storage_used_mb / max_storage_mb * 100, 1) if max_storage_mb else 0,
+        "plan_name": plan.display_name if plan else None,
+    }
 
 
 @router.post("/checkout")

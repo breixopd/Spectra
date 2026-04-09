@@ -294,6 +294,35 @@ async def check_mission_limit(user: User, session: AsyncSession) -> None:
         )
 
 
+async def check_storage_limit(user: User, session: AsyncSession) -> None:
+    """Raise 429 if user has hit their plan's storage limit."""
+    if _is_admin_user(user):
+        return
+    plan = await _get_user_plan(user, session)
+    if not plan or not plan.max_storage_mb:
+        return
+
+    from datetime import UTC
+
+    from app.models.plan import UsageRecord
+
+    sentinel = datetime(2000, 1, 1, tzinfo=UTC)
+    rec_result = await session.execute(
+        select(UsageRecord).where(
+            UsageRecord.user_id == str(user.id),
+            UsageRecord.period_type == "cumulative",
+            UsageRecord.period_start == sentinel,
+        )
+    )
+    record = rec_result.scalar_one_or_none()
+    used = record.storage_used_mb if record else 0
+    if used >= plan.max_storage_mb:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Storage limit reached: {used}/{plan.max_storage_mb} MB",
+        )
+
+
 async def check_target_limit(user: User, session: AsyncSession) -> None:
     """Raise 429 if user has hit their plan's target limit."""
     if _is_admin_user(user):
