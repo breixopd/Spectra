@@ -91,11 +91,7 @@ class TestResolveIp:
         mock_session = MagicMock()
         mock_session.get.return_value = mock_session_ctx
 
-        mock_client_ctx = AsyncMock()
-        mock_client_ctx.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_client_ctx.__aexit__ = AsyncMock(return_value=False)
-
-        with patch("app.utils.geoip.aiohttp.ClientSession", return_value=mock_client_ctx):
+        with patch("app.utils.geoip._get_session", return_value=mock_session):
             result = await resolve_ip("8.8.8.8")
 
         assert result is not None
@@ -115,11 +111,7 @@ class TestResolveIp:
         mock_session = MagicMock()
         mock_session.get.return_value = mock_session_ctx
 
-        mock_client_ctx = AsyncMock()
-        mock_client_ctx.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_client_ctx.__aexit__ = AsyncMock(return_value=False)
-
-        with patch("app.utils.geoip.aiohttp.ClientSession", return_value=mock_client_ctx):
+        with patch("app.utils.geoip._get_session", return_value=mock_session):
             result = await resolve_ip("8.8.8.8")
 
         assert result is None
@@ -127,10 +119,10 @@ class TestResolveIp:
     async def test_resolve_network_error(self):
         import aiohttp
 
-        with patch(
-            "app.utils.geoip.aiohttp.ClientSession",
-            side_effect=aiohttp.ClientError("connection refused"),
-        ):
+        mock_session = MagicMock()
+        mock_session.get.side_effect = aiohttp.ClientError("connection refused")
+
+        with patch("app.utils.geoip._get_session", return_value=mock_session):
             result = await resolve_ip("8.8.8.8")
 
         assert result is None
@@ -146,11 +138,7 @@ class TestResolveIp:
         mock_session = MagicMock()
         mock_session.get.return_value = mock_session_ctx
 
-        mock_client_ctx = AsyncMock()
-        mock_client_ctx.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_client_ctx.__aexit__ = AsyncMock(return_value=False)
-
-        with patch("app.utils.geoip.aiohttp.ClientSession", return_value=mock_client_ctx):
+        with patch("app.utils.geoip._get_session", return_value=mock_session):
             result = await resolve_ip("8.8.8.8")
 
         assert result is None

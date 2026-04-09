@@ -18,6 +18,7 @@ from app.api.dependencies import check_feature_allowed, get_current_active_user,
 from app.core.constants import WS_KEEPALIVE_INTERVAL, WS_MAX_MESSAGE_SIZE, WS_MAX_MESSAGES_PER_SECOND
 from app.core.database import async_session_maker
 from app.core.rate_limit import RateLimits, limiter
+from app.core.tasks import create_safe_task
 from app.models.audit_log import AuditEventType
 from app.models.finding import Finding
 from app.models.mission import Mission
@@ -99,7 +100,7 @@ async def shell_websocket(websocket: WebSocket, session_id: str, token: str | No
 
     await session.connect_websocket(websocket)
 
-    ping_task = asyncio.create_task(_keepalive(websocket))
+    ping_task = create_safe_task(_keepalive(websocket), name="ws-keepalive")
     message_count = 0
     last_reset = time.time()
     try:
