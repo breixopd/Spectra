@@ -75,6 +75,7 @@ notify() {
 }
 
 cleanup_lock() {
+    # flock is released automatically when fd 9 is closed (process exit)
     rm -f "$LOCK_FILE"
 }
 
@@ -97,19 +98,13 @@ trap 'exit 143' TERM
 # ── Lock ─────────────────────────────────────────────────────────
 
 acquire_lock() {
-    if [ -f "$LOCK_FILE" ]; then
-        local lock_pid
-        lock_pid=$(cat "$LOCK_FILE" 2>/dev/null || echo "")
-        if [ -n "$lock_pid" ] && kill -0 "$lock_pid" 2>/dev/null; then
-            log "ERROR: Another deploy is running (PID: $lock_pid)"
-            # Exit without triggering rollback—we never started
-            trap - EXIT
-            exit 1
-        fi
-        log "WARN: Stale lock file found, removing"
-        rm -f "$LOCK_FILE"
+    exec 9>"$LOCK_FILE"
+    if ! flock -n 9; then
+        log "ERROR: Another deploy is running"
+        # Exit without triggering rollback—we never started
+        trap - EXIT
+        exit 1
     fi
-    echo $$ > "$LOCK_FILE"
     log "Lock acquired (PID: $$)"
 }
 
@@ -149,7 +144,7 @@ rollback() {
     # Restore DB if backup exists and migration may have run
     if [ -n "$DB_BACKUP_FILE" ] && [ -f "$DB_BACKUP_FILE" ]; then
         log "Restoring database from backup: $DB_BACKUP_FILE"
-        if gunzip -c "$DB_BACKUP_FILE" | docker exec -i spectra-db psql -U spectra -d spectra > /dev/null 2>&1; then
+        if gunzip -c "$DB_BACKUP_FILE" | docker exec -i spectra-db psql --set ON_ERROR_STOP=1 -U spectra -d spectra; then
             log "Database restored successfully"
         else
             log "ERROR: Database restore failed — manual intervention required"

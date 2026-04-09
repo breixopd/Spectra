@@ -8,8 +8,18 @@ DB_USER="${DB_USER:-spectra}"
 DB_NAME="${DB_NAME:-spectra}"
 WORKER_CONTAINER="${WORKER_CONTAINER:-spectra-worker}"
 
+sql_escape() {
+    local value
+    local quote
+    value="${1}"
+    quote="'"
+    printf '%s' "${value//${quote}/${quote}${quote}}"
+}
+
 run_sql() {
-    docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -c "$1"
+    local query
+    query="${1}"
+    printf '%s\n' "${query}" | docker exec -i "${DB_CONTAINER}" psql -v ON_ERROR_STOP=1 -U "${DB_USER}" -d "${DB_NAME}"
 }
 
 usage() {
@@ -55,7 +65,9 @@ case "${1:-}" in
         ;;
     retry-job)
         [[ -z "${2:-}" ]] && echo "Usage: $0 retry-job <job-id>" && exit 1
-        run_sql "UPDATE job_queue SET status = 'pending', error = NULL, started_at = NULL, completed_at = NULL WHERE id = '$2';"
+        local safe_id
+        safe_id=$(sql_escape "$2")
+        run_sql "UPDATE job_queue SET status = 'pending', error = NULL, started_at = NULL, completed_at = NULL WHERE id = '${safe_id}';"
         echo "Job $2 moved to pending."
         ;;
     purge-completed)

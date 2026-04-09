@@ -114,7 +114,7 @@ restore_database() {
         return 1
     fi
 
-    if gunzip -c "$backup_file" | docker exec -i spectra-db psql --single-transaction -U spectra -d spectra > /dev/null 2>&1; then
+    if gunzip -c "$backup_file" | docker exec -i spectra-db psql --single-transaction --set ON_ERROR_STOP=1 -U spectra -d spectra; then
         log "Database restored successfully from $backup_file"
     else
         log "ERROR: Database restore failed"
