@@ -5,6 +5,13 @@
 #
 # For multi-host production: see docker-compose.swarm.yml
 # For testing: see docker-compose.test.yml
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # Garage S3-compatible object storage
   garage:
@@ -15,6 +22,7 @@ services:
       spectra.role: "storage"
     environment:
       GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?set in .env}
     ports:
       - "127.0.0.1:3900:3900"
       - "127.0.0.1:3903:3903"
@@ -30,6 +38,13 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
 
@@ -60,6 +75,9 @@ services:
           memory: 512M
     networks:
       - spectra-network
+    logging: *default-logging
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
 
@@ -86,6 +104,9 @@ services:
           memory: 512M
     networks:
       - spectra-network
+    logging: *default-logging
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
 
@@ -115,6 +136,13 @@ services:
       timeout: 5s
       retries: 3
     restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    cap_drop:
+      - ALL
     networks:
       - spectra-network
     security_opt:
@@ -186,6 +214,9 @@ services:
           memory: 256M
     networks:
       - spectra-network
+    logging: *default-logging
+    cap_drop:
+      - ALL
     develop:
       watch:
         - action: sync
@@ -244,6 +275,9 @@ services:
           memory: 1G
     networks:
       - spectra-network
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   # ClickHouse (TensorZero analytics + inference storage)
   clickhouse:
@@ -273,12 +307,15 @@ services:
           memory: 512M
     networks:
       - spectra-network
+    logging: *default-logging
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
 
   # TensorZero Gateway (AI routing, observability, optimization)
   tensorzero:
-    image: tensorzero/gateway
+    image: tensorzero/gateway:2025.01.07
     container_name: spectra-tensorzero
     labels:
       spectra.managed: "true"
@@ -308,6 +345,9 @@ services:
           memory: 512M
     networks:
       - spectra-network
+    logging: *default-logging
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true
 
@@ -360,6 +400,9 @@ services:
           memory: 256M
     networks:
       - spectra-network
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   # Worker (Tool Execution via Ephemeral Sandbox Containers)
   worker:
@@ -414,6 +457,7 @@ services:
       - NET_RAW
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
     networks:
       - spectra-network
 
