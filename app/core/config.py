@@ -134,6 +134,7 @@ class Settings(BaseSettings):
 
     # --- Request Limits ---
     MAX_REQUEST_BODY_SIZE: int = 10 * 1024 * 1024  # 10 MB
+    MAX_UPLOAD_SIZE: int = 50 * 1024 * 1024  # 50 MB — multipart file uploads
 
     # --- CORS ---
     CORS_ORIGINS: list[str] = [

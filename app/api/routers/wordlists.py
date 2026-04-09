@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import aiofiles
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import check_feature_allowed, get_current_active_user
@@ -137,7 +137,7 @@ async def list_wordlists(
     return {"local": system + user_local, "system": system, "user": user_local, "presets": presets}
 
 
-@router.post("/upload")
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
 @limiter.limit(RateLimits.TOOL_UPLOAD)
 async def upload_wordlist(
     request: Request,
