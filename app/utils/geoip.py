@@ -15,6 +15,16 @@ from app.core.constants import GEOIP_API_URL, GEOIP_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
+_session: aiohttp.ClientSession | None = None
+
+
+def _get_session() -> aiohttp.ClientSession:
+    """Return a lazily-created, reusable aiohttp session."""
+    global _session
+    if _session is None or _session.closed:
+        _session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=GEOIP_TIMEOUT))
+    return _session
+
 
 class GeoLocation(TypedDict):
     """Geographic location data."""
@@ -75,11 +85,8 @@ async def resolve_ip(ip: str) -> GeoLocation | None:
         return None
 
     try:
-        timeout = aiohttp.ClientTimeout(total=GEOIP_TIMEOUT)
-        async with (
-            aiohttp.ClientSession(timeout=timeout) as session,
-            session.get(f"{GEOIP_API_URL}/{ip}") as response,
-        ):
+        session = _get_session()
+        async with session.get(f"{GEOIP_API_URL}/{ip}") as response:
             if response.status == 200:
                 data = await response.json()
 
@@ -121,9 +128,55 @@ async def resolve_batch(ips: list[str], delay: float = 0.5) -> dict[str, GeoLoca
         Dictionary mapping IP addresses to their GeoLocation or None.
     """
     results: dict[str, GeoLocation | None] = {}
+    session = _get_session()
 
     for ip in ips:
-        results[ip] = await resolve_ip(ip)
+        # Handle private/local IPs inline
+        if ip in ["127.0.0.1", "localhost", "::1"] or _is_private_ip(ip):
+            results[ip] = GeoLocation(
+                lat=0.0, lon=0.0, city="Localhost", country="Local", region=None, isp=None,
+            )
+            continue
+
+        try:
+            ipaddress.ip_address(ip)
+        except ValueError:
+            logger.debug("Skipping GeoIP lookup for non-IP: %s", ip)
+            results[ip] = None
+            continue
+
+        try:
+            async with session.get(f"{GEOIP_API_URL}/{ip}") as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data.get("success", False):
+                        results[ip] = GeoLocation(
+                            lat=data.get("latitude", 0.0),
+                            lon=data.get("longitude", 0.0),
+                            city=data.get("city", "Unknown"),
+                            country=data.get("country", "Unknown"),
+                            region=data.get("region"),
+                            isp=data.get("connection", {}).get("isp"),
+                        )
+                    else:
+                        logger.debug("GeoIP lookup failed: %s", data.get("message"))
+                        results[ip] = None
+                elif response.status == 429:
+                    logger.warning("GeoIP rate limit exceeded")
+                    results[ip] = None
+                else:
+                    logger.warning("GeoIP API returned status %d", response.status)
+                    results[ip] = None
+        except TimeoutError:
+            logger.warning("GeoIP lookup timed out for %s", ip)
+            results[ip] = None
+        except aiohttp.ClientError as e:
+            logger.warning("GeoIP network error for %s: %s", ip, e)
+            results[ip] = None
+        except (OSError, RuntimeError, ValueError) as e:
+            logger.warning("GeoIP unexpected error for %s: %s", ip, e)
+            results[ip] = None
+
         if delay > 0 and ip != ips[-1]:
             await asyncio.sleep(delay)
 

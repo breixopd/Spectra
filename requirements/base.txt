@@ -58,6 +58,7 @@ blinker==1.9.0  # Event/signal system
 python-dotenv==1.2.2
 jsonschema==4.26.0
 orjson==3.11.7
+starlette==0.48.0
 
 # -----------------------------------------------------------------------------
 # Authentication & Security (PINNED for security auditing)

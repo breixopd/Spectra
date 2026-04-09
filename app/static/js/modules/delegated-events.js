@@ -19,7 +19,12 @@
 
         var action = el.dataset.action;
         var fn = window[action];
-        if (typeof fn !== 'function') return;
+        if (typeof fn !== 'function') {
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.warn('[delegated-events] No handler found for action: ' + action);
+            }
+            return;
+        }
 
         // Prevent default for anchors (replaces "return false" in inline handlers)
         if (el.tagName === 'A') e.preventDefault();
