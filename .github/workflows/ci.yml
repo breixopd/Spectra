@@ -63,7 +63,6 @@ jobs:
           DATA_ROOT: /tmp/spectra-data
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
-          FULLY_AUTOMATED: "true"
       - name: Coverage summary
         if: always()
         run: |
@@ -123,7 +122,6 @@ jobs:
           DATA_ROOT: /tmp/spectra-data
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
-          FULLY_AUTOMATED: "true"
 
   security:
     name: Security Scan

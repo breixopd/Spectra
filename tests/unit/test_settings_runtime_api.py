@@ -23,7 +23,6 @@ def _make_settings_stub() -> SimpleNamespace:
         PLUGIN_SAFE_MODE=True,
         CONNECT_BACK_HOST="spectra-app",
         REQUIRE_APPROVAL=False,
-        FULLY_AUTOMATED=True,
         NOTIFICATION_WEBHOOK="",
         PLATFORM_DOMAIN="",
         PLATFORM_BASE_URL="",

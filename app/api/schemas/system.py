@@ -67,7 +67,6 @@ class SettingsUpdate(BaseModel):
     plugin_safe_mode: bool | None = None
     connect_back_host: str | None = None
     require_approval: bool | None = None
-    fully_automated: bool | None = None
     notification_webhook: str | None = None
     embedding_model: str | None = None
     embedding_api_key: str | None = None

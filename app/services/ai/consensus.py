@@ -312,19 +312,10 @@ class VotingSystem:
     def requires_human_approval(self, action: AgentAction) -> bool:
         """Check if an action always requires human approval.
 
-        Checks the per-mission requires_approval flag first.
-        Falls back to global FULLY_AUTOMATED setting for backward compatibility.
+        Uses the per-mission requires_approval flag when available.
         """
-        # Per-mission setting takes priority
-        if self.mission and getattr(self.mission, "requires_approval", None) is not None:
-            if not self.mission.requires_approval:
-                return False  # Mission is fully autonomous
-        else:
-            # Backward compat: fall back to global config
-            from app.core.config import settings
-
-            if settings.FULLY_AUTOMATED:
-                return False
+        if self.mission and getattr(self.mission, "requires_approval", None) is not None and not self.mission.requires_approval:
+            return False  # Mission is fully autonomous
 
         risk_levels = [
             ActionRisk.LOW,

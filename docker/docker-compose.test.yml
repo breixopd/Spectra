@@ -427,7 +427,6 @@ services:
       - LOAD_TEST_APP_REPLICA_URL=http://app-replica:5000
       - LOAD_TEST_CADDY_URL=http://caddy
       - LOAD_TEST_RESET_RATE_LIMIT_STATE=1
-      - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
     volumes:
       - ../.env.test:/app/.env.test:ro
@@ -481,7 +480,6 @@ services:
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
-      - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
     volumes:
       - ../.env.test:/app/.env.test:ro
@@ -515,7 +513,6 @@ services:
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
       - S3_SECRET_KEY=${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       - TENSORZERO_GATEWAY_URL=http://tensorzero:3000
-      - FULLY_AUTOMATED=true
       - PLUGIN_SAFE_MODE=false
     volumes:
       - ../.env.test:/app/.env.test:ro

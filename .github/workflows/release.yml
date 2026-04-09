@@ -96,7 +96,6 @@ jobs:
           DATA_ROOT: /tmp/spectra-data
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
-          FULLY_AUTOMATED: "true"
 
       # ── Security gate ─────────────────────────────────────────
       - name: Security scan (bandit)

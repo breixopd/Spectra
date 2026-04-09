@@ -98,9 +98,9 @@ class TestCollectGeneralDbSettings:
         assert result["LOG_LEVEL"] == ("DEBUG", False)
 
     def test_maps_bool_field(self):
-        data = self._make_data(fully_automated=True)
-        result = self._fn()(data, {"fully_automated"})
-        assert result["FULLY_AUTOMATED"] == ("true", False)
+        data = self._make_data(plugin_safe_mode=True)
+        result = self._fn()(data, {"plugin_safe_mode"})
+        assert result["PLUGIN_SAFE_MODE"] == ("true", False)
 
     def test_maps_int_field(self):
         data = self._make_data(sandbox_max_containers=10)
@@ -167,7 +167,6 @@ class TestGetCurrentSettings:
             PLUGIN_SAFE_MODE=True,
             CONNECT_BACK_HOST="teamserver.local",
             REQUIRE_APPROVAL=False,
-            FULLY_AUTOMATED=False,
             NOTIFICATION_WEBHOOK=None,
             PLATFORM_DOMAIN="spectra.local",
             PLATFORM_BASE_URL="https://spectra.local",

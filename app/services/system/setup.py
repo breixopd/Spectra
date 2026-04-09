@@ -146,9 +146,6 @@ class SystemSetupService:
         if setup_in.embedding_model:
             config_values["EMBEDDING_MODEL"] = (setup_in.embedding_model, False)
 
-        # Automation setting
-        config_values["FULLY_AUTOMATED"] = (str(settings.FULLY_AUTOMATED).lower(), False)
-
         # Database Configs (Stored in DB for reference, even if used via JSON)
         if setup_in.use_custom_db and setup_in.database_url:
             config_values["DATABASE_URL"] = (setup_in.database_url, True)

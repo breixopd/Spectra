@@ -65,27 +65,26 @@ def _resolve_output_dir(tool_id: str, output_dir: str | None) -> str:
 
 
 def _estimate_timeout_multiplier(tool_id: str, args: dict[str, Any] | None) -> float:
-    """Estimate timeout multiplier based on tool type and execution args."""
+    """Estimate timeout multiplier based on argument patterns (tool-agnostic)."""
     multiplier = 1.0
     if not args:
         return multiplier
 
     args_str = " ".join(str(v) for v in args.values()).lower()
 
-    # Nmap deep scan flags
-    if tool_id == "nmap" and any(flag in args_str for flag in ["-sv", "-sc", "-a", "--script", "-p-"]):
+    # Deep/comprehensive scan indicators
+    deep_scan_flags = ["-sv", "-sc", "-a ", "--script", "-p-", "--all-ports", "--full"]
+    if any(flag in args_str for flag in deep_scan_flags):
         multiplier *= 2.0
 
-    # Brute force tools need more time
-    if tool_id in ("hydra", "crackmapexec", "kerbrute"):
+    # Large wordlist or dictionary indicators
+    wordlist_flags = ["-w ", "--wordlist", "-U ", "--usernames", "-P ", "--passwords", "/usr/share/wordlists/"]
+    if any(flag in args_str for flag in wordlist_flags):
         multiplier *= 1.5
 
-    # Web fuzzing with wordlists
-    if tool_id in ("ffuf", "gobuster", "feroxbuster", "dirsearch") and "wordlist" in args_str:
-        multiplier *= 1.5
-
-    # Full vulnerability scanning
-    if tool_id == "nuclei" and ("-t" in args_str or "--templates" in args_str):
+    # Template/plugin-heavy indicators
+    template_flags = ["-t ", "--templates", "--template-dir", "-dP"]
+    if any(flag in args_str for flag in template_flags):
         multiplier *= 2.0
 
     return min(multiplier, 4.0)  # Cap at 4x
