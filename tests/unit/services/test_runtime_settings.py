@@ -128,7 +128,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         )
         stack.enter_context(patch("app.core.lifespan.events.emit", new_callable=AsyncMock))
         stack.enter_context(patch("app.core.lifespan.run_startup_tasks"))
-        stack.enter_context(patch("app.core.lifespan.close_global_llm_client", new_callable=AsyncMock))
+        stack.enter_context(patch("app.services.ai.llm.close_global_llm_client", new_callable=AsyncMock))
         stack.enter_context(patch("app.core.lifespan.engine", new=MagicMock(dispose=AsyncMock())))
         stack.enter_context(patch("app.core.lifespan.asyncio.all_tasks", return_value=[task]))
         stack.enter_context(patch("app.core.lifespan.asyncio.gather", new_callable=AsyncMock))
@@ -174,6 +174,7 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         mock_settings = stack.enter_context(patch("app.core.lifespan.settings"))
         mock_settings.AI_SERVICE_URL = ""
         mock_settings.DEBUG = True
+        mock_settings.SERVICE_MODE = "api"
 
         from app.core.lifespan import lifespan
 

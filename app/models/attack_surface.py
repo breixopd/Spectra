@@ -10,13 +10,27 @@ from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
-
-from app.services.mission.types import AttackSurfaceSummary
+from typing_extensions import TypedDict
 
 
 def _utc_now() -> datetime:
     """Return current UTC time as timezone-aware datetime."""
     return datetime.now(UTC)
+
+
+class AttackSurfaceSummary(TypedDict):
+    """Summary dict returned by ``AttackSurface.get_summary()``."""
+
+    services: int
+    domains: int
+    web_apps: int
+    vulnerabilities: int
+    vectors_total: int
+    vectors_pending: int
+    vectors_success: int
+    vectors_failed: int
+    vectors_by_priority: dict[str, int]
+    exploitation_success_rate: float
 
 
 class VectorStatus(StrEnum):
