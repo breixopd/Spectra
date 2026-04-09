@@ -50,6 +50,8 @@ def _make_user(**overrides):
     user.mfa_enabled = overrides.get("mfa_enabled", False)
     user.mfa_secret = overrides.get("mfa_secret")
     user.plan_id = overrides.get("plan_id")
+    user.locked_until = overrides.get("locked_until", None)
+    user.login_fail_count = overrides.get("login_fail_count", 0)
     return user
 
 

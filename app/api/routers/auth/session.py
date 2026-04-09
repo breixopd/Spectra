@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.api.routers.auth._helpers import _clear_auth_cookies
 from app.api.routers.auth.schemas import RestrictProcessingRequest, UpdateProfileRequest
 from app.api.schemas.system import DeleteAccountRequest
 from app.core.database import get_async_session
@@ -239,6 +240,7 @@ async def toggle_restrict_processing(
 @limiter.limit(RateLimits.ACCOUNT_DELETE)
 async def delete_account(
     request: Request,
+    response: Response,
     body: DeleteAccountRequest,
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
@@ -275,6 +277,8 @@ async def delete_account(
     await session.commit()
 
     logger.info("Account deleted: user_id=%s username=%s", user_id, username)
+
+    _clear_auth_cookies(request, response)
 
     return {"detail": "Account and all associated data have been permanently deleted"}
 
