@@ -145,7 +145,137 @@ class TestGoldenImageBuilder:
         assert "not available" in result.get("message", "").lower()
 
 
-class TestImageBuilderSingleton:
+class TestGoldenImageValidation:
+    """Tests for validate_image method."""
+
+    @pytest.mark.asyncio
+    async def test_validate_image_unavailable(self):
+        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+
+        builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
+        builder._client = None
+        builder._building = False
+        builder._lock = MagicMock()
+        success, failures = await builder.validate_image("fake:tag")
+        assert success is False
+        assert "Docker not available" in failures[0]
+
+    @pytest.mark.asyncio
+    async def test_validate_image_all_pass(self, tmp_path):
+        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+
+        plugin = {
+            "id": "nmap",
+            "name": "Nmap",
+            "installation": {"verification_command": "nmap --version"},
+            "execution": {"command": "nmap"},
+        }
+        (tmp_path / "nmap.json").write_text(json.dumps(plugin))
+
+        mock_container = MagicMock()
+        mock_container.exec_run.return_value = (0, b"Nmap 7.94")
+        mock_container.stop.return_value = None
+        mock_container.remove.return_value = None
+
+        mock_client = MagicMock()
+        mock_client.containers.run.return_value = mock_container
+
+        builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
+        builder._client = mock_client
+        builder._building = False
+        builder._lock = MagicMock()
+
+        success, failures = await builder.validate_image("test:tag", str(tmp_path))
+        assert success is True
+        assert failures == []
+
+    @pytest.mark.asyncio
+    async def test_validate_image_tool_fails(self, tmp_path):
+        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+
+        plugin = {
+            "id": "nmap",
+            "name": "Nmap",
+            "installation": {"verification_command": "nmap --version"},
+            "execution": {"command": "nmap"},
+        }
+        (tmp_path / "nmap.json").write_text(json.dumps(plugin))
+
+        mock_container = MagicMock()
+        mock_container.exec_run.return_value = (127, b"not found")
+        mock_container.stop.return_value = None
+        mock_container.remove.return_value = None
+
+        mock_client = MagicMock()
+        mock_client.containers.run.return_value = mock_container
+
+        builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
+        builder._client = mock_client
+        builder._building = False
+        builder._lock = MagicMock()
+
+        success, failures = await builder.validate_image("test:tag", str(tmp_path))
+        assert success is False
+        assert len(failures) == 1
+        assert "Nmap" in failures[0]
+
+    @pytest.mark.asyncio
+    async def test_validate_image_fallback_to_version_flag(self, tmp_path):
+        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+
+        # Plugin with no verification_command — should fall back to --version/--help
+        plugin = {
+            "id": "gobuster",
+            "name": "Gobuster",
+            "installation": {},
+            "execution": {"command": "gobuster"},
+        }
+        (tmp_path / "gobuster.json").write_text(json.dumps(plugin))
+
+        mock_container = MagicMock()
+        mock_container.exec_run.return_value = (0, b"v3.6")
+        mock_container.stop.return_value = None
+        mock_container.remove.return_value = None
+
+        mock_client = MagicMock()
+        mock_client.containers.run.return_value = mock_container
+
+        builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
+        builder._client = mock_client
+        builder._building = False
+        builder._lock = MagicMock()
+
+        success, failures = await builder.validate_image("test:tag", str(tmp_path))
+        assert success is True
+        assert failures == []
+
+    @pytest.mark.asyncio
+    async def test_validate_image_skips_parameterised_commands(self, tmp_path):
+        from app.services.tools.sandbox.golden_image import GoldenImageBuilder
+
+        plugin = {
+            "id": "impacket",
+            "name": "Impacket",
+            "installation": {},
+            "execution": {"command": "impacket-{sub_tool}"},
+        }
+        (tmp_path / "impacket.json").write_text(json.dumps(plugin))
+
+        mock_container = MagicMock()
+        mock_container.stop.return_value = None
+        mock_container.remove.return_value = None
+
+        mock_client = MagicMock()
+        mock_client.containers.run.return_value = mock_container
+
+        builder = GoldenImageBuilder.__new__(GoldenImageBuilder)
+        builder._client = mock_client
+        builder._building = False
+        builder._lock = MagicMock()
+
+        success, failures = await builder.validate_image("test:tag", str(tmp_path))
+        assert success is True
+        assert failures == []
     """Singleton accessors."""
 
     def test_get_set_image_builder(self):
