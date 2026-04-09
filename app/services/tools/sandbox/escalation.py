@@ -21,11 +21,6 @@ TIER_ESCALATION_PATH = {
 }
 
 
-def is_oom_exit(exit_code: int | None) -> bool:
-    """Check if an exit code indicates OOM kill."""
-    return exit_code == 137
-
-
 def next_tier(current_tier: str) -> str | None:
     """Get the next resource tier for escalation, or None if at maximum."""
     return TIER_ESCALATION_PATH.get(current_tier)

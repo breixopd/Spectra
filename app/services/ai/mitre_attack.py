@@ -160,56 +160,6 @@ def tag_finding_with_attack(finding: dict[str, Any]) -> dict[str, Any]:
     return {**finding, "mitre_techniques": techniques}
 
 
-def generate_navigator_json(findings: list[dict[str, Any]]) -> dict[str, Any]:
-    """Generate an ATT&CK Navigator layer JSON from a list of findings.
-
-    Each technique that appears in the findings gets a score equal to the
-    number of distinct findings that map to it.  The output is compatible
-    with the MITRE ATT&CK Navigator import format.
-    """
-    tech_counts: dict[str, int] = {}
-    for finding in findings:
-        tagged = tag_finding_with_attack(finding)
-        for tech in tagged.get("mitre_techniques", []):
-            tid = tech["id"]
-            tech_counts[tid] = tech_counts.get(tid, 0) + 1
-
-    techniques_layer = [
-        {
-            "techniqueID": tid,
-            "score": count,
-            "comment": f"{count} finding(s)",
-            "color": "",
-            "enabled": True,
-        }
-        for tid, count in sorted(tech_counts.items())
-    ]
-
-    return {
-        "name": "Spectra Mission Findings",
-        "versions": {
-            "attack": "14",
-            "navigator": "4.9.1",
-            "layer": "4.5",
-        },
-        "domain": "enterprise-attack",
-        "description": "Auto-generated ATT&CK layer from Spectra findings",
-        "sorting": 3,
-        "layout": {
-            "layout": "side",
-            "showID": True,
-            "showName": True,
-        },
-        "hideDisabled": False,
-        "techniques": techniques_layer,
-        "gradient": {
-            "colors": ["#ffffff", "#ff6666"],
-            "minValue": 0,
-            "maxValue": max((c for c in tech_counts.values()), default=1),
-        },
-    }
-
-
 def get_attack_summary(findings: list[dict[str, Any]]) -> dict[str, Any]:
     """Return a tactic-level coverage summary for the given findings.
 

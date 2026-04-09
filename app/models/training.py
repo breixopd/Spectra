@@ -31,6 +31,9 @@ class TrainingSample(Base):
 
     __table_args__ = (Index("ix_training_samples_type_quality", "sample_type", "quality_score"),)
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(id={self.id!r})>"
+
 
 class FineTuningJob(Base):
     """A fine-tuning job managed through the admin panel."""
@@ -53,3 +56,6 @@ class FineTuningJob(Base):
     created_by: Mapped[str | None] = mapped_column(
         UUID(as_uuid=False), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(id={self.id!r})>"

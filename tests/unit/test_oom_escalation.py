@@ -34,35 +34,6 @@ class TestTierEscalationPath:
         assert next_tier("nonexistent") is None
 
 
-class TestIsOomExit:
-    """OOM detection from exit codes."""
-
-    def test_exit_137_is_oom(self):
-        from app.services.tools.sandbox.escalation import is_oom_exit
-
-        assert is_oom_exit(137) is True
-
-    def test_exit_0_is_not_oom(self):
-        from app.services.tools.sandbox.escalation import is_oom_exit
-
-        assert is_oom_exit(0) is False
-
-    def test_exit_1_is_not_oom(self):
-        from app.services.tools.sandbox.escalation import is_oom_exit
-
-        assert is_oom_exit(1) is False
-
-    def test_exit_none_is_not_oom(self):
-        from app.services.tools.sandbox.escalation import is_oom_exit
-
-        assert is_oom_exit(None) is False
-
-    def test_exit_139_is_not_oom(self):
-        from app.services.tools.sandbox.escalation import is_oom_exit
-
-        assert is_oom_exit(139) is False
-
-
 class TestAttemptOomEscalation:
     """attempt_oom_escalation unit tests."""
 

@@ -1,6 +1,5 @@
 """Tests for manual mode backend services and API endpoints."""
 
-import json
 from types import SimpleNamespace
 
 import pytest
@@ -27,7 +26,6 @@ from app.services.system.payloads import (
 from app.services.system.report_templates import (
     REPORT_TEMPLATES,
     build_report_data,
-    generate_report_data,
     get_report_template,
     list_report_templates,
 )
@@ -223,50 +221,6 @@ class TestReportTemplates:
 
     def test_get_template_not_found(self):
         assert get_report_template("nonexistent") is None
-
-    def test_generate_report_unknown_template(self, tmp_path):
-        session_file = tmp_path / "session.json"
-        session_file.write_text(
-            json.dumps(
-                {
-                    "id": "s1",
-                    "name": "Session",
-                    "target": "127.0.0.1",
-                    "findings": [],
-                    "tools_used": [],
-                    "command_history": [],
-                }
-            )
-        )
-        with pytest.raises(ValueError, match="Unknown template"):
-            generate_report_data(session_file, "bad_template")
-
-    def test_generate_report_missing_session(self, tmp_path):
-        with pytest.raises(FileNotFoundError):
-            generate_report_data(tmp_path / "missing.json", "executive")
-
-    def test_generate_report_success(self, tmp_path):
-        session_file = tmp_path / "test.json"
-        session_file.write_text(
-            json.dumps(
-                {
-                    "id": "test",
-                    "name": "Test Session",
-                    "target": "192.168.1.1",
-                    "findings": [
-                        {"title": "SQLi", "severity": "high"},
-                        {"title": "XSS", "severity": "medium"},
-                    ],
-                    "tools_used": ["nmap"],
-                    "command_history": [],
-                }
-            )
-        )
-        result = generate_report_data(session_file, "technical")
-        assert result["template"] == "technical"
-        assert result["total_findings"] == 2
-        assert result["severity_counts"]["high"] == 1
-        assert result["severity_counts"]["medium"] == 1
 
 
 class TestGenerateReportRequest:

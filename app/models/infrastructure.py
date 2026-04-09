@@ -58,6 +58,9 @@ class SystemCache(InfrastructureBase):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(key={self.key!r})>"
+
 
 class JobQueue(InfrastructureBase):
     """
@@ -93,6 +96,9 @@ class JobQueue(InfrastructureBase):
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
     max_retries: Mapped[int] = mapped_column(Integer, default=3)
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(id={self.id!r})>"
+
 
 class Sandbox(InfrastructureBase):
     """Tracks per-mission ephemeral sandbox containers."""
@@ -117,6 +123,9 @@ class Sandbox(InfrastructureBase):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     destroyed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(id={self.id!r})>"
+
 
 class SystemStatus(InfrastructureBase):
     """
@@ -131,6 +140,9 @@ class SystemStatus(InfrastructureBase):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(key={self.key!r})>"
 
 
 class CacheEntry(InfrastructureBase):
@@ -148,6 +160,9 @@ class CacheEntry(InfrastructureBase):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(key={self.key!r})>"
+
 
 class SystemContent(InfrastructureBase):
     """Admin-managed content (reviews, changelog, legal, etc.)."""
@@ -164,3 +179,6 @@ class SystemContent(InfrastructureBase):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), onupdate=lambda: datetime.now(UTC)
     )
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(id={self.id!r})>"
