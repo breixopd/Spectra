@@ -30,7 +30,7 @@ from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.repositories.mission import MissionRepository
-from app.services.mission import mission_manager
+from app.services.mission.manager import mission_manager
 from app.services.mission.output_model import (
     get_mission_finding_counts,
     get_mission_summary_dict,
