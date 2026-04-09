@@ -82,7 +82,7 @@ class BackupService:
                 logger.info("Backup uploaded to S3: %s/%s", self._bucket, s3_key)
             except Exception as exc:
                 logger.error("S3 upload failed for backup %s: %s", backup_id, exc)
-                return {"status": "failed", "error": f"S3 upload failed: {exc}"}
+                return {"status": "failed", "error": "Backup upload failed"}
 
         # Prune old backups (after temp dir is cleaned up)
         await self._prune_old_backups()

@@ -178,7 +178,7 @@ async def tz_update_config(
     try:
         provider_type = _validate_toml_value(str(body.get("provider_type", "openai")), "provider_type")
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=f"Validation error: {str(exc)[:200]}") from exc
 
     # Read current to preserve functions/metrics
     current: dict = {}
@@ -202,7 +202,7 @@ async def tz_update_config(
             else:
                 tiers[tier] = {"primary": _validate_toml_value(str(raw), f"{tier}.primary"), "fallback": ""}
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=422, detail=f"Validation error: {str(exc)[:200]}") from exc
 
     toml_lines = [
         "# TensorZero Gateway Configuration for Spectra",

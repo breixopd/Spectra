@@ -313,10 +313,11 @@ async def update_operation_progress(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Cache service is unavailable",
         )
-    except ValueError as e:
+    except ValueError:
+        logger.exception("Operation failed")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Operation failed",
         )
     except RuntimeError as e:
         logger.error("Failed to update operation progress: %s", e)

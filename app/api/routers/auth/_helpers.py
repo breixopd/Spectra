@@ -49,7 +49,7 @@ def _get_redis_for_totp():
         if url and url.startswith(("redis://", "rediss://")):
             return aioredis.from_url(url, socket_timeout=2)
     except Exception:
-        pass
+        logger.debug("Redis connection failed for TOTP, falling back to in-memory", exc_info=True)
     return None
 
 
