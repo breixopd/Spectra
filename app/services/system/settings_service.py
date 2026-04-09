@@ -184,7 +184,7 @@ async def apply_settings_update(
     if "notification_webhook" in data.model_fields_set and data.notification_webhook:
         from app.utils.url_validation import is_safe_url
 
-        if not is_safe_url(data.notification_webhook):
+        if not await is_safe_url(data.notification_webhook):
             raise ValueError("Webhook URL points to a private/internal address")
 
     async with _SETTINGS_LOCK:

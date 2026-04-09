@@ -58,6 +58,10 @@ class ConnectionManager:
         """
         user_id: str | None = None
 
+        if not require_auth:
+            # Caller may pre-set user_id on websocket state before connect
+            user_id = getattr(getattr(websocket, "state", None), "user_id", None)
+
         if require_auth:
             token = websocket.query_params.get("token")
             if not token:

@@ -388,6 +388,7 @@ if settings.SERVICE_MODE in ("", "all", "api"):
             logger.warning("WebSocket connection rejected: invalid or missing token")
             return
 
+        websocket.state.user_id = str(user.id)
         await manager.connect(websocket, require_auth=False)
         # Auto-join user-specific room for scoped event delivery
         await manager.join_room(websocket, f"user:{user.id}")

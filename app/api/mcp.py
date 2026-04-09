@@ -258,7 +258,7 @@ async def _execute_mcp_tool(tool_name: str, arguments: dict, session: AsyncSessi
 
 async def _tool_start_mission(arguments: dict) -> dict:
     """Start a new pentesting mission."""
-    from app.services.mission.manager import MissionManager
+    from app.services.mission.manager import mission_manager
 
     target = arguments.get("target", "")
     directive = arguments.get("directive", "")
@@ -266,8 +266,7 @@ async def _tool_start_mission(arguments: dict) -> dict:
     if not target or not directive:
         raise ValueError("Both 'target' and 'directive' are required")
 
-    manager = MissionManager()
-    mission_id = await manager.start_mission(
+    mission_id = await mission_manager.start_mission(
         target=target,
         directive=directive,
     )
