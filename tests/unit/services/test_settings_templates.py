@@ -1,6 +1,6 @@
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_setup_template_exposes_current_gateway_setup():

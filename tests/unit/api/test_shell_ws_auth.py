@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-SHELL_TEMPLATE = Path(__file__).resolve().parents[2] / "app" / "templates" / "shell.html"
-TARGETS_JS = Path(__file__).resolve().parents[2] / "app" / "static" / "js" / "targets.js"
+SHELL_TEMPLATE = Path(__file__).resolve().parents[3] / "app" / "templates" / "shell.html"
+TARGETS_JS = Path(__file__).resolve().parents[3] / "app" / "static" / "js" / "targets.js"
 
 
 class TestShellWebSocketAuth:

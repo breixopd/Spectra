@@ -10,7 +10,7 @@ def test_import_boundaries():
         [sys.executable, "scripts/check_import_boundaries.py"],
         capture_output=True,
         text=True,
-        cwd=str(__import__("pathlib").Path(__file__).resolve().parent.parent.parent),
+        cwd=str(__import__("pathlib").Path(__file__).resolve().parent.parent.parent.parent),
         check=False,
     )
     assert result.returncode == 0, f"Import boundary violations:\n{result.stdout}\n{result.stderr}"
