@@ -130,7 +130,11 @@ async def dispatch_and_process_result(
         return result
     finally:
         try:
-            await persist_output_directory(mission.id, output_dir)
+            total_bytes = await persist_output_directory(mission.id, output_dir)
+            if total_bytes > 0 and mission.user_id:
+                from app.services.billing.usage_tracker import UsageTracker
+
+                await UsageTracker().record_storage_usage(mission.user_id, total_bytes)
         except (OSError, RuntimeError, ValueError) as exc:
             logger.warning("Failed to persist output directory %s: %s", output_dir, exc)
         cleanup_output_directory(output_dir)

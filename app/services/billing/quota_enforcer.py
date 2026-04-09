@@ -197,12 +197,14 @@ class QuotaEnforcer:
             return True, ""
 
         async with async_session_maker() as session:
-            # Get latest usage record with storage data
+            # Storage is tracked in a cumulative record with a sentinel period
+            sentinel = datetime(2000, 1, 1, tzinfo=UTC)
             rec_result = await session.execute(
-                select(UsageRecord)
-                .where(UsageRecord.user_id == user_id)
-                .order_by(UsageRecord.period_start.desc())
-                .limit(1)
+                select(UsageRecord).where(
+                    UsageRecord.user_id == user_id,
+                    UsageRecord.period_type == "cumulative",
+                    UsageRecord.period_start == sentinel,
+                )
             )
             record = rec_result.scalar_one_or_none()
             used = record.storage_used_mb if record else 0

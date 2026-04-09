@@ -11,6 +11,7 @@ from app.api.dependencies import (
     check_feature_allowed,
     check_mission_limit,
     check_resource_owner,
+    check_storage_limit,
     get_current_active_user,
     validate_uuid_param,
 )
@@ -205,6 +206,7 @@ async def start_mission(
     Rate limited to 5 missions per minute per user.
     """
     await check_mission_limit(_current_user, db)
+    await check_storage_limit(_current_user, db)
     await check_feature_allowed(_current_user, db, "autonomous_mode")
 
     mission_id = await mission_manager.start_mission(
