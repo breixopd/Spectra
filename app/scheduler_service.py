@@ -394,8 +394,10 @@ class SchedulerService:
                 engine = create_async_engine(
                     settings.DATABASE_URL.get_secret_value(), isolation_level="AUTOCOMMIT"
                 )
+                VACUUM_TABLES = frozenset({"missions", "findings", "audit_logs", "job_queue", "cache_entries"})
                 async with engine.connect() as conn:
-                    for table in ["missions", "findings", "audit_logs", "job_queue", "cache_entries"]:
+                    for table in VACUUM_TABLES:
+                        assert table.isidentifier(), f"Invalid table name: {table}"
                         await conn.execute(text(f"VACUUM ANALYZE {table}"))
                 await engine.dispose()
                 logger.info("DB maintenance completed: VACUUM ANALYZE on key tables")

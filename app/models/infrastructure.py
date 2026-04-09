@@ -143,7 +143,7 @@ class CacheEntry(InfrastructureBase):
 
     __tablename__ = "cache_entries"
 
-    key: Mapped[str] = mapped_column(String, primary_key=True, index=True)
+    key: Mapped[str] = mapped_column(String, primary_key=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)  # JSON serialized
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
