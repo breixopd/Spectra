@@ -103,7 +103,7 @@ async def test_mcp_tool_start_mission():
     mock_manager.start_mission.return_value = "test-mission-id-123"
     mock_manager.get_mission.return_value = None
 
-    with patch("app.services.mission.manager.MissionManager", return_value=mock_manager):
+    with patch("app.services.mission.manager.mission_manager", mock_manager):
         result = await handle_mcp_request(req, api_key="test-key", session=AsyncMock())
 
     assert result.error is None

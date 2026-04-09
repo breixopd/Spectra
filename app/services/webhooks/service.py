@@ -47,7 +47,7 @@ class WebhookService:
         description: str | None = None,
     ) -> Webhook:
         """Register a new webhook endpoint."""
-        if not is_safe_url(url):
+        if not await is_safe_url(url):
             raise ValueError("Webhook URL points to a private/internal address")
         invalid = set(events) - SUPPORTED_EVENTS
         if invalid:

@@ -26,7 +26,7 @@ async def send_notification(
     if not url:
         return False
 
-    if not is_safe_url(url):
+    if not await is_safe_url(url):
         logger.warning("Blocked notification to unsafe webhook URL: %s", url)
         return False
 
