@@ -36,6 +36,61 @@ die() {
     exit 1
 }
 
+validate_image() {
+    local image="$1"
+    local cid
+    cid=$(docker run -d "$image" sleep 60) || { warn "Could not start validation container"; return 1; }
+    local failed=0
+
+    # Dynamically read tool commands from plugin configs
+    for plugin_file in "${PROJECT_DIR}"/plugins/*.json; do
+        [[ -f "$plugin_file" ]] || continue
+        local plugin_name cmd
+        plugin_name=$(basename "$plugin_file" .json)
+
+        # Prefer the installation verification_command
+        local verify_cmd
+        verify_cmd=$(python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+print(d.get('installation', {}).get('verification_command', ''))
+" "$plugin_file" 2>/dev/null)
+
+        if [[ -n "$verify_cmd" ]]; then
+            if ! docker exec "$cid" /bin/sh -c "$verify_cmd" > /dev/null 2>&1; then
+                log "FAIL: ${plugin_name} — verification command failed: ${verify_cmd}"
+                failed=1
+            else
+                log "  OK: ${plugin_name}"
+            fi
+            continue
+        fi
+
+        # Fallback: check the execution command binary exists
+        cmd=$(python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+c = d.get('execution', {}).get('command', '')
+print(c.split()[0] if c else '')
+" "$plugin_file" 2>/dev/null)
+
+        [[ -z "$cmd" ]] && continue
+        # Skip parameterised commands like "impacket-{sub_tool}"
+        [[ "$cmd" == *"{"* ]] && continue
+
+        if ! docker exec "$cid" which "$cmd" > /dev/null 2>&1; then
+            log "FAIL: ${plugin_name} — ${cmd} not found"
+            failed=1
+        else
+            log "  OK: ${plugin_name}"
+        fi
+    done
+
+    docker stop "$cid" > /dev/null 2>&1 || true
+    docker rm -f "$cid" > /dev/null 2>&1 || true
+    return $failed
+}
+
 usage() {
     cat <<EOF
 Golden Image Refresh — Spectra Worker Pools
@@ -105,7 +160,6 @@ docker build \
     --label "spectra.golden=true" \
     --label "spectra.build-date=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
     --tag "${IMAGE_NAME}:${FULL_TAG}" \
-    --tag "${IMAGE_NAME}:latest" \
     "$PROJECT_DIR"
 
 BUILD_END=$(date +%s)
@@ -116,6 +170,20 @@ IMAGE_SIZE_MB=$(awk "BEGIN {printf \"%.1f\", ${IMAGE_SIZE} / 1024 / 1024}")
 
 log "Build complete in ${BUILD_DURATION}s"
 log "Image size: ${IMAGE_SIZE_MB} MB"
+
+# ── Validate ─────────────────────────────────────────────────────
+
+log "--- Validating golden image ---"
+
+if validate_image "${IMAGE_NAME}:${FULL_TAG}"; then
+    log "Validation passed — promoting to :latest"
+    docker tag "${IMAGE_NAME}:${FULL_TAG}" "${IMAGE_NAME}:latest"
+else
+    log "FATAL: Validation FAILED — keeping previous :latest image"
+    log "Removing failed image ${IMAGE_NAME}:${FULL_TAG}"
+    docker rmi "${IMAGE_NAME}:${FULL_TAG}" 2>/dev/null || true
+    exit 1
+fi
 
 # ── Push (optional) ─────────────────────────────────────────────
 

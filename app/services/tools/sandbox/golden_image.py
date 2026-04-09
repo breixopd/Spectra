@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
+import shlex
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -191,6 +193,87 @@ class GoldenImageBuilder:
 
         return "\n".join(lines)
 
+    async def validate_image(
+        self, image_tag: str, plugins_dir: str = "plugins"
+    ) -> tuple[bool, list[str]]:
+        """Validate all tools are functional in a newly built image.
+
+        Starts a temporary container, runs each plugin's verification command
+        (falling back to ``<cmd> --version`` / ``<cmd> --help``), and returns
+        ``(success, list_of_failure_descriptions)``.
+        """
+        if not self.available:
+            return False, ["Docker not available"]
+
+        failures: list[str] = []
+        plugins_path = Path(plugins_dir)
+        container = None
+
+        try:
+            container = await asyncio.to_thread(
+                self._client.containers.run,
+                image_tag,
+                command="sleep 60",
+                detach=True,
+                remove=False,
+            )
+
+            for json_file in sorted(plugins_path.glob("*.json")):
+                try:
+                    data = json.loads(json_file.read_text())
+                except (json.JSONDecodeError, OSError):
+                    continue
+
+                verification_cmd = (
+                    data.get("installation", {}).get("verification_command", "")
+                )
+                exec_cmd = data.get("execution", {}).get("command", "")
+                plugin_name = data.get("name", json_file.stem)
+
+                if verification_cmd:
+                    exit_code, _ = await asyncio.to_thread(
+                        container.exec_run,
+                        ["/bin/sh", "-c", verification_cmd],
+                    )
+                    if exit_code == 0:
+                        continue
+                    # Verification command failed — record and try next plugin
+                    failures.append(f"{plugin_name}: verification failed ({verification_cmd})")
+                    continue
+
+                if not exec_cmd:
+                    continue
+
+                # Derive base binary (handle templates like "impacket-{sub_tool}")
+                base_bin = exec_cmd.split()[0]
+                if "{" in base_bin:
+                    continue  # Cannot verify parameterised commands
+
+                # Fallback: try --version then --help
+                verified = False
+                for flag in ("--version", "--help"):
+                    safe_cmd = f"{shlex.quote(base_bin)} {flag}"
+                    exit_code, _ = await asyncio.to_thread(
+                        container.exec_run,
+                        ["/bin/sh", "-c", safe_cmd],
+                    )
+                    if exit_code == 0:
+                        verified = True
+                        break
+                if not verified:
+                    failures.append(f"{plugin_name}: {base_bin} not functional")
+
+        except (OSError, RuntimeError) as exc:
+            failures.append(f"Validation error: {exc}")
+        finally:
+            if container is not None:
+                with contextlib.suppress(OSError):
+                    await asyncio.to_thread(container.stop, timeout=5)
+                with contextlib.suppress(OSError):
+                    await asyncio.to_thread(container.remove, force=True)
+
+        return (len(failures) == 0, failures)
+
     async def build(self, plugins_dir: str = "plugins", target_tag: str = "spectra-tools:latest") -> dict[str, Any]:
         """Build the golden image from plugin definitions.
 
@@ -249,6 +332,32 @@ class GoldenImageBuilder:
                     Path(dockerfile_path).unlink(missing_ok=True)
 
             image, build_logs = await asyncio.to_thread(_do_build)
+
+            # Validate all tools in the new image before promoting
+            valid, validation_failures = await self.validate_image(temp_tag, plugins_dir)
+            result["validation_failures"] = validation_failures
+
+            if not valid:
+                logger.error(
+                    "Golden image validation failed for %s: %s",
+                    temp_tag,
+                    validation_failures,
+                )
+                result["status"] = "validation_failed"
+                result["message"] = (
+                    f"{len(validation_failures)} tool(s) failed validation"
+                )
+                result["completed_at"] = datetime.now(UTC).isoformat()
+
+                # Clean up the failed temp image
+                try:
+                    await asyncio.to_thread(
+                        self._client.images.remove, temp_tag, force=True,
+                    )
+                except OSError:
+                    logger.warning("Failed to clean up temp image %s", temp_tag)
+
+                return result
 
             # Atomic swap: tag as target
             tag_repo = target_tag.split(":")[0]
