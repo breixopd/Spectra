@@ -54,19 +54,8 @@ class VulnInfo(TypedDict):
     cvss: float | None
 
 
-class AttackSurfaceSummary(TypedDict):
-    """Summary dict returned by ``AttackSurface.get_summary()``."""
-
-    services: int
-    domains: int
-    web_apps: int
-    vulnerabilities: int
-    vectors_total: int
-    vectors_pending: int
-    vectors_success: int
-    vectors_failed: int
-    vectors_by_priority: dict[str, int]
-    exploitation_success_rate: float
+# Re-exported from canonical definition in app.models.attack_surface
+from app.models.attack_surface import AttackSurfaceSummary as AttackSurfaceSummary
 
 
 class FindingDict(TypedDict, total=False):

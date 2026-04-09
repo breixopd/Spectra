@@ -99,7 +99,7 @@ def _make_done_task(coro):
 class TestLifespanContextManager:
     @pytest.mark.asyncio
     @patch("app.core.lifespan.engine")
-    @patch("app.core.lifespan.close_global_llm_client", new_callable=AsyncMock)
+    @patch("app.services.ai.llm.close_global_llm_client", new_callable=AsyncMock)
     @patch("app.core.lifespan.async_session_maker")
     @patch("app.core.lifespan.CacheService")
     @patch("app.core.lifespan.set_cache")
@@ -134,6 +134,7 @@ class TestLifespanContextManager:
         from app.core.lifespan import lifespan
 
         mock_settings.DEBUG = True  # Skip production security checks
+        mock_settings.SERVICE_MODE = "api"
         mock_events.emit = AsyncMock()
         mock_engine.dispose = AsyncMock()
 

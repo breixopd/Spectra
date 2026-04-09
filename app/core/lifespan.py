@@ -37,7 +37,6 @@ from app.core.system_status import (
 )
 from app.core.tasks import create_safe_task
 from app.core.telemetry import telemetry
-from app.services.ai.llm import close_global_llm_client
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
 
 logger = logging.getLogger(__name__)
@@ -639,8 +638,11 @@ async def _shutdown_services() -> None:
         logger.info("[OK] Smart router closed")
 
         # Close LLM Client
-        await close_global_llm_client()
-        logger.info("[OK] LLM client closed")
+        if settings.SERVICE_MODE in ("api", "ai"):
+            from app.services.ai.llm import close_global_llm_client
+
+            await close_global_llm_client()
+            logger.info("[OK] LLM client closed")
 
         # Dispose database engine
         await engine.dispose()
