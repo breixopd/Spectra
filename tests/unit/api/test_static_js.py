@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-STATIC_JS_DIR = Path(__file__).resolve().parents[2] / "app" / "static" / "js"
+STATIC_JS_DIR = Path(__file__).resolve().parents[3] / "app" / "static" / "js"
 API_JS = STATIC_JS_DIR / "api.js"
 
 # JS files that consume the API (exclude api.js itself and data-only helpers)

@@ -59,7 +59,7 @@ class TestGetTierLimits:
             assert cpu == 4096
 
 
-PLUGINS_DIR = Path(__file__).resolve().parents[2] / "plugins"
+PLUGINS_DIR = Path(__file__).resolve().parents[3] / "plugins"
 
 
 class TestPluginResourceTiers:

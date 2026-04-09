@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-OVERSEER_TEMPLATE = Path(__file__).resolve().parents[2] / "app" / "templates" / "overseer.html"
+OVERSEER_TEMPLATE = Path(__file__).resolve().parents[3] / "app" / "templates" / "overseer.html"
 
 
 class TestOverseerSyntax:

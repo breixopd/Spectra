@@ -56,7 +56,7 @@ jobs:
             --cov=app \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
-            --cov-fail-under=60
+            --cov-fail-under=70
         env:
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test"
           TENSORZERO_GATEWAY_URL: "http://localhost:3000"
