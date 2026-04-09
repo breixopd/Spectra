@@ -12,12 +12,12 @@ import logging
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
+from enum import StrEnum
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
 
 from app.core.events import EventType, events
 from app.core.exceptions import CircuitBreakerOpenError
-from app.utils.compat import StrEnum
 
 logger = logging.getLogger(__name__)
 

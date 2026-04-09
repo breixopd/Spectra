@@ -545,7 +545,7 @@ class TestCVEIntelligence:
         assert resp.status_code in (200, 404, 503)
 
     def test_searchsploit_lookup(self, client, auth_headers):
-        resp = client.get("/api/v1/cve/searchsploit/apache%202.4", headers=auth_headers)
+        resp = client.get("/api/v1/cve/searchsploit?query=apache%202.4", headers=auth_headers)
         assert resp.status_code in (200, 404, 500, 503)
 
 

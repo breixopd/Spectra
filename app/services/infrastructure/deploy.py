@@ -14,8 +14,7 @@ import asyncio
 import logging
 import shlex
 from dataclasses import dataclass, field
-
-from app.utils.compat import StrEnum
+from enum import StrEnum
 
 logger = logging.getLogger(__name__)
 

@@ -128,13 +128,3 @@ async def search_exploitdb_endpoint(
         "metasploit_modules": msf_matches,
         "total": len(results) + len(msf_matches),
     }
-
-
-@router.get("/searchsploit/{query:path}", response_model=SearchExploitResponse)
-@limiter.limit(RateLimits.API_HEAVY)
-async def search_exploitdb_endpoint_legacy(
-    request: Request,
-    query: str,
-    _current_user: User = Depends(get_current_active_user),
-) -> dict[str, Any]:
-    return await search_exploitdb_endpoint(request=request, query=query, _current_user=_current_user)

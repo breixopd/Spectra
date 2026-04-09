@@ -4,10 +4,11 @@ Defines permissions per role and provides a FastAPI dependency
 to enforce access control on endpoints.
 """
 
+from enum import StrEnum
+
 from fastapi import Depends, HTTPException
 
 from app.models.user import User
-from app.utils.compat import StrEnum
 
 
 class Permission(StrEnum):

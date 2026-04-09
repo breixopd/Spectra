@@ -6,6 +6,7 @@ Represents security findings discovered during assessments.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, CheckConstraint, ForeignKey, Index, String, Text
@@ -15,7 +16,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.enums import Severity
 from app.models.base import Base
-from app.utils.compat import StrEnum
 
 if TYPE_CHECKING:
     from app.models.target import Target
