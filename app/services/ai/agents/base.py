@@ -13,7 +13,7 @@ from typing import Any, ClassVar, Generic, TypeVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.ai.cost_tracker import CostTracker
-from app.services.ai.llm import LLMClient
+from app.services.ai.llm import LLMClient, _extract_json_block
 from app.services.ai.prompts import BASE_SYSTEM_PROMPT
 from app.utils.compat import StrEnum
 
@@ -268,7 +268,7 @@ class Agent(ABC, Generic[InputT, OutputT]):
                 max_tokens=256,
             )
             content = response.content
-            data = _json.loads(content[content.find("{") : content.rfind("}") + 1])
+            data = _json.loads(_extract_json_block(content))
             return float(data.get("quality", 0.8)), str(data.get("feedback", ""))
         except (OSError, RuntimeError, ValueError, TimeoutError) as e:
             logger.debug("Reflection failed: %s", e)

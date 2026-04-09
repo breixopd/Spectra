@@ -16,6 +16,36 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _extract_json_block(text: str) -> str:
+    """Extract first complete JSON object from text using brace depth tracking."""
+    start = text.find("{")
+    if start == -1:
+        return text
+    depth = 0
+    in_string = False
+    escape = False
+    for i, ch in enumerate(text[start:], start):
+        if escape:
+            escape = False
+            continue
+        if ch == "\\" and in_string:
+            escape = True
+            continue
+        if ch == '"' and not escape:
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    # Fallback to original approach if no balanced braces found
+    return text[start : text.rfind("}") + 1]
+
+
 # --- Response Types ---
 
 
@@ -177,12 +207,10 @@ Respond ONLY with the JSON object. No markdown, no explanation, just the JSON.""
             # Handle potential markdown code blocks or text before/after JSON
             content = response.content.strip()
 
-            # Find the first '{' and last '}'
+            # Extract the first complete JSON object
             start_idx = content.find("{")
-            end_idx = content.rfind("}")
-
-            if start_idx != -1 and end_idx != -1:
-                content = content[start_idx : end_idx + 1]
+            if start_idx != -1:
+                content = _extract_json_block(content)
 
             # Try standard JSON parsing first
             try:

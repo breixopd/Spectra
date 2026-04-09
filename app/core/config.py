@@ -106,7 +106,7 @@ class Settings(BaseSettings):
     # --- AI / LLM (TensorZero Gateway) ---
     TENSORZERO_GATEWAY_URL: str = "http://tensorzero:3000"  # Auto-detected in Docker stack
     TENSORZERO_API_KEY: str = ""  # API key passed to TZ gateway (for provider auth)
-    LLM_TIMEOUT: float = 600.0  # Request timeout for LLM calls
+    LLM_TIMEOUT: float = 120.0  # Request timeout for LLM calls
 
     @field_validator("LLM_TIMEOUT")
     @classmethod
@@ -175,7 +175,7 @@ class Settings(BaseSettings):
     # DEPRECATED: FULLY_AUTOMATED is now a per-mission setting (Mission.requires_approval).
     # Kept for backward compatibility with tests that monkeypatch it.
     # New missions use requires_approval=False (fully autonomous) by default.
-    FULLY_AUTOMATED: bool = True  # Global fallback: skip ALL human approval
+    FULLY_AUTOMATED: bool = False  # Global fallback: skip ALL human approval
 
     # Rate limiting storage backend.
     # PostgreSQL remains the persistent state store, PostgreSQL-backed app

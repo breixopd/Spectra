@@ -20,6 +20,7 @@ from app.services.ai.agents.base import (
 from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 from app.services.ai.prompts import POC_DEVELOPER_PROMPT
+from app.services.ai.sanitizer import sanitize_for_prompt
 from app.services.poc.models import POCRequest
 
 logger = logging.getLogger(__name__)
@@ -62,9 +63,9 @@ class POCDeveloperAgent(Agent[POCDeveloperInput, POCDeveloperOutput]):
             vuln = input_data.request.vulnerability
 
             full_prompt = POC_DEVELOPER_PROMPT.format(
-                target=input_data.request.target,
-                vulnerability_name=vuln.get("name", "Unknown"),
-                vulnerability_desc=vuln.get("description", "N/A"),
+                target=sanitize_for_prompt(input_data.request.target, field_name="target"),
+                vulnerability_name=sanitize_for_prompt(vuln.get("name", "Unknown"), field_name="vulnerability_name"),
+                vulnerability_desc=sanitize_for_prompt(vuln.get("description", "N/A"), field_name="vulnerability_desc"),
                 port=input_data.request.port or "Unknown",
                 protocol=input_data.request.protocol,
                 shell_type=input_data.shell_type,
