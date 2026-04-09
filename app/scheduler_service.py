@@ -397,7 +397,8 @@ class SchedulerService:
                 VACUUM_TABLES = frozenset({"missions", "findings", "audit_logs", "job_queue", "cache_entries"})
                 async with engine.connect() as conn:
                     for table in VACUUM_TABLES:
-                        assert table.isidentifier(), f"Invalid table name: {table}"
+                        if not table.isidentifier():
+                            raise ValueError(f"Invalid table name: {table}")
                         await conn.execute(text(f"VACUUM ANALYZE {table}"))
                 await engine.dispose()
                 logger.info("DB maintenance completed: VACUUM ANALYZE on key tables")

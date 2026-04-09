@@ -130,7 +130,7 @@ async def test_create_backup_returns_failure_when_upload_fails(backup_svc):
         mock_stat.return_value.st_size = 2048
         result = await backup_svc.create_backup()
 
-    assert result == {"status": "failed", "error": "S3 upload failed: s3 unavailable"}
+    assert result == {"status": "failed", "error": "Backup upload failed"}
     assert timeouts == [600]
     mock_proc.communicate.assert_awaited_once()
 

@@ -107,6 +107,7 @@ async def spectra_error_handler(request: Request, exc: SpectraError) -> HTMLResp
         try:
             _error_templates.get_template(template_name)
         except Exception:
+            logger.debug("Custom template not found, using default", exc_info=True)
             template_name = "errors/500.html"
         detail = exc.message if status_code < 500 else "Something went wrong. Please try again."
         return HTMLResponse(
