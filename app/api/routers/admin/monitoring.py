@@ -20,7 +20,6 @@ from app.core.rbac import Permission, require_permission
 from app.core.telemetry import telemetry
 from app.models.mission import Mission
 from app.models.user import User
-from app.services.ai.cost_tracker import get_cost_trackers
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +68,8 @@ async def monitoring_overview(
         ).scalar() or 0
     except (OSError, RuntimeError):
         pass
+
+    from app.services.ai.cost_tracker import get_cost_trackers
 
     cost_trackers = get_cost_trackers()
     llm = _cost_summary(cost_trackers) if cost_trackers else {"total_cost_usd": 0, "total_tokens": 0, "total_calls": 0}
@@ -136,6 +137,8 @@ async def llm_usage_breakdown(
     _user: User = require_permission(Permission.MANAGE_SETTINGS),
 ) -> dict[str, Any]:
     """Detailed LLM usage breakdown by mission/tracker."""
+    from app.services.ai.cost_tracker import get_cost_trackers
+
     cost_trackers = get_cost_trackers()
     breakdown = {}
     for name, tracker in (cost_trackers or {}).items():

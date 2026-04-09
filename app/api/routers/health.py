@@ -122,23 +122,26 @@ async def health_check(
 
         # Check RAG/Embedding service
         try:
-            from app.services.ai.rag import RAGService
+            from app.services.gateway.ai_gateway import get_ai_gateway
 
-            rag = RAGService()
-            if rag.is_functional:
+            gw = get_ai_gateway()
+            emb = await gw.check_embeddings_status()
+            if emb["functional"]:
                 health_status["components"]["embeddings"] = "healthy"
-            else:
+            elif emb["status"] == "fallback":
                 health_status["components"]["embeddings"] = "degraded: using fallback (no semantic search)"
+            else:
+                health_status["components"]["embeddings"] = emb["status"]
         except (OSError, RuntimeError, ValueError) as e:
             health_status["components"]["embeddings"] = f"unavailable: {type(e).__name__}"
 
         # Check LLM provider
         try:
-            from app.services.ai.router import get_smart_router
+            from app.services.gateway.ai_gateway import get_ai_gateway as _get_gw
 
-            router_instance = get_smart_router()
-            provider = getattr(router_instance, "provider", "unknown")
-            health_status["components"]["llm"] = f"configured: {provider}"
+            gw = _get_gw()
+            llm = await gw.check_llm_status()
+            health_status["components"]["llm"] = llm["status"]
         except (OSError, RuntimeError, ValueError) as e:
             health_status["components"]["llm"] = f"unavailable: {type(e).__name__}"
 
@@ -235,19 +238,21 @@ async def readiness_check(
 
     # LLM
     try:
-        from app.services.ai.router import get_smart_router
+        from app.services.gateway.ai_gateway import get_ai_gateway
 
-        router_instance = get_smart_router()
-        checks["llm"] = router_instance is not None
+        gw = get_ai_gateway()
+        llm = await gw.check_llm_status()
+        checks["llm"] = llm["available"]
     except (OSError, RuntimeError, ValueError):
         logger.debug("Health check: LLM unavailable", exc_info=True)
 
     # Embeddings
     try:
-        from app.services.ai.rag import RAGService
+        from app.services.gateway.ai_gateway import get_ai_gateway as _get_gw
 
-        rag = RAGService()
-        checks["embeddings"] = rag.is_functional
+        gw = _get_gw()
+        emb = await gw.check_embeddings_status()
+        checks["embeddings"] = emb["functional"]
     except (OSError, RuntimeError, ValueError):
         logger.debug("Health check: embeddings unavailable", exc_info=True)
 

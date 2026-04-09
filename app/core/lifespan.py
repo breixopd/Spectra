@@ -350,8 +350,9 @@ async def _initialize_services() -> None:
     # Trigger background setup tasks (including tool installation)
     create_safe_task(run_startup_tasks(), name="startup_tasks")
 
-    # Start periodic maintenance loops (deferred to scheduler service)
-    logger.info("[SKIP] Maintenance loops deferred to scheduler service")
+    # Maintenance loops handled by scheduler service in multi-service mode
+    if settings.SERVICE_MODE == "api":
+        logger.info("[SKIP] Maintenance loops deferred to scheduler service")
 
     # Start metrics snapshot store
     from app.core.metrics_store import get_metrics_store

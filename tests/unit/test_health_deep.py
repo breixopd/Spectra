@@ -112,10 +112,10 @@ async def test_health_verbose_includes_embeddings():
     db.execute = AsyncMock()
     response = _mock_response()
 
-    mock_rag = MagicMock()
-    mock_rag.is_functional = True
+    mock_gw = AsyncMock()
+    mock_gw.check_embeddings_status.return_value = {"functional": True, "status": "healthy"}
 
-    with _mock_infra_checks(extra_modules={"app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag)}):
+    with _mock_infra_checks():
         with (
             patch("app.api.routers.health._extract_request_token", return_value=("tok", "header")),
             patch("app.api.routers.health._decode_access_payload", return_value={"sub": "u-1"}),
@@ -124,6 +124,7 @@ async def test_health_verbose_includes_embeddings():
                 new_callable=AsyncMock,
                 return_value=MagicMock(),
             ),
+            patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
         ):
             result = await health_check(request=_mock_request(), response=response, db=db, verbose=True)
 
@@ -136,11 +137,9 @@ async def test_health_verbose_includes_llm():
     db.execute = AsyncMock()
     response = _mock_response()
 
-    mock_router = MagicMock()
-    mock_router.provider = "openai"
-
-    mock_rag = MagicMock()
-    mock_rag.is_functional = False
+    mock_gw = AsyncMock()
+    mock_gw.check_embeddings_status.return_value = {"functional": False, "status": "fallback"}
+    mock_gw.check_llm_status.return_value = {"available": True, "provider": "openai", "status": "configured: openai"}
 
     mock_cache = MagicMock()
     mock_cache.get_stats.return_value = {"hit_rate_percent": 85}
@@ -151,8 +150,6 @@ async def test_health_verbose_includes_llm():
     with (
         _mock_infra_checks(
         extra_modules={
-            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-            "app.services.ai.router": MagicMock(get_smart_router=lambda: mock_router),
             "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
             "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: mock_pool),
         }
@@ -163,6 +160,7 @@ async def test_health_verbose_includes_llm():
             new_callable=AsyncMock,
             return_value=MagicMock(),
         ),
+        patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
     ):
         result = await health_check(request=_mock_request(), response=response, db=db, verbose=True)
 
@@ -179,14 +177,13 @@ async def test_health_verbose_cache_healthy():
     mock_cache = MagicMock()
     mock_cache.get_stats.return_value = {"hit_rate_percent": 42}
 
-    mock_rag = MagicMock()
-    mock_rag.is_functional = False
+    mock_gw = AsyncMock()
+    mock_gw.check_embeddings_status.return_value = {"functional": False, "status": "fallback"}
+    mock_gw.check_llm_status.return_value = {"available": False, "provider": "unknown", "status": "unavailable"}
 
     with (
         _mock_infra_checks(
         extra_modules={
-            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError("no LLM"))),
             "app.core.cache": MagicMock(get_cache=lambda: mock_cache),
             "app.services.tools.sandbox": MagicMock(get_sandbox_pool=lambda: None),
         }
@@ -197,6 +194,7 @@ async def test_health_verbose_cache_healthy():
             new_callable=AsyncMock,
             return_value=MagicMock(),
         ),
+        patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
     ):
         result = await health_check(request=_mock_request(), response=response, db=db, verbose=True)
 
@@ -210,14 +208,13 @@ async def test_health_verbose_cache_unavailable():
     db.execute = AsyncMock()
     response = _mock_response()
 
-    mock_rag = MagicMock()
-    mock_rag.is_functional = False
+    mock_gw = AsyncMock()
+    mock_gw.check_embeddings_status.return_value = {"functional": False, "status": "fallback"}
+    mock_gw.check_llm_status.return_value = {"available": False, "provider": "unknown", "status": "unavailable"}
 
     with (
         _mock_infra_checks(
         extra_modules={
-            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
             "app.core.cache": MagicMock(get_cache=lambda: None),
             "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=RuntimeError)),
         }
@@ -228,6 +225,7 @@ async def test_health_verbose_cache_unavailable():
             new_callable=AsyncMock,
             return_value=MagicMock(),
         ),
+        patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
     ):
         result = await health_check(request=_mock_request(), response=response, db=db, verbose=True)
 
@@ -245,17 +243,16 @@ async def test_health_verbose_disk_info():
     mock_usage.total = 100 * (1024**3)
     mock_usage.used = 50 * (1024**3)
 
-    mock_rag = MagicMock()
-    mock_rag.is_functional = False
+    mock_gw = AsyncMock()
+    mock_gw.check_embeddings_status.return_value = {"functional": False, "status": "fallback"}
+    mock_gw.check_llm_status.return_value = {"available": False, "provider": "unknown", "status": "unavailable"}
 
     with _mock_infra_checks(
         extra_modules={
-            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
             "app.core.cache": MagicMock(get_cache=lambda: None),
             "app.services.tools.sandbox": MagicMock(get_sandbox_pool=MagicMock(side_effect=RuntimeError)),
         }
-    ), patch("app.api.routers.health.shutil.disk_usage", return_value=mock_usage):
+    ), patch("app.api.routers.health.shutil.disk_usage", return_value=mock_usage), patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw):
         with (
             patch("app.api.routers.health._extract_request_token", return_value=("tok", "header")),
             patch("app.api.routers.health._decode_access_payload", return_value={"sub": "u-1"}),
@@ -282,17 +279,11 @@ async def test_readiness_all_ready():
     db.execute = AsyncMock()
     response = _mock_response()
 
-    mock_rag = MagicMock()
-    mock_rag.is_functional = True
-    mock_router = MagicMock()
+    mock_gw = AsyncMock()
+    mock_gw.check_llm_status.return_value = {"available": True, "provider": "openai", "status": "configured: openai"}
+    mock_gw.check_embeddings_status.return_value = {"functional": True, "status": "healthy"}
 
-    with patch.dict(
-        "sys.modules",
-        {
-            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-            "app.services.ai.router": MagicMock(get_smart_router=lambda: mock_router),
-        },
-    ):
+    with patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw):
         result = await readiness_check(response=response, db=db)
 
     assert result["ready"] is True
@@ -305,16 +296,11 @@ async def test_readiness_db_down():
     db.execute = AsyncMock(side_effect=OSError("db down"))
     response = _mock_response()
 
-    mock_rag = MagicMock()
-    mock_rag.is_functional = True
+    mock_gw = AsyncMock()
+    mock_gw.check_llm_status.return_value = {"available": True, "provider": "openai", "status": "configured: openai"}
+    mock_gw.check_embeddings_status.return_value = {"functional": True, "status": "healthy"}
 
-    with patch.dict(
-        "sys.modules",
-        {
-            "app.services.ai.rag": MagicMock(RAGService=lambda: mock_rag),
-            "app.services.ai.router": MagicMock(get_smart_router=MagicMock),
-        },
-    ):
+    with patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw):
         result = await readiness_check(response=response, db=db)
 
     assert result["ready"] is False
@@ -328,13 +314,11 @@ async def test_readiness_llm_unavailable():
     db.execute = AsyncMock()
     response = _mock_response()
 
-    with patch.dict(
-        "sys.modules",
-        {
-            "app.services.ai.rag": MagicMock(RAGService=MagicMock(side_effect=RuntimeError)),
-            "app.services.ai.router": MagicMock(get_smart_router=MagicMock(side_effect=RuntimeError)),
-        },
-    ):
+    mock_gw = AsyncMock()
+    mock_gw.check_llm_status.return_value = {"available": False, "provider": "unknown", "status": "unavailable"}
+    mock_gw.check_embeddings_status.return_value = {"functional": False, "status": "unavailable"}
+
+    with patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw):
         result = await readiness_check(response=response, db=db)
 
     assert result["ready"] is False
