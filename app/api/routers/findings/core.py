@@ -201,7 +201,7 @@ async def _update_finding_status_response(
 )
 async def create_finding(
     finding_in: FindingCreate,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> FindingDetailResponse:
@@ -245,7 +245,7 @@ async def create_finding(
 )
 @limiter.limit(RateLimits.FINDINGS_LIST)
 async def list_findings(
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     page: int = Query(default=1, ge=1, description="Page number"),
     per_page: int = Query(
         default=DEFAULT_PAGE_SIZE,
@@ -303,7 +303,7 @@ async def get_finding(
 async def update_finding(
     finding_id: str,
     finding_in: FindingUpdate,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> FindingDetailResponse:
@@ -342,7 +342,7 @@ async def update_finding(
 )
 async def delete_finding(
     finding_id: str,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = require_permission(Permission.MANAGE_FINDINGS),
 ) -> None:
@@ -375,7 +375,7 @@ async def delete_finding(
 )
 async def verify_finding(
     finding_id: str,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -401,7 +401,7 @@ async def verify_finding(
 )
 async def mark_false_positive(
     finding_id: str,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -427,7 +427,7 @@ async def mark_false_positive(
 )
 async def confirm_finding(
     finding_id: str,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ) -> FindingDetailResponse:
@@ -452,7 +452,7 @@ async def confirm_finding(
 )
 async def dismiss_finding(
     finding_id: str,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):
@@ -477,7 +477,7 @@ async def dismiss_finding(
 )
 async def retest_finding(
     finding_id: str,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     db: AsyncSession = Depends(get_async_session),
     _current_user: User = Depends(get_current_active_user),
 ):

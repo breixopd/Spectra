@@ -120,7 +120,7 @@ def _build_export_response(
 )
 @limiter.limit(RateLimits.FINDINGS_EXPORT)
 async def export_findings_csv(
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),
@@ -160,7 +160,7 @@ async def export_findings_csv(
 )
 @limiter.limit(RateLimits.FINDINGS_EXPORT)
 async def export_findings_json(
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     encrypted: bool = Query(False),
     password: str | None = Header(None, alias="X-Export-Password"),
     db: AsyncSession = Depends(get_async_session),

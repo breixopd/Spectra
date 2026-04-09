@@ -91,7 +91,7 @@ app = FastAPI(
 
 # --- Rate Limiting ---
 app.state.limiter = limiter
-app.state.limiter._rate_limit_exceeded_handler = rate_limit_exceeded_handler_sync
+app.state.limiter._rate_limit_exceeded_handler = rate_limit_exceeded_handler_sync  # type: ignore[attr-defined]
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_sync)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
 
@@ -246,7 +246,7 @@ def _wants_html(request: Request) -> bool:
 
 
 def _make_error_handler(status_code: int, default_detail: str, template: str, log: bool = False):
-    async def handler(request: Request, exc: Exception) -> HTMLResponse | JSONResponse:
+    async def handler(request: Request, exc: Exception) -> StarletteResponse:
         if log:
             logger.exception("Internal server error: %s", exc)
 

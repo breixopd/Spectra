@@ -288,7 +288,7 @@ async def get_user(
 @router.post("/api/admin/users", status_code=status.HTTP_201_CREATED)
 async def create_user(
     body: AdminUserCreate,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> AdminUserCreateResponse:
@@ -347,7 +347,7 @@ async def create_user(
 async def update_user(
     user_id: str,
     body: AdminUserUpdate,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> UserAdminResponse:
@@ -415,7 +415,7 @@ async def update_user(
 @router.delete("/api/admin/users/{user_id}", status_code=status.HTTP_200_OK)
 async def deactivate_user(
     user_id: str,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
@@ -440,7 +440,7 @@ async def deactivate_user(
 @router.post("/api/admin/users/{user_id}/reset-password")
 async def reset_password(
     user_id: str,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict:
@@ -481,7 +481,7 @@ async def reset_password(
 @router.delete("/api/admin/users/{user_id}/purge")
 async def purge_user(
     user_id: str,
-    request: Request = None,
+    request: Request = None,  # type: ignore[assignment]
     admin: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ):

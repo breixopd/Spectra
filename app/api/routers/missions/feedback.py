@@ -13,7 +13,7 @@ from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 from app.repositories.mission import MissionRepository
-from app.services.mission import mission_manager
+from app.services.mission.manager import mission_manager
 
 logger = logging.getLogger(__name__)
 
