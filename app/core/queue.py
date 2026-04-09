@@ -66,29 +66,31 @@ class PostgresJobQueue:
     async def recover_stale_jobs(self, max_age_minutes: int = 30) -> int:
         """Recover jobs stuck in 'in_progress' state.
 
-        Marks jobs that have been in_progress longer than *max_age_minutes* as
-        failed so they don't block the queue forever.
+        Routes each stale job through *handle_job_failure* so that jobs with
+        retries remaining are re-queued instead of permanently failed.
 
         Returns the number of recovered jobs.
         """
         cutoff = datetime.now(UTC) - timedelta(minutes=max_age_minutes)
         async with async_session_maker() as session:
             stmt = (
-                update(JobQueue)
+                select(JobQueue)
                 .where(
                     JobQueue.status == "in_progress",
                     JobQueue.started_at < cutoff,
                     JobQueue.queue_name == self.queue_name,
                 )
-                .values(
-                    status="failed",
-                    error=f"Stale job recovered after {max_age_minutes} minutes",
-                    completed_at=datetime.now(UTC),
-                )
+                .with_for_update(skip_locked=True)
             )
             result = await session.execute(stmt)
-            await session.commit()
-            count = result.rowcount  # type: ignore[union-attr]
+            stale_jobs = list(result.scalars().all())
+
+        count = len(stale_jobs)
+        for job in stale_jobs:
+            await self.handle_job_failure(
+                job.id,
+                f"Stale job recovered after {max_age_minutes} minutes",
+            )
 
         if count:
             logger.warning("Recovered %d stale job(s) older than %d minutes", count, max_age_minutes)
@@ -309,13 +311,13 @@ async def worker_loop(functions: list, queue_name: str = "default", poll_delay: 
                             stmt = (
                                 update(JobQueue)
                                 .where(JobQueue.id == current_job_id)
-                                .values(status="failed", error="Worker shutdown", completed_at=datetime.now(UTC))
+                                .values(status="pending", started_at=None)
                             )
                             await session.execute(stmt)
                             await session.commit()
-                        logger.info("Marked abandoned job %s as failed", current_job_id)
+                        logger.info("Re-queued in-flight job %s for pickup after deploy", current_job_id)
                     except (OSError, RuntimeError) as e:
-                        logger.warning("Failed to mark abandoned job as failed: %s", e)
+                        logger.warning("Failed to re-queue in-flight job: %s", e)
                 break
             except Exception as exc:
                 logger.exception("Error in worker loop: %s", type(exc).__name__)

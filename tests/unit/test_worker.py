@@ -29,7 +29,7 @@ class TestWithRetry:
             nonlocal call_count
             call_count += 1
             if call_count < 3:
-                raise RuntimeError("fail")
+                raise ConnectionError("fail")
             return "ok"
 
         with patch("app.worker.helpers.asyncio.sleep", new_callable=AsyncMock):

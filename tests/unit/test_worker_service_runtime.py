@@ -44,8 +44,10 @@ async def test_lifespan_starts_and_cancels_worker_task():
         mp.setattr(worker_service, "create_safe_task", fake_create_safe_task)
         async with worker_service.lifespan(worker_service.app):
             assert worker_service._worker_task is task
+            assert worker_service._heartbeat_task is task
 
-    task.cancel.assert_called_once()
+    # Both worker and heartbeat tasks get cancelled
+    assert task.cancel.call_count == 2
 
 
 @pytest.mark.asyncio

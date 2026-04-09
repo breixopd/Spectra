@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from sqlalchemy import select
@@ -42,7 +43,7 @@ async def generate_mission_report(mission_id: str, report_format: str = "pdf") -
         target=target,
     )
 
-    result = await reporter.execute(context, input_data)
+    result = await asyncio.wait_for(reporter.execute(context, input_data), timeout=300)
     if not result.success:
         raise RuntimeError(f"Report generation failed: {result.error}")
 
@@ -78,7 +79,7 @@ async def generate_executive_summary(mission_id: str) -> str:
         target=target,
     )
 
-    result = await reporter.execute(context, input_data)
+    result = await asyncio.wait_for(reporter.execute(context, input_data), timeout=300)
     if not result.success:
         raise RuntimeError(f"Executive summary failed: {result.error}")
 
