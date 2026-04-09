@@ -1,71 +1,61 @@
-# Spectra reverse proxy used by the Docker test stack.
-# Keeps the production routing shape, but lowers selected edge thresholds
-# so the burst harness can verify proxy-layer 429 behavior quickly.
-
 import Caddyfile.snippets
 
 {
-auto_https off
-admin off
+	auto_https off
+	admin off
 }
 
 :80 {
-import security_headers
+	import security_headers
 
-@websocket {
-Connection *Upgrade*
-Upgrade websocket
-}
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
 
-route {
-uest_body {
-50MB
+	route {
+		request_body {
+			max_size 50MB
+		}
 
-dle /static/* {
-Cache-Control "public, max-age=3600"
- app:5000 app-replica:5000
+		handle /static/* {
+			header Cache-Control "public, max-age=3600"
+			reverse_proxy app:5000 app-replica:5000
+		}
 
-dle @websocket {
- app:5000 app-replica:5000 {
- round_robin
+		handle @websocket {
+			reverse_proxy app:5000 app-replica:5000
+		}
 
-proxy_defaults
+		# High limits for burst/load testing
+		import rate_limit_public 10000
 
-{
-e setup_status_edge {
-{
-/api/auth/setup/status /api/v1/auth/setup/status
- {remote_host}
-ts 10000
-dow 1m
+		rate_limit {
+			zone setup_status_edge {
+				match {
+					path /api/v1/auth/setup-status
+				}
+				key {remote_host}
+				events 10000
+				window 1m
+			}
+		}
 
-e public_auth {
-{
-public_auth ^(?:/(?:login|setup|forgot-password|reset-password)|/api(?:/v1)?/auth/(?:token|refresh|setup|forgot-password|reset-password|mfa/(?:verify|cancel)))$
- {remote_host}
-ts 10000
-dow 1m
+		reverse_proxy app:5000 app-replica:5000 {
+			lb_policy round_robin
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
 
-e public_register {
-{
-public_register ^(?:/register|/api/public/register)$
- {remote_host}
-ts 10000
-dow 1m
+			import proxy_defaults
+		}
+	}
 
- app:5000 app-replica:5000 {
- round_robin
-/api/health
-terval 10s
-5s
+	import error_pages
 
-proxy_defaults
-
-import error_pages
-
-log {
-stdout
-console
-INFO
-}
+	log {
+		output stdout
+		format console
+		level DEBUG
+	}
 }

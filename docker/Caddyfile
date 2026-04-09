@@ -1,47 +1,51 @@
 # Spectra reverse proxy for local / single-host deployments.
-# The application sets CSP and the rest of the browser-security policy.
-
 import Caddyfile.snippets
 
 {
-auto_https off
-admin off
+	auto_https off
+	admin off
 }
 
 :80 {
-import security_headers
+	import security_headers
 
-@websocket {
-Connection *Upgrade*
-Upgrade websocket
-}
-route {
-uest_body {
-50MB
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
 
-dle /static/* {
-Cache-Control "public, max-age=3600"
- spectra-app:5000
+	route {
+		request_body {
+			max_size 50MB
+		}
 
-dle @websocket {
- spectra-app:5000
+		handle /static/* {
+			header Cache-Control "public, max-age=3600"
+			reverse_proxy spectra-app:5000
+		}
 
-Thin IP-based edge guard for public auth traffic only.
-Redis-backed application limits remain the primary policy layer.
-rate_limit_public 30
+		handle @websocket {
+			reverse_proxy spectra-app:5000
+		}
 
- spectra-app:5000 {
-/api/health
-terval 10s
-5s
+		# IP-based edge guard for public auth traffic.
+		# Redis-backed application limits remain the primary policy layer.
+		import rate_limit_public 30
 
-proxy_defaults
+		reverse_proxy spectra-app:5000 {
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
 
-import error_pages
+			import proxy_defaults
+		}
+	}
 
-log {
-stdout
-console
-INFO
-}
+	import error_pages
+
+	log {
+		output stdout
+		format console
+		level INFO
+	}
 }
