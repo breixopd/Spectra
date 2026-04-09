@@ -23,11 +23,10 @@ from collections import deque
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 
 from blinker import Signal
-
-from app.utils.compat import StrEnum
 
 logger = logging.getLogger(__name__)
 

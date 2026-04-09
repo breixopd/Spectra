@@ -5,7 +5,7 @@ Centralizes enum definitions to avoid duplication and ensure consistency.
 Follows the DRY (Don't Repeat Yourself) principle.
 """
 
-from app.utils.compat import StrEnum
+from enum import StrEnum
 
 
 class AssessmentPhase(StrEnum):

@@ -5,89 +5,42 @@
 #
 # Caddy auto-provisions TLS via Let's Encrypt when a real domain is used.
 
+import Caddyfile.snippets
+
 :80 {
-	header {
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		Referrer-Policy strict-origin-when-cross-origin
-		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
-		-Server
-	}
+import security_headers
 
-	@websocket {
-		header Connection *Upgrade*
-		header Upgrade websocket
-	}
+@websocket {
+Connection *Upgrade*
+Upgrade websocket
+}
 
-	route {
-		request_body {
-			max_size 50MB
-		}
+route {
+uest_body {
+50MB
 
-		handle /static/* {
-			header Cache-Control "public, max-age=3600"
-			reverse_proxy spectra-app:5000
-		}
+dle /static/* {
+Cache-Control "public, max-age=3600"
+ spectra-app:5000
 
-		handle @websocket {
-			reverse_proxy spectra-app:5000
-		}
+dle @websocket {
+ spectra-app:5000
 
-		# Thin IP-based edge guard for public auth traffic only.
-		# Redis-backed application limits remain the primary policy layer.
-		rate_limit {
-			zone public_auth {
-				match {
-					path_regexp public_auth ^(?:/(?:login|setup|forgot-password|reset-password)|/api(?:/v1)?/auth/(?:token|refresh|setup|forgot-password|reset-password|mfa/(?:verify|cancel)))$
-				}
-				key {remote_host}
-				events 30
-				window 1m
-			}
+Thin IP-based edge guard for public auth traffic only.
+Redis-backed application limits remain the primary policy layer.
+rate_limit_public 30
 
-			zone public_register {
-				match {
-					path_regexp public_register ^(?:/register|/api/public/register)$
-				}
-				key {remote_host}
-				events 30
-				window 1m
-			}
-		}
+ spectra-app:5000 {
+/api/health
+terval 10s
+5s
 
-		reverse_proxy spectra-app:5000 {
-			health_uri /api/health
-			health_interval 10s
-			health_timeout 5s
+proxy_defaults
 
-			transport http {
-				read_timeout 300s
-				write_timeout 300s
-				dial_timeout 10s
-			}
+import error_pages
 
-			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
-		}
-	}
-
-	handle_errors {
-		@api path /api/*
-		handle @api {
-			header Content-Type application/json
-			respond `{"error":"service_unavailable","message":"Server is starting up or temporarily unavailable"}` {err.status_code}
-		}
-		handle {
-			header Content-Type "text/html; charset=utf-8"
-			respond `<!DOCTYPE html><html><head><title>Spectra — Starting Up</title><meta http-equiv="refresh" content="5"><style>body{background:#0f172a;color:#e2e8f0;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}.card{text-align:center;max-width:480px;padding:2rem}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#94a3b8}.spinner{border:3px solid #334155;border-top:3px solid #3b82f6;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:1.5rem auto}@keyframes spin{to{transform:rotate(360deg)}}</style></head><body><div class="card"><div class="spinner"></div><h1>Spectra is starting up</h1><p>This page will refresh automatically...</p></div></body></html>` {err.status_code}
-		}
-	}
-
-	log {
-		output file /data/access.log {
-			roll_size 100mb
-			roll_keep 5
-		}
-	}
+log {
+file /data/access.log {
+100mb
+5
 }

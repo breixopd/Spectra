@@ -6,6 +6,15 @@
 #
 # Vulnerable scan targets: use --profile targets to start lightweight targets:
 #   docker compose -f docker/docker-compose.test.yml --profile targets up -d
+
+x-test-env: &test-env
+  DATABASE_URL: postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
+  S3_ENDPOINT_URL: http://garage:3900
+  S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
+  S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+  SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
+  TENSORZERO_GATEWAY_URL: http://tensorzero:3000
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -91,10 +100,9 @@ services:
       dockerfile: docker/Dockerfile.app
       target: ai
     environment:
+      <<: *test-env
       DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
-      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
       SKIP_MIGRATIONS: "true"
-      TENSORZERO_GATEWAY_URL: http://tensorzero:3000
       EMBEDDING_API_KEY: ${OPENAI_API_KEY}
       EMBEDDING_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
       SERVICE_MODE: ai
@@ -118,12 +126,9 @@ services:
       dockerfile: docker/Dockerfile.app
       target: scheduler
     environment:
+      <<: *test-env
       DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
-      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
       SKIP_MIGRATIONS: "true"
-      S3_ENDPOINT_URL: http://garage:3900
-      S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
-      S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       SERVICE_MODE: scheduler
     depends_on:
       db:
@@ -143,12 +148,9 @@ services:
       dockerfile: docker/Dockerfile.tools
     command: ["uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "5012"]
     environment:
+      <<: *test-env
       DATABASE_URL: postgresql+asyncpg://spectra_user:spectra_test_pass@db:5432/spectra_test
-      SERVICE_AUTH_SECRET: ${SERVICE_AUTH_SECRET:-test-service-secret-key}
       SKIP_MIGRATIONS: "true"
-      S3_ENDPOINT_URL: http://garage:3900
-      S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
-      S3_SECRET_KEY: ${GARAGE_SECRET_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
       SERVICE_MODE: worker
     depends_on:
       db:
@@ -276,6 +278,7 @@ services:
     ports:
       - "15080:80"
     volumes:
+      - ./Caddyfile.snippets:/etc/caddy/Caddyfile.snippets:ro
       - ./Caddyfile.test:/etc/caddy/Caddyfile:ro
     depends_on:
       app:

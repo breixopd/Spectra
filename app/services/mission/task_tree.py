@@ -3,9 +3,8 @@
 import logging
 import time
 from dataclasses import asdict, dataclass, field
+from enum import StrEnum
 from typing import Any
-
-from app.utils.compat import StrEnum
 
 logger = logging.getLogger(__name__)
 

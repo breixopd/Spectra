@@ -6,12 +6,12 @@ for iterative exploitation attempts.
 """
 
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from app.services.mission.types import AttackSurfaceSummary
-from app.utils.compat import StrEnum
 
 
 def _utc_now() -> datetime:
