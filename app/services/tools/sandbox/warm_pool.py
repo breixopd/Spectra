@@ -7,27 +7,16 @@ import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
-from urllib.parse import urlparse, urlunparse
 
 from sqlalchemy import select, update
 
 from app.core.config import get_settings
 from app.core.database import async_session_maker
 from app.models.infrastructure import Sandbox
+from app.services.tools.sandbox._utils import sandbox_database_url as _sandbox_database_url
 from app.services.tools.sandbox.models import SandboxInfo
 
 logger = logging.getLogger(__name__)
-
-
-def _sandbox_database_url(raw_url: str) -> str:
-    """Rewrite compose-only host aliases to names resolvable by ad hoc sandboxes."""
-    parsed = urlparse(raw_url)
-    if parsed.hostname != "db":
-        return raw_url
-    netloc = parsed.netloc.replace("@db:", "@spectra-db:").replace("//db:", "//spectra-db:")
-    if parsed.netloc.endswith("@db"):
-        netloc = netloc[:-3] + "spectra-db"
-    return urlunparse(parsed._replace(netloc=netloc))
 
 
 class WarmPoolManager:

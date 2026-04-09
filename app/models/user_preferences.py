@@ -54,3 +54,6 @@ class UserPreferences(Base):
     extra: Mapped[dict | None] = mapped_column(JSONBType, nullable=True)
 
     __exclude_fields__ = {"llm_api_key", "embedding_api_key"}
+
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}(id={self.id!r})>"

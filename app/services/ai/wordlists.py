@@ -5,39 +5,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def generate_tech_wordlist(technologies: list[str]) -> list[str]:
-    """Generate technology-specific paths based on discovered tech stack."""
-    TECH_PATHS = {
-        "wordpress": ["/wp-admin/", "/wp-login.php", "/wp-content/", "/xmlrpc.php", "/wp-json/", "/wp-includes/"],
-        "joomla": ["/administrator/", "/components/", "/modules/", "/plugins/", "/templates/"],
-        "drupal": ["/admin/", "/node/", "/sites/default/", "/user/login", "/update.php"],
-        "php": ["/info.php", "/phpinfo.php", "/phpmyadmin/", "/config.php", "/wp-config.php.bak"],
-        "apache": ["/.htaccess", "/server-status", "/server-info", "/.env", "/web.config"],
-        "nginx": ["/nginx_status", "/.env", "/server-status"],
-        "node": ["/api/", "/graphql", "/swagger", "/api-docs", "/.env", "/package.json"],
-        "express": ["/api/v1/", "/api/v2/", "/health", "/status", "/debug"],
-        "django": ["/admin/", "/api/", "/static/", "/media/", "/.env", "/settings/"],
-        "flask": ["/api/", "/swagger/", "/debug/", "/console/", "/.env"],
-        "tomcat": ["/manager/html", "/host-manager/", "/status", "/examples/"],
-        "iis": ["/aspnet_client/", "/web.config", "/_vti_bin/", "/trace.axd"],
-        "mysql": ["/phpmyadmin/", "/adminer/", "/dbadmin/"],
-        "redis": ["/redis/", "/.redis"],
-    }
-
-    paths = set()
-    paths.update(
-        ["/robots.txt", "/sitemap.xml", "/.git/", "/.env", "/backup/", "/admin/", "/login/", "/api/", "/.well-known/"]
-    )
-
-    for tech in technologies:
-        tech_lower = tech.lower()
-        for key, tech_paths in TECH_PATHS.items():
-            if key in tech_lower:
-                paths.update(tech_paths)
-
-    return sorted(paths)
-
-
 def generate_credential_list(service: str, product: str | None = None) -> dict[str, list[str]]:
     """Generate default credential pairs for a service. Small list only — no brute force."""
     SERVICE_CREDS = {

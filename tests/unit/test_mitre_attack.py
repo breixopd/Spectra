@@ -3,7 +3,6 @@
 from app.services.ai.mitre_attack import (
     TECHNIQUE_MAP,
     _resolve_techniques,
-    generate_navigator_json,
     get_attack_summary,
     tag_finding_with_attack,
 )
@@ -130,51 +129,6 @@ class TestTagFindingWithAttack:
     def test_empty_finding(self):
         result = tag_finding_with_attack({})
         assert result["mitre_techniques"] == []
-
-
-class TestGenerateNavigatorJson:
-    """Test generate_navigator_json function."""
-
-    def test_generates_valid_structure(self):
-        findings = [
-            {"tool_id": "nmap", "host": "10.0.0.1"},
-            {"tool_id": "nuclei", "template-id": "test"},
-        ]
-        result = generate_navigator_json(findings)
-
-        assert result["name"] == "Spectra Mission Findings"
-        assert result["domain"] == "enterprise-attack"
-        assert "versions" in result
-        assert "techniques" in result
-        assert "gradient" in result
-
-    def test_technique_scores(self):
-        findings = [
-            {"tool_id": "nmap", "host": "10.0.0.1"},
-            {"tool_id": "nmap", "host": "10.0.0.2"},
-            {"tool_id": "nuclei", "template-id": "test"},
-        ]
-        result = generate_navigator_json(findings)
-        techniques = {t["techniqueID"]: t for t in result["techniques"]}
-
-        assert techniques["T1046"]["score"] == 2
-        assert techniques["T1595.002"]["score"] == 1
-
-    def test_empty_findings(self):
-        result = generate_navigator_json([])
-        assert result["techniques"] == []
-        assert result["gradient"]["maxValue"] == 1
-
-    def test_unknown_tools_excluded(self):
-        findings = [{"tool_id": "unknown_tool"}]
-        result = generate_navigator_json(findings)
-        assert result["techniques"] == []
-
-    def test_navigator_version_fields(self):
-        result = generate_navigator_json([{"tool_id": "nmap"}])
-        assert "attack" in result["versions"]
-        assert "navigator" in result["versions"]
-        assert "layer" in result["versions"]
 
 
 class TestGetAttackSummary:

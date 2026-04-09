@@ -1,8 +1,6 @@
 """Report template definitions for manual pentest sessions."""
 
-import json
 import logging
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -62,15 +60,3 @@ def build_report_data(session: dict[str, Any], template_id: str) -> dict[str, An
         "tools_used": session.get("tools_used", []),
         "command_history": session.get("command_history", []),
     }
-
-
-def generate_report_data(session_path: Path, template_id: str) -> dict[str, Any]:
-    """Build report data from session file and template.
-
-    Raises FileNotFoundError if session file doesn't exist.
-    Raises ValueError if template_id is unknown.
-    """
-    if not session_path.exists():
-        raise FileNotFoundError(f"Session file not found: {session_path}")
-    session = json.loads(session_path.read_text())
-    return build_report_data(session, template_id)
