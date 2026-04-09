@@ -7,11 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.api.routers.auth._helpers import (
+    _check_lockout,
     _consume_totp_code_async,
     _create_auth_token_pair,
     _decode_token_or_http_error,
     _extract_bearer_token,
     _get_user_by_username,
+    _record_failure,
     _set_auth_cookies,
     _token_response_payload,
 )
@@ -117,8 +119,11 @@ async def mfa_verify_login(
     if not user or not user.is_active or not user.mfa_enabled or not user.mfa_secret:
         raise HTTPException(status_code=401, detail="Invalid MFA state")
 
+    await _check_lockout(user)
+
     secret = decrypt_mfa_secret(user.mfa_secret)
     if not verify_totp(secret, body.code):
+        await _record_failure(user, session)
         await audit_log_event(
             session,
             AuditEventType.LOGIN_FAILED,

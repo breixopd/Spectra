@@ -22,6 +22,7 @@ from app.core.security import (
     JWTError,
     decode_token,
     get_password_hash,
+    invalidate_token,
 )
 from app.core.templates import templates
 from app.models.finding import Finding
@@ -559,6 +560,8 @@ async def verify_email_page(request: Request, token: str = ""):
         if not was_active:
             user.is_active = True
         await session.commit()
+
+    await invalidate_token(token)
 
     message = "Email verified! You can now log in."
     if was_verified and not was_active:

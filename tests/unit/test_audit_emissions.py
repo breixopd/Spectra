@@ -189,6 +189,8 @@ class TestFailedMfaAuditEmission:
             patch("app.api.routers.auth.totp._extract_bearer_token", return_value="mfa-token"),
             patch("app.api.routers.auth.totp._decode_token_or_http_error", return_value=mfa_payload),
             patch("app.api.routers.auth.totp._get_user_by_username", new_callable=AsyncMock, return_value=user),
+            patch("app.api.routers.auth.totp._check_lockout", new_callable=AsyncMock),
+            patch("app.api.routers.auth.totp._record_failure", new_callable=AsyncMock),
             patch("app.api.routers.auth.totp.decrypt_mfa_secret", return_value="raw-secret"),
             patch("app.api.routers.auth.totp.verify_totp", return_value=False),
             patch("app.api.routers.auth.totp.audit_log_event", new_callable=AsyncMock) as mock_audit,

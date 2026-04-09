@@ -453,6 +453,7 @@ class TestEmailVerifyIdempotency:
         with (
             patch("app.core.security.verify_email_verification_token", return_value="user-id-123"),
             patch("app.api.routers.public.async_session_maker", return_value=_MockCtx()),
+            patch("app.api.routers.public.invalidate_token", new_callable=AsyncMock),
             patch("app.api.routers.public.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)
@@ -495,6 +496,7 @@ class TestEmailVerifyIdempotency:
         with (
             patch("app.core.security.verify_email_verification_token", return_value="user-id-456"),
             patch("app.api.routers.public.async_session_maker", return_value=_MockCtx()),
+            patch("app.api.routers.public.invalidate_token", new_callable=AsyncMock),
             patch("app.api.routers.public.templates") as mock_tmpl,
         ):
             mock_tmpl.TemplateResponse.return_value = MagicMock(status_code=200)

@@ -61,7 +61,7 @@ async def login_for_access_token(
     """
     OAuth2 compatible token login, get an access token for future requests.
 
-    Rate limited to 5 attempts per minute per IP address.
+    Rate limited to 15 attempts per minute per IP address.
     """
     client_ip = request.client.host if request.client else "unknown"
     user = await _get_user_by_username(session, form_data.username)

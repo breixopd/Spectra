@@ -15,6 +15,7 @@ from app.core.rate_limit import RateLimits, limiter
 from app.core.security import (
     create_password_reset_token,
     get_password_hash,
+    invalidate_token,
     verify_password,
     verify_password_reset_token,
 )
@@ -110,6 +111,8 @@ async def reset_password(
     user.hashed_password = get_password_hash(body.new_password)
     user.invalidated_before = datetime.now(UTC)
     await session.commit()
+
+    await invalidate_token(body.token)
 
     await audit_log_event(
         session,

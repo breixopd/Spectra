@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
@@ -392,6 +393,9 @@ async def update_user(
         if dup:
             raise HTTPException(status_code=409, detail="Email already in use")
         row.email = body.email
+
+    if before_state["role"] != row.role or before_state["is_active"] != row.is_active:
+        row.invalidated_before = datetime.now(UTC)
 
     await session.commit()
     await session.refresh(row)

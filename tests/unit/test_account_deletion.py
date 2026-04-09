@@ -64,6 +64,7 @@ async def test_delete_account_wrong_password(mock_user, mock_session):
         with pytest.raises(HTTPException) as exc_info:
             await delete_account(
                 request=request,
+                response=MagicMock(),
                 body=body,
                 user=mock_user,
                 session=mock_session,
@@ -93,6 +94,7 @@ async def test_delete_account_last_superuser_blocked(mock_user, mock_session):
         with pytest.raises(HTTPException) as exc_info:
             await delete_account(
                 request=request,
+                response=MagicMock(),
                 body=body,
                 user=mock_user,
                 session=mock_session,
@@ -116,6 +118,7 @@ async def test_delete_account_success(mock_user, mock_session):
     ):
         result = await delete_account(
             request=request,
+            response=MagicMock(),
             body=body,
             user=mock_user,
             session=mock_session,
@@ -149,6 +152,7 @@ async def test_delete_account_superuser_with_others_succeeds(mock_user, mock_ses
     with patch("app.api.routers.auth.session.verify_password", return_value=True):
         result = await delete_account(
             request=request,
+            response=MagicMock(),
             body=body,
             user=mock_user,
             session=mock_session,
