@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -188,6 +188,7 @@ async def get_attack_coverage(
 @router.post(
     "",
     response_model=MissionResponse,
+    status_code=status.HTTP_201_CREATED,
     summary="Start mission",
     description="Create and start a new security assessment mission against specified targets.",
 )

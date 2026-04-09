@@ -1,30 +1,24 @@
 """Admin email management endpoints."""
-
-from __future__ import annotations
-
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 
+from app.core.rate_limit import limiter
 from app.core.rbac import Permission, require_permission
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
 class TestEmailRequest(BaseModel):
     to: EmailStr
-
-
 class UpdateTemplateRequest(BaseModel):
     content: str
-
-
 @router.post("/api/admin/email/test")
+@limiter.limit("30/minute")
 async def send_test_email(
+    request: Request,
     body: TestEmailRequest,
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
@@ -45,8 +39,6 @@ async def send_test_email(
     if ok:
         return {"status": "sent", "to": body.to}
     raise HTTPException(status_code=500, detail="Failed to send test email. Check SMTP settings.")
-
-
 @router.get("/api/admin/email/templates")
 async def get_email_templates(
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),
@@ -55,10 +47,10 @@ async def get_email_templates(
     from app.services.email.templates import TEMPLATES
 
     return dict(TEMPLATES.items())
-
-
 @router.put("/api/admin/email/templates/{name}")
+@limiter.limit("30/minute")
 async def update_email_template(
+    request: Request,
     name: str,
     body: UpdateTemplateRequest,
     _perm: User = require_permission(Permission.MANAGE_SETTINGS),

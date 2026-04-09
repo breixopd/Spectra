@@ -25,6 +25,7 @@ from fastapi import (
     Request,
     Response,
     UploadFile,
+    status,
 )
 
 from app.api.dependencies import get_current_active_user, get_current_superuser
@@ -372,7 +373,7 @@ async def sign_plugin_config(
         raise HTTPException(status_code=500, detail="Signing failed - check server logs") from e
 
 
-@router.post("/save-unsigned", response_model=PluginSaveResponse)
+@router.post("/save-unsigned", response_model=PluginSaveResponse, status_code=status.HTTP_201_CREATED)
 async def save_plugin_unsigned(
     config: dict = Body(...),
     _current_user: User = Depends(get_current_superuser),
@@ -546,7 +547,7 @@ async def get_tool_execution_config(
     )
 
 
-@router.post("/upload", response_model=PluginUploadResponse)
+@router.post("/upload", response_model=PluginUploadResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit(RateLimits.TOOL_UPLOAD)
 async def upload_plugin(
     request: Request,
