@@ -141,7 +141,6 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("app.services.ai.embeddings.EmbeddingService", FakeEmbeddingService))
         stack.enter_context(patch("app.core.bridge.EventWebSocketBridge", return_value=FakeBridge()))
         stack.enter_context(patch("app.core.lifespan.run_startup_checks", new_callable=AsyncMock))
-        stack.enter_context(patch("app.core.lifespan._validate_production_secrets"))
         stack.enter_context(patch("app.core.lifespan._validate_rate_limit_storage"))
         stack.enter_context(patch("app.core.lifespan.seed_default_plans", new_callable=AsyncMock))
         stack.enter_context(

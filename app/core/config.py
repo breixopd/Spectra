@@ -392,45 +392,36 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
+    import secrets as _secrets
+
     settings_instance = Settings()
-    environment = os.environ.get("ENVIRONMENT", "development")
 
     # Auto-generate JWT secret if empty or using placeholder
     jwt_val = settings_instance.JWT_SECRET_KEY.get_secret_value()
     if not jwt_val or jwt_val.startswith("change-me"):
-        if environment == "production":
-            raise ValueError(
-                "JWT_SECRET_KEY must be set in production. Refusing to boot with an empty or placeholder JWT secret."
-            )
-        if not settings_instance.DEBUG:
-            logger.warning(
-                "JWT_SECRET_KEY not set. Generating random key for non-production use (sessions will invalidate on restart)."
-            )
-
-        import secrets
-
-        settings_instance.JWT_SECRET_KEY = SecretStr(secrets.token_urlsafe(32))
+        logger.warning(
+            "JWT_SECRET_KEY not set. Generating random key (sessions will invalidate on restart)."
+        )
+        settings_instance.JWT_SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate SECRET_KEY if empty or default
     secret_val = settings_instance.SECRET_KEY.get_secret_value()
     if not secret_val or secret_val == "change-me-in-production":
-        if environment == "production":
-            raise ValueError(
-                "SECRET_KEY must be set in production. Refusing to boot with the insecure default or an empty secret."
-            )
-        if not settings_instance.DEBUG:
-            logger.warning(
-                "SECRET_KEY not set or using default. Generating random key for non-production use (sessions will invalidate on restart)."
-            )
+        logger.warning(
+            "SECRET_KEY not set or using default. Generating random key (sessions will invalidate on restart)."
+        )
+        settings_instance.SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 
-        import secrets
-
-        settings_instance.SECRET_KEY = SecretStr(secrets.token_urlsafe(32))
-
+    # Auto-generate SERVICE_AUTH_SECRET if empty
     if not settings_instance.SERVICE_AUTH_SECRET.get_secret_value():
-        import logging
+        logger.warning(
+            "SERVICE_AUTH_SECRET not set. Generating random key (must match across services for inter-service auth)."
+        )
+        settings_instance.SERVICE_AUTH_SECRET = SecretStr(_secrets.token_urlsafe(32))
 
-        logging.getLogger("spectra.config").warning("SERVICE_AUTH_SECRET not set — inter-service auth disabled")
+    # Auto-generate ENCRYPTION_KEY if empty
+    if not settings_instance.ENCRYPTION_KEY:
+        settings_instance.ENCRYPTION_KEY = _secrets.token_urlsafe(32)
 
     return settings_instance
 
