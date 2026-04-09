@@ -19,7 +19,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - spectra_test
+      - backend
 
   redis:
     image: redis:7-alpine
@@ -30,7 +30,7 @@ services:
       timeout: 3s
       retries: 10
     networks:
-      - spectra_test
+      - backend
 
   garage:
     image: dxflrs/garage:v2.2.0
@@ -46,7 +46,7 @@ services:
       timeout: 5s
       retries: 12
     networks:
-      - spectra_test
+      - backend
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.11-alpine
@@ -61,7 +61,7 @@ services:
       timeout: 3s
       retries: 10
     networks:
-      - spectra_test
+      - backend
 
   tensorzero:
     image: tensorzero/gateway:2025.01.07
@@ -83,7 +83,7 @@ services:
       retries: 15
       start_period: 10s
     networks:
-      - spectra_test
+      - backend
 
   ai-svc:
     build:
@@ -109,7 +109,8 @@ services:
       timeout: 3s
       retries: 15
     networks:
-      - spectra_test
+      - frontend
+      - backend
 
   scheduler:
     build:
@@ -133,7 +134,8 @@ services:
       timeout: 3s
       retries: 15
     networks:
-      - spectra_test
+      - frontend
+      - backend
 
   worker:
     build:
@@ -159,7 +161,9 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
-      - spectra_test
+      - frontend
+      - backend
+      - targets
 
   app:
     build:
@@ -206,9 +210,11 @@ services:
       ai-svc:
         condition: service_healthy
     networks:
-      spectra_test:
+      frontend:
         aliases:
           - spectra-ui-app
+      backend:
+      targets:
 
   app-replica:
     build:
@@ -257,9 +263,11 @@ services:
       ai-svc:
         condition: service_healthy
     networks:
-      spectra_test:
+      frontend:
         aliases:
           - spectra-ui-app-replica
+      backend:
+      targets:
 
   caddy:
     build:
@@ -280,7 +288,7 @@ services:
       timeout: 5s
       retries: 12
     networks:
-      - spectra_test
+      - frontend
 
   tools:
     build:
@@ -308,15 +316,18 @@ services:
       db:
         condition: service_healthy
     networks:
-      - spectra_test
+      - frontend
+      - backend
+      - targets
 
   # Vulnerable target for E2E testing
   metasploitable:
     image: tleemcjr/metasploitable2
     tty: true
     networks:
-      spectra_test:
+      targets:
         ipv4_address: 172.21.0.50
+      backend:
 
   # DVWA - Damn Vulnerable Web Application
   dvwa:
@@ -324,8 +335,9 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=dvwa
     networks:
-      spectra_test:
+      targets:
         ipv4_address: 172.21.0.51
+      backend:
     # DVWA exposes HTTP on port 80
 
   # Test runner service
@@ -391,7 +403,7 @@ services:
       tools:
         condition: service_healthy
     networks:
-      - spectra_test
+      - frontend
 
   load-test-runner:
     build:
@@ -441,7 +453,8 @@ services:
       tools:
         condition: service_healthy
     networks:
-      - spectra_test
+      - frontend
+      - backend
 
   # Targeted settings/setup/router validation that stays containerized without
   # requiring the full live test stack, while still joining the compose test network.
@@ -482,7 +495,7 @@ services:
       db:
         condition: service_healthy
     networks:
-      - spectra_test
+      - backend
 
   # Lightweight unit-test runner — no live services required
   unit-test-runner:
@@ -516,7 +529,7 @@ services:
       db:
         condition: service_healthy
     networks:
-      - spectra_test
+      - backend
 
   # Playwright browser test runner
   ui-test-runner:
@@ -541,7 +554,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - spectra_test
+      - frontend
 
   # ── Vulnerable Test Targets (--profile targets) ─────────────
   # Lightweight purpose-built containers for live scan testing.
@@ -568,7 +581,7 @@ services:
           cpus: "0.25"
           memory: 64M
     networks:
-      - spectra_test
+      - targets
 
   vuln-ssh:
     build:
@@ -592,7 +605,7 @@ services:
           cpus: "0.25"
           memory: 32M
     networks:
-      - spectra_test
+      - targets
 
   vuln-network:
     build:
@@ -619,15 +632,19 @@ services:
           cpus: "0.25"
           memory: 32M
     networks:
-      - spectra_test
+      - targets
 
 networks:
-  spectra_test:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+  targets:
     driver: bridge
     ipam:
       config:
         - subnet: 172.21.0.0/24
-          gateway: 172.21.0.1
 
 volumes:
   garage_meta:

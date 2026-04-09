@@ -31,7 +31,7 @@ services:
       - garage_meta:/var/lib/garage/meta
       - garage_data:/var/lib/garage/data
     networks:
-      - spectra-network
+      - backend
     healthcheck:
       test: ["CMD", "/garage", "status"]
       interval: 10s
@@ -74,7 +74,7 @@ services:
           cpus: '0.5'
           memory: 512M
     networks:
-      - spectra-network
+      - backend
     logging: *default-logging
     cap_drop:
       - ALL
@@ -103,7 +103,7 @@ services:
           cpus: '0.5'
           memory: 512M
     networks:
-      - spectra-network
+      - backend
     logging: *default-logging
     cap_drop:
       - ALL
@@ -144,7 +144,7 @@ services:
     cap_drop:
       - ALL
     networks:
-      - spectra-network
+      - frontend
     security_opt:
       - no-new-privileges:true
 
@@ -213,7 +213,8 @@ services:
           cpus: '0.25'
           memory: 256M
     networks:
-      - spectra-network
+      - frontend
+      - backend
     logging: *default-logging
     cap_drop:
       - ALL
@@ -274,7 +275,8 @@ services:
           cpus: '1'
           memory: 1G
     networks:
-      - spectra-network
+      - frontend
+      - backend
     logging: *default-logging
     cap_drop:
       - ALL
@@ -306,7 +308,7 @@ services:
           cpus: '1'
           memory: 512M
     networks:
-      - spectra-network
+      - backend
     logging: *default-logging
     cap_drop:
       - ALL
@@ -344,7 +346,7 @@ services:
           cpus: '1'
           memory: 512M
     networks:
-      - spectra-network
+      - backend
     logging: *default-logging
     cap_drop:
       - ALL
@@ -399,7 +401,8 @@ services:
           cpus: '0.5'
           memory: 256M
     networks:
-      - spectra-network
+      - frontend
+      - backend
     logging: *default-logging
     cap_drop:
       - ALL
@@ -459,11 +462,15 @@ services:
       - no-new-privileges:true
     logging: *default-logging
     networks:
-      - spectra-network
+      - frontend
+      - backend
 
 networks:
-  spectra-network:
+  frontend:
     driver: bridge
+  backend:
+    driver: bridge
+    internal: true
 
 volumes:
   postgres_data:
