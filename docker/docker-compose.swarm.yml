@@ -6,6 +6,12 @@
 # NOT from .env. Create it with: echo "<password>" | docker secret create db_password -
 # See docs/wiki/deployment-guide.md for full instructions.
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   redis:
     image: redis:7-alpine
@@ -31,6 +37,9 @@ services:
       retries: 5
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   db:
     image: pgvector/pgvector:pg16
@@ -63,6 +72,9 @@ services:
       - db_password
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   app:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-app:${VERSION:-latest}
@@ -111,6 +123,9 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   ai-svc:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-ai-svc:${VERSION:-latest}
@@ -148,6 +163,9 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   scheduler:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-scheduler:${VERSION:-latest}
@@ -185,6 +203,9 @@ services:
       - /tmp
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   worker:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-worker:${VERSION:-latest}
@@ -226,6 +247,7 @@ services:
       - NET_RAW
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
 
   caddy:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-caddy:${VERSION:-latest}
@@ -252,12 +274,16 @@ services:
       retries: 3
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   # Garage S3-compatible Object Storage
   garage:
     image: dxflrs/garage:v2.2.0
     environment:
       GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?set GARAGE_RPC_SECRET}
     ports:
       - "127.0.0.1:3900:3900"
       - "127.0.0.1:3903:3903"
@@ -284,6 +310,9 @@ services:
           memory: 512M
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   # ClickHouse (TensorZero analytics + inference storage)
   clickhouse:
@@ -316,10 +345,13 @@ services:
       retries: 3
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
   # TensorZero Gateway (AI routing, observability, optimization)
   tensorzero:
-    image: tensorzero/gateway
+    image: tensorzero/gateway:2025.01.07
     command: ["--config-file", "/app/config/tensorzero.toml"]
     deploy:
       replicas: 1
@@ -352,6 +384,9 @@ services:
       - service_auth
     security_opt:
       - no-new-privileges:true
+    logging: *default-logging
+    cap_drop:
+      - ALL
 
 networks:
   spectra-net:

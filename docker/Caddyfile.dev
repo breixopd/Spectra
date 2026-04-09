@@ -10,6 +10,7 @@
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
 		-Server
 	}
 
@@ -54,7 +55,21 @@
 			}
 		}
 
-		reverse_proxy spectra-app:5000
+		reverse_proxy spectra-app:5000 {
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
+
+			transport http {
+				read_timeout 300s
+				write_timeout 300s
+				dial_timeout 10s
+			}
+
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+		}
 	}
 
 	handle_errors {

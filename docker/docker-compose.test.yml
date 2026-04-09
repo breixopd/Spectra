@@ -34,6 +34,8 @@ services:
 
   garage:
     image: dxflrs/garage:v2.2.0
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-test-rpc-secret-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
     volumes:
       - garage_meta:/var/lib/garage/meta
       - garage_data:/var/lib/garage/data
@@ -62,7 +64,7 @@ services:
       - spectra_test
 
   tensorzero:
-    image: tensorzero/gateway
+    image: tensorzero/gateway:2025.01.07
     command: ["--config-file", "/app/config/tensorzero.toml"]
     volumes:
       - ../config/tensorzero.toml:/app/config/tensorzero.toml:ro
@@ -155,7 +157,7 @@ services:
       timeout: 3s
       retries: 15
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - spectra_test
 
@@ -191,7 +193,7 @@ services:
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins
       - ../tests:/app/tests:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -240,7 +242,7 @@ services:
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins
       - ../tests:/app/tests:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -299,7 +301,7 @@ services:
     volumes:
       - ../plugins:/app/plugins
       - ../app:/app/app:ro
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       app:
         condition: service_healthy
