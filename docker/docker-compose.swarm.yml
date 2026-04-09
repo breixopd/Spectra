@@ -29,7 +29,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - spectra-net
+      - backend
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -62,7 +62,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
-      - spectra-net
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U spectra"]
       interval: 10s
@@ -108,7 +108,8 @@ services:
     expose:
       - "5000"
     networks:
-      - spectra-net
+      - frontend
+      - backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
@@ -150,7 +151,8 @@ services:
       SKIP_MIGRATIONS: "true"
       SERVICE_MODE: ai
     networks:
-      - spectra-net
+      - frontend
+      - backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5010/health"]
       interval: 30s
@@ -190,7 +192,8 @@ services:
       SKIP_MIGRATIONS: "true"
       SERVICE_MODE: scheduler
     networks:
-      - spectra-net
+      - frontend
+      - backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5011/health"]
       interval: 30s
@@ -232,7 +235,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
-      - spectra-net
+      - frontend
+      - backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
       interval: 30s
@@ -266,7 +270,7 @@ services:
       - source: caddyfile
         target: /etc/caddy/Caddyfile
     networks:
-      - spectra-net
+      - frontend
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
       interval: 30s
@@ -294,7 +298,7 @@ services:
       - source: garage_config
         target: /etc/garage.toml
     networks:
-      - spectra-net
+      - backend
     healthcheck:
       test: ["CMD", "/garage", "status"]
       interval: 10s
@@ -337,7 +341,7 @@ services:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
     networks:
-      - spectra-net
+      - backend
     healthcheck:
       test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
       interval: 10s
@@ -374,7 +378,7 @@ services:
       - source: tensorzero_config
         target: /app/config/tensorzero.toml
     networks:
-      - spectra-net
+      - backend
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
@@ -389,8 +393,12 @@ services:
       - ALL
 
 networks:
-  spectra-net:
+  frontend:
     driver: overlay
+    attachable: true
+  backend:
+    driver: overlay
+    internal: true
     attachable: true
 
 volumes:
