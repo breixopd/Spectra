@@ -11,11 +11,12 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import or_, select, text
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import async_session_maker
+from app.core.enums import MissionStatus
 from app.core.rate_limit import RateLimits, limiter
 from app.core.security import (
     JWTError,
@@ -23,6 +24,8 @@ from app.core.security import (
     get_password_hash,
 )
 from app.core.templates import templates
+from app.models.finding import Finding
+from app.models.mission import Mission
 from app.models.plan import Plan, Subscription
 from app.models.user import User
 from app.services.auth.email_verification import (
@@ -85,11 +88,15 @@ async def landing_page(request: Request):
 
         # Query real stats for landing page
         try:
-            findings_result = await session.execute(text("SELECT COUNT(*) FROM findings"))
+            findings_result = await session.execute(select(func.count()).select_from(Finding))
             total_findings = findings_result.scalar() or 0
-            missions_result = await session.execute(text("SELECT COUNT(*) FROM missions WHERE status = 'completed'"))
+            missions_result = await session.execute(
+                select(func.count()).select_from(Mission).where(Mission.status == MissionStatus.COMPLETED.value)
+            )
             total_missions = missions_result.scalar() or 0
-            users_result = await session.execute(text("SELECT COUNT(*) FROM users WHERE is_active = true"))
+            users_result = await session.execute(
+                select(func.count()).select_from(User).where(User.is_active.is_(True))
+            )
             total_users = users_result.scalar() or 0
         except (OSError, RuntimeError, ValueError):
             logger.debug("Failed to load landing stats", exc_info=True)

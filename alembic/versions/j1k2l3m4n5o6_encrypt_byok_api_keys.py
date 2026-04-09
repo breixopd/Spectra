@@ -73,17 +73,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.alter_column(
-        "user_preferences",
-        "llm_api_key",
-        existing_type=sa.Text(),
-        type_=sa.String(512),
-        existing_nullable=True,
-    )
-    op.alter_column(
-        "user_preferences",
-        "embedding_api_key",
-        existing_type=sa.Text(),
-        type_=sa.String(512),
-        existing_nullable=True,
+    raise RuntimeError(
+        "Cannot downgrade: BYOK API keys were encrypted in this migration. "
+        "Restoring from a pre-encryption backup is the only safe rollback path."
     )
