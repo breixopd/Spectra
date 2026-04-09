@@ -2,9 +2,9 @@
 # Runs security tools via the PostgreSQL-backed job queue.
 # Security tools auto-install on demand from plugin configs; nothing is baked in.
 
-# NOTE: kalilinux/kali-rolling uses date-based tags (e.g. 2024.4, 2025.1).
-# Pin to a specific release to ensure reproducible builds.
-FROM kalilinux/kali-rolling:2025.1
+# NOTE: kalilinux/kali-rolling only publishes latest + arch tags.
+# Rebuild periodically to pick up security updates.
+FROM kalilinux/kali-rolling:latest
 
 LABEL org.opencontainers.image.title="Spectra Tools" \
       org.opencontainers.image.description="Security tools worker (Kali Linux)" \
