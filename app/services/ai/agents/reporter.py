@@ -24,6 +24,7 @@ from app.services.ai.agents.base import (
 from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
 from app.services.ai.prompts import REPORTING_PROMPT
+from app.services.ai.sanitizer import sanitize_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,7 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
 - Informational: {severity_counts.get("info", 0)}"""
 
         base_prompt = REPORTING_PROMPT.format(
-            target=input_data.target,
+            target=sanitize_for_prompt(input_data.target, field_name="target"),
             date=context.session_id or context.mission_id,
             mission_summary="{mission_summary}",
             findings_summary="{findings_summary}",
@@ -187,10 +188,10 @@ class ReporterAgent(Agent[ReporterInput, ReportOutput]):
             [
                 ContextSection("task", base_prompt, Priority.CRITICAL),
                 ContextSection(
-                    "mission_summary", f"Mission Summary: {input_data.mission_summary}", Priority.HIGH, max_tokens=800
+                    "mission_summary", f"Mission Summary: {sanitize_for_prompt(input_data.mission_summary, field_name='mission_summary')}", Priority.HIGH, max_tokens=800
                 ),
                 ContextSection(
-                    "findings_summary", f"Findings Summary:\n{findings_summary}", Priority.HIGH, max_tokens=600
+                    "findings_summary", f"Findings Summary:\n{sanitize_for_prompt(findings_summary, field_name='findings_summary')}", Priority.HIGH, max_tokens=600
                 ),
             ]
         )

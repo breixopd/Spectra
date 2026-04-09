@@ -24,6 +24,7 @@ from app.services.ai.agents.base import (
 )
 from app.services.ai.agents.registry import register_agent
 from app.services.ai.context import ContextManager, ContextSection, Priority
+from app.services.ai.sanitizer import sanitize_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -213,11 +214,11 @@ Think like an experienced penetration tester following PTES methodology:
         prompt = ctx.build(
             [
                 ContextSection("task", base_prompt, Priority.CRITICAL),
-                ContextSection("target_data", f"Target Data: {input_data.target_data}", Priority.HIGH, max_tokens=500),
+                ContextSection("target_data", f"Target Data: {sanitize_for_prompt(str(input_data.target_data), field_name='target_data')}", Priority.HIGH, max_tokens=500),
                 ContextSection("tools", tools_context, Priority.HIGH, max_tokens=800),
                 ContextSection("rag", rag_context, Priority.MEDIUM, max_tokens=500),
                 ContextSection(
-                    "context_notes", f"Context: {input_data.context_notes or 'None'}", Priority.LOW, max_tokens=200
+                    "context_notes", f"Context: {sanitize_for_prompt(input_data.context_notes or 'None', field_name='context_notes')}", Priority.LOW, max_tokens=200
                 ),
             ]
         )

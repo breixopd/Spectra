@@ -24,6 +24,7 @@ from app.services.ai.agents.base import (
 from app.services.ai.agents.registry import register_agent
 from app.services.ai.errors import LLMParseError
 from app.services.ai.prompts import TOOL_SELECTION_PROMPT
+from app.services.ai.sanitizer import sanitize_for_prompt
 from app.services.tools.models import RegisteredTool, RiskLevel, ToolCapability, ToolCategory
 from app.services.tools.registry import get_registry
 
@@ -417,6 +418,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 f"- Port {s.get('port', '?')}/{s.get('protocol', 'tcp')}: {s.get('service', 'unknown')} {s.get('product', '')} {s.get('version', '')}"
                 for s in input_data.known_services[:10]
             )
+            services_info = sanitize_for_prompt(services_info, field_name="services_info")
 
         vulns_info = ""
         if input_data.known_vulns:
@@ -425,6 +427,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
                 + (f" (CVE: {v.get('cve_id')})" if v.get("cve_id") else "")
                 for v in input_data.known_vulns[:5]
             )
+            vulns_info = sanitize_for_prompt(vulns_info, field_name="known_vulns")
 
         already_run_info = ""
         if input_data.tools_already_run:
@@ -521,7 +524,7 @@ class ToolSelectorAgent(Agent[ToolSelectorInput, ToolSelectorOutput]):
         from app.services.ai.context import ContextManager, ContextSection, Priority
 
         task_text = TOOL_SELECTION_PROMPT.format(
-            target=input_data.target,
+            target=sanitize_for_prompt(input_data.target, field_name="target"),
             target_type=input_data.target_type,
             phase=input_data.current_phase,
             stealth_mode="Yes - minimize detection, prefer passive/slow scans"
