@@ -7,6 +7,7 @@ Runs tools with --help to generate documentation and indexes it for RAG.
 
 import asyncio
 import logging
+import shlex
 import sys
 from pathlib import Path
 
@@ -42,9 +43,11 @@ async def main():
         logger.info("Indexing %s...", tool.config.id)
 
         try:
-            cmd = f"{tool.config.execution.command} --help"
-            proc = await asyncio.create_subprocess_shell(
-                cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            cmd_parts = shlex.split(tool.config.execution.command)
+            proc = await asyncio.create_subprocess_exec(
+                *cmd_parts, "--help",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
 

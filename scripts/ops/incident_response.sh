@@ -7,8 +7,18 @@ DB_CONTAINER="${DB_CONTAINER:-spectra-db}"
 DB_USER="${DB_USER:-spectra}"
 DB_NAME="${DB_NAME:-spectra}"
 
+sql_escape() {
+    local value
+    local quote
+    value="${1}"
+    quote="'"
+    printf '%s' "${value//${quote}/${quote}${quote}}"
+}
+
 run_sql() {
-    docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -c "$1"
+    local query
+    query="${1}"
+    printf '%s\n' "${query}" | docker exec -i "${DB_CONTAINER}" psql -v ON_ERROR_STOP=1 -U "${DB_USER}" -d "${DB_NAME}"
 }
 
 usage() {
@@ -43,20 +53,26 @@ case "${1:-}" in
         ;;
     invalidate-user)
         [[ -z "${2:-}" ]] && echo "Usage: $0 invalidate-user <username>" && exit 1
+        local safe_username
+        safe_username=$(sql_escape "$2")
         echo "Invalidating sessions for user: $2"
-        run_sql "UPDATE users SET invalidated_before = NOW() WHERE username = '$2';"
+        run_sql "UPDATE users SET invalidated_before = NOW() WHERE username = '${safe_username}';"
         echo "Done."
         ;;
     lock-user)
         [[ -z "${2:-}" ]] && echo "Usage: $0 lock-user <username>" && exit 1
+        local safe_username
+        safe_username=$(sql_escape "$2")
         echo "Locking user: $2"
-        run_sql "UPDATE users SET is_active = false WHERE username = '$2';"
+        run_sql "UPDATE users SET is_active = false WHERE username = '${safe_username}';"
         echo "Done. User '$2' is now locked."
         ;;
     unlock-user)
         [[ -z "${2:-}" ]] && echo "Usage: $0 unlock-user <username>" && exit 1
+        local safe_username
+        safe_username=$(sql_escape "$2")
         echo "Unlocking user: $2"
-        run_sql "UPDATE users SET is_active = true WHERE username = '$2';"
+        run_sql "UPDATE users SET is_active = true WHERE username = '${safe_username}';"
         echo "Done."
         ;;
     kill-missions)
@@ -66,8 +82,10 @@ case "${1:-}" in
         ;;
     kill-mission)
         [[ -z "${2:-}" ]] && echo "Usage: $0 kill-mission <mission-id>" && exit 1
+        local safe_id
+        safe_id=$(sql_escape "$2")
         echo "Cancelling mission: $2"
-        run_sql "UPDATE missions SET status = 'cancelled' WHERE id = '$2';"
+        run_sql "UPDATE missions SET status = 'cancelled' WHERE id = '${safe_id}';"
         echo "Done."
         ;;
     lockdown)
@@ -86,6 +104,10 @@ case "${1:-}" in
         ;;
     audit-recent)
         MINUTES="${2:-60}"
+        if ! [[ "$MINUTES" =~ ^[0-9]+$ ]]; then
+            echo "Error: MINUTES must be a positive integer" >&2
+            exit 1
+        fi
         echo "Audit log entries (last ${MINUTES} minutes):"
         run_sql "SELECT created_at, user_id, action, resource_type, details FROM audit_logs WHERE created_at > NOW() - INTERVAL '${MINUTES} minutes' ORDER BY created_at DESC LIMIT 100;"
         ;;
