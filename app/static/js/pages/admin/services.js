@@ -102,8 +102,8 @@ function renderServiceCards() {
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 pt-2 border-t border-white/5">
-                    ${mode === 'remote' ? `<button onclick="deprovisionServer('${name}')" class="text-xs text-red-400 hover:text-red-300 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i>Remove Server</button>` : ''}
-                    <button onclick="openServiceConfigModal('${name}')" class="text-xs text-slate-400 hover:text-violet-400 transition-colors">
+                    ${mode === 'remote' ? `<button data-action="deprovisionServer" data-value="${name}" class="text-xs text-red-400 hover:text-red-300 transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i>Remove Server</button>` : ''}
+                    <button data-action="openServiceConfigModal" data-value="${name}" class="text-xs text-slate-400 hover:text-violet-400 transition-colors">
                         <i data-lucide="settings" class="w-3.5 h-3.5 inline-block mr-1"></i>Configure
                     </button>
                 </div>
@@ -252,6 +252,7 @@ document.getElementById('svc-auto-refresh').addEventListener('change', function(
 });
 
 // ---- Server Provisioning ----
+document.getElementById('provision-form')?.addEventListener('submit', e => e.preventDefault());
 function openProvisionModal() {
     document.getElementById('provision-form').reset();
     document.getElementById('prov-test-result').classList.add('hidden');
@@ -443,10 +444,10 @@ async function refreshNodesList() {
                 </div>
                 <div class="flex items-center gap-2">
                     ${n.deployed_services ? `<span class="text-xs text-emerald-400">${(n.deployed_services.length || 0)} services</span>` : ''}
-                    <button onclick="deployToNode(${n.id}, '${escapeHtml(n.name)}')" class="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs transition-colors">
+                    <button data-action="deployToNode" data-value="${n.id}" data-node-name="${escapeHtml(n.name)}" class="px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded text-xs transition-colors">
                         <i data-lucide="rocket" class="w-3.5 h-3.5 inline-block mr-1"></i>Deploy
                     </button>
-                    <button onclick="viewNodeLogs(${n.id})" class="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors">
+                    <button data-action="viewNodeLogs" data-value="${n.id}" class="px-2 py-1 text-xs text-slate-400 hover:text-white transition-colors">
                         <i data-lucide="file-text" class="w-3.5 h-3.5 inline-block mr-1"></i>Logs
                     </button>
                 </div>
@@ -455,7 +456,9 @@ async function refreshNodesList() {
     } catch(e) { container.innerHTML = '<p class="text-xs text-red-400">Error loading nodes</p>'; }
 }
 
-async function deployToNode(nodeId, nodeName) {
+async function deployToNode(nodeId, el) {
+    const nodeName = (typeof el === 'object' && el?.dataset?.nodeName) ? el.dataset.nodeName : (el || 'node');
+    nodeId = parseInt(nodeId, 10);
     showConfirm('Deploy Services', `Deploy Spectra services to ${nodeName}? This may take several minutes.`, async () => {
         _spectraToast('Starting deployment to ' + nodeName + '...', 'success');
     try {

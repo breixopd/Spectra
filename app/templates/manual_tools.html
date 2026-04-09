@@ -83,8 +83,8 @@
             <div class="flex-1">
                 <p id="tip-text" class="text-xs text-slate-300"></p>
             </div>
-            <button onclick="nextTip()" class="text-xs text-violet-400 hover:text-violet-300 shrink-0" title="Next tip">Next</button>
-            <button onclick="document.getElementById('tips-banner').classList.add('hidden')" class="text-slate-600 hover:text-slate-400 shrink-0" title="Dismiss tips">
+            <button data-action="nextTip" class="text-xs text-violet-400 hover:text-violet-300 shrink-0" title="Next tip">Next</button>
+            <button data-action="dismissTipsBanner" class="text-slate-600 hover:text-slate-400 shrink-0" title="Dismiss tips">
                 <i data-lucide="x" class="w-4 h-4 inline-block"></i>
             </button>
         </div>
@@ -95,13 +95,13 @@
         <i data-lucide="folder-open" class="w-4 h-4 inline-block text-slate-500"></i>
         <span id="session-label" class="text-xs text-slate-400">No active session</span>
         <div class="ml-auto flex gap-2">
-            <button onclick="startSession()" id="session-start-btn" class="px-2.5 py-1 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-[11px] transition-colors">
+            <button data-action="startSession" id="session-start-btn" class="px-2.5 py-1 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-[11px] transition-colors">
                 <i data-lucide="plus" class="w-3.5 h-3.5 inline-block mr-1"></i> New Session
             </button>
-            <button onclick="exportSession()" id="session-export-btn" class="hidden px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
+            <button data-action="exportSession" id="session-export-btn" class="hidden px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
                 <i data-lucide="file-output" class="w-3.5 h-3.5 inline-block mr-1"></i> Export
             </button>
-            <button onclick="toggleScopePanel()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
+            <button data-action="toggleScopePanel" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors">
                 <i data-lucide="crosshair" class="w-3.5 h-3.5 inline-block mr-1"></i> Scope
             </button>
         </div>
@@ -120,7 +120,7 @@
                     <label for="scope-target-value" class="sr-only">Target scope value</label>
                     <input type="text" id="scope-target-value" placeholder="Value" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
                     <input type="text" id="scope-target-notes" placeholder="Notes" class="w-32 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none">
-                    <button onclick="addScopeTarget()" class="px-2.5 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 inline-block"></i></button>
+                    <button data-action="addScopeTarget" class="px-2.5 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 inline-block"></i></button>
                 </div>
                 <div id="scope-targets-list" class="space-y-1 max-h-32 overflow-y-auto"></div>
             </div>
@@ -133,7 +133,7 @@
                     <label for="scope-excl-value" class="sr-only">Exclusion scope value</label>
                     <input type="text" id="scope-excl-value" placeholder="Value" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
                     <input type="text" id="scope-excl-reason" placeholder="Reason" class="w-32 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none">
-                    <button onclick="addScopeExclusion()" class="px-2.5 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 inline-block"></i></button>
+                    <button data-action="addScopeExclusion" class="px-2.5 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i data-lucide="plus" class="w-3.5 h-3.5 inline-block"></i></button>
                 </div>
                 <div id="scope-exclusions-list" class="space-y-1 max-h-32 overflow-y-auto"></div>
             </div>
@@ -141,7 +141,7 @@
                 <div class="text-xs font-bold text-slate-500 uppercase mb-2">Rules of Engagement</div>
                 <textarea id="scope-roe" rows="3" placeholder="Markdown notes about rules of engagement..." class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-xs text-white placeholder-slate-600 focus:outline-none font-mono"></textarea>
             </div>
-            <button onclick="saveScope()" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-all"><i data-lucide="save" class="w-3.5 h-3.5 inline-block mr-1"></i> Save Scope</button>
+            <button data-action="saveScope" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-all"><i data-lucide="save" class="w-3.5 h-3.5 inline-block mr-1"></i> Save Scope</button>
         </div>
     </div>
 
@@ -153,13 +153,13 @@
         </div>
         <input type="text" id="global-target" placeholder="Target IP or domain (e.g., 192.168.1.1)"
             class="flex-1 px-3 py-1.5 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:outline-none transition-all font-mono" style="max-width:320px;">
-        <button onclick="quickRun('nmap')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Port scan">
+        <button data-action="quickRun" data-value="nmap" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Port scan">
             <i data-lucide="network" class="w-4 h-4 inline-block text-violet-400"></i> Scan Ports
         </button>
-        <button onclick="quickRun('nuclei')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Vulnerability scan">
+        <button data-action="quickRun" data-value="nuclei" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Vulnerability scan">
             <i data-lucide="bug" class="w-4 h-4 inline-block text-rose-400"></i> Vuln Scan
         </button>
-        <button onclick="quickRun('whatweb')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Fingerprint web tech">
+        <button data-action="quickRun" data-value="whatweb" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-[11px] text-slate-300 transition-colors flex items-center gap-1.5" title="Fingerprint web tech">
             <i data-lucide="globe" class="w-4 h-4 inline-block text-blue-400"></i> Fingerprint
         </button>
         <div class="flex items-center gap-1.5 text-xs text-slate-500 shrink-0 ml-auto">
@@ -172,7 +172,7 @@
     <div id="panel-execute" role="tabpanel" aria-labelledby="tab-execute" data-tab-group="manual-tabs" data-tab-panel="execute" class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 animate-fade-in-up stagger-1">
         <!-- Tool Picker (Left) -->
         <div class="lg:w-72 shrink-0 flex flex-col gap-3">
-            <input type="text" id="tool-search" placeholder="Search tools..." oninput="debouncedFilterTools()"
+            <input type="text" id="tool-search" placeholder="Search tools..." data-on-input="debouncedFilterTools"
                 class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:border-violet-500/50 focus:outline-none transition-all">
             <div id="tool-picker" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[120px] lg:min-h-0">
                 <div class="text-slate-500 text-sm text-center py-6">Loading tools...</div>
@@ -202,11 +202,11 @@
                         <!-- Dynamic arg fields inserted here -->
                     </div>
                     <div class="flex items-center gap-3">
-                        <button onclick="executeManualTool()" id="run-btn"
+                        <button data-action="executeManualTool" id="run-btn"
                             class="px-5 py-2.5 bg-violet-600 hover:bg-violet-500 active:scale-[0.98] text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-violet-500/20 flex items-center gap-2">
                             <i data-lucide="play" class="w-4 h-4 inline-block"></i> Run
                         </button>
-                        <button onclick="clearOutput()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
+                        <button data-action="clearOutput" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
                             <i data-lucide="eraser" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear
                         </button>
                         <div id="exec-status" class="text-xs text-slate-500 ml-auto font-mono"></div>
@@ -230,7 +230,7 @@
                     <div class="flex items-center gap-3 text-xs">
                         <span id="output-duration" class="text-slate-500 font-mono"></span>
                         <span id="output-findings-count" class="text-emerald-400 font-mono hidden"></span>
-                        <button onclick="openDiffModal()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors" title="Compare outputs"><i data-lucide="git-compare" class="w-3.5 h-3.5 inline-block mr-1"></i>Compare</button>
+                        <button data-action="openDiffModal" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors" title="Compare outputs"><i data-lucide="git-compare" class="w-3.5 h-3.5 inline-block mr-1"></i>Compare</button>
                     </div>
                 </div>
                 <div id="output-area" class="flex-1 overflow-y-auto p-4 font-mono text-sm text-slate-300 whitespace-pre-wrap">
@@ -247,25 +247,25 @@
 
             <!-- Command History Panel -->
             <div class="shrink-0">
-                <button onclick="toggleHistoryPanel()" class="w-full flex items-center justify-between px-4 py-2 bg-slate-900/80 border border-white/10 rounded-t-xl text-xs text-slate-400 hover:text-white transition-colors">
+                <button data-action="toggleHistoryPanel" class="w-full flex items-center justify-between px-4 py-2 bg-slate-900/80 border border-white/10 rounded-t-xl text-xs text-slate-400 hover:text-white transition-colors">
                     <span><i data-lucide="history" class="w-4 h-4 inline-block mr-1.5"></i>Command History</span>
                     <i data-lucide="chevron-up" id="history-chevron" class="w-3.5 h-3.5 inline-block transition-transform rotate-180"></i>
                 </button>
                 <div id="history-panel" class="hidden bg-slate-900/80 border border-t-0 border-white/10 rounded-b-xl max-h-[250px] overflow-hidden">
                     <div class="flex items-center gap-2 px-3 py-2 border-b border-white/5">
-                        <input type="text" id="history-search" placeholder="Search..." oninput="debouncedFilterHistory()" class="flex-1 px-2 py-1 bg-black/30 border border-white/10 rounded text-[11px] text-white placeholder-slate-600 focus:outline-none font-mono">
-                        <select id="history-tool-filter" onchange="filterHistory()" class="px-2 py-1 bg-black/30 border border-white/10 rounded text-[11px] text-white focus:outline-none">
+                        <input type="text" id="history-search" placeholder="Search..." data-on-input="debouncedFilterHistory" class="flex-1 px-2 py-1 bg-black/30 border border-white/10 rounded text-[11px] text-white placeholder-slate-600 focus:outline-none font-mono">
+                        <select id="history-tool-filter" data-on-change="filterHistory" class="px-2 py-1 bg-black/30 border border-white/10 rounded text-[11px] text-white focus:outline-none">
                             <option value="">All tools</option>
                         </select>
                     </div>
                     <div class="overflow-y-auto max-h-[190px]">
                         <table class="w-full text-xs">
                             <thead><tr class="text-xs text-slate-500 uppercase border-b border-white/5">
-                                <th class="px-3 py-1.5 text-left cursor-pointer" onclick="sortHistory('time')">Time</th>
-                                <th class="px-3 py-1.5 text-left cursor-pointer" onclick="sortHistory('tool')">Tool</th>
+                                <th class="px-3 py-1.5 text-left cursor-pointer" data-action="sortHistory" data-value="time">Time</th>
+                                <th class="px-3 py-1.5 text-left cursor-pointer" data-action="sortHistory" data-value="tool">Tool</th>
                                 <th class="px-3 py-1.5 text-left">Target</th>
-                                <th class="px-3 py-1.5 text-left cursor-pointer" onclick="sortHistory('status')">Status</th>
-                                <th class="px-3 py-1.5 text-left cursor-pointer" onclick="sortHistory('duration')">Duration</th>
+                                <th class="px-3 py-1.5 text-left cursor-pointer" data-action="sortHistory" data-value="status">Status</th>
+                                <th class="px-3 py-1.5 text-left cursor-pointer" data-action="sortHistory" data-value="duration">Duration</th>
                                 <th class="px-3 py-1.5 text-right">Actions</th>
                             </tr></thead>
                             <tbody id="history-list"></tbody>
@@ -285,23 +285,23 @@
                     <p class="text-slate-400 text-sm">Chain tools together — output from one feeds into the next</p>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="addPipelineStep()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors">
+                    <button data-action="addPipelineStep" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm transition-colors">
                         <i data-lucide="plus" class="w-3.5 h-3.5 inline-block mr-1"></i> Add Step
                     </button>
-                    <button onclick="runPipeline()" id="pipeline-run-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all">
+                    <button data-action="runPipeline" id="pipeline-run-btn" class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all">
                         <i data-lucide="play" class="w-4 h-4 inline-block mr-1"></i> Run Pipeline
                     </button>
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
                 <span class="text-xs text-slate-500 uppercase font-bold self-center mr-1">Templates:</span>
-                <button onclick="loadPipelineTemplate('recon')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
+                <button data-action="loadPipelineTemplate" data-value="recon" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
                     <i data-lucide="radar" class="w-4 h-4 inline-block text-violet-400 mr-1"></i> Recon (nmap + nikto + gobuster)
                 </button>
-                <button onclick="loadPipelineTemplate('vuln')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
+                <button data-action="loadPipelineTemplate" data-value="vuln" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
                     <i data-lucide="bug" class="w-4 h-4 inline-block text-rose-400 mr-1"></i> Vuln Scan (nmap + nuclei + searchsploit)
                 </button>
-                <button onclick="loadPipelineTemplate('web')" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
+                <button data-action="loadPipelineTemplate" data-value="web" class="px-2.5 py-1 bg-slate-800/80 hover:bg-violet-500/10 border border-white/5 rounded text-[11px] text-slate-300 transition-colors">
                     <i data-lucide="globe" class="w-4 h-4 inline-block text-blue-400 mr-1"></i> Web App (whatweb + nikto + sqlmap)
                 </button>
             </div>
@@ -352,7 +352,7 @@
                     <input type="text" id="cve-service" placeholder="e.g., http"
                         class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:border-violet-500/50 focus:outline-none">
                 </div>
-                <button onclick="searchCVEs()" id="cve-search-btn" class="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all shrink-0">
+                <button data-action="searchCVEs" id="cve-search-btn" class="px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all shrink-0">
                     <i data-lucide="search" class="w-3.5 h-3.5 inline-block mr-1"></i> Search
                 </button>
             </div>
@@ -374,7 +374,7 @@
         <div class="lg:w-64 shrink-0 flex flex-col gap-3">
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Methodology</label>
-                <select id="checklist-methodology" onchange="loadChecklist()" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white focus:outline-none">
+                <select id="checklist-methodology" data-on-change="loadChecklist" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white focus:outline-none">
                     <option value="owasp">OWASP Top 10</option>
                     <option value="network">Network Pentest</option>
                     <option value="api">API Security</option>
@@ -389,7 +389,7 @@
                 </div>
                 <div id="checklist-progress-text" class="text-xs text-slate-500 mt-1">0/0 completed</div>
             </div>
-            <button onclick="resetChecklist()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors">
+            <button data-action="resetChecklist" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition-colors">
                 <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i> Reset Checklist
             </button>
         </div>
@@ -406,12 +406,12 @@
         <!-- Sidebar -->
         <div class="lg:w-64 shrink-0 flex flex-col gap-3">
             <div class="flex gap-2">
-                <select id="notes-filter" onchange="filterNotes()" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
+                <select id="notes-filter" data-on-change="filterNotes" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
                     <option value="all">All Notes</option>
                     <option value="target">By Target</option>
                     <option value="finding">By Finding</option>
                 </select>
-                <button onclick="createNote()" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors shrink-0">
+                <button data-action="createNote" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors shrink-0">
                     <i data-lucide="plus" class="w-3.5 h-3.5 inline-block mr-1"></i>New
                 </button>
             </div>
@@ -425,7 +425,7 @@
                 <div class="text-center"><i data-lucide="sticky-note" class="w-8 h-8 inline-block text-slate-600 mb-3"></i><p>Select or create a note</p></div>
             </div>
             <div id="notes-editor" class="hidden flex-1 flex flex-col">
-                <input type="text" id="note-title" placeholder="Note title..." oninput="onNoteEdit()" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none mb-2 font-medium">
+                <input type="text" id="note-title" placeholder="Note title..." data-on-input="onNoteEdit" class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none mb-2 font-medium">
                 <div class="flex gap-2 mb-2">
                     <select id="note-target" class="flex-1 px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
                         <option value="">No target</option>
@@ -435,21 +435,21 @@
                     </select>
                 </div>
                 <div class="flex gap-1 mb-2 shrink-0">
-                    <button onclick="wrapNoteText('**','**')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors font-bold" title="Bold">B</button>
-                    <button onclick="wrapNoteText('*','*')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors italic" title="Italic">I</button>
-                    <button onclick="wrapNoteText('`','`')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors font-mono" title="Code">&lt;&gt;</button>
-                    <button onclick="wrapNoteText('[','](url)')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors" title="Link"><i data-lucide="link" class="w-3 h-3 inline-block"></i></button>
-                    <button onclick="wrapNoteText('### ','')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors" title="Heading">H</button>
+                    <button data-action="wrapNoteText" data-value="**" data-suffix="**" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors font-bold" title="Bold">B</button>
+                    <button data-action="wrapNoteText" data-value="*" data-suffix="*" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors italic" title="Italic">I</button>
+                    <button data-action="wrapNoteText" data-value="`" data-suffix="`" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors font-mono" title="Code">&lt;&gt;</button>
+                    <button data-action="wrapNoteText" data-value="[" data-suffix="](url)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors" title="Link"><i data-lucide="link" class="w-3 h-3 inline-block"></i></button>
+                    <button data-action="wrapNoteText" data-value="### " data-suffix="" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors" title="Heading">H</button>
                     <div class="flex-1"></div>
-                    <button onclick="toggleNotePreview()" id="note-preview-toggle" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors"><i data-lucide="eye" class="w-3.5 h-3.5 inline-block mr-1"></i>Preview</button>
+                    <button data-action="toggleNotePreview" id="note-preview-toggle" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] transition-colors"><i data-lucide="eye" class="w-3.5 h-3.5 inline-block mr-1"></i>Preview</button>
                 </div>
-                <textarea id="note-content" placeholder="Write your notes here (Markdown supported)..." oninput="onNoteEdit()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono resize-none"></textarea>
+                <textarea id="note-content" placeholder="Write your notes here (Markdown supported)..." data-on-input="onNoteEdit" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono resize-none"></textarea>
                 <div id="note-preview" class="hidden flex-1 overflow-y-auto px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-slate-200 prose prose-invert prose-sm"></div>
                 <div class="flex items-center gap-2 mt-2">
                     <span id="note-autosave-status" class="text-xs text-slate-500"></span>
                     <div class="flex-1"></div>
-                    <button onclick="deleteNote()" class="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i>Delete</button>
-                    <button onclick="saveCurrentNote()" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i data-lucide="save" class="w-3.5 h-3.5 inline-block mr-1"></i>Save</button>
+                    <button data-action="deleteNote" class="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-xs transition-colors"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i>Delete</button>
+                    <button data-action="saveCurrentNote" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors"><i data-lucide="save" class="w-3.5 h-3.5 inline-block mr-1"></i>Save</button>
                 </div>
             </div>
         </div>
@@ -460,13 +460,13 @@
         <div class="glass-panel rounded-xl p-4 mb-3 shrink-0 flex items-center gap-3">
             <label class="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium transition-all cursor-pointer">
                 <i data-lucide="upload" class="w-4 h-4 inline-block mr-1.5"></i>Upload File
-                <input type="file" id="evidence-file-input" class="hidden" multiple onchange="uploadEvidence(this)">
+                <input type="file" id="evidence-file-input" class="hidden" multiple data-on-change="uploadEvidence">
             </label>
-            <button onclick="pasteEvidence()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
+            <button data-action="pasteEvidence" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
                 <i data-lucide="clipboard-paste" class="w-4 h-4 inline-block mr-1.5"></i>Paste from Clipboard
             </button>
             <div class="flex-1"></div>
-            <select id="evidence-finding-filter" onchange="filterEvidence()" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
+            <select id="evidence-finding-filter" data-on-change="filterEvidence" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white focus:outline-none">
                 <option value="">All findings</option>
             </select>
         </div>
@@ -487,15 +487,15 @@
     <div id="panel-helpers" role="tabpanel" aria-labelledby="tab-helpers" data-tab-group="manual-tabs" data-tab-panel="helpers" hidden class="flex-1 min-h-0 flex flex-col animate-fade-in-up">
         <!-- Helpers Sub-Tabs -->
         <div class="flex border-b border-white/10 mb-3 shrink-0 overflow-x-auto">
-            <button class="helper-tab-btn active px-3 py-2 text-xs font-medium text-violet-400 border-b-2 border-violet-500 whitespace-nowrap" onclick="switchHelperTab('revshell')"><i data-lucide="terminal" class="w-4 h-4 inline-block mr-1.5"></i>Reverse Shells</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('encoder')"><i data-lucide="code" class="w-4 h-4 inline-block mr-1.5"></i>Encoder/Decoder</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('ports')"><i data-lucide="network" class="w-4 h-4 inline-block mr-1.5"></i>Port Reference</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('wordlists')"><i data-lucide="list" class="w-4 h-4 inline-block mr-1.5"></i>Wordlists</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('cvss')"><i data-lucide="calculator" class="w-4 h-4 inline-block mr-1.5"></i>CVSS Calculator</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('lfi')"><i data-lucide="folder-open" class="w-4 h-4 inline-block mr-1.5"></i>LFI/RFI</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('sqli')"><i data-lucide="database" class="w-4 h-4 inline-block mr-1.5"></i>SQL Injection</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('privesc')"><i data-lucide="arrow-up" class="w-4 h-4 inline-block mr-1.5"></i>Priv Esc</button>
-            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap" onclick="switchHelperTab('adenum')"><i data-lucide="git-branch" class="w-4 h-4 inline-block mr-1.5"></i>AD Enum</button>
+            <button class="helper-tab-btn active px-3 py-2 text-xs font-medium text-violet-400 border-b-2 border-violet-500 whitespace-nowrap"  data-action="switchHelperTab" data-value="revshell"><i data-lucide="terminal" class="w-4 h-4 inline-block mr-1.5"></i>Reverse Shells</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap"  data-action="switchHelperTab" data-value="encoder"><i data-lucide="code" class="w-4 h-4 inline-block mr-1.5"></i>Encoder/Decoder</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap"  data-action="switchHelperTab" data-value="ports"><i data-lucide="network" class="w-4 h-4 inline-block mr-1.5"></i>Port Reference</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap"  data-action="switchHelperTab" data-value="wordlists"><i data-lucide="list" class="w-4 h-4 inline-block mr-1.5"></i>Wordlists</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap"  data-action="switchHelperTab" data-value="cvss"><i data-lucide="calculator" class="w-4 h-4 inline-block mr-1.5"></i>CVSS Calculator</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap"  data-action="switchHelperTab" data-value="lfi"><i data-lucide="folder-open" class="w-4 h-4 inline-block mr-1.5"></i>LFI/RFI</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap"  data-action="switchHelperTab" data-value="sqli"><i data-lucide="database" class="w-4 h-4 inline-block mr-1.5"></i>SQL Injection</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap"  data-action="switchHelperTab" data-value="privesc"><i data-lucide="arrow-up" class="w-4 h-4 inline-block mr-1.5"></i>Priv Esc</button>
+            <button class="helper-tab-btn px-3 py-2 text-xs font-medium text-slate-400 border-b-2 border-transparent hover:text-white whitespace-nowrap"  data-action="switchHelperTab" data-value="adenum"><i data-lucide="git-branch" class="w-4 h-4 inline-block mr-1.5"></i>AD Enum</button>
         </div>
         <div class="flex-1 min-h-0 overflow-y-auto">
 
@@ -525,8 +525,8 @@
                 <!-- Output -->
                 <pre id="revshell-output" class="bg-black rounded-lg p-3 text-xs text-emerald-400 font-mono overflow-x-auto max-h-40 border border-white/5 whitespace-pre-wrap">Select a shell above</pre>
                 <div class="flex gap-2 mt-2">
-                    <button onclick="copyToClipboard('revshell-output')" class="text-xs text-slate-400 hover:text-white transition-colors"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy Shell</button>
-                    <button id="revshell-copy-listener" onclick="copyListenerCmd()" class="hidden text-xs text-violet-400 hover:text-white transition-colors"><i data-lucide="headphones" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy Listener</button>
+                    <button  data-action="copyToClipboard" data-value="revshell-output" class="text-xs text-slate-400 hover:text-white transition-colors"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy Shell</button>
+                    <button id="revshell-copy-listener" data-action="copyListenerCmd" class="hidden text-xs text-violet-400 hover:text-white transition-colors"><i data-lucide="headphones" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy Listener</button>
                 </div>
             </div>
         </div>
@@ -546,7 +546,7 @@
                     <div>
                         <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Output</label>
                         <pre id="encode-output" class="bg-black rounded-lg p-3 text-xs text-blue-400 font-mono overflow-auto border border-white/5 whitespace-pre-wrap" style="min-height:120px;max-height:200px;"></pre>
-                        <button onclick="copyToClipboard('encode-output')" class="mt-1 text-xs text-slate-400 hover:text-white transition-colors"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy</button>
+                        <button  data-action="copyToClipboard" data-value="encode-output" class="mt-1 text-xs text-slate-400 hover:text-white transition-colors"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy</button>
                     </div>
                 </div>
                 <!-- Category Filters -->
@@ -560,7 +560,7 @@
         <div id="helper-ports" class="helper-panel hidden">
             <div class="glass-panel rounded-xl p-5">
                 <div class="flex flex-wrap items-center gap-2 mb-3">
-                    <input type="text" id="port-search" placeholder="Search port, service, tool, CVE..." oninput="debouncedFilterPorts()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono" style="min-width:200px;">
+                    <input type="text" id="port-search" placeholder="Search port, service, tool, CVE..." data-on-input="debouncedFilterPorts" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none font-mono" style="min-width:200px;">
                     <span id="port-count" class="text-xs text-slate-500"></span>
                 </div>
                 <div id="port-cat-filters" class="flex flex-wrap gap-1.5 mb-3"></div>
@@ -590,10 +590,10 @@
                     <div class="text-slate-500 text-xs">Loading...</div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="loadWordlists()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded text-[11px] text-slate-300 transition-colors"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i>Refresh</button>
+                    <button data-action="loadWordlists" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-white/5 rounded text-[11px] text-slate-300 transition-colors"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i>Refresh</button>
                     <label class="px-2.5 py-1 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-[11px] transition-colors cursor-pointer">
                         <i data-lucide="upload" class="w-3.5 h-3.5 inline-block mr-1"></i>Upload
-                        <input type="file" id="wordlist-upload" class="hidden" onchange="uploadWordlist(this)">
+                        <input type="file" id="wordlist-upload" class="hidden" data-on-change="uploadWordlist">
                     </label>
                 </div>
             </div>
@@ -610,70 +610,70 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Attack Vector (AV)</label>
                             <div class="flex gap-1.5" data-cvss="AV">
-                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">Network</button>
-                                <button class="cvss-btn" data-val="A" onclick="setCVSS(this)">Adjacent</button>
-                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Local</button>
-                                <button class="cvss-btn" data-val="P" onclick="setCVSS(this)">Physical</button>
+                                <button class="cvss-btn" data-val="N" data-action="setCVSS">Network</button>
+                                <button class="cvss-btn" data-val="A" data-action="setCVSS">Adjacent</button>
+                                <button class="cvss-btn" data-val="L" data-action="setCVSS">Local</button>
+                                <button class="cvss-btn" data-val="P" data-action="setCVSS">Physical</button>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Attack Complexity (AC)</label>
                             <div class="flex gap-1.5" data-cvss="AC">
-                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
-                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                                <button class="cvss-btn" data-val="L" data-action="setCVSS">Low</button>
+                                <button class="cvss-btn" data-val="H" data-action="setCVSS">High</button>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Privileges Required (PR)</label>
                             <div class="flex gap-1.5" data-cvss="PR">
-                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
-                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
-                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                                <button class="cvss-btn" data-val="N" data-action="setCVSS">None</button>
+                                <button class="cvss-btn" data-val="L" data-action="setCVSS">Low</button>
+                                <button class="cvss-btn" data-val="H" data-action="setCVSS">High</button>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">User Interaction (UI)</label>
                             <div class="flex gap-1.5" data-cvss="UI">
-                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
-                                <button class="cvss-btn" data-val="R" onclick="setCVSS(this)">Required</button>
+                                <button class="cvss-btn" data-val="N" data-action="setCVSS">None</button>
+                                <button class="cvss-btn" data-val="R" data-action="setCVSS">Required</button>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Scope (S)</label>
                             <div class="flex gap-1.5" data-cvss="S">
-                                <button class="cvss-btn" data-val="U" onclick="setCVSS(this)">Unchanged</button>
-                                <button class="cvss-btn" data-val="C" onclick="setCVSS(this)">Changed</button>
+                                <button class="cvss-btn" data-val="U" data-action="setCVSS">Unchanged</button>
+                                <button class="cvss-btn" data-val="C" data-action="setCVSS">Changed</button>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Confidentiality (C)</label>
                             <div class="flex gap-1.5" data-cvss="C">
-                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
-                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
-                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                                <button class="cvss-btn" data-val="N" data-action="setCVSS">None</button>
+                                <button class="cvss-btn" data-val="L" data-action="setCVSS">Low</button>
+                                <button class="cvss-btn" data-val="H" data-action="setCVSS">High</button>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Integrity (I)</label>
                             <div class="flex gap-1.5" data-cvss="I">
-                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
-                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
-                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                                <button class="cvss-btn" data-val="N" data-action="setCVSS">None</button>
+                                <button class="cvss-btn" data-val="L" data-action="setCVSS">Low</button>
+                                <button class="cvss-btn" data-val="H" data-action="setCVSS">High</button>
                             </div>
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Availability (A)</label>
                             <div class="flex gap-1.5" data-cvss="A">
-                                <button class="cvss-btn" data-val="N" onclick="setCVSS(this)">None</button>
-                                <button class="cvss-btn" data-val="L" onclick="setCVSS(this)">Low</button>
-                                <button class="cvss-btn" data-val="H" onclick="setCVSS(this)">High</button>
+                                <button class="cvss-btn" data-val="N" data-action="setCVSS">None</button>
+                                <button class="cvss-btn" data-val="L" data-action="setCVSS">Low</button>
+                                <button class="cvss-btn" data-val="H" data-action="setCVSS">High</button>
                             </div>
                         </div>
                         <div class="pt-2">
                             <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Import Vector String</label>
                             <div class="flex gap-2">
                                 <input type="text" id="cvss-vector-input" placeholder="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H" class="flex-1 px-3 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono">
-                                <button onclick="parseCVSSVector()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs transition-colors">Parse</button>
+                                <button data-action="parseCVSSVector" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded text-xs transition-colors">Parse</button>
                             </div>
                         </div>
                     </div>
@@ -693,7 +693,7 @@
                                 <div class="text-xs font-bold text-slate-500 uppercase mb-1">Vector String</div>
                                 <code id="cvss-vector-display" class="block text-[11px] text-violet-300 font-mono break-all bg-black/30 rounded p-2">-</code>
                             </div>
-                            <button onclick="copyCVSSVector()" class="w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy Vector</button>
+                            <button data-action="copyCVSSVector" class="w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"><i data-lucide="copy" class="w-3.5 h-3.5 inline-block mr-1"></i>Copy Vector</button>
                         </div>
                     </div>
                 </div>
@@ -704,11 +704,11 @@
         <div id="helper-lfi" class="helper-panel hidden">
             <div class="glass-panel rounded-xl p-5">
                 <div class="flex flex-wrap items-center gap-2 mb-3">
-                    <input type="text" id="lfi-search" placeholder="Search payloads..." oninput="debouncedFilterLFI()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none" style="min-width:200px;">
+                    <input type="text" id="lfi-search" placeholder="Search payloads..." data-on-input="debouncedFilterLFI" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none" style="min-width:200px;">
                     <div class="flex gap-1.5">
-                        <button class="lfi-os-btn px-2 py-1 rounded text-[11px] bg-violet-600 text-white" data-os="all" onclick="filterLFIOS('all')">All</button>
-                        <button class="lfi-os-btn px-2 py-1 rounded text-[11px] bg-slate-800 text-slate-300 border border-white/5" data-os="linux" onclick="filterLFIOS('linux')">Linux</button>
-                        <button class="lfi-os-btn px-2 py-1 rounded text-[11px] bg-slate-800 text-slate-300 border border-white/5" data-os="windows" onclick="filterLFIOS('windows')">Windows</button>
+                        <button class="lfi-os-btn px-2 py-1 rounded text-[11px] bg-violet-600 text-white" data-os="all"  data-action="filterLFIOS" data-value="all">All</button>
+                        <button class="lfi-os-btn px-2 py-1 rounded text-[11px] bg-slate-800 text-slate-300 border border-white/5" data-os="linux"  data-action="filterLFIOS" data-value="linux">Linux</button>
+                        <button class="lfi-os-btn px-2 py-1 rounded text-[11px] bg-slate-800 text-slate-300 border border-white/5" data-os="windows"  data-action="filterLFIOS" data-value="windows">Windows</button>
                     </div>
                 </div>
                 <div id="lfi-list" class="space-y-1 max-h-[60vh] overflow-y-auto"></div>
@@ -719,7 +719,7 @@
         <div id="helper-sqli" class="helper-panel hidden">
             <div class="glass-panel rounded-xl p-5">
                 <div class="flex flex-wrap items-center gap-2 mb-3">
-                    <input type="text" id="sqli-search" placeholder="Search payloads..." oninput="debouncedFilterSQLi()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none" style="min-width:200px;">
+                    <input type="text" id="sqli-search" placeholder="Search payloads..." data-on-input="debouncedFilterSQLi" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none" style="min-width:200px;">
                     <div id="sqli-cat-filters" class="flex flex-wrap gap-1.5"></div>
                 </div>
                 <div id="sqli-list" class="space-y-1 max-h-[60vh] overflow-y-auto"></div>
@@ -730,7 +730,7 @@
         <div id="helper-privesc" class="helper-panel hidden">
             <div class="glass-panel rounded-xl p-5">
                 <div class="flex flex-wrap items-center gap-2 mb-3">
-                    <input type="text" id="privesc-search" placeholder="Search binaries..." oninput="debouncedFilterPrivEsc()" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none" style="min-width:200px;">
+                    <input type="text" id="privesc-search" placeholder="Search binaries..." data-on-input="debouncedFilterPrivEsc" class="flex-1 px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none" style="min-width:200px;">
                     <div id="privesc-fn-filters" class="flex flex-wrap gap-1.5"></div>
                 </div>
                 <div id="privesc-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto"></div>
@@ -746,7 +746,7 @@
                     <input type="text" id="ad-user" placeholder="user" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono w-24">
                     <input type="text" id="ad-pass" placeholder="password" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono w-24">
                     <input type="text" id="ad-dc" placeholder="DC IP" class="px-2 py-1.5 bg-slate-900/60 border border-white/10 rounded text-xs text-white placeholder-slate-600 focus:outline-none font-mono w-28">
-                    <button onclick="renderADCommands()" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors">Apply</button>
+                    <button data-action="renderADCommands" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded text-xs transition-colors">Apply</button>
                 </div>
                 <div id="adenum-list" class="space-y-2 max-h-[55vh] overflow-y-auto"></div>
             </div>

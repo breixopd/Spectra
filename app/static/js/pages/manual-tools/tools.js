@@ -43,7 +43,7 @@ function renderToolPicker(tools) {
     container.innerHTML = tools.map(t => {
         const statusDot = t.status === 'ready' ? 'bg-emerald-500' : t.status === 'installing' ? 'bg-blue-400 animate-pulse' : 'bg-amber-500';
         const sel = selectedToolId === t.id ? 'selected' : '';
-        return `<div class="tool-card rounded-lg p-3 cursor-pointer glass-panel ${sel}" onclick="selectManualTool('${escapeHtml(t.id)}')">
+        return `<div class="tool-card rounded-lg p-3 cursor-pointer glass-panel ${sel}" data-action="selectManualTool" data-value="${escapeHtml(t.id)}">
             <div class="flex items-center gap-2.5">
                 <div class="w-2 h-2 rounded-full ${statusDot} shrink-0"></div>
                 <div class="min-w-0">
@@ -200,7 +200,7 @@ function buildForm(cfg) {
                         <input type="text" id="arg-${p}" list="wordlist-options" placeholder="${hint || 'Select or type wordlist path'}"
                             class="w-full px-3 py-2 bg-slate-900/60 border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none">
                         <datalist id="wordlist-options"></datalist>
-        <button type="button" onclick="refreshWordlistOptions()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs" title="Refresh wordlists"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block"></i></button>
+        <button type="button" data-action="refreshWordlistOptions" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs" title="Refresh wordlists"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block"></i></button>
                     </div>
                 </div>`;
                 setTimeout(refreshWordlistOptions, 100);
@@ -380,8 +380,8 @@ function renderFindings(findings) {
 
         let actions = '';
         if (product) {
-            actions += `<button onclick="lookupCVEsFor('${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded text-xs transition-colors" title="Search CVEs for ${escapeAttr(product)}"><i data-lucide="shield-alert" class="w-3.5 h-3.5 inline-block"></i></button>`;
-            actions += `<button onclick="runToolOn('searchsploit','${escapeAttr(product)}')" class="px-1.5 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded text-xs transition-colors" title="SearchSploit"><i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i></button>`;
+            actions += `<button data-action="lookupCVEsFor" data-value="${escapeAttr(product)}" class="px-1.5 py-0.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded text-xs transition-colors" title="Search CVEs for ${escapeAttr(product)}"><i data-lucide="shield-alert" class="w-3.5 h-3.5 inline-block"></i></button>`;
+            actions += `<button data-action="runToolOn" data-value="searchsploit" data-tool-target="${escapeAttr(product)}" class="px-1.5 py-0.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 rounded text-xs transition-colors" title="SearchSploit"><i data-lucide="search" class="w-3.5 h-3.5 inline-block"></i></button>`;
         }
         if (f.port || f.portid) {
             const host = f.ip || f.host || document.getElementById('global-target')?.value || '';
@@ -389,9 +389,9 @@ function renderFindings(findings) {
             const svc = (f.service || '').toLowerCase();
             const proto = (svc.includes('ssl') || svc.includes('https') || port == 443) ? 'https' : 'http';
             const url = `${proto}://${host}:${port}`;
-            actions += `<button onclick="runToolOn('nuclei','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded text-xs transition-colors" title="Scan with Nuclei"><i data-lucide="bug" class="w-3.5 h-3.5 inline-block"></i></button>`;
+            actions += `<button data-action="runToolOn" data-value="nuclei" data-tool-target="${escapeAttr(url)}" class="px-1.5 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded text-xs transition-colors" title="Scan with Nuclei"><i data-lucide="bug" class="w-3.5 h-3.5 inline-block"></i></button>`;
             if (svc.includes('http')) {
-                actions += `<button onclick="runToolOn('nikto','${escapeAttr(url)}')" class="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded text-xs transition-colors" title="Scan with Nikto"><i data-lucide="globe" class="w-3.5 h-3.5 inline-block"></i></button>`;
+                actions += `<button data-action="runToolOn" data-value="nikto" data-tool-target="${escapeAttr(url)}" class="px-1.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded text-xs transition-colors" title="Scan with Nikto"><i data-lucide="globe" class="w-3.5 h-3.5 inline-block"></i></button>`;
             }
         }
 
@@ -424,7 +424,8 @@ function lookupCVEsFor(product) {
     searchCVEs();
 }
 
-function runToolOn(toolId, target) {
+function runToolOn(toolId, el) {
+    const target = (typeof el === 'object' && el?.dataset?.toolTarget) ? el.dataset.toolTarget : (typeof el === 'string' ? el : '');
     selectManualTool(toolId);
     setTimeout(() => {
         const targetInput = document.getElementById('arg-target');
@@ -464,7 +465,7 @@ function showNextToolSuggestions(toolId) {
     list.innerHTML = available.map(id => {
         const tool = allTools.find(t => t.id === id);
         const name = tool ? tool.name : id;
-        return `<button onclick="chainToTool('${id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-xs text-slate-300 transition-colors flex items-center gap-1.5">
+        return `<button data-action="chainToTool" data-value="${id}" class="px-3 py-1.5 bg-slate-800 hover:bg-violet-500/10 border border-white/5 rounded-lg text-xs text-slate-300 transition-colors flex items-center gap-1.5">
             <i data-lucide="arrow-right" class="w-3.5 h-3.5 inline-block text-violet-400"></i> ${escapeHtml(name)}
         </button>`;
     }).join('');

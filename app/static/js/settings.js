@@ -4,6 +4,11 @@ function authHeaders(extra = {}) {
     };
 }
 
+// CSP-safe delegation helper
+function togglePlatformExposedWarning(el) {
+    document.getElementById('platform-exposed-warning')?.classList.toggle('hidden', !el.checked);
+}
+
 function setFieldValue(name, value) {
     const field = document.querySelector(`[name="${name}"]`);
     if (field) {

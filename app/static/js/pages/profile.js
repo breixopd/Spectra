@@ -147,9 +147,9 @@ async function loadApiKeys() {
             <div class="key-row">
                 <div class="flex-1 min-w-0">
                     <div class="text-sm font-mono text-white truncate">${escapeHtml(k.prefix || k.key_prefix || '****')}...</div>
-                    <div class="text-xs text-slate-500 mt-0.5">Created ${new Date(k.created_at).toLocaleDateString()}</div>
+                    <div class="text-xs text-slate-500 mt-0.5">Created ${new Date(k.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                 </div>
-                <button onclick="revokeApiKey('${escapeHtml(k.id)}')" class="px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded transition-colors">Revoke</button>
+                <button data-action="revokeApiKey" data-value="${escapeHtml(k.id)}" class="px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded transition-colors">Revoke</button>
             </div>
         `).join('');
     } catch (e) { container.innerHTML = '<p class="text-sm text-slate-500 text-center py-4">Could not load API keys</p>'; }
@@ -205,7 +205,7 @@ async function loadActivity() {
                 </div>
                 <div class="flex-1">
                     <div class="text-sm text-white">${escapeHtml(ev.event_type || ev.action || 'Event')}</div>
-                    <div class="text-xs text-slate-500 mt-0.5">${new Date(ev.created_at || ev.timestamp).toLocaleString()}</div>
+                    <div class="text-xs text-slate-500 mt-0.5">${new Date(ev.created_at || ev.timestamp).toLocaleString('en-US')}</div>
                 </div>
             </div>
         `).join('');
@@ -243,17 +243,17 @@ async function loadPlan() {
         if (paymentProvider === 'stripe') {
             actionsHtml = `
                 <div class="flex gap-2 mt-4 pt-3 border-t border-white/5">
-                    <button onclick="showAvailablePlans()" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg transition-colors">
+                    <button data-action="showAvailablePlans" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg transition-colors">
                         <i data-lucide="arrow-up" class="w-3.5 h-3.5 inline-block mr-1"></i> Change Plan
                     </button>
-                    <button onclick="openBillingPortal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg transition-colors">
+                    <button data-action="openBillingPortal" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg transition-colors">
                         <i data-lucide="credit-card" class="w-3.5 h-3.5 inline-block mr-1"></i> Manage Billing
                     </button>
                 </div>`;
         } else if (paymentProvider === 'crypto') {
             actionsHtml = `
                 <div class="flex gap-2 mt-4 pt-3 border-t border-white/5">
-                    <button onclick="showAvailablePlans()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg transition-colors">
+                    <button data-action="showAvailablePlans" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg transition-colors">
                         <i data-lucide="bitcoin" class="w-3.5 h-3.5 inline-block mr-1"></i> Pay with Crypto
                     </button>
                 </div>`;
@@ -336,7 +336,7 @@ async function showAvailablePlans() {
                             ${isCurrent
                                 ? '<span class="px-2 py-1 text-xs font-medium rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">Current</span>'
                                 : hasPrice
-                                    ? `<button onclick="startCheckout('${p.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition-colors">Select</button>`
+                                    ? `<button data-action="startCheckout" data-value="${p.id}" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition-colors">Select</button>`
                                     : '<span class="px-2 py-1 text-xs text-slate-500">Not available</span>'}
                         </div>
                     </div>
@@ -515,7 +515,7 @@ async function loadMfaStatus() {
                         <i data-lucide="shield" class="w-4 h-4 inline-block text-emerald-400"></i>
                         <span class="text-sm font-medium text-emerald-400">MFA is enabled</span>
                     </div>
-                    <button onclick="startDisableMfa()" class="px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg border border-rose-500/20 transition-colors">
+                    <button data-action="startDisableMfa" class="px-3 py-1.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg border border-rose-500/20 transition-colors">
                         Disable
                     </button>
                 </div>`;
@@ -527,7 +527,7 @@ async function loadMfaStatus() {
                         <i data-lucide="shield" class="w-4 h-4 inline-block text-slate-500"></i>
                         <span class="text-sm text-slate-400">MFA is not enabled</span>
                     </div>
-                    <button onclick="startMfaSetup()" class="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors font-medium">
+                    <button data-action="startMfaSetup" class="px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors font-medium">
                         Enable MFA
                     </button>
                 </div>`;

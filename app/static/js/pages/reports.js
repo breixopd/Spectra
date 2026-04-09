@@ -83,7 +83,7 @@ function renderReports() {
     const page = filtered.slice(start, start + pageSize);
 
     grid.innerHTML = page.map(r => {
-        const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
+        const date = r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
         const statusKey = typeof r.status === 'string' ? r.status.toLowerCase() : '';
         const statusLabel = escapeHtml(String(r.status || 'unknown'));
         const sc = { completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', running: 'bg-blue-500/10 text-blue-400 border-blue-500/20', failed: 'bg-rose-500/10 text-rose-400 border-rose-500/20', paused: 'bg-amber-500/10 text-amber-400 border-amber-500/20' }[statusKey] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
@@ -111,13 +111,13 @@ function renderReports() {
 
     const pagEl = document.getElementById('pagination-controls');
     if (totalPages <= 1) { pagEl.innerHTML = ''; return; }
-    let h = `<button onclick="goToPage(${currentPage-1})" class="px-3 py-1.5 rounded text-xs ${currentPage===1?'text-slate-600 cursor-not-allowed':'text-slate-300 bg-slate-800 hover:bg-slate-700'}" ${currentPage===1?'disabled':''}>&laquo;</button>`;
-    for (let i = 1; i <= totalPages; i++) h += `<button onclick="goToPage(${i})" class="px-3 py-1.5 rounded text-xs ${i===currentPage?'bg-violet-600 text-white':'text-slate-300 bg-slate-800 hover:bg-slate-700'}">${i}</button>`;
-    h += `<button onclick="goToPage(${currentPage+1})" class="px-3 py-1.5 rounded text-xs ${currentPage===totalPages?'text-slate-600 cursor-not-allowed':'text-slate-300 bg-slate-800 hover:bg-slate-700'}" ${currentPage===totalPages?'disabled':''}>&raquo;</button>`;
+    let h = `<button data-action="goToPage" data-value="${currentPage-1}" class="px-3 py-1.5 rounded text-xs ${currentPage===1?'text-slate-600 cursor-not-allowed':'text-slate-300 bg-slate-800 hover:bg-slate-700'}" ${currentPage===1?'disabled':''}>&laquo;</button>`;
+    for (let i = 1; i <= totalPages; i++) h += `<button data-action="goToPage" data-value="${i}" class="px-3 py-1.5 rounded text-xs ${i===currentPage?'bg-violet-600 text-white':'text-slate-300 bg-slate-800 hover:bg-slate-700'}">${i}</button>`;
+    h += `<button data-action="goToPage" data-value="${currentPage+1}" class="px-3 py-1.5 rounded text-xs ${currentPage===totalPages?'text-slate-600 cursor-not-allowed':'text-slate-300 bg-slate-800 hover:bg-slate-700'}" ${currentPage===totalPages?'disabled':''}>&raquo;</button>`;
     pagEl.innerHTML = h;
 }
 
-function goToPage(p) { const t = Math.ceil(getFilteredReports().length / pageSize); if (p < 1 || p > t) return; currentPage = p; renderReports(); }
+function goToPage(p) { p = parseInt(p, 10); const t = Math.ceil(getFilteredReports().length / pageSize); if (p < 1 || p > t) return; currentPage = p; renderReports(); }
 
 function getReportById(missionId) {
     return allReports.find(m => String(m.id) === String(missionId));
@@ -152,7 +152,7 @@ function renderFindingsList(findings) {
 
 function buildReportContent(report, findings) {
     const sortedFindings = sortFindingsBySeverity(findings || []);
-    return `<div class="max-w-4xl mx-auto space-y-6"><div class="border-b border-white/10 pb-4"><h2 class="text-xl font-bold text-white">${escapeHtml(report.target || 'Unknown')}</h2><p class="text-sm text-slate-400 mt-1">${escapeHtml(report.directive || 'Security Assessment')}</p><p class="text-xs text-slate-500 mt-2">Date: ${report.created_at ? new Date(report.created_at).toLocaleString() : 'N/A'} | Status: ${escapeHtml(String(report.status || 'unknown'))} | Total: ${sortedFindings.length}</p></div><div><h3 class="text-lg font-semibold text-white mb-3">Findings (${sortedFindings.length})</h3>${renderFindingsList(sortedFindings)}</div></div>`;
+    return `<div class="max-w-4xl mx-auto space-y-6"><div class="border-b border-white/10 pb-4"><h2 class="text-xl font-bold text-white">${escapeHtml(report.target || 'Unknown')}</h2><p class="text-sm text-slate-400 mt-1">${escapeHtml(report.directive || 'Security Assessment')}</p><p class="text-xs text-slate-500 mt-2">Date: ${report.created_at ? new Date(report.created_at).toLocaleString('en-US') : 'N/A'} | Status: ${escapeHtml(String(report.status || 'unknown'))} | Total: ${sortedFindings.length}</p></div><div><h3 class="text-lg font-semibold text-white mb-3">Findings (${sortedFindings.length})</h3>${renderFindingsList(sortedFindings)}</div></div>`;
 }
 
 function openReportModal(title, content) {

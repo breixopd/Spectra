@@ -15,9 +15,9 @@ async function loadVpnConfigs() {
                     <span class="ml-2 text-xs text-slate-500">${(c.size / 1024).toFixed(1)} KB</span>
                 </div>
                 <div class="flex gap-2">
-                    <button data-vpn-name="${escapeHtml(c.name)}" onclick="vpnConnect(this.dataset.vpnName)" class="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs transition-colors">Connect</button>
-                    <button data-vpn-name="${escapeHtml(c.name)}" onclick="vpnDisconnect(this.dataset.vpnName)" class="px-2 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs transition-colors">Disconnect</button>
-                    <button data-vpn-name="${escapeHtml(c.name)}" onclick="vpnDelete(this.dataset.vpnName)" class="px-2 py-1 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs transition-colors">Delete</button>
+                    <button data-action="vpnConnect" data-value="${escapeHtml(c.name)}" class="px-2 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded text-xs transition-colors">Connect</button>
+                    <button data-action="vpnDisconnect" data-value="${escapeHtml(c.name)}" class="px-2 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs transition-colors">Disconnect</button>
+                    <button data-action="vpnDelete" data-value="${escapeHtml(c.name)}" class="px-2 py-1 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs transition-colors">Delete</button>
                 </div>
             </div>
         `).join('');

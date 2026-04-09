@@ -173,7 +173,7 @@
                         <p class="text-xs text-slate-500">Enable if this instance is accessible from the internet</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="platform_exposed" id="platform_exposed" class="sr-only peer" onchange="document.getElementById('platform-exposed-warning').classList.toggle('hidden', !this.checked)">
+                        <input type="checkbox" name="platform_exposed" id="platform_exposed" class="sr-only peer" data-on-change="togglePlatformExposedWarning">
                         <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
                     </label>
                 </div>
@@ -384,7 +384,7 @@
                         <p class="text-sm font-medium text-white">Tool Statistics</p>
                         <p class="text-xs text-slate-500">Clear execution counts, timings, and success rates</p>
                     </div>
-                    <button onclick="clearToolStats()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
+                    <button data-action="clearToolStats" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear Stats
                     </button>
                 </div>
@@ -395,7 +395,7 @@
                         <p class="text-sm font-medium text-white">Mission History</p>
                         <p class="text-xs text-slate-500">Delete all mission data, findings, and reports</p>
                     </div>
-                    <button onclick="showClearMissionsConfirm()" class="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs font-medium transition-colors">
+                    <button data-action="showClearMissionsConfirm" class="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 text-white rounded text-xs font-medium transition-colors">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear Missions
                     </button>
                 </div>
@@ -406,7 +406,7 @@
                         <p class="text-sm font-medium text-white">Application Cache</p>
                         <p class="text-xs text-slate-500">Clear cached data (RAG embeddings, tool configs)</p>
                     </div>
-                    <button onclick="clearCache()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
+                    <button data-action="clearCache" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs font-medium transition-colors">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Clear Cache
                     </button>
                 </div>
@@ -417,7 +417,7 @@
                         <p class="text-sm font-medium text-white">Reinstall Tools</p>
                         <p class="text-xs text-slate-500">Force reinstall all security tools</p>
                     </div>
-                    <button onclick="reinstallTools()" class="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs font-medium transition-colors">
+                    <button data-action="reinstallTools" class="px-3 py-1.5 bg-amber-700 hover:bg-amber-600 text-white rounded text-xs font-medium transition-colors">
                         <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 inline-block mr-1"></i> Reinstall
                     </button>
                 </div>
@@ -441,7 +441,7 @@
 
             <!-- Download Button -->
             <div class="flex items-center gap-3 pt-3 border-t border-white/5">
-                <button id="download-sources-btn" onclick="downloadDataSources()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors">
+                <button id="download-sources-btn" data-action="downloadDataSources" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-sm font-medium transition-colors">
                     <i data-lucide="refresh-cw" class="w-4 h-4 inline-block mr-1"></i> Update All Sources
                 </button>
                 <span id="download-sources-status" class="text-xs text-slate-500"></span>
@@ -497,7 +497,7 @@
 
             <!-- Test Button -->
             <div class="mt-4 pt-3 border-t border-white/5">
-                <button onclick="testVpnConnection()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
+                <button data-action="testVpnConnection" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs font-medium transition-colors">
                     <i data-lucide="wifi" class="w-3.5 h-3.5 inline-block mr-1"></i> Test Connection
                 </button>
             </div>
@@ -532,10 +532,10 @@
             This action cannot be undone.
         </p>
         <div class="flex gap-3 justify-end">
-            <button onclick="hideClearMissionsConfirm()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
+            <button data-action="hideClearMissionsConfirm" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors">
                 Cancel
             </button>
-            <button onclick="confirmClearMissions()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
+            <button data-action="confirmClearMissions" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-sm font-medium transition-colors">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5 inline-block mr-1"></i> Delete All
             </button>
         </div>

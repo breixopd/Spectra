@@ -127,7 +127,7 @@ async function loadDataSourceStatus() {
             if (ready || stale) {
                 const size = s.size_bytes ? (s.size_bytes / 1024 / 1024).toFixed(1) + ' MB' : '';
                 const label = stale ? '<span class="text-amber-400">Stale</span>' : '<span class="text-emerald-400">Ready</span>';
-                const timeStr = s.last_updated ? new Date(s.last_updated * 1000).toLocaleDateString() : '';
+                const timeStr = s.last_updated ? new Date(s.last_updated * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
                 statusHtml = `${label} <span class="text-slate-600 ml-1">${size}${timeStr ? ' · ' + timeStr : ''}</span>`;
             } else if (s.status === 'on_demand') {
                 statusHtml = '<span class="text-sky-400">On-demand</span>';

@@ -55,7 +55,7 @@ function loadChecklist() {
     container.innerHTML = data.categories.map((cat, ci) => {
         const completed = cat.items.filter((_, ii) => checklistState[ci + '-' + ii]).length;
         return `<div class="border border-white/5 rounded-lg overflow-hidden">
-            <button onclick="toggleAccordion(this)" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/50 hover:bg-slate-800 text-left transition-colors">
+            <button data-action="toggleAccordion" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/50 hover:bg-slate-800 text-left transition-colors">
                 <span class="text-sm font-medium text-white">${escapeHtml(cat.name)}</span>
                 <span class="flex items-center gap-2">
                     <span class="text-xs text-slate-500">${completed}/${cat.items.length}</span>
@@ -68,15 +68,15 @@ function loadChecklist() {
                         const key = ci + '-' + ii;
                         const checked = checklistState[key];
                         const toolMatches = item.match(/\b(nmap|nuclei|nikto|gobuster|sqlmap|hydra|searchsploit|whatweb|wpscan|feroxbuster|dirsearch|ffuf|crackmapexec|enum4linux|impacket|kerbrute|testssl)\b/gi) || [];
-                        const toolBadges = toolMatches.map(t => `<button onclick="event.stopPropagation();jumpToTool('${t.toLowerCase()}')" class="px-1.5 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded text-xs transition-colors">${t}</button>`).join('');
+                        const toolBadges = toolMatches.map(t => `<button data-action="jumpToToolStop" data-value="${t.toLowerCase()}" class="px-1.5 py-0.5 bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 rounded text-xs transition-colors">${t}</button>`).join('');
                         return `<div class="checklist-item ${checked ? 'completed' : ''} flex items-start gap-2 px-2 py-1.5 rounded hover:bg-white/[0.03] group">
-                            <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleChecklistItem('${method}','${key}',this)" class="mt-0.5 accent-emerald-500 shrink-0">
+                            <input type="checkbox" ${checked ? 'checked' : ''} data-on-change="toggleChecklistItemFromEl" data-method="${method}" data-key="${key}" class="mt-0.5 accent-emerald-500 shrink-0">
                             <span class="checklist-text text-xs text-slate-200 flex-1">${escapeHtml(item)}</span>
                             <div class="flex gap-1 shrink-0">${toolBadges}</div>
-                            <button onclick="toggleChecklistNotes(this)" class="text-slate-600 hover:text-slate-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Notes"><i data-lucide="sticky-note" class="w-3.5 h-3.5 inline-block"></i></button>
+                            <button data-action="toggleChecklistNotes" class="text-slate-600 hover:text-slate-400 text-xs opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Notes"><i data-lucide="sticky-note" class="w-3.5 h-3.5 inline-block"></i></button>
                         </div>
                         <div class="checklist-notes hidden px-8 pb-1">
-                            <textarea placeholder="Notes..." rows="2" class="w-full px-2 py-1 bg-slate-900/60 border border-white/10 rounded text-[11px] text-white placeholder-slate-600 focus:outline-none resize-none" oninput="saveChecklistNote('${method}','${key}-note',this.value)">${escapeHtml(checklistState[key + '-note'] || '')}</textarea>
+                            <textarea placeholder="Notes..." rows="2" class="w-full px-2 py-1 bg-slate-900/60 border border-white/10 rounded text-[11px] text-white placeholder-slate-600 focus:outline-none resize-none" data-on-input="saveChecklistNoteFromEl" data-method="${method}" data-key="${key}-note">${escapeHtml(checklistState[key + '-note'] || '')}</textarea></textarea>
                         </div>`;
                     }).join('')}
                 </div>
@@ -87,6 +87,9 @@ function loadChecklist() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+function toggleChecklistItemFromEl(el) {
+    toggleChecklistItem(el.dataset.method, el.dataset.key, el);
+}
 function toggleChecklistItem(method, key, checkbox) {
     const stateKey = 'spectra_checklist_' + method;
     checklistState[key] = checkbox.checked;
@@ -100,6 +103,9 @@ function toggleChecklistNotes(btn) {
     btn.closest('.checklist-item').nextElementSibling.classList.toggle('hidden');
 }
 
+function saveChecklistNoteFromEl(el) {
+    saveChecklistNote(el.dataset.method, el.dataset.key, el.value);
+}
 function saveChecklistNote(method, key, value) {
     const stateKey = 'spectra_checklist_' + method;
     checklistState[key] = value;
@@ -161,7 +167,7 @@ function renderNotesList() {
     list.innerHTML = filtered.map(n => {
         const active = n.id === activeNoteId ? 'note-item active' : '';
         const date = new Date(n.updated).toLocaleDateString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-        return `<div class="${active} border border-white/5 rounded-lg p-2 cursor-pointer hover:bg-white/[0.03] transition-colors" onclick="openNote('${n.id}')">
+        return `<div class="${active} border border-white/5 rounded-lg p-2 cursor-pointer hover:bg-white/[0.03] transition-colors" data-action="openNote" data-value="${n.id}">
             <div class="text-xs text-white font-medium truncate">${escapeHtml(n.title || 'Untitled')}</div>
             <div class="text-xs text-slate-500">${date}</div>
         </div>`;
@@ -229,7 +235,8 @@ function saveNotesToStorage() {
     syncManualStateToServer();
 }
 
-function wrapNoteText(before, after) {
+function wrapNoteText(before, el) {
+    const after = (typeof el === 'object' && el?.dataset?.suffix !== undefined) ? el.dataset.suffix : (typeof el === 'string' ? el : '');
     const ta = document.getElementById('note-content');
     const start = ta.selectionStart, end = ta.selectionEnd;
     const text = ta.value;

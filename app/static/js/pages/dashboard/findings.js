@@ -266,7 +266,7 @@ function openFindingDetail(finding) {
             <div class="flex items-center gap-2"><span class="text-xs text-slate-500 uppercase w-20">Severity</span><span class="${sevColors[sev] || 'text-slate-400'} font-medium uppercase text-sm">${escapeHtml(sev)}</span></div>
             <div class="flex items-center gap-2"><span class="text-xs text-slate-500 uppercase w-20">Tool</span><span class="text-sm text-white">${escapeHtml(finding.tool_source || 'N/A')}</span></div>
             <div class="flex items-center gap-2"><span class="text-xs text-slate-500 uppercase w-20">Status</span><span class="text-sm text-white">${escapeHtml(finding.status || 'confirmed')}</span></div>
-            <div class="flex items-center gap-2"><span class="text-xs text-slate-500 uppercase w-20">Found</span><span class="text-sm text-white">${finding.created_at ? new Date(finding.created_at).toLocaleString() : 'N/A'}</span></div>
+            <div class="flex items-center gap-2"><span class="text-xs text-slate-500 uppercase w-20">Found</span><span class="text-sm text-white">${finding.created_at ? new Date(finding.created_at).toLocaleString('en-US') : 'N/A'}</span></div>
             <div class="pt-2 border-t border-white/5"><span class="text-xs text-slate-500 uppercase block mb-1">Description</span><p class="text-sm text-slate-300">${escapeHtml(finding.description || 'No description available.')}</p></div>
         </div>`;
     document.getElementById('fd-tab-evidence').innerHTML = `<div class="text-sm text-slate-500">No evidence uploaded yet.</div>`;

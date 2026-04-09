@@ -176,10 +176,11 @@ function updateVectorStatus(data) {
     const listEl = document.getElementById('vectors-list');
     
     // Find or create vector element
-    let vectorEl = document.getElementById(`vector-${data.id}`);
+    const safeId = String(data.id).replace(/[^a-zA-Z0-9_-]/g, '');
+    let vectorEl = document.getElementById(`vector-${safeId}`);
     if (!vectorEl) {
         vectorEl = document.createElement('div');
-        vectorEl.id = `vector-${data.id}`;
+        vectorEl.id = `vector-${safeId}`;
         vectorEl.className = 'px-4 py-2 border-b border-white/5 flex items-center justify-between';
         listEl.appendChild(vectorEl);
         

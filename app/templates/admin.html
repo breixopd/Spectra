@@ -25,7 +25,7 @@
         </div>
         <div class="flex items-center gap-3">
             <input type="text" id="maintenance-msg-input" placeholder="Custom message (optional)" class="bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs w-64 focus:border-violet-500 focus:outline-none">
-            <button onclick="toggleMaintenance()" id="maintenance-toggle-btn"
+            <button data-action=\"toggleMaintenance\" id=\"maintenance-toggle-btn\"
                 data-active="{{ 'true' if maintenance_active else 'false' }}"
                 class="px-4 py-2 rounded-lg text-xs font-semibold transition-colors {{ 'bg-emerald-600 hover:bg-emerald-500 text-white' if maintenance_active else 'bg-amber-600 hover:bg-amber-500 text-white' }}">
                 {{ 'Disable Maintenance' if maintenance_active else 'Enable Maintenance' }}

@@ -49,13 +49,13 @@
         <div class="section-header">
             <h2 class="section-title">Metric Trends</h2>
             <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <select id="trend-range" onchange="refreshTrends()" style="background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.25rem; padding: 0.25rem 0.5rem; color: #e2e8f0; font-size: 0.875rem;">
+                <select id="trend-range" data-on-change="refreshTrends" style="background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 0.25rem; padding: 0.25rem 0.5rem; color: #e2e8f0; font-size: 0.875rem;">
                     <option value="15">Last 15 min</option>
                     <option value="60" selected>Last 1 hour</option>
                     <option value="360">Last 6 hours</option>
                     <option value="1440">Last 24 hours</option>
                 </select>
-                <button class="refresh-btn" onclick="refreshTrends()" aria-label="Refresh Trends">
+                <button class="refresh-btn" data-action="refreshTrends" aria-label="Refresh Trends">
                     <i data-lucide="refresh-cw" class="icon-sm"></i>
                     Refresh
                 </button>
@@ -86,7 +86,7 @@
     <div class="tab-content" id="tab-services" role="tabpanel" aria-labelledby="obs-tab-services" hidden>
         <div class="section-header">
             <h2 class="section-title">Service Health</h2>
-            <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Services">
+            <button class="refresh-btn" data-action="refreshData" aria-label="Refresh Services">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
                 Refresh
             </button>
@@ -101,12 +101,12 @@
         <div class="section-header">
             <h2 class="section-title">Recent Traces</h2>
             <div style="display: flex; gap: 0.5rem;">
-                <select id="trace-filter" onchange="filterTraces()">
+                <select id="trace-filter" data-on-change="filterTraces">
                     <option value="all">All Traces</option>
                     <option value="error">Errors Only</option>
                     <option value="slow">Slow (>1s)</option>
                 </select>
-                <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Traces">
+                <button class="refresh-btn" data-action="refreshData" aria-label="Refresh Traces">
                     <i data-lucide="refresh-cw" class="icon-sm"></i>
                 </button>
             </div>
@@ -133,7 +133,7 @@
     <div class="tab-content" id="tab-circuit-breakers" role="tabpanel" aria-labelledby="obs-tab-circuit-breakers" hidden>
         <div class="section-header">
             <h2 class="section-title">Circuit Breakers</h2>
-            <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Circuit Breakers">
+            <button class="refresh-btn" data-action="refreshData" aria-label="Refresh Circuit Breakers">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
                 Refresh
             </button>
@@ -147,7 +147,7 @@
     <div class="tab-content" id="tab-events" role="tabpanel" aria-labelledby="obs-tab-events" hidden>
         <div class="section-header">
             <h2 class="section-title">Recent Events</h2>
-            <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Events">
+            <button class="refresh-btn" data-action="refreshData" aria-label="Refresh Events">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
                 Refresh
             </button>
@@ -161,7 +161,7 @@
     <div class="tab-content" id="tab-cache" role="tabpanel" aria-labelledby="obs-tab-cache" hidden>
         <div class="section-header">
             <h2 class="section-title">Cache Statistics</h2>
-            <button class="refresh-btn" onclick="refreshData()" aria-label="Refresh Cache">
+            <button class="refresh-btn" data-action="refreshData" aria-label="Refresh Cache">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
                 Refresh
             </button>
@@ -175,7 +175,7 @@
     <div class="tab-content" id="tab-saas" role="tabpanel" aria-labelledby="obs-tab-saas" hidden>
         <div class="section-header">
             <h2 class="section-title">SaaS KPI Metrics</h2>
-            <button class="refresh-btn" onclick="refreshSaasMetrics()" aria-label="Refresh SaaS Metrics">
+            <button class="refresh-btn" data-action="refreshSaasMetrics" aria-label="Refresh SaaS Metrics">
                 <i data-lucide="refresh-cw" class="icon-sm"></i>
                 Refresh
             </button>

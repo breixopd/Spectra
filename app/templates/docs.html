@@ -45,11 +45,11 @@
         <!-- Sidebar -->
         <div class="md:col-span-3 lg:col-span-2 doc-sidebar overflow-y-auto">
             <nav id="docs-sidebar" class="space-y-1">
-                <button onclick="showAllGroups()" class="group-btn active w-full text-left flex items-center px-3 py-2 rounded-lg text-sm font-medium" data-group="all">
+                <button data-action="showAllGroups" class="group-btn active w-full text-left flex items-center px-3 py-2 rounded-lg text-sm font-medium" data-group="all">
                     <i data-lucide="layers" class="w-4 h-4 inline-block mr-2 text-violet-400 text-center"></i> All Endpoints
                 </button>
                 {% for group, endpoints in route_groups.items() %}
-                <button onclick="filterGroup('{{ group }}')" class="group-btn w-full text-left flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium" data-group="{{ group }}">
+                <button  data-action="filterGroup" data-value="{{ group }}" class="group-btn w-full text-left flex items-center px-3 py-2 rounded-lg text-slate-400 text-sm font-medium" data-group="{{ group }}">
                     <i data-lucide="folder" class="w-4 h-4 inline-block mr-2 text-slate-500 text-center"></i>
                     <span class="capitalize">{{ group | replace("_", " ") }}</span>
                     <span class="ml-auto text-xs text-slate-600">{{ endpoints | length }}</span>
@@ -65,7 +65,7 @@
             {% for method in endpoint.methods %}
             <div class="endpoint-card glass-panel rounded-xl p-4 animate-fade-in-up" data-group="{{ group }}" data-path="{{ endpoint.path }}" data-method="{{ method }}" data-name="{{ endpoint.name }}">
                 <!-- Header row -->
-                <div class="flex items-start gap-3 cursor-pointer" onclick="toggleEndpoint(this)">
+                <div class="flex items-start gap-3 cursor-pointer" data-action="toggleEndpoint">
                     <span class="method-badge method-{{ method }} shrink-0 mt-0.5">{{ method }}</span>
                     <div class="flex-1 min-w-0">
                         <code class="text-sm text-white font-mono break-all">{{ endpoint.path }}</code>
@@ -118,9 +118,9 @@
                     <div>
                         <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Code Examples</h4>
                         <div class="flex gap-0 border-b border-white/5 mb-2">
-                            <button class="code-tab active" onclick="switchCodeTab(this, 'curl')">cURL</button>
-                            <button class="code-tab" onclick="switchCodeTab(this, 'python')">Python</button>
-                            <button class="code-tab" onclick="switchCodeTab(this, 'javascript')">JavaScript</button>
+                            <button class="code-tab active"  data-action="switchCodeTab" data-value="curl">cURL</button>
+                            <button class="code-tab"  data-action="switchCodeTab" data-value="python">Python</button>
+                            <button class="code-tab"  data-action="switchCodeTab" data-value="javascript">JavaScript</button>
                         </div>
                         <div class="code-block" data-lang="curl">
                             <pre class="bg-slate-950/60 rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto"><code>curl -X {{ method }} '{{ '${BASE_URL}' }}{{ endpoint.path }}' \
@@ -150,7 +150,7 @@ const data = await response.json();</code></pre>
 
                     <!-- Try It -->
                     <div>
-                        <button onclick="toggleTryIt(this)" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">
+                        <button data-action="toggleTryIt" class="px-3 py-1.5 bg-violet-600/80 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">
                             <i data-lucide="play" class="w-4 h-4 inline-block mr-1.5"></i> Try It
                         </button>
                         <div class="try-panel mt-3">
@@ -167,7 +167,7 @@ const data = await response.json();</code></pre>
                                     <textarea class="try-body w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-violet-500/50 resize-y" rows="3" placeholder='{"key": "value"}'></textarea>
                                 </div>
                                 {% endif %}
-                                <button onclick="executeTryIt(this, '{{ method }}', '{{ endpoint.path }}')" class="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded text-xs font-medium transition-colors">
+                                <button  data-action="executeTryIt" data-value="{{ method }}" data-endpoint="{{ endpoint.path }}" class="px-3 py-1.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded text-xs font-medium transition-colors">
                                     <i data-lucide="send" class="w-4 h-4 inline-block mr-1"></i> Send Request
                                 </button>
                             </div>
@@ -241,7 +241,7 @@ const data = await response.json();</code></pre>
     });
 
     // Code tab switching
-    function switchCodeTab(btn, lang) {
+    function switchCodeTab(lang, btn) {
         const container = btn.closest('.endpoint-details');
         container.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
@@ -251,12 +251,14 @@ const data = await response.json();</code></pre>
     }
 
     // Try It panel
-    function toggleTryIt(btn) {
-        const panel = btn.nextElementSibling;
+    function toggleTryIt(el) {
+        const panel = el.nextElementSibling;
         panel.classList.toggle('open');
     }
 
-    async function executeTryIt(btn, method, path) {
+    async function executeTryIt(method, el) {
+        const btn = el;
+        const path = el.dataset.endpoint || '';
         const panel = btn.closest('.try-panel');
         const pathOverride = panel.querySelector('.try-path-override');
         const bodyEl = panel.querySelector('.try-body');
