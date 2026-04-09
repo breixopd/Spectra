@@ -1,10 +1,8 @@
-"""Tests for tests.mocks.mock_llm_client.MockLLMClient."""
-
-import json
+"""Tests for tests.mocks.llm.MockLLMClient (consolidated mock)."""
 
 import pytest
 
-from tests.mocks.mock_llm_client import MockLLMClient
+from tests.mocks.llm import MockLLMClient
 
 
 @pytest.mark.asyncio
@@ -13,28 +11,30 @@ class TestMockLLMGenerate:
         client = MockLLMClient()
         resp = await client.generate("Hello")
         assert resp.content is not None
-        assert resp.model == "mock"
+        assert resp.model == "mock-model"
         assert resp.provider == "mock"
-        assert resp.usage["total_tokens"] == 10
+        assert resp.usage["total_tokens"] == 30
 
-    async def test_response_is_valid_json(self):
+    async def test_default_response(self):
         client = MockLLMClient()
         resp = await client.generate("Hello")
-        parsed = json.loads(resp.content)
-        assert "status" in parsed or "result" in parsed
+        assert resp.content == "Mock response"
 
-    async def test_json_prompt_returns_json_response(self):
-        client = MockLLMClient()
-        resp = await client.generate("Return JSON data for analysis")
-        parsed = json.loads(resp.content)
-        assert parsed["result"] == "mock_response"
-        assert parsed["confidence"] == 0.5
+    async def test_custom_responses_cycle(self):
+        client = MockLLMClient(responses=["first", "second"])
+        r1 = await client.generate("a")
+        r2 = await client.generate("b")
+        r3 = await client.generate("c")  # wraps around
+        assert r1.content == "first"
+        assert r2.content == "second"
+        assert r3.content == "first"
 
-    async def test_non_json_prompt_returns_default(self):
+    async def test_call_history_recorded(self):
         client = MockLLMClient()
-        resp = await client.generate("Explain the vulnerability")
-        parsed = json.loads(resp.content)
-        assert parsed["status"] == "mock"
+        await client.generate("test prompt", system_prompt="sys")
+        assert len(client.call_history) == 1
+        assert client.call_history[0]["prompt"] == "test prompt"
+        assert client.call_history[0]["system_prompt"] == "sys"
 
     async def test_optional_params_accepted(self):
         client = MockLLMClient()

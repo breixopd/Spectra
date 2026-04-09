@@ -181,13 +181,13 @@ def mock_llm_for_unit_tests(request):
     Provide mock LLM client for unit tests.
 
     The mock LLM client was removed from the production app — it now
-    lives in tests/mocks/mock_llm_client.py and is injected here.
+    lives in tests/mocks/llm.py and is injected here.
     """
     if _is_live_test(request.node):
         yield
         return
 
-    from tests.mocks.mock_llm_client import MockLLMClient
+    from tests.mocks.llm import MockLLMClient
 
     mock_instance = MockLLMClient()
 

@@ -93,13 +93,12 @@ addopts = [
     "--cov=app",
     "--cov-report=term-missing",
     "--cov-report=html:reports/coverage",
-    "--cov-fail-under=60",
+    "--cov-fail-under=70",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::ResourceWarning",
     "ignore::pytest.PytestUnraisableExceptionWarning",
-    "ignore:coroutine.*was never awaited:RuntimeWarning",
     "ignore:Enable tracemalloc.*:RuntimeWarning",
 ]
 pythonpath = ["."]
