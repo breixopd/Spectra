@@ -12,16 +12,22 @@ from app.core.tasks import create_safe_task
 logger = logging.getLogger(__name__)
 
 _worker_task: asyncio.Task | None = None
+_heartbeat_task: asyncio.Task | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start worker loops on startup."""
-    global _worker_task
+    global _worker_task, _heartbeat_task
     logger.info("Worker service starting...")
     _worker_task = create_safe_task(work_loop(), name="worker_loop")
+    _heartbeat_task = create_safe_task(_run_heartbeat(), name="heartbeat_loop")
     yield
     logger.info("Worker service shutting down...")
+    if _heartbeat_task:
+        _heartbeat_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await _heartbeat_task
     if _worker_task:
         _worker_task.cancel()
         with suppress(asyncio.CancelledError):
@@ -59,6 +65,14 @@ async def health():
         status["database"] = "disconnected"
         status["status"] = "degraded"
     return status
+
+
+async def _run_heartbeat():
+    """Run the heartbeat loop so the scheduler can detect stale workers."""
+    from app.worker.lifecycle import heartbeat_loop
+
+    queue_name = os.environ.get("QUEUE_NAME", "default")
+    await heartbeat_loop(queue_name)
 
 
 async def work_loop():

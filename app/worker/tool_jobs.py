@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
+import shutil
 import tempfile
 import uuid
 from datetime import UTC, datetime
@@ -157,70 +158,76 @@ async def execute_tool_job(
     output_dir = _resolve_output_dir(tool_id, output_dir)
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    config = tool.config
-    builder = CommandBuilder(config)
-    parser = OutputParser(config)
-
-    request = ToolExecutionRequest(
-        tool_id=tool_id,
-        target=target,
-        args=args or {},
-        timeout=timeout,
-    )
-
     try:
-        command = builder.build_command(request, output_dir)
-    except ValueError as e:
-        return _error_result(tool_id, target, f"Command build failed: {e}")
+        config = tool.config
+        builder = CommandBuilder(config)
+        parser = OutputParser(config)
 
-    effective_timeout = _calculate_effective_timeout(target, timeout, config.execution, tool_id, args)
+        request = ToolExecutionRequest(
+            tool_id=tool_id,
+            target=target,
+            args=args or {},
+            timeout=timeout,
+        )
 
-    # Execute command with timeout
-    import time
-
-    wrapped_cmd = f"timeout -k 10s {effective_timeout}s {command}"
-    logger.info("Running: %s (timeout: %ds)", command, effective_timeout)
-
-    start_time = time.time()
-    returncode, stdout, stderr = await _run_command(wrapped_cmd, effective_timeout + 30)
-    duration = time.time() - start_time
-
-    # Check success based on configured exit codes
-    success_codes = config.execution.success_exit_codes or [0]
-    success = returncode in success_codes
-    if returncode == 124:  # timeout exit code
-        success = False
-        stderr = (stderr or "") + f"\n[Spectra] Command timed out after {effective_timeout}s"
-
-    output_file = _resolve_output_file(tool_id, output_dir, config.execution.args_template)
-
-    parsed_findings = []
-    if stdout or (output_file and Path(output_file).exists()):
         try:
-            parsed_findings = await parser.parse_output(stdout, stderr, output_file)
-        except (OSError, RuntimeError, ValueError) as e:
-            logger.warning("Failed to parse output for %s: %s", tool_id, e)
+            command = builder.build_command(request, output_dir)
+        except ValueError as e:
+            return _error_result(tool_id, target, f"Command build failed: {e}")
 
-    # Track job stats in cache
-    await _track_tool_stats(tool_id, success, duration)
+        effective_timeout = _calculate_effective_timeout(target, timeout, config.execution, tool_id, args)
 
-    result = ToolExecutionResult(
-        tool_id=tool_id,
-        target=target,
-        success=success,
-        exit_code=returncode,
-        stdout=stdout,
-        stderr=stderr,
-        duration_seconds=duration,
-        output_file=output_file,
-        parsed_findings=parsed_findings,
-    ).model_dump()
+        # Execute command with timeout
+        import time
 
-    # Flag OOM kills so the app side can trigger tier escalation
-    if returncode == 137:
-        result["oom"] = True
+        wrapped_cmd = f"timeout -k 10s {effective_timeout}s {command}"
+        logger.info("Running: %s (timeout: %ds)", command, effective_timeout)
 
-    return result
+        start_time = time.time()
+        returncode, stdout, stderr = await _run_command(wrapped_cmd, effective_timeout + 30)
+        duration = time.time() - start_time
+
+        # Check success based on configured exit codes
+        success_codes = config.execution.success_exit_codes or [0]
+        success = returncode in success_codes
+        if returncode == 124:  # timeout exit code
+            success = False
+            stderr = (stderr or "") + f"\n[Spectra] Command timed out after {effective_timeout}s"
+
+        output_file = _resolve_output_file(tool_id, output_dir, config.execution.args_template)
+
+        parsed_findings = []
+        if stdout or (output_file and Path(output_file).exists()):
+            try:
+                parsed_findings = await parser.parse_output(stdout, stderr, output_file)
+            except (OSError, RuntimeError, ValueError) as e:
+                logger.warning("Failed to parse output for %s: %s", tool_id, e)
+
+        # Track job stats in cache
+        await _track_tool_stats(tool_id, success, duration)
+
+        result = ToolExecutionResult(
+            tool_id=tool_id,
+            target=target,
+            success=success,
+            exit_code=returncode,
+            stdout=stdout,
+            stderr=stderr,
+            duration_seconds=duration,
+            output_file=output_file,
+            parsed_findings=parsed_findings,
+        ).model_dump()
+
+        # Flag OOM kills so the app side can trigger tier escalation
+        if returncode == 137:
+            result["oom"] = True
+
+        return result
+    finally:
+        # Clean up temp output directory to prevent disk exhaustion
+        output_dir_path = Path(output_dir)
+        if output_dir_path.exists() and str(output_dir_path).startswith(tempfile.gettempdir()):
+            shutil.rmtree(output_dir_path, ignore_errors=True)
 
 
 @with_retry()

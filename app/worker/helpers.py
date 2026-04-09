@@ -14,14 +14,18 @@ from functools import wraps
 from pathlib import Path
 from typing import Any
 
-from app.core.constants import HTTP_CLIENT_MAX_RETRIES, SECONDS_PER_HOUR, SECONDS_PER_WEEK
+from app.core.constants import SECONDS_PER_HOUR, SECONDS_PER_WEEK
 
 logger = logging.getLogger(__name__)
 TOOLS_PATH_PREFIX = "/opt/spectra_tools"
 
 
-def with_retry(max_retries: int = HTTP_CLIENT_MAX_RETRIES, backoff_base: float = 2.0, max_backoff: float = 60.0):
-    """Decorator adding exponential backoff retry to async worker jobs."""
+def with_retry(max_retries: int = 1, backoff_base: float = 2.0, max_backoff: float = 60.0):
+    """Decorator adding exponential backoff retry to async worker jobs.
+
+    Default *max_retries* is 1 (single immediate retry for transient errors)
+    because the queue layer already provides its own broader retry policy.
+    """
 
     def decorator(func):
         @wraps(func)
@@ -32,7 +36,7 @@ def with_retry(max_retries: int = HTTP_CLIENT_MAX_RETRIES, backoff_base: float =
                     return await func(*args, **kwargs)
                 except (asyncio.CancelledError, KeyboardInterrupt):
                     raise
-                except (OSError, RuntimeError, ValueError) as exc:
+                except (OSError, ConnectionError, TimeoutError, RuntimeError, ValueError) as exc:
                     last_exc = exc
                     if attempt < max_retries:
                         wait = min(backoff_base**attempt + random.uniform(0, 1), max_backoff)
