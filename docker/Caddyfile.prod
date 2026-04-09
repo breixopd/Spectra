@@ -1,50 +1,61 @@
-# Spectra production Caddyfile.
-# The app owns CSP and other browser policies; Caddy terminates TLS and forwards traffic.
-
 import Caddyfile.snippets
 
-{$PLATFORM_DOMAIN:localhost} {
-import security_headers
-header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-
-@websocket {
-Connection *Upgrade*
-Upgrade websocket
-}
-route {
-uest_body {
-50MB
-
-dle /static/* {
-Cache-Control "public, max-age=604800, immutable"
- {$APP_UPSTREAM:spectra-app:5000}
-
 {
-/api/docs /api/docs/* /api/redoc /api/redoc/* /openapi.json
-dle @private_docs {
-d "Not found" 404
-
-dle @websocket {
- {$APP_UPSTREAM:spectra-app:5000}
-
-Thin IP-based edge guard for public auth traffic only.
-Redis-backed application limits remain the primary policy layer.
-rate_limit_public 30
-
- {$APP_UPSTREAM:spectra-app:5000} {
- cookie
-_duration 5s
-/api/health
-terval 15s
-5s
-
-proxy_defaults
-
-import error_pages
-
-log {
-stdout
-json
-WARN
+	admin off
 }
+
+{$PLATFORM_DOMAIN:localhost} {
+	import security_headers
+
+	header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+
+	@private_docs {
+		path /docs /redoc /openapi.json
+	}
+	handle @private_docs {
+		respond "Not found" 404
+	}
+
+	route {
+		request_body {
+			max_size 50MB
+		}
+
+		handle /static/* {
+			header Cache-Control "public, max-age=604800, immutable"
+			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
+		}
+
+		handle @websocket {
+			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
+		}
+
+		import rate_limit_public 30
+
+		reverse_proxy {$APP_UPSTREAM:spectra-app:5000} {
+			lb_policy cookie
+			lb_try_duration 5s
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
+
+			import proxy_defaults
+		}
+	}
+
+	import error_pages
+
+	log {
+		output file /data/access.log {
+			roll_size 50mb
+			roll_keep 10
+		}
+		format json
+		level WARN
+	}
 }

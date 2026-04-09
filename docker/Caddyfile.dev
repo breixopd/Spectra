@@ -1,46 +1,51 @@
-# Spectra — Caddy reverse proxy configuration
-#
-# For production, replace :443 with your domain:
-#   spectra.example.com {
-#
-# Caddy auto-provisions TLS via Let's Encrypt when a real domain is used.
-
 import Caddyfile.snippets
 
-:80 {
-import security_headers
-
-@websocket {
-Connection *Upgrade*
-Upgrade websocket
+{
+	auto_https off
+	admin off
 }
 
-route {
-uest_body {
-50MB
+:80 {
+	import security_headers
 
-dle /static/* {
-Cache-Control "public, max-age=3600"
- spectra-app:5000
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
 
-dle @websocket {
- spectra-app:5000
+	route {
+		request_body {
+			max_size 50MB
+		}
 
-Thin IP-based edge guard for public auth traffic only.
-Redis-backed application limits remain the primary policy layer.
-rate_limit_public 30
+		handle /static/* {
+			header Cache-Control "public, max-age=3600"
+			reverse_proxy spectra-app:5000
+		}
 
- spectra-app:5000 {
-/api/health
-terval 10s
-5s
+		handle @websocket {
+			reverse_proxy spectra-app:5000
+		}
 
-proxy_defaults
+		import rate_limit_public 30
 
-import error_pages
+		reverse_proxy spectra-app:5000 {
+			health_uri /api/health
+			health_interval 10s
+			health_timeout 5s
 
-log {
-file /data/access.log {
-100mb
-5
+			import proxy_defaults
+		}
+	}
+
+	import error_pages
+
+	log {
+		output file /data/access.log {
+			roll_size 100mb
+			roll_keep 5
+		}
+		format console
+		level INFO
+	}
 }
