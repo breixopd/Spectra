@@ -19,7 +19,6 @@ _METRIC_MAP: dict[str, tuple[str, str, str]] = {
     "api_requests": ("api_requests", "max_api_requests_per_hour", "hourly"),
     "missions_started": ("missions_started", "max_missions_per_month", "monthly"),
     "sandbox_minutes": ("sandbox_minutes", "sandbox_max_containers", "monthly"),
-    "llm_tokens": ("llm_tokens_used", "max_llm_tokens_per_day", "daily"),
 }
 
 
@@ -47,9 +46,6 @@ class UsageTracker:
 
     async def record_sandbox_minutes(self, user_id: str, minutes: int) -> None:
         await self.record(user_id, "sandbox_minutes", minutes)
-
-    async def record_llm_tokens(self, user_id: str, tokens: int) -> None:
-        await self.record(user_id, "llm_tokens", tokens)
 
     async def record_storage_usage(self, user_id: str, size_bytes: int) -> None:
         """Increment the user's cumulative storage usage.
@@ -182,7 +178,6 @@ class UsageTracker:
                         api_requests=0,
                         missions_started=0,
                         sandbox_minutes=0,
-                        llm_tokens_used=0,
                     )
                 )
                 await session.execute(stmt)

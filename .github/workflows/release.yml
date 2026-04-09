@@ -213,7 +213,8 @@ jobs:
     name: Deploy to production
     needs: release
     runs-on: ubuntu-latest
-    environment: production
+    environment:
+      name: production
     steps:
       - uses: actions/checkout@v4
 

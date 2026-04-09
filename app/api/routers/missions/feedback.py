@@ -14,6 +14,7 @@ from app.core.rate_limit import RateLimits, limiter
 from app.models.user import User
 from app.repositories.mission import MissionRepository
 from app.services.mission.manager import mission_manager
+from app.services.mission.types import MissionProgress
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +100,7 @@ async def get_task_tree(
 async def get_mission_progress(
     mission_id: str,
     _current_user: User = Depends(get_current_active_user),
-) -> dict[str, Any]:
+) -> MissionProgress:
     """Get estimated mission progress."""
     validate_uuid_param(mission_id, "mission_id")
     mission = await mission_manager.get_mission(mission_id)

@@ -7,7 +7,6 @@ Initializes database connections, cache, and other services.
 
 import asyncio
 import logging
-import os
 import shutil
 import socket
 from collections.abc import AsyncGenerator
@@ -40,11 +39,6 @@ from app.core.telemetry import telemetry
 from app.services.system.runtime_settings import hydrate_runtime_settings_from_db
 
 logger = logging.getLogger(__name__)
-
-
-def _should_queue_startup_tool_install() -> bool:
-    value = os.environ.get("QUEUE_STARTUP_TOOL_INSTALL", "true")
-    return value.strip().lower() not in {"0", "false", "no", "off"}
 
 
 from app.services.billing.seed_plans import seed_default_plans
@@ -110,85 +104,12 @@ async def run_startup_tasks() -> None:
     try:
         logger.info("Running startup tasks...")
 
-        if _should_queue_startup_tool_install():
-            await add_system_operation("tool_install", "install", "Installing security tools")
-
-            try:
-                from app.core.queue import PostgresJobQueue
-
-                queue = PostgresJobQueue()
-                await queue.enqueue_job("install_all_tools_job")
-                logger.info("Queued tool installation job via PostgresJobQueue")
-            except (OSError, RuntimeError, ImportError) as e:
-                logger.debug("Could not queue install job (tools worker may not be running): %s", e)
-
-            await remove_system_operation("tool_install")
-        else:
-            logger.info("Skipping startup tool installation queue because QUEUE_STARTUP_TOOL_INSTALL is disabled")
-
         await set_system_status("ready", "System ready")
         logger.info("Startup tasks completed")
 
     except (OSError, RuntimeError, ImportError) as e:
         logger.warning("Startup tasks failed: %s", e)
         await set_system_status("ready", "System ready (some tasks skipped)")
-
-
-def _validate_production_secrets() -> None:
-    """Validate secret keys are not using insecure defaults in production."""
-    if settings.DEBUG:
-        return
-
-    _insecure_defaults = {
-        "",
-        "change-me-in-production",
-        "test-key",
-        "secret",
-        "changeme",
-        "password",
-        "default",
-    }
-    _placeholder_prefixes = ("change-me", "change_me", "your-", "sk-or-")
-
-    jwt_val = settings.JWT_SECRET_KEY.get_secret_value()
-    secret_val = (
-        settings.SECRET_KEY.get_secret_value()
-        if isinstance(settings.SECRET_KEY, SecretStr)
-        else str(settings.SECRET_KEY)
-    )
-    if jwt_val.lower() in _insecure_defaults:
-        raise RuntimeError(
-            "JWT_SECRET_KEY is empty or using a default value. "
-            "Set a strong secret via the JWT_SECRET_KEY environment variable before running in production."
-        )
-    if len(jwt_val) < 32:
-        logger.warning(
-            "[SECURITY] JWT_SECRET_KEY is shorter than 32 characters. Use a longer secret for production security."
-        )
-    if secret_val.lower() in _insecure_defaults:
-        raise RuntimeError(
-            "SECRET_KEY is empty or using the default 'change-me-in-production'. "
-            "Set a strong secret via the SECRET_KEY environment variable before running in production."
-        )
-
-    # Warn about any remaining placeholder secrets
-    for field in ("JWT_SECRET_KEY", "SECRET_KEY", "SERVICE_AUTH_SECRET"):
-        val = getattr(settings, field, "")
-        if isinstance(val, SecretStr):
-            val = val.get_secret_value()
-        if any(val.startswith(p) for p in _placeholder_prefixes):
-            logger.warning(
-                "[SECURITY] %s contains a placeholder value — "
-                "run scripts/first_run.sh or set a real secret",
-                field,
-            )
-
-    db_url = str(settings.DATABASE_URL)
-    if "sqlite" in db_url.lower():
-        logger.warning(
-            "[SECURITY] DATABASE_URL uses SQLite, which is not suitable for production. "
-            "Configure a PostgreSQL connection string."
-        )
 
 
 def _validate_noop_payment() -> None:
@@ -659,7 +580,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager — delegates to focused sub-functions."""
     logger.info("[STARTUP] Starting Spectra...")
 
-    _validate_production_secrets()
     _validate_noop_payment()
 
     if settings.PAYMENT_PROVIDER and not settings.PLATFORM_BASE_URL:

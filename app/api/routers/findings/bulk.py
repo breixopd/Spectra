@@ -250,4 +250,4 @@ async def bulk_update_findings(
     result = await db.execute(stmt)
     await db.commit()
 
-    return BulkUpdateResponse(updated=result.rowcount)
+    return BulkUpdateResponse(updated=result.rowcount)  # type: ignore[union-attr]

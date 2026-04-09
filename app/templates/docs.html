@@ -314,10 +314,10 @@ const data = await response.json();</code></pre>
             if (!error && data) {
                 authStatus.innerHTML = '<span class="text-emerald-400">● Authenticated</span> as ' + (data.username || data.email || 'user');
             } else {
-                authStatus.innerHTML = '<span class="text-amber-400">● Anonymous</span> requests use your current browser session only';
+                authStatus.innerHTML = '<span class="text-slate-400">● Not logged in</span> — <a href="/login" class="underline hover:text-white">log in</a> to use authenticated endpoints';
             }
         } catch {
-            authStatus.innerHTML = '<span class="text-amber-400">● Anonymous</span> requests use your current browser session only';
+            authStatus.innerHTML = '<span class="text-slate-400">● Not logged in</span> — <a href="/login" class="underline hover:text-white">log in</a> to use authenticated endpoints';
         }
     });
 </script>
