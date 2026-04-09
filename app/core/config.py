@@ -172,10 +172,6 @@ class Settings(BaseSettings):
     SESSION_IDLE_TIMEOUT_MINUTES: int = 60  # 0 = disabled
     PLUGIN_SAFE_MODE: bool = True  # Enforce signature verification
     REQUIRE_APPROVAL: bool = False  # Require human approval for high-risk actions
-    # DEPRECATED: FULLY_AUTOMATED is now a per-mission setting (Mission.requires_approval).
-    # Kept for backward compatibility with tests that monkeypatch it.
-    # New missions use requires_approval=False (fully autonomous) by default.
-    FULLY_AUTOMATED: bool = False  # Global fallback: skip ALL human approval
 
     # Rate limiting storage backend.
     # PostgreSQL remains the persistent state store, PostgreSQL-backed app
@@ -186,17 +182,6 @@ class Settings(BaseSettings):
     # Use Caddy's rate_limit module only if you intentionally want rate
     # limiting to live entirely at the reverse proxy edge.
     RATE_LIMIT_STORAGE: str = "redis://redis:6379/0"
-
-    @field_validator("FULLY_AUTOMATED")
-    @classmethod
-    def warn_fully_automated(cls, v: bool) -> bool:
-        import os
-
-        if v and os.environ.get("ENVIRONMENT", "development") == "production":
-            logging.getLogger(__name__).warning(
-                "FULLY_AUTOMATED=true in production — human approval bypassed for all operations"
-            )
-        return v
 
     CONNECT_BACK_HOST: str = "spectra-app"
 

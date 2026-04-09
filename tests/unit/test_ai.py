@@ -443,9 +443,8 @@ class TestVotingSystem:
 
         assert voting_system.requires_voting(action) is True
 
-    def test_critical_requires_human(self, voting_system, monkeypatch):
+    def test_critical_requires_human(self, voting_system):
         """Test that critical actions require human approval."""
-        monkeypatch.setattr("app.core.config.settings.FULLY_AUTOMATED", False)
         action = AgentAction(
             action_type="dangerous",
             confidence=0.9,
@@ -471,9 +470,8 @@ class TestVotingSystem:
         assert result.final_decision is True
 
     @pytest.mark.asyncio
-    async def test_vote_on_critical_escalates(self, voting_system, monkeypatch):
+    async def test_vote_on_critical_escalates(self, voting_system):
         """Test that critical actions escalate to human."""
-        monkeypatch.setattr("app.core.config.settings.FULLY_AUTOMATED", False)
         action = AgentAction(
             action_type="drop_database",
             confidence=0.9,
