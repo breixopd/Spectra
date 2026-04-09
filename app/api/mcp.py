@@ -356,7 +356,7 @@ async def _tool_list_targets(arguments: dict, session: AsyncSession) -> dict:
 
 async def _tool_search_knowledge_base(arguments: dict) -> dict:
     """Search RAG knowledge base."""
-    from app.services.ai.rag import RAGService
+    from app.services.gateway.ai_gateway import get_ai_gateway
 
     query = arguments.get("query", "")
     limit = min(arguments.get("limit", 5), 20)
@@ -364,17 +364,17 @@ async def _tool_search_knowledge_base(arguments: dict) -> dict:
     if not query:
         raise ValueError("'query' is required")
 
-    rag = RAGService()
-    results = await rag.search(query=query, top_k=limit)
+    gateway = get_ai_gateway()
+    results = await gateway.rag_search(query=query, top_k=limit)
 
     return {
         "query": query,
         "count": len(results),
         "results": [
             {
-                "content": (r.document.content[:500] if r.document.content else ""),
-                "score": r.score,
-                "doc_type": r.document.doc_type,
+                "content": (r.get("content", "")[:500]),
+                "score": r.get("score", 0),
+                "doc_type": r.get("doc_type", ""),
             }
             for r in results
         ],

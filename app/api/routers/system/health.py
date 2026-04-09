@@ -189,15 +189,18 @@ async def get_system_status(
 
     rag_status = "unknown"
     try:
-        from app.services.ai.rag import RAGService
+        from app.services.gateway.ai_gateway import get_ai_gateway
 
-        rag = RAGService()
-        if rag.is_functional:
+        gw = get_ai_gateway()
+        emb = await gw.check_embeddings_status()
+        if emb["functional"]:
             rag_status = "healthy"
-        else:
+        elif emb["status"] == "fallback":
             rag_status = "fallback"
             if overall_status == "ready":
                 status_messages.append("RAG using fallback embeddings")
+        else:
+            rag_status = "unavailable"
     except (OSError, RuntimeError, ImportError):
         rag_status = "unavailable"
 

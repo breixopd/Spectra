@@ -55,12 +55,70 @@ class AIGateway:
         return resp.get("embeddings", [])
 
     async def rag_search(self, query: str, **kwargs) -> list[dict]:
-        client = self._require_client()
-        resp = await client.post(
-            "/api/v1/ai/rag",
-            json={"query": query, **kwargs},
-        )
-        return resp.get("results", [])
+        if self.client:
+            resp = await self.client.post(
+                "/api/v1/ai/rag",
+                json={"query": query, **kwargs},
+            )
+            return resp.get("results", [])
+        # Monolith fallback — call RAGService directly
+        from app.services.ai.rag import RAGService
+
+        svc = RAGService()
+        results = await svc.search(query=query, top_k=kwargs.get("top_k", 5), filters=kwargs.get("filters"))
+        return [
+            {
+                "content": r.document.content,
+                "score": r.score,
+                "doc_type": r.document.doc_type,
+            }
+            for r in results
+        ]
+
+    async def check_embeddings_status(self) -> dict:
+        """Check embedding/RAG component health.
+
+        Returns dict with ``functional`` (bool) and ``status`` (str).
+        """
+        if self.client:
+            try:
+                resp = await self.client.get("/health")
+                # AI service /health includes tensorzero — treat reachable as healthy
+                return {"functional": resp.get("status") in ("healthy", "degraded"), "status": resp.get("status", "unknown")}
+            except Exception as exc:
+                return {"functional": False, "status": f"unreachable: {type(exc).__name__}"}
+        # Monolith fallback
+        try:
+            from app.services.ai.rag import RAGService
+
+            rag = RAGService()
+            if rag.is_functional:
+                return {"functional": True, "status": "healthy"}
+            return {"functional": False, "status": "fallback"}
+        except (OSError, RuntimeError, ValueError, ImportError) as exc:
+            return {"functional": False, "status": f"unavailable: {type(exc).__name__}"}
+
+    async def check_llm_status(self) -> dict:
+        """Check LLM router/provider health.
+
+        Returns dict with ``available`` (bool), ``provider`` (str), and ``status`` (str).
+        """
+        if self.client:
+            try:
+                resp = await self.client.get("/health")
+                reachable = resp.get("status") in ("healthy", "degraded")
+                return {"available": reachable, "provider": "remote", "status": resp.get("status", "unknown")}
+            except Exception as exc:
+                return {"available": False, "provider": "unknown", "status": f"unreachable: {type(exc).__name__}"}
+        # Monolith fallback
+        try:
+            from app.services.ai.router import get_smart_router
+
+            router_instance = get_smart_router()
+            provider = getattr(router_instance, "provider", "unknown")
+            return {"available": router_instance is not None, "provider": provider, "status": f"configured: {provider}"}
+        except (OSError, RuntimeError, ValueError, ImportError) as exc:
+            return {"available": False, "provider": "unknown", "status": f"unavailable: {type(exc).__name__}"}
 
     async def close(self):
         if self.client:

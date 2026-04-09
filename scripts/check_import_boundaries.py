@@ -37,12 +37,18 @@ SERVICE_BOUNDARIES: dict[str, list[str]] = {
     "app/worker_service.py": ["app.api", "app.scheduler_service", "app.ai_service"],
     "app/ai_service.py": ["app.api", "app.worker", "app.scheduler_service"],
     "app/worker": ["app.api", "app.scheduler_service", "app.ai_service"],
+    # API layer must not import AI inference modules at top level.
+    # Pure-data submodules (cost_tracker, cve_intel, etc.) use lazy imports only.
+    "app/api": ["app.services.ai"],
 }
 
 # Known cross-service couplings (lazy imports) — emitted as warnings, not failures.
 # worker → app.services.ai: tool jobs use AI service for RAG/LLM features at runtime.
+# api → app.services.ai: pure-data submodules (cost_tracker, cve_intel, memory, etc.)
+#   accessed via lazy imports for read-only data that doesn't need LLM inference.
 WARN_LAZY_IMPORTS: dict[str, list[str]] = {
     "app/worker": ["app.services.ai"],
+    "app/api": ["app.services.ai"],
 }
 
 # Allowed exceptions (lazy imports inside functions are OK)
