@@ -4,15 +4,21 @@ Run these helper scripts from the repository root against the standard `spectra-
 
 The canonical operator workflow lives in [../../docs/wiki/operations.md](../../docs/wiki/operations.md). The sibling health probe lives at [../health_check.sh](../health_check.sh).
 
-| Script | Purpose | Common entry points | Safety label |
-|--------|---------|---------------------|--------------|
-| `backup_restore.sh` | Manage S3-native database backups | `list`, `verify <backup_id>`, `create`, `restore <backup_id>` | Destructive and confirmation-required |
-| `db_maintenance.sh` | Inspect PostgreSQL activity and run maintenance | `stats`, `sizes`, `vacuum`, `analyze`, `reindex` | Mutating |
-| `incident_response.sh` | Handle session, user, mission, and lockdown incidents | `audit-recent`, `active-sessions`, `invalidate-user`, `kill-mission`, `lockdown` | Destructive |
-| `log_management.sh` | Inspect and export service logs | `tail [service]`, `errors [service]`, `sizes`, `export <dir>` | Read-only |
-| `s3_management.sh` | Inspect Garage or S3 state and create required buckets | `status`, `buckets`, `list <bucket>`, `usage`, `create-buckets`, `health` | Mutating |
-| `user_management.sh` | Inspect and administer user accounts | `list`, `info <username>`, `create-admin`, `set-role`, `reset-password`, `disable-mfa`, `delete <username>` | Destructive and confirmation-required |
-| `worker_management.sh` | Inspect, retry, and purge queue work | `status`, `failed`, `dead-letter`, `retry-job <id>`, `purge-completed`, `purge-dead`, `worker-health` | Destructive |
+| Script | Purpose | Common entry points | Safety label | Status |
+|--------|---------|---------------------|--------------|--------|
+| `backup_restore.sh` | Manage S3-native database backups | `list`, `verify <backup_id>`, `create`, `restore <backup_id>` | Destructive and confirmation-required | ⚠ Deprecated — use Admin UI or `/api/admin/backups` |
+| `db_maintenance.sh` | Inspect PostgreSQL activity and run maintenance | `stats`, `sizes`, `vacuum`, `analyze`, `reindex` | Mutating | ⚠ Deprecated — scheduler runs VACUUM ANALYZE automatically |
+| `docker_maintenance.sh` | Docker cleanup for ephemeral worker hosts | `(default)`, `--aggressive`, `--dry-run` | Mutating | ⚠ Deprecated — scheduler's `docker_cleanup` task handles this |
+| `incident_response.sh` | Handle session, user, mission, and lockdown incidents | `audit-recent`, `active-sessions`, `invalidate-user`, `kill-mission`, `lockdown` | Destructive | Active |
+| `log_management.sh` | Inspect and export service logs | `tail [service]`, `errors [service]`, `sizes`, `export <dir>` | Read-only | Active |
+| `s3_management.sh` | Inspect Garage or S3 state and create required buckets | `status`, `buckets`, `list <bucket>`, `usage`, `create-buckets`, `health` | Mutating | Active |
+| `worker_management.sh` | Inspect, retry, and purge queue work | `status`, `failed`, `dead-letter`, `retry-job <id>`, `purge-completed`, `purge-dead`, `worker-health` | Destructive | Active — Admin UI planned |
+
+### Removed Scripts
+
+| Script | Reason | Replacement |
+|--------|--------|-------------|
+| `user_management.sh` | Fully covered by the admin API | `GET/POST /api/admin/users/*` endpoints |
 
 ## Safety Notes
 
