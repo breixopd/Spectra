@@ -193,6 +193,8 @@ class Settings(BaseSettings):
 
     CONNECT_BACK_HOST: str = "spectra-app"
 
+    DOCKER_REGISTRY: str = "ghcr.io/spectra"
+
     # --- Sandbox Pool ---
     SANDBOX_IMAGE: str = "spectra-tools"
     SANDBOX_NETWORK: str = "spectra-network"
@@ -412,23 +414,19 @@ def get_settings() -> Settings:
     # Auto-generate JWT secret if empty or using placeholder
     jwt_val = settings_instance.JWT_SECRET_KEY.get_secret_value()
     if not jwt_val or jwt_val.startswith("change-me"):
-        logger.info("JWT_SECRET_KEY auto-generated (will not persist across restarts)")
         settings_instance.JWT_SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate SECRET_KEY if empty or default
     secret_val = settings_instance.SECRET_KEY.get_secret_value()
     if not secret_val or secret_val == "change-me-in-production":
-        logger.info("SECRET_KEY auto-generated (will not persist across restarts)")
         settings_instance.SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate SERVICE_AUTH_SECRET if empty
     if not settings_instance.SERVICE_AUTH_SECRET.get_secret_value():
-        logger.info("SERVICE_AUTH_SECRET auto-generated")
         settings_instance.SERVICE_AUTH_SECRET = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate ENCRYPTION_KEY if empty
     if not settings_instance.ENCRYPTION_KEY:
-        logger.info("ENCRYPTION_KEY auto-generated")
         settings_instance.ENCRYPTION_KEY = _secrets.token_urlsafe(32)
 
     return settings_instance
