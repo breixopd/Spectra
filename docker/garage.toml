@@ -5,7 +5,7 @@ replication_factor = 1
 
 # RPC secret is injected via GARAGE_RPC_SECRET environment variable.
 rpc_bind_addr = "[::]:3901"
-rpc_public_addr = "garage:3901"
+rpc_public_addr = "[::]:3901"
 
 [s3_api]
 api_bind_addr = "[::]:3900"
