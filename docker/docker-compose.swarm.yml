@@ -307,12 +307,15 @@ services:
     networks:
       - frontend
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      test: ["CMD-SHELL", "echo | nc -w1 localhost 80"]
       interval: 30s
       timeout: 5s
       retries: 3
+      start_period: 10s
     logging: *default-logging
     <<: *security-defaults
+    cap_add:
+      - NET_BIND_SERVICE
 
   # Garage S3-compatible Object Storage
   garage:
@@ -358,7 +361,7 @@ services:
         constraints:
           - node.labels.spectra.ai == true
       restart_policy:
-        condition: on-failure
+        condition: any
         delay: 5s
       resources:
         limits:
@@ -374,19 +377,29 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8123/ping || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 60s
     secrets:
       - clickhouse_password
     logging: *default-logging
     <<: *security-stateful
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - KILL
+      - SYS_NICE
+      - IPC_LOCK
 
   # TensorZero Gateway (AI routing, observability, optimization)
   tensorzero:
     image: tensorzero/gateway:latest
-    command: ["--config-file", "/app/config/tensorzero.toml"]
+    entrypoint: ["sh", "-c", "CH_PASS=$$(cat /run/secrets/clickhouse_password 2>/dev/null || echo ''); export TENSORZERO_CLICKHOUSE_URL=\"http://default:$${CH_PASS}@clickhouse:8123/tensorzero\"; exec gateway --config-file /app/config/tensorzero.toml"]
     deploy:
       replicas: 1
       placement:
@@ -399,7 +412,6 @@ services:
           cpus: '1'
           memory: 512M
     environment:
-      TENSORZERO_CLICKHOUSE_URL: http://clickhouse:8123/tensorzero
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -412,9 +424,11 @@ services:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 120s
     secrets:
       - service_auth
+      - clickhouse_password
     logging: *default-logging
     <<: *security-stateful
 

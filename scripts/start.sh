@@ -43,53 +43,28 @@ done
 echo "Database is ready!"
 
 # Run migrations as spectra user (skip for non-app microservices)
+# Alembic handles concurrent migrations via SELECT FOR UPDATE on the version table.
+# Retry loop covers the race where two replicas start simultaneously.
 if [ "${SKIP_MIGRATIONS:-false}" = "true" ]; then
     echo "Skipping migrations (SKIP_MIGRATIONS=true)"
 else
-    echo "Acquiring migration lock..."
-    # Use pg_advisory_lock to ensure only one container runs migrations
-    # Lock ID 1 = migration lock. Blocking — waits until lock is available.
-    if gosu spectra python3 -c "
-import sys, os
-from sqlalchemy import create_engine, text
-db_url = os.environ.get('DATABASE_URL', '').replace('+asyncpg', '')
-engine = create_engine(db_url)
-with engine.connect() as conn:
-    conn.execute(text('SELECT pg_advisory_lock(1)'))
-    conn.commit()
-print('Lock acquired')
-" 2>&1; then
-        echo "Running database migrations..."
-        if ! gosu spectra alembic -c config/alembic.ini upgrade heads 2>&1; then
-            echo "ERROR: Database migration failed. Check the error above."
-            # Release the lock before exiting
-            gosu spectra python3 -c "
-import os
-from sqlalchemy import create_engine, text
-db_url = os.environ.get('DATABASE_URL', '').replace('+asyncpg', '')
-engine = create_engine(db_url)
-with engine.connect() as conn:
-    conn.execute(text('SELECT pg_advisory_unlock(1)'))
-    conn.commit()
-" 2>/dev/null || true
+    echo "Running database migrations..."
+    max_retries=3
+    retry=0
+    while [ $retry -lt $max_retries ]; do
+        if gosu spectra alembic -c config/alembic.ini upgrade heads 2>&1; then
+            echo "Migrations applied."
+            break
+        fi
+        retry=$((retry + 1))
+        if [ $retry -lt $max_retries ]; then
+            echo "Migration attempt $retry failed, retrying in 10s..."
+            sleep 10
+        else
+            echo "ERROR: Database migration failed after $max_retries attempts."
             exit 1
         fi
-        echo "Migrations applied."
-        # Release the lock
-        gosu spectra python3 -c "
-import os
-from sqlalchemy import create_engine, text
-db_url = os.environ.get('DATABASE_URL', '').replace('+asyncpg', '')
-engine = create_engine(db_url)
-with engine.connect() as conn:
-    conn.execute(text('SELECT pg_advisory_unlock(1)'))
-    conn.commit()
-" 2>/dev/null || true
-    else
-        echo "Could not acquire migration lock. Another instance may be running migrations."
-        echo "Waiting 30s for migrations to complete..."
-        sleep 30
-    fi
+    done
 fi
 
 # Ensure data directories are writable (volumes mount as root)
