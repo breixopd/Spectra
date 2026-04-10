@@ -54,7 +54,29 @@ class ServerPoolManager:
         session.add(node)
         await session.flush()
         logger.info("Added %s node: %s (%s)", service_type, name, url)
+
+        # Auto-enable autoscale when the first non-primary node is added
+        if not is_primary:
+            await self._auto_enable_autoscale(session)
+
         return node.to_dict()
+
+    async def _auto_enable_autoscale(self, session: AsyncSession) -> None:
+        """Enable AUTOSCALE_ENABLED in runtime settings if not already on."""
+        import app.core.config as config
+
+        if config.settings.AUTOSCALE_ENABLED:
+            return  # already enabled
+        try:
+            from app.services.system.runtime_settings import upsert_system_config_values
+
+            await upsert_system_config_values(session, {
+                "AUTOSCALE_ENABLED": ("true", False),
+            })
+            config.settings.AUTOSCALE_ENABLED = True
+            logger.info("Auto-scaling enabled — new compute host detected")
+        except Exception:
+            logger.warning("Failed to auto-enable autoscale", exc_info=True)
 
     async def remove_node(self, session: AsyncSession, node_id: int) -> bool:
         """Remove a server node."""
