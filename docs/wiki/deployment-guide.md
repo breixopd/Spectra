@@ -329,13 +329,20 @@ docker swarm join --token <TOKEN> <MANAGER_IP>:2377
 
 ### 2. Label Nodes
 
-Assign roles so services land on the right hardware:
+Assign roles so services land on the right hardware. Labels use per-role booleans
+so a single node can host multiple roles (e.g. `app` + `db` on the same host):
 
 ```bash
-docker node update --label-add role=app <APP_NODE_HOSTNAME>
-docker node update --label-add role=db <DB_NODE_HOSTNAME>
-docker node update --label-add role=worker <WORKER_NODE_HOSTNAME>
-docker node update --label-add role=ai <GPU_NODE_HOSTNAME>    # Optional: GPU node for local LLM
+# Per-role labels (a node can have several)
+docker node update --label-add spectra.app=true <APP_NODE_HOSTNAME>
+docker node update --label-add spectra.db=true  <DB_NODE_HOSTNAME>
+docker node update --label-add spectra.worker=true <WORKER_NODE_HOSTNAME>
+docker node update --label-add spectra.ai=true  <GPU_NODE_HOSTNAME>    # Optional: GPU node for local LLM
+
+# Example: small deployment — one node runs everything
+for role in app db ai worker; do
+  docker node update --label-add spectra.$role=true <NODE_HOSTNAME>
+done
 ```
 
 ### 3. Create Secrets
@@ -382,12 +389,12 @@ The `docker-compose.swarm.yml` defines these services with placement constraints
 
 | Service | Placement | Replicas | Secrets |
 |---------|-----------|----------|---------|
-| `db` | `node.labels.role == db` | 1 | `postgres_password` |
-| `app` | `node.labels.role == app` | 2 | `postgres_password`, `service_auth`, `jwt_secret` |
-| `ai-svc` | `node.labels.role == ai` | 1 | `service_auth` |
-| `scheduler` | `node.labels.role == app` | 1 | `service_auth` |
-| `worker` | `node.labels.role == worker` | 2 | `service_auth` |
-| `caddy` | `node.labels.role == app` | 1 | — (uses config) |
+| `db` | `node.labels.spectra.db == true` | 1 | `postgres_password` |
+| `app` | `node.labels.spectra.app == true` | 2 | `postgres_password`, `service_auth`, `jwt_secret` |
+| `ai-svc` | `node.labels.spectra.ai == true` | 1 | `service_auth` |
+| `scheduler` | `node.labels.spectra.app == true` | 1 | `service_auth` |
+| `worker` | `node.labels.spectra.worker == true` | 2 | `service_auth` |
+| `caddy` | `node.labels.spectra.app == true` | 1 | — (uses config) |
 
 The overlay network (`spectra-net`) spans all Swarm nodes automatically.
 
