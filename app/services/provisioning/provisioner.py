@@ -80,13 +80,24 @@ class ServerProvisioner:
 
                 env_vars = self._build_env_vars(config)
 
+                registry = getattr(settings, "DOCKER_REGISTRY", None) or "ghcr.io/spectra"
+                from app.version import __version__ as app_version
+
+                version = app_version or "latest"
+
+                # Filter reserved keys from extra_env to prevent format conflicts
+                _reserved = {"service_port", "env_vars", "spectra_host", "registry", "version"}
+                safe_extra = {k: v for k, v in config.extra_env.items() if k not in _reserved}
+
                 for step in recipe:
                     result.logs.append(f"\n--- Step: {step.name} ---")
                     command = step.command.format(
                         service_port=config.service_port,
                         env_vars=self._format_env_vars(env_vars),
                         spectra_host=settings.CONNECT_BACK_HOST,
-                        **config.extra_env,
+                        registry=registry,
+                        version=version,
+                        **safe_extra,
                     )
 
                     try:

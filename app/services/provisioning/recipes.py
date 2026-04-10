@@ -109,7 +109,7 @@ PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
         *_DOCKER_INSTALL_STEPS,
         ProvisionStep(
             name="Pull Spectra tools image",
-            command="docker pull {registry}/spectra-tools:{version} || echo 'image_pull_skipped'",
+            command="docker pull {registry}/spectra-worker:{version} || echo 'image_pull_skipped'",
             timeout=600,
             required=False,
         ),
@@ -127,7 +127,7 @@ PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
                 "--cap-add NET_ADMIN --cap-add NET_RAW "
                 "-p {service_port}:5000 "
                 "{env_vars} "
-                "{registry}/spectra-tools:{version}"
+                "{registry}/spectra-worker:{version}"
             ),
             timeout=30,
         ),
