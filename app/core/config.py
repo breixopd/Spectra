@@ -31,8 +31,15 @@ class Settings(BaseSettings):
         """Support Docker Swarm _FILE env vars that point to secret files."""
         file_mappings = {
             "JWT_SECRET_KEY_FILE": "JWT_SECRET_KEY",
+            "SECRET_KEY_FILE": "SECRET_KEY",
             "DATABASE_URL_FILE": "DATABASE_URL",
             "SERVICE_AUTH_SECRET_FILE": "SERVICE_AUTH_SECRET",
+            "ENCRYPTION_KEY_FILE": "ENCRYPTION_KEY",
+            "S3_ACCESS_KEY_FILE": "S3_ACCESS_KEY",
+            "S3_SECRET_KEY_FILE": "S3_SECRET_KEY",
+            "REDIS_PASSWORD_FILE": "REDIS_PASSWORD",
+            "CLICKHOUSE_PASSWORD_FILE": "CLICKHOUSE_PASSWORD",
+            "OPENAI_API_KEY_FILE": "OPENAI_API_KEY",
         }
         for file_var, target_var in file_mappings.items():
             file_path = os.environ.get(file_var) or values.get(file_var)
@@ -399,28 +406,23 @@ def get_settings() -> Settings:
     # Auto-generate JWT secret if empty or using placeholder
     jwt_val = settings_instance.JWT_SECRET_KEY.get_secret_value()
     if not jwt_val or jwt_val.startswith("change-me"):
-        logger.warning(
-            "JWT_SECRET_KEY not set. Generating random key (sessions will invalidate on restart)."
-        )
+        logger.info("JWT_SECRET_KEY auto-generated (will not persist across restarts)")
         settings_instance.JWT_SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate SECRET_KEY if empty or default
     secret_val = settings_instance.SECRET_KEY.get_secret_value()
     if not secret_val or secret_val == "change-me-in-production":
-        logger.warning(
-            "SECRET_KEY not set or using default. Generating random key (sessions will invalidate on restart)."
-        )
+        logger.info("SECRET_KEY auto-generated (will not persist across restarts)")
         settings_instance.SECRET_KEY = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate SERVICE_AUTH_SECRET if empty
     if not settings_instance.SERVICE_AUTH_SECRET.get_secret_value():
-        logger.warning(
-            "SERVICE_AUTH_SECRET not set. Generating random key (must match across services for inter-service auth)."
-        )
+        logger.info("SERVICE_AUTH_SECRET auto-generated")
         settings_instance.SERVICE_AUTH_SECRET = SecretStr(_secrets.token_urlsafe(32))
 
     # Auto-generate ENCRYPTION_KEY if empty
     if not settings_instance.ENCRYPTION_KEY:
+        logger.info("ENCRYPTION_KEY auto-generated")
         settings_instance.ENCRYPTION_KEY = _secrets.token_urlsafe(32)
 
     return settings_instance
