@@ -91,7 +91,29 @@ app = FastAPI(
 
 # --- Rate Limiting ---
 app.state.limiter = limiter
-app.state.limiter._rate_limit_exceeded_handler = rate_limit_exceeded_handler_sync  # type: ignore[attr-defined]
+
+
+def _safe_rate_limit_handler(request: Request, exc: Exception) -> StarletteResponse:
+    """Guard against slowapi passing non-RateLimitExceeded exceptions.
+
+    slowapi's middleware unconditionally calls *_rate_limit_exceeded_handler*
+    for any exception that propagates through the ASGI stack.  If the
+    exception isn't a ``RateLimitExceeded`` the original handler may crash
+    accessing attributes like ``exc.detail`` or ``exc.limit``.  This wrapper
+    delegates only genuine rate-limit errors; everything else gets a generic
+    503 so the real exception can be logged elsewhere.
+    """
+    if isinstance(exc, RateLimitExceeded):
+        return rate_limit_exceeded_handler_sync(request, exc)
+    logger.warning(
+        "slowapi handler received non-RateLimitExceeded exception: %s: %s",
+        type(exc).__name__,
+        exc,
+    )
+    return JSONResponse({"error": "Service temporarily unavailable"}, status_code=503)
+
+
+app.state.limiter._rate_limit_exceeded_handler = _safe_rate_limit_handler  # type: ignore[attr-defined]
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler_sync)  # type: ignore[arg-type]
 app.add_middleware(SlowAPIMiddleware)
 

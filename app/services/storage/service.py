@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from typing import Any
 
@@ -135,56 +136,55 @@ class StorageService:
 
         try:
             async with httpx.AsyncClient(base_url=admin_url, headers=headers, timeout=10) as http:
-                # 1. Check current layout status
-                resp = await http.get("/v2/status")
+                # 1. Check cluster status
+                resp = await http.get("/v2/GetClusterStatus")
                 if resp.status_code != 200:
                     logger.debug("Garage admin API not reachable (status %s), skipping bootstrap", resp.status_code)
                     return
                 status_data = resp.json()
+                layout_version = status_data.get("layoutVersion", 0)
 
-                # Layout already applied → nothing to do
-                layout = status_data.get("layout", {})
-                layout_version = layout.get("version")
-                if layout_version and layout_version not in (0, "none", None):
-                    logger.debug("Garage layout already applied (version %s), skipping bootstrap", layout_version)
-                    return
+                if layout_version == 0:
+                    # Layout not yet configured — find the node ID and assign
+                    nodes = status_data.get("nodes", [])
+                    node_id = next((n["id"] for n in nodes if n.get("role") is None), None)
+                    if not node_id and nodes:
+                        node_id = nodes[0]["id"]
+                    if not node_id:
+                        logger.warning("Garage bootstrap: could not determine node ID")
+                        return
+                    logger.info("Garage bootstrap: node %s — assigning layout", node_id[:16])
 
-                # 2. Get node ID
-                node_resp = await http.get("/v2/node")
-                node_resp.raise_for_status()
-                node_id = node_resp.json().get("id")
-                if not node_id:
-                    logger.warning("Garage bootstrap: could not determine node ID")
-                    return
-                logger.info("Garage bootstrap: node %s — assigning layout", node_id[:16])
+                    # 2. Assign layout role
+                    assign_resp = await http.post(
+                        "/v2/UpdateClusterLayout",
+                        json=[{"id": node_id, "zone": "dc1", "capacity": 1073741824, "tags": []}],
+                    )
+                    assign_resp.raise_for_status()
 
-                # 3. Assign layout
-                assign_resp = await http.post(
-                    "/v2/layout",
-                    json=[{"id": node_id, "zone": "dc1", "capacity": 1073741824}],
-                )
-                assign_resp.raise_for_status()
+                    # 3. Apply layout (version must be current + 1)
+                    layout_resp = await http.get("/v2/GetClusterLayout")
+                    layout_resp.raise_for_status()
+                    next_version = layout_resp.json().get("version", 0) + 1
+                    apply_resp = await http.post("/v2/ApplyClusterLayout", json={"version": next_version})
+                    apply_resp.raise_for_status()
+                    logger.info("Garage bootstrap: layout applied (version %s)", next_version)
 
-                # 4. Apply layout
-                apply_resp = await http.post("/v2/layout/apply", json={"version": 1})
-                apply_resp.raise_for_status()
-                logger.info("Garage bootstrap: layout applied")
+                # 4. Create or retrieve access key
+                access_key_id, secret_access_key = await self._garage_ensure_key(http, "spectra-app")
 
-                # 5. Create access key
-                key_resp = await http.post("/v2/key", json={"name": "spectra-app"})
-                if key_resp.status_code in (200, 201):
-                    key_data = key_resp.json()
-                    created_access = key_data.get("accessKeyId", "")
-                    if created_access:
-                        logger.info("Garage bootstrap: created key %s", created_access)
-                else:
-                    logger.debug("Garage bootstrap: key creation returned %s (may already exist)", key_resp.status_code)
-                    created_access = ""
+                if access_key_id and secret_access_key:
+                    # Write new credentials back to settings and reinitialise the S3 client
+                    settings.S3_ACCESS_KEY = type(settings.S3_ACCESS_KEY)(access_key_id)
+                    settings.S3_SECRET_KEY = type(settings.S3_SECRET_KEY)(secret_access_key)
+                    if self._client_ctx is not None:
+                        with contextlib.suppress(Exception):
+                            await self._client_ctx.__aexit__(None, None, None)
+                    self._client_ctx = self._session.client(**self._s3_kwargs())
+                    self._s3 = await self._client_ctx.__aenter__()
+                    logger.info("Garage bootstrap: S3 client reinitialised with key %s", access_key_id)
 
-                # Use the configured S3 keys for bucket permissions
-                access_key_id = settings.S3_ACCESS_KEY.get_secret_value() or created_access
-
-                # 6. Create buckets and grant permissions
+                # 5. Create buckets and grant permissions
                 buckets = [
                     settings.S3_BUCKET_MISSIONS,
                     settings.S3_BUCKET_SESSIONS,
@@ -192,21 +192,27 @@ class StorageService:
                     settings.S3_BUCKET_BACKUPS,
                 ]
                 for bucket_name in buckets:
-                    b_resp = await http.put("/v2/bucket", json={"globalAlias": bucket_name})
+                    b_resp = await http.post("/v2/CreateBucket", json={"globalAlias": bucket_name})
                     if b_resp.status_code in (200, 201):
                         bucket_id = b_resp.json().get("id", "")
                         logger.info("Garage bootstrap: created bucket %s", bucket_name)
                     elif b_resp.status_code == 409:
-                        # Bucket exists — look up its ID
-                        list_resp = await http.get("/v2/bucket", params={"alias": bucket_name})
-                        bucket_id = list_resp.json().get("id", "") if list_resp.status_code == 200 else ""
+                        # Bucket exists — look up its ID from the list
+                        list_resp = await http.get("/v2/ListBuckets")
+                        bucket_id = ""
+                        if list_resp.status_code == 200:
+                            for b in list_resp.json():
+                                aliases = b.get("globalAliases", [])
+                                if bucket_name in aliases:
+                                    bucket_id = b.get("id", "")
+                                    break
                     else:
                         logger.warning("Garage bootstrap: bucket %s creation failed (%s)", bucket_name, b_resp.status_code)
                         continue
 
                     if bucket_id and access_key_id:
                         await http.post(
-                            "/v2/bucket/allow",
+                            "/v2/AllowBucketKey",
                             json={
                                 "bucketId": bucket_id,
                                 "accessKeyId": access_key_id,
@@ -218,6 +224,37 @@ class StorageService:
 
         except Exception:
             logger.warning("Garage bootstrap failed (non-fatal, manual init may be needed)", exc_info=True)
+
+    @staticmethod
+    async def _garage_ensure_key(http: Any, key_name: str) -> tuple[str, str]:
+        """Create or retrieve a Garage access key by name. Returns (access_key_id, secret_access_key)."""
+        # Try to create the key
+        key_resp = await http.post("/v2/CreateKey", json={"name": key_name})
+        if key_resp.status_code in (200, 201):
+            key_data = key_resp.json()
+            access_key_id = key_data.get("accessKeyId", "")
+            secret_access_key = key_data.get("secretAccessKey", "")
+            if access_key_id:
+                logger.info("Garage bootstrap: created key %s", access_key_id)
+                return access_key_id, secret_access_key
+
+        # Key may already exist — search existing keys
+        list_resp = await http.get("/v2/ListKeys")
+        if list_resp.status_code == 200:
+            for k in list_resp.json():
+                if k.get("name") == key_name:
+                    kid = k.get("accessKeyId", k.get("id", ""))
+                    if kid:
+                        # Fetch full key info to get the secret
+                        detail = await http.get("/v2/GetKey", params={"id": kid})
+                        if detail.status_code == 200:
+                            d = detail.json()
+                            logger.info("Garage bootstrap: found existing key %s", kid)
+                            return d.get("accessKeyId", kid), d.get("secretAccessKey", "")
+                        return kid, ""
+
+        logger.debug("Garage bootstrap: key creation/lookup returned %s", key_resp.status_code)
+        return "", ""
 
     async def stop(self) -> None:
         """Close the persistent S3 client."""

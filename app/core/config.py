@@ -40,6 +40,7 @@ class Settings(BaseSettings):
             "REDIS_PASSWORD_FILE": "REDIS_PASSWORD",
             "CLICKHOUSE_PASSWORD_FILE": "CLICKHOUSE_PASSWORD",
             "OPENAI_API_KEY_FILE": "OPENAI_API_KEY",
+            "GARAGE_ADMIN_TOKEN_FILE": "GARAGE_ADMIN_TOKEN",
         }
         for file_var, target_var in file_mappings.items():
             file_path = os.environ.get(file_var) or values.get(file_var)
