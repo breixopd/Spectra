@@ -16,6 +16,11 @@ x-security: &security-defaults
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
 
+x-security-stateful: &security-stateful
+  cap_drop: [ALL]
+  cap_add: [SETUID, SETGID]
+  security_opt: ["no-new-privileges:true"]
+
 x-common-env: &common-env
   DATABASE_URL: postgresql+asyncpg://spectra:${POSTGRES_PASSWORD:?set in .env}@db:5432/spectra
   S3_ENDPOINT_URL: http://garage:3900
@@ -55,7 +60,7 @@ services:
       resources:
         limits:
           memory: 512M
-    <<: *security-defaults
+    <<: *security-stateful
 
   # PostgreSQL (persistent state, PostgreSQL-backed app cache, job queue,
   # LISTEN/NOTIFY backbone, pgvector/RAG)
@@ -85,7 +90,7 @@ services:
     networks:
       - backend
     logging: *default-logging
-    <<: *security-defaults
+    <<: *security-stateful
 
   # Redis (shared distributed rate-limiting backend)
   redis:
@@ -111,7 +116,7 @@ services:
     networks:
       - backend
     logging: *default-logging
-    <<: *security-defaults
+    <<: *security-stateful
 
   # Caddy Reverse Proxy (thin edge rate limiting; Redis remains primary)
   caddy:
@@ -210,7 +215,7 @@ services:
       - frontend
       - backend
     logging: *default-logging
-    <<: *security-defaults
+    <<: *security-stateful
     develop:
       watch:
         - action: sync
@@ -264,7 +269,7 @@ services:
       - frontend
       - backend
     logging: *default-logging
-    <<: *security-defaults
+    <<: *security-stateful
 
   # ClickHouse (TensorZero analytics + inference storage)
   clickhouse:
@@ -295,7 +300,7 @@ services:
     networks:
       - backend
     logging: *default-logging
-    <<: *security-defaults
+    <<: *security-stateful
 
   # TensorZero Gateway (AI routing, observability, optimization)
   tensorzero:
@@ -330,7 +335,7 @@ services:
     networks:
       - backend
     logging: *default-logging
-    <<: *security-defaults
+    <<: *security-stateful
 
   # Scheduler (Backups, Metrics, Cleanup)
   scheduler:
@@ -377,7 +382,7 @@ services:
       - frontend
       - backend
     logging: *default-logging
-    <<: *security-defaults
+    <<: *security-stateful
 
   # Worker (Tool Execution via Ephemeral Sandbox Containers)
   worker:

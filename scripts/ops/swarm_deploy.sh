@@ -6,7 +6,7 @@
 #   --deploy       Deploy/update the stack
 #   --status       Show stack status
 #   --rollback     Rollback to previous version
-#   --label NODE ROLE  Set node role label (app|db|ai|worker)
+#   --label NODE ROLE  Set node role label (spectra.app|spectra.db|spectra.ai|spectra.worker)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,8 +45,8 @@ cmd_init() {
   log "Label this node:"
   local node_id
   node_id=$(docker info --format '{{.Swarm.NodeID}}')
-  echo "  docker node update --label-add role=app ${node_id}"
-  echo "  docker node update --label-add role=db ${node_id}"
+  echo "  docker node update --label-add spectra.app=true ${node_id}"
+  echo "  docker node update --label-add spectra.db=true  ${node_id}"
 }
 
 cmd_label() {
@@ -54,8 +54,8 @@ cmd_label() {
   [[ -n "${node}" && -n "${role}" ]] || die "Usage: --label NODE ROLE"
   check_swarm
   check_manager
-  docker node update --label-add "role=${role}" "${node}"
-  log "Node ${node} labeled with role=${role}"
+  docker node update --label-add "spectra.${role}=true" "${node}"
+  log "Node ${node} labeled with spectra.${role}=true"
 }
 
 cmd_secrets() {
@@ -106,10 +106,10 @@ cmd_deploy() {
   # Check minimum node labels
   for role in app db; do
     local count
-    count=$(docker node ls -f "node.label.role=${role}" --format '{{.ID}}' | wc -l)
+    count=$(docker node ls -f "node.label.spectra.${role}=true" --format '{{.ID}}' | wc -l)
     if [[ "${count}" -eq 0 ]]; then
-      warn "No nodes labeled with role=${role}. Services may not schedule."
-      warn "Fix: docker node update --label-add role=${role} <node-id>"
+      warn "No nodes labeled with spectra.${role}=true. Services may not schedule."
+      warn "Fix: docker node update --label-add spectra.${role}=true <node-id>"
     fi
   done
 
@@ -232,7 +232,7 @@ case "${ACTION}" in
     echo "Commands:"
     echo "  --init [ADDR]      Initialize Swarm cluster"
     echo "  --join TOKEN IP    Join as worker node"
-    echo "  --label NODE ROLE  Set node role (app|db|ai|worker)"
+    echo "  --label NODE ROLE  Set node role (app|db|ai|worker) → spectra.<role>=true"
     echo "  --secrets          Create/verify Docker secrets"
     echo "  --deploy           Deploy or update the stack"
     echo "  --status           Show stack status"

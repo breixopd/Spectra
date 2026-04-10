@@ -1,6 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
+# ── Resolve Docker secrets (Swarm mode) ──
+# Docker secrets are mounted as files at /run/secrets/<name>.
+# If a *_FILE env var is set, read the file content into the base env var.
+for secret_var in JWT_SECRET_KEY SECRET_KEY SERVICE_AUTH_SECRET; do
+    file_var="${secret_var}_FILE"
+    if [[ -n "${!file_var:-}" ]] && [[ -f "${!file_var}" ]]; then
+        export "$secret_var"="$(< "${!file_var}")"
+    fi
+done
+
 # Fix Docker socket permissions if mounted (needed for sandbox container management)
 if [ -S /var/run/docker.sock ]; then
     DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
@@ -35,7 +45,7 @@ _check_placeholder() {
 }
 
 warn_count=0
-for var in JWT_SECRET_KEY SECRET_KEY POSTGRES_PASSWORD REDIS_PASSWORD; do
+for var in JWT_SECRET_KEY SECRET_KEY; do
     _check_placeholder "$var" || ((++warn_count))
 done
 if [[ $warn_count -gt 0 ]]; then
