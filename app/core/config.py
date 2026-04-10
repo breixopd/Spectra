@@ -316,6 +316,11 @@ class Settings(BaseSettings):
     # Used by BackupService (app/services/infrastructure/backup.py) for automated backups
     S3_BUCKET_BACKUPS: str = "spectra-backups"
 
+    # Garage Admin API token for first-boot bootstrap (layout, keys, buckets).
+    # Only needed when running Garage as the S3 backend. Empty = skip bootstrap.
+    GARAGE_ADMIN_TOKEN: str = ""
+    GARAGE_ADMIN_URL: str = ""  # e.g. http://garage:3903; auto-derived from S3_ENDPOINT_URL if empty
+
     # --- Backup ---
     BACKUP_ENABLED: bool = Field(default=False, description="Enable automated backups")
     BACKUP_SCHEDULE_HOURS: int = Field(default=24, description="Backup interval in hours")

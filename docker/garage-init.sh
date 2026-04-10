@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Garage bootstrap script — run once after first start to set up layout, keys, and buckets.
 # Usage: ./docker/garage-init.sh
+#
+# NOTE: The app handles this automatically on first boot via StorageService._bootstrap_garage()
+# when GARAGE_ADMIN_TOKEN is set.  This script is kept as a manual fallback / debugging tool.
 set -euo pipefail
 
 GARAGE_CONTAINER="${GARAGE_CONTAINER:-spectra-garage}"

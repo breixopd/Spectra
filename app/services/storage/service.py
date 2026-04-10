@@ -105,6 +105,119 @@ class StorageService:
             return
         self._client_ctx = self._session.client(**self._s3_kwargs())
         self._s3 = await self._client_ctx.__aenter__()
+        await self._bootstrap_garage()
+
+    # ------------------------------------------------------------------
+    # Garage first-boot bootstrap (layout → key → buckets via Admin API)
+    # ------------------------------------------------------------------
+
+    async def _bootstrap_garage(self) -> None:
+        """Configure Garage on first boot via the Admin API (port 3903).
+
+        Performs layout assignment, key creation, bucket creation, and
+        permission grants.  Skips silently when the admin token is empty
+        or Garage already has an applied layout.
+        """
+        settings = _settings()
+        admin_token = settings.GARAGE_ADMIN_TOKEN
+        if not admin_token:
+            return  # no token → skip bootstrap
+
+        admin_url = settings.GARAGE_ADMIN_URL
+        if not admin_url:
+            # Derive from S3 endpoint: replace port with 3903
+            base = settings.S3_ENDPOINT_URL.rsplit(":", 1)[0]
+            admin_url = f"{base}:3903"
+
+        import httpx
+
+        headers = {"Authorization": f"Bearer {admin_token}"}
+
+        try:
+            async with httpx.AsyncClient(base_url=admin_url, headers=headers, timeout=10) as http:
+                # 1. Check current layout status
+                resp = await http.get("/v2/status")
+                if resp.status_code != 200:
+                    logger.debug("Garage admin API not reachable (status %s), skipping bootstrap", resp.status_code)
+                    return
+                status_data = resp.json()
+
+                # Layout already applied → nothing to do
+                layout = status_data.get("layout", {})
+                layout_version = layout.get("version")
+                if layout_version and layout_version not in (0, "none", None):
+                    logger.debug("Garage layout already applied (version %s), skipping bootstrap", layout_version)
+                    return
+
+                # 2. Get node ID
+                node_resp = await http.get("/v2/node")
+                node_resp.raise_for_status()
+                node_id = node_resp.json().get("id")
+                if not node_id:
+                    logger.warning("Garage bootstrap: could not determine node ID")
+                    return
+                logger.info("Garage bootstrap: node %s — assigning layout", node_id[:16])
+
+                # 3. Assign layout
+                assign_resp = await http.post(
+                    "/v2/layout",
+                    json=[{"id": node_id, "zone": "dc1", "capacity": 1073741824}],
+                )
+                assign_resp.raise_for_status()
+
+                # 4. Apply layout
+                apply_resp = await http.post("/v2/layout/apply", json={"version": 1})
+                apply_resp.raise_for_status()
+                logger.info("Garage bootstrap: layout applied")
+
+                # 5. Create access key
+                key_resp = await http.post("/v2/key", json={"name": "spectra-app"})
+                if key_resp.status_code in (200, 201):
+                    key_data = key_resp.json()
+                    created_access = key_data.get("accessKeyId", "")
+                    if created_access:
+                        logger.info("Garage bootstrap: created key %s", created_access)
+                else:
+                    logger.debug("Garage bootstrap: key creation returned %s (may already exist)", key_resp.status_code)
+                    created_access = ""
+
+                # Use the configured S3 keys for bucket permissions
+                access_key_id = settings.S3_ACCESS_KEY.get_secret_value() or created_access
+
+                # 6. Create buckets and grant permissions
+                buckets = [
+                    settings.S3_BUCKET_MISSIONS,
+                    settings.S3_BUCKET_SESSIONS,
+                    settings.S3_BUCKET_KNOWLEDGE,
+                    settings.S3_BUCKET_BACKUPS,
+                ]
+                for bucket_name in buckets:
+                    b_resp = await http.put("/v2/bucket", json={"globalAlias": bucket_name})
+                    if b_resp.status_code in (200, 201):
+                        bucket_id = b_resp.json().get("id", "")
+                        logger.info("Garage bootstrap: created bucket %s", bucket_name)
+                    elif b_resp.status_code == 409:
+                        # Bucket exists — look up its ID
+                        list_resp = await http.get("/v2/bucket", params={"alias": bucket_name})
+                        bucket_id = list_resp.json().get("id", "") if list_resp.status_code == 200 else ""
+                    else:
+                        logger.warning("Garage bootstrap: bucket %s creation failed (%s)", bucket_name, b_resp.status_code)
+                        continue
+
+                    if bucket_id and access_key_id:
+                        await http.post(
+                            "/v2/bucket/allow",
+                            json={
+                                "bucketId": bucket_id,
+                                "accessKeyId": access_key_id,
+                                "permissions": {"read": True, "write": True, "owner": True},
+                            },
+                        )
+
+                logger.info("Garage bootstrap complete")
+
+        except Exception:
+            logger.warning("Garage bootstrap failed (non-fatal, manual init may be needed)", exc_info=True)
 
     async def stop(self) -> None:
         """Close the persistent S3 client."""
