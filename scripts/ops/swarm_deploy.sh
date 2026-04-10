@@ -79,9 +79,18 @@ cmd_secrets() {
     fi
   }
 
-  create_secret "db_password" "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD not set}"
-  create_secret "service_auth" "${SERVICE_AUTH_SECRET:?SERVICE_AUTH_SECRET not set}"
-  create_secret "jwt_secret" "${JWT_SECRET_KEY:?JWT_SECRET_KEY not set}"
+  create_secret "db_password"        "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD not set}"
+  create_secret "db_url"             "postgresql+asyncpg://spectra:${POSTGRES_PASSWORD}@db:5432/spectra"
+  create_secret "service_auth"       "${SERVICE_AUTH_SECRET:?SERVICE_AUTH_SECRET not set}"
+  create_secret "jwt_secret"         "${JWT_SECRET_KEY:?JWT_SECRET_KEY not set}"
+  create_secret "secret_key"         "${SECRET_KEY:?SECRET_KEY not set}"
+  create_secret "encryption_key"     "${ENCRYPTION_KEY:?ENCRYPTION_KEY not set}"
+  create_secret "redis_password"     "${REDIS_PASSWORD:?REDIS_PASSWORD not set}"
+  create_secret "garage_access_key"  "${GARAGE_ACCESS_KEY:?GARAGE_ACCESS_KEY not set}"
+  create_secret "garage_secret_key"  "${GARAGE_SECRET_KEY:?GARAGE_SECRET_KEY not set}"
+  create_secret "garage_rpc_secret"  "${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET not set}"
+  create_secret "clickhouse_password" "${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD not set}"
+  create_secret "openai_api_key"     "${OPENAI_API_KEY:-}"
 
   log "Secrets ready (${secrets_created} created)"
 }

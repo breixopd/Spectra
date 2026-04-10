@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Spectra First-Run Setup
-# Automates: Garage S3 bootstrap, .env configuration, migrations, admin setup
+# Generates all secrets, bootstraps Garage S3, runs migrations, starts stack.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -16,10 +16,33 @@ log() { echo -e "${GREEN}[SETUP]${NC} $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 err() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
-# Check prerequisites
+# ── Helpers ──
+
+generate_password() { openssl rand -base64 18 | tr -d '/+=' | head -c 24; }
+generate_secret()   { openssl rand -base64 32; }
+generate_hex()      { openssl rand -hex 32; }
+
+# Write a var to .env only if it is missing or empty.
+env_set() {
+    local var="$1" value="$2"
+    if grep -q "^${var}=" "${ENV_FILE}" 2>/dev/null; then
+        local current
+        current="$(grep "^${var}=" "${ENV_FILE}" | head -1 | cut -d= -f2-)"
+        if [[ -n "${current}" ]]; then
+            return 0  # already set, don't overwrite
+        fi
+        # Var exists but is empty — replace the line
+        sed -i "s|^${var}=.*|${var}=${value}|" "${ENV_FILE}"
+    else
+        echo "${var}=${value}" >> "${ENV_FILE}"
+    fi
+}
+
+# ── Phase 1: Prerequisites ──
+
 check_prereqs() {
     log "[1/5] Checking prerequisites..."
-    for cmd in docker curl jq openssl; do
+    for cmd in docker openssl; do
         command -v "$cmd" >/dev/null 2>&1 || { err "Required command not found: $cmd"; exit 1; }
     done
 
@@ -30,43 +53,68 @@ check_prereqs() {
             log "Creating .env from .env.example..."
             cp "${ENV_FILE}.example" "${ENV_FILE}"
         else
-            err "No .env file found. Create one from .env.example first."
-            exit 1
+            log "Creating empty .env..."
+            touch "${ENV_FILE}"
         fi
     fi
+    chmod 600 "${ENV_FILE}"
     log "Prerequisites OK"
-
-    # ── Auto-generate secrets ──
-    if grep -q "change-me-with-a-long-random-value" "${ENV_FILE}"; then
-        log "Generating cryptographic secrets..."
-        generate_secret() { openssl rand -hex 32; }
-        generate_password() { openssl rand -base64 18 | tr -d '/+=' | head -c 24; }
-
-        local db_pass
-        db_pass="$(generate_password)"
-
-        sed -i "s|change-me-with-a-long-random-value|$(generate_secret)|" "${ENV_FILE}"
-        sed -i "s|change-me-with-a-different-long-random-value|$(generate_secret)|" "${ENV_FILE}"
-        sed -i "s|change-me-shared-between-app-ai-scheduler-worker|$(generate_secret)|" "${ENV_FILE}"
-        sed -i "s|change-me-db-password|${db_pass}|" "${ENV_FILE}"
-        sed -i "s|change-me-redis-pass|$(generate_password)|" "${ENV_FILE}"
-        sed -i "s|change-me-clickhouse|$(generate_password)|" "${ENV_FILE}"
-        log "  ✓ Secrets generated"
-    else
-        log ".env already has real secrets, skipping generation"
-    fi
 }
 
-# Start core services (DB, Redis, Garage)
+# ── Phase 2: Auto-generate ALL secrets ──
+
+generate_secrets() {
+    log "[2/5] Generating secrets..."
+
+    local pg_pass redis_pass ch_pass
+    pg_pass="$(generate_password)"
+    redis_pass="$(generate_password)"
+    ch_pass="$(generate_password)"
+
+    env_set POSTGRES_PASSWORD "${pg_pass}"
+    env_set REDIS_PASSWORD "${redis_pass}"
+    env_set CLICKHOUSE_PASSWORD "${ch_pass}"
+    env_set GARAGE_RPC_SECRET "$(generate_hex)"
+
+    env_set JWT_SECRET_KEY "$(generate_secret)"
+    env_set SECRET_KEY "$(generate_secret)"
+    env_set SERVICE_AUTH_SECRET "$(generate_secret)"
+    env_set ENCRYPTION_KEY "$(generate_secret)"
+
+    # Re-read passwords (may have been pre-configured by user)
+    set -a; source "${ENV_FILE}"; set +a
+
+    env_set DATABASE_URL "postgresql+asyncpg://spectra:${POSTGRES_PASSWORD}@db:5432/spectra"
+    env_set RATE_LIMIT_STORAGE "redis://:${REDIS_PASSWORD}@redis:6379/0"
+    env_set S3_ENDPOINT_URL "http://garage:3900"
+
+    log "  ✓ Secrets ready"
+}
+
+# ── Phase 3: Start core services ──
+
 start_core() {
-    log "[2/5] Starting core services..."
+    log "[3/5] Starting core services..."
     docker compose -f "${COMPOSE_FILE}" up -d db redis garage
 
     log "Waiting for services to be healthy..."
     local retries=30
     while [[ $retries -gt 0 ]]; do
-        if docker compose -f "${COMPOSE_FILE}" ps --format json | \
-           python3 -c "import sys,json; services=json.loads(sys.stdin.read()); exit(0 if all(s.get('Health','')=='healthy' for s in services if s['Service'] in ('db','redis','garage')) else 1)" 2>/dev/null; then
+        if docker compose -f "${COMPOSE_FILE}" ps --format json 2>/dev/null | \
+           python3 -c "
+import sys, json
+raw = sys.stdin.read().strip()
+if not raw:
+    sys.exit(1)
+# Handle both JSON array and newline-delimited JSON objects
+if raw.startswith('['):
+    services = json.loads(raw)
+else:
+    services = [json.loads(line) for line in raw.splitlines() if line.strip()]
+targets = {'db', 'redis', 'garage'}
+matched = [s for s in services if s.get('Service', '') in targets]
+sys.exit(0 if matched and all(s.get('Health', '') == 'healthy' for s in matched) else 1)
+" 2>/dev/null; then
             log "Core services healthy"
             return 0
         fi
@@ -77,13 +125,13 @@ start_core() {
     exit 1
 }
 
-# Bootstrap Garage S3
+# ── Phase 4: Bootstrap Garage S3 ──
+
 bootstrap_garage() {
-    log "[3/5] Bootstrapping S3 storage..."
+    log "[4/5] Bootstrapping S3 storage..."
 
     # Check if already bootstrapped
     if docker compose -f "${COMPOSE_FILE}" exec -T garage /garage status 2>/dev/null | grep -q "CONFIGURED"; then
-        log "Garage already configured, checking buckets..."
         local existing_buckets
         existing_buckets=$(docker compose -f "${COMPOSE_FILE}" exec -T garage /garage bucket list 2>/dev/null || echo "")
         if echo "$existing_buckets" | grep -q "spectra-missions"; then
@@ -92,7 +140,6 @@ bootstrap_garage() {
         fi
     fi
 
-    # Run the garage-init script and capture credentials
     if [[ ! -f "${PROJECT_ROOT}/docker/garage-init.sh" ]]; then
         err "garage-init.sh not found"
         exit 1
@@ -105,15 +152,25 @@ bootstrap_garage() {
         exit 1
     }
 
-    # Parse garage keys from init output and write to .env
+    # Parse garage keys from init output
     local access_key secret_key
     access_key="$(echo "$init_output" | sed -n 's/.*GARAGE_ACCESS_KEY=//p' | tail -1 | tr -d '[:space:]')"
     secret_key="$(echo "$init_output" | sed -n 's/.*GARAGE_SECRET_KEY=//p' | tail -1 | tr -d '[:space:]')"
 
     if [[ -n "$access_key" && -n "$secret_key" ]]; then
+        # Force-overwrite garage keys since they come from the running instance
         sed -i "s|^GARAGE_ACCESS_KEY=.*|GARAGE_ACCESS_KEY=${access_key}|" "${ENV_FILE}"
-        sed -i "s|^GARAGE_SECRET_KEY=.*|GARAGE_SECRET_KEY=${secret_key}|" "${ENV_FILE}"
-        log "  ✓ S3 credentials auto-configured"
+        if grep -q "^GARAGE_SECRET_KEY=" "${ENV_FILE}"; then
+            sed -i "s|^GARAGE_SECRET_KEY=.*|GARAGE_SECRET_KEY=${secret_key}|" "${ENV_FILE}"
+        else
+            echo "GARAGE_SECRET_KEY=${secret_key}" >> "${ENV_FILE}"
+        fi
+        if grep -q "^GARAGE_ACCESS_KEY=" "${ENV_FILE}"; then
+            true  # already handled by sed above
+        else
+            echo "GARAGE_ACCESS_KEY=${access_key}" >> "${ENV_FILE}"
+        fi
+        log "  ✓ S3 credentials written to .env"
     else
         warn "Could not parse Garage credentials — check garage-init output"
         echo "$init_output"
@@ -122,17 +179,12 @@ bootstrap_garage() {
     log "S3 storage bootstrapped"
 }
 
-# Run database migrations
-run_migrations() {
-    log "[4/5] Running database migrations..."
-    docker compose -f "${COMPOSE_FILE}" run --rm -e SKIP_MIGRATIONS=false app \
-        python3 -m alembic -c /app/config/alembic.ini upgrade heads 2>&1 | tail -5
-    log "Migrations complete"
-}
+# ── Phase 5: Start everything ──
 
-# Start all services
 start_all() {
     log "[5/5] Starting all services..."
+
+    # Re-read .env (now has Garage keys)
     docker compose -f "${COMPOSE_FILE}" up -d
 
     log "Waiting for application to be healthy..."
@@ -148,7 +200,8 @@ start_all() {
     warn "Application health check timed out — check docker logs"
 }
 
-# Print summary
+# ── Summary ──
+
 print_summary() {
     local port="${APP_PORT:-443}"
     local scheme="https"
@@ -171,7 +224,8 @@ print_summary() {
     echo ""
 }
 
-# Main
+# ── Main ──
+
 main() {
     echo -e "${BLUE}════════════════════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}  Spectra First-Run Setup${NC}"
@@ -179,9 +233,9 @@ main() {
     echo ""
 
     check_prereqs
+    generate_secrets
     start_core
     bootstrap_garage
-    run_migrations
     start_all
     print_summary
 }

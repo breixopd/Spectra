@@ -28,16 +28,16 @@ x-security-stateful: &security-stateful
   security_opt: ["no-new-privileges:true"]
 
 x-common-env: &common-env
-  DATABASE_URL: postgresql+asyncpg://spectra:${DB_PASSWORD}@db:5432/spectra
+  DATABASE_URL_FILE: /run/secrets/db_url
   S3_ENDPOINT_URL: http://garage:3900
-  S3_ACCESS_KEY: ${GARAGE_ACCESS_KEY:-spectra}
-  S3_SECRET_KEY: ${GARAGE_SECRET_KEY}
+  S3_ACCESS_KEY_FILE: /run/secrets/garage_access_key
+  S3_SECRET_KEY_FILE: /run/secrets/garage_secret_key
   TENSORZERO_GATEWAY_URL: http://tensorzero:3000
 
 services:
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    entrypoint: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$(cat /run/secrets/redis_password)\""]
     deploy:
       replicas: 1
       placement:
@@ -53,10 +53,12 @@ services:
     networks:
       - backend
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$(cat /run/secrets/redis_password)\" ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    secrets:
+      - redis_password
     logging: *default-logging
     <<: *security-stateful
 
@@ -114,6 +116,7 @@ services:
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       JWT_SECRET_KEY_FILE: /run/secrets/jwt_secret
       SECRET_KEY_FILE: /run/secrets/secret_key
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       AI_SERVICE_URL: http://ai-svc:5010
       RATE_LIMIT_STORAGE: "redis://:${REDIS_PASSWORD}@redis:6379/0"
       SCHEDULER_URL: http://scheduler:5011
@@ -135,7 +138,11 @@ services:
       - service_auth
       - jwt_secret
       - db_password
+      - db_url
       - secret_key
+      - encryption_key
+      - garage_access_key
+      - garage_secret_key
     read_only: true
     tmpfs:
       - /tmp
@@ -160,6 +167,7 @@ services:
       <<: *common-env
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       SECRET_KEY_FILE: /run/secrets/secret_key
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       SKIP_MIGRATIONS: "true"
       SERVICE_MODE: ai
     volumes:
@@ -175,6 +183,10 @@ services:
     secrets:
       - service_auth
       - secret_key
+      - encryption_key
+      - db_url
+      - garage_access_key
+      - garage_secret_key
     read_only: true
     tmpfs:
       - /tmp
@@ -199,6 +211,7 @@ services:
       <<: *common-env
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       SECRET_KEY_FILE: /run/secrets/secret_key
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       BACKUP_ENABLED: "true"
       SKIP_MIGRATIONS: "true"
       SERVICE_MODE: scheduler
@@ -215,6 +228,10 @@ services:
     secrets:
       - service_auth
       - secret_key
+      - encryption_key
+      - db_url
+      - garage_access_key
+      - garage_secret_key
     read_only: true
     tmpfs:
       - /tmp
@@ -253,6 +270,9 @@ services:
       retries: 3
     secrets:
       - service_auth
+      - db_url
+      - garage_access_key
+      - garage_secret_key
     <<: *security-defaults
     cap_add:
       - NET_ADMIN
@@ -290,9 +310,9 @@ services:
   # Garage S3-compatible Object Storage
   garage:
     image: dxflrs/garage:v2.2.0
+    entrypoint: ["sh", "-c", "export GARAGE_RPC_SECRET=$(cat /run/secrets/garage_rpc_secret) && exec /garage server"]
     environment:
       GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
-      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?set GARAGE_RPC_SECRET}
     ports:
       - "127.0.0.1:3900:3900"
       - "127.0.0.1:3903:3903"
@@ -309,6 +329,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    secrets:
+      - garage_rpc_secret
     deploy:
       replicas: 1
       placement:
@@ -341,7 +363,7 @@ services:
       CLICKHOUSE_DB: tensorzero
       CLICKHOUSE_USER: default
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+    entrypoint: ["sh", "-c", "export CLICKHOUSE_PASSWORD=$(cat /run/secrets/clickhouse_password 2>/dev/null || echo '') && exec /entrypoint.sh"]
     networks:
       - backend
     healthcheck:
@@ -349,13 +371,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    secrets:
+      - clickhouse_password
     logging: *default-logging
     <<: *security-stateful
 
   # TensorZero Gateway (AI routing, observability, optimization)
   tensorzero:
     image: tensorzero/gateway:2025.01.07
-    command: ["--config-file", "/app/config/tensorzero.toml"]
     deploy:
       replicas: 1
       placement:
@@ -370,9 +393,9 @@ services:
     environment:
       TENSORZERO_CONFIG_FILE: /app/config/tensorzero.toml
       TENSORZERO_CLICKHOUSE_URL: http://clickhouse:8123/tensorzero
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    entrypoint: ["sh", "-c", "export OPENAI_API_KEY=$(cat /run/secrets/openai_api_key 2>/dev/null || echo '') && exec /app/gateway --config-file /app/config/tensorzero.toml"]
     configs:
       - source: tensorzero_config
         target: /app/config/tensorzero.toml
@@ -385,6 +408,7 @@ services:
       retries: 3
     secrets:
       - service_auth
+      - openai_api_key
     logging: *default-logging
     <<: *security-stateful
 
@@ -411,11 +435,27 @@ volumes:
 secrets:
   db_password:
     external: true
+  db_url:
+    external: true
   service_auth:
     external: true
   jwt_secret:
     external: true
   secret_key:
+    external: true
+  encryption_key:
+    external: true
+  redis_password:
+    external: true
+  garage_access_key:
+    external: true
+  garage_secret_key:
+    external: true
+  garage_rpc_secret:
+    external: true
+  clickhouse_password:
+    external: true
+  openai_api_key:
     external: true
 
 configs:
