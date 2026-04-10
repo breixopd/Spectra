@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Database Maintenance Script
 # Usage: ./scripts/ops/db_maintenance.sh [vacuum|analyze|reindex|stats|sizes|all]
+# ⚠ DEPRECATED (auto-maintenance) — The scheduler runs VACUUM ANALYZE
+# automatically. Use this script for manual diagnostics, REINDEX, or
+# one-off maintenance when the scheduler is unavailable.
 set -euo pipefail
 
 DB_CONTAINER="${DB_CONTAINER:-spectra-db}"

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Worker Queue Management
 # Usage: ./scripts/ops/worker_management.sh <command>
+# ⚠ NOTE — Job queue management will be available in the Admin UI
+# in a future release. Use this script for now.
 set -euo pipefail
 
 DB_CONTAINER="${DB_CONTAINER:-spectra-db}"

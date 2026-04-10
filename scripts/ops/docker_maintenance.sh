@@ -11,6 +11,9 @@
 #
 # Designed to run via cron:
 #   0 3 * * * /path/to/scripts/ops/docker_maintenance.sh --aggressive >> /var/log/spectra-maintenance.log 2>&1
+# ⚠ DEPRECATED (auto-cleanup) — The scheduler's docker_cleanup task
+# prunes unused images and containers automatically. Use this for
+# aggressive manual cleanup on worker hosts.
 
 set -euo pipefail
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# ⚠ DEPRECATED — The app now indexes tool documentation on startup
+# and when plugins are installed/updated. Use this only for manual re-indexing.
 """
 Tool Documentation Indexer.
 

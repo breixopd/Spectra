@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# ⚠ DEV-ONLY — not for production. The scheduler's periodic_cleanup
+# task handles mission retention automatically (MISSION_RETENTION_DAYS).
 """DEV/RESET UTILITY — Clean up missions and cached data while preserving config.
 
 **NOT for production use.** Production mission retention is handled automatically

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # Backup and Restore CLI
 # Usage: ./scripts/ops/backup_restore.sh <command>
+# ⚠ DEPRECATED — Use the Admin UI (Settings → Backups) or API:
+#   POST /api/admin/backups          — Create backup
+#   GET  /api/admin/backups          — List backups
+#   POST /api/admin/backups/restore  — Restore from backup
+# Keep as emergency CLI fallback when the app is unreachable.
 set -euo pipefail
 
 APP_CONTAINER="${APP_CONTAINER:-spectra-app}"
