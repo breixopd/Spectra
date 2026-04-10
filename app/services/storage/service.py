@@ -158,7 +158,7 @@ class StorageService:
                     # 2. Assign layout role
                     assign_resp = await http.post(
                         "/v2/UpdateClusterLayout",
-                        json=[{"id": node_id, "zone": "dc1", "capacity": 1073741824, "tags": []}],
+                        json={"roles": [{"id": node_id, "zone": "dc1", "capacity": 1073741824, "tags": []}]},
                     )
                     assign_resp.raise_for_status()
 
@@ -229,7 +229,7 @@ class StorageService:
     async def _garage_ensure_key(http: Any, key_name: str) -> tuple[str, str]:
         """Create or retrieve a Garage access key by name. Returns (access_key_id, secret_access_key)."""
         # Try to create the key
-        key_resp = await http.post("/v2/CreateKey", json={"name": key_name})
+        key_resp = await http.post("/v2/CreateKey", json={"name": key_name, "neverExpires": True})
         if key_resp.status_code in (200, 201):
             key_data = key_resp.json()
             access_key_id = key_data.get("accessKeyId", "")
