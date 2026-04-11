@@ -50,7 +50,7 @@ Covered subsystems include:
 | Performance/benchmark tests | Hot-path latency and throughput for core services and queries | `./tests/run_load_tests.sh performance` or `make test-performance` | Implemented, first pass |
 | Burst/load/rate-limit tests | Auth burst resistance, password reset bursts, WebSocket churn, worker/tool concurrency, and rate-limit enforcement at edge and app layers | `./tests/run_load_tests.sh load` or `make test-load` | Implemented, expanded first pass |
 | Soak/stability tests | Long-running stability, leak detection, churn handling, retry behavior over time | `./tests/run_load_tests.sh soak` or `make test-soak` | Implemented, first pass |
-| Backup/restore and disaster recovery verification | Backup creation, backup verification, restore safety, rollback path | `scripts/ops/backup_restore.sh`, release pre-deploy backup, rollback workflow | Partial; restore drills are not automated end-to-end |
+| Backup/restore and disaster recovery verification | Backup creation, backup verification, restore safety, rollback path | Admin UI backups, release pre-deploy backup, rollback workflow | Partial; restore drills are not automated end-to-end |
 
 ### Current Test Inventory
 
@@ -120,8 +120,8 @@ Use the real commands already present in this repo.
 | Swarm compose validation | `docker compose --env-file .env.example -f docker/docker-compose.swarm.yml config --quiet` |
 | Production-safe health check | `./scripts/health_check.sh http://localhost:5000/api/health` |
 | Deep health check | `HEALTH_CHECK_FULL=1 ./scripts/health_check.sh http://localhost:5000/api/health` |
-| Backup inventory | `./scripts/ops/backup_restore.sh list` |
-| Backup integrity check | `./scripts/ops/backup_restore.sh verify <backup_id>` |
+| Backup inventory | Admin UI → Backups or `GET /api/admin/backups` |
+| Backup integrity check | Admin UI → Backups → Verify |
 
 Dependency-audit note: use `pip-audit --fix --dry-run -l --ignore-vuln PYSEC-2024-65 --ignore-vuln PYSEC-2024-66 || true` when you need the exact CI-friendly command.
 

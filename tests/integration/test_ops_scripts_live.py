@@ -88,11 +88,8 @@ def _run_script(ops_env: dict[str, str], script_path: str, *args: str) -> str:
 @pytest.mark.parametrize(
     ("script_path", "args", "label"),
     [
-        ("./scripts/ops/db_maintenance.sh", ("stats",), "db-stats"),
-        ("./scripts/ops/user_management.sh", ("list",), "user-list"),
         ("./scripts/ops/incident_response.sh", ("active-sessions",), "active-sessions"),
         ("./scripts/ops/worker_management.sh", ("status",), "worker-status"),
-        ("./scripts/ops/backup_restore.sh", ("list",), "backup-list"),
         ("./scripts/ops/s3_management.sh", ("health",), "s3-health"),
         ("./scripts/ops/log_management.sh", ("sizes",), "log-sizes"),
     ],
@@ -101,23 +98,12 @@ def _run_script(ops_env: dict[str, str], script_path: str, *args: str) -> str:
 def test_safe_ops_scripts_smoke(ops_env: dict[str, str], script_path: str, args: tuple[str, ...], label: str) -> None:
     output = _run_script(ops_env, script_path, *args)
 
-    if label == "db-stats":
-        assert "Active connections:" in output
-        assert "Connection counts by state:" in output
-        assert "Table statistics:" in output
-    elif label == "user-list":
-        assert "username" in output
-        assert "email" in output
-        assert "role" in output
-    elif label == "active-sessions":
+    if label == "active-sessions":
         assert "Users with valid sessions" in output
         assert "username" in output
     elif label == "worker-status":
         assert "=== Job Queue Statistics ===" in output
         assert "Jobs by type:" in output
-    elif label == "backup-list":
-        assert "Backups in S3:" in output
-        assert "No backups found." in output or "s3://" in output
     elif label == "s3-health":
         assert "Garage health:" in output
         assert "OK" in output

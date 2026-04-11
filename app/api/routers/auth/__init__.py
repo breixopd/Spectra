@@ -11,7 +11,7 @@ from app.api.routers.auth.session import router as session_router
 from app.api.routers.auth.totp import router as totp_router
 
 router.include_router(login_router)
-router.include_router(registration_router)
+router.include_router(registration_router, include_in_schema=False)
 router.include_router(password_router)
 router.include_router(totp_router)
 router.include_router(session_router)

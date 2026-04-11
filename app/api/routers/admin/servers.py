@@ -48,6 +48,10 @@ class UpdateServerNodeRequest(BaseModel):
     is_primary: bool | None = None
     weight: int | None = Field(None, ge=1, le=100)
     max_capacity: int | None = Field(None, ge=1, le=1000)
+    service_type: str | None = Field(
+        None,
+        pattern=r"^(sandbox_worker|app_worker|tools_worker|db_replica|db_backup|storage)$",
+    )
 
 
 @router.post("/api/admin/servers/verify")
@@ -249,6 +253,50 @@ async def remove_server_node(
     return {"status": "removed"}
 
 
+# Mapping from service_type to Swarm placement label role
+_SERVICE_TYPE_TO_SWARM_ROLE: dict[str, str] = {
+    "app_worker": "app",
+    "sandbox_worker": "worker",
+    "tools_worker": "worker",
+    "db_replica": "db",
+    "db_backup": "db",
+    "storage": "storage",
+}
+
+
+async def _update_swarm_node_labels(
+    node_name: str, old_service_type: str | None, new_service_type: str,
+) -> str | None:
+    """Update Docker Swarm node placement labels when service_type changes.
+
+    Returns an error message on failure, or *None* on success / no-op.
+    """
+    import asyncio
+    import subprocess
+
+    new_role = _SERVICE_TYPE_TO_SWARM_ROLE.get(new_service_type)
+    if not new_role:
+        return None
+
+    cmds: list[list[str]] = []
+    # Remove old label if it differs
+    old_role = _SERVICE_TYPE_TO_SWARM_ROLE.get(old_service_type or "")
+    if old_role and old_role != new_role:
+        cmds.append(["docker", "node", "update", "--label-rm", f"spectra.{old_role}", node_name])
+    # Add new label
+    cmds.append(["docker", "node", "update", "--label-add", f"spectra.{new_role}=true", node_name])
+
+    for cmd in cmds:
+        try:
+            await asyncio.to_thread(
+                subprocess.run, cmd, capture_output=True, text=True, timeout=30,
+            )
+        except Exception as exc:
+            logger.warning("Swarm label update failed for %s: %s", node_name, exc)
+            return f"DB updated but Swarm label update failed: {exc}"
+    return None
+
+
 @router.patch("/api/admin/servers/{node_id}")
 async def update_server_node(
     request: Request,
@@ -257,24 +305,51 @@ async def update_server_node(
     session: AsyncSession = Depends(get_async_session),
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
-    """Update a server node's configuration."""
+    """Update a server node's configuration.
+
+    When *service_type* is changed the endpoint also attempts to update
+    Docker Swarm placement labels so the node is scheduled correctly.
+    """
     from app.services.scaling import get_pool_manager
 
     filtered = dict(body.model_dump(exclude_unset=True).items())
     pool = get_pool_manager()
+
+    # Capture old service_type before updating, for Swarm label diff
+    old_service_type: str | None = None
+    if "service_type" in filtered:
+        old_node = await pool.get_node(session, node_id)
+        if not old_node:
+            raise HTTPException(status_code=404, detail="Node not found")
+        old_service_type = old_node.get("service_type")
+
     node = await pool.update_node(session, node_id, **filtered)
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     await session.commit()
 
+    # Update Swarm labels when service_type changed
+    swarm_warning: str | None = None
+    new_service_type = filtered.get("service_type")
+    if new_service_type and new_service_type != old_service_type:
+        swarm_warning = await _update_swarm_node_labels(
+            node["name"], old_service_type, new_service_type,
+        )
+
     await audit_log_event(
         session,
         AuditEventType.SETTINGS_CHANGED,
         user_id=str(_perm.id),
-        details={"action": "server_node_updated", "node_id": str(node_id)},
+        details={
+            "action": "server_node_updated",
+            "node_id": str(node_id),
+            **(({"service_type_changed": f"{old_service_type} -> {new_service_type}"}) if new_service_type and new_service_type != old_service_type else {}),
+        },
         request=request,
     )
 
+    if swarm_warning:
+        return {**node, "warning": swarm_warning}
     return node
 
 

@@ -359,7 +359,7 @@ def _include_routers(app: FastAPI, mode: str) -> None:
         # --- Non-versioned routes (UI pages, public, admin) ---
         app.include_router(public.router, tags=["Public"])
         app.include_router(ui.router, tags=["UI"])
-        app.include_router(admin.router, tags=["Admin"])
+        app.include_router(admin.router, tags=["Admin"], include_in_schema=False)
 
     elif mode == "ai" or mode == "worker" or mode == "scheduler":
         app.include_router(health.router, prefix="/api", tags=["Health"])

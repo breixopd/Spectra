@@ -15,15 +15,6 @@ The canonical operator workflow lives in [../../docs/wiki/operations.md](../../d
 | `swarm_deploy.sh` | Deploy or update the Swarm stack | — | Mutating | Active |
 | `worker_management.sh` | Inspect, retry, and purge queue work | `status`, `failed`, `dead-letter`, `retry-job <id>`, `purge-completed`, `purge-dead`, `worker-health` | Destructive | Active — Admin UI planned |
 
-### Removed Scripts
-
-| Script | Reason | Replacement |
-|--------|--------|-------------|
-| `backup_restore.sh` | Fully covered by the Admin UI and API | **Admin UI → Backups** or `GET/POST /api/admin/backups` |
-| `db_maintenance.sh` | Scheduler runs VACUUM ANALYZE automatically | Scheduler `db_maintenance` task |
-| `docker_maintenance.sh` | Scheduler handles Docker cleanup | Scheduler `docker_cleanup` task |
-| `user_management.sh` | Fully covered by the admin API | `GET/POST /api/admin/users/*` endpoints |
-
 ## Safety Notes
 
 - Start with the read-only commands in each script before running mutating or destructive actions.
