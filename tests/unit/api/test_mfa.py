@@ -46,7 +46,7 @@ def _make_user(**overrides):
     user.hashed_password = overrides.get("hashed_password", "hashed")
     user.is_active = overrides.get("is_active", True)
     user.is_superuser = overrides.get("is_superuser", False)
-    user.role = overrides.get("role", "operator")
+    user.role = overrides.get("role", "user")
     user.mfa_enabled = overrides.get("mfa_enabled", False)
     user.mfa_secret = overrides.get("mfa_secret")
     user.plan_id = overrides.get("plan_id")

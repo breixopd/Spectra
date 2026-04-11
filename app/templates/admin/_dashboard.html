@@ -52,6 +52,20 @@
                     </div>
                 </div>
             </div>
+            <!-- System Health -->
+            <div class="glass-panel rounded-xl p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-white flex items-center gap-2">
+                        <i data-lucide="heart-pulse" class="w-4 h-4 inline-block text-emerald-400"></i> System Health
+                    </h3>
+                    <button data-action="switchSection" data-value="scaling" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">Details &rarr;</button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="dash-health-dot" class="inline-block w-3 h-3 rounded-full bg-slate-600"></span>
+                    <span id="dash-health-label" class="text-sm text-slate-300">Loading&hellip;</span>
+                </div>
+                <p id="dash-health-detail" class="text-xs text-slate-500 mt-2">—</p>
+            </div>
         </div>
 
         <!-- Users -->

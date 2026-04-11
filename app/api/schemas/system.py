@@ -190,7 +190,7 @@ class AdminUserCreate(BaseModel):
         pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
     )
     password: str = Field(..., min_length=8)
-    role: str = Field(default="operator", pattern="^(admin|operator|viewer)$")
+    role: str = Field(default="user", pattern="^(admin|staff|user)$")
     plan_id: str | None = None
 
     @field_validator("password")
@@ -214,7 +214,7 @@ class AdminUserUpdate(BaseModel):
         None,
         pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
     )
-    role: str | None = Field(None, pattern="^(admin|operator|viewer)$")
+    role: str | None = Field(None, pattern="^(admin|staff|user)$")
     is_active: bool | None = None
     plan_id: str | None = None
 

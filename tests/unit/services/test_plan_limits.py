@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 
-def _make_user(user_id="user-1", is_superuser=False, role="operator", plan_id=None):
+def _make_user(user_id="user-1", is_superuser=False, role="user", plan_id=None):
     u = MagicMock()
     u.id = user_id
     u.is_superuser = is_superuser

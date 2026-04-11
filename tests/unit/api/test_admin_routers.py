@@ -64,9 +64,9 @@ class TestListUsers:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target_user = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
-        target_user.username = "operator1"
-        target_user.email = "op@test.com"
+        target_user = _make_user("user", user_id="00000000-0000-4000-a000-000000000002")
+        target_user.username = "user1"
+        target_user.email = "user@test.com"
 
         mock_sess = _mock_session()
         # count query
@@ -89,7 +89,7 @@ class TestListUsers:
         body = resp.json()
         assert body["total"] == 1
         assert len(body["items"]) == 1
-        assert body["items"][0]["username"] == "operator1"
+        assert body["items"][0]["username"] == "user1"
 
 
 class TestGetUser:
@@ -98,7 +98,7 @@ class TestGetUser:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
+        target = _make_user("user", user_id="00000000-0000-4000-a000-000000000002")
         mock_sess = _mock_session()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = target
@@ -140,7 +140,7 @@ class TestUpdateUserRole:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
+        target = _make_user("user", user_id="00000000-0000-4000-a000-000000000002")
         mock_sess = _mock_session()
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = target
@@ -154,7 +154,7 @@ class TestUpdateUserRole:
 
         with patch("app.api.routers.admin.users.audit_log_event", new_callable=AsyncMock):
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-                resp = await ac.put("/api/admin/users/00000000-0000-4000-a000-000000000002", json={"role": "viewer"})
+                resp = await ac.put("/api/admin/users/00000000-0000-4000-a000-000000000002", json={"role": "staff"})
 
         assert resp.status_code == 200
 
@@ -163,7 +163,7 @@ class TestUpdateUserRole:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
+        target = _make_user("user", user_id="00000000-0000-4000-a000-000000000002")
         mock_sess = _mock_session()
 
         mock_lookup = MagicMock()
@@ -245,7 +245,7 @@ class TestCreateUser:
                         "username": "pending-user",
                         "email": "pending@example.com",
                         "password": "StrongPass1",
-                        "role": "operator",
+                        "role": "user",
                     },
                 )
 
@@ -263,7 +263,7 @@ class TestPendingActivationGuard:
         admin = _make_user("admin")
         app = _build_app(admin)
 
-        target = _make_user("operator", user_id="00000000-0000-4000-a000-000000000002")
+        target = _make_user("user", user_id="00000000-0000-4000-a000-000000000002")
         target.is_active = False
         target.email_verified = False
 
@@ -406,9 +406,9 @@ class TestListPlans:
 
 class TestNonSuperuserAccessDenied:
     @pytest.mark.asyncio
-    async def test_viewer_cannot_list_users(self):
-        viewer = _make_user("viewer", user_id="uid-viewer")
-        app = _build_app(viewer)
+    async def test_user_cannot_list_users(self):
+        user = _make_user("user", user_id="uid-user")
+        app = _build_app(user)
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get("/api/admin/users")
@@ -416,19 +416,19 @@ class TestNonSuperuserAccessDenied:
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_operator_cannot_list_users(self):
-        operator = _make_user("operator", user_id="uid-op")
-        app = _build_app(operator)
+    async def test_staff_cannot_list_plans(self):
+        staff = _make_user("staff", user_id="uid-staff")
+        app = _build_app(staff)
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            resp = await ac.get("/api/admin/users")
+            resp = await ac.get("/api/admin/plans")
 
         assert resp.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_viewer_cannot_list_plans(self):
-        viewer = _make_user("viewer", user_id="uid-viewer")
-        app = _build_app(viewer)
+    async def test_user_cannot_list_plans(self):
+        user = _make_user("user", user_id="uid-user")
+        app = _build_app(user)
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             resp = await ac.get("/api/admin/plans")

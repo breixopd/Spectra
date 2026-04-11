@@ -184,7 +184,7 @@ async def get_admin_access_token(client: httpx.AsyncClient) -> str:
     return jwt.encode(
         {
             "sub": get_admin_username(),
-            "role": "operator",
+            "role": "user",
             "is_superuser": True,
             "exp": now + timedelta(minutes=30),
             "iat": now,

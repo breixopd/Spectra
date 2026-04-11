@@ -49,6 +49,8 @@ async function loadStats() {
         if (!Object.keys(d.role_counts || {}).length) {
             rb.innerHTML = '<p class="text-sm text-slate-500">No role distribution data available.</p>';
         }
+        // Also refresh dashboard health widget
+        loadDashboardHealth();
     } catch(e) {
         console.error(e);
         const message = e.message || 'Could not load dashboard stats.';
@@ -58,5 +60,22 @@ async function loadStats() {
             statsErrorVisible = true;
         }
     }
+}
+
+async function loadDashboardHealth() {
+    try {
+        const { data, error } = await spectraApi.get('/api/admin/scaling/metrics');
+        if (error) return;
+        const services = data.services || {};
+        const allHealthy = Object.values(services).every(s => s.healthy && s.failed_tasks === 0);
+        const running = Object.values(services).reduce((a, s) => a + (s.running_tasks ?? s.replicas ?? 0), 0);
+        const desired = Object.values(services).reduce((a, s) => a + (s.desired_replicas ?? 0), 0);
+        const dot = document.getElementById('dash-health-dot');
+        const label = document.getElementById('dash-health-label');
+        const detail = document.getElementById('dash-health-detail');
+        if (dot) dot.className = `inline-block w-3 h-3 rounded-full ${allHealthy ? 'bg-emerald-500' : 'bg-rose-500'}`;
+        if (label) label.textContent = allHealthy ? 'All services healthy' : 'Issues detected';
+        if (detail) detail.textContent = `${running}/${desired} tasks running · CPU ${data.system?.cpu_percent ?? '—'}% · Mem ${data.system?.memory_percent ?? '—'}%`;
+    } catch (e) { /* silent */ }
 }
 

@@ -29,11 +29,21 @@ class Permission(StrEnum):
     VIEW_AUDIT_LOG = "view_audit_log"
     SHELL_ACCESS = "shell_access"
     ROLLBACK_OWN_ACTIONS = "rollback_own_actions"
+    VIEW_MONITORING = "view_monitoring"
 
 
 ROLE_PERMISSIONS: dict[str, set[Permission]] = {
     "admin": set(Permission),
-    "operator": {
+    "staff": {
+        Permission.VIEW_MISSIONS,
+        Permission.VIEW_FINDINGS,
+        Permission.VIEW_TARGETS,
+        Permission.VIEW_REPORTS,
+        Permission.MANAGE_USERS,
+        Permission.VIEW_AUDIT_LOG,
+        Permission.VIEW_MONITORING,
+    },
+    "user": {
         Permission.VIEW_MISSIONS,
         Permission.CREATE_MISSIONS,
         Permission.MANAGE_MISSIONS,
@@ -44,20 +54,20 @@ ROLE_PERMISSIONS: dict[str, set[Permission]] = {
         Permission.USE_TOOLS,
         Permission.VIEW_REPORTS,
         Permission.SHELL_ACCESS,
-        Permission.VIEW_AUDIT_LOG,
+        Permission.ROLLBACK_OWN_ACTIONS,
     },
-    "viewer": {
-        Permission.VIEW_MISSIONS,
-        Permission.VIEW_FINDINGS,
-        Permission.VIEW_TARGETS,
-        Permission.VIEW_REPORTS,
-    },
+}
+
+ROLE_ALIASES: dict[str, str] = {
+    "operator": "staff",
+    "viewer": "user",
 }
 
 
 def has_permission(user_role: str, permission: Permission) -> bool:
     """Check if a role has a specific permission."""
-    return permission in ROLE_PERMISSIONS.get(user_role, set())
+    resolved = ROLE_ALIASES.get(user_role, user_role)
+    return permission in ROLE_PERMISSIONS.get(resolved, set())
 
 
 def require_permission(permission: Permission | str):

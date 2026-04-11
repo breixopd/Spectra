@@ -17,7 +17,7 @@ def _make_user(is_superuser: bool = False, username: str = "testuser") -> User:
     user.username = username
     user.is_superuser = is_superuser
     user.is_active = True
-    user.role = "admin" if is_superuser else "operator"
+    user.role = "admin" if is_superuser else "user"
     return user
 
 

@@ -359,6 +359,16 @@ class Settings(BaseSettings):
     INFRA_MONITOR_REDIS_THRESHOLD: int = 85  # Redis memory % alert threshold
     INFRA_MONITOR_STORAGE_THRESHOLD: int = 90  # Garage/S3 storage % alert threshold
 
+    # Auto-healing
+    AUTO_HEAL_ENABLED: bool = True
+    AUTO_HEAL_MAX_RETRIES: int = 3
+    AUTO_HEAL_COOLDOWN_SECS: int = 300
+
+    # System resource thresholds
+    SYSTEM_MEMORY_ALERT_THRESHOLD: int = 90  # percent
+    SYSTEM_DISK_ALERT_THRESHOLD: int = 85  # percent
+    SYSTEM_LOAD_ALERT_MULTIPLIER: float = 2.0  # x CPUs
+
     # --- Automated Maintenance ---
     DB_MAINTENANCE_INTERVAL: int = Field(default=604800, description="DB VACUUM ANALYZE interval in seconds (7 days)")
     STALE_JOB_RECOVERY_INTERVAL: int = Field(default=300, description="Stale job recovery interval in seconds")

@@ -724,6 +724,7 @@ window.performRollback = performRollback;
 window.loadScalingStatus = loadScalingStatus;
 window.refreshScalingStatus = refreshScalingStatus;
 window.saveScalingConfig = saveScalingConfig;
+window.scalingAction = scalingAction;
 
 function exportAuditLogsCSV() {
     const rows = document.querySelectorAll('#audit-tbody tr');

@@ -98,7 +98,7 @@ async def admin_stats(
     total_audit_events = (await session.execute(select(func.count()).select_from(AuditLog))).scalar() or 0
 
     role_result = await session.execute(select(User.role, func.count()).group_by(User.role))
-    role_counts = dict.fromkeys(("admin", "operator", "viewer"), 0)
+    role_counts = dict.fromkeys(("admin", "staff", "user"), 0)
     for role_name, cnt in role_result.all():
         if role_name in role_counts:
             role_counts[role_name] = cnt

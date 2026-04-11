@@ -251,7 +251,7 @@ class TestPermissionEnforcement:
     async def test_viewer_gets_403(self):
         app = _make_app()
         mock_session = AsyncMock()
-        _override_deps(app, _fake_user(role="viewer"), mock_session)
+        _override_deps(app, _fake_user(role="staff"), mock_session)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -261,7 +261,7 @@ class TestPermissionEnforcement:
     async def test_operator_gets_403(self):
         app = _make_app()
         mock_session = AsyncMock()
-        _override_deps(app, _fake_user(role="operator"), mock_session)
+        _override_deps(app, _fake_user(role="user"), mock_session)
 
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:

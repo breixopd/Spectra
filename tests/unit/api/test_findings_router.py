@@ -15,7 +15,7 @@ from app.core.enums import Severity
 from app.models.finding import FindingStatus
 
 
-def _fake_user(is_superuser: bool = False, user_id: str = "00000000-0000-4000-a000-000000000001", role: str = "operator"):
+def _fake_user(is_superuser: bool = False, user_id: str = "00000000-0000-4000-a000-000000000001", role: str = "user"):
     user = MagicMock()
     user.id = user_id
     user.is_superuser = is_superuser
