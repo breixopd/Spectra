@@ -39,7 +39,7 @@ class TestModelUserIdColumns:
 # ---------------------------------------------------------------------------
 
 
-def _make_user(user_id="user-1", is_superuser=False, role="operator"):
+def _make_user(user_id="user-1", is_superuser=False, role="user"):
     u = MagicMock()
     u.id = user_id
     u.is_superuser = is_superuser
@@ -141,7 +141,7 @@ class TestIsAdminUser:
     def test_superuser_is_admin(self):
         from app.api.dependencies import _is_admin_user
 
-        user = _make_user(is_superuser=True, role="operator")
+        user = _make_user(is_superuser=True, role="user")
         assert _is_admin_user(user) is True
 
     def test_admin_role_is_admin(self):
@@ -153,13 +153,13 @@ class TestIsAdminUser:
     def test_operator_is_not_admin(self):
         from app.api.dependencies import _is_admin_user
 
-        user = _make_user(is_superuser=False, role="operator")
+        user = _make_user(is_superuser=False, role="user")
         assert _is_admin_user(user) is False
 
     def test_viewer_is_not_admin(self):
         from app.api.dependencies import _is_admin_user
 
-        user = _make_user(is_superuser=False, role="viewer")
+        user = _make_user(is_superuser=False, role="staff")
         assert _is_admin_user(user) is False
 
 

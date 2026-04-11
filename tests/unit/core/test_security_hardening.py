@@ -53,32 +53,35 @@ class TestRBACPermissions:
         for perm in Permission:
             assert has_permission("admin", perm), f"Admin missing {perm}"
 
-    def test_operator_has_operational_perms(self):
-        assert has_permission("operator", Permission.VIEW_MISSIONS)
-        assert has_permission("operator", Permission.CREATE_MISSIONS)
-        assert has_permission("operator", Permission.MANAGE_MISSIONS)
-        assert has_permission("operator", Permission.VIEW_FINDINGS)
-        assert has_permission("operator", Permission.MANAGE_FINDINGS)
-        assert has_permission("operator", Permission.USE_TOOLS)
-        assert has_permission("operator", Permission.VIEW_REPORTS)
+    def test_user_has_operational_perms(self):
+        assert has_permission("user", Permission.VIEW_MISSIONS)
+        assert has_permission("user", Permission.CREATE_MISSIONS)
+        assert has_permission("user", Permission.MANAGE_MISSIONS)
+        assert has_permission("user", Permission.VIEW_FINDINGS)
+        assert has_permission("user", Permission.MANAGE_FINDINGS)
+        assert has_permission("user", Permission.USE_TOOLS)
+        assert has_permission("user", Permission.VIEW_REPORTS)
 
-    def test_operator_lacks_admin_perms(self):
-        assert not has_permission("operator", Permission.MANAGE_SETTINGS)
-        assert not has_permission("operator", Permission.MANAGE_USERS)
-        assert has_permission("operator", Permission.VIEW_AUDIT_LOG)
+    def test_user_lacks_admin_perms(self):
+        assert not has_permission("user", Permission.MANAGE_SETTINGS)
+        assert not has_permission("user", Permission.MANAGE_USERS)
+        assert not has_permission("user", Permission.VIEW_AUDIT_LOG)
 
-    def test_viewer_has_read_only_perms(self):
-        assert has_permission("viewer", Permission.VIEW_MISSIONS)
-        assert has_permission("viewer", Permission.VIEW_FINDINGS)
-        assert has_permission("viewer", Permission.VIEW_TARGETS)
-        assert has_permission("viewer", Permission.VIEW_REPORTS)
+    def test_staff_has_read_and_support_perms(self):
+        assert has_permission("staff", Permission.VIEW_MISSIONS)
+        assert has_permission("staff", Permission.VIEW_FINDINGS)
+        assert has_permission("staff", Permission.VIEW_TARGETS)
+        assert has_permission("staff", Permission.VIEW_REPORTS)
+        assert has_permission("staff", Permission.MANAGE_USERS)
+        assert has_permission("staff", Permission.VIEW_AUDIT_LOG)
+        assert has_permission("staff", Permission.VIEW_MONITORING)
 
-    def test_viewer_lacks_write_perms(self):
-        assert not has_permission("viewer", Permission.CREATE_MISSIONS)
-        assert not has_permission("viewer", Permission.MANAGE_MISSIONS)
-        assert not has_permission("viewer", Permission.MANAGE_FINDINGS)
-        assert not has_permission("viewer", Permission.USE_TOOLS)
-        assert not has_permission("viewer", Permission.MANAGE_SETTINGS)
+    def test_staff_lacks_write_perms(self):
+        assert not has_permission("staff", Permission.CREATE_MISSIONS)
+        assert not has_permission("staff", Permission.MANAGE_MISSIONS)
+        assert not has_permission("staff", Permission.MANAGE_FINDINGS)
+        assert not has_permission("staff", Permission.USE_TOOLS)
+        assert not has_permission("staff", Permission.MANAGE_SETTINGS)
 
     def test_unknown_role_has_no_permissions(self):
         for perm in Permission:

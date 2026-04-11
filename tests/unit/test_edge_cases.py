@@ -44,33 +44,36 @@ class TestRBACPermissions:
             Permission.MANAGE_TARGETS,
             Permission.USE_TOOLS,
             Permission.MANAGE_SETTINGS,
-            Permission.MANAGE_USERS,
+            Permission.SHELL_ACCESS,
+            Permission.ROLLBACK_OWN_ACTIONS,
         ]
         for perm in write_perms:
-            assert not has_permission("viewer", perm), f"Viewer should not have {perm}"
+            assert not has_permission("staff", perm), f"Staff should not have {perm}"
 
-    def test_viewer_can_read(self):
+    def test_staff_can_read(self):
         read_perms = [
             Permission.VIEW_MISSIONS,
             Permission.VIEW_FINDINGS,
             Permission.VIEW_TARGETS,
             Permission.VIEW_REPORTS,
+            Permission.MANAGE_USERS,
+            Permission.VIEW_AUDIT_LOG,
+            Permission.VIEW_MONITORING,
         ]
         for perm in read_perms:
-            assert has_permission("viewer", perm), f"Viewer missing {perm}"
+            assert has_permission("staff", perm), f"Staff missing {perm}"
 
-    def test_operator_can_do_missions(self):
-        assert has_permission("operator", Permission.CREATE_MISSIONS)
-        assert has_permission("operator", Permission.MANAGE_MISSIONS)
-        assert has_permission("operator", Permission.USE_TOOLS)
+    def test_user_can_do_missions(self):
+        assert has_permission("user", Permission.CREATE_MISSIONS)
+        assert has_permission("user", Permission.MANAGE_MISSIONS)
+        assert has_permission("user", Permission.USE_TOOLS)
 
-    def test_operator_cannot_manage_settings(self):
-        assert not has_permission("operator", Permission.MANAGE_SETTINGS)
-        assert not has_permission("operator", Permission.MANAGE_USERS)
+    def test_user_cannot_manage_settings(self):
+        assert not has_permission("user", Permission.MANAGE_SETTINGS)
+        assert not has_permission("user", Permission.MANAGE_USERS)
 
-    def test_operator_can_view_audit_log(self):
-        # Operators can view their own audit log; this is intentional
-        assert has_permission("operator", Permission.VIEW_AUDIT_LOG)
+    def test_user_cannot_view_audit_log(self):
+        assert not has_permission("user", Permission.VIEW_AUDIT_LOG)
 
     def test_unknown_role_has_no_permissions(self):
         for perm in Permission:
@@ -78,8 +81,8 @@ class TestRBACPermissions:
 
     def test_role_permissions_dict_has_expected_roles(self):
         assert "admin" in ROLE_PERMISSIONS
-        assert "operator" in ROLE_PERMISSIONS
-        assert "viewer" in ROLE_PERMISSIONS
+        assert "staff" in ROLE_PERMISSIONS
+        assert "user" in ROLE_PERMISSIONS
 
 
 # --- Encryption Tests ---

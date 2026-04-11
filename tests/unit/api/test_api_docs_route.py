@@ -135,11 +135,11 @@ class TestApiDocsRoute:
         mock_app.routes = [mock_route1, mock_route2]
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "operator", "sub": "operator"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"id": 1, "role": "user", "sub": "user"}),
             patch(
                 "app.api.routers.ui._get_ui_db_user",
                 new_callable=AsyncMock,
-                return_value=MagicMock(role="operator", is_superuser=False),
+                return_value=MagicMock(role="user", is_superuser=False),
             ),
             patch("app.api.routers.ui._is_admin_user", return_value=False),
         ):

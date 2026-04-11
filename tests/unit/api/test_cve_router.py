@@ -14,7 +14,7 @@ def _fake_user(is_superuser: bool = False):
     user = MagicMock()
     user.id = "u-1"
     user.is_superuser = is_superuser
-    user.role = "operator"
+    user.role = "user"
     return user
 
 

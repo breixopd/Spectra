@@ -1,4 +1,4 @@
-"""Multi-role access control tests — admin, operator, viewer."""
+"""Multi-role access control tests — admin, user, staff."""
 
 import contextlib
 import os
@@ -39,7 +39,7 @@ def _create_user_via_admin_api(
     app_url: str,
     admin_cookies: list[dict],
     username: str,
-    role: str = "operator",
+    role: str = "user",
 ) -> dict:
     """Create a test user via the admin API and return the response payload."""
     token = _get_admin_bearer_token(app_url)
@@ -128,18 +128,18 @@ def _verify_user_in_db(user_id: str) -> None:
 
 
 # ===================================================================
-# Operator role tests
+# User role tests
 # ===================================================================
 
 
 @pytest.mark.timeout(45)
 def test_operator_cannot_see_admin_link(page: Page, app_url: str, authenticated_cookies: list[dict]):
-    """Operator role user should not see the admin navigation link."""
+    """User role user should not see the admin navigation link."""
     username = f"op_{uuid.uuid4().hex[:8]}"
-    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="operator")
+    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="user")
     if result["status"] == 409:
         pytest.skip("User already exists from prior run")
-    assert result["status"] == 201, f"Failed to create operator user: {result}"
+    assert result["status"] == 201, f"Failed to create user: {result}"
 
     user_id = result["body"].get("id")
     activation_url = result["body"].get("activation_url")
@@ -148,12 +148,12 @@ def test_operator_cannot_see_admin_link(page: Page, app_url: str, authenticated_
 
     _login_as(page, app_url, username)
 
-    # Admin nav link should be hidden for operator users
+    # Admin nav link should be hidden for regular users
     admin_link = page.locator("#admin-nav-link")
     if admin_link.count() > 0:
         is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
         assert not admin_link.is_visible() or is_hidden, (
-            "Operator user should not see the admin navigation link"
+            "User role should not see the admin navigation link"
         )
 
     page.context.clear_cookies()
@@ -161,12 +161,12 @@ def test_operator_cannot_see_admin_link(page: Page, app_url: str, authenticated_
 
 @pytest.mark.timeout(45)
 def test_operator_cannot_access_admin_page(page: Page, app_url: str, authenticated_cookies: list[dict]):
-    """Operator role user cannot access the admin panel page."""
+    """User role user cannot access the admin panel page."""
     username = f"op_{uuid.uuid4().hex[:8]}"
-    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="operator")
+    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="user")
     if result["status"] == 409:
         pytest.skip("User already exists from prior run")
-    assert result["status"] == 201, f"Failed to create operator user: {result}"
+    assert result["status"] == 201, f"Failed to create user: {result}"
 
     user_id = result["body"].get("id")
     activation_url = result["body"].get("activation_url")
@@ -180,30 +180,30 @@ def test_operator_cannot_access_admin_page(page: Page, app_url: str, authenticat
     with contextlib.suppress(Exception):
         page.wait_for_load_state("networkidle", timeout=5_000)
 
-    # Operator should NOT be on /admin (either redirected or shown error)
+    # User should NOT be on /admin (either redirected or shown error)
     url = page.url
     at_admin = url.rstrip("/").endswith("/admin")
     if at_admin:
         # If still on /admin, check for an error/forbidden indicator
         error_el = page.locator(".error-code, .forbidden, [data-error]")
-        assert error_el.count() > 0, "Operator reached /admin without any error indicator"
+        assert error_el.count() > 0, "User reached /admin without any error indicator"
 
     page.context.clear_cookies()
 
 
 # ===================================================================
-# Viewer role tests
+# Staff role tests
 # ===================================================================
 
 
 @pytest.mark.timeout(45)
 def test_viewer_cannot_see_admin_link(page: Page, app_url: str, authenticated_cookies: list[dict]):
-    """Viewer role user should not see the admin navigation link."""
+    """Staff role user should not see the admin navigation link."""
     username = f"vw_{uuid.uuid4().hex[:8]}"
-    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="viewer")
+    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="staff")
     if result["status"] == 409:
         pytest.skip("User already exists from prior run")
-    assert result["status"] == 201, f"Failed to create viewer user: {result}"
+    assert result["status"] == 201, f"Failed to create staff user: {result}"
 
     user_id = result["body"].get("id")
     activation_url = result["body"].get("activation_url")
@@ -216,7 +216,7 @@ def test_viewer_cannot_see_admin_link(page: Page, app_url: str, authenticated_co
     if admin_link.count() > 0:
         is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
         assert not admin_link.is_visible() or is_hidden, (
-            "Viewer user should not see the admin navigation link"
+            "Staff user should not see the admin navigation link"
         )
 
     page.context.clear_cookies()
@@ -224,12 +224,12 @@ def test_viewer_cannot_see_admin_link(page: Page, app_url: str, authenticated_co
 
 @pytest.mark.timeout(45)
 def test_viewer_cannot_launch_mission(page: Page, app_url: str, authenticated_cookies: list[dict]):
-    """Viewer role user should not have a launch button on the dashboard."""
+    """Staff role user should not have a launch button on the dashboard."""
     username = f"vw_{uuid.uuid4().hex[:8]}"
-    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="viewer")
+    result = _create_user_via_admin_api(app_url, authenticated_cookies, username, role="staff")
     if result["status"] == 409:
         pytest.skip("User already exists from prior run")
-    assert result["status"] == 201, f"Failed to create viewer user: {result}"
+    assert result["status"] == 201, f"Failed to create staff user: {result}"
 
     user_id = result["body"].get("id")
     activation_url = result["body"].get("activation_url")
@@ -243,12 +243,12 @@ def test_viewer_cannot_launch_mission(page: Page, app_url: str, authenticated_co
         page.wait_for_load_state("networkidle", timeout=5_000)
 
     # Launch button may be visible for all roles (enforcement is server-side).
-    # Verify the viewer does not have admin privileges instead.
+    # Verify the staff user does not have admin privileges instead.
     admin_link = page.locator("#admin-nav-link")
     if admin_link.count() > 0:
         is_hidden = "hidden" in (admin_link.get_attribute("class") or "")
         assert not admin_link.is_visible() or is_hidden, (
-            "Viewer should not see the admin navigation link"
+            "Staff should not see the admin navigation link"
         )
 
     page.context.clear_cookies()

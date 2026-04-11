@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 
-def _make_user(user_id="user-1", is_superuser=False, role="operator"):
+def _make_user(user_id="user-1", is_superuser=False, role="user"):
     u = MagicMock()
     u.id = user_id
     u.is_superuser = is_superuser
@@ -80,13 +80,13 @@ class TestToolboxPageAccess:
     async def test_toolbox_passes_is_admin_false_for_operator(self):
         from app.api.routers.ui import toolbox_page
 
-        operator_user = _make_user(is_superuser=False, role="operator")
+        operator_user = _make_user(is_superuser=False, role="user")
 
         request = MagicMock()
         request.cookies = {"access_token": "valid-token"}
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "operator"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "user"}),
             patch("app.api.routers.ui.async_session_maker") as mock_sm,
             patch("app.api.routers.ui._is_admin_user", return_value=False),
             patch("app.api.routers.ui.templates") as mock_templates,
@@ -127,13 +127,13 @@ class TestPluginCreatorAccess:
         request = MagicMock()
 
         with (
-            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "operator"}),
+            patch("app.api.routers.ui.get_ui_user", return_value={"sub": "user"}),
             patch("app.api.routers.ui.async_session_maker") as mock_sm,
             patch("app.api.routers.ui._is_admin_user", return_value=False),
         ):
             mock_session = AsyncMock()
             mock_result = MagicMock()
-            non_admin = _make_user(is_superuser=False, role="operator")
+            non_admin = _make_user(is_superuser=False, role="user")
             mock_result.scalar_one_or_none.return_value = non_admin
             mock_session.execute = AsyncMock(return_value=mock_result)
 

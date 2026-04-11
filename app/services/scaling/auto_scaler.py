@@ -15,6 +15,8 @@ import subprocess
 import time
 from dataclasses import dataclass
 
+from app.services.scaling.metrics_collector import ClusterMetrics
+
 logger = logging.getLogger(__name__)
 
 
@@ -494,16 +496,45 @@ class AutoScaler:
             logger.warning("Garage/S3 health check failed: %s", e)
         return alerts
 
-    async def evaluate_and_execute(self, metrics: dict) -> list[ScalingDecision]:
-        """Evaluate all policies, execute scaling decisions, and check infrastructure."""
-        decisions = await self.evaluate(metrics)
+    async def evaluate_and_execute(self, metrics: dict | ClusterMetrics) -> list[ScalingDecision]:
+        """Evaluate all policies, execute scaling decisions, check infrastructure, and auto-heal.
+
+        Accepts either a legacy flat dict or a ClusterMetrics object.  When a
+        ClusterMetrics object is provided, real per-service CPU is used for
+        utilization-based scaling, auto-healing runs for failed tasks, and
+        system resource alerts are generated.
+        """
+        cluster: ClusterMetrics | None = None
+        flat_metrics: dict
+
+        if isinstance(metrics, ClusterMetrics):
+            cluster = metrics
+            flat_metrics = self._cluster_to_flat(cluster)
+        else:
+            flat_metrics = metrics
+
+        decisions = await self.evaluate(flat_metrics)
         for decision in decisions:
             if decision.action != "none":
                 await self.execute(decision)
 
-        # Check infrastructure and send alerts
+        # --- Auto-healing ---
+        heal_actions: list[str] = []
+        if cluster is not None:
+            auto_heal_enabled = getattr(self.settings, "AUTO_HEAL_ENABLED", True)
+            if auto_heal_enabled:
+                heal_actions = await self._auto_heal(cluster)
+
+        # --- Infrastructure checks ---
         infra_alerts = await self.check_infrastructure()
-        for alert_msg in infra_alerts:
+
+        # --- System resource alerts ---
+        system_alerts: list[str] = []
+        if cluster is not None:
+            system_alerts = self._check_system_resources(cluster)
+
+        all_alerts = infra_alerts + system_alerts
+        for alert_msg in all_alerts:
             logger.warning("Infrastructure alert: %s", alert_msg)
             try:
                 from app.services.notifications import send_notification
@@ -517,7 +548,131 @@ class AutoScaler:
             except Exception as e:
                 logger.warning("Failed to send infra alert: %s", e)
 
+        for action_msg in heal_actions:
+            logger.info("Auto-heal action: %s", action_msg)
+
         return decisions
+
+    # ------------------------------------------------------------------
+    # Auto-healing
+    # ------------------------------------------------------------------
+
+    async def _auto_heal(self, metrics: ClusterMetrics) -> list[str]:
+        """Detect and attempt to fix failing services. Returns list of actions taken."""
+        actions: list[str] = []
+        cooldown = getattr(self.settings, "AUTO_HEAL_COOLDOWN_SECS", 300)
+        now = time.monotonic()
+
+        for name, svc in metrics.services.items():
+            if svc.failed_tasks > 0 and svc.desired_replicas > 0:
+                # Respect per-service cooldown to avoid restart storms
+                heal_key = f"_heal_{name}"
+                last_heal = getattr(self, heal_key, 0.0)
+                if now - last_heal < cooldown:
+                    continue
+
+                logger.warning(
+                    "Service %s has %d failed tasks, attempting restart",
+                    name,
+                    svc.failed_tasks,
+                )
+                try:
+                    result = await asyncio.to_thread(
+                        subprocess.run,
+                        ["docker", "service", "update", "--force", name],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                    )
+                    if result.returncode == 0:
+                        actions.append(f"Restarted {name} ({svc.failed_tasks} failed tasks)")
+                        logger.info("Auto-healed %s", name)
+                    else:
+                        actions.append(f"Failed to restart {name}: {result.stderr[:200]}")
+                        logger.error("Auto-heal failed for %s: %s", name, result.stderr[:200])
+                except Exception as exc:
+                    actions.append(f"Auto-heal error for {name}: {exc}")
+                    logger.error("Auto-heal exception for %s: %s", name, exc)
+
+                # Record heal timestamp regardless of outcome to enforce cooldown
+                object.__setattr__(self, heal_key, now)
+        return actions
+
+    # ------------------------------------------------------------------
+    # System resource alerts
+    # ------------------------------------------------------------------
+
+    def _check_system_resources(self, metrics: ClusterMetrics) -> list[str]:
+        """Generate alerts for system-level resource pressure."""
+        alerts: list[str] = []
+        sys = metrics.system
+
+        mem_threshold = getattr(self.settings, "SYSTEM_MEMORY_ALERT_THRESHOLD", 90)
+        disk_threshold = getattr(self.settings, "SYSTEM_DISK_ALERT_THRESHOLD", 85)
+        load_multiplier = getattr(self.settings, "SYSTEM_LOAD_ALERT_MULTIPLIER", 2.0)
+
+        if sys.memory_percent > mem_threshold:
+            alerts.append(
+                f"System memory at {sys.memory_percent:.1f}% "
+                f"({sys.memory_available_mb:.0f} MB available)"
+            )
+
+        if sys.disk_percent > disk_threshold:
+            alerts.append(
+                f"Disk usage at {sys.disk_percent:.1f}% "
+                f"({sys.disk_free_gb:.1f} GB free)"
+            )
+
+        try:
+            import os
+
+            cpu_count = os.cpu_count() or 1
+        except Exception:
+            cpu_count = 1
+        load_threshold = cpu_count * load_multiplier
+        if sys.load_avg_5m > load_threshold:
+            alerts.append(
+                f"Load average {sys.load_avg_5m:.2f} exceeds "
+                f"{load_threshold:.1f} ({cpu_count} CPUs × {load_multiplier})"
+            )
+
+        return alerts
+
+    # ------------------------------------------------------------------
+    # ClusterMetrics → flat dict adapter
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _cluster_to_flat(cluster: ClusterMetrics) -> dict:
+        """Convert ClusterMetrics to the flat dict format expected by evaluate()."""
+        flat: dict = {
+            "queue_depth": cluster.queue.depth,
+            "in_progress": cluster.queue.in_progress,
+        }
+
+        # Map service names back to role keys
+        _role_map = {
+            "worker": "worker",
+            "app": "api",
+            "ai": "ai",
+            "scheduler": "scheduler",
+        }
+        for svc_name, svc in cluster.services.items():
+            for keyword, role in _role_map.items():
+                if keyword in svc_name.lower():
+                    flat[f"{role}_replicas"] = svc.replicas
+                    # Use real CPU % (normalised to 0-1 range)
+                    flat[f"{role}_utilization"] = min(1.0, svc.cpu_percent / 100.0)
+                    break
+
+        # Ensure worker_utilization falls back to queue-based estimate if no
+        # docker stats were available
+        if "worker_utilization" not in flat:
+            worker_count = flat.get("worker_replicas", 1)
+            in_progress = flat.get("in_progress", 0)
+            flat["worker_utilization"] = min(1.0, in_progress / max(1, worker_count))
+
+        return flat
 
     def get_status(self) -> dict:
         """Return current auto-scaler status and policy state."""

@@ -121,7 +121,7 @@ class TestListAuditLogs:
 
     async def test_list_audit_logs_non_admin_forbidden(self):
         app = _make_app()
-        user = _fake_user(role="viewer")
+        user = _fake_user(role="user")
         mock_session = AsyncMock()
         _override_deps(app, user, mock_session)
 
@@ -149,7 +149,7 @@ class TestAdminStats:
         scalar_count.scalar.return_value = 5
 
         role_result = MagicMock()
-        role_result.all.return_value = [("admin", 1), ("operator", 3), ("viewer", 1)]
+        role_result.all.return_value = [("admin", 1), ("staff", 3), ("user", 1)]
 
         call_index = 0
 
@@ -178,7 +178,7 @@ class TestAdminStats:
 
     async def test_admin_stats_non_admin_forbidden(self):
         app = _make_app()
-        user = _fake_user(role="operator")
+        user = _fake_user(role="user")
         mock_session = AsyncMock()
         _override_deps(app, user, mock_session)
 

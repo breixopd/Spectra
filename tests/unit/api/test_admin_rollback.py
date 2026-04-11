@@ -81,7 +81,7 @@ async def test_list_snapshots_as_admin(mock_get_all):
 async def test_list_snapshots_as_viewer_forbidden():
     app = _make_app()
     mock_session = AsyncMock()
-    _override_deps(app, _fake_user("viewer"), mock_session)
+    _override_deps(app, _fake_user("user"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/rollback/snapshots")
@@ -93,7 +93,7 @@ async def test_list_snapshots_as_viewer_forbidden():
 async def test_list_snapshots_as_operator_forbidden():
     app = _make_app()
     mock_session = AsyncMock()
-    _override_deps(app, _fake_user("operator"), mock_session)
+    _override_deps(app, _fake_user("user"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/rollback/snapshots")
@@ -104,7 +104,7 @@ async def test_list_snapshots_as_operator_forbidden():
 @pytest.mark.asyncio
 @patch("app.api.routers.admin.rollback.rollback_snapshot", new_callable=AsyncMock)
 async def test_apply_rollback_success(mock_rollback):
-    mock_rollback.return_value = {"role": "viewer"}
+    mock_rollback.return_value = {"role": "staff"}
 
     app = _make_app()
     mock_session = AsyncMock()
@@ -116,7 +116,7 @@ async def test_apply_rollback_success(mock_rollback):
     assert resp.status_code == 200
     body = resp.json()
     assert body["status"] == "rolled_back"
-    assert body["restored"] == {"role": "viewer"}
+    assert body["restored"] == {"role": "staff"}
     mock_session.commit.assert_awaited()
 
 
@@ -155,7 +155,7 @@ async def test_apply_rollback_unexpected_error(mock_rollback):
 async def test_apply_rollback_without_admin_forbidden():
     app = _make_app()
     mock_session = AsyncMock()
-    _override_deps(app, _fake_user("viewer"), mock_session)
+    _override_deps(app, _fake_user("user"), mock_session)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post("/rollback/snapshots/snap-1/rollback")

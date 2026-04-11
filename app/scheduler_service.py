@@ -250,10 +250,13 @@ class SchedulerService:
 
                     scaler = AutoScaler(settings)
 
-                # --- Auto-scaling ---
+                # --- Auto-scaling with real metrics ---
                 if scaler is not None:
-                    metrics = await self._collect_scaling_metrics()
-                    decisions = await scaler.evaluate_and_execute(metrics)
+                    from app.services.scaling.metrics_collector import MetricsCollector
+
+                    collector = MetricsCollector()
+                    cluster_metrics = await collector.collect_all()
+                    decisions = await scaler.evaluate_and_execute(cluster_metrics)
                     for decision in decisions:
                         if decision.action != "none":
                             await self._send_capacity_alert({
@@ -304,58 +307,6 @@ class SchedulerService:
                     )
             except Exception as e:
                 logger.debug("Capacity monitor: %s", e)
-
-    async def _collect_scaling_metrics(self) -> dict:
-        """Collect metrics for auto-scaling decisions."""
-        import subprocess
-
-        metrics: dict = {}
-
-        # Queue depth from PostgresJobQueue
-        try:
-            from app.core.queue import queue_metrics
-
-            stats = await queue_metrics()
-            metrics["queue_depth"] = stats.get("depth", 0)
-            metrics["in_progress"] = stats.get("in_progress", 0)
-        except Exception as e:
-            logger.warning("Failed to collect queue metrics: %s", e)
-            metrics["queue_depth"] = 0
-            metrics["in_progress"] = 0
-
-        # Current replica counts from Docker Swarm
-        try:
-            result = await asyncio.to_thread(
-                subprocess.run,
-                ["docker", "service", "ls", "--format", "{{.Name}} {{.Replicas}}"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode == 0:
-                for line in result.stdout.strip().split("\n"):
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        name = parts[0]
-                        replicas = parts[1].split("/")
-                        count = int(replicas[-1]) if replicas else 1
-                        if "worker" in name.lower():
-                            metrics["worker_replicas"] = count
-                        elif "app" in name.lower():
-                            metrics["api_replicas"] = count
-                        elif "ai" in name.lower():
-                            metrics["ai_replicas"] = count
-                        elif "scheduler" in name.lower():
-                            metrics["scheduler_replicas"] = count
-        except Exception as e:
-            logger.warning("Failed to query Docker Swarm replicas: %s", e)
-
-        # Estimate utilization from queue stats
-        worker_count = metrics.get("worker_replicas", 1)
-        in_progress = metrics.get("in_progress", 0)
-        metrics["worker_utilization"] = min(1.0, in_progress / max(1, worker_count))
-
-        return metrics
 
     async def _send_capacity_alert(self, status: dict) -> None:
         """Send capacity alert via configured notification channels."""

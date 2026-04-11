@@ -45,7 +45,7 @@ def _cost_summary(cost_trackers: dict) -> dict[str, Any]:
 
 @router.get("/api/v1/admin/monitoring/overview")
 async def monitoring_overview(
-    _user: User = require_permission(Permission.MANAGE_SETTINGS),
+    _user: User = require_permission(Permission.VIEW_MONITORING),
     session: AsyncSession = Depends(get_async_session),
 ) -> dict[str, Any]:
     """System-wide monitoring overview with key metrics."""
@@ -89,7 +89,7 @@ async def monitoring_overview(
 @router.get("/api/v1/admin/monitoring/trends")
 async def monitoring_trends(
     minutes: int = Query(60, ge=5, le=1440, description="Time window in minutes"),
-    _user: User = require_permission(Permission.MANAGE_SETTINGS),
+    _user: User = require_permission(Permission.VIEW_MONITORING),
 ) -> dict[str, Any]:
     """Get metrics trends over the specified time window."""
     metrics_store = get_metrics_store()
@@ -105,7 +105,7 @@ async def monitoring_trends(
 async def export_metrics(
     format: str = Query("json", pattern="^(json|csv)$"),
     minutes: int = Query(60, ge=5, le=10080),
-    _user: User = require_permission(Permission.MANAGE_SETTINGS),
+    _user: User = require_permission(Permission.VIEW_MONITORING),
 ) -> StreamingResponse:
     """Export metrics data as JSON or CSV for external analysis."""
     metrics_store = get_metrics_store()
@@ -134,7 +134,7 @@ async def export_metrics(
 
 @router.get("/api/v1/admin/monitoring/llm-usage")
 async def llm_usage_breakdown(
-    _user: User = require_permission(Permission.MANAGE_SETTINGS),
+    _user: User = require_permission(Permission.VIEW_MONITORING),
 ) -> dict[str, Any]:
     """Detailed LLM usage breakdown by mission/tracker."""
     from app.services.ai.cost_tracker import get_cost_trackers

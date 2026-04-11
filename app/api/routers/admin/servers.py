@@ -558,10 +558,47 @@ async def get_scaling_metrics(
     queue_name: str = "default",
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
-    """Return queue depth, in-progress count, and wait stats for autoscaling decisions."""
-    from app.core.queue import queue_metrics
+    """Return full cluster metrics: per-service CPU/memory, system resources, queue stats, and node health."""
+    from app.services.scaling.metrics_collector import MetricsCollector
 
-    return await queue_metrics(queue_name=queue_name)
+    collector = MetricsCollector()
+    cluster = await collector.collect_all()
+    return {
+        "timestamp": cluster.timestamp.isoformat(),
+        "services": {
+            name: {
+                "replicas": svc.replicas,
+                "desired_replicas": svc.desired_replicas,
+                "cpu_percent": round(svc.cpu_percent, 2),
+                "memory_mb": round(svc.memory_mb, 1),
+                "healthy": svc.healthy,
+                "failed_tasks": svc.failed_tasks,
+                "running_tasks": svc.running_tasks,
+            }
+            for name, svc in cluster.services.items()
+        },
+        "system": {
+            "cpu_percent": round(cluster.system.cpu_percent, 1),
+            "memory_percent": round(cluster.system.memory_percent, 1),
+            "memory_available_mb": round(cluster.system.memory_available_mb, 0),
+            "disk_percent": round(cluster.system.disk_percent, 1),
+            "disk_free_gb": round(cluster.system.disk_free_gb, 1),
+            "load_avg_1m": round(cluster.system.load_avg_1m, 2),
+            "load_avg_5m": round(cluster.system.load_avg_5m, 2),
+        },
+        "queue": {
+            "depth": cluster.queue.depth,
+            "in_progress": cluster.queue.in_progress,
+            "completed": cluster.queue.completed,
+            "avg_wait_secs": round(cluster.queue.avg_wait_secs, 1),
+            "oldest_job_secs": round(cluster.queue.oldest_job_secs, 1),
+        },
+        "nodes": {
+            "total": cluster.nodes_total,
+            "healthy": cluster.nodes_healthy,
+            "unhealthy": cluster.nodes_unhealthy,
+        },
+    }
 
 
 @router.get("/api/admin/scaling/status")
@@ -608,16 +645,34 @@ async def get_scaling_status(
 async def get_resource_capacity(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
 ):
-    """Auto-calculated resource capacity for this node and network."""
+    """Auto-calculated resource capacity for this node and network, including live system metrics."""
     from app.core.config import get_settings as _get_settings
     from app.services.resource_manager import ResourceManager
+    from app.services.scaling.metrics_collector import MetricsCollector
 
     s = _get_settings()
     local = await ResourceManager.get_node_resources()
     capacity = ResourceManager.calculate_node_capacity(
         local["total_memory_mb"], local["cpu_cores"], s.SERVICE_MODE
     )
-    return {"local": {**local, **capacity}, "service_mode": s.SERVICE_MODE}
+
+    # Collect live system metrics
+    collector = MetricsCollector()
+    system = (await collector.collect_all()).system
+
+    return {
+        "local": {**local, **capacity},
+        "service_mode": s.SERVICE_MODE,
+        "system": {
+            "cpu_percent": round(system.cpu_percent, 1),
+            "memory_percent": round(system.memory_percent, 1),
+            "memory_available_mb": round(system.memory_available_mb, 0),
+            "disk_percent": round(system.disk_percent, 1),
+            "disk_free_gb": round(system.disk_free_gb, 1),
+            "load_avg_1m": round(system.load_avg_1m, 2),
+            "load_avg_5m": round(system.load_avg_5m, 2),
+        },
+    }
 
 
 # --- Scaling Configuration ---
@@ -703,3 +758,102 @@ async def update_scaling_config(
     )
 
     return {"status": "updated", "message": "Scaling configuration updated — takes effect on next evaluation cycle"}
+
+
+# --- Scaling Actions ---
+
+
+class ScalingActionRequest(BaseModel):
+    """Schema for executing a scaling action on a service."""
+
+    action: str = Field(..., pattern=r"^(scale_up|scale_down|restart|heal)$")
+    service: str
+
+
+_ALLOWED_SCALING_SERVICES = frozenset({
+    "spectra_app",
+    "spectra_worker",
+    "spectra_ai-svc",
+    "spectra_scheduler",
+    "spectra_caddy",
+})
+
+
+@router.post("/api/admin/scaling/action")
+async def execute_scaling_action(
+    body: ScalingActionRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Execute a scaling action: scale_up, scale_down, restart, or heal a service."""
+    import asyncio
+    import subprocess as sp
+
+    if body.service not in _ALLOWED_SCALING_SERVICES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Service must be one of: {', '.join(sorted(_ALLOWED_SCALING_SERVICES))}",
+        )
+
+    action = body.action
+    service = body.service
+    success = False
+
+    if action in ("scale_up", "scale_down"):
+        inspect_result = await asyncio.to_thread(
+            sp.run,
+            ["docker", "service", "inspect", service, "--format", "{{.Spec.Mode.Replicated.Replicas}}"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        current = int(inspect_result.stdout.strip()) if inspect_result.returncode == 0 and inspect_result.stdout.strip().isdigit() else 1
+        new_count = current + 1 if action == "scale_up" else max(1, current - 1)
+
+        result = await asyncio.to_thread(
+            sp.run,
+            ["docker", "service", "scale", f"{service}={new_count}"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        success = result.returncode == 0
+
+    elif action == "restart":
+        result = await asyncio.to_thread(
+            sp.run,
+            ["docker", "service", "update", "--force", service],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        success = result.returncode == 0
+
+    elif action == "heal":
+        from app.services.scaling.auto_scaler import AutoScaler
+        from app.services.scaling.metrics_collector import MetricsCollector
+
+        collector = MetricsCollector()
+        metrics = await collector.collect_all()
+        scaler = AutoScaler()
+        actions = await scaler._auto_heal(metrics)
+
+        await audit_log_event(
+            session,
+            AuditEventType.SETTINGS_CHANGED,
+            user_id=current_user.id,
+            details={"action": "scaling_heal", "service": service, "heal_actions": actions},
+            request=request,
+        )
+        return {"success": bool(actions), "action": action, "service": service, "actions": actions}
+
+    await audit_log_event(
+        session,
+        AuditEventType.SETTINGS_CHANGED,
+        user_id=current_user.id,
+        details={"action": f"scaling_{action}", "service": service},
+        request=request,
+    )
+
+    return {"success": success, "action": action, "service": service}
