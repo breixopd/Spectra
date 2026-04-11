@@ -42,6 +42,9 @@ cmd_init() {
   echo "  Worker:  $(docker swarm join-token -q worker)"
   echo "  Manager: $(docker swarm join-token -q manager)"
   echo ""
+  # Limit retained Swarm task history to avoid stale task container buildup
+  docker swarm update --task-history-limit 3 >/dev/null 2>&1 || warn "Could not set task-history-limit"
+
   log "Label this node:"
   local node_id
   node_id=$(docker info --format '{{.Swarm.NodeID}}')
@@ -98,9 +101,6 @@ cmd_secrets() {
 cmd_deploy() {
   check_swarm
   check_manager
-
-  # Limit retained Swarm task history to avoid stale task container buildup
-  docker swarm update --task-history-limit 3 >/dev/null 2>&1 || warn "Could not set task-history-limit"
 
   [[ -f "${COMPOSE_FILE}" ]] || die "Swarm compose file not found: ${COMPOSE_FILE}"
   [[ -f "${PROJECT_ROOT}/.env" ]] || die ".env file not found"
