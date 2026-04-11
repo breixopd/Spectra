@@ -1,6 +1,6 @@
 # Test environment — Metasploitable2 + DVWA vulnerable targets
 #
-# Live LLM tests: set LLM_API_KEY in .env.test, then:
+# Live LLM tests: set OPENAI_API_KEY in .env.test, then:
 #   docker compose -f docker/docker-compose.test.yml --profile targets \
 #     run --rm test-runner sh -c "pytest tests/integration/ -v"
 #

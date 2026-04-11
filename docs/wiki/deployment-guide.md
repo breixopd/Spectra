@@ -143,7 +143,7 @@ Deployment bootstrap and first verification stay on this page. For ongoing runbo
 After the stack is up:
 
 - Run `./scripts/health_check.sh http://<host>/api/health` for the first operator smoke check.
-- Confirm backup visibility with `scripts/ops/backup_restore.sh list` once storage is configured.
+- Confirm backup visibility via **Admin UI → Backups** or `GET /api/admin/backups` once storage is configured.
 - Use [Deployment](deployment.md#rollback) for version rollback mechanics if the rollout needs to be reversed.
 
 ---
@@ -409,6 +409,102 @@ docker service update --image spectra-app:v2 spectra_app
 # The swarm.yml configures: parallelism=1, delay=10s, order=start-first
 # So one replica updates while the other continues serving traffic.
 ```
+
+---
+
+## Self-Hosted Image Registry
+
+For Swarm deployments across multiple nodes, every node must be able to pull the Spectra images. A self-hosted Docker registry removes external dependencies and lets you distribute custom worker images across the cluster.
+
+### Why Self-Host?
+
+- **No external dependency** — images stay on your network, no Docker Hub rate limits
+- **Required for multi-node Swarm** — worker nodes need to pull images from somewhere
+- **Custom worker images** — build and push images with additional tools pre-installed
+
+### Setting Up a Docker Registry
+
+Deploy a registry as a standalone container or Swarm service:
+
+```bash
+# Standalone container (simplest)
+docker run -d -p 5050:5000 --restart=always \
+  -v registry:/var/lib/registry \
+  --name registry registry:2
+```
+
+For TLS (recommended in production), mount certificates:
+
+```bash
+docker run -d -p 5050:5000 --restart=always \
+  -v registry:/var/lib/registry \
+  -v /path/to/certs:/certs \
+  -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+  -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
+  --name registry registry:2
+```
+
+For local/lab environments without TLS, configure each Docker daemon to allow insecure access (see below).
+
+### Building and Pushing Images
+
+```bash
+cd /path/to/spectra
+
+# Build all images
+docker build -t <registry>:5050/spectra-app:latest --target api -f docker/Dockerfile.app .
+docker build -t <registry>:5050/spectra-ai-svc:latest --target ai -f docker/Dockerfile.app .
+docker build -t <registry>:5050/spectra-scheduler:latest --target scheduler -f docker/Dockerfile.app .
+docker build -t <registry>:5050/spectra-caddy:latest -f docker/Dockerfile.caddy docker/
+docker build -t <registry>:5050/spectra-worker:latest -f docker/Dockerfile.tools .
+
+# Push all
+for img in spectra-app spectra-ai-svc spectra-scheduler spectra-caddy spectra-worker; do
+  docker push <registry>:5050/$img:latest
+done
+```
+
+Replace `<registry>` with the IP or hostname of the node running your registry.
+
+### Configuring Nodes to Use the Registry
+
+**Insecure (HTTP) registry** — add to `/etc/docker/daemon.json` on every Swarm node:
+
+```json
+{
+  "insecure-registries": ["<registry-ip>:5050"]
+}
+```
+
+Then restart Docker: `sudo systemctl restart docker`
+
+**TLS registry** — distribute the CA certificate to each node:
+
+```bash
+sudo mkdir -p /etc/docker/certs.d/<registry-ip>:5050
+sudo cp ca.crt /etc/docker/certs.d/<registry-ip>:5050/
+```
+
+### Using the Registry in Swarm Deploys
+
+Set `REGISTRY` in your `.env` before deploying:
+
+```bash
+REGISTRY=<registry-ip>:5050/
+```
+
+The compose files use the `${REGISTRY:-}spectra-app:${VERSION:-latest}` pattern, so the registry prefix is applied to all image references automatically.
+
+```bash
+docker stack deploy -c docker/docker-compose.swarm.yml spectra
+```
+
+### Custom Libraries and Modules
+
+Spectra does not have custom pip packages to host — all Python dependencies come from `requirements/*.txt` and are baked into the Docker images at build time. The only custom assets to distribute are:
+
+- **Docker images** (via the registry above)
+- **Plugin signing key** (`keys/plugin_signing.pub`)
 
 ---
 

@@ -127,8 +127,12 @@ services:
     volumes:
       - app_data:/app/data
     networks:
-      - frontend
-      - backend
+      frontend:
+        aliases:
+          - spectra-app
+      backend:
+        aliases:
+          - spectra-app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
       interval: 30s
@@ -296,6 +300,10 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      APP_UPSTREAM: app:5000
+      PLATFORM_DOMAIN: "${PLATFORM_DOMAIN:-localhost}"
+      TLS_MODE: "${TLS_MODE:-internal}"
     volumes:
       - caddy_data:/data
       - caddy_config:/config
@@ -318,6 +326,9 @@ services:
       - NET_BIND_SERVICE
 
   # Garage S3-compatible Object Storage
+  # NOTE: Garage is a distroless image (no shell), so it cannot read _FILE
+  # env vars natively. GARAGE_RPC_SECRET is injected via Docker Compose
+  # variable interpolation from .env — this is the only option for distroless.
   garage:
     image: dxflrs/garage:v2.2.0
     environment:
@@ -349,6 +360,8 @@ services:
       resources:
         limits:
           memory: 512M
+    secrets:
+      - garage_rpc_secret
     logging: *default-logging
     <<: *security-stateful
 
@@ -399,7 +412,7 @@ services:
   # TensorZero Gateway (AI routing, observability, optimization)
   tensorzero:
     image: tensorzero/gateway:latest
-    entrypoint: ["sh", "-c", "CH_PASS=$$(cat /run/secrets/clickhouse_password 2>/dev/null || echo ''); export TENSORZERO_CLICKHOUSE_URL=\"http://default:$${CH_PASS}@clickhouse:8123/tensorzero\"; exec gateway --config-file /app/config/tensorzero.toml"]
+    entrypoint: ["sh", "-c", "CH_PASS=$$(cat /run/secrets/clickhouse_password 2>/dev/null || echo ''); export TENSORZERO_CLICKHOUSE_URL=\"http://default:$${CH_PASS}@clickhouse:8123/tensorzero\"; export OPENAI_API_KEY=$$(cat /run/secrets/openai_api_key 2>/dev/null || echo \"$${OPENAI_API_KEY}\"); export ANTHROPIC_API_KEY=$$(cat /run/secrets/anthropic_api_key 2>/dev/null || echo \"$${ANTHROPIC_API_KEY}\"); exec gateway --config-file /app/config/tensorzero.toml"]
     deploy:
       replicas: 1
       placement:
@@ -429,6 +442,8 @@ services:
     secrets:
       - service_auth
       - clickhouse_password
+      - openai_api_key
+      - anthropic_api_key
     logging: *default-logging
     <<: *security-stateful
 
@@ -478,6 +493,8 @@ secrets:
   clickhouse_password:
     external: true
   openai_api_key:
+    external: true
+  anthropic_api_key:
     external: true
 
 configs:

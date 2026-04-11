@@ -55,9 +55,8 @@ class ServerPoolManager:
         await session.flush()
         logger.info("Added %s node: %s (%s)", service_type, name, url)
 
-        # Auto-enable autoscale when the first non-primary node is added
-        if not is_primary:
-            await self._auto_enable_autoscale(session)
+        # Auto-enable autoscale when any new host joins the pool
+        await self._auto_enable_autoscale(session)
 
         return node.to_dict()
 
