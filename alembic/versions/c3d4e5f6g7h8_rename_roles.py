@@ -1,14 +1,14 @@
 """Rename roles: operator→staff, viewer→user.
 
-Revision ID: j0k1l2m3n4o5
-Revises: z5a6b7c8d9e0
+Revision ID: c3d4e5f6g7h8
+Revises: b2c3d4e5f6g7
 Create Date: 2026-04-11
 """
 
 from alembic import op
 
-revision = "j0k1l2m3n4o5"
-down_revision = "z5a6b7c8d9e0"
+revision = "c3d4e5f6g7h8"
+down_revision = "b2c3d4e5f6g7"
 branch_labels = None
 depends_on = None
 
