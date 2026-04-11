@@ -177,7 +177,7 @@ User enters target + directive
 
 Debrief lessons are auto-saved after every mission by the `DebriefAgent`.
 
-**Exploit intelligence** (Metasploit modules, CISA KEV catalog, Exploit-DB entries, CVE knowledge base) is cached in PostgreSQL via the `CacheEntry` model (`app/services/ai/exploit_db.py`). At startup, the database is auto-initialized in the background if cached data is present. First-time setup requires an admin download via **Settings → Data Sources** or `scripts/update_exploit_db.py`.
+**Exploit intelligence** (Metasploit modules, CISA KEV catalog, Exploit-DB entries, CVE knowledge base) is cached in PostgreSQL via the `CacheEntry` model (`app/services/ai/exploit_db.py`). At startup, the database is auto-initialized in the background if cached data is present. First-time setup requires an admin download via **Settings → Data Sources**, or the scheduler's `exploit_db_refresh` task handles it automatically.
 
 ### Layer 2: Playbook Engine (`playbook.py`)
 

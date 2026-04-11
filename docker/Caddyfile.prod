@@ -2,9 +2,12 @@ import Caddyfile.snippets
 
 {
 	admin off
+	default_sni {$PLATFORM_DOMAIN:localhost}
 }
 
 {$PLATFORM_DOMAIN:localhost} {
+	tls {$TLS_MODE:internal}
+
 	import security_headers
 
 	header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"

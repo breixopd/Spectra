@@ -42,15 +42,11 @@ async def download_data_sources(
 
     db = get_exploit_db()
 
-    # Write CVE knowledge base from the update script's data
-    try:
-        from scripts.update_exploit_db import _CVE_KNOWLEDGE_BASE
+    # Write CVE knowledge base from curated data
+    from app.services.exploit_db import CVE_KNOWLEDGE_BASE
 
-        await db._cache_set("cve_knowledge_base", _CVE_KNOWLEDGE_BASE)
-        kb_count = len(_CVE_KNOWLEDGE_BASE)
-    except (OSError, ValueError) as exc:
-        logger.warning("Failed to write CVE knowledge base: %s", exc)
-        kb_count = 0
+    await db._cache_set("cve_knowledge_base", CVE_KNOWLEDGE_BASE)
+    kb_count = len(CVE_KNOWLEDGE_BASE)
 
     # Reload CVE knowledge base in memory
     from app.services.ai.cve_intel import reload_cve_knowledge_base

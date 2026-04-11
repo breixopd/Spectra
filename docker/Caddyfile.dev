@@ -5,7 +5,7 @@ import Caddyfile.snippets
 	admin off
 }
 
-:80 {
+{$PLATFORM_DOMAIN::80} {
 	import security_headers
 
 	@websocket {
@@ -20,16 +20,16 @@ import Caddyfile.snippets
 
 		handle /static/* {
 			header Cache-Control "public, max-age=3600"
-			reverse_proxy spectra-app:5000
+			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
 		}
 
 		handle @websocket {
-			reverse_proxy spectra-app:5000
+			reverse_proxy {$APP_UPSTREAM:spectra-app:5000}
 		}
 
 		import rate_limit_public 30
 
-		reverse_proxy spectra-app:5000 {
+		reverse_proxy {$APP_UPSTREAM:spectra-app:5000} {
 			health_uri /api/health
 			health_interval 10s
 			health_timeout 5s
