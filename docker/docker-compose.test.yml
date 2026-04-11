@@ -1,11 +1,5 @@
-# Test environment — Metasploitable2 + DVWA vulnerable targets
-#
-# Live LLM tests: set OPENAI_API_KEY in .env.test, then:
-#   docker compose -f docker/docker-compose.test.yml --profile targets \
-#     run --rm test-runner sh -c "pytest tests/integration/ -v"
-#
-# Vulnerable scan targets: use --profile targets to start lightweight targets:
-#   docker compose -f docker/docker-compose.test.yml --profile targets up -d
+# Spectra — test stack with vulnerable targets (Metasploitable2 + DVWA)
+# Usage: docker compose -f docker/docker-compose.test.yml --profile targets up -d
 
 x-test-env: &test-env
   DATABASE_URL: postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
@@ -175,7 +169,6 @@ services:
     env_file:
       - ../.env.test
     environment:
-      # Override database for container network
       - DATABASE_URL=postgresql+asyncpg://spectra:spectra_test@db:5432/spectra_test
       - S3_ENDPOINT_URL=http://garage:3900
       - S3_ACCESS_KEY=${GARAGE_ACCESS_KEY:-GK0123456789abcdef01234567}
@@ -323,7 +316,7 @@ services:
       - backend
       - targets
 
-  # Vulnerable target for E2E testing
+  # Metasploitable
   metasploitable:
     image: tleemcjr/metasploitable2
     tty: true
@@ -332,7 +325,7 @@ services:
         ipv4_address: 172.21.0.50
       backend:
 
-  # DVWA - Damn Vulnerable Web Application
+  # DVWA
   dvwa:
     image: vulnerables/web-dvwa
     environment:
@@ -341,9 +334,9 @@ services:
       targets:
         ipv4_address: 172.21.0.51
       backend:
-    # DVWA exposes HTTP on port 80
+    # DVWA on port 80
 
-  # Test runner service
+  # Test runner
   test-runner:
     build:
       context: ..
@@ -458,8 +451,7 @@ services:
       - frontend
       - backend
 
-  # Targeted settings/setup/router validation that stays containerized without
-  # requiring the full live test stack, while still joining the compose test network.
+  # Settings/router test runner
   settings-test-runner:
     build:
       context: ..
@@ -498,7 +490,7 @@ services:
     networks:
       - backend
 
-  # Lightweight unit-test runner — no live services required
+  # Unit test runner
   unit-test-runner:
     build:
       context: ..
@@ -531,7 +523,7 @@ services:
     networks:
       - backend
 
-  # Playwright browser test runner
+  # Playwright UI test runner
   ui-test-runner:
     build:
       context: ..

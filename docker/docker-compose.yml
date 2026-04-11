@@ -1,10 +1,5 @@
-# Spectra Security Assessment Platform
-# 
-# All services run as microservices by default.
-# Usage: docker compose -f docker/docker-compose.yml up -d
-#
-# For multi-host production: see docker-compose.swarm.yml
-# For testing: see docker-compose.test.yml
+# Spectra — local development stack
+# Production: docker-compose.swarm.yml | Testing: docker-compose.test.yml
 
 x-logging: &default-logging
   driver: json-file
@@ -32,7 +27,7 @@ x-common-env: &common-env
   TENSORZERO_GATEWAY_URL: http://tensorzero:3000
 
 services:
-  # Garage S3-compatible object storage
+  # Garage (S3-compatible object storage)
   garage:
     image: dxflrs/garage:v2.2.0
     container_name: spectra-garage
@@ -64,8 +59,7 @@ services:
           memory: 512M
     <<: *security-stateful
 
-  # PostgreSQL (persistent state, PostgreSQL-backed app cache, job queue,
-  # LISTEN/NOTIFY backbone, pgvector/RAG)
+  # PostgreSQL
   db:
     image: pgvector/pgvector:pg16
     container_name: spectra-db
@@ -94,7 +88,7 @@ services:
     logging: *default-logging
     <<: *security-stateful
 
-  # Redis (shared distributed rate-limiting backend)
+  # Redis
   redis:
     image: redis:7-alpine
     container_name: spectra-redis
@@ -120,7 +114,7 @@ services:
     logging: *default-logging
     <<: *security-stateful
 
-  # Caddy Reverse Proxy (thin edge rate limiting; Redis remains primary)
+  # Caddy reverse proxy
   caddy:
     image: ${REGISTRY:-}spectra-caddy:${VERSION:-latest}
     build:
@@ -159,7 +153,7 @@ services:
       - frontend
     <<: *security-defaults
 
-  # Spectra API (FastAPI)
+  # API
   app:
     image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
     build:
@@ -188,9 +182,7 @@ services:
       <<: *common-env
       CONNECT_BACK_HOST: spectra-app
       AI_SERVICE_URL: http://ai-svc:5010
-      # Deployment default: shared Redis-backed rate limiting.
-      # Use memory:// mainly for tests or intentionally ephemeral local runs.
-      # Move limits to Caddy only if you intentionally want edge-only limiting.
+      # Shared Redis-backed rate limiting; use memory:// for tests
       RATE_LIMIT_STORAGE: "redis://:${REDIS_PASSWORD:-change-me-redis-pass}@redis:6379/0"
       SERVICE_MODE: api
     volumes:
@@ -229,7 +221,7 @@ services:
         - action: rebuild
           path: ../requirements/app.txt
 
-  # AI Service (LLM + RAG + Embeddings)
+  # AI service
   ai-svc:
     image: ${REGISTRY:-}spectra-ai-svc:${VERSION:-latest}
     build:
@@ -276,7 +268,7 @@ services:
     logging: *default-logging
     <<: *security-stateful
 
-  # ClickHouse (TensorZero analytics + inference storage)
+  # ClickHouse
   clickhouse:
     image: clickhouse/clickhouse-server:24.11-alpine
     container_name: spectra-clickhouse
@@ -307,7 +299,7 @@ services:
     logging: *default-logging
     <<: *security-stateful
 
-  # TensorZero Gateway (AI routing, observability, optimization)
+  # TensorZero gateway
   tensorzero:
     image: tensorzero/gateway:2025.01.07
     container_name: spectra-tensorzero
@@ -342,7 +334,7 @@ services:
     logging: *default-logging
     <<: *security-stateful
 
-  # Scheduler (Backups, Metrics, Cleanup)
+  # Scheduler
   scheduler:
     image: ${REGISTRY:-}spectra-scheduler:${VERSION:-latest}
     build:
@@ -389,7 +381,7 @@ services:
     logging: *default-logging
     <<: *security-stateful
 
-  # Worker (Tool Execution via Ephemeral Sandbox Containers)
+  # Worker
   worker:
     image: ${REGISTRY:-}spectra-worker:${VERSION:-latest}
     build:

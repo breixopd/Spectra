@@ -500,7 +500,15 @@ class SchedulerService:
                     ["docker", "volume", "prune", "-f"],
                     capture_output=True, text=True, timeout=60,
                 )
-                logger.info("Docker cleanup completed: pruned containers, images, volumes")
+                # Prune exited Swarm task containers
+                await asyncio.to_thread(
+                    subprocess.run,
+                    ["docker", "container", "prune", "-f",
+                     "--filter", "label=com.docker.swarm.task",
+                     "--filter", "status=exited"],
+                    capture_output=True, text=True, timeout=60,
+                )
+                logger.info("Docker cleanup completed: pruned containers, images, volumes, swarm tasks")
             except Exception as e:
                 logger.warning("Docker cleanup failed: %s", e)
 
