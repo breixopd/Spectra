@@ -349,7 +349,10 @@ class SchedulerService:
                 from sqlalchemy.ext.asyncio import create_async_engine
 
                 engine = create_async_engine(
-                    settings.DATABASE_URL.get_secret_value(), isolation_level="AUTOCOMMIT"
+                    settings.DATABASE_URL.get_secret_value(),
+                    isolation_level="AUTOCOMMIT",
+                    pool_pre_ping=True,
+                    pool_recycle=300,
                 )
                 VACUUM_TABLES = frozenset({"missions", "findings", "audit_logs", "job_queue", "cache_entries"})
                 async with engine.connect() as conn:

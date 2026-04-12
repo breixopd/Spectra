@@ -6,7 +6,8 @@ Provides async engine, session maker, and a dependency for FastAPI.
 
 from collections.abc import AsyncGenerator
 
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import event
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -59,10 +60,18 @@ engine = create_async_engine(
     pool_size=settings.DATABASE_POOL_SIZE,
     max_overflow=settings.DATABASE_MAX_OVERFLOW,
     pool_timeout=30,
-    pool_recycle=3600,
+    pool_recycle=300,
     pool_pre_ping=True,
     connect_args=connect_args,
 )
+
+
+# --- Connection retry on checkout ---
+@event.listens_for(engine.sync_engine, "handle_error")
+def _handle_db_error(context):
+    """Invalidate connections on disconnect errors so the pool replaces them."""
+    if context.is_disconnect:
+        context.invalidate_pool_on_disconnect = True
 
 # --- Session Maker ---
 async_session_maker = async_sessionmaker(
