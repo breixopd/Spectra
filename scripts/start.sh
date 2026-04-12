@@ -22,10 +22,18 @@ fi
 if [ -S /var/run/docker.sock ]; then
     DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
     if [ -n "$DOCKER_GID" ] && [ "$DOCKER_GID" != "0" ]; then
-        # Match the docker group GID to the host's socket GID
-        groupmod -g "$DOCKER_GID" docker 2>/dev/null || groupadd -g "$DOCKER_GID" dockerhost 2>/dev/null || true
-        usermod -aG docker spectra 2>/dev/null || true
-        usermod -aG dockerhost spectra 2>/dev/null || true
+        # Find or create a group matching the socket GID
+        DOCKER_GROUP=$(getent group "$DOCKER_GID" | cut -d: -f1 2>/dev/null || echo "")
+        if [ -z "$DOCKER_GROUP" ]; then
+            # No group with this GID exists — create one
+            groupadd -g "$DOCKER_GID" dockersock 2>/dev/null && DOCKER_GROUP="dockersock"
+        fi
+        if [ -n "$DOCKER_GROUP" ]; then
+            usermod -aG "$DOCKER_GROUP" spectra 2>/dev/null || true
+        else
+            # Last resort: make socket world-readable (container is already isolated)
+            chmod 666 /var/run/docker.sock 2>/dev/null || true
+        fi
     fi
 fi
 
