@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/api/version", summary="Application version")
+@router.get("/version", summary="Application version")
 async def get_version():
     return {"version": __version__}
 
