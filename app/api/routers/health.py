@@ -30,6 +30,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/api/version", summary="Application version")
+async def get_version():
+    return {"version": __version__}
+
+
 def _data_dir() -> str:
     return str(_get_settings().DATA_ROOT)
 
