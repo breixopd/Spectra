@@ -939,3 +939,74 @@ async def execute_scaling_action(
     )
 
     return {"success": success, "action": action, "service": service}
+
+
+# --- Image Update Status & Manual Trigger ---
+
+
+@router.get("/api/admin/updates/status")
+async def get_update_status(
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Get current image update status for all managed services."""
+    import httpx
+
+    from app.core.config import get_settings as _gs
+
+    settings = _gs()
+    url = f"{settings.SCHEDULER_SERVICE_URL}/internal/updates/status"
+    secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, headers={"X-Service-Auth": secret})
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception as exc:
+        logger.warning("Failed to fetch update status from scheduler: %s", exc)
+    raise HTTPException(status_code=502, detail="Could not reach scheduler for update status")
+
+
+class UpdateApplyRequest(BaseModel):
+    service: str | None = None
+    all: bool = False
+
+
+@router.post("/api/admin/updates/apply")
+async def trigger_update(
+    body: UpdateApplyRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Manually trigger an image update for a service (or all managed services)."""
+    import httpx
+
+    from app.core.config import get_settings as _gs
+
+    settings = _gs()
+    url = f"{settings.SCHEDULER_SERVICE_URL}/internal/updates/apply"
+    secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+
+    payload: dict = {}
+    if body.service and not body.all:
+        payload["service"] = body.service
+
+    try:
+        async with httpx.AsyncClient(timeout=180) as client:
+            resp = await client.post(url, json=payload, headers={"X-Service-Auth": secret})
+            if resp.status_code == 200:
+                result = resp.json()
+                await audit_log_event(
+                    session,
+                    AuditEventType.SETTINGS_CHANGED,
+                    user_id=current_user.id,
+                    details={
+                        "action": "manual_image_update",
+                        "service": body.service or "all",
+                    },
+                    request=request,
+                )
+                return result
+    except Exception as exc:
+        logger.warning("Failed to proxy update apply to scheduler: %s", exc)
+    raise HTTPException(status_code=502, detail="Could not reach scheduler to apply update")

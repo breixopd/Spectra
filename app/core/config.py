@@ -375,6 +375,17 @@ class Settings(BaseSettings):
     EXPLOIT_DB_REFRESH_HOURS: int = Field(default=168, description="Exploit DB refresh interval in hours (7 days)")
     DOCKER_CLEANUP_INTERVAL: int = Field(default=604800, description="Docker resource pruning interval in seconds (7 days)")
 
+    # --- Image Auto-Update ---
+    IMAGE_AUTO_UPDATE: bool = Field(default=True, description="Auto-apply image updates when new digests are found")
+    IMAGE_CHECK_INTERVAL: int = Field(default=60, description="Seconds between image update checks")
+
+    @field_validator("IMAGE_CHECK_INTERVAL")
+    @classmethod
+    def validate_image_check_interval(cls, v: int) -> int:
+        if not 10 <= v <= 3600:
+            raise ValueError("IMAGE_CHECK_INTERVAL must be 10-3600 seconds")
+        return v
+
     # --- Billing / Stripe ---
     PAYMENT_PROVIDER: str = Field(default="noop", description="Payment provider: noop, stripe, crypto, or manual")
     STRIPE_SECRET_KEY: SecretStr = Field(default=SecretStr(""), description="Stripe API secret key")
