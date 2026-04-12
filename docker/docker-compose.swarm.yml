@@ -136,7 +136,7 @@ services:
       SECRET_KEY_FILE: /run/secrets/secret_key
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       AI_SERVICE_URL: http://ai-svc:5010
-      SCHEDULER_URL: http://scheduler:5011
+      SCHEDULER_SERVICE_URL: http://scheduler:5011
     expose:
       - "5000"
     volumes:

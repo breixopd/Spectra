@@ -27,6 +27,12 @@ python-dotenv==1.2.2
 orjson==3.11.7
 psutil==7.2.2
 
+# Docker SDK (sandbox watchdog, container cleanup)
+docker>=7.0.0,<8.0.0
+
+# Async file I/O
+aiofiles>=24.1.0,<25.0.0
+
 # Transitively needed by shared app code imports
 starlette==0.48.0
 python-multipart==0.0.22
