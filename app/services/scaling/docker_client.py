@@ -193,6 +193,26 @@ async def update_service_image(name: str, image: str, registry_auth: bool = True
 # --- Metrics ---
 
 
+async def get_service_logs(name: str, tail: int = 50) -> str:
+    """Get recent logs from a service."""
+    try:
+        client = _get_client()
+        try:
+            svc = await _run_sync(client.services.get, name)
+            log_bytes = await _run_sync(
+                svc.logs, stdout=True, stderr=True, tail=tail, timestamps=True,
+            )
+            if isinstance(log_bytes, bytes):
+                return log_bytes.decode("utf-8", errors="replace")
+            # Generator of bytes chunks
+            return b"".join(log_bytes).decode("utf-8", errors="replace")
+        finally:
+            client.close()
+    except (DockerException, APIError) as exc:
+        logger.warning("Failed to get logs for %s: %s", name, exc)
+        return ""
+
+
 def _calc_cpu_percent(stats: dict) -> float:
     """Calculate CPU percentage from docker stats response."""
     cpu_stats = stats.get("cpu_stats", {})

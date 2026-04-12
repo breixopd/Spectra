@@ -279,6 +279,57 @@ class ServerPoolManager:
         self._health_task = create_safe_task(_loop(), name="pool_health_check")
         logger.info("Health check loop started (interval=%ds)", self._health_interval)
 
+    async def get_cluster_capacity(self) -> dict:
+        """Return total CPU cores, memory MB, and per-service max replicas.
+
+        Sums resources across all healthy nodes, reserves 20% for system
+        overhead, then divides by per-replica requirements.
+        """
+        from app.models.server_node import ServerNode
+        from app.services.scaling.config import DEFAULT_RESOURCE_REQUIREMENTS
+
+        total_cpu = 0.0
+        total_memory_mb = 0.0
+
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(ServerNode).where(
+                    and_(
+                        ServerNode.is_active,
+                        ServerNode.health_status == "healthy",
+                    )
+                )
+            )
+            nodes = result.scalars().all()
+
+            for node in nodes:
+                meta = node.metadata_ or {}
+                node_metrics = meta.get("node_metrics", {})
+                # Prefer reported metrics; fall back to capacity estimate
+                cpu_cores = node_metrics.get("cpu_count", node.max_capacity)
+                memory_mb = node_metrics.get("memory_total_mb", node.max_capacity * 1024)
+                total_cpu += cpu_cores
+                total_memory_mb += memory_mb
+
+        # Reserve 20% for system overhead
+        usable_cpu = total_cpu * 0.8
+        usable_memory_mb = total_memory_mb * 0.8
+
+        per_service: dict[str, int] = {}
+        for svc_name, reqs in DEFAULT_RESOURCE_REQUIREMENTS.items():
+            max_by_cpu = int(usable_cpu / reqs.cpu_cores) if reqs.cpu_cores > 0 else 999
+            max_by_mem = int(usable_memory_mb / reqs.memory_mb) if reqs.memory_mb > 0 else 999
+            per_service[svc_name] = min(max_by_cpu, max_by_mem)
+
+        return {
+            "total_cpu_cores": total_cpu,
+            "total_memory_mb": total_memory_mb,
+            "usable_cpu_cores": usable_cpu,
+            "usable_memory_mb": usable_memory_mb,
+            "healthy_nodes": len(nodes),
+            "per_service_max_replicas": per_service,
+        }
+
     async def stop_health_loop(self) -> None:
         """Stop periodic health check loop."""
         if self._health_task:

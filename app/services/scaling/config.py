@@ -13,6 +13,23 @@ def _as_bool(value) -> bool:
 
 
 @dataclass
+class ResourceRequirements:
+    """Per-replica resource requirements for capacity planning."""
+
+    cpu_cores: float = 0.5
+    memory_mb: int = 512
+
+
+DEFAULT_RESOURCE_REQUIREMENTS: dict[str, ResourceRequirements] = {
+    "spectra_worker": ResourceRequirements(cpu_cores=1.0, memory_mb=1024),
+    "spectra_app": ResourceRequirements(cpu_cores=0.5, memory_mb=512),
+    "spectra_ai-svc": ResourceRequirements(cpu_cores=2.0, memory_mb=2048),
+    "spectra_scheduler": ResourceRequirements(cpu_cores=0.5, memory_mb=512),
+    "spectra_caddy": ResourceRequirements(cpu_cores=0.25, memory_mb=256),
+}
+
+
+@dataclass
 class ServicePolicy:
     """Scaling policy for a single service."""
 
