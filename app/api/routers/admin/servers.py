@@ -630,9 +630,15 @@ async def get_scaling_status(
     """Get auto-scaling status, current policies, queue metrics, and current config values."""
     from app.core.config import get_settings as _get_settings
     from app.core.queue import queue_metrics
+    from app.services.scaling.auto_scaler import AutoScaler
+    from app.services.scaling.backends import DockerSwarmBackend
+    from app.services.scaling.config import AutoScalerConfig
+    from app.services.scaling.notifiers import LogNotifier
 
     settings = _get_settings()
-    result: dict = {"enabled": settings.AUTOSCALE_ENABLED}
+    config = AutoScalerConfig.from_settings(settings)
+    scaler = AutoScaler(config, DockerSwarmBackend(), LogNotifier())
+    result: dict = {"enabled": scaler.get_config_snapshot().get("scaling.enabled", settings.AUTOSCALE_ENABLED)}
 
     # Always include current config values so the admin UI can populate the form
     result["config"] = {
@@ -653,13 +659,6 @@ async def get_scaling_status(
         "infra_monitor_storage_threshold": getattr(settings, "INFRA_MONITOR_STORAGE_THRESHOLD", 90),
     }
 
-    from app.services.scaling.auto_scaler import AutoScaler
-    from app.services.scaling.backends import DockerSwarmBackend
-    from app.services.scaling.config import AutoScalerConfig
-    from app.services.scaling.notifiers import LogNotifier
-
-    config = AutoScalerConfig.from_settings(settings)
-    scaler = AutoScaler(config, DockerSwarmBackend(), LogNotifier())
     result["scaler"] = scaler.get_status()
 
     stats = await queue_metrics()

@@ -63,10 +63,23 @@ async def list_audit_logs(
     if not isinstance(total, int):
         total = len(rows)
 
+    # Batch-fetch usernames for the page of audit log entries
+    user_ids = {r.user_id for r in rows if r.user_id}
+    username_map: dict[str, str] = {}
+    if user_ids:
+        try:
+            user_rows = (await session.execute(
+                select(User.id, User.username).where(User.id.in_(user_ids))
+            )).all()
+            username_map = {row[0]: row[1] for row in user_rows}
+        except Exception:
+            logger.debug("Could not resolve usernames for audit log entries", exc_info=True)
+
     items = [
         {
             "id": r.id,
             "user_id": r.user_id,
+            "username": username_map.get(r.user_id) if r.user_id else None,
             "event_type": r.event_type,
             "details": r.details,
             "ip_address": r.ip_address,

@@ -81,9 +81,16 @@ class SchedulerService:
 
     def health(self) -> dict:
         task_status = {name: (not task.done()) for name, task in self._named_tasks.items()}
-        alive = any(task_status.values()) if task_status else self.running
+        if not self.running and not task_status:
+            status = "standby"
+        elif task_status and any(task_status.values()):
+            status = "healthy"
+        elif self.running and not task_status:
+            status = "standby"
+        else:
+            status = "degraded"
         return {
-            "status": "healthy" if alive else "degraded",
+            "status": status,
             "tasks": task_status,
             "running": self.running,
         }
