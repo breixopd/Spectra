@@ -9,7 +9,7 @@ import logging
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -311,6 +311,21 @@ _ERROR_HANDLERS: list[tuple] = [
 
 for _entry in _ERROR_HANDLERS:
     app.exception_handler(_entry[0])(_make_error_handler(*_entry))
+
+
+# --- Internal node metrics (all service modes) ---
+@app.get("/internal/metrics")
+async def internal_node_metrics(request: Request):
+    """Return local system metrics. Requires service auth."""
+    from app.services.scaling.node_metrics import collect_node_metrics
+
+    auth = request.headers.get("X-Service-Auth", "")
+    if auth != settings.SERVICE_AUTH_SECRET.get_secret_value():
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    mode = settings.SERVICE_MODE or "api"
+    metrics = collect_node_metrics(mode)
+    return metrics.to_dict()
+
 
 # --- Include Routers (conditional on SERVICE_MODE) ---
 

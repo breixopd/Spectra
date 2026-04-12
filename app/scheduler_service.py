@@ -570,6 +570,15 @@ async def health():
     return result
 
 
+@app.get("/internal/metrics")
+async def internal_node_metrics():
+    """Return local system metrics. Service auth enforced by middleware."""
+    from app.services.scaling.node_metrics import collect_node_metrics
+
+    metrics = collect_node_metrics("scheduler")
+    return metrics.to_dict()
+
+
 # --- Internal scaling proxy (runs on Swarm manager node) ---
 
 _INTERNAL_ALLOWED_SERVICES = frozenset({
