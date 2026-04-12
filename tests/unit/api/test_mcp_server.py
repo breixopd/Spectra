@@ -1,10 +1,20 @@
 """Tests for the MCP server endpoint."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 pytestmark = pytest.mark.asyncio
+
+
+def _mock_http_request():
+    """Create a mock Starlette Request for rate-limiter compatibility."""
+    req = MagicMock()
+    req.client.host = "127.0.0.1"
+    req.url.path = "/api/mcp"
+    req.state = MagicMock()
+    req.headers = {}
+    return req
 
 
 async def test_mcp_initialize():
@@ -12,7 +22,7 @@ async def test_mcp_initialize():
     from app.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(method="initialize", id=1)
-    result = await handle_mcp_request(req, api_key="test-key", session=AsyncMock())
+    result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
 
     assert result.result["serverInfo"]["name"] == "spectra-mcp"
     assert result.result["protocolVersion"] == "2024-11-05"
@@ -24,7 +34,7 @@ async def test_mcp_tools_list():
     from app.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(method="tools/list", id=2)
-    result = await handle_mcp_request(req, api_key="test-key", session=AsyncMock())
+    result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
 
     tools = result.result["tools"]
     assert len(tools) == 6
@@ -53,7 +63,7 @@ async def test_mcp_unknown_method():
     from app.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(method="unknown/method", id=3)
-    result = await handle_mcp_request(req, api_key="test-key", session=AsyncMock())
+    result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
 
     assert result.error is not None
     assert result.error["code"] == -32601
@@ -65,7 +75,7 @@ async def test_mcp_notifications_initialized():
     from app.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(method="notifications/initialized", id=4)
-    result = await handle_mcp_request(req, api_key="test-key", session=AsyncMock())
+    result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
 
     assert result.result == {}
     assert result.error is None
@@ -80,7 +90,7 @@ async def test_mcp_tool_call_unknown_tool():
         id=5,
         params={"name": "nonexistent_tool", "arguments": {}},
     )
-    result = await handle_mcp_request(req, api_key="test-key", session=AsyncMock())
+    result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
 
     assert result.error is not None
     assert result.error["code"] == -32603
@@ -95,7 +105,7 @@ async def test_mcp_tool_start_mission():
         id=6,
         params={
             "name": "start_mission",
-            "arguments": {"target": "192.168.1.1", "directive": "Scan for open ports"},
+            "arguments": {"target": "192.168.1.1", "directive": "Scan for open ports", "user_id": "test-user-1"},
         },
     )
 
@@ -103,8 +113,12 @@ async def test_mcp_tool_start_mission():
     mock_manager.start_mission.return_value = "test-mission-id-123"
     mock_manager.get_mission.return_value = None
 
+    mock_session = AsyncMock()
+    mock_user = MagicMock(is_active=True)
+    mock_session.get.return_value = mock_user
+
     with patch("app.services.mission.manager.mission_manager", mock_manager):
-        result = await handle_mcp_request(req, api_key="test-key", session=AsyncMock())
+        result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=mock_session)
 
     assert result.error is None
     assert result.result["isError"] is False
@@ -124,7 +138,7 @@ async def test_mcp_tool_start_mission_missing_fields():
         id=7,
         params={"name": "start_mission", "arguments": {"target": "192.168.1.1"}},
     )
-    result = await handle_mcp_request(req, api_key="test-key", session=AsyncMock())
+    result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
 
     assert result.error is not None
     assert result.error["code"] == -32603

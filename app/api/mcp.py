@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_async_session
+from app.core.rate_limit import RateLimits, limiter
 
 logger = logging.getLogger(__name__)
 
@@ -92,8 +93,12 @@ MCP_TOOLS = [
                     "type": "string",
                     "description": "What to look for. E.g., 'Perform a comprehensive vulnerability assessment'",
                 },
+                "user_id": {
+                    "type": "string",
+                    "description": "ID of the user initiating the mission",
+                },
             },
-            "required": ["target", "directive"],
+            "required": ["target", "directive", "user_id"],
         },
     },
     {
@@ -103,8 +108,9 @@ MCP_TOOLS = [
             "type": "object",
             "properties": {
                 "mission_id": {"type": "string", "description": "UUID of the mission"},
+                "user_id": {"type": "string", "description": "ID of the requesting user"},
             },
-            "required": ["mission_id"],
+            "required": ["mission_id", "user_id"],
         },
     },
     {
@@ -114,6 +120,7 @@ MCP_TOOLS = [
             "type": "object",
             "properties": {
                 "mission_id": {"type": "string", "description": "UUID of the mission"},
+                "user_id": {"type": "string", "description": "ID of the requesting user"},
                 "severity": {
                     "type": "string",
                     "enum": ["critical", "high", "medium", "low", "info"],
@@ -125,7 +132,7 @@ MCP_TOOLS = [
                     "default": 50,
                 },
             },
-            "required": ["mission_id"],
+            "required": ["mission_id", "user_id"],
         },
     },
     {
@@ -134,12 +141,14 @@ MCP_TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
+                "user_id": {"type": "string", "description": "ID of the requesting user"},
                 "limit": {
                     "type": "integer",
                     "description": "Max targets to return (default 20)",
                     "default": 20,
                 },
             },
+            "required": ["user_id"],
         },
     },
     {
@@ -174,16 +183,18 @@ MCP_TOOLS = [
 
 @router.post("")
 @router.post("/")
+@limiter.limit(RateLimits.MCP)
 async def handle_mcp_request(
-    request: MCPRequest,
+    request: Request,
+    body: MCPRequest,
     api_key: str = Depends(verify_mcp_api_key),
     session: AsyncSession = Depends(get_async_session),
 ) -> MCPResponse:
     """Handle MCP JSON-RPC 2.0 requests."""
     try:
-        if request.method == "initialize":
+        if body.method == "initialize":
             return MCPResponse(
-                id=request.id,
+                id=body.id,
                 result={
                     "protocolVersion": "2024-11-05",
                     "capabilities": {
@@ -196,38 +207,38 @@ async def handle_mcp_request(
                 },
             )
 
-        elif request.method == "tools/list":
-            return MCPResponse(id=request.id, result={"tools": MCP_TOOLS})
+        elif body.method == "tools/list":
+            return MCPResponse(id=body.id, result={"tools": MCP_TOOLS})
 
-        elif request.method == "tools/call":
-            params = request.params or {}
+        elif body.method == "tools/call":
+            params = body.params or {}
             tool_name = params.get("name", "")
             arguments = params.get("arguments", {})
 
             result = await _execute_mcp_tool(tool_name, arguments, session)
             return MCPResponse(
-                id=request.id,
+                id=body.id,
                 result={
                     "content": [{"type": "text", "text": json.dumps(result)}],
                     "isError": False,
                 },
             )
 
-        elif request.method == "notifications/initialized":
-            return MCPResponse(id=request.id, result={})
+        elif body.method == "notifications/initialized":
+            return MCPResponse(id=body.id, result={})
 
         else:
             return MCPResponse(
-                id=request.id,
-                error={"code": -32601, "message": f"Method not found: {request.method}"},
+                id=body.id,
+                error={"code": -32601, "message": f"Method not found: {body.method}"},
             )
 
     except HTTPException:
         raise
     except Exception:
-        logger.exception("MCP tool execution failed: %s", request.method)
+        logger.exception("MCP tool execution failed: %s", body.method)
         return MCPResponse(
-            id=request.id,
+            id=body.id,
             error={"code": -32603, "message": "Internal tool execution error"},
         )
 
@@ -235,7 +246,7 @@ async def handle_mcp_request(
 async def _execute_mcp_tool(tool_name: str, arguments: dict, session: AsyncSession) -> dict:
     """Execute an MCP tool and return results."""
     if tool_name == "start_mission":
-        return await _tool_start_mission(arguments)
+        return await _tool_start_mission(arguments, session)
 
     elif tool_name == "get_mission_status":
         return await _tool_get_mission_status(arguments, session)
@@ -256,19 +267,28 @@ async def _execute_mcp_tool(tool_name: str, arguments: dict, session: AsyncSessi
         raise ValueError(f"Unknown tool: {tool_name}")
 
 
-async def _tool_start_mission(arguments: dict) -> dict:
+async def _tool_start_mission(arguments: dict, session: AsyncSession) -> dict:
     """Start a new pentesting mission."""
+    from app.models.user import User
     from app.services.mission.manager import mission_manager
 
     target = arguments.get("target", "")
     directive = arguments.get("directive", "")
+    user_id = arguments.get("user_id", "")
 
     if not target or not directive:
         raise ValueError("Both 'target' and 'directive' are required")
+    if not user_id:
+        raise ValueError("'user_id' is required")
+
+    user = await session.get(User, user_id)
+    if not user or not user.is_active:
+        raise ValueError(f"Invalid or inactive user: {user_id}")
 
     mission_id = await mission_manager.start_mission(
         target=target,
         directive=directive,
+        user_id=user_id,
     )
 
     return {
@@ -284,10 +304,15 @@ async def _tool_get_mission_status(arguments: dict, session: AsyncSession) -> di
     from app.models.mission import Mission
 
     mission_id = arguments.get("mission_id", "")
+    user_id = arguments.get("user_id", "")
     if not mission_id:
         raise ValueError("'mission_id' is required")
+    if not user_id:
+        raise ValueError("'user_id' is required")
 
-    mission = (await session.execute(select(Mission).where(Mission.id == mission_id))).scalar_one_or_none()
+    mission = (await session.execute(
+        select(Mission).where(Mission.id == mission_id, Mission.user_id == user_id)
+    )).scalar_one_or_none()
 
     if not mission:
         raise ValueError(f"Mission {mission_id} not found")
@@ -310,13 +335,18 @@ async def _tool_get_findings(arguments: dict, session: AsyncSession) -> dict:
     from app.services.mission.output_model import get_mission_findings
 
     mission_id = arguments.get("mission_id", "")
+    user_id = arguments.get("user_id", "")
     if not mission_id:
         raise ValueError("'mission_id' is required")
+    if not user_id:
+        raise ValueError("'user_id' is required")
 
     severity_filter = arguments.get("severity")
     limit = min(arguments.get("limit", 50), 100)
 
-    mission = (await session.execute(select(Mission).where(Mission.id == mission_id))).scalar_one_or_none()
+    mission = (await session.execute(
+        select(Mission).where(Mission.id == mission_id, Mission.user_id == user_id)
+    )).scalar_one_or_none()
 
     if not mission:
         raise ValueError(f"Mission {mission_id} not found")
@@ -338,7 +368,13 @@ async def _tool_list_targets(arguments: dict, session: AsyncSession) -> dict:
     from app.models.target import Target
 
     limit = min(arguments.get("limit", 20), 100)
-    targets = (await session.execute(select(Target).order_by(Target.created_at.desc()).limit(limit))).scalars().all()
+    user_id = arguments.get("user_id", "")
+    if not user_id:
+        raise ValueError("'user_id' is required")
+
+    targets = (await session.execute(
+        select(Target).where(Target.user_id == user_id).order_by(Target.created_at.desc()).limit(limit)
+    )).scalars().all()
 
     return {
         "count": len(targets),

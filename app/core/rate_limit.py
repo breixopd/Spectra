@@ -190,6 +190,9 @@ class RateLimits:
     # Billing
     BILLING = "20/minute"
 
+    # MCP protocol endpoint
+    MCP = "30/minute"
+
     # Session / account management
     SESSION_READ = "30/minute"
     SESSION_WRITE = "10/minute"

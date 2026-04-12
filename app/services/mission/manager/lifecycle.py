@@ -43,12 +43,6 @@ class MissionLifecycleManager:
         requires_approval: bool = False,
     ) -> Mission:
         """Create and start a new mission."""
-        # Enforce mission quota if user is known
-        if user_id:
-            allowed, reason = await self.quota_enforcer.check_mission_quota(user_id)
-            if not allowed:
-                raise MissionQuotaExceeded(reason)
-
         mission = Mission(
             target,
             directive,
@@ -57,6 +51,45 @@ class MissionLifecycleManager:
             user_id=user_id,
             requires_approval=requires_approval,
         )
+
+        # Persist to DB — quota check + row creation run inside one
+        # transaction under a per-user advisory lock so two concurrent
+        # requests cannot both pass the quota check (TOCTOU fix).
+        try:
+            async with async_session_maker() as session, session.begin():
+                if user_id:
+                    from sqlalchemy import text
+
+                    lock_id = hash(user_id) & 0x7FFFFFFF
+                    await session.execute(
+                        text("SELECT pg_advisory_xact_lock(:lock_id)"),
+                        {"lock_id": lock_id},
+                    )
+                    allowed, reason = await self.quota_enforcer.check_mission_quota(
+                        user_id, session=session,
+                    )
+                    if not allowed:
+                        raise MissionQuotaExceeded(reason)
+
+                repo = MissionRepository(session)
+                await repo.create(
+                    id=mission.id,
+                    target=target,
+                    directive=directive,
+                    status="created",
+                    logs=[],
+                    summary={},
+                    vpn_config=vpn_config,
+                    user_id=user_id,
+                    requires_approval=requires_approval,
+                )
+        except MissionQuotaExceeded:
+            raise
+        except SQLAlchemyError as e:
+            logger.error("Failed to persist mission start (DB error): %s", e)
+        except (OSError, RuntimeError, TypeError, AttributeError) as e:
+            logger.error("Failed to persist mission start (Unexpected): %s", e)
+
         self.active_missions[mission.id] = mission
 
         # Persist to distributed state store
@@ -71,26 +104,6 @@ class MissionLifecycleManager:
                 "started_at": mission.start_time.isoformat(),
             },
         )
-
-        # Persist to DB
-        try:
-            async with async_session_maker() as session, session.begin():
-                repo = MissionRepository(session)
-                await repo.create(
-                    id=mission.id,
-                    target=target,
-                    directive=directive,
-                    status="created",
-                    logs=[],
-                    summary={},
-                    vpn_config=vpn_config,
-                    user_id=user_id,
-                    requires_approval=requires_approval,
-                )
-        except SQLAlchemyError as e:
-            logger.error("Failed to persist mission start (DB error): %s", e)
-        except (OSError, RuntimeError, TypeError, AttributeError) as e:
-            logger.error("Failed to persist mission start (Unexpected): %s", e)
 
         return mission
 
