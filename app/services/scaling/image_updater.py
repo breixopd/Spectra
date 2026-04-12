@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections import deque
 from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,9 @@ MANAGED_SERVICES = {
 
 # Module-level cache of last-seen digests for the status endpoint
 _last_check: dict[str, dict] = {}
+
+# Track previous images before each update (for rollback candidates)
+_update_history: deque[dict] = deque(maxlen=50)
 
 
 @dataclass
@@ -99,6 +103,15 @@ async def check_and_update_services(*, apply: bool = True) -> list[ImageUpdateRe
                 service, (running_digest or "unknown")[:12], registry_digest[:12],
             )
 
+            # Record previous image for rollback
+            _update_history.append({
+                "service": service,
+                "old_image": image_ref,
+                "old_digest": running_digest or "unknown",
+                "new_digest": registry_digest,
+                "timestamp": time.time(),
+            })
+
             # Trigger rolling update
             ok = await update_service_image(
                 service, f"{image_ref}@sha256:{registry_digest}",
@@ -134,3 +147,22 @@ async def check_and_update_services(*, apply: bool = True) -> list[ImageUpdateRe
 def get_update_status() -> dict[str, dict]:
     """Return the cached update status for all managed services."""
     return dict(_last_check)
+
+
+def get_rollback_candidates() -> list[dict]:
+    """Return services that have a previous image version available for rollback.
+
+    Deduplicates by service name, keeping only the most recent entry per service.
+    """
+    seen: dict[str, dict] = {}
+    for entry in _update_history:
+        svc = entry["service"]
+        # Later entries overwrite earlier ones, so we keep the most recent
+        seen[svc] = {
+            "service": svc,
+            "previous_image": entry["old_image"],
+            "previous_digest": entry["old_digest"][:12],
+            "current_digest": entry["new_digest"][:12],
+            "updated_at": entry["timestamp"],
+        }
+    return list(seen.values())

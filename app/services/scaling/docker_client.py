@@ -190,6 +190,35 @@ async def update_service_image(name: str, image: str, registry_auth: bool = True
         return False
 
 
+async def rollback_service(name: str) -> bool:
+    """Rollback a service to its previous spec using Docker Swarm's built-in rollback.
+
+    Uses the ``rollback`` parameter on the low-level API ``update_service``
+    call, which tells the Swarm manager to revert to ``PreviousSpec``.
+    """
+    try:
+        client = _get_client()
+        try:
+            svc = await _run_sync(client.services.get, name)
+            version = svc.attrs["Version"]["Index"]
+            # Use the low-level API endpoint with rollback=True.
+            # This mirrors ``docker service update --rollback <svc>``.
+            await _run_sync(
+                client.api.update_service,
+                svc.id,
+                version,
+                svc.attrs.get("PreviousSpec", svc.attrs["Spec"]),
+                rollback=True,
+            )
+            logger.info("Rolled back service %s to previous spec", name)
+            return True
+        finally:
+            client.close()
+    except (DockerException, APIError) as exc:
+        logger.error("Failed to rollback %s: %s", name, exc)
+        return False
+
+
 # --- Metrics ---
 
 
