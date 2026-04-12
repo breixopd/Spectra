@@ -848,9 +848,6 @@ async def _run_docker_cmd(cmd: list[str], timeout: int = 30) -> tuple[bool, str]
         return False, str(e)
 
 
-_NOT_MANAGER_MARKERS = ("not a swarm manager", "cannot connect to the docker daemon")
-
-
 async def _proxy_scaling_to_scheduler(action: str, service: str) -> dict | None:
     """Forward a scaling action to the scheduler service (runs on Swarm manager)."""
     import httpx
@@ -873,30 +870,6 @@ async def _proxy_scaling_to_scheduler(action: str, service: str) -> dict | None:
     except Exception as exc:
         logger.warning("Failed to proxy scaling action to scheduler: %s", exc)
     return None
-
-
-async def _execute_docker_scaling(action: str, service: str) -> tuple[bool, str]:
-    """Run a Docker scaling command locally, falling back to the scheduler on non-manager nodes."""
-    if action in ("scale_up", "scale_down"):
-        ok, out = await _run_docker_cmd(
-            ["docker", "service", "inspect", service, "--format", "{{.Spec.Mode.Replicated.Replicas}}"],
-            timeout=10,
-        )
-        current = int(out) if ok and out.isdigit() else 1
-        new_count = current + 1 if action == "scale_up" else max(1, current - 1)
-        ok, out = await _run_docker_cmd(
-            ["docker", "service", "scale", f"{service}={new_count}"],
-            timeout=30,
-        )
-        return ok, out
-
-    elif action == "restart":
-        return await _run_docker_cmd(
-            ["docker", "service", "update", "--force", service],
-            timeout=60,
-        )
-
-    return False, f"Unknown action: {action}"
 
 
 @router.post("/api/admin/scaling/action")
@@ -936,32 +909,19 @@ async def execute_scaling_action(
         )
         return {"success": bool(actions), "action": action, "service": service, "actions": actions}
 
-    # Try Docker command locally first
-    success, output = await _execute_docker_scaling(action, service)
-
-    # If this node is not the Swarm manager, proxy through the scheduler
-    if not success and any(m in output.lower() for m in _NOT_MANAGER_MARKERS):
-        logger.info("Not a swarm manager — proxying scaling action to scheduler")
-        proxied = await _proxy_scaling_to_scheduler(action, service)
-        if proxied is not None:
-            await audit_log_event(
-                session,
-                AuditEventType.SETTINGS_CHANGED,
-                user_id=current_user.id,
-                details={"action": f"scaling_{action}", "service": service, "proxied": True},
-                request=request,
-            )
-            return proxied
+    # All Docker-based scaling goes through the scheduler (Swarm manager)
+    result = await _proxy_scaling_to_scheduler(action, service)
+    if result is None:
+        raise HTTPException(status_code=502, detail="Scheduler unreachable for scaling action")
 
     await audit_log_event(
         session,
         AuditEventType.SETTINGS_CHANGED,
         user_id=current_user.id,
-        details={"action": f"scaling_{action}", "service": service},
+        details={"action": f"scaling_{action}", "service": service, "proxied": True},
         request=request,
     )
-
-    return {"success": success, "action": action, "service": service}
+    return result
 
 
 # --- Image Update Status & Manual Trigger ---
