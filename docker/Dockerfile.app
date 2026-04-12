@@ -123,14 +123,7 @@ CMD ["uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
 # ── Scheduler service target ──
 FROM app-base AS scheduler
 COPY --from=builder-scheduler /opt/venv /opt/venv
-# Docker CLI for Swarm management (scaling, updates, service inspection)
-RUN apt-get update && apt-get install -y --no-install-recommends gnupg \
-    && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" > /etc/apt/sources.list.d/docker.list \
-    && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
-    && apt-get purge -y --auto-remove gnupg \
-    && rm -rf /var/lib/apt/lists/*
+# Docker SDK (docker-py) replaces docker-ce-cli — only the socket mount is needed
 RUN groupadd -f docker && usermod -aG docker spectra
 EXPOSE 5011
 ENV SERVICE_MODE=scheduler
@@ -140,15 +133,9 @@ CMD ["uvicorn", "app.scheduler_service:app", "--host", "0.0.0.0", "--port", "501
 
 # ── API service target (default — must be last) ──
 FROM app-base AS api
-# API-specific runtime deps: PDF rendering (libcairo2), Docker CLI (sandbox mgmt),
+# API-specific runtime deps: PDF rendering (libcairo2), Docker SDK replaces CLI,
 # Grype (container image vulnerability scanning)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libcairo2 gnupg \
-    && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list \
-    && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
-    && apt-get purge -y --auto-remove gnupg \
+RUN apt-get update && apt-get install -y --no-install-recommends libcairo2 \
     && rm -rf /var/lib/apt/lists/*
 RUN groupadd -f docker && usermod -aG docker spectra
 RUN curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin v0.84.0 2>/dev/null || true

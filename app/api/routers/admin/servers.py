@@ -271,29 +271,26 @@ async def _update_swarm_node_labels(
 
     Returns an error message on failure, or *None* on success / no-op.
     """
-    import asyncio
-    import subprocess
+    from app.services.scaling.docker_client import update_node_labels
 
     new_role = _SERVICE_TYPE_TO_SWARM_ROLE.get(new_service_type)
     if not new_role:
         return None
 
-    cmds: list[list[str]] = []
-    # Remove old label if it differs
+    remove_labels: list[str] = []
     old_role = _SERVICE_TYPE_TO_SWARM_ROLE.get(old_service_type or "")
     if old_role and old_role != new_role:
-        cmds.append(["docker", "node", "update", "--label-rm", f"spectra.{old_role}", node_name])
-    # Add new label
-    cmds.append(["docker", "node", "update", "--label-add", f"spectra.{new_role}=true", node_name])
+        remove_labels.append(f"spectra.{old_role}")
 
-    for cmd in cmds:
-        try:
-            await asyncio.to_thread(
-                subprocess.run, cmd, capture_output=True, text=True, timeout=30,
-            )
-        except Exception as exc:
-            logger.warning("Swarm label update failed for %s: %s", node_name, exc)
-            return f"DB updated but Swarm label update failed: {exc}"
+    add_labels = {f"spectra.{new_role}": "true"}
+
+    try:
+        success = await update_node_labels(node_name, add_labels, remove_labels=remove_labels or None)
+        if not success:
+            return f"DB updated but Swarm label update failed"
+    except Exception as exc:
+        logger.warning("Swarm label update failed for %s: %s", node_name, exc)
+        return f"DB updated but Swarm label update failed: {exc}"
     return None
 
 
@@ -831,21 +828,6 @@ _ALLOWED_SCALING_SERVICES = frozenset({
     "spectra_scheduler",
     "spectra_caddy",
 })
-
-
-async def _run_docker_cmd(cmd: list[str], timeout: int = 30) -> tuple[bool, str]:
-    """Run a Docker command locally, return (success, output)."""
-    import asyncio
-    import subprocess as sp
-
-    try:
-        result = await asyncio.to_thread(
-            sp.run, cmd, capture_output=True, text=True, timeout=timeout,
-        )
-        output = result.stdout.strip() or result.stderr.strip()
-        return result.returncode == 0, output
-    except Exception as e:
-        return False, str(e)
 
 
 async def _proxy_scaling_to_scheduler(action: str, service: str) -> dict | None:

@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import shutil
-import subprocess
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -125,81 +124,36 @@ class MetricsCollector:
 
     async def _collect_service_metrics(self) -> dict[str, ServiceMetrics]:
         """Collect per-service CPU/memory from Docker stats."""
+        from app.services.scaling.docker_client import get_container_stats, list_services
+
         services: dict[str, ServiceMetrics] = {}
         try:
             # Get service replica counts and desired state
-            result = await asyncio.to_thread(
-                subprocess.run,
-                ["docker", "service", "ls", "--format", "{{.Name}} {{.Replicas}}"],
-                capture_output=True,
-                text=True,
-                timeout=15,
-            )
-            if result.returncode == 0:
-                for line in result.stdout.strip().split("\n"):
-                    if not line.strip():
-                        continue
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        name = parts[0]
-                        replicas_str = parts[1]  # "2/2" format
-                        running, desired = 0, 0
-                        if "/" in replicas_str:
-                            running, desired = (int(x) for x in replicas_str.split("/"))
-                        services[name] = ServiceMetrics(
-                            name=name,
-                            replicas=running,
-                            desired_replicas=desired,
-                            running_tasks=running,
-                            healthy=(running == desired),
-                            failed_tasks=max(0, desired - running),
-                        )
+            svc_list = await list_services()
+            for svc in svc_list:
+                services[svc.name] = ServiceMetrics(
+                    name=svc.name,
+                    replicas=svc.running_tasks,
+                    desired_replicas=svc.desired_replicas,
+                    running_tasks=svc.running_tasks,
+                    healthy=(svc.running_tasks == svc.desired_replicas),
+                    failed_tasks=max(0, svc.desired_replicas - svc.running_tasks),
+                )
 
             # Get container-level stats for CPU/memory
-            # docker stats --no-stream gives per-container stats
-            result = await asyncio.to_thread(
-                subprocess.run,
-                [
-                    "docker",
-                    "stats",
-                    "--no-stream",
-                    "--format",
-                    "{{.Name}} {{.CPUPerc}} {{.MemUsage}}",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            if result.returncode == 0:
-                for line in result.stdout.strip().split("\n"):
-                    if not line.strip():
-                        continue
-                    # Parse: "spectra_app.1.xxx 2.50% 256MiB / 3GiB"
-                    parts = line.split()
-                    if len(parts) < 4:
-                        continue
-                    container_name = parts[0]
-                    # Extract service name from container name
-                    # e.g. spectra_app.1.xxx -> spectra_app
-                    service_name = (
-                        container_name.rsplit(".", 2)[0]
-                        if "." in container_name
-                        else container_name
-                    )
-                    cpu_str = parts[1].rstrip("%")
-                    mem_used_str = parts[2]
-
-                    try:
-                        cpu = float(cpu_str)
-                    except ValueError:
-                        cpu = 0.0
-
-                    mem_mb = _parse_mem(mem_used_str)
-
-                    if service_name in services:
-                        # Accumulate across replicas
-                        services[service_name].cpu_percent += cpu
-                        services[service_name].memory_mb += mem_mb
+            container_stats = await get_container_stats()
+            for cs in container_stats:
+                # Extract service name from container name
+                # e.g. spectra_app.1.xxx -> spectra_app
+                container_name = cs.name
+                service_name = (
+                    container_name.rsplit(".", 2)[0]
+                    if "." in container_name
+                    else container_name
+                )
+                if service_name in services:
+                    services[service_name].cpu_percent += cs.cpu_percent
+                    services[service_name].memory_mb += cs.memory_mb
 
             # Average CPU across replicas
             for svc in services.values():
@@ -251,24 +205,17 @@ class MetricsCollector:
 
     async def _collect_node_metrics(self) -> tuple[int, int, int]:
         """Collect Swarm node health counts."""
+        from app.services.scaling.docker_client import list_nodes
+
         total = healthy = unhealthy = 0
         try:
-            result = await asyncio.to_thread(
-                subprocess.run,
-                ["docker", "node", "ls", "--format", "{{.Status}}"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if result.returncode == 0:
-                for line in result.stdout.strip().split("\n"):
-                    if not line.strip():
-                        continue
-                    total += 1
-                    if line.strip().lower() == "ready":
-                        healthy += 1
-                    else:
-                        unhealthy += 1
+            nodes = await list_nodes()
+            for node in nodes:
+                total += 1
+                if node.status.lower() == "ready":
+                    healthy += 1
+                else:
+                    unhealthy += 1
         except Exception as exc:
             logger.warning("Failed to collect node metrics: %s", exc)
         return total, healthy, unhealthy
