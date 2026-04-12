@@ -29,6 +29,7 @@ _DB_MAINTENANCE_LOCK_ID: int = hash("spectra_db_maint") & 0x7FFFFFFF
 _EXPLOIT_REFRESH_LOCK_ID: int = hash("spectra_exploit_refresh") & 0x7FFFFFFF
 _STALE_JOB_LOCK_ID: int = hash("spectra_stale_jobs") & 0x7FFFFFFF
 _DOCKER_CLEANUP_LOCK_ID: int = hash("spectra_docker_cleanup") & 0x7FFFFFFF
+_IMAGE_UPDATE_LOCK_ID: int = hash("spectra_image_update") & 0x7FFFFFFF
 _SCHEDULER_LEADER_LOCK_ID: int = 8675309  # Global leader election for the scheduler
 
 
@@ -65,6 +66,7 @@ class SchedulerService:
             "capacity_monitor": create_safe_task(self._capacity_monitor(), name="capacity_monitor"),
             "docker_cleanup": create_safe_task(self._docker_cleanup(), name="docker_cleanup"),
             "disk_monitor": create_safe_task(self._disk_monitor(), name="disk_monitor"),
+            "image_update_check": create_safe_task(self._image_update_check(), name="image_update_check"),
         }
         self.tasks = list(self._named_tasks.values())
 
@@ -463,6 +465,57 @@ class SchedulerService:
             except Exception as e:
                 logger.warning("Docker cleanup failed: %s", e)
 
+    async def _image_update_check(self):
+        """Check for new image versions and trigger rolling updates."""
+        from app.core.config import get_settings
+
+        while self.running:
+            settings = get_settings()
+            await asyncio.sleep(settings.IMAGE_CHECK_INTERVAL)
+            if not self.running:
+                break
+            try:
+                async with async_session_maker() as session:
+                    if not await _try_advisory_lock(session, _IMAGE_UPDATE_LOCK_ID):
+                        logger.debug("Image update lock not acquired — skipping")
+                        continue
+
+                from app.services.scaling.image_updater import check_and_update_services
+
+                results = await check_and_update_services(apply=settings.IMAGE_AUTO_UPDATE)
+                if results:
+                    for r in results:
+                        if r.success and not r.error:
+                            logger.info("Auto-updated %s: %s → %s", r.service, r.old_digest, r.new_digest)
+                            await self._send_update_notification(
+                                f"Auto-updated {r.service}",
+                                f"Digest: {r.old_digest} → {r.new_digest}",
+                                level="info",
+                            )
+                        elif not r.success:
+                            logger.error("Auto-update failed for %s: %s", r.service, r.error)
+                            await self._send_update_notification(
+                                f"Auto-update failed: {r.service}",
+                                r.error,
+                                level="error",
+                            )
+            except Exception:
+                logger.exception("Image update check error")
+
+    async def _send_update_notification(self, title: str, message: str, *, level: str = "info") -> None:
+        """Send image update notification via configured channels."""
+        try:
+            from app.services.notifications import send_notification
+
+            await send_notification(
+                title=title,
+                message=message,
+                priority="normal" if level == "info" else "urgent",
+                tags=["image-update", level],
+            )
+        except Exception as e:
+            logger.warning("Image update notification failed: %s", e)
+
     async def _disk_monitor(self):
         """Monitor disk space and alert when low (with dedup)."""
         from app.services.infrastructure.storage_monitor import StorageMonitor
@@ -577,6 +630,45 @@ async def internal_node_metrics():
 
     metrics = collect_node_metrics("scheduler")
     return metrics.to_dict()
+
+
+@app.get("/internal/updates/status")
+async def internal_update_status():
+    """Return service image versions and update availability."""
+    from app.services.scaling.image_updater import get_update_status
+
+    return get_update_status()
+
+
+@app.post("/internal/updates/apply")
+async def internal_update_apply(request_body: dict):
+    """Trigger an image update for a specific service or all managed services."""
+    from app.services.scaling.image_updater import MANAGED_SERVICES, check_and_update_services
+
+    target = request_body.get("service")
+    if target and target not in MANAGED_SERVICES:
+        return {"success": False, "error": f"Unknown service: {target}"}
+
+    # Temporarily override the module-level set if a single service is requested
+    original = None
+    if target:
+        import app.services.scaling.image_updater as _updater
+        original = _updater.MANAGED_SERVICES
+        _updater.MANAGED_SERVICES = {target}
+
+    try:
+        results = await check_and_update_services(apply=True)
+    finally:
+        if original is not None:
+            _updater.MANAGED_SERVICES = original
+
+    return {
+        "results": [
+            {"service": r.service, "old_digest": r.old_digest, "new_digest": r.new_digest,
+             "success": r.success, "error": r.error}
+            for r in results
+        ],
+    }
 
 
 # --- Internal scaling proxy (runs on Swarm manager node) ---
