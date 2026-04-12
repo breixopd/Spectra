@@ -14,8 +14,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-DOCKERFILE="${PROJECT_DIR}/docker/Dockerfile.tools"
-IMAGE_NAME="spectra-tools"
+DOCKERFILE="${PROJECT_DIR}/docker/Dockerfile.worker"
+IMAGE_NAME="spectra-worker"
 KEEP_COUNT=3
 
 PUSH=false
