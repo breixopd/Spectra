@@ -186,7 +186,6 @@ services:
     volumes:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     read_only: true
     tmpfs:
       - /tmp
@@ -399,7 +398,6 @@ services:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins
       - spectra_tools_data:/opt/spectra_tools
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5012/health"]
       interval: 10s

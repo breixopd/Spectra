@@ -140,7 +140,6 @@ services:
     expose:
       - "5000"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - app_data:/app/data
     networks:
       frontend:
@@ -312,8 +311,6 @@ services:
       <<: *common-env
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       SKIP_MIGRATIONS: "true"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - frontend
       - backend
@@ -477,14 +474,12 @@ services:
       - CHOWN
       - FOWNER
       - DAC_OVERRIDE
-      - KILL
       - SYS_NICE
-      - IPC_LOCK
 
   # TensorZero gateway
   tensorzero:
     image: tensorzero/gateway:latest
-    entrypoint: ["sh", "-c", "CH_PASS=$$(cat /run/secrets/clickhouse_password 2>/dev/null || echo ''); export TENSORZERO_CLICKHOUSE_URL=\"http://default:$${CH_PASS}@clickhouse:8123/tensorzero\"; export OPENAI_API_KEY=$$(cat /run/secrets/openai_api_key 2>/dev/null || echo \"$${OPENAI_API_KEY}\"); export ANTHROPIC_API_KEY=$$(cat /run/secrets/anthropic_api_key 2>/dev/null || echo \"$${ANTHROPIC_API_KEY}\"); exec gateway --config-file /app/config/tensorzero.toml"]
+    entrypoint: ["/bin/sh", "/app/init.sh"]
     deploy:
       replicas: 1
       placement:
@@ -514,6 +509,9 @@ services:
     configs:
       - source: tensorzero_config
         target: /app/config/tensorzero.toml
+      - source: tensorzero_init
+        target: /app/init.sh
+        mode: 0555
     networks:
       - backend
     healthcheck:
@@ -534,10 +532,14 @@ networks:
   frontend:
     driver: overlay
     attachable: true
+    driver_opts:
+      encrypted: "true"
   backend:
     driver: overlay
     internal: true
     attachable: true
+    driver_opts:
+      encrypted: "true"
 
 volumes:
   pgdata:
@@ -587,5 +589,7 @@ configs:
     file: ./Caddyfile.snippets
   tensorzero_config:
     file: ../config/tensorzero.toml
+  tensorzero_init:
+    file: ./targets/tensorzero-init.sh
   garage_config:
     file: ./garage.toml

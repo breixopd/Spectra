@@ -148,8 +148,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 15
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - frontend
       - backend
@@ -184,7 +182,6 @@ services:
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins
       - ../tests:/app/tests:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -233,7 +230,6 @@ services:
       - ../config/alembic.ini:/app/config/alembic.ini:ro
       - ../plugins:/app/plugins
       - ../tests:/app/tests:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

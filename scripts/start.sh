@@ -82,9 +82,13 @@ fi
 
 # Drop privileges and start application
 echo "Starting application..."
-# Scheduler runs as root (needs Docker socket access for Swarm management)
 if [ "${SERVICE_MODE:-}" = "scheduler" ]; then
-    exec "$@"
+    # Grant docker socket access to spectra group
+    if [ -S /var/run/docker.sock ]; then
+        chown root:docker /var/run/docker.sock
+        chmod 660 /var/run/docker.sock
+    fi
+    exec gosu spectra "$@"
 else
     exec gosu spectra "$@"
 fi
