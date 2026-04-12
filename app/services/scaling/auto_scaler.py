@@ -10,6 +10,7 @@ are exceeded.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import time
@@ -20,8 +21,8 @@ from typing import TYPE_CHECKING
 
 from app.services.scaling.backends import OrchestratorBackend
 from app.services.scaling.config import (
-    AutoScalerConfig,
     DEFAULT_RESOURCE_REQUIREMENTS,
+    AutoScalerConfig,
     ServicePolicy,
 )
 from app.services.scaling.metrics_collector import ClusterMetrics
@@ -218,10 +219,8 @@ class AutoScaler:
         # Calculate dynamic max replicas from cluster resources
         dynamic_max: dict[str, int] = {}
         for role in self.config.policies:
-            try:
+            with contextlib.suppress(Exception):
                 dynamic_max[role] = await self.calculate_max_replicas(role)
-            except Exception:
-                pass
 
         for role, policy in self.config.policies.items():
             last_action = self._last_scale_action.get(role, 0.0)

@@ -75,7 +75,7 @@ class ServiceHealer:
             })
             if success:
                 result.resolved = True
-                result.summary = f"Resolved by force-restart"
+                result.summary = "Resolved by force-restart"
                 self._consecutive_failures[service] = 0
                 self._heal_history.append(result)
                 return result

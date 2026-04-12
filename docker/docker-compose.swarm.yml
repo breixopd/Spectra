@@ -450,13 +450,14 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 512M
+          memory: 1536M
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     environment:
       CLICKHOUSE_DB: tensorzero
       CLICKHOUSE_USER: default
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+      MAX_SERVER_MEMORY_USAGE_TO_RAM_RATIO: "0.8"
     entrypoint: ["sh", "-c", "export CLICKHOUSE_PASSWORD=$$(cat /run/secrets/clickhouse_password 2>/dev/null || echo '') && exec /entrypoint.sh"]
     networks:
       - backend
@@ -465,7 +466,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 60s
+      start_period: 90s
     secrets:
       - clickhouse_password
     logging: *default-logging
@@ -490,7 +491,8 @@ services:
         constraints:
           - node.labels.spectra.ai == true
       restart_policy:
-        condition: on-failure
+        condition: any
+        delay: 5s
       update_config:
         parallelism: 1
         delay: 30s
@@ -518,8 +520,8 @@ services:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 120s
+      retries: 10
+      start_period: 180s
     secrets:
       - service_auth
       - clickhouse_password
