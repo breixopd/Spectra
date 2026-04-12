@@ -987,3 +987,71 @@ async def trigger_update(
     except Exception as exc:
         logger.warning("Failed to proxy update apply to scheduler: %s", exc)
     raise HTTPException(status_code=502, detail="Could not reach scheduler to apply update")
+
+
+class RollbackRequest(BaseModel):
+    service: str
+
+
+@router.get("/api/admin/updates/rollback-candidates")
+async def get_rollback_candidates(
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """List services that can be rolled back to a previous version."""
+    import httpx
+
+    from app.core.config import get_settings as _gs
+
+    settings = _gs()
+    url = f"{settings.SCHEDULER_SERVICE_URL}/internal/updates/rollback-candidates"
+    secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, headers={"X-Service-Auth": secret})
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception as exc:
+        logger.warning("Failed to fetch rollback candidates from scheduler: %s", exc)
+    raise HTTPException(status_code=502, detail="Could not reach scheduler for rollback candidates")
+
+
+@router.post("/api/admin/updates/rollback")
+async def rollback_service_update(
+    body: RollbackRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Rollback a service to its previous version."""
+    import httpx
+
+    from app.core.config import get_settings as _gs
+
+    settings = _gs()
+    url = f"{settings.SCHEDULER_SERVICE_URL}/internal/updates/rollback"
+    secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                url,
+                json={"service": body.service},
+                headers={"X-Service-Auth": secret},
+            )
+            if resp.status_code == 200:
+                result = resp.json()
+                await audit_log_event(
+                    session,
+                    AuditEventType.SETTINGS_CHANGED,
+                    user_id=current_user.id,
+                    details={
+                        "action": "service_rollback",
+                        "service": body.service,
+                        "success": result.get("success"),
+                    },
+                    request=request,
+                )
+                return result
+    except Exception as exc:
+        logger.warning("Failed to proxy rollback to scheduler: %s", exc)
+    raise HTTPException(status_code=502, detail="Could not reach scheduler to rollback service")

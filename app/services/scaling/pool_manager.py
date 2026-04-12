@@ -264,6 +264,68 @@ class ServerPoolManager:
         logger.info("Health check complete: %s", {k: len(v) for k, v in results.items()})
         return results
 
+    async def register_local_node(self) -> dict:
+        """Register the current machine as a pool node if not already registered."""
+        import socket
+
+        import psutil
+
+        from app.models.server_node import ServerNode
+
+        hostname = socket.gethostname()
+
+        async with async_session_maker() as session:
+            # Check if already registered
+            result = await session.execute(
+                select(ServerNode).where(ServerNode.name == hostname)
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                logger.debug("Local node %s already registered (id=%s)", hostname, existing.id)
+                return existing.to_dict()
+
+            # Auto-detect specs
+            total_mem = psutil.virtual_memory().total // (1024 * 1024)  # MB
+            cpu_count = psutil.cpu_count()
+            disk = psutil.disk_usage("/")
+            disk_gb = disk.total // (1024**3)
+
+            # Determine role from Swarm
+            from app.services.scaling.docker_client import list_nodes
+
+            nodes = await list_nodes()
+            role = "manager"
+            for node in nodes:
+                if node.hostname == hostname:
+                    role = node.role
+                    break
+
+            node = ServerNode(
+                service_type="all",
+                name=hostname,
+                url="http://127.0.0.1:8000",
+                is_active=True,
+                is_primary=True,
+                weight=1,
+                max_capacity=cpu_count or 4,
+                health_status="healthy",
+                metadata_={
+                    "cpu_cores": cpu_count,
+                    "memory_mb": total_mem,
+                    "disk_gb": disk_gb,
+                    "role": role,
+                    "auto_registered": True,
+                },
+            )
+            session.add(node)
+            await session.commit()
+            await session.refresh(node)
+            logger.info(
+                "Auto-registered local node %s (role=%s, cpu=%s, mem=%sMB)",
+                hostname, role, cpu_count, total_mem,
+            )
+            return node.to_dict()
+
     async def start_health_loop(self) -> None:
         """Start periodic health check loop."""
 

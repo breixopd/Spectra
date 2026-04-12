@@ -564,6 +564,17 @@ _scheduler_instance: SchedulerService | None = None
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
     global _scheduler_instance
+
+    # Auto-register this machine as a pool node
+    try:
+        from app.services.scaling.pool_manager import get_pool_manager
+
+        pool = get_pool_manager()
+        node = await pool.register_local_node()
+        logger.info("Local pool node ready: %s (id=%s)", node.get("name"), node.get("id"))
+    except Exception:
+        logger.warning("Failed to auto-register local node — continuing", exc_info=True)
+
     _scheduler_instance = SchedulerService()
     task = create_safe_task(_leader_election_loop(_scheduler_instance), name="leader_election")
     yield
@@ -779,6 +790,30 @@ async def internal_update_apply(request_body: dict):
             for r in results
         ],
     }
+
+
+@app.get("/internal/updates/rollback-candidates")
+async def internal_rollback_candidates():
+    """Return services that have a previous version available for rollback."""
+    from app.services.scaling.image_updater import get_rollback_candidates
+
+    return {"candidates": get_rollback_candidates()}
+
+
+@app.post("/internal/updates/rollback")
+async def internal_rollback(request_body: dict):
+    """Rollback a service using Swarm's PreviousSpec."""
+    from app.services.scaling.docker_client import rollback_service
+    from app.services.scaling.image_updater import MANAGED_SERVICES
+
+    service = request_body.get("service", "")
+    if not service:
+        return {"success": False, "error": "Missing 'service' field"}
+    if service not in MANAGED_SERVICES:
+        return {"success": False, "error": f"Unknown service: {service}"}
+
+    success = await rollback_service(service)
+    return {"success": success, "service": service}
 
 
 # --- Internal scaling proxy (runs on Swarm manager node) ---
