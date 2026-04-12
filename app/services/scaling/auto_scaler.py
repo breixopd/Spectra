@@ -454,43 +454,10 @@ class AutoScaler:
             return False
 
     async def _scale_via_cli(self, decision: ScalingDecision) -> bool:
-        """Scale via Docker CLI (works with both Swarm and Compose)."""
-        # Try Swarm first
-        result = await asyncio.to_thread(
-            subprocess.run,
-            [
-                "docker",
-                "service",
-                "scale",
-                f"{decision.service}={decision.desired_replicas}",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        """Scale via Docker SDK (works with Swarm)."""
+        from app.services.scaling.docker_client import scale_service
 
-        if result.returncode == 0:
-            return True
-
-        # Fallback to docker compose scale
-        result = await asyncio.to_thread(
-            subprocess.run,
-            [
-                "docker",
-                "compose",
-                "-f",
-                "docker/docker-compose.yml",
-                "up",
-                "-d",
-                "--scale",
-                f"{decision.service}={decision.desired_replicas}",
-                "--no-recreate",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        return result.returncode == 0
+        return await scale_service(decision.service, decision.desired_replicas)
 
     async def check_infrastructure(self) -> list[str]:
         """Check infrastructure services and return alert messages for any exceeding thresholds."""
@@ -703,14 +670,10 @@ class AutoScaler:
                 name, reason,
             )
             try:
-                result = await asyncio.to_thread(
-                    subprocess.run,
-                    ["docker", "service", "update", "--force", name],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                )
-                if result.returncode == 0:
+                from app.services.scaling.docker_client import restart_service
+
+                success = await restart_service(name)
+                if success:
                     msg = f"Restarted {name} ({reason})"
                     actions.append(msg)
                     logger.info("Auto-healed %s: %s", name, reason)
@@ -720,16 +683,16 @@ class AutoScaler:
                 else:
                     fail_count = getattr(self, fail_count_key, 0) + 1
                     object.__setattr__(self, fail_count_key, fail_count)
-                    msg = f"Failed to restart {name}: {result.stderr[:200]}"
+                    msg = f"Failed to restart {name}"
                     actions.append(msg)
-                    logger.error("Auto-heal failed for %s (attempt %d): %s", name, fail_count, result.stderr[:200])
+                    logger.error("Auto-heal failed for %s (attempt %d)", name, fail_count)
                     _record_scaling_event(name, "heal_restart", svc.running_tasks, svc.desired_replicas, reason, False)
 
                     # After 2 consecutive failures, send urgent admin alert
                     if fail_count >= 2:
                         logger.critical(
-                            "Auto-heal ALERT: %s failed %d consecutive restarts — admin intervention needed. "
-                            "Last error: %s", name, fail_count, result.stderr[:300],
+                            "Auto-heal ALERT: %s failed %d consecutive restarts — admin intervention needed.",
+                            name, fail_count,
                         )
                         try:
                             from app.services.notifications import send_notification
@@ -737,7 +700,7 @@ class AutoScaler:
                                 title=f"Auto-Heal Failed: {name}",
                                 message=(
                                     f"Service {name} has failed {fail_count} consecutive restart attempts. "
-                                    f"Reason: {reason}. Last error: {result.stderr[:200]}"
+                                    f"Reason: {reason}."
                                 ),
                                 priority="urgent",
                                 tags=["critical", "auto-heal", "admin"],

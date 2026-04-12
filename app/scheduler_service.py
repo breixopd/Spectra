@@ -433,34 +433,23 @@ class SchedulerService:
                         logger.debug("Docker cleanup lock not acquired — skipping")
                         continue
 
-                import subprocess
+                from app.services.scaling.docker_client import (
+                    prune_containers,
+                    prune_images,
+                    prune_volumes,
+                )
 
                 # Prune exited containers
-                await asyncio.to_thread(
-                    subprocess.run,
-                    ["docker", "container", "prune", "-f", "--filter", "until=48h"],
-                    capture_output=True, text=True, timeout=60,
-                )
+                await prune_containers(filters={"until": ["48h"]})
                 # Prune dangling images
-                await asyncio.to_thread(
-                    subprocess.run,
-                    ["docker", "image", "prune", "-f", "--filter", "until=168h"],
-                    capture_output=True, text=True, timeout=120,
-                )
+                await prune_images(filters={"until": ["168h"]})
                 # Prune dangling volumes (only truly orphaned)
-                await asyncio.to_thread(
-                    subprocess.run,
-                    ["docker", "volume", "prune", "-f"],
-                    capture_output=True, text=True, timeout=60,
-                )
+                await prune_volumes()
                 # Prune exited Swarm task containers
-                await asyncio.to_thread(
-                    subprocess.run,
-                    ["docker", "container", "prune", "-f",
-                     "--filter", "label=com.docker.swarm.task",
-                     "--filter", "status=exited"],
-                    capture_output=True, text=True, timeout=60,
-                )
+                await prune_containers(filters={
+                    "label": ["com.docker.swarm.task"],
+                    "status": ["exited"],
+                })
                 logger.info("Docker cleanup completed: pruned containers, images, volumes, swarm tasks")
             except Exception as e:
                 logger.warning("Docker cleanup failed: %s", e)
@@ -655,20 +644,13 @@ async def internal_scaling_dashboard():
     }
 
     # --- Per-service info with node placement ---
-    import subprocess as _sp
-
     services_info: dict[str, dict] = {}
     for svc_name, svc in cluster.services.items():
         svc_nodes: list[str] = []
         try:
-            ps_result = await asyncio.to_thread(
-                _sp.run,
-                ["docker", "service", "ps", svc_name, "--filter", "desired-state=running",
-                 "--format", "{{.Node}}"],
-                capture_output=True, text=True, timeout=10,
-            )
-            if ps_result.returncode == 0:
-                svc_nodes = [n.strip() for n in ps_result.stdout.strip().split("\n") if n.strip()]
+            from app.services.scaling.docker_client import get_service_task_nodes
+
+            svc_nodes = await get_service_task_nodes(svc_name)
         except Exception:
             pass
 
@@ -809,42 +791,36 @@ async def internal_scaling_action(request_body: dict):
 
     if action not in ("scale_up", "scale_down", "restart"):
         return {"success": False, "action": action, "service": service, "error": "Invalid action"}
+    from app.services.scaling.docker_client import (
+        get_service,
+        restart_service,
+        scale_service,
+    )
+
+    action = request_body.get("action", "")
+    service = request_body.get("service", "")
+
+    if action not in ("scale_up", "scale_down", "restart"):
+        return {"success": False, "action": action, "service": service, "error": "Invalid action"}
     if service not in _INTERNAL_ALLOWED_SERVICES:
         return {"success": False, "action": action, "service": service, "error": "Service not allowed"}
 
     try:
         if action in ("scale_up", "scale_down"):
-            inspect_result = await asyncio.to_thread(
-                sp.run,
-                ["docker", "service", "inspect", service, "--format", "{{.Spec.Mode.Replicated.Replicas}}"],
-                capture_output=True, text=True, timeout=10,
-            )
-            current = int(inspect_result.stdout.strip()) if inspect_result.returncode == 0 and inspect_result.stdout.strip().isdigit() else 1
+            svc_info = await get_service(service)
+            current = svc_info.desired_replicas if svc_info else 1
             new_count = current + 1 if action == "scale_up" else max(1, current - 1)
-
-            result = await asyncio.to_thread(
-                sp.run,
-                ["docker", "service", "scale", "--detach", f"{service}={new_count}"],
-                capture_output=True, text=True, timeout=15,
-            )
-            success = result.returncode == 0
-            output = result.stdout.strip() or result.stderr.strip()
+            success = await scale_service(service, new_count)
 
         elif action == "restart":
-            result = await asyncio.to_thread(
-                sp.run,
-                ["docker", "service", "update", "--force", "--detach", service],
-                capture_output=True, text=True, timeout=15,
-            )
-            success = result.returncode == 0
-            output = result.stdout.strip() or result.stderr.strip()
+            success = await restart_service(service)
 
         else:
-            success, output = False, "Unknown action"
+            success = False
 
     except Exception as exc:
         logger.exception("Internal scaling action failed: %s %s", action, service)
-        success, output = False, str(exc)
+        success = False
 
     return {"success": success, "action": action, "service": service}
 

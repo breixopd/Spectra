@@ -108,14 +108,27 @@ def collect_node_metrics(service_mode: str = "unknown") -> NodeMetrics:
     container_count = 0
     if os.path.exists("/var/run/docker.sock"):
         try:
-            import subprocess
+            from app.services.scaling.docker_client import count_running_containers
 
-            result = subprocess.run(
-                ["docker", "ps", "-q"],
-                capture_output=True, text=True, timeout=5,
-            )
-            if result.returncode == 0:
-                container_count = len(result.stdout.strip().splitlines()) if result.stdout.strip() else 0
+            import asyncio
+
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                # Already in async context — run synchronously via docker SDK
+                import docker as _docker
+
+                try:
+                    client = _docker.from_env(timeout=5)
+                    container_count = len(client.containers.list())
+                    client.close()
+                except Exception:
+                    pass
+            else:
+                container_count = asyncio.run(count_running_containers())
         except Exception:
             pass
 
