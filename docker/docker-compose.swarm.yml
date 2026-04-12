@@ -141,6 +141,7 @@ services:
     expose:
       - "5000"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - app_data:/app/data
     networks:
       frontend:
@@ -213,6 +214,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 120s
     secrets:
       - service_auth
       - secret_key
@@ -234,7 +236,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.labels.spectra.app == true
+          - node.role == manager
       restart_policy:
         condition: on-failure
       update_config:
@@ -260,6 +262,7 @@ services:
       SKIP_MIGRATIONS: "true"
       SERVICE_MODE: scheduler
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - app_data:/app/data
     networks:
       - frontend
