@@ -824,8 +824,8 @@ async def internal_scaling_action(request_body: dict):
 
             result = await asyncio.to_thread(
                 sp.run,
-                ["docker", "service", "scale", f"{service}={new_count}"],
-                capture_output=True, text=True, timeout=30,
+                ["docker", "service", "scale", "--detach", f"{service}={new_count}"],
+                capture_output=True, text=True, timeout=15,
             )
             success = result.returncode == 0
             output = result.stdout.strip() or result.stderr.strip()
@@ -833,8 +833,8 @@ async def internal_scaling_action(request_body: dict):
         elif action == "restart":
             result = await asyncio.to_thread(
                 sp.run,
-                ["docker", "service", "update", "--force", service],
-                capture_output=True, text=True, timeout=60,
+                ["docker", "service", "update", "--force", "--detach", service],
+                capture_output=True, text=True, timeout=15,
             )
             success = result.returncode == 0
             output = result.stdout.strip() or result.stderr.strip()
