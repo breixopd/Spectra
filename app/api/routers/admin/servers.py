@@ -441,23 +441,25 @@ async def list_services(
     import httpx
 
     services = [
-        {"name": "api", "type": "core", "port": 5000},
-        {"name": "ai-svc", "type": "ai", "port": 5010},
-        {"name": "scheduler", "type": "background", "port": None},
-        {"name": "worker", "type": "tools", "port": None},
+        {"name": "api", "type": "core", "port": 5000, "aliases": ["app", "spectra_app"]},
+        {"name": "ai-svc", "type": "ai", "port": 5010, "aliases": ["spectra_ai-svc"]},
+        {"name": "scheduler", "type": "background", "port": 5011, "aliases": ["spectra_scheduler"]},
+        {"name": "worker", "type": "tools", "port": None, "aliases": []},
     ]
 
     results = []
     for svc in services:
         health_status = "unknown"
         if svc["port"]:
-            for base in [f"http://{svc['name']}:{svc['port']}", f"http://localhost:{svc['port']}"]:
+            urls = [f"http://{alias}:{svc['port']}/api/health" for alias in [svc["name"]] + svc.get("aliases", [])]
+            urls.append(f"http://localhost:{svc['port']}/api/health")
+            for url in urls:
                 try:
-                    async with httpx.AsyncClient(timeout=5.0) as client:
-                        resp = await client.get(f"{base}/health")
+                    async with httpx.AsyncClient(timeout=3.0) as client:
+                        resp = await client.get(url)
                         health_status = "healthy" if resp.status_code == 200 else "unhealthy"
                         break
-                except (OSError, RuntimeError, ConnectionError, TimeoutError):
+                except Exception:
                     health_status = "unreachable"
 
         results.append(
@@ -718,6 +720,35 @@ _SCALING_FIELD_TO_DB_KEY: dict[str, tuple[str, str]] = {
 }
 
 
+@router.get("/api/admin/scaling/config")
+async def get_scaling_config(
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Return current auto-scaling configuration."""
+    from app.core.config import get_settings as _get_settings
+    from app.services.scaling.auto_scaler import AutoScaler
+
+    settings = _get_settings()
+    scaler = AutoScaler(settings)
+    return {
+        "autoscale_enabled": scaler.get_config_snapshot().get("scaling.enabled", True),
+        "policies": {
+            name: {
+                "min_replicas": p.min_replicas,
+                "max_replicas": p.max_replicas,
+                "scale_up_threshold": p.scale_up_threshold,
+                "scale_down_threshold": p.scale_down_threshold,
+                "scale_up_queue_depth": p.scale_up_queue_depth,
+                "cooldown_secs": p.cooldown_secs,
+            }
+            for name, p in scaler.policies.items()
+        },
+        "infra_monitor": {
+            "enabled": bool(scaler.infra_monitors),
+        },
+    }
+
+
 @router.put("/api/admin/scaling/config")
 async def update_scaling_config(
     update: ScalingConfigUpdate,
@@ -836,7 +867,8 @@ async def execute_scaling_action(
 
         collector = MetricsCollector()
         metrics = await collector.collect_all()
-        scaler = AutoScaler()
+        from app.core.config import get_settings as _get_settings
+        scaler = AutoScaler(_get_settings())
         actions = await scaler._auto_heal(metrics)
 
         await audit_log_event(
