@@ -123,6 +123,15 @@ CMD ["uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
 # ── Scheduler service target ──
 FROM app-base AS scheduler
 COPY --from=builder-scheduler /opt/venv /opt/venv
+# Docker CLI for Swarm management (scaling, updates, service inspection)
+RUN apt-get update && apt-get install -y --no-install-recommends gnupg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
+    && apt-get purge -y --auto-remove gnupg \
+    && rm -rf /var/lib/apt/lists/*
+RUN groupadd -f docker && usermod -aG docker spectra
 EXPOSE 5011
 ENV SERVICE_MODE=scheduler
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
