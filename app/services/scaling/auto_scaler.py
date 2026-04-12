@@ -1,23 +1,26 @@
 """Reactive auto-scaling engine.
 
 Monitors queue depth, CPU utilization, and connection counts to automatically
-adjust service replica counts via Docker API or CLI.
+adjust service replica counts via a pluggable orchestrator backend.
 
 Infrastructure services (PostgreSQL, Redis, Garage/S3) are NOT auto-scaled
-via Docker replicas — they are monitored and alert when thresholds are exceeded.
+via Docker replicas — they are monitored externally and alert when thresholds
+are exceeded.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import subprocess
+import os
 import time
 from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from app.services.scaling.backends import OrchestratorBackend
+from app.services.scaling.config import AutoScalerConfig, ServicePolicy
 from app.services.scaling.metrics_collector import ClusterMetrics
+from app.services.scaling.notifiers import ScalingNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -50,32 +53,6 @@ def _record_scaling_event(
 
 
 @dataclass
-class ScalingPolicy:
-    """Per-service scaling thresholds."""
-
-    service_name: str
-    min_replicas: int = 1
-    max_replicas: int = 10
-    scale_up_threshold: float = 0.8
-    scale_down_threshold: float = 0.2
-    scale_up_queue_depth: int = 10
-    scale_down_queue_idle_secs: int = 300
-    cooldown_secs: int = 300
-    last_scale_action: float = 0.0
-    queue_idle_since: float = 0.0
-
-
-@dataclass
-class InfraMonitorConfig:
-    """Monitoring config for infrastructure services (not auto-scaled)."""
-
-    service_name: str
-    health_endpoint: str = ""
-    alert_threshold_pct: float = 85.0
-    enabled: bool = True
-
-
-@dataclass
 class ScalingDecision:
     """Outcome of evaluating a scaling policy against current metrics."""
 
@@ -86,184 +63,67 @@ class ScalingDecision:
     reason: str
 
 
-_DEFAULT_INFRA_MONITORS: dict[str, InfraMonitorConfig] = {
-    "postgres": InfraMonitorConfig("postgres", "", alert_threshold_pct=80),
-    "redis": InfraMonitorConfig("redis", "", alert_threshold_pct=85),
-    "garage": InfraMonitorConfig("garage", "", alert_threshold_pct=90),
-}
-
-
-def _as_bool(value) -> bool:
-    """Coerce a string/bool/int to bool for config values."""
-    if isinstance(value, bool):
-        return value
-    return str(value).strip().lower() in {"1", "true", "yes", "on"}
-
-
 class AutoScaler:
-    """Reactive auto-scaler that adjusts Docker service replica counts."""
+    """Reactive auto-scaler with pluggable backend and notifications."""
 
-    def __init__(self, settings, db_config: dict | None = None) -> None:
-        self.settings = settings
-        self._db_config: dict = db_config or {}
-        self.policies: dict[str, ScalingPolicy] = {}
-        self.infra_monitors: dict[str, InfraMonitorConfig] = {}
-        self._init_policies()
-        self._init_infra_monitors()
+    def __init__(
+        self,
+        config: AutoScalerConfig,
+        backend: OrchestratorBackend,
+        notifier: ScalingNotifier,
+    ) -> None:
+        self.config = config
+        self.backend = backend
+        self.notifier = notifier
 
-    # ------------------------------------------------------------------
-    # Config resolution: DB → env var → default
-    # ------------------------------------------------------------------
+        # Runtime state per role
+        self._last_scale_action: dict[str, float] = {}
+        self._queue_idle_since: dict[str, float] = {}
 
-    def _get_cfg(self, db_key: str, env_attr: str, default, cast_fn=int):
-        """Read config from DB first, fall back to env var, then default.
-
-        ``db_key``   - key in the ``system_config`` table (e.g. ``scaling.worker.max_replicas``)
-        ``env_attr`` - attribute name on ``self.settings`` (e.g. ``AUTOSCALE_WORKER_MAX``)
-        ``default``  - hard-coded fallback value
-        ``cast_fn``  - callable used to coerce the DB string value (default ``int``)
-        """
-        # 1) DB config (passed in from caller, already dict[str, str])
-        if db_key in self._db_config:
-            try:
-                return cast_fn(self._db_config[db_key])
-            except (ValueError, TypeError):
-                pass
-        # 2) Env-var-backed settings object
-        val = getattr(self.settings, env_attr, None)
-        if val is not None:
-            try:
-                return cast_fn(val)
-            except (ValueError, TypeError):
-                pass
-        # 3) Hard-coded default
-        return default
+        # Auto-heal state per service name
+        self._heal_timestamps: dict[str, float] = {}
+        self._heal_fail_counts: dict[str, int] = {}
 
     # ------------------------------------------------------------------
-    # Reload / snapshot for admin UI
+    # Convenience properties
     # ------------------------------------------------------------------
 
-    def reload_config(self, db_config: dict) -> None:
-        """Re-initialize scaling policies from fresh DB config."""
-        self._db_config = db_config
-        self._init_policies()
+    @property
+    def policies(self) -> dict[str, ServicePolicy]:
+        """Access configured policies."""
+        return self.config.policies
+
+    # ------------------------------------------------------------------
+    # Config operations for admin UI
+    # ------------------------------------------------------------------
+
+    def reload_config(self, config: AutoScalerConfig) -> None:
+        """Replace configuration (e.g. after DB settings change)."""
+        self.config = config
 
     def get_config_snapshot(self) -> dict:
         """Return all current scaling config values for the admin UI."""
+        policies = self.config.policies
+        worker = policies.get("worker")
+        api = policies.get("api")
+        ai = policies.get("ai")
         return {
-            "scaling.worker.min_replicas": self.policies["worker"].min_replicas,
-            "scaling.worker.max_replicas": self.policies["worker"].max_replicas,
-            "scaling.api.min_replicas": self.policies["api"].min_replicas,
-            "scaling.api.max_replicas": self.policies["api"].max_replicas,
-            "scaling.ai.max_replicas": self.policies["ai"].max_replicas,
-            "scaling.cooldown_secs": self.policies["worker"].cooldown_secs,
-            "scaling.idle_secs": self.policies["worker"].scale_down_queue_idle_secs,
-            "scaling.cpu_up_threshold": self.policies["worker"].scale_up_threshold,
-            "scaling.cpu_down_threshold": self.policies["worker"].scale_down_threshold,
-            "scaling.queue_threshold": self.policies["worker"].scale_up_queue_depth,
-            "scaling.enabled": self._get_cfg(
-                "scaling.enabled", "AUTOSCALE_ENABLED", True, cast_fn=_as_bool,
-            ),
+            "scaling.worker.min_replicas": worker.min_replicas if worker else 1,
+            "scaling.worker.max_replicas": worker.max_replicas if worker else 10,
+            "scaling.api.min_replicas": api.min_replicas if api else 2,
+            "scaling.api.max_replicas": api.max_replicas if api else 8,
+            "scaling.ai.max_replicas": ai.max_replicas if ai else 4,
+            "scaling.cooldown_secs": worker.cooldown_secs if worker else 300,
+            "scaling.idle_secs": worker.idle_timeout_secs if worker else 600,
+            "scaling.cpu_up_threshold": worker.scale_up_threshold if worker else 0.75,
+            "scaling.cpu_down_threshold": worker.scale_down_threshold if worker else 0.25,
+            "scaling.queue_threshold": worker.scale_up_queue_depth if worker else 5,
+            "scaling.enabled": self.config.enabled,
         }
 
     # ------------------------------------------------------------------
-    # Policy initialization
+    # Evaluation
     # ------------------------------------------------------------------
-
-    def _init_policies(self) -> None:
-        """Initialize default policies per service from DB / settings."""
-        cooldown = self._get_cfg("scaling.cooldown_secs", "AUTOSCALE_COOLDOWN_SECS", 300)
-        idle_secs = self._get_cfg("scaling.idle_secs", "AUTOSCALE_IDLE_SECS", 300)
-        cpu_up = self._get_cfg(
-            "scaling.cpu_up_threshold", "AUTOSCALE_CPU_UP_THRESHOLD", 75,
-        ) / 100.0
-        cpu_down = self._get_cfg(
-            "scaling.cpu_down_threshold", "AUTOSCALE_CPU_DOWN_THRESHOLD", 25,
-        ) / 100.0
-        queue_threshold = self._get_cfg(
-            "scaling.queue_threshold", "AUTOSCALE_QUEUE_THRESHOLD", 5,
-        )
-
-        self.policies = {
-            # Worker: more workers = more concurrent tool executions; each worker
-            # subprocess consumes ~512 MB, so max_replicas=10 is a safe ceiling.
-            "worker": ScalingPolicy(
-                service_name=getattr(self.settings, "SWARM_WORKER_SERVICE", "spectra_worker"),
-                min_replicas=self._get_cfg(
-                    "scaling.worker.min_replicas", "AUTOSCALE_WORKER_MIN", 1,
-                ),
-                max_replicas=self._get_cfg(
-                    "scaling.worker.max_replicas", "AUTOSCALE_WORKER_MAX", 10,
-                ),
-                scale_up_threshold=cpu_up,
-                scale_down_threshold=cpu_down,
-                scale_up_queue_depth=queue_threshold,
-                cooldown_secs=cooldown,
-                scale_down_queue_idle_secs=max(idle_secs, 600),
-            ),
-            # API: more replicas = more HTTP concurrency; beyond 8 the DB
-            # connection pool becomes the bottleneck.
-            "api": ScalingPolicy(
-                service_name=getattr(self.settings, "SWARM_API_SERVICE", "spectra_app"),
-                min_replicas=self._get_cfg(
-                    "scaling.api.min_replicas", "AUTOSCALE_API_MIN", 2,
-                ),
-                max_replicas=self._get_cfg(
-                    "scaling.api.max_replicas", "AUTOSCALE_API_MAX", 8,
-                ),
-                scale_up_threshold=cpu_up,
-                scale_down_threshold=cpu_down,
-                scale_up_queue_depth=0,
-                cooldown_secs=min(cooldown, 120),
-                scale_down_queue_idle_secs=min(idle_secs, 300),
-            ),
-            # AI: LLM inference is memory-heavy; each replica holds embedding
-            # models in RAM, so max_replicas=4 avoids OOM pressure.
-            "ai": ScalingPolicy(
-                service_name=getattr(self.settings, "SWARM_AI_SERVICE", "spectra_ai-svc"),
-                min_replicas=1,
-                max_replicas=self._get_cfg(
-                    "scaling.ai.max_replicas", "AUTOSCALE_AI_MAX", 4,
-                ),
-                scale_up_threshold=0.80,
-                scale_down_threshold=0.20,
-                scale_up_queue_depth=3,
-                cooldown_secs=cooldown,
-                scale_down_queue_idle_secs=max(idle_secs, 900),
-            ),
-            # Scheduler: leader-elected; 2nd replica is a hot standby only.
-            "scheduler": ScalingPolicy(
-                service_name=getattr(self.settings, "SWARM_SCHEDULER_SERVICE", "spectra_scheduler"),
-                min_replicas=1,
-                max_replicas=2,
-                scale_up_threshold=0,
-                scale_down_threshold=0,
-                scale_up_queue_depth=0,
-                cooldown_secs=600,
-                scale_down_queue_idle_secs=0,
-            ),
-        }
-
-    def _init_infra_monitors(self) -> None:
-        """Initialize infrastructure monitoring configs from settings."""
-        infra_enabled = getattr(self.settings, "INFRA_MONITOR_ENABLED", True)
-        self.infra_monitors = {
-            "postgres": InfraMonitorConfig(
-                "postgres", "",
-                alert_threshold_pct=float(getattr(self.settings, "INFRA_MONITOR_PG_THRESHOLD", 80)),
-                enabled=infra_enabled,
-            ),
-            "redis": InfraMonitorConfig(
-                "redis", "",
-                alert_threshold_pct=float(getattr(self.settings, "INFRA_MONITOR_REDIS_THRESHOLD", 85)),
-                enabled=infra_enabled,
-            ),
-            "garage": InfraMonitorConfig(
-                "garage", "",
-                alert_threshold_pct=float(getattr(self.settings, "INFRA_MONITOR_STORAGE_THRESHOLD", 90)),
-                enabled=infra_enabled,
-            ),
-        }
 
     async def evaluate(self, metrics: dict, cluster: ClusterMetrics | None = None) -> list[ScalingDecision]:
         """Evaluate all policies and return scaling decisions."""
@@ -284,21 +144,21 @@ class AutoScaler:
             cluster_disk_min_gb = min(disk_values) if disk_values else float("inf")
 
             # Memory pressure alerts
-            if cluster_mem_max > 95:
+            if cluster_mem_max > self.config.memory_critical_percent:
                 cluster_alerts.append(
                     f"EMERGENCY: Node memory at {cluster_mem_max:.1f}% — force scale-up"
                 )
-            elif cluster_mem_max > 85:
+            elif cluster_mem_max > self.config.memory_warning_percent:
                 cluster_alerts.append(
                     f"WARNING: Node memory at {cluster_mem_max:.1f}%"
                 )
 
             # Disk space alerts
-            if cluster_disk_min_gb < 5:
+            if cluster_disk_min_gb < self.config.disk_critical_gb:
                 cluster_alerts.append(
                     f"CRITICAL: Disk free {cluster_disk_min_gb:.1f}GB on a node"
                 )
-            elif cluster_disk_min_gb < 10:
+            elif cluster_disk_min_gb < self.config.disk_warning_gb:
                 cluster_alerts.append(
                     f"WARNING: Disk free {cluster_disk_min_gb:.1f}GB on a node"
                 )
@@ -306,8 +166,9 @@ class AutoScaler:
         for alert in cluster_alerts:
             logger.warning("Cluster resource alert: %s", alert)
 
-        for role, policy in self.policies.items():
-            if now - policy.last_scale_action < policy.cooldown_secs:
+        for role, policy in self.config.policies.items():
+            last_action = self._last_scale_action.get(role, 0.0)
+            if now - last_action < policy.cooldown_secs:
                 continue
 
             decision = self._evaluate_policy(
@@ -321,15 +182,16 @@ class AutoScaler:
         return decisions
 
     def _evaluate_policy(
-        self, role: str, policy: ScalingPolicy, metrics: dict, now: float,
+        self, role: str, policy: ServicePolicy, metrics: dict, now: float,
         *, cluster_cpu_avg: float = 0.0, cluster_mem_max: float = 0.0,
     ) -> ScalingDecision:
         current = metrics.get(f"{role}_replicas", 1)
         utilization = metrics.get(f"{role}_utilization", 0.0)
         queue_depth = metrics.get("queue_depth", 0)
+        queue_idle_since = self._queue_idle_since.get(role, 0.0)
 
         # --- Emergency scale-up on cluster memory pressure (>95%) ---
-        if cluster_mem_max > 95 and role == "worker" and current > policy.min_replicas:
+        if cluster_mem_max > self.config.memory_critical_percent and role == "worker" and current > policy.min_replicas:
             # Under extreme memory pressure, avoid adding more replicas
             return ScalingDecision(
                 policy.service_name,
@@ -376,10 +238,10 @@ class AutoScaler:
 
         # --- Scale DOWN ---
         if role == "worker" and queue_depth == 0:
-            if policy.queue_idle_since == 0:
-                policy.queue_idle_since = now
+            if queue_idle_since == 0:
+                self._queue_idle_since[role] = now
             elif (
-                now - policy.queue_idle_since > policy.scale_down_queue_idle_secs
+                now - queue_idle_since > policy.idle_timeout_secs
                 and current > policy.min_replicas
             ):
                 return ScalingDecision(
@@ -387,15 +249,15 @@ class AutoScaler:
                     "scale_down",
                     current,
                     max(current - 1, policy.min_replicas),
-                    f"Queue idle for {int(now - policy.queue_idle_since)}s",
+                    f"Queue idle for {int(now - queue_idle_since)}s",
                 )
         else:
-            policy.queue_idle_since = 0
+            self._queue_idle_since[role] = 0
 
         if utilization < policy.scale_down_threshold and current > policy.min_replicas:
-            if policy.queue_idle_since == 0:
-                policy.queue_idle_since = now
-            elif now - policy.queue_idle_since > policy.scale_down_queue_idle_secs:
+            if queue_idle_since == 0:
+                self._queue_idle_since[role] = now
+            elif now - queue_idle_since > policy.idle_timeout_secs:
                 return ScalingDecision(
                     policy.service_name,
                     "scale_down",
@@ -407,12 +269,13 @@ class AutoScaler:
         return ScalingDecision(policy.service_name, "none", current, current, "Within thresholds")
 
     async def execute(self, decision: ScalingDecision) -> bool:
-        """Execute a scaling decision via Docker CLI."""
+        """Execute a scaling decision via the orchestrator backend."""
         if decision.action == "none":
             return True
 
         try:
-            success = await self._scale_via_cli(decision)
+            result = await self.backend.scale(decision.service, decision.desired_replicas)
+            success = result.success
 
             _record_scaling_event(
                 service=decision.service,
@@ -424,13 +287,11 @@ class AutoScaler:
             )
 
             if success:
-                policy = next(
-                    (p for p in self.policies.values() if p.service_name == decision.service),
-                    None,
-                )
-                if policy:
-                    policy.last_scale_action = time.monotonic()
-                    policy.queue_idle_since = 0
+                for role, policy in self.config.policies.items():
+                    if policy.service_name == decision.service:
+                        self._last_scale_action[role] = time.monotonic()
+                        self._queue_idle_since[role] = 0
+                        break
 
                 logger.info(
                     "Scaled %s: %d → %d replicas (%s)",
@@ -453,133 +314,21 @@ class AutoScaler:
             logger.error("Failed to scale %s: %s", decision.service, e)
             return False
 
-    async def _scale_via_cli(self, decision: ScalingDecision) -> bool:
-        """Scale via Docker SDK (works with Swarm)."""
-        from app.services.scaling.docker_client import scale_service
-
-        return await scale_service(decision.service, decision.desired_replicas)
-
-    async def check_infrastructure(self) -> list[str]:
-        """Check infrastructure services and return alert messages for any exceeding thresholds."""
-        alerts: list[str] = []
-        for name, config in self.infra_monitors.items():
-            if not config.enabled:
-                continue
-            try:
-                if name == "postgres":
-                    alerts.extend(await self._check_postgres(config))
-                elif name == "redis":
-                    alerts.extend(await self._check_redis(config))
-                elif name == "garage":
-                    alerts.extend(await self._check_garage(config))
-            except Exception as e:
-                logger.warning("Infra check %s failed: %s", name, e)
-        return alerts
-
-    async def _check_postgres(self, config: InfraMonitorConfig) -> list[str]:
-        """Check PostgreSQL connection count vs max_connections."""
-        alerts: list[str] = []
-        try:
-            from sqlalchemy import text
-
-            from app.core.database import async_session_maker
-
-            async with async_session_maker() as session:
-                result = await session.execute(
-                    text("SELECT count(*) AS current, setting::int AS max_conn "
-                         "FROM pg_stat_activity, pg_settings "
-                         "WHERE pg_settings.name = 'max_connections' "
-                         "GROUP BY setting")
-                )
-                row = result.first()
-                if row:
-                    current, max_conn = row[0], row[1]
-                    usage_pct = (current / max(1, max_conn)) * 100
-                    if usage_pct >= config.alert_threshold_pct:
-                        alerts.append(
-                            f"PostgreSQL connections at {usage_pct:.0f}% "
-                            f"({current}/{max_conn})"
-                        )
-        except Exception as e:
-            logger.warning("PostgreSQL health check failed: %s", e)
-        return alerts
-
-    async def _check_redis(self, config: InfraMonitorConfig) -> list[str]:
-        """Check Redis memory usage vs maxmemory."""
-        alerts: list[str] = []
-        try:
-            result = await asyncio.to_thread(
-                subprocess.run,
-                ["redis-cli", "-h", "redis", "INFO", "memory"],
-                capture_output=True, text=True, timeout=5,
-            )
-            if result.returncode == 0:
-                info = result.stdout
-                used = maxmem = 0
-                for line in info.splitlines():
-                    if line.startswith("used_memory:"):
-                        used = int(line.split(":")[1].strip())
-                    elif line.startswith("maxmemory:"):
-                        maxmem = int(line.split(":")[1].strip())
-                if maxmem > 0:
-                    usage_pct = (used / maxmem) * 100
-                    if usage_pct >= config.alert_threshold_pct:
-                        alerts.append(
-                            f"Redis memory at {usage_pct:.0f}% "
-                            f"({used // (1024 * 1024)}MB/{maxmem // (1024 * 1024)}MB)"
-                        )
-        except Exception as e:
-            logger.warning("Redis health check failed: %s", e)
-        return alerts
-
-    async def _check_garage(self, config: InfraMonitorConfig) -> list[str]:
-        """Check Garage/S3 bucket sizes for storage usage tracking."""
-        alerts: list[str] = []
-        try:
-            from app.core.config import settings as app_settings
-
-            endpoint = getattr(app_settings, "S3_ENDPOINT_URL", "")
-            if not endpoint:
-                return alerts
-
-            import boto3
-            from botocore.config import Config as BotoConfig
-
-            s3 = boto3.client(
-                "s3",
-                endpoint_url=endpoint,
-                aws_access_key_id=getattr(app_settings, "S3_ACCESS_KEY", None),
-                aws_secret_access_key=getattr(app_settings, "S3_SECRET_KEY", None),
-                region_name=getattr(app_settings, "S3_REGION", "us-east-1"),
-                config=BotoConfig(connect_timeout=5, read_timeout=5),
-            )
-            buckets_resp = await asyncio.to_thread(s3.list_buckets)
-            bucket_sizes: list[str] = []
-            for bucket in buckets_resp.get("Buckets", []):
-                try:
-                    objs = await asyncio.to_thread(
-                        s3.list_objects_v2,
-                        Bucket=bucket["Name"],
-                        MaxKeys=1,
-                    )
-                    count = objs.get("KeyCount", 0)
-                    if count > 0:
-                        bucket_sizes.append(bucket["Name"])
-                except Exception:
-                    logger.debug("S3 bucket check failed for %s", bucket.get("Name", "?"), exc_info=True)
-            # Storage usage is informational — alert if any bucket check fails
-            # In production, actual byte-level tracking would use CloudWatch/metrics
-        except Exception as e:
-            logger.warning("Garage/S3 health check failed: %s", e)
-        return alerts
-
-    async def evaluate_and_execute(self, metrics: dict | ClusterMetrics) -> list[ScalingDecision]:
-        """Evaluate all policies, execute scaling decisions, check infrastructure, and auto-heal.
+    async def evaluate_and_execute(
+        self,
+        metrics: dict | ClusterMetrics,
+        *,
+        infra_alerts: list[str] | None = None,
+    ) -> list[ScalingDecision]:
+        """Evaluate all policies, execute scaling decisions, auto-heal, and alert.
 
         Accepts either a legacy flat dict or a ClusterMetrics object.  When a
         ClusterMetrics object is provided, real per-service CPU is used for
         utilization-based scaling, auto-healing runs for failed tasks, and
         system resource alerts are generated.
+
+        Pass pre-computed *infra_alerts* from external infrastructure checks
+        (e.g. PostgreSQL, Redis) to include them in the notification sweep.
         """
         cluster: ClusterMetrics | None = None
         flat_metrics: dict
@@ -597,33 +346,18 @@ class AutoScaler:
 
         # --- Auto-healing ---
         heal_actions: list[str] = []
-        if cluster is not None:
-            auto_heal_enabled = getattr(self.settings, "AUTO_HEAL_ENABLED", True)
-            if auto_heal_enabled:
-                heal_actions = await self._auto_heal(cluster)
-
-        # --- Infrastructure checks ---
-        infra_alerts = await self.check_infrastructure()
+        if cluster is not None and self.config.heal_enabled:
+            heal_actions = await self._auto_heal(cluster)
 
         # --- System resource alerts ---
         system_alerts: list[str] = []
         if cluster is not None:
             system_alerts = self._check_system_resources(cluster)
 
-        all_alerts = infra_alerts + system_alerts
+        all_alerts = (infra_alerts or []) + system_alerts
         for alert_msg in all_alerts:
             logger.warning("Infrastructure alert: %s", alert_msg)
-            try:
-                from app.services.notifications import send_notification
-
-                await send_notification(
-                    title="Infrastructure Alert",
-                    message=alert_msg,
-                    priority="high",
-                    tags=["warning", "infrastructure"],
-                )
-            except Exception as e:
-                logger.warning("Failed to send infra alert: %s", e)
+            await self.notifier.notify("Infrastructure Alert", alert_msg, level="warning")
 
         for action_msg in heal_actions:
             logger.info("Auto-heal action: %s", action_msg)
@@ -637,7 +371,6 @@ class AutoScaler:
     async def _auto_heal(self, metrics: ClusterMetrics) -> list[str]:
         """Detect and attempt to fix failing services. Returns list of actions taken."""
         actions: list[str] = []
-        cooldown = getattr(self.settings, "AUTO_HEAL_COOLDOWN_SECS", 300)
         now = time.monotonic()
 
         for name, svc in metrics.services.items():
@@ -657,12 +390,10 @@ class AutoScaler:
                 continue
 
             # Respect per-service cooldown to avoid restart storms
-            heal_key = f"_heal_{name}"
-            fail_count_key = f"_heal_fail_{name}"
-            last_heal = getattr(self, heal_key, 0.0)
+            last_heal = self._heal_timestamps.get(name, 0.0)
 
             # Skip cooldown for 0-replica emergencies
-            if svc.running_tasks > 0 and now - last_heal < cooldown:
+            if svc.running_tasks > 0 and now - last_heal < self.config.heal_cooldown_secs:
                 continue
 
             logger.warning(
@@ -670,53 +401,46 @@ class AutoScaler:
                 name, reason,
             )
             try:
-                from app.services.scaling.docker_client import restart_service
-
-                success = await restart_service(name)
-                if success:
+                result = await self.backend.restart(name)
+                if result.success:
                     msg = f"Restarted {name} ({reason})"
                     actions.append(msg)
                     logger.info("Auto-healed %s: %s", name, reason)
                     _record_scaling_event(name, "heal_restart", svc.running_tasks, svc.desired_replicas, reason, True)
                     # Reset fail counter on success
-                    object.__setattr__(self, fail_count_key, 0)
+                    self._heal_fail_counts[name] = 0
                 else:
-                    fail_count = getattr(self, fail_count_key, 0) + 1
-                    object.__setattr__(self, fail_count_key, fail_count)
+                    fail_count = self._heal_fail_counts.get(name, 0) + 1
+                    self._heal_fail_counts[name] = fail_count
                     msg = f"Failed to restart {name}"
                     actions.append(msg)
                     logger.error("Auto-heal failed for %s (attempt %d)", name, fail_count)
                     _record_scaling_event(name, "heal_restart", svc.running_tasks, svc.desired_replicas, reason, False)
 
-                    # After 2 consecutive failures, send urgent admin alert
-                    if fail_count >= 2:
+                    # After max retries, send urgent admin alert
+                    if fail_count >= self.config.heal_max_retries:
                         logger.critical(
                             "Auto-heal ALERT: %s failed %d consecutive restarts — admin intervention needed.",
                             name, fail_count,
                         )
-                        try:
-                            from app.services.notifications import send_notification
-                            await send_notification(
-                                title=f"Auto-Heal Failed: {name}",
-                                message=(
-                                    f"Service {name} has failed {fail_count} consecutive restart attempts. "
-                                    f"Reason: {reason}."
-                                ),
-                                priority="urgent",
-                                tags=["critical", "auto-heal", "admin"],
-                            )
-                        except Exception as notify_exc:
-                            logger.warning("Failed to send heal alert: %s", notify_exc)
+                        await self.notifier.notify(
+                            f"Auto-Heal Failed: {name}",
+                            (
+                                f"Service {name} has failed {fail_count} consecutive restart attempts. "
+                                f"Reason: {reason}."
+                            ),
+                            level="critical",
+                        )
             except Exception as exc:
-                fail_count = getattr(self, fail_count_key, 0) + 1
-                object.__setattr__(self, fail_count_key, fail_count)
+                fail_count = self._heal_fail_counts.get(name, 0) + 1
+                self._heal_fail_counts[name] = fail_count
                 msg = f"Auto-heal error for {name}: {exc}"
                 actions.append(msg)
                 logger.error("Auto-heal exception for %s (attempt %d): %s", name, fail_count, exc)
                 _record_scaling_event(name, "heal_restart", svc.running_tasks, svc.desired_replicas, reason, False)
 
             # Record heal timestamp regardless of outcome to enforce cooldown
-            object.__setattr__(self, heal_key, now)
+            self._heal_timestamps[name] = now
         return actions
 
     # ------------------------------------------------------------------
@@ -728,33 +452,24 @@ class AutoScaler:
         alerts: list[str] = []
         sys = metrics.system
 
-        mem_threshold = getattr(self.settings, "SYSTEM_MEMORY_ALERT_THRESHOLD", 90)
-        disk_threshold = getattr(self.settings, "SYSTEM_DISK_ALERT_THRESHOLD", 85)
-        load_multiplier = getattr(self.settings, "SYSTEM_LOAD_ALERT_MULTIPLIER", 2.0)
-
-        if sys.memory_percent > mem_threshold:
+        if sys.memory_percent > self.config.system_memory_alert_threshold:
             alerts.append(
                 f"System memory at {sys.memory_percent:.1f}% "
                 f"({sys.memory_available_mb:.0f} MB available)"
             )
 
-        if sys.disk_percent > disk_threshold:
+        if sys.disk_percent > self.config.system_disk_alert_threshold:
             alerts.append(
                 f"Disk usage at {sys.disk_percent:.1f}% "
                 f"({sys.disk_free_gb:.1f} GB free)"
             )
 
-        try:
-            import os
-
-            cpu_count = os.cpu_count() or 1
-        except Exception:
-            cpu_count = 1
-        load_threshold = cpu_count * load_multiplier
+        cpu_count = os.cpu_count() or 1
+        load_threshold = cpu_count * self.config.system_load_alert_multiplier
         if sys.load_avg_5m > load_threshold:
             alerts.append(
                 f"Load average {sys.load_avg_5m:.2f} exceeds "
-                f"{load_threshold:.1f} ({cpu_count} CPUs × {load_multiplier})"
+                f"{load_threshold:.1f} ({cpu_count} CPUs × {self.config.system_load_alert_multiplier})"
             )
 
         return alerts
@@ -799,8 +514,10 @@ class AutoScaler:
         """Return current auto-scaler status and policy state."""
         now = time.monotonic()
         policies = {}
-        for role, policy in self.policies.items():
-            cooldown_remaining = max(0, policy.cooldown_secs - (now - policy.last_scale_action))
+        for role, policy in self.config.policies.items():
+            last_action = self._last_scale_action.get(role, 0.0)
+            idle_since = self._queue_idle_since.get(role, 0.0)
+            cooldown_remaining = max(0, policy.cooldown_secs - (now - last_action))
             policies[role] = {
                 "service_name": policy.service_name,
                 "min_replicas": policy.min_replicas,
@@ -810,14 +527,7 @@ class AutoScaler:
                 "scale_up_queue_depth": policy.scale_up_queue_depth,
                 "cooldown_secs": policy.cooldown_secs,
                 "cooldown_remaining_secs": round(cooldown_remaining, 1),
-                "idle_since_secs": round(now - policy.queue_idle_since, 1) if policy.queue_idle_since else 0,
+                "idle_since_secs": round(now - idle_since, 1) if idle_since else 0,
             }
 
-        infra = {}
-        for name, config in self.infra_monitors.items():
-            infra[name] = {
-                "enabled": config.enabled,
-                "alert_threshold_pct": config.alert_threshold_pct,
-            }
-
-        return {"policies": policies, "infrastructure": infra, "recent_actions": get_scaling_history()}
+        return {"policies": policies, "recent_actions": get_scaling_history()}

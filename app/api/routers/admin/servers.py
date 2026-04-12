@@ -654,8 +654,12 @@ async def get_scaling_status(
     }
 
     from app.services.scaling.auto_scaler import AutoScaler
+    from app.services.scaling.backends import DockerSwarmBackend
+    from app.services.scaling.config import AutoScalerConfig
+    from app.services.scaling.notifiers import LogNotifier
 
-    scaler = AutoScaler(settings)
+    config = AutoScalerConfig.from_settings(settings)
+    scaler = AutoScaler(config, DockerSwarmBackend(), LogNotifier())
     result["scaler"] = scaler.get_status()
 
     stats = await queue_metrics()
@@ -747,9 +751,13 @@ async def get_scaling_config(
     """Return current auto-scaling configuration."""
     from app.core.config import get_settings as _get_settings
     from app.services.scaling.auto_scaler import AutoScaler
+    from app.services.scaling.backends import DockerSwarmBackend
+    from app.services.scaling.config import AutoScalerConfig
+    from app.services.scaling.notifiers import LogNotifier
 
     settings = _get_settings()
-    scaler = AutoScaler(settings)
+    config = AutoScalerConfig.from_settings(settings)
+    scaler = AutoScaler(config, DockerSwarmBackend(), LogNotifier())
     return {
         "autoscale_enabled": scaler.get_config_snapshot().get("scaling.enabled", True),
         "policies": {
@@ -764,7 +772,7 @@ async def get_scaling_config(
             for name, p in scaler.policies.items()
         },
         "infra_monitor": {
-            "enabled": bool(scaler.infra_monitors),
+            "enabled": getattr(settings, "INFRA_MONITOR_ENABLED", True),
         },
     }
 
@@ -874,12 +882,16 @@ async def execute_scaling_action(
     # Heal bypasses Docker commands entirely
     if action == "heal":
         from app.services.scaling.auto_scaler import AutoScaler
+        from app.services.scaling.backends import DockerSwarmBackend
+        from app.services.scaling.config import AutoScalerConfig
         from app.services.scaling.metrics_collector import MetricsCollector
+        from app.services.scaling.notifiers import SpectraNotifier
 
         collector = MetricsCollector()
         metrics = await collector.collect_all()
         from app.core.config import get_settings as _get_settings
-        scaler = AutoScaler(_get_settings())
+        heal_config = AutoScalerConfig.from_settings(_get_settings())
+        scaler = AutoScaler(heal_config, DockerSwarmBackend(), SpectraNotifier())
         actions = await scaler._auto_heal(metrics)
 
         await audit_log_event(
