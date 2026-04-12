@@ -810,6 +810,72 @@ _ALLOWED_SCALING_SERVICES = frozenset({
 })
 
 
+async def _run_docker_cmd(cmd: list[str], timeout: int = 30) -> tuple[bool, str]:
+    """Run a Docker command locally, return (success, output)."""
+    import asyncio
+    import subprocess as sp
+
+    try:
+        result = await asyncio.to_thread(
+            sp.run, cmd, capture_output=True, text=True, timeout=timeout,
+        )
+        output = result.stdout.strip() or result.stderr.strip()
+        return result.returncode == 0, output
+    except Exception as e:
+        return False, str(e)
+
+
+_NOT_MANAGER_MARKERS = ("not a swarm manager", "cannot connect to the docker daemon")
+
+
+async def _proxy_scaling_to_scheduler(action: str, service: str) -> dict | None:
+    """Forward a scaling action to the scheduler service (runs on Swarm manager)."""
+    import httpx
+
+    from app.core.config import get_settings as _gs
+
+    settings = _gs()
+    url = f"{settings.SCHEDULER_SERVICE_URL}/internal/scaling/action"
+    secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                url,
+                json={"action": action, "service": service},
+                headers={"X-Service-Auth": secret},
+            )
+            if resp.status_code == 200:
+                return resp.json()
+            logger.warning("Scheduler proxy returned %d: %s", resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.warning("Failed to proxy scaling action to scheduler: %s", exc)
+    return None
+
+
+async def _execute_docker_scaling(action: str, service: str) -> tuple[bool, str]:
+    """Run a Docker scaling command locally, falling back to the scheduler on non-manager nodes."""
+    if action in ("scale_up", "scale_down"):
+        ok, out = await _run_docker_cmd(
+            ["docker", "service", "inspect", service, "--format", "{{.Spec.Mode.Replicated.Replicas}}"],
+            timeout=10,
+        )
+        current = int(out) if ok and out.isdigit() else 1
+        new_count = current + 1 if action == "scale_up" else max(1, current - 1)
+        ok, out = await _run_docker_cmd(
+            ["docker", "service", "scale", f"{service}={new_count}"],
+            timeout=30,
+        )
+        return ok, out
+
+    elif action == "restart":
+        return await _run_docker_cmd(
+            ["docker", "service", "update", "--force", service],
+            timeout=60,
+        )
+
+    return False, f"Unknown action: {action}"
+
+
 @router.post("/api/admin/scaling/action")
 async def execute_scaling_action(
     body: ScalingActionRequest,
@@ -818,9 +884,6 @@ async def execute_scaling_action(
     current_user: User = require_permission(Permission.MANAGE_SETTINGS),
 ):
     """Execute a scaling action: scale_up, scale_down, restart, or heal a service."""
-    import asyncio
-    import subprocess as sp
-
     if body.service not in _ALLOWED_SCALING_SERVICES:
         raise HTTPException(
             status_code=400,
@@ -829,39 +892,9 @@ async def execute_scaling_action(
 
     action = body.action
     service = body.service
-    success = False
 
-    if action in ("scale_up", "scale_down"):
-        inspect_result = await asyncio.to_thread(
-            sp.run,
-            ["docker", "service", "inspect", service, "--format", "{{.Spec.Mode.Replicated.Replicas}}"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        current = int(inspect_result.stdout.strip()) if inspect_result.returncode == 0 and inspect_result.stdout.strip().isdigit() else 1
-        new_count = current + 1 if action == "scale_up" else max(1, current - 1)
-
-        result = await asyncio.to_thread(
-            sp.run,
-            ["docker", "service", "scale", f"{service}={new_count}"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        success = result.returncode == 0
-
-    elif action == "restart":
-        result = await asyncio.to_thread(
-            sp.run,
-            ["docker", "service", "update", "--force", service],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        success = result.returncode == 0
-
-    elif action == "heal":
+    # Heal bypasses Docker commands entirely
+    if action == "heal":
         from app.services.scaling.auto_scaler import AutoScaler
         from app.services.scaling.metrics_collector import MetricsCollector
 
@@ -879,6 +912,23 @@ async def execute_scaling_action(
             request=request,
         )
         return {"success": bool(actions), "action": action, "service": service, "actions": actions}
+
+    # Try Docker command locally first
+    success, output = await _execute_docker_scaling(action, service)
+
+    # If this node is not the Swarm manager, proxy through the scheduler
+    if not success and any(m in output.lower() for m in _NOT_MANAGER_MARKERS):
+        logger.info("Not a swarm manager — proxying scaling action to scheduler")
+        proxied = await _proxy_scaling_to_scheduler(action, service)
+        if proxied is not None:
+            await audit_log_event(
+                session,
+                AuditEventType.SETTINGS_CHANGED,
+                user_id=current_user.id,
+                details={"action": f"scaling_{action}", "service": service, "proxied": True},
+                request=request,
+            )
+            return proxied
 
     await audit_log_event(
         session,

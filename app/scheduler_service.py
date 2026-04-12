@@ -570,6 +570,67 @@ async def health():
     return result
 
 
+# --- Internal scaling proxy (runs on Swarm manager node) ---
+
+_INTERNAL_ALLOWED_SERVICES = frozenset({
+    "spectra_app",
+    "spectra_worker",
+    "spectra_ai-svc",
+    "spectra_scheduler",
+    "spectra_caddy",
+})
+
+
+@app.post("/internal/scaling/action")
+async def internal_scaling_action(request_body: dict):
+    """Execute a Docker scaling command on behalf of a non-manager app replica."""
+    import subprocess as sp
+
+    action = request_body.get("action", "")
+    service = request_body.get("service", "")
+
+    if action not in ("scale_up", "scale_down", "restart"):
+        return {"success": False, "action": action, "service": service, "error": "Invalid action"}
+    if service not in _INTERNAL_ALLOWED_SERVICES:
+        return {"success": False, "action": action, "service": service, "error": "Service not allowed"}
+
+    try:
+        if action in ("scale_up", "scale_down"):
+            inspect_result = await asyncio.to_thread(
+                sp.run,
+                ["docker", "service", "inspect", service, "--format", "{{.Spec.Mode.Replicated.Replicas}}"],
+                capture_output=True, text=True, timeout=10,
+            )
+            current = int(inspect_result.stdout.strip()) if inspect_result.returncode == 0 and inspect_result.stdout.strip().isdigit() else 1
+            new_count = current + 1 if action == "scale_up" else max(1, current - 1)
+
+            result = await asyncio.to_thread(
+                sp.run,
+                ["docker", "service", "scale", f"{service}={new_count}"],
+                capture_output=True, text=True, timeout=30,
+            )
+            success = result.returncode == 0
+            output = result.stdout.strip() or result.stderr.strip()
+
+        elif action == "restart":
+            result = await asyncio.to_thread(
+                sp.run,
+                ["docker", "service", "update", "--force", service],
+                capture_output=True, text=True, timeout=60,
+            )
+            success = result.returncode == 0
+            output = result.stdout.strip() or result.stderr.strip()
+
+        else:
+            success, output = False, "Unknown action"
+
+    except Exception as exc:
+        logger.exception("Internal scaling action failed: %s %s", action, service)
+        success, output = False, str(exc)
+
+    return {"success": success, "action": action, "service": service}
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
