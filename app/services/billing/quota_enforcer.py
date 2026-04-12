@@ -2,12 +2,24 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_maker
+
+
+@contextlib.asynccontextmanager
+async def _use_or_create_session(existing: AsyncSession | None = None):
+    """Yield *existing* if provided, otherwise open a new session."""
+    if existing is not None:
+        yield existing
+    else:
+        async with async_session_maker() as session:
+            yield session
 from app.models.plan import Plan, Subscription, UsageRecord
 from app.models.user import User
 
@@ -62,10 +74,14 @@ class QuotaEnforcer:
             plan = await session.get(Plan, sub.plan_id)
             return plan
 
-    async def check_mission_quota(self, user_id: str, plan: Plan | None = None) -> tuple[bool, str]:
+    async def check_mission_quota(
+        self, user_id: str, plan: Plan | None = None, *, session: AsyncSession | None = None,
+    ) -> tuple[bool, str]:
         """Check if user can start a new mission.
 
-        Returns (allowed, reason).
+        Returns (allowed, reason).  When *session* is provided the caller's
+        transaction is reused so that an advisory lock held by the caller
+        remains effective across the quota check and the subsequent write.
         """
         if await self._is_quota_exempt_user(user_id):
             return True, ""
@@ -74,20 +90,17 @@ class QuotaEnforcer:
         if plan is None:
             return False, "No active subscription"
 
-        async with async_session_maker() as session:
-            # Use a row-level lock on the user's subscription to prevent
-            # concurrent requests from both reading the same count and both
-            # passing the quota check simultaneously (TOCTOU).
+        async with _use_or_create_session(session) as db:
             from app.models.mission import Mission as MissionModel
 
-            locked_sub = await session.execute(
+            locked_sub = await db.execute(
                 select(Subscription)
                 .where(Subscription.user_id == user_id, Subscription.status == "active")
                 .with_for_update()
             )
             locked_sub.scalar_one_or_none()  # acquire lock; discard result
 
-            active_count_result = await session.execute(
+            active_count_result = await db.execute(
                 select(func.count(MissionModel.id)).where(
                     MissionModel.user_id == user_id,
                     MissionModel.status.in_(["created", "running", "paused"]),
@@ -101,7 +114,7 @@ class QuotaEnforcer:
             # Check monthly mission cap
             if plan.max_missions_per_month is not None:
                 period = _period_start_monthly()
-                rec_result = await session.execute(
+                rec_result = await db.execute(
                     select(UsageRecord).where(
                         UsageRecord.user_id == user_id,
                         UsageRecord.period_type == "monthly",
@@ -117,7 +130,7 @@ class QuotaEnforcer:
             daily_limit = getattr(plan, "max_missions_per_day", 0)
             if isinstance(daily_limit, int) and daily_limit > 0:
                 period = _period_start_daily()
-                rec_result = await session.execute(
+                rec_result = await db.execute(
                     select(UsageRecord).where(
                         UsageRecord.user_id == user_id,
                         UsageRecord.period_type == "daily",
@@ -133,7 +146,7 @@ class QuotaEnforcer:
             weekly_limit = getattr(plan, "max_missions_per_week", 0)
             if isinstance(weekly_limit, int) and weekly_limit > 0:
                 period = _period_start_weekly()
-                rec_result = await session.execute(
+                rec_result = await db.execute(
                     select(UsageRecord).where(
                         UsageRecord.user_id == user_id,
                         UsageRecord.period_type == "weekly",

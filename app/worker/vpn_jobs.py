@@ -69,6 +69,10 @@ async def vpn_disconnect_job(config_name: str, vpn_type: str, config_path: str =
         logger.error("VPN disconnect rejected: invalid config_name %r", config_name)
         return {"success": False, "error": "Invalid config name"}
 
+    if config_path and not _validate_config_path(config_path):
+        logger.error("VPN disconnect rejected: invalid config_path %r", config_path)
+        return {"success": False, "error": "Invalid config path"}
+
     try:
         if vpn_type == "wireguard":
             if not config_path:
