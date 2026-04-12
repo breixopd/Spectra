@@ -632,6 +632,123 @@ async def internal_node_metrics():
     return metrics.to_dict()
 
 
+@app.get("/internal/scaling/dashboard")
+async def internal_scaling_dashboard():
+    """Comprehensive scaling dashboard data — cluster, services, nodes, autoscaler, alerts."""
+    from app.services.scaling.auto_scaler import AutoScaler, get_scaling_history
+    from app.services.scaling.metrics_collector import MetricsCollector
+
+    from app.core.config import get_settings as _get_settings
+
+    settings = _get_settings()
+    collector = MetricsCollector()
+    cluster = await collector.collect_all()
+    cnm = cluster.cluster_node_metrics
+
+    # --- Cluster summary ---
+    cluster_summary = {
+        "total_nodes": cnm.total_nodes if cnm else cluster.nodes_total,
+        "healthy_nodes": cnm.healthy_nodes if cnm else cluster.nodes_healthy,
+        "total_cpu_percent": round(cnm.avg_cpu_percent, 1) if cnm else round(cluster.system.cpu_percent, 1),
+        "total_memory_percent": round(cnm.avg_memory_percent, 1) if cnm else round(cluster.system.memory_percent, 1),
+        "min_disk_free_gb": round(cnm.min_disk_free_gb, 1) if cnm else round(cluster.system.disk_free_gb, 1),
+    }
+
+    # --- Per-service info with node placement ---
+    import subprocess as _sp
+
+    services_info: dict[str, dict] = {}
+    for svc_name, svc in cluster.services.items():
+        svc_nodes: list[str] = []
+        try:
+            ps_result = await asyncio.to_thread(
+                _sp.run,
+                ["docker", "service", "ps", svc_name, "--filter", "desired-state=running",
+                 "--format", "{{.Node}}"],
+                capture_output=True, text=True, timeout=10,
+            )
+            if ps_result.returncode == 0:
+                svc_nodes = [n.strip() for n in ps_result.stdout.strip().split("\n") if n.strip()]
+        except Exception:
+            pass
+
+        # Check update availability from image_updater cache
+        update_available = False
+        try:
+            from app.services.scaling.image_updater import get_update_status
+            status = get_update_status()
+            for s in status.get("services", []):
+                if s.get("service") == svc_name:
+                    update_available = s.get("update_available", False)
+                    break
+        except Exception:
+            pass
+
+        services_info[svc_name] = {
+            "replicas": svc.replicas,
+            "desired": svc.desired_replicas,
+            "healthy": svc.running_tasks,
+            "cpu_percent": round(svc.cpu_percent, 2),
+            "memory_mb": round(svc.memory_mb, 1),
+            "update_available": update_available,
+            "nodes": svc_nodes,
+        }
+
+    # --- Per-node breakdown ---
+    nodes_list: list[dict] = []
+    if cnm:
+        # Gather which services run on which node
+        node_services: dict[str, list[str]] = {}
+        for svc_name, svc_data in services_info.items():
+            for node_name in svc_data.get("nodes", []):
+                node_services.setdefault(node_name, []).append(svc_name)
+
+        for n in cnm.per_node:
+            nodes_list.append({
+                "name": n.name,
+                "service_type": n.service_type,
+                "cpu_percent": round(n.cpu_percent, 1),
+                "memory_percent": round(n.memory_percent, 1),
+                "disk_free_gb": round(n.disk_free_gb, 1),
+                "services": node_services.get(n.name, []),
+                "last_metrics_at": n.last_metrics_at,
+            })
+
+    # --- Autoscaler state ---
+    scaler = AutoScaler(settings)
+    scaler_status = scaler.get_status()
+    history = get_scaling_history()
+
+    autoscaler_info = {
+        "enabled": settings.AUTOSCALE_ENABLED,
+        "policies": scaler_status.get("policies", {}),
+        "recent_actions": history[-20:],  # Last 20 for the dashboard
+    }
+
+    # --- Alerts ---
+    alerts: list[dict] = []
+    if cnm:
+        for n in cnm.per_node:
+            if n.memory_percent > 95:
+                alerts.append({"severity": "critical", "message": f"{n.name} memory at {n.memory_percent:.1f}%", "at": n.last_metrics_at})
+            elif n.memory_percent > 85:
+                alerts.append({"severity": "warning", "message": f"{n.name} memory at {n.memory_percent:.1f}%", "at": n.last_metrics_at})
+            if 0 < n.disk_free_gb < 5:
+                alerts.append({"severity": "critical", "message": f"{n.name} disk free {n.disk_free_gb:.1f}GB", "at": n.last_metrics_at})
+            elif 0 < n.disk_free_gb < 10:
+                alerts.append({"severity": "warning", "message": f"{n.name} disk free {n.disk_free_gb:.1f}GB", "at": n.last_metrics_at})
+    if cluster.system.cpu_percent > 90:
+        alerts.append({"severity": "warning", "message": f"Local CPU at {cluster.system.cpu_percent:.1f}%", "at": cluster.timestamp.isoformat()})
+
+    return {
+        "cluster": cluster_summary,
+        "services": services_info,
+        "nodes": nodes_list,
+        "autoscaler": autoscaler_info,
+        "alerts": alerts,
+    }
+
+
 @app.get("/internal/updates/status")
 async def internal_update_status():
     """Return service image versions and update availability."""

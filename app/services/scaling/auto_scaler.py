@@ -13,11 +13,40 @@ import asyncio
 import logging
 import subprocess
 import time
+from collections import deque
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from app.services.scaling.metrics_collector import ClusterMetrics
 
 logger = logging.getLogger(__name__)
+
+# Module-level scaling history (last 100 actions, survives across evaluate cycles)
+_scaling_history: deque[dict] = deque(maxlen=100)
+
+
+def get_scaling_history() -> list[dict]:
+    """Return a copy of recent scaling events."""
+    return list(_scaling_history)
+
+
+def _record_scaling_event(
+    service: str,
+    action: str,
+    from_replicas: int,
+    to_replicas: int,
+    reason: str,
+    success: bool,
+) -> None:
+    _scaling_history.append({
+        "service": service,
+        "action": action,
+        "from_replicas": from_replicas,
+        "to_replicas": to_replicas,
+        "reason": reason,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "success": success,
+    })
 
 
 @dataclass
@@ -236,27 +265,91 @@ class AutoScaler:
             ),
         }
 
-    async def evaluate(self, metrics: dict) -> list[ScalingDecision]:
+    async def evaluate(self, metrics: dict, cluster: ClusterMetrics | None = None) -> list[ScalingDecision]:
         """Evaluate all policies and return scaling decisions."""
         decisions = []
         now = time.monotonic()
+
+        # Extract cluster-wide resource pressure signals
+        cluster_alerts: list[str] = []
+        cluster_cpu_avg = 0.0
+        cluster_mem_max = 0.0
+        cluster_disk_min_gb = float("inf")
+        cnm = cluster.cluster_node_metrics if cluster else None
+        if cnm and cnm.per_node:
+            cluster_cpu_avg = cnm.avg_cpu_percent
+            mem_values = [n.memory_percent for n in cnm.per_node if n.memory_percent > 0]
+            cluster_mem_max = max(mem_values) if mem_values else 0.0
+            disk_values = [n.disk_free_gb for n in cnm.per_node if n.disk_free_gb > 0]
+            cluster_disk_min_gb = min(disk_values) if disk_values else float("inf")
+
+            # Memory pressure alerts
+            if cluster_mem_max > 95:
+                cluster_alerts.append(
+                    f"EMERGENCY: Node memory at {cluster_mem_max:.1f}% — force scale-up"
+                )
+            elif cluster_mem_max > 85:
+                cluster_alerts.append(
+                    f"WARNING: Node memory at {cluster_mem_max:.1f}%"
+                )
+
+            # Disk space alerts
+            if cluster_disk_min_gb < 5:
+                cluster_alerts.append(
+                    f"CRITICAL: Disk free {cluster_disk_min_gb:.1f}GB on a node"
+                )
+            elif cluster_disk_min_gb < 10:
+                cluster_alerts.append(
+                    f"WARNING: Disk free {cluster_disk_min_gb:.1f}GB on a node"
+                )
+
+        for alert in cluster_alerts:
+            logger.warning("Cluster resource alert: %s", alert)
 
         for role, policy in self.policies.items():
             if now - policy.last_scale_action < policy.cooldown_secs:
                 continue
 
-            decision = self._evaluate_policy(role, policy, metrics, now)
+            decision = self._evaluate_policy(
+                role, policy, metrics, now,
+                cluster_cpu_avg=cluster_cpu_avg,
+                cluster_mem_max=cluster_mem_max,
+            )
             if decision.action != "none":
                 decisions.append(decision)
 
         return decisions
 
     def _evaluate_policy(
-        self, role: str, policy: ScalingPolicy, metrics: dict, now: float
+        self, role: str, policy: ScalingPolicy, metrics: dict, now: float,
+        *, cluster_cpu_avg: float = 0.0, cluster_mem_max: float = 0.0,
     ) -> ScalingDecision:
         current = metrics.get(f"{role}_replicas", 1)
         utilization = metrics.get(f"{role}_utilization", 0.0)
         queue_depth = metrics.get("queue_depth", 0)
+
+        # --- Emergency scale-up on cluster memory pressure (>95%) ---
+        if cluster_mem_max > 95 and role == "worker" and current > policy.min_replicas:
+            # Under extreme memory pressure, avoid adding more replicas
+            return ScalingDecision(
+                policy.service_name,
+                "none",
+                current,
+                current,
+                f"Memory emergency ({cluster_mem_max:.0f}%) — holding replicas",
+            )
+
+        # --- Cluster CPU-based scale-up (avg across nodes) ---
+        if cluster_cpu_avg > 0 and role in ("worker", "api", "ai"):
+            cluster_util = cluster_cpu_avg / 100.0
+            if cluster_util > policy.scale_up_threshold and current < policy.max_replicas:
+                return ScalingDecision(
+                    policy.service_name,
+                    "scale_up",
+                    current,
+                    min(current + 1, policy.max_replicas),
+                    f"Cluster CPU avg {cluster_cpu_avg:.1f}% > {policy.scale_up_threshold:.0%}",
+                )
 
         # --- Scale UP ---
         if role == "worker" and queue_depth > policy.scale_up_queue_depth and current < policy.max_replicas:
@@ -321,6 +414,15 @@ class AutoScaler:
         try:
             success = await self._scale_via_cli(decision)
 
+            _record_scaling_event(
+                service=decision.service,
+                action=decision.action,
+                from_replicas=decision.current_replicas,
+                to_replicas=decision.desired_replicas,
+                reason=decision.reason,
+                success=success,
+            )
+
             if success:
                 policy = next(
                     (p for p in self.policies.values() if p.service_name == decision.service),
@@ -340,6 +442,14 @@ class AutoScaler:
             return success
 
         except Exception as e:
+            _record_scaling_event(
+                service=decision.service,
+                action=decision.action,
+                from_replicas=decision.current_replicas,
+                to_replicas=decision.desired_replicas,
+                reason=decision.reason,
+                success=False,
+            )
             logger.error("Failed to scale %s: %s", decision.service, e)
             return False
 
@@ -513,7 +623,7 @@ class AutoScaler:
         else:
             flat_metrics = metrics
 
-        decisions = await self.evaluate(flat_metrics)
+        decisions = await self.evaluate(flat_metrics, cluster=cluster)
         for decision in decisions:
             if decision.action != "none":
                 await self.execute(decision)
@@ -564,38 +674,86 @@ class AutoScaler:
         now = time.monotonic()
 
         for name, svc in metrics.services.items():
-            if svc.failed_tasks > 0 and svc.desired_replicas > 0:
-                # Respect per-service cooldown to avoid restart storms
-                heal_key = f"_heal_{name}"
-                last_heal = getattr(self, heal_key, 0.0)
-                if now - last_heal < cooldown:
-                    continue
+            needs_heal = False
+            reason = ""
 
-                logger.warning(
-                    "Service %s has %d failed tasks, attempting restart",
-                    name,
-                    svc.failed_tasks,
+            # Priority 1: Service has 0 healthy replicas — immediate restart
+            if svc.running_tasks == 0 and svc.desired_replicas > 0:
+                needs_heal = True
+                reason = f"0 healthy replicas (desired {svc.desired_replicas})"
+            # Priority 2: Service has failed tasks
+            elif svc.failed_tasks > 0 and svc.desired_replicas > 0:
+                needs_heal = True
+                reason = f"{svc.failed_tasks} failed tasks"
+
+            if not needs_heal:
+                continue
+
+            # Respect per-service cooldown to avoid restart storms
+            heal_key = f"_heal_{name}"
+            fail_count_key = f"_heal_fail_{name}"
+            last_heal = getattr(self, heal_key, 0.0)
+
+            # Skip cooldown for 0-replica emergencies
+            if svc.running_tasks > 0 and now - last_heal < cooldown:
+                continue
+
+            logger.warning(
+                "Auto-heal: %s — %s, attempting restart",
+                name, reason,
+            )
+            try:
+                result = await asyncio.to_thread(
+                    subprocess.run,
+                    ["docker", "service", "update", "--force", name],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
                 )
-                try:
-                    result = await asyncio.to_thread(
-                        subprocess.run,
-                        ["docker", "service", "update", "--force", name],
-                        capture_output=True,
-                        text=True,
-                        timeout=60,
-                    )
-                    if result.returncode == 0:
-                        actions.append(f"Restarted {name} ({svc.failed_tasks} failed tasks)")
-                        logger.info("Auto-healed %s", name)
-                    else:
-                        actions.append(f"Failed to restart {name}: {result.stderr[:200]}")
-                        logger.error("Auto-heal failed for %s: %s", name, result.stderr[:200])
-                except Exception as exc:
-                    actions.append(f"Auto-heal error for {name}: {exc}")
-                    logger.error("Auto-heal exception for %s: %s", name, exc)
+                if result.returncode == 0:
+                    msg = f"Restarted {name} ({reason})"
+                    actions.append(msg)
+                    logger.info("Auto-healed %s: %s", name, reason)
+                    _record_scaling_event(name, "heal_restart", svc.running_tasks, svc.desired_replicas, reason, True)
+                    # Reset fail counter on success
+                    object.__setattr__(self, fail_count_key, 0)
+                else:
+                    fail_count = getattr(self, fail_count_key, 0) + 1
+                    object.__setattr__(self, fail_count_key, fail_count)
+                    msg = f"Failed to restart {name}: {result.stderr[:200]}"
+                    actions.append(msg)
+                    logger.error("Auto-heal failed for %s (attempt %d): %s", name, fail_count, result.stderr[:200])
+                    _record_scaling_event(name, "heal_restart", svc.running_tasks, svc.desired_replicas, reason, False)
 
-                # Record heal timestamp regardless of outcome to enforce cooldown
-                object.__setattr__(self, heal_key, now)
+                    # After 2 consecutive failures, send urgent admin alert
+                    if fail_count >= 2:
+                        logger.critical(
+                            "Auto-heal ALERT: %s failed %d consecutive restarts — admin intervention needed. "
+                            "Last error: %s", name, fail_count, result.stderr[:300],
+                        )
+                        try:
+                            from app.services.notifications import send_notification
+                            await send_notification(
+                                title=f"Auto-Heal Failed: {name}",
+                                message=(
+                                    f"Service {name} has failed {fail_count} consecutive restart attempts. "
+                                    f"Reason: {reason}. Last error: {result.stderr[:200]}"
+                                ),
+                                priority="urgent",
+                                tags=["critical", "auto-heal", "admin"],
+                            )
+                        except Exception as notify_exc:
+                            logger.warning("Failed to send heal alert: %s", notify_exc)
+            except Exception as exc:
+                fail_count = getattr(self, fail_count_key, 0) + 1
+                object.__setattr__(self, fail_count_key, fail_count)
+                msg = f"Auto-heal error for {name}: {exc}"
+                actions.append(msg)
+                logger.error("Auto-heal exception for %s (attempt %d): %s", name, fail_count, exc)
+                _record_scaling_event(name, "heal_restart", svc.running_tasks, svc.desired_replicas, reason, False)
+
+            # Record heal timestamp regardless of outcome to enforce cooldown
+            object.__setattr__(self, heal_key, now)
         return actions
 
     # ------------------------------------------------------------------
@@ -699,4 +857,4 @@ class AutoScaler:
                 "alert_threshold_pct": config.alert_threshold_pct,
             }
 
-        return {"policies": policies, "infrastructure": infra}
+        return {"policies": policies, "infrastructure": infra, "recent_actions": get_scaling_history()}

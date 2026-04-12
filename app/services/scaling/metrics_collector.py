@@ -53,6 +53,30 @@ class QueueMetrics:
 
 
 @dataclass
+class NodeMetricsSummary:
+    """Cached metrics for a single pool node."""
+
+    name: str
+    service_type: str
+    cpu_percent: float = 0.0
+    memory_percent: float = 0.0
+    disk_free_gb: float = 0.0
+    last_metrics_at: str | None = None
+
+
+@dataclass
+class ClusterNodeMetrics:
+    """Aggregated cluster-wide metrics from pool node agents."""
+
+    total_nodes: int = 0
+    healthy_nodes: int = 0
+    avg_cpu_percent: float = 0.0
+    avg_memory_percent: float = 0.0
+    min_disk_free_gb: float = 0.0
+    per_node: list[NodeMetricsSummary] = field(default_factory=list)
+
+
+@dataclass
 class ClusterMetrics:
     """Aggregated cluster-wide metrics."""
 
@@ -63,6 +87,7 @@ class ClusterMetrics:
     nodes_total: int = 0
     nodes_healthy: int = 0
     nodes_unhealthy: int = 0
+    cluster_node_metrics: ClusterNodeMetrics | None = None
 
 
 class MetricsCollector:
@@ -85,6 +110,7 @@ class MetricsCollector:
         system_task = asyncio.create_task(self._collect_system_metrics())
         queue_task = asyncio.create_task(self._collect_queue_metrics())
         node_task = asyncio.create_task(self._collect_node_metrics())
+        cluster_task = asyncio.create_task(self.collect_cluster_metrics())
 
         metrics.services = await service_task
         metrics.system = await system_task
@@ -93,6 +119,7 @@ class MetricsCollector:
         metrics.nodes_total = nodes[0]
         metrics.nodes_healthy = nodes[1]
         metrics.nodes_unhealthy = nodes[2]
+        metrics.cluster_node_metrics = await cluster_task
 
         return metrics
 
@@ -245,6 +272,74 @@ class MetricsCollector:
         except Exception as exc:
             logger.warning("Failed to collect node metrics: %s", exc)
         return total, healthy, unhealthy
+
+
+    async def collect_cluster_metrics(self) -> ClusterNodeMetrics:
+        """Aggregate cached node metrics from PoolManager (stored in metadata_.node_metrics)."""
+        result = ClusterNodeMetrics()
+        try:
+            from app.core.database import async_session_maker
+            from app.models.server_node import ServerNode
+            from sqlalchemy import select
+
+            async with async_session_maker() as session:
+                rows = (await session.execute(
+                    select(ServerNode).where(ServerNode.is_active)
+                )).scalars().all()
+
+            cpu_values: list[float] = []
+            mem_values: list[float] = []
+            disk_values: list[float] = []
+
+            for node in rows:
+                result.total_nodes += 1
+                if node.health_status == "healthy":
+                    result.healthy_nodes += 1
+
+                nm = (node.metadata_ or {}).get("node_metrics", {})
+                cpu = float(nm.get("cpu_percent", 0))
+                mem = float(nm.get("memory_percent", 0))
+                # Find min disk free from disk list
+                disks = nm.get("disks", [])
+                disk_free = min(
+                    (d.get("free_gb", 0) for d in disks),
+                    default=0.0,
+                )
+                ts = nm.get("timestamp")
+                last_at = None
+                if ts:
+                    from datetime import datetime as _dt
+                    try:
+                        last_at = _dt.fromtimestamp(float(ts), tz=UTC).isoformat()
+                    except (ValueError, TypeError, OSError):
+                        last_at = str(ts)
+
+                summary = NodeMetricsSummary(
+                    name=node.name,
+                    service_type=node.service_type,
+                    cpu_percent=cpu,
+                    memory_percent=mem,
+                    disk_free_gb=disk_free,
+                    last_metrics_at=last_at,
+                )
+                result.per_node.append(summary)
+
+                if nm:  # Only include nodes that have reported metrics
+                    cpu_values.append(cpu)
+                    mem_values.append(mem)
+                    disk_values.append(disk_free)
+
+            if cpu_values:
+                result.avg_cpu_percent = sum(cpu_values) / len(cpu_values)
+            if mem_values:
+                result.avg_memory_percent = sum(mem_values) / len(mem_values)
+            if disk_values:
+                result.min_disk_free_gb = min(disk_values)
+
+        except Exception as exc:
+            logger.warning("Failed to collect cluster node metrics: %s", exc)
+
+        return result
 
 
 def _parse_mem(s: str) -> float:

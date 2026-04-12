@@ -603,6 +603,29 @@ async def get_scaling_metrics(
     }
 
 
+@router.get("/api/admin/scaling/dashboard")
+async def get_scaling_dashboard(
+    _perm=require_permission(Permission.MANAGE_SETTINGS),
+):
+    """Comprehensive scaling dashboard — proxied to scheduler which has cluster-wide data."""
+    import httpx
+
+    from app.core.config import get_settings as _gs
+
+    settings = _gs()
+    url = f"{settings.SCHEDULER_SERVICE_URL}/internal/scaling/dashboard"
+    secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(url, headers={"X-Service-Auth": secret})
+            if resp.status_code == 200:
+                return resp.json()
+            logger.warning("Scheduler dashboard returned %d: %s", resp.status_code, resp.text[:200])
+    except Exception as exc:
+        logger.warning("Failed to fetch scaling dashboard from scheduler: %s", exc)
+    raise HTTPException(status_code=502, detail="Could not reach scheduler for dashboard data")
+
+
 @router.get("/api/admin/scaling/status")
 async def get_scaling_status(
     _perm=require_permission(Permission.MANAGE_SETTINGS),
