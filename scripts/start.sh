@@ -80,6 +80,11 @@ if [ -d /app/plugins ] && [ -d /app/plugins_shared ]; then
     cp -a /app/plugins/. /app/plugins_shared/ 2>/dev/null || true
 fi
 
-# Drop privileges and start application as spectra user
+# Drop privileges and start application
 echo "Starting application..."
-exec gosu spectra "$@"
+# Scheduler runs as root (needs Docker socket access for Swarm management)
+if [ "${SERVICE_MODE:-}" = "scheduler" ]; then
+    exec "$@"
+else
+    exec gosu spectra "$@"
+fi
