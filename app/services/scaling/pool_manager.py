@@ -204,6 +204,27 @@ class ServerPoolManager:
         except (OSError, RuntimeError, ConnectionError, TimeoutError) as e:
             return {"health_status": "unhealthy", "last_error": str(e)}
 
+    async def _collect_node_metrics(self, node: dict) -> dict | None:
+        """Fetch /internal/metrics from a node. Returns metrics dict or None on failure."""
+        import httpx
+
+        from app.core.config import get_settings
+
+        settings = get_settings()
+        secret = settings.SERVICE_AUTH_SECRET.get_secret_value()
+        url = node["url"]
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    f"{url}/internal/metrics",
+                    headers={"X-Service-Auth": secret},
+                )
+                if resp.status_code == 200:
+                    return resp.json()
+        except (OSError, RuntimeError, ConnectionError, TimeoutError):
+            logger.debug("Failed to collect metrics from %s", url)
+        return None
+
     async def health_check_all(self) -> dict[str, list[dict]]:
         """Health check all active nodes. Returns results grouped by service type."""
         from app.models.server_node import ServerNode
@@ -218,6 +239,14 @@ class ServerPoolManager:
                 node.health_status = check["health_status"]
                 node.last_error = check.get("last_error")
                 node.last_health_check = datetime.now(UTC)
+
+                # Collect node metrics and store in metadata
+                if check["health_status"] == "healthy":
+                    metrics = await self._collect_node_metrics(node.to_dict())
+                    if metrics:
+                        existing = node.metadata_ or {}
+                        existing["node_metrics"] = metrics
+                        node.metadata_ = existing
 
                 stype = node.service_type
                 if stype not in results:

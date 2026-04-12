@@ -325,7 +325,9 @@ class TestHealthCheck:
         with patch("app.services.scaling.pool_manager.async_session_maker", return_value=mock_session_ctx):
             with patch.object(mgr, "health_check_node", new_callable=AsyncMock) as mock_hc:
                 mock_hc.return_value = {"health_status": "healthy", "last_error": None}
-                results = await mgr.health_check_all()
+                with patch.object(mgr, "_collect_node_metrics", new_callable=AsyncMock) as mock_nm:
+                    mock_nm.return_value = None
+                    results = await mgr.health_check_all()
 
         assert "sandbox_worker" in results
         assert len(results["sandbox_worker"]) == 1
