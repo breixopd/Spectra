@@ -22,17 +22,13 @@ fi
 if [ -S /var/run/docker.sock ]; then
     DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
     if [ -n "$DOCKER_GID" ] && [ "$DOCKER_GID" != "0" ]; then
-        # Find or create a group matching the socket GID
-        DOCKER_GROUP=$(getent group "$DOCKER_GID" | cut -d: -f1 2>/dev/null || echo "")
-        if [ -z "$DOCKER_GROUP" ]; then
-            # No group with this GID exists — create one
-            groupadd -g "$DOCKER_GID" dockersock 2>/dev/null && DOCKER_GROUP="dockersock"
-        fi
-        if [ -n "$DOCKER_GROUP" ]; then
-            usermod -aG "$DOCKER_GROUP" spectra 2>/dev/null || true
-        else
-            # Last resort: make socket world-readable (container is already isolated)
-            chmod 666 /var/run/docker.sock 2>/dev/null || true
+        # Check if spectra is already in a group matching the socket GID
+        if ! id -G spectra 2>/dev/null | tr ' ' '\n' | grep -q "^${DOCKER_GID}$"; then
+            # Try to change socket group to the docker group spectra is already in
+            chown :docker /var/run/docker.sock 2>/dev/null \
+                || chown :spectra /var/run/docker.sock 2>/dev/null \
+                || chmod 666 /var/run/docker.sock 2>/dev/null \
+                || true
         fi
     fi
 fi
