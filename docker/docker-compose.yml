@@ -158,8 +158,7 @@ services:
     image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
     build:
       context: ..
-      dockerfile: docker/Dockerfile.app
-      target: api
+      dockerfile: docker/Dockerfile.api
     labels:
       spectra.managed: "true"
       spectra.role: "api"
@@ -184,7 +183,6 @@ services:
       AI_SERVICE_URL: http://ai-svc:5010
       # Shared Redis-backed rate limiting; use memory:// for tests
       RATE_LIMIT_STORAGE: "redis://:${REDIS_PASSWORD:-change-me-redis-pass}@redis:6379/0"
-      SERVICE_MODE: api
     volumes:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins
@@ -226,8 +224,7 @@ services:
     image: ${REGISTRY:-}spectra-ai-svc:${VERSION:-latest}
     build:
       context: ..
-      dockerfile: docker/Dockerfile.app
-      target: ai
+      dockerfile: docker/Dockerfile.ai
     container_name: spectra-ai
     labels:
       spectra.managed: "true"
@@ -244,7 +241,6 @@ services:
     environment:
       <<: *common-env
       SKIP_MIGRATIONS: "true"
-      SERVICE_MODE: ai
     volumes:
       - spectra_data:/app/data
     read_only: true
@@ -339,8 +335,7 @@ services:
     image: ${REGISTRY:-}spectra-scheduler:${VERSION:-latest}
     build:
       context: ..
-      dockerfile: docker/Dockerfile.app
-      target: scheduler
+      dockerfile: docker/Dockerfile.scheduler
     container_name: spectra-scheduler
     labels:
       spectra.managed: "true"
@@ -356,7 +351,6 @@ services:
       <<: *common-env
       BACKUP_ENABLED: "${BACKUP_ENABLED:-false}"
       SKIP_MIGRATIONS: "true"
-      SERVICE_MODE: scheduler
     volumes:
       - spectra_data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -386,14 +380,13 @@ services:
     image: ${REGISTRY:-}spectra-worker:${VERSION:-latest}
     build:
       context: ..
-      dockerfile: docker/Dockerfile.tools
+      dockerfile: docker/Dockerfile.worker
     container_name: spectra-worker
     labels:
       spectra.managed: "true"
       spectra.role: "worker"
     expose:
       - "5012"
-    command: ["python", "-m", "uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "5012"]
     depends_on:
       db:
         condition: service_healthy
@@ -402,7 +395,6 @@ services:
     environment:
       <<: *common-env
       SKIP_MIGRATIONS: "true"
-      SERVICE_MODE: worker
     volumes:
       - spectra_data:/app/data
       - spectra_plugins:/app/plugins

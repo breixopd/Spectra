@@ -54,7 +54,7 @@ usage() {
 build_image() {
     if [[ "${REBUILD:-0}" == "1" ]] || ! docker image inspect "$IMAGE" &>/dev/null; then
         echo -e "${YELLOW}Building test image...${NC}"
-        docker build -f "$PROJECT_ROOT/docker/Dockerfile.app" -t "$IMAGE" "$PROJECT_ROOT"
+        docker build -f "$PROJECT_ROOT/docker/Dockerfile.api" -t "$IMAGE" "$PROJECT_ROOT"
     fi
 }
 

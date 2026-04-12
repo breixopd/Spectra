@@ -137,7 +137,6 @@ services:
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       AI_SERVICE_URL: http://ai-svc:5010
       SCHEDULER_URL: http://scheduler:5011
-      SERVICE_MODE: api
     expose:
       - "5000"
     volumes:
@@ -203,7 +202,6 @@ services:
       SECRET_KEY_FILE: /run/secrets/secret_key
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       SKIP_MIGRATIONS: "true"
-      SERVICE_MODE: ai
     volumes:
       - app_data:/app/data
     networks:
@@ -260,7 +258,6 @@ services:
       ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
       BACKUP_ENABLED: "true"
       SKIP_MIGRATIONS: "true"
-      SERVICE_MODE: scheduler
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - app_data:/app/data
@@ -290,7 +287,6 @@ services:
 
   worker:
     image: ${REGISTRY:-ghcr.io/breixopd14/}spectra-worker:${VERSION:-latest}
-    command: ["python", "-m", "uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "5012"]
     deploy:
       replicas: 2
       placement:
@@ -316,7 +312,6 @@ services:
       <<: *common-env
       SERVICE_AUTH_SECRET_FILE: /run/secrets/service_auth
       SKIP_MIGRATIONS: "true"
-      SERVICE_MODE: worker
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:

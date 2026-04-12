@@ -1,18 +1,17 @@
-# Spectra Tools — Minimal Worker Container
-# Runs security tools via the PostgreSQL-backed job queue.
+# Spectra Worker — Security tools worker (Kali Linux)
+# Purpose-built image for the pentesting tools worker service.
 # Security tools auto-install on demand from plugin configs; nothing is baked in.
 
 # NOTE: kalilinux/kali-rolling only publishes latest + arch tags.
 # Rebuild periodically to pick up security updates.
 FROM kalilinux/kali-rolling:latest
 
-LABEL org.opencontainers.image.title="Spectra Tools" \
+ARG BUILD_VERSION=dev
+LABEL org.opencontainers.image.title="Spectra Worker" \
       org.opencontainers.image.description="Security tools worker (Kali Linux)" \
       org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
-      org.opencontainers.image.vendor="breixopd14"
-
-ARG BUILD_VERSION=dev
-LABEL org.opencontainers.image.version="${BUILD_VERSION}"
+      org.opencontainers.image.vendor="breixopd14" \
+      org.opencontainers.image.version="${BUILD_VERSION}"
 
 WORKDIR /app
 
@@ -57,7 +56,9 @@ RUN useradd --create-home --shell /bin/bash spectra && \
 
 USER spectra
 
-HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
-    CMD python3 -c "import app.worker" || exit 1
+ENV SERVICE_MODE=worker
 
-CMD ["python", "-m", "app.worker"]
+EXPOSE 5012
+HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5012/health || exit 1
+CMD ["uvicorn", "app.worker_service:app", "--host", "0.0.0.0", "--port", "5012"]

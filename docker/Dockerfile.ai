@@ -1,0 +1,64 @@
+# Spectra AI — LLM routing, embeddings, RAG service
+# Purpose-built image for the AI microservice.
+
+# ── Builder stage ──
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    pkg-config \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements/ai.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r ai.txt
+
+# ── Runtime stage ──
+FROM python:3.11-slim
+
+ARG BUILD_VERSION=dev
+LABEL org.opencontainers.image.title="Spectra AI" \
+      org.opencontainers.image.description="AI-Driven Security Assessment Platform — AI Service" \
+      org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
+      org.opencontainers.image.vendor="breixopd14" \
+      org.opencontainers.image.version="${BUILD_VERSION}"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    netcat-openbsd \
+    ca-certificates \
+    gosu \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN useradd --create-home --shell /bin/bash spectra && \
+    mkdir -p /app/data /app/data/backups /app/logs && \
+    chown -R spectra:spectra /app
+
+COPY --chown=spectra:spectra scripts/ ./scripts/
+COPY --chown=spectra:spectra app/ ./app/
+COPY --chown=spectra:spectra alembic/ ./alembic/
+COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
+COPY --chown=spectra:spectra plugins/ ./plugins/
+COPY --chown=spectra:spectra keys/ ./keys/
+RUN chmod +x /app/scripts/start.sh
+
+ENV SERVICE_MODE=ai
+
+ENTRYPOINT ["/app/scripts/start.sh"]
+EXPOSE 5010
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5010/health || exit 1
+CMD ["uvicorn", "app.ai_service:app", "--host", "0.0.0.0", "--port", "5010"]
