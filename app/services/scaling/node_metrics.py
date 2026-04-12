@@ -108,9 +108,9 @@ def collect_node_metrics(service_mode: str = "unknown") -> NodeMetrics:
     container_count = 0
     if os.path.exists("/var/run/docker.sock"):
         try:
-            from app.services.scaling.docker_client import count_running_containers
-
             import asyncio
+
+            from app.services.scaling.docker_client import count_running_containers
 
             try:
                 loop = asyncio.get_running_loop()

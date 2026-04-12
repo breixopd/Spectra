@@ -225,9 +225,10 @@ class MetricsCollector:
         """Aggregate cached node metrics from PoolManager (stored in metadata_.node_metrics)."""
         result = ClusterNodeMetrics()
         try:
+            from sqlalchemy import select
+
             from app.core.database import async_session_maker
             from app.models.server_node import ServerNode
-            from sqlalchemy import select
 
             async with async_session_maker() as session:
                 rows = (await session.execute(

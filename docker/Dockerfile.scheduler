@@ -49,7 +49,12 @@ RUN useradd --create-home --shell /bin/bash spectra && \
     chown -R spectra:spectra /app
 
 COPY --chown=spectra:spectra scripts/ ./scripts/
-COPY --chown=spectra:spectra app/ ./app/
+COPY --chown=spectra:spectra app/__init__.py app/version.py app/scheduler_service.py ./app/
+COPY --chown=spectra:spectra app/core/ ./app/core/
+COPY --chown=spectra:spectra app/models/ ./app/models/
+COPY --chown=spectra:spectra app/repositories/ ./app/repositories/
+COPY --chown=spectra:spectra app/services/ ./app/services/
+COPY --chown=spectra:spectra app/utils/ ./app/utils/
 COPY --chown=spectra:spectra alembic/ ./alembic/
 COPY --chown=spectra:spectra config/alembic.ini ./config/alembic.ini
 COPY --chown=spectra:spectra plugins/ ./plugins/
