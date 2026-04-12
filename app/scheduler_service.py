@@ -612,10 +612,9 @@ async def _leader_election_loop(scheduler: SchedulerService) -> None:
 
 app = FastAPI(title="Spectra Scheduler", version="1.0.0", lifespan=lifespan)
 
-from app.core.config import get_settings
+from app.core.config import settings as _settings
 from app.core.service_auth import ServiceAuthMiddleware
 
-_settings = get_settings()
 _secret = _settings.SERVICE_AUTH_SECRET.get_secret_value()
 if _secret:
     app.add_middleware(ServiceAuthMiddleware, secret=_secret)

@@ -13,11 +13,19 @@ from app.core.rbac import Permission, require_permission
 from app.models.audit_log import AuditEventType
 from app.models.user import User
 from app.services.system.audit import log_event as audit_log_event
-from app.services.system.settings_service import apply_settings_update
+from app.services.system.settings_service import apply_settings_update, get_current_settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get("/api/admin/settings")
+async def get_admin_settings(
+    _user: User = require_permission(Permission.MANAGE_SETTINGS),
+) -> dict:
+    """Return current runtime system settings."""
+    return get_current_settings()
 
 
 @router.put("/api/admin/settings")
