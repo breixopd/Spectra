@@ -1,67 +1,46 @@
-# =============================================================================
-# Python
-# =============================================================================
-__pycache__/
-*.py[cod]
-*.pyo
-*.cpython
-.venv/
-
-# =============================================================================
-# Testing
-# =============================================================================
-.coverage
-.pytest_cache/
-test.db
-htmlcov/
-reports/coverage/
-
-# =============================================================================
-# IDE & Editor
-# =============================================================================
-.vscode/
-*.swp
-*.swo
-*~
-
-# =============================================================================
-# Environment & Secrets
-# =============================================================================
-.env
-.env.test
-.env.test.local
-keys/plugin_signing.pem
-
-# =============================================================================
-# Runtime Data (Docker volumes, never on host)
-# =============================================================================
-data/
-logs/
-reports/
-screenshots/
-docker/data/
-docker/logs/
-cve_data/
 
 # =============================================================================
 # Build Artifacts
-# =============================================================================
-*.log
-node_modules/
-
-# =============================================================================
+# Deprecated / Legacy
+# Environment & Secrets
+# IDE & Editor
 # Local-only Copilot Customization (not tracked)
-# =============================================================================
+# Python
+# Runtime Data (Docker volumes, never on host)
+# Testing
+*.cpython
+*.log
+*.py[cod]
+*.pyo
+*.swo
+*.swp
+*~
+.coverage
+.env
+.env.test
+.env.test.local
+.github/agents/
+.github/audit/
 .github/copilot-instructions.md
 .github/instructions/
 .github/prompts/
 .markdownlint.json
-.github/agents/
-
-# =============================================================================
-# Deprecated / Legacy
-# =============================================================================
-docs/plan/
-memories/
+.pytest_cache/
+.venv/
+.vscode/
+__pycache__/
 config/node_modules/
-
+cve_data/
+data/
+docker/data/
+docker/logs/
+docs/plan/
+htmlcov/
+keys/plugin_signing.pem
+logs/
+memories/
+node_modules/
+reports/
+reports/coverage/
+screenshots/
+test.db
