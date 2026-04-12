@@ -249,8 +249,12 @@ class SchedulerService:
                 scaler = None
                 if settings.AUTOSCALE_ENABLED:
                     from app.services.scaling.auto_scaler import AutoScaler
+                    from app.services.scaling.backends import DockerSwarmBackend
+                    from app.services.scaling.config import AutoScalerConfig
+                    from app.services.scaling.notifiers import SpectraNotifier
 
-                    scaler = AutoScaler(settings)
+                    config = AutoScalerConfig.from_settings(settings)
+                    scaler = AutoScaler(config, DockerSwarmBackend(), SpectraNotifier())
 
                 # --- Auto-scaling with real metrics ---
                 if scaler is not None:
@@ -625,7 +629,10 @@ async def internal_node_metrics():
 async def internal_scaling_dashboard():
     """Comprehensive scaling dashboard data — cluster, services, nodes, autoscaler, alerts."""
     from app.services.scaling.auto_scaler import AutoScaler, get_scaling_history
+    from app.services.scaling.backends import DockerSwarmBackend
+    from app.services.scaling.config import AutoScalerConfig
     from app.services.scaling.metrics_collector import MetricsCollector
+    from app.services.scaling.notifiers import LogNotifier
 
     from app.core.config import get_settings as _get_settings
 
@@ -697,7 +704,8 @@ async def internal_scaling_dashboard():
             })
 
     # --- Autoscaler state ---
-    scaler = AutoScaler(settings)
+    scaler_config = AutoScalerConfig.from_settings(settings)
+    scaler = AutoScaler(scaler_config, DockerSwarmBackend(), LogNotifier())
     scaler_status = scaler.get_status()
     history = get_scaling_history()
 
