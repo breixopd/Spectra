@@ -36,6 +36,7 @@ class UserPreferences(Base):
 
     # --- Notification preferences ---
     email_notifications: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    announcements_opt_in: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     webhook_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     notify_on_mission_complete: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     notify_on_critical_finding: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")

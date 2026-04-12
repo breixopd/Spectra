@@ -61,11 +61,19 @@ TEMPLATES: dict[str, str] = {
     "alert": ALERT,
     "subscription": SUBSCRIPTION,
     "email_verification": EMAIL_VERIFICATION,
+    "announcement": """
+<h1 style="color:#fff;font-size:22px;margin:0 0 16px;">{title}</h1>
+<div style="padding: 20px 0; line-height: 1.6;">{content}</div>
+""",
 }
 
 
-def wrap_email(content: str) -> str:
+def wrap_email(content: str, unsubscribe_url: str | None = None) -> str:
     """Wrap template content in the branded Spectra email layout."""
+    if unsubscribe_url:
+        unsub_link = f'<a href="{unsubscribe_url}" style="color:#8b5cf6;">Unsubscribe</a>'
+    else:
+        unsub_link = '<a href="#" style="color:#8b5cf6;">Unsubscribe</a>'
     return (
         "<!DOCTYPE html>"
         '<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>'
@@ -80,7 +88,7 @@ def wrap_email(content: str) -> str:
         f"{content}"
         "</td></tr>"
         '<tr><td style="padding:24px 40px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">'
-        '<p style="margin:0;font-size:12px;color:#64748b;">Spectra Security &middot; <a href="#" style="color:#8b5cf6;">Unsubscribe</a></p>'
+        f'<p style="margin:0;font-size:12px;color:#64748b;">Spectra Security &middot; {unsub_link}</p>'
         "</td></tr>"
         "</table>"
         "</td></tr></table>"

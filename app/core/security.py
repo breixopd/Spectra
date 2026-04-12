@@ -29,6 +29,7 @@ __all__ = [
     "create_email_verification_token",
     "create_password_reset_token",
     "create_refresh_token",
+    "create_unsubscribe_token",
     "decode_token",
     "decrypt_byok_key",
     "decrypt_mfa_secret",
@@ -43,6 +44,7 @@ __all__ = [
     "verify_password",
     "verify_password_reset_token",
     "verify_totp",
+    "verify_unsubscribe_token",
 ]
 
 _logger = logging.getLogger(__name__)
@@ -384,6 +386,32 @@ def verify_email_verification_token(token: str) -> str | None:
             algorithms=[settings.JWT_ALGORITHM],
         )
         if payload.get("type") != "email_verify":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
+
+
+def create_unsubscribe_token(user_id: str) -> str:
+    """Create a long-lived unsubscribe token (90-day expiry)."""
+    now = datetime.now(UTC)
+    expire = now + timedelta(days=90)
+    return jwt.encode(
+        {"sub": user_id, "type": "unsubscribe", "exp": expire, "iat": now},
+        settings.JWT_SECRET_KEY.get_secret_value(),
+        algorithm=settings.JWT_ALGORITHM,
+    )
+
+
+def verify_unsubscribe_token(token: str) -> str | None:
+    """Verify an unsubscribe token. Returns user_id or None."""
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY.get_secret_value(),
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        if payload.get("type") != "unsubscribe":
             return None
         return payload.get("sub")
     except JWTError:
