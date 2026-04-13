@@ -1,5 +1,13 @@
 """Billing services: payment adapters, subscriptions, and usage tracking."""
 
+from app.services.billing.entitlements import (
+    ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES,
+    UserEntitlement,
+    get_user_entitlement,
+    get_user_entitlement_plan,
+    subscription_grants_access,
+    sync_user_plan_mirror,
+)
 from app.services.billing.payment_adapter import (
     NoopPaymentAdapter,
     PaymentAdapter,
@@ -15,6 +23,12 @@ __all__ = [
     "PaymentAdapter",
     "PaymentService",
     "StripePaymentAdapter",
+    "ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES",
+    "UserEntitlement",
     "UsageTracker",
+    "get_user_entitlement",
+    "get_user_entitlement_plan",
     "get_payment_adapter",
+    "subscription_grants_access",
+    "sync_user_plan_mirror",
 ]

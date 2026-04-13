@@ -6,8 +6,8 @@
 # Returns: 0 on success, 1 on failure
 #
 # Examples:
-#   ./scripts/health_check.sh http://localhost:5000/api/health
-#   ./scripts/health_check.sh http://localhost:5000/api/health 5 2
+#   ./scripts/health_check.sh http://localhost:5000/api/health/ready
+#   ./scripts/health_check.sh http://localhost:5000/api/health/ready 5 2
 
 set -euo pipefail
 

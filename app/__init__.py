@@ -20,7 +20,8 @@ Key Features:
 - Iterative exploitation with adaptive replanning
 """
 
-__version__ = "2026.03.07"
+from app.version import __version__
+
 __author__ = "Spectra Team"
 
 # Import core explicitly to help with pytest resolution issues

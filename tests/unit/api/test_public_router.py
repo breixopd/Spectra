@@ -150,21 +150,86 @@ class TestRegisterEndpoint:
         superuser_result.scalar_one_or_none.return_value = "admin-id"
         uniq = MagicMock()
         uniq.scalar_one_or_none.return_value = None
-        default_plan = MagicMock()
-        default_plan.scalar_one_or_none.return_value = None
-        fallback_plan = MagicMock()
-        fallback_plan.scalar_one_or_none.return_value = None
         advisory_lock_result = MagicMock()
         latest_hash_result = MagicMock()
         latest_hash_result.scalar_one_or_none.return_value = None
-        maker, _ = _mock_session_ctx(
-            [superuser_result, uniq, default_plan, fallback_plan, advisory_lock_result, latest_hash_result]
-        )
+        maker, _ = _mock_session_ctx([superuser_result, uniq, advisory_lock_result, latest_hash_result])
 
         body = RegisterRequest(username="newuser", email="new@example.com", password="StrongP4ss!")
-        with patch("app.api.routers.public.async_session_maker", maker):
+        with (
+            patch("app.api.routers.public.async_session_maker", maker),
+            patch(
+                "app.api.routers.public.PlanRepository.get_self_service_registration_plan",
+                new=AsyncMock(return_value=None),
+            ),
+            patch("app.api.routers.public.sync_user_plan_mirror", new=AsyncMock()),
+        ):
             result = await register_user.__wrapped__(_fake_request(), body, Response())
         assert "created" in result["detail"].lower()
+
+    async def test_register_without_self_service_plan_leaves_user_unassigned(self):
+        from app.api.routers.public import RegisterRequest, register_user
+        from app.models.plan import Subscription
+        from app.models.user import User
+
+        superuser_result = MagicMock()
+        superuser_result.scalar_one_or_none.return_value = "admin-id"
+        uniq = MagicMock()
+        uniq.scalar_one_or_none.return_value = None
+        advisory_lock_result = MagicMock()
+        latest_hash_result = MagicMock()
+        latest_hash_result.scalar_one_or_none.return_value = None
+        maker, mock_session = _mock_session_ctx([superuser_result, uniq, advisory_lock_result, latest_hash_result])
+
+        body = RegisterRequest(username="unassigned", email="unassigned@example.com", password="StrongP4ss!")
+        with (
+            patch("app.api.routers.public.async_session_maker", maker),
+            patch(
+                "app.api.routers.public.PlanRepository.get_self_service_registration_plan",
+                new=AsyncMock(return_value=None),
+            ),
+            patch("app.api.routers.public.sync_user_plan_mirror", new=AsyncMock()) as sync_mock,
+        ):
+            await register_user.__wrapped__(_fake_request(), body, Response())
+
+        added = [call.args[0] for call in mock_session.add.call_args_list]
+        assert any(isinstance(obj, User) and obj.plan_id is None for obj in added)
+        assert not any(isinstance(obj, Subscription) for obj in added)
+        sync_mock.assert_not_awaited()
+
+    async def test_register_with_self_service_plan_creates_subscription(self):
+        from app.api.routers.public import RegisterRequest, register_user
+        from app.models.plan import Subscription
+
+        superuser_result = MagicMock()
+        superuser_result.scalar_one_or_none.return_value = "admin-id"
+        uniq = MagicMock()
+        uniq.scalar_one_or_none.return_value = None
+        advisory_lock_result = MagicMock()
+        latest_hash_result = MagicMock()
+        latest_hash_result.scalar_one_or_none.return_value = None
+        maker, mock_session = _mock_session_ctx([superuser_result, uniq, advisory_lock_result, latest_hash_result])
+
+        plan = MagicMock()
+        plan.id = "plan-self-service"
+
+        body = RegisterRequest(username="assigned", email="assigned@example.com", password="StrongP4ss!")
+        with (
+            patch("app.api.routers.public.async_session_maker", maker),
+            patch(
+                "app.api.routers.public.PlanRepository.get_self_service_registration_plan",
+                new=AsyncMock(return_value=plan),
+            ),
+            patch("app.api.routers.public.sync_user_plan_mirror", new=AsyncMock()) as sync_mock,
+        ):
+            await register_user.__wrapped__(_fake_request(), body, Response())
+
+        added = [call.args[0] for call in mock_session.add.call_args_list]
+        subscriptions = [obj for obj in added if isinstance(obj, Subscription)]
+        assert len(subscriptions) == 1
+        assert subscriptions[0].plan_id == "plan-self-service"
+        assert subscriptions[0].status == "active"
+        sync_mock.assert_awaited_once()
 
     async def test_register_duplicate(self):
         from fastapi import HTTPException

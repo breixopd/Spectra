@@ -14,11 +14,10 @@ from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
 
 from fastapi import FastAPI, Response, status
-from sqlalchemy import text
 
-from app.core.advisory_locks import stable_lock_id
+from app.core.advisory_locks import advisory_lock_owner, stable_lock_id
 from app.core.constants import SECONDS_PER_HOUR
-from app.core.database import async_session_maker
+from app.core.database import advisory_lock_connection, async_session_maker
 from app.core.tasks import create_safe_task
 
 logger = logging.getLogger(__name__)
@@ -56,14 +55,6 @@ _SCHEDULER_TASK_SPECS: tuple[tuple[str, str], ...] = (
     ("disk_monitor", "_disk_monitor"),
     ("image_update_check", "_image_update_check"),
 )
-
-
-async def _try_advisory_lock(session, lock_id: int) -> bool:
-    """Attempt a non-blocking PostgreSQL advisory lock. Returns True if acquired."""
-    result = await session.execute(text("SELECT pg_try_advisory_lock(:lock_id)"), {"lock_id": lock_id})
-    return bool(result.scalar())
-
-
 class SchedulerService:
     """Manages periodic background tasks."""
 
@@ -123,14 +114,17 @@ class SchedulerService:
         """Check for stale sandbox containers and clean them up. Runs every 60s."""
         while self.running:
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _SANDBOX_WATCHDOG_LOCK_ID):
+                async with advisory_lock_owner(
+                    _SANDBOX_WATCHDOG_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         await asyncio.sleep(60)
                         continue
 
-                from app.core.background_tasks import sandbox_watchdog_loop
+                    from app.core.background_tasks import sandbox_watchdog_loop
 
-                await sandbox_watchdog_loop()
+                    await sandbox_watchdog_loop()
             except Exception:
                 logger.exception("Sandbox watchdog error")
             await asyncio.sleep(60)
@@ -147,16 +141,16 @@ class SchedulerService:
                 break
 
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _QUOTA_LOCK_ID):
+                async with advisory_lock_owner(_QUOTA_LOCK_ID, connection_factory=advisory_lock_connection) as lock_owner:
+                    if lock_owner is None:
                         logger.debug("Quota reset lock not acquired — skipping this iteration")
                         continue
 
-                from app.services.billing.usage_tracker import UsageTracker
+                    from app.services.billing.usage_tracker import UsageTracker
 
-                tracker = UsageTracker()
-                await tracker.reset_daily_counters()
-                logger.info("Daily quota counters reset")
+                    tracker = UsageTracker()
+                    await tracker.reset_daily_counters()
+                    logger.info("Daily quota counters reset")
             except Exception:
                 logger.exception("Quota reset error")
 
@@ -164,16 +158,19 @@ class SchedulerService:
         """Collect and aggregate metrics. Runs every 30s."""
         while self.running:
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _METRICS_COLLECTOR_LOCK_ID):
+                async with advisory_lock_owner(
+                    _METRICS_COLLECTOR_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         await asyncio.sleep(30)
                         continue
 
-                from app.core.metrics_store import get_metrics_store
+                    from app.core.metrics_store import get_metrics_store
 
-                store = get_metrics_store()
-                if store:
-                    await store.collect()
+                    store = get_metrics_store()
+                    if store:
+                        await store.collect()
             except Exception:
                 logger.exception("Metrics collection error")
             await asyncio.sleep(30)
@@ -182,20 +179,23 @@ class SchedulerService:
         """Report own health status periodically. Runs every 15s."""
         while self.running:
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _HEALTH_REPORTER_LOCK_ID):
+                async with advisory_lock_owner(
+                    _HEALTH_REPORTER_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         await asyncio.sleep(15)
                         continue
 
-                from app.core.cache import get_cache
+                    from app.core.cache import get_cache
 
-                cache = get_cache()
-                if cache:
-                    await cache.set(
-                        "spectra:service:scheduler:heartbeat",
-                        {"status": "running", "timestamp": datetime.now(UTC).isoformat()},
-                        ttl=60,
-                    )
+                    cache = get_cache()
+                    if cache:
+                        await cache.set(
+                            "spectra:service:scheduler:heartbeat",
+                            {"status": "running", "timestamp": datetime.now(UTC).isoformat()},
+                            ttl=60,
+                        )
             except Exception:
                 logger.exception("Health reporter cache write failed")
             await asyncio.sleep(15)
@@ -211,8 +211,8 @@ class SchedulerService:
                 continue
 
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _BACKUP_LOCK_ID):
+                async with advisory_lock_owner(_BACKUP_LOCK_ID, connection_factory=advisory_lock_connection) as lock_owner:
+                    if lock_owner is None:
                         logger.debug("Backup scheduler lock not acquired — skipping this iteration")
                         await asyncio.sleep(settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR)
                         continue
@@ -234,21 +234,21 @@ class SchedulerService:
                             except (ValueError, TypeError) as e:
                                 logger.debug("Could not parse last_backup_timestamp: %s", e)
 
-                from app.services.infrastructure.backup import BackupService
+                    from app.services.infrastructure.backup import BackupService
 
-                svc = BackupService()
-                result = await svc.create_backup()
-                logger.info("Scheduled backup: %s", result.get("status"))
+                    svc = BackupService()
+                    result = await svc.create_backup()
+                    logger.info("Scheduled backup: %s", result.get("status"))
 
-                from app.core.cache import get_cache as _get_cache
+                    from app.core.cache import get_cache as _get_cache
 
-                _cache = _get_cache()
-                if _cache:
-                    await _cache.set(
-                        "last_backup_timestamp",
-                        datetime.now(UTC).isoformat(),
-                        ttl=int(settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR * 2),
-                    )
+                    _cache = _get_cache()
+                    if _cache:
+                        await _cache.set(
+                            "last_backup_timestamp",
+                            datetime.now(UTC).isoformat(),
+                            ttl=int(settings.BACKUP_SCHEDULE_HOURS * SECONDS_PER_HOUR * 2),
+                        )
             except Exception:
                 logger.exception("Scheduled backup failed")
 
@@ -258,14 +258,17 @@ class SchedulerService:
         """Delegate to the shared cache_cleanup_loop with automatic restart on failure."""
         while self.running:
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _CACHE_CLEANUP_LOCK_ID):
+                async with advisory_lock_owner(
+                    _CACHE_CLEANUP_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         await asyncio.sleep(60)
                         continue
 
-                from app.core.background_tasks import cache_cleanup_loop
+                    from app.core.background_tasks import cache_cleanup_loop
 
-                await cache_cleanup_loop()
+                    await cache_cleanup_loop()
             except asyncio.CancelledError:
                 break
             except Exception:
@@ -276,14 +279,17 @@ class SchedulerService:
         """Delegate to the shared periodic_cleanup_loop with automatic restart on failure."""
         while self.running:
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _PERIODIC_CLEANUP_LOCK_ID):
+                async with advisory_lock_owner(
+                    _PERIODIC_CLEANUP_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         await asyncio.sleep(60)
                         continue
 
-                from app.core.background_tasks import periodic_cleanup_loop
+                    from app.core.background_tasks import periodic_cleanup_loop
 
-                await periodic_cleanup_loop()
+                    await periodic_cleanup_loop()
             except asyncio.CancelledError:
                 break
             except Exception:
@@ -297,80 +303,83 @@ class SchedulerService:
             if not self.running:
                 break
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _CAPACITY_MONITOR_LOCK_ID):
+                async with advisory_lock_owner(
+                    _CAPACITY_MONITOR_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         continue
 
-                from app.core.config import get_settings
+                    from app.core.config import get_settings
 
-                settings = get_settings()
+                    settings = get_settings()
 
-                # Re-create AutoScaler each cycle to pick up runtime setting changes
-                scaler = None
-                if settings.AUTOSCALE_ENABLED:
-                    from app.services.scaling.auto_scaler import AutoScaler
-                    from app.services.scaling.backends import DockerSwarmBackend
-                    from app.services.scaling.config import AutoScalerConfig
-                    from app.services.scaling.notifiers import SpectraNotifier
+                    # Re-create AutoScaler each cycle to pick up runtime setting changes
+                    scaler = None
+                    if settings.AUTOSCALE_ENABLED:
+                        from app.services.scaling.auto_scaler import AutoScaler
+                        from app.services.scaling.backends import DockerSwarmBackend
+                        from app.services.scaling.config import AutoScalerConfig
+                        from app.services.scaling.notifiers import SpectraNotifier
 
-                    config = AutoScalerConfig.from_settings(settings)
-                    scaler = AutoScaler(config, DockerSwarmBackend(), SpectraNotifier())
+                        config = AutoScalerConfig.from_settings(settings)
+                        scaler = AutoScaler(config, DockerSwarmBackend(), SpectraNotifier())
 
-                # --- Auto-scaling with real metrics ---
-                if scaler is not None:
-                    from app.services.scaling.metrics_collector import MetricsCollector
+                    # --- Auto-scaling with real metrics ---
+                    if scaler is not None:
+                        from app.services.scaling.metrics_collector import MetricsCollector
 
-                    collector = MetricsCollector()
-                    cluster_metrics = await collector.collect_all()
-                    decisions = await scaler.evaluate_and_execute(cluster_metrics)
-                    for decision in decisions:
-                        if decision.action != "none":
-                            await self._send_capacity_alert({
-                                "event": f"auto_scaled_{decision.action}",
-                                "service": decision.service,
-                                "replicas": f"{decision.current_replicas} → {decision.desired_replicas}",
-                                "reason": decision.reason,
-                                "utilization_pct": 0,
-                                "total_used": 0,
-                                "total_capacity": 0,
-                            })
+                        collector = MetricsCollector()
+                        cluster_metrics = await collector.collect_all()
+                        decisions = await scaler.evaluate_and_execute(cluster_metrics)
+                        for decision in decisions:
+                            if decision.action != "none":
+                                await self._send_capacity_alert({
+                                    "event": f"auto_scaled_{decision.action}",
+                                    "service": decision.service,
+                                    "replicas": f"{decision.current_replicas} → {decision.desired_replicas}",
+                                    "reason": decision.reason,
+                                    "utilization_pct": 0,
+                                    "total_used": 0,
+                                    "total_capacity": 0,
+                                })
 
-                # --- Capacity warnings (always active) ---
-                from app.models.server_node import ServerNode
+                    # --- Capacity warnings (always active) ---
+                    from app.models.server_node import ServerNode
 
-                async with async_session_maker() as session:
-                    from sqlalchemy import select as sa_select
+                    async with async_session_maker() as session:
+                        from sqlalchemy import select as sa_select
 
-                    result = await session.execute(
-                        sa_select(ServerNode).where(ServerNode.is_active)
-                    )
-                    nodes = result.scalars().all()
+                        result = await session.execute(
+                            sa_select(ServerNode).where(ServerNode.is_active)
+                        )
+                        nodes = result.scalars().all()
 
-                if not nodes:
-                    continue
+                    if not nodes:
+                        continue
 
-                from app.services.resource_manager import ResourceManager
+                    from app.services.resource_manager import ResourceManager
 
-                status = await ResourceManager.check_network_capacity(nodes)
+                    status = await ResourceManager.check_network_capacity(nodes)
 
-                if status["at_capacity"]:
-                    logger.critical(
-                        "CAPACITY ALERT: Network at full capacity (%d/%d containers, %.1f%%)",
-                        status["total_used"],
-                        status["total_capacity"],
-                        status["utilization_pct"],
-                    )
-                    from app.services.infrastructure.storage_monitor import StorageMonitor
+                    if status["at_capacity"]:
+                        logger.critical(
+                            "CAPACITY ALERT: Network at full capacity (%d/%d containers, %.1f%%)",
+                            status["total_used"],
+                            status["total_capacity"],
+                            status["utilization_pct"],
+                        )
+                        from app.services.infrastructure.storage_monitor import StorageMonitor
 
-                    if StorageMonitor.should_alert("capacity_at_full"):
-                        await self._send_capacity_alert(status)
-                elif status["utilization_pct"] > 80:
-                    logger.warning(
-                        "Capacity warning: %.1f%% utilization (%d/%d)",
-                        status["utilization_pct"],
-                        status["total_used"],
-                        status["total_capacity"],
-                    )
+                        if StorageMonitor.should_alert("capacity_at_full"):
+                            await self._send_capacity_alert(status)
+                    elif status["utilization_pct"] > 80:
+                        logger.warning(
+                            "Capacity warning: %.1f%% utilization (%d/%d)",
+                            status["utilization_pct"],
+                            status["total_used"],
+                            status["total_capacity"],
+                        )
             except Exception as e:
                 logger.debug("Capacity monitor: %s", e)
 
@@ -401,27 +410,32 @@ class SchedulerService:
             if not self.running:
                 break
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _DB_MAINTENANCE_LOCK_ID):
+                async with advisory_lock_owner(
+                    _DB_MAINTENANCE_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         logger.debug("DB maintenance lock not acquired — skipping")
                         continue
 
-                from sqlalchemy.ext.asyncio import create_async_engine
+                    from sqlalchemy.ext.asyncio import create_async_engine
 
-                engine = create_async_engine(
-                    settings.DATABASE_URL.get_secret_value(),
-                    isolation_level="AUTOCOMMIT",
-                    pool_pre_ping=True,
-                    pool_recycle=300,
-                )
-                VACUUM_TABLES = frozenset({"missions", "findings", "audit_logs", "job_queue", "cache_entries"})
-                async with engine.connect() as conn:
-                    for table in VACUUM_TABLES:
-                        if not table.isidentifier():
-                            raise ValueError(f"Invalid table name: {table}")
-                        await conn.execute(text(f"VACUUM ANALYZE {table}"))
-                await engine.dispose()
-                logger.info("DB maintenance completed: VACUUM ANALYZE on key tables")
+                    from sqlalchemy import text
+
+                    engine = create_async_engine(
+                        settings.DATABASE_URL.get_secret_value(),
+                        isolation_level="AUTOCOMMIT",
+                        pool_pre_ping=True,
+                        pool_recycle=300,
+                    )
+                    VACUUM_TABLES = frozenset({"missions", "findings", "audit_logs", "job_queue", "cache_entries"})
+                    async with engine.connect() as conn:
+                        for table in VACUUM_TABLES:
+                            if not table.isidentifier():
+                                raise ValueError(f"Invalid table name: {table}")
+                            await conn.execute(text(f"VACUUM ANALYZE {table}"))
+                    await engine.dispose()
+                    logger.info("DB maintenance completed: VACUUM ANALYZE on key tables")
             except Exception as e:
                 logger.warning("DB maintenance failed: %s", e)
 
@@ -435,29 +449,29 @@ class SchedulerService:
             if not self.running:
                 break
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _STALE_JOB_LOCK_ID):
+                async with advisory_lock_owner(_STALE_JOB_LOCK_ID, connection_factory=advisory_lock_connection) as lock_owner:
+                    if lock_owner is None:
                         continue
 
-                from app.core.queue import PostgresJobQueue
+                    from app.core.queue import PostgresJobQueue
 
-                mgr = PostgresJobQueue()
-                recovered = await mgr.recover_stale_jobs(max_age_minutes=30)
-                if recovered:
-                    logger.info("Recovered %d stale job(s)", recovered)
+                    mgr = PostgresJobQueue()
+                    recovered = await mgr.recover_stale_jobs(max_age_minutes=30)
+                    if recovered:
+                        logger.info("Recovered %d stale job(s)", recovered)
 
-                # Check for dead-letter jobs and alert
-                dlq_jobs = await mgr.list_dead_letter_jobs(limit=1)
-                if dlq_jobs:
-                    dlq_count = len(await mgr.list_dead_letter_jobs(limit=100))
-                    logger.warning("Dead-letter queue has %d jobs", dlq_count)
-                    await self._send_capacity_alert({
-                        "event": "dead_letter_alert",
-                        "message": f"{dlq_count} jobs in dead-letter queue",
-                        "utilization_pct": 0,
-                        "total_used": dlq_count,
-                        "total_capacity": 0,
-                    })
+                    # Check for dead-letter jobs and alert
+                    dlq_jobs = await mgr.list_dead_letter_jobs(limit=1)
+                    if dlq_jobs:
+                        dlq_count = len(await mgr.list_dead_letter_jobs(limit=100))
+                        logger.warning("Dead-letter queue has %d jobs", dlq_count)
+                        await self._send_capacity_alert({
+                            "event": "dead_letter_alert",
+                            "message": f"{dlq_count} jobs in dead-letter queue",
+                            "utilization_pct": 0,
+                            "total_used": dlq_count,
+                            "total_capacity": 0,
+                        })
             except Exception as e:
                 logger.warning("Stale job recovery failed: %s", e)
 
@@ -471,16 +485,19 @@ class SchedulerService:
             if not self.running:
                 break
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _EXPLOIT_REFRESH_LOCK_ID):
+                async with advisory_lock_owner(
+                    _EXPLOIT_REFRESH_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         logger.debug("Exploit DB refresh lock not acquired — skipping")
                         continue
 
-                from app.services.exploit_db import get_exploit_db
+                    from app.services.exploit_db import get_exploit_db
 
-                db = get_exploit_db()
-                stats = await db.update()
-                logger.info("Exploit DB refreshed: %s", stats)
+                    db = get_exploit_db()
+                    stats = await db.update()
+                    logger.info("Exploit DB refreshed: %s", stats)
             except Exception as e:
                 logger.warning("Exploit DB refresh failed: %s", e)
 
@@ -495,29 +512,32 @@ class SchedulerService:
             if not self.running:
                 break
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _DOCKER_CLEANUP_LOCK_ID):
+                async with advisory_lock_owner(
+                    _DOCKER_CLEANUP_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         logger.debug("Docker cleanup lock not acquired — skipping")
                         continue
 
-                from app.services.scaling.docker_client import (
-                    prune_containers,
-                    prune_images,
-                    prune_volumes,
-                )
+                    from app.services.scaling.docker_client import (
+                        prune_containers,
+                        prune_images,
+                        prune_volumes,
+                    )
 
-                # Prune exited containers
-                await prune_containers(filters={"until": ["48h"]})
-                # Prune dangling images
-                await prune_images(filters={"until": ["168h"]})
-                # Prune dangling volumes (only truly orphaned)
-                await prune_volumes()
-                # Prune exited Swarm task containers
-                await prune_containers(filters={
-                    "label": ["com.docker.swarm.task"],
-                    "status": ["exited"],
-                })
-                logger.info("Docker cleanup completed: pruned containers, images, volumes, swarm tasks")
+                    # Prune exited containers
+                    await prune_containers(filters={"until": ["48h"]})
+                    # Prune dangling images
+                    await prune_images(filters={"until": ["168h"]})
+                    # Prune dangling volumes (only truly orphaned)
+                    await prune_volumes()
+                    # Prune exited Swarm task containers
+                    await prune_containers(filters={
+                        "label": ["com.docker.swarm.task"],
+                        "status": ["exited"],
+                    })
+                    logger.info("Docker cleanup completed: pruned containers, images, volumes, swarm tasks")
             except Exception as e:
                 logger.warning("Docker cleanup failed: %s", e)
 
@@ -531,30 +551,33 @@ class SchedulerService:
             if not self.running:
                 break
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _IMAGE_UPDATE_LOCK_ID):
+                async with advisory_lock_owner(
+                    _IMAGE_UPDATE_LOCK_ID,
+                    connection_factory=advisory_lock_connection,
+                ) as lock_owner:
+                    if lock_owner is None:
                         logger.debug("Image update lock not acquired — skipping")
                         continue
 
-                from app.services.scaling.image_updater import check_and_update_services
+                    from app.services.scaling.image_updater import check_and_update_services
 
-                results = await check_and_update_services(apply=settings.IMAGE_AUTO_UPDATE)
-                if results:
-                    for r in results:
-                        if r.success and not r.error:
-                            logger.info("Auto-updated %s: %s → %s", r.service, r.old_digest, r.new_digest)
-                            await self._send_update_notification(
-                                f"Auto-updated {r.service}",
-                                f"Digest: {r.old_digest} → {r.new_digest}",
-                                level="info",
-                            )
-                        elif not r.success:
-                            logger.error("Auto-update failed for %s: %s", r.service, r.error)
-                            await self._send_update_notification(
-                                f"Auto-update failed: {r.service}",
-                                r.error,
-                                level="error",
-                            )
+                    results = await check_and_update_services(apply=settings.IMAGE_AUTO_UPDATE)
+                    if results:
+                        for r in results:
+                            if r.success and not r.error:
+                                logger.info("Auto-updated %s: %s → %s", r.service, r.old_digest, r.new_digest)
+                                await self._send_update_notification(
+                                    f"Auto-updated {r.service}",
+                                    f"Digest: {r.old_digest} → {r.new_digest}",
+                                    level="info",
+                                )
+                            elif not r.success:
+                                logger.error("Auto-update failed for %s: %s", r.service, r.error)
+                                await self._send_update_notification(
+                                    f"Auto-update failed: {r.service}",
+                                    r.error,
+                                    level="error",
+                                )
             except Exception:
                 logger.exception("Image update check error")
 
@@ -581,31 +604,31 @@ class SchedulerService:
             if not self.running:
                 break
             try:
-                async with async_session_maker() as session:
-                    if not await _try_advisory_lock(session, _DISK_MONITOR_LOCK_ID):
+                async with advisory_lock_owner(_DISK_MONITOR_LOCK_ID, connection_factory=advisory_lock_connection) as lock_owner:
+                    if lock_owner is None:
                         continue
 
-                import shutil
+                    import shutil
 
-                usage = shutil.disk_usage("/")
-                free_pct = usage.free / usage.total * 100
-                if free_pct < 10:
-                    logger.critical(
-                        "DISK SPACE CRITICAL: %.1f%% free (%d MB remaining)",
-                        free_pct,
-                        usage.free // (1024 * 1024),
-                    )
-                    if StorageMonitor.should_alert("disk_space_critical"):
-                        await self._send_capacity_alert({
-                            "event": "disk_space_critical",
-                            "free_pct": round(free_pct, 1),
-                            "free_mb": usage.free // (1024 * 1024),
-                            "utilization_pct": round(100 - free_pct, 1),
-                            "total_used": (usage.total - usage.free) // (1024 * 1024),
-                            "total_capacity": usage.total // (1024 * 1024),
-                        })
-                elif free_pct < 20:
-                    logger.warning("Disk space low: %.1f%% free", free_pct)
+                    usage = shutil.disk_usage("/")
+                    free_pct = usage.free / usage.total * 100
+                    if free_pct < 10:
+                        logger.critical(
+                            "DISK SPACE CRITICAL: %.1f%% free (%d MB remaining)",
+                            free_pct,
+                            usage.free // (1024 * 1024),
+                        )
+                        if StorageMonitor.should_alert("disk_space_critical"):
+                            await self._send_capacity_alert({
+                                "event": "disk_space_critical",
+                                "free_pct": round(free_pct, 1),
+                                "free_mb": usage.free // (1024 * 1024),
+                                "utilization_pct": round(100 - free_pct, 1),
+                                "total_used": (usage.total - usage.free) // (1024 * 1024),
+                                "total_capacity": usage.total // (1024 * 1024),
+                            })
+                    elif free_pct < 20:
+                        logger.warning("Disk space low: %.1f%% free", free_pct)
             except Exception as e:
                 logger.debug("Disk monitor: %s", e)
 
@@ -652,17 +675,13 @@ async def _leader_election_loop(scheduler: SchedulerService) -> None:
     """Try to acquire the global scheduler leader lock; stand by if another replica holds it."""
     while True:
         try:
-            async with async_session_maker() as session:
-                is_leader = await _try_advisory_lock(session, _SCHEDULER_LEADER_LOCK_ID)
-                if is_leader:
+            async with advisory_lock_owner(
+                _SCHEDULER_LEADER_LOCK_ID,
+                connection_factory=advisory_lock_connection,
+            ) as lock_owner:
+                if lock_owner is not None:
                     logger.info("Scheduler acquired leader lock — starting tasks")
-                    try:
-                        await scheduler.start()
-                    finally:
-                        await session.execute(
-                            text("SELECT pg_advisory_unlock(:lock_id)"),
-                            {"lock_id": _SCHEDULER_LEADER_LOCK_ID},
-                        )
+                    await scheduler.start()
                     return  # start() runs until stopped
             # Not leader — stand by
             logger.info("Another scheduler is leader, standing by...")

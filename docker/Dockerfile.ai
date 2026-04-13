@@ -31,6 +31,7 @@ LABEL org.opencontainers.image.title="Spectra AI" \
       org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
       org.opencontainers.image.vendor="breixopd14" \
       org.opencontainers.image.version="${BUILD_VERSION}"
+ENV SPECTRA_BUILD_VERSION="${BUILD_VERSION}"
 
 WORKDIR /app
 

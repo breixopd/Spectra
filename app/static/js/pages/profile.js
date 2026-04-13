@@ -225,9 +225,16 @@ async function loadPlan() {
         const user = meResult.data;
         const siteSettings = !settingsResult.error ? settingsResult.data : {};
         const paymentProvider = siteSettings.payment_provider || 'manual';
-        const planName = user.plan_name || user.plan?.display_name || 'Default';
+        const hasEntitlement = !!user.plan;
+        const subscription = user.subscription || {};
+        const subscriptionStatus = subscription.status || '';
+        const canManageBilling = !!subscription.can_manage_billing;
+        const hasPaymentIssue = subscriptionStatus === 'past_due';
+        const planName = hasEntitlement
+            ? (user.plan_name || user.plan?.display_name || 'Unnamed plan')
+            : (hasPaymentIssue ? 'Billing recovery required' : 'No active plan');
         const plan = user.plan || {};
-        const currentPlanId = plan.id || user.plan_id || '';
+        const currentPlanId = hasEntitlement ? (plan.id || user.plan_id || '') : '';
         const features = plan.features || {};
         const featureHtml = Object.entries(features)
             .filter(([k, v]) => v && v !== false)
@@ -240,27 +247,42 @@ async function loadPlan() {
             }).join(' ');
 
         let actionsHtml = '';
-        if (paymentProvider === 'stripe') {
+        if (paymentProvider === 'stripe' && canManageBilling) {
+            const billingButtonLabel = hasPaymentIssue ? 'Recover Subscription' : 'Manage Billing';
+            const billingButtonClasses = hasPaymentIssue
+                ? 'bg-amber-600 hover:bg-amber-500'
+                : 'bg-slate-700 hover:bg-slate-600';
+            actionsHtml = `
+                <div class="flex gap-2 mt-4 pt-3 border-t border-white/5">
+                    <button data-action="openBillingPortal" class="px-3 py-1.5 ${billingButtonClasses} text-white text-xs font-medium rounded-lg transition-colors">
+                        <i data-lucide="credit-card" class="w-3.5 h-3.5 inline-block mr-1"></i> ${billingButtonLabel}
+                    </button>
+                </div>`;
+        } else if (paymentProvider === 'stripe') {
             actionsHtml = `
                 <div class="flex gap-2 mt-4 pt-3 border-t border-white/5">
                     <button data-action="showAvailablePlans" class="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg transition-colors">
-                        <i data-lucide="arrow-up" class="w-3.5 h-3.5 inline-block mr-1"></i> Change Plan
-                    </button>
-                    <button data-action="openBillingPortal" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium rounded-lg transition-colors">
-                        <i data-lucide="credit-card" class="w-3.5 h-3.5 inline-block mr-1"></i> Manage Billing
+                        <i data-lucide="credit-card" class="w-3.5 h-3.5 inline-block mr-1"></i> Choose Plan
                     </button>
                 </div>`;
-        } else if (paymentProvider === 'crypto') {
+        } else if (paymentProvider === 'crypto' && hasEntitlement) {
             actionsHtml = `
                 <div class="flex gap-2 mt-4 pt-3 border-t border-white/5">
                     <button data-action="showAvailablePlans" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg transition-colors">
                         <i data-lucide="bitcoin" class="w-3.5 h-3.5 inline-block mr-1"></i> Pay with Crypto
                     </button>
                 </div>`;
+        } else if (paymentProvider === 'crypto') {
+            actionsHtml = `
+                <div class="flex gap-2 mt-4 pt-3 border-t border-white/5">
+                    <button data-action="showAvailablePlans" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg transition-colors">
+                        <i data-lucide="bitcoin" class="w-3.5 h-3.5 inline-block mr-1"></i> Browse Plans
+                    </button>
+                </div>`;
         } else if (paymentProvider === 'manual') {
             actionsHtml = `
                 <div class="mt-4 pt-3 border-t border-white/5">
-                    <p class="text-xs text-slate-500"><i data-lucide="info" class="w-3.5 h-3.5 inline-block mr-1"></i> Your plan is managed by your administrator.</p>
+                    <p class="text-xs text-slate-500"><i data-lucide="info" class="w-3.5 h-3.5 inline-block mr-1"></i> ${hasEntitlement ? 'Your plan is managed by your administrator.' : 'No plan is assigned yet. Your administrator manages access.'}</p>
                 </div>`;
         } else {
             actionsHtml = `
@@ -269,31 +291,49 @@ async function loadPlan() {
                 </div>`;
         }
 
+        const statusBadge = hasEntitlement
+            ? '<span class="px-2 py-1 text-xs font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>'
+            : hasPaymentIssue
+                ? '<span class="px-2 py-1 text-xs font-medium rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">Past due</span>'
+            : '<span class="px-2 py-1 text-xs font-medium rounded bg-slate-700/60 text-slate-300 border border-white/10">None</span>';
+        const missionsLabel = hasEntitlement
+            ? escapeHtml(String(plan.max_missions_per_month || user.max_missions_per_month || 'Unlimited'))
+            : 'Not assigned';
+        const targetsLabel = hasEntitlement
+            ? escapeHtml(String(plan.max_targets || user.max_targets || 'Unlimited'))
+            : 'Not assigned';
+        const apiLabel = hasEntitlement
+            ? escapeHtml(String(plan.max_api_requests_per_hour || user.max_api_requests_per_hour || '—'))
+            : 'Not assigned';
+        const storageLabel = hasEntitlement && (plan.max_storage_mb || user.max_storage_mb)
+            ? `${escapeHtml(String(plan.max_storage_mb || user.max_storage_mb))} MB`
+            : 'Not assigned';
+
         container.innerHTML = `
             <div class="glass-panel rounded-lg p-4 border border-white/5">
                 <div class="flex items-center justify-between mb-3">
                     <div>
                         <div class="text-lg font-semibold text-white">${escapeHtml(planName)}</div>
-                        <div class="text-xs text-slate-500 mt-0.5">Current plan</div>
+                        <div class="text-xs text-slate-500 mt-0.5">${hasEntitlement ? 'Current plan' : hasPaymentIssue ? `Subscription recovery available${subscription.plan_display_name ? ` for ${escapeHtml(subscription.plan_display_name)}` : ''}` : 'No subscription-backed entitlement'}</div>
                     </div>
-                    <span class="px-2 py-1 text-xs font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+                    ${statusBadge}
                 </div>
                 <div class="grid grid-cols-2 gap-3 mt-4">
                     <div class="bg-slate-900/50 rounded p-3">
                         <div class="text-xs text-slate-500">Missions / month</div>
-                        <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(plan.max_missions_per_month || user.max_missions_per_month || 'Unlimited'))}</div>
+                        <div class="text-sm font-medium text-white mt-0.5">${missionsLabel}</div>
                     </div>
                     <div class="bg-slate-900/50 rounded p-3">
                         <div class="text-xs text-slate-500">Max targets</div>
-                        <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(plan.max_targets || user.max_targets || 'Unlimited'))}</div>
+                        <div class="text-sm font-medium text-white mt-0.5">${targetsLabel}</div>
                     </div>
                     <div class="bg-slate-900/50 rounded p-3">
                         <div class="text-xs text-slate-500">API req / hour</div>
-                        <div class="text-sm font-medium text-white mt-0.5">${escapeHtml(String(plan.max_api_requests_per_hour || user.max_api_requests_per_hour || '—'))}</div>
+                        <div class="text-sm font-medium text-white mt-0.5">${apiLabel}</div>
                     </div>
                     <div class="bg-slate-900/50 rounded p-3">
                         <div class="text-xs text-slate-500">Storage</div>
-                        <div class="text-sm font-medium text-white mt-0.5">${(plan.max_storage_mb || user.max_storage_mb) ? escapeHtml(String(plan.max_storage_mb || user.max_storage_mb)) + ' MB' : '—'}</div>
+                        <div class="text-sm font-medium text-white mt-0.5">${storageLabel}</div>
                     </div>
                 </div>
                 ${featureHtml ? `<div class="flex flex-wrap gap-1.5 mt-4 pt-3 border-t border-white/5">${featureHtml}</div>` : ''}
@@ -319,7 +359,7 @@ async function showAvailablePlans() {
         const currentId = document.getElementById('plan-info')?.dataset?.currentPlanId || '';
         target.innerHTML = plans.map(p => {
             const isCurrent = p.id === currentId;
-            const hasPrice = !!p.stripe_price_id;
+            const checkoutAvailable = p.checkout_available === true;
             return `
                 <div class="glass-panel rounded-lg p-4 border ${isCurrent ? 'border-violet-500/40' : 'border-white/5'}">
                     <div class="flex items-center justify-between">
@@ -335,7 +375,7 @@ async function showAvailablePlans() {
                         <div>
                             ${isCurrent
                                 ? '<span class="px-2 py-1 text-xs font-medium rounded bg-violet-500/10 text-violet-400 border border-violet-500/20">Current</span>'
-                                : hasPrice
+                                : checkoutAvailable
                                     ? `<button data-action="startCheckout" data-value="${escapeHtml(String(p.id || ''))}" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg transition-colors">Select</button>`
                                     : '<span class="px-2 py-1 text-xs text-slate-500">Not available</span>'}
                         </div>

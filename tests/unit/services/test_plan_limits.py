@@ -1,6 +1,6 @@
 """Tests for plan limit enforcement."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -37,13 +37,18 @@ def _make_plan(
 class TestCheckMissionLimit:
     """Plan-based concurrent mission cap."""
 
-    async def test_no_plan_not_blocked(self):
+    async def test_no_active_subscription_blocked_403(self):
         from app.api.dependencies import check_mission_limit
 
         user = _make_user(plan_id=None)
         session = AsyncMock()
-        # Should not raise
-        await check_mission_limit(user, session)
+
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_mission_limit(user, session)
+
+        assert exc_info.value.status_code == 403
+        assert exc_info.value.detail == "No active subscription"
 
     async def test_admin_bypasses_limit(self):
         from app.api.dependencies import check_mission_limit
@@ -66,16 +71,13 @@ class TestCheckMissionLimit:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        # Mock plan lookup
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
-        # Mock active count query  — returns 1
         count_result = MagicMock()
         count_result.scalar.return_value = 1
 
-        session.execute = AsyncMock(side_effect=[plan_result, count_result])
+        session.execute = AsyncMock(return_value=count_result)
 
-        await check_mission_limit(user, session)
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            await check_mission_limit(user, session)
 
     async def test_at_limit_blocked_429(self):
         from app.api.dependencies import check_mission_limit
@@ -84,15 +86,14 @@ class TestCheckMissionLimit:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
         count_result = MagicMock()
         count_result.scalar.return_value = 2
 
-        session.execute = AsyncMock(side_effect=[plan_result, count_result])
+        session.execute = AsyncMock(return_value=count_result)
 
-        with pytest.raises(HTTPException) as exc_info:
-            await check_mission_limit(user, session)
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_mission_limit(user, session)
         assert exc_info.value.status_code == 429
         assert "max 2" in exc_info.value.detail
 
@@ -103,11 +104,10 @@ class TestCheckMissionLimit:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
-        session.execute = AsyncMock(return_value=plan_result)
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            await check_mission_limit(user, session)
 
-        await check_mission_limit(user, session)
+        session.execute.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
@@ -119,12 +119,18 @@ class TestCheckMissionLimit:
 class TestCheckTargetLimit:
     """Plan-based target cap."""
 
-    async def test_no_plan_not_blocked(self):
+    async def test_no_active_subscription_blocked_403(self):
         from app.api.dependencies import check_target_limit
 
         user = _make_user(plan_id=None)
         session = AsyncMock()
-        await check_target_limit(user, session)
+
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_target_limit(user, session)
+
+        assert exc_info.value.status_code == 403
+        assert exc_info.value.detail == "No active subscription"
 
     async def test_admin_bypasses_limit(self):
         from app.api.dependencies import check_target_limit
@@ -140,14 +146,13 @@ class TestCheckTargetLimit:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
         count_result = MagicMock()
         count_result.scalar.return_value = 5
 
-        session.execute = AsyncMock(side_effect=[plan_result, count_result])
+        session.execute = AsyncMock(return_value=count_result)
 
-        await check_target_limit(user, session)
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            await check_target_limit(user, session)
 
     async def test_at_limit_blocked_429(self):
         from app.api.dependencies import check_target_limit
@@ -156,15 +161,14 @@ class TestCheckTargetLimit:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
         count_result = MagicMock()
         count_result.scalar.return_value = 3
 
-        session.execute = AsyncMock(side_effect=[plan_result, count_result])
+        session.execute = AsyncMock(return_value=count_result)
 
-        with pytest.raises(HTTPException) as exc_info:
-            await check_target_limit(user, session)
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_target_limit(user, session)
         assert exc_info.value.status_code == 429
         assert "max 3" in exc_info.value.detail
 
@@ -175,11 +179,10 @@ class TestCheckTargetLimit:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
-        session.execute = AsyncMock(return_value=plan_result)
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            await check_target_limit(user, session)
 
-        await check_target_limit(user, session)
+        session.execute.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
@@ -191,12 +194,18 @@ class TestCheckTargetLimit:
 class TestCheckFeatureAllowed:
     """Feature gating by plan."""
 
-    async def test_no_plan_allows_all(self):
+    async def test_no_active_subscription_blocked_403(self):
         from app.api.dependencies import check_feature_allowed
 
         user = _make_user(plan_id=None)
         session = AsyncMock()
-        await check_feature_allowed(user, session, "advanced_scanning")
+
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_feature_allowed(user, session, "advanced_scanning")
+
+        assert exc_info.value.status_code == 403
+        assert exc_info.value.detail == "No active subscription"
 
     async def test_admin_bypasses_feature_gate(self):
         from app.api.dependencies import check_feature_allowed
@@ -212,11 +221,8 @@ class TestCheckFeatureAllowed:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
-        session.execute = AsyncMock(return_value=plan_result)
-
-        await check_feature_allowed(user, session, "advanced_scanning")
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            await check_feature_allowed(user, session, "advanced_scanning")
 
     async def test_feature_enabled_allowed(self):
         from app.api.dependencies import check_feature_allowed
@@ -225,11 +231,8 @@ class TestCheckFeatureAllowed:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
-        session.execute = AsyncMock(return_value=plan_result)
-
-        await check_feature_allowed(user, session, "advanced_scanning")
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            await check_feature_allowed(user, session, "advanced_scanning")
 
     async def test_feature_disabled_blocked_403(self):
         from app.api.dependencies import check_feature_allowed
@@ -238,12 +241,9 @@ class TestCheckFeatureAllowed:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
-        session.execute = AsyncMock(return_value=plan_result)
-
-        with pytest.raises(HTTPException) as exc_info:
-            await check_feature_allowed(user, session, "advanced_scanning")
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_feature_allowed(user, session, "advanced_scanning")
         assert exc_info.value.status_code == 403
         assert "advanced_scanning" in exc_info.value.detail
 
@@ -254,9 +254,6 @@ class TestCheckFeatureAllowed:
         user = _make_user(plan_id="plan-1")
         session = AsyncMock()
 
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = plan
-        session.execute = AsyncMock(return_value=plan_result)
-
-        # Feature not in dict → defaults to True (not blocked)
-        await check_feature_allowed(user, session, "advanced_scanning")
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            # Feature not in dict → defaults to True (not blocked)
+            await check_feature_allowed(user, session, "advanced_scanning")

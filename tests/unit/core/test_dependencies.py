@@ -112,12 +112,15 @@ class TestCheckMissionLimit:
         await check_mission_limit(user, session)
 
     @pytest.mark.asyncio
-    async def test_no_plan_id_no_limit(self):
+    async def test_no_active_subscription_raises_403(self):
         from app.api.dependencies import check_mission_limit
 
         user = _make_user(plan_id=None)
         session = AsyncMock()
-        await check_mission_limit(user, session)
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_mission_limit(user, session)
+        assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
     async def test_within_limit_passes(self):
@@ -127,15 +130,13 @@ class TestCheckMissionLimit:
         plan = _make_plan(max_concurrent_missions=5)
 
         session = AsyncMock()
-        # First call: _get_user_plan
-        mock_plan_result = MagicMock()
-        mock_plan_result.scalar_one_or_none.return_value = plan
         # Second call: count active missions
         mock_count_result = MagicMock()
         mock_count_result.scalar.return_value = 2
 
-        session.execute.side_effect = [mock_plan_result, mock_count_result]
-        await check_mission_limit(user, session)
+        session.execute.return_value = mock_count_result
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            await check_mission_limit(user, session)
 
     @pytest.mark.asyncio
     async def test_at_limit_raises_429(self):
@@ -145,15 +146,14 @@ class TestCheckMissionLimit:
         plan = _make_plan(max_concurrent_missions=3)
 
         session = AsyncMock()
-        mock_plan_result = MagicMock()
-        mock_plan_result.scalar_one_or_none.return_value = plan
         mock_count_result = MagicMock()
         mock_count_result.scalar.return_value = 3
 
-        session.execute.side_effect = [mock_plan_result, mock_count_result]
+        session.execute.return_value = mock_count_result
 
-        with pytest.raises(HTTPException) as exc_info:
-            await check_mission_limit(user, session)
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_mission_limit(user, session)
         assert exc_info.value.status_code == 429
 
 
@@ -179,13 +179,12 @@ class TestCheckTargetLimit:
         plan = _make_plan(max_targets=100)
 
         session = AsyncMock()
-        mock_plan_result = MagicMock()
-        mock_plan_result.scalar_one_or_none.return_value = plan
         mock_count_result = MagicMock()
         mock_count_result.scalar.return_value = 10
 
-        session.execute.side_effect = [mock_plan_result, mock_count_result]
-        await check_target_limit(user, session)
+        session.execute.return_value = mock_count_result
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            await check_target_limit(user, session)
 
     @pytest.mark.asyncio
     async def test_at_limit_raises_429(self):
@@ -195,15 +194,14 @@ class TestCheckTargetLimit:
         plan = _make_plan(max_targets=50)
 
         session = AsyncMock()
-        mock_plan_result = MagicMock()
-        mock_plan_result.scalar_one_or_none.return_value = plan
         mock_count_result = MagicMock()
         mock_count_result.scalar.return_value = 50
 
-        session.execute.side_effect = [mock_plan_result, mock_count_result]
+        session.execute.return_value = mock_count_result
 
-        with pytest.raises(HTTPException) as exc_info:
-            await check_target_limit(user, session)
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_target_limit(user, session)
         assert exc_info.value.status_code == 429
 
 
@@ -229,11 +227,8 @@ class TestCheckFeatureAllowed:
         plan = _make_plan(features={"exploit_crafting": True})
 
         session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = plan
-        session.execute.return_value = mock_result
-
-        await check_feature_allowed(user, session, "exploit_crafting")
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            await check_feature_allowed(user, session, "exploit_crafting")
 
     @pytest.mark.asyncio
     async def test_feature_disabled_raises_403(self):
@@ -243,12 +238,21 @@ class TestCheckFeatureAllowed:
         plan = _make_plan(features={"exploit_crafting": False})
 
         session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = plan
-        session.execute.return_value = mock_result
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=plan)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_feature_allowed(user, session, "exploit_crafting")
+        assert exc_info.value.status_code == 403
 
-        with pytest.raises(HTTPException) as exc_info:
-            await check_feature_allowed(user, session, "exploit_crafting")
+    @pytest.mark.asyncio
+    async def test_missing_subscription_blocks_feature(self):
+        from app.api.dependencies import check_feature_allowed
+
+        user = _make_user(plan_id=None)
+        session = AsyncMock()
+
+        with patch("app.api.dependencies.get_user_entitlement_plan", new=AsyncMock(return_value=None)):
+            with pytest.raises(HTTPException) as exc_info:
+                await check_feature_allowed(user, session, "exploit_crafting")
         assert exc_info.value.status_code == 403
 
 

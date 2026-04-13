@@ -25,6 +25,8 @@ from app.core.paths import data_path
 
 logger = logging.getLogger(__name__)
 
+DOCKER_APT_REPO_SIGNING_FINGERPRINT = "9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
+
 _VALID_HOSTNAME_RE = re.compile(
     r"^(?=.{1,253}\.?$)(?!-)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.(?!-)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.?$"
 )
@@ -342,9 +344,15 @@ else
     apt-get update -qq
     apt-get install -y -qq ca-certificates curl gnupg
     install -m 0755 -d /etc/apt/keyrings
-    if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
-        curl -fsSL "https://download.docker.com/linux/$(. /etc/os-release && echo "${ID}")/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    docker_key_tmp="$(mktemp)"
+    trap 'rm -f "${docker_key_tmp}"' EXIT
+    curl -fsSL "https://download.docker.com/linux/$(. /etc/os-release && echo "${ID}")/gpg" -o "${docker_key_tmp}"
+    docker_key_fingerprint="$(gpg --batch --show-keys --with-colons "${docker_key_tmp}" | awk -F: '/^fpr:/ {print $10; exit}')"
+    if [ "${docker_key_fingerprint}" != "@@DOCKER_FINGERPRINT@@" ]; then
+        echo "Unexpected Docker signing key fingerprint: ${docker_key_fingerprint}" >&2
+        exit 1
     fi
+    gpg --dearmor --yes -o /etc/apt/keyrings/docker.gpg "${docker_key_tmp}"
     chmod a+r /etc/apt/keyrings/docker.gpg
     . /etc/os-release
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-$UBUNTU_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
@@ -360,6 +368,7 @@ docker compose version >/dev/null 2>&1 || {
 }
 echo "Docker Compose: $(docker compose version)"
 """
+        install_script = install_script.replace("@@DOCKER_FINGERPRINT@@", DOCKER_APT_REPO_SIGNING_FINGERPRINT)
         return await self._run_ssh(ssh_base, f"bash -c {shlex.quote(install_script)}", logs)
 
     async def _deploy_services(self, ssh_base: list[str], services: list[str], logs: list[str]) -> int:

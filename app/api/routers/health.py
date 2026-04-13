@@ -30,6 +30,25 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+async def _probe_http_health(url: str, *, path: str) -> bool:
+    if not url:
+        return False
+
+    try:
+        import httpx
+    except ImportError:
+        logger.debug("Health check: httpx unavailable for %s%s", url, path)
+        return False
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{url.rstrip('/')}{path}")
+        return response.status_code == status.HTTP_200_OK
+    except Exception:
+        logger.debug("Health check: HTTP probe failed for %s%s", url, path, exc_info=True)
+        return False
+
+
 @router.get("/version", summary="Application version")
 async def get_version():
     return {"version": __version__}
@@ -222,7 +241,7 @@ async def health_check(
 @router.get(
     "/health/ready",
     summary="Readiness probe",
-    description="Check if all components (database, LLM, embeddings) are ready to serve traffic. Returns 503 if any is not ready.",
+    description="Check if the database, AI service, TensorZero, scheduler, worker, LLM, and embeddings are ready to serve traffic. Returns 503 if any is not ready.",
 )
 async def readiness_check(
     response: Response,
@@ -232,7 +251,16 @@ async def readiness_check(
     Readiness probe - checks if ALL components are ready to serve traffic.
     Returns 503 if any component is not ready.
     """
-    checks = {"database": False, "llm": False, "embeddings": False}
+    settings = _get_settings()
+    checks = {
+        "database": False,
+        "llm": False,
+        "embeddings": False,
+        "ai_service": False,
+        "tensorzero": False,
+        "scheduler": False,
+        "worker": False,
+    }
 
     # Database
     try:
@@ -260,6 +288,25 @@ async def readiness_check(
         checks["embeddings"] = emb["functional"]
     except (OSError, RuntimeError, ValueError):
         logger.debug("Health check: embeddings unavailable", exc_info=True)
+
+    checks["ai_service"] = await _probe_http_health(settings.AI_SERVICE_URL, path="/health")
+    if not checks["ai_service"]:
+        logger.debug("Health check: AI service unavailable")
+
+    checks["tensorzero"] = await _probe_http_health(
+        getattr(settings, "TENSORZERO_GATEWAY_URL", ""),
+        path="/health",
+    )
+    if not checks["tensorzero"]:
+        logger.debug("Health check: TensorZero unavailable")
+
+    checks["scheduler"] = await _probe_http_health(settings.SCHEDULER_SERVICE_URL, path="/health")
+    if not checks["scheduler"]:
+        logger.debug("Health check: scheduler unavailable")
+
+    checks["worker"] = await _probe_http_health(settings.WORKER_SERVICE_URL, path="/health")
+    if not checks["worker"]:
+        logger.debug("Health check: worker unavailable")
 
     all_ready = all(checks.values())
     result = {

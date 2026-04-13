@@ -63,13 +63,12 @@ jobs:
           python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"
       - name: Run unit tests with coverage
         run: |
+          # Full unit coverage last validated locally at 67.59%.
           python3 -m pytest tests/unit/ -q \
             --cov=app \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
-            # Keep the enforced floor aligned to the current baseline until a
-            # dedicated coverage improvement pass raises it.
-            --cov-fail-under=67
+            --cov-fail-under=67.4
         env:
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test"
           TENSORZERO_GATEWAY_URL: "http://localhost:3000"

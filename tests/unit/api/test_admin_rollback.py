@@ -47,6 +47,7 @@ def _make_snapshot(**overrides):
         "target_entity_type": "user",
         "target_entity_id": "u-target-1",
         "action": "update_role",
+        "before_state": "{}",
         "created_at": datetime(2026, 3, 1, 12, 0, tzinfo=UTC),
     }
     defaults.update(overrides)
@@ -123,7 +124,7 @@ async def test_apply_rollback_success(mock_rollback):
 @pytest.mark.asyncio
 @patch("app.api.routers.admin.rollback.rollback_snapshot", new_callable=AsyncMock)
 async def test_apply_rollback_value_error(mock_rollback):
-    mock_rollback.side_effect = ValueError("bad snapshot")
+    mock_rollback.side_effect = ValueError("Rollback cannot recreate a remotely cancelled Stripe subscription")
 
     app = _make_app()
     mock_session = AsyncMock()
@@ -132,8 +133,8 @@ async def test_apply_rollback_value_error(mock_rollback):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post("/rollback/snapshots/snap-bad/rollback")
 
-    assert resp.status_code == 400
-    assert "failed" in resp.json()["detail"].lower()
+    assert resp.status_code == 409
+    assert "cannot recreate" in resp.json()["detail"].lower()
 
 
 @pytest.mark.asyncio
@@ -180,6 +181,40 @@ async def test_list_snapshots_custom_limit(mock_get_all):
 
 
 @pytest.mark.asyncio
+@patch("app.api.routers.admin.rollback.get_all_snapshots", new_callable=AsyncMock)
+async def test_list_snapshots_marks_remote_stripe_restore_as_non_restorable(mock_get_all):
+    snap = _make_snapshot()
+    snap.before_state = '{"subscription": {"payment_provider": "stripe", "external_subscription_id": "sub_123"}}'
+    mock_get_all.return_value = [snap]
+
+    app = _make_app()
+    mock_session = AsyncMock()
+    _override_deps(app, _fake_user("admin"), mock_session)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        resp = await client.get("/rollback/snapshots")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body[0]["restorable"] is False
+    assert "stripe subscription" in body[0]["restore_error"].lower()
+
+
+@pytest.mark.asyncio
+async def test_describe_snapshot_restorability_blocks_remote_stripe_restore():
+    from app.services.system.rollback import describe_snapshot_restorability
+
+    snapshot = _make_snapshot()
+    snapshot.before_state = '{"subscription": {"payment_provider": "stripe", "external_subscription_id": "sub_123"}}'
+
+    restorable, restore_error = describe_snapshot_restorability(snapshot)
+
+    assert restorable is False
+    assert restore_error is not None
+    assert "stripe subscription" in restore_error.lower()
+
+
+@pytest.mark.asyncio
 async def test_list_snapshots_limit_exceeds_max():
     """Limit > 200 should fail validation."""
     app = _make_app()
@@ -190,3 +225,100 @@ async def test_list_snapshots_limit_exceeds_max():
         resp = await client.get("/rollback/snapshots?limit=999")
 
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_rollback_user_restores_subscription_state():
+    from app.services.system.rollback import _rollback_user
+
+    user = MagicMock()
+    user.id = "u-target-1"
+    user.email = "current@example.com"
+    user.is_active = True
+    user.role = "user"
+    user.is_superuser = False
+
+    subscription = MagicMock()
+    subscription.plan_id = "plan-new"
+    subscription.status = "cancelled"
+    subscription.payment_provider = "manual"
+    subscription.current_period_start = datetime(2026, 4, 13, 9, 0, tzinfo=UTC)
+    subscription.current_period_end = datetime(2026, 4, 13, 10, 0, tzinfo=UTC)
+    subscription.trial_ends_at = None
+    subscription.external_subscription_id = None
+    subscription.external_customer_id = None
+    subscription.metadata_ = {"source": "admin"}
+
+    user_lookup = MagicMock()
+    user_lookup.scalar_one_or_none.return_value = user
+    subscription_lookup = MagicMock()
+    subscription_lookup.scalar_one_or_none.return_value = subscription
+
+    session = AsyncMock()
+    session.add = MagicMock()
+    session.execute = AsyncMock(side_effect=[user_lookup, subscription_lookup])
+
+    before_state = {
+        "email": "original@example.com",
+        "is_active": True,
+        "role": "user",
+        "is_superuser": False,
+        "plan_id": "plan-old",
+        "subscription": {
+            "plan_id": "plan-old",
+            "status": "active",
+            "trial_ends_at": None,
+            "current_period_start": datetime(2026, 4, 12, 9, 0, tzinfo=UTC).isoformat(),
+            "current_period_end": None,
+            "external_subscription_id": None,
+            "external_customer_id": None,
+            "payment_provider": "manual",
+            "metadata": {"source": "admin"},
+        },
+    }
+
+    with patch("app.services.system.rollback.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock:
+        await _rollback_user(session, "u-target-1", before_state)
+
+    assert user.email == "original@example.com"
+    assert subscription.plan_id == "plan-old"
+    assert subscription.status == "active"
+    assert subscription.current_period_end is None
+    mirror_mock.assert_awaited_once_with(session, user=user)
+
+
+@pytest.mark.asyncio
+async def test_rollback_user_removes_created_subscription_when_snapshot_had_none():
+    from app.services.system.rollback import _rollback_user
+
+    user = MagicMock()
+    user.id = "u-target-2"
+    user.is_active = True
+    user.role = "user"
+    user.is_superuser = False
+
+    subscription = MagicMock()
+
+    user_lookup = MagicMock()
+    user_lookup.scalar_one_or_none.return_value = user
+    subscription_lookup = MagicMock()
+    subscription_lookup.scalar_one_or_none.return_value = subscription
+
+    session = AsyncMock()
+    session.add = MagicMock()
+    session.execute = AsyncMock(side_effect=[user_lookup, subscription_lookup, MagicMock()])
+
+    before_state = {
+        "is_active": True,
+        "role": "user",
+        "is_superuser": False,
+        "plan_id": None,
+        "subscription": None,
+    }
+
+    with patch("app.services.system.rollback.sync_user_plan_mirror", new=AsyncMock()) as mirror_mock:
+        await _rollback_user(session, "u-target-2", before_state)
+
+    delete_stmt = session.execute.await_args_list[2].args[0]
+    assert "DELETE FROM subscriptions" in str(delete_stmt)
+    mirror_mock.assert_awaited_once_with(session, user=user)

@@ -34,3 +34,18 @@ class PlanRepository(BaseRepository[Plan]):
     async def get_default_plan(self) -> Plan | None:
         """Get the default plan (is_default=True)."""
         return await self.find_one_by(is_default=True)
+
+    async def get_self_service_registration_plan(self) -> Plan | None:
+        """Get the active default plan explicitly eligible for self-registration."""
+        stmt = (
+            select(self.model)
+            .where(
+                self.model.is_active.is_(True),
+                self.model.is_default.is_(True),
+                self.model.allow_self_service_registration.is_(True),
+            )
+            .order_by(self.model.sort_order, self.model.created_at)
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()

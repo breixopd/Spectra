@@ -237,6 +237,7 @@ class PlanCreate(BaseModel):
     display_name: str = Field(..., min_length=1, max_length=200)
     description: str | None = None
     is_default: bool = False
+    allow_self_service_registration: bool = False
     sort_order: int = 0
     max_concurrent_missions: int = Field(default=1, ge=1)
     max_missions_per_month: int | None = None
@@ -257,6 +258,7 @@ class PlanUpdate(BaseModel):
     display_name: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = None
     is_default: bool | None = None
+    allow_self_service_registration: bool | None = None
     sort_order: int | None = None
     max_concurrent_missions: int | None = Field(None, ge=1)
     max_missions_per_month: int | None = None
@@ -281,6 +283,7 @@ class PlanResponse(BaseModel):
     description: str | None = None
     is_active: bool
     is_default: bool
+    allow_self_service_registration: bool
     sort_order: int
     max_concurrent_missions: int
     max_missions_per_month: int | None = None

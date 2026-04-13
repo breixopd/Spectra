@@ -8,12 +8,21 @@ from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
 from app.core.database import async_session_maker
 from app.models.plan import Plan, Subscription
+from app.services.billing.entitlements import (
+    BILLING_PORTAL_MANAGEABLE_SUBSCRIPTION_STATUSES,
+    ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES,
+    get_user_entitlement,
+    subscription_allows_billing_portal,
+    subscription_grants_access,
+    sync_user_plan_mirror,
+)
 
 logger = logging.getLogger(__name__)
+
+_STRIPE_TERMINAL_SUBSCRIPTION_STATUSES = frozenset({"cancelled", "incomplete_expired", "unpaid"})
 
 
 # ---------------------------------------------------------------------------
@@ -140,9 +149,7 @@ class StripePaymentAdapter(PaymentAdapter):
 
     async def cancel_subscription(self, subscription_id: str) -> bool:
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            None, lambda: self._stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
-        )
+        await loop.run_in_executor(None, lambda: self._stripe.Subscription.delete(subscription_id))
         return True
 
     async def get_subscription_status(self, subscription_id: str) -> str:
@@ -154,7 +161,7 @@ class StripePaymentAdapter(PaymentAdapter):
         """Create a Stripe Checkout session URL — user is redirected to Stripe."""
         async with async_session_maker() as session:
             plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
-            if not plan or not plan.stripe_price_id:
+            if not plan or not plan.is_active or not plan.stripe_price_id:
                 raise ValueError("Plan has no Stripe price configured")
 
         loop = asyncio.get_running_loop()
@@ -185,14 +192,16 @@ class StripePaymentAdapter(PaymentAdapter):
             sub = (
                 await session.execute(
                     select(Subscription).where(
+                        Subscription.payment_provider == "stripe",
                         Subscription.user_id == user_id,
-                        Subscription.status == "active",
+                        Subscription.external_customer_id.is_not(None),
+                        Subscription.status.in_(tuple(BILLING_PORTAL_MANAGEABLE_SUBSCRIPTION_STATUSES)),
                     )
                 )
             ).scalar_one_or_none()
 
         if not sub or not sub.external_customer_id:
-            raise ValueError("No active subscription with billing info found")
+            raise ValueError("No manageable subscription with billing info found")
 
         from app.core.config import get_settings
 
@@ -339,36 +348,208 @@ class PaymentService:
             adapter_cls = _ADAPTERS.get(provider, ManualPaymentAdapter)
             self._adapter = adapter_cls()
 
-    async def subscribe_user(self, user_id: str, plan_id: str) -> Subscription:
-        """Create or update a user's subscription to the given plan."""
+    @staticmethod
+    def _normalize_subscription_status(status: str | None) -> str:
+        """Normalize provider subscription statuses into the local representation."""
+        normalized = (status or "").strip().lower()
+        if normalized == "canceled":
+            return "cancelled"
+        return normalized or "active"
+
+    @staticmethod
+    def _stripe_timestamp_to_datetime(value: object) -> datetime | None:
+        """Convert a Stripe UNIX timestamp to a timezone-aware datetime."""
+        if not isinstance(value, (int, float)):
+            return None
+        return datetime.fromtimestamp(value, tz=UTC)
+
+    async def _find_local_subscription(
+        self,
+        session,
+        *,
+        user_id: str | None = None,
+        external_subscription_id: str | None = None,
+        external_customer_id: str | None = None,
+    ) -> Subscription | None:
+        if external_subscription_id:
+            existing = (
+                await session.execute(
+                    select(Subscription).where(Subscription.external_subscription_id == external_subscription_id)
+                )
+            ).scalar_one_or_none()
+            if existing is not None:
+                return existing
+
+        if user_id:
+            existing = (
+                await session.execute(select(Subscription).where(Subscription.user_id == user_id))
+            ).scalar_one_or_none()
+            if existing is not None:
+                return existing
+
+        if external_customer_id:
+            return (
+                await session.execute(
+                    select(Subscription).where(Subscription.external_customer_id == external_customer_id)
+                )
+            ).scalar_one_or_none()
+
+        return None
+
+    async def _find_plan_by_stripe_price_id(self, session, price_id: str | None) -> Plan | None:
+        if not price_id:
+            return None
+        return (
+            await session.execute(
+                select(Plan).where(
+                    Plan.stripe_price_id == price_id,
+                    Plan.is_active.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
+
+    async def _get_plan_for_local_state(self, session, *, plan_id: str, normalized_status: str) -> Plan | None:
+        plan = await session.get(Plan, plan_id)
+        if plan is None:
+            raise ValueError(f"Plan {plan_id!r} not found")
+        if subscription_grants_access(normalized_status) and not plan.is_active:
+            logger.warning("Skipping entitlement-bearing subscription sync for inactive plan %s", plan_id)
+            return None
+        return plan
+
+    @staticmethod
+    def is_stripe_authoritative_subscription(subscription: Subscription | None) -> bool:
+        if subscription is None:
+            return False
+        payment_provider = (subscription.payment_provider or "").strip().lower()
+        return payment_provider == "stripe" or bool(
+            subscription.external_subscription_id or subscription.external_customer_id
+        )
+
+    @staticmethod
+    def _get_subscription_provider(subscription: Subscription) -> str | None:
+        if subscription.external_subscription_id or subscription.external_customer_id:
+            return "stripe"
+        payment_provider = (subscription.payment_provider or "").strip().lower()
+        if payment_provider:
+            return payment_provider
+        return None
+
+    async def cancel_external_subscription(self, subscription: Subscription) -> bool:
+        external_subscription_id = (subscription.external_subscription_id or "").strip()
+        if not external_subscription_id:
+            return False
+
+        provider_name = self._get_subscription_provider(subscription)
+        if not provider_name:
+            return False
+
+        adapter = self._adapter if self._adapter.provider_name == provider_name else get_payment_adapter(provider_name)
+        return await adapter.cancel_subscription(external_subscription_id)
+
+    async def _stripe_event_can_mutate_subscription(
+        self,
+        session,
+        *,
+        user_id: str | None,
+        existing: Subscription | None,
+    ) -> bool:
+        if existing is not None:
+            return True
+        if not user_id:
+            return True
+
+        current = await self._find_local_subscription(session, user_id=user_id)
+        if current is None:
+            return True
+        return self.is_stripe_authoritative_subscription(current)
+
+    async def _set_local_subscription_state(
+        self,
+        *,
+        user_id: str,
+        plan_id: str | None,
+        status: str,
+        payment_provider: str | None = None,
+        external_subscription_id: str | None = None,
+        external_customer_id: str | None = None,
+        current_period_start: datetime | None = None,
+        current_period_end: datetime | None = None,
+        metadata: dict | None = None,
+    ) -> tuple[Subscription | None, bool]:
+        """Create or update the local subscription row and sync the user plan mirror."""
         async with async_session_maker() as session:
-            plan = await session.get(Plan, plan_id)
-            if plan is None:
-                raise ValueError(f"Plan {plan_id!r} not found")
+            existing = await self._find_local_subscription(
+                session,
+                user_id=user_id,
+                external_subscription_id=external_subscription_id,
+                external_customer_id=external_customer_id,
+            )
+            normalized_status = self._normalize_subscription_status(status)
 
-            result = await session.execute(select(Subscription).where(Subscription.user_id == user_id))
-            sub = result.scalar_one_or_none()
+            if plan_id is not None:
+                plan = await self._get_plan_for_local_state(
+                    session,
+                    plan_id=plan_id,
+                    normalized_status=normalized_status,
+                )
+                if plan is None:
+                    return None, False
+            elif existing is None:
+                return None, False
 
-            now = datetime.now(UTC)
+            created = False
+            provider_name = payment_provider or (existing.payment_provider if existing else self._adapter.provider_name)
 
-            if sub is None:
-                sub = Subscription(
+            if existing is None:
+                created = True
+                subscription = Subscription(
                     user_id=user_id,
                     plan_id=plan_id,
-                    status="active",
-                    payment_provider=self._adapter.provider_name,
-                    current_period_start=now,
+                    status=normalized_status,
+                    payment_provider=provider_name,
+                    current_period_start=current_period_start or datetime.now(UTC),
+                    current_period_end=current_period_end,
+                    external_subscription_id=external_subscription_id,
+                    external_customer_id=external_customer_id,
+                    metadata_=metadata,
                 )
-                session.add(sub)
+                session.add(subscription)
             else:
-                sub.plan_id = plan_id
-                sub.status = "active"
-                sub.payment_provider = self._adapter.provider_name
-                sub.current_period_start = now
+                subscription = existing
+                if plan_id is not None:
+                    subscription.plan_id = plan_id
+                subscription.status = normalized_status
+                if payment_provider is not None or not subscription.payment_provider:
+                    subscription.payment_provider = provider_name
+                if external_subscription_id:
+                    subscription.external_subscription_id = external_subscription_id
+                if external_customer_id:
+                    subscription.external_customer_id = external_customer_id
+                if current_period_start is not None:
+                    subscription.current_period_start = current_period_start
+                if current_period_end is not None:
+                    subscription.current_period_end = current_period_end
+                if metadata is not None:
+                    subscription.metadata_ = metadata
 
+            await sync_user_plan_mirror(session, user_id=user_id)
             await session.commit()
-            await session.refresh(sub)
-            return sub
+            await session.refresh(subscription)
+            return subscription, created
+
+    async def subscribe_user(self, user_id: str, plan_id: str) -> Subscription:
+        """Create or update a user's subscription to the given plan."""
+        sub, _created = await self._set_local_subscription_state(
+            user_id=user_id,
+            plan_id=plan_id,
+            status="active",
+            payment_provider=self._adapter.provider_name,
+            current_period_start=datetime.now(UTC),
+        )
+        if sub is None:
+            raise ValueError(f"Plan {plan_id!r} not found")
+        return sub
 
     async def cancel_user_subscription(self, user_id: str) -> bool:
         """Cancel the user's active subscription."""
@@ -382,19 +563,15 @@ class PaymentService:
                 await self._adapter.cancel_subscription(sub.external_subscription_id)
 
             sub.status = "cancelled"
+            sub.current_period_end = datetime.now(UTC)
+            await sync_user_plan_mirror(session, user_id=user_id)
             await session.commit()
             return True
 
     async def check_subscription_active(self, user_id: str) -> bool:
         """Return True if the user has an active subscription."""
         async with async_session_maker() as session:
-            result = await session.execute(
-                select(Subscription).where(
-                    Subscription.user_id == user_id,
-                    Subscription.status == "active",
-                )
-            )
-            return result.scalar_one_or_none() is not None
+            return await get_user_entitlement(session, user_id) is not None
 
     async def record_usage(self, user_id: str, metric: str, amount: int) -> None:
         """Delegate to UsageTracker — kept here for convenience."""
@@ -435,37 +612,110 @@ class PaymentService:
         customer_id: str | None,
         subscription_id: str | None,
     ) -> bool:
-        """Process a completed checkout event. Returns True if a new subscription was created."""
-        from app.models.user import User as UserModel
-
+        """Process a completed checkout event and persist the resulting entitlement state."""
         async with async_session_maker() as session:
-            # Idempotency check — don't create duplicate subscriptions
-            if subscription_id:
-                existing = (
-                    await session.execute(
-                        select(Subscription).where(Subscription.external_subscription_id == subscription_id)
-                    )
-                ).scalar_one_or_none()
-                if existing:
-                    return False
+            existing = await self._find_local_subscription(
+                session,
+                external_subscription_id=subscription_id,
+                external_customer_id=customer_id,
+            )
+            if not await self._stripe_event_can_mutate_subscription(session, user_id=user_id, existing=existing):
+                return False
 
-            user = (await session.execute(select(UserModel).where(UserModel.id == user_id))).scalar_one_or_none()
-            if user:
-                user.plan_id = plan_id
+        _sub, created = await self._set_local_subscription_state(
+            user_id=user_id,
+            plan_id=plan_id,
+            status="active",
+            payment_provider="stripe",
+            external_subscription_id=subscription_id,
+            external_customer_id=customer_id,
+            metadata={"source": "checkout.session.completed"},
+        )
+        return created
 
-            sub = Subscription(
+    async def reconcile_stripe_event(self, event_type: str, data: dict) -> bool:
+        """Reconcile local entitlement state from Stripe checkout and subscription lifecycle events."""
+        if event_type == "checkout.session.completed":
+            user_id = data.get("client_reference_id") or data.get("metadata", {}).get("user_id")
+            plan_id = data.get("metadata", {}).get("plan_id")
+            if not user_id or not plan_id:
+                return False
+            return await self.handle_checkout_completed(
                 user_id=user_id,
                 plan_id=plan_id,
-                status="active",
-                external_subscription_id=subscription_id or "",
-                external_customer_id=customer_id or "",
-                payment_provider="stripe",
+                customer_id=data.get("customer"),
+                subscription_id=data.get("subscription"),
             )
-            session.add(sub)
-            try:
-                await session.commit()
-            except IntegrityError:
-                await session.rollback()
-                logger.warning("Duplicate checkout for subscription %s — ignoring", subscription_id)
+
+        if event_type in {"customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"}:
+            async with async_session_maker() as session:
+                existing = await self._find_local_subscription(
+                    session,
+                    external_subscription_id=data.get("id"),
+                    external_customer_id=data.get("customer"),
+                )
+                metadata = data.get("metadata") or {}
+                user_id = metadata.get("user_id") or (str(existing.user_id) if existing is not None else None)
+                plan_id = metadata.get("plan_id")
+
+                items = data.get("items", {}).get("data", [])
+                price = items[0].get("price") if items and isinstance(items[0], dict) else None
+                price_id = price.get("id") if isinstance(price, dict) else None
+                plan = await self._find_plan_by_stripe_price_id(session, price_id)
+                if plan is not None:
+                    plan_id = str(plan.id)
+                elif not plan_id and existing is not None:
+                    plan_id = str(existing.plan_id)
+
+                if not await self._stripe_event_can_mutate_subscription(session, user_id=user_id, existing=existing):
+                    return False
+
+            if not user_id or not plan_id:
                 return False
-            return True
+
+            status = data.get("status") or ("cancelled" if event_type.endswith(".deleted") else "active")
+            sub, _created = await self._set_local_subscription_state(
+                user_id=user_id,
+                plan_id=plan_id,
+                status=status,
+                payment_provider="stripe",
+                external_subscription_id=data.get("id"),
+                external_customer_id=data.get("customer"),
+                current_period_start=self._stripe_timestamp_to_datetime(data.get("current_period_start")),
+                current_period_end=self._stripe_timestamp_to_datetime(data.get("current_period_end")),
+                metadata=data.get("metadata") or None,
+            )
+            return sub is not None
+
+        if event_type in {"invoice.payment_failed", "invoice.payment_succeeded"}:
+            async with async_session_maker() as session:
+                existing = await self._find_local_subscription(
+                    session,
+                    external_subscription_id=data.get("subscription"),
+                    external_customer_id=data.get("customer"),
+                )
+                if existing is None:
+                    return False
+                existing_status = self._normalize_subscription_status(existing.status)
+                if existing_status in _STRIPE_TERMINAL_SUBSCRIPTION_STATUSES:
+                    return False
+                if event_type == "invoice.payment_succeeded" and not (
+                    subscription_grants_access(existing.status) or subscription_allows_billing_portal(existing_status)
+                ):
+                    return False
+                user_id = str(existing.user_id)
+                plan_id = str(existing.plan_id)
+                payment_provider = existing.payment_provider or "stripe"
+
+            status = "past_due" if event_type == "invoice.payment_failed" else "active"
+            sub, _created = await self._set_local_subscription_state(
+                user_id=user_id,
+                plan_id=plan_id,
+                status=status,
+                payment_provider=payment_provider,
+                external_subscription_id=data.get("subscription"),
+                external_customer_id=data.get("customer"),
+            )
+            return sub is not None
+
+        return False

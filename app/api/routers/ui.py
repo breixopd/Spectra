@@ -17,6 +17,7 @@ from app.core.database import async_session_maker, get_async_session
 from app.core.rbac import Permission, require_permission
 from app.core.templates import templates
 from app.models.user import User
+from app.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES
 from app.services.shell.session_manager import shell_manager
 from app.services.system.settings_service import (
     apply_settings_update,
@@ -51,7 +52,11 @@ async def _check_user_feature(username: str | None, feature: str) -> bool:
                 select(Plan.features)
                 .join(Subscription, Subscription.plan_id == Plan.id)
                 .join(User, User.id == Subscription.user_id)
-                .where(User.username == username, Subscription.status == "active")
+                .where(
+                    Plan.is_active.is_(True),
+                    User.username == username,
+                    Subscription.status.in_(tuple(ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES)),
+                )
                 .limit(1)
             )
             features = result.scalar_one_or_none()

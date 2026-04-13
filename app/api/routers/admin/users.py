@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
+from typing import TypedDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
@@ -34,10 +35,15 @@ from app.models.exploit import Exploit
 from app.models.finding import Finding
 from app.models.mission import Mission
 from app.models.pentest_session import PentestSession
-from app.models.plan import ApiKey, Subscription, UsageRecord
+from app.models.plan import ApiKey, Plan, Subscription, UsageRecord
 from app.models.target import Target
 from app.models.user import User
 from app.models.user_preferences import UserPreferences
+from app.services.billing import PaymentService
+from app.services.billing.entitlements import (
+    ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES,
+    sync_user_plan_mirror,
+)
 from app.services.system.audit import log_event as audit_log_event
 from app.services.system.rollback import create_snapshot
 
@@ -45,12 +51,32 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-UserBeforeState = dict[str, str | bool | None]
+class SubscriptionBeforeState(TypedDict):
+    plan_id: str
+    status: str
+    trial_ends_at: str | None
+    current_period_start: str | None
+    current_period_end: str | None
+    external_subscription_id: str | None
+    external_customer_id: str | None
+    payment_provider: str | None
+    metadata: dict | None
+
+
+class UserBeforeState(TypedDict):
+    is_active: bool
+    role: str
+    is_superuser: bool
+    plan_id: str | None
+    email: str
+    subscription: SubscriptionBeforeState | None
+
+
 UserAuditDetail = str | bool | None | list[str]
 UserAuditEvent = tuple[AuditEventType, dict[str, UserAuditDetail]]
 
 
-def _to_user_admin_response(user: User) -> UserAdminResponse:
+def _to_user_admin_response(user: User, *, effective_plan_id: str | None = None) -> UserAdminResponse:
     return UserAdminResponse(
         id=user.id,
         username=user.username,
@@ -58,14 +84,19 @@ def _to_user_admin_response(user: User) -> UserAdminResponse:
         role=user.role,
         is_active=user.is_active,
         is_superuser=user.is_superuser,
-        plan_id=user.plan_id,
+        plan_id=effective_plan_id,
         created_at=user.created_at.isoformat(),
         updated_at=user.updated_at.isoformat(),
     )
 
 
-def _to_admin_user_create_response(user: User, activation_url: str | None) -> AdminUserCreateResponse:
-    return AdminUserCreateResponse(**_to_user_admin_response(user).model_dump(), activation_url=activation_url)
+def _to_admin_user_create_response(
+    user: User, activation_url: str | None, *, effective_plan_id: str | None = None
+) -> AdminUserCreateResponse:
+    return AdminUserCreateResponse(
+        **_to_user_admin_response(user, effective_plan_id=effective_plan_id).model_dump(),
+        activation_url=activation_url,
+    )
 
 
 async def _get_user_or_404(session: AsyncSession, user_id: str) -> User:
@@ -97,22 +128,157 @@ def _plan_id_value(plan_id: object | None) -> str | None:
     return str(plan_id) if plan_id else None
 
 
-def _build_user_before_state(user: User) -> UserBeforeState:
+def _serialize_subscription_before_state(subscription: Subscription | None) -> SubscriptionBeforeState | None:
+    if subscription is None:
+        return None
+
+    return {
+        "plan_id": str(subscription.plan_id),
+        "status": subscription.status,
+        "trial_ends_at": subscription.trial_ends_at.isoformat() if subscription.trial_ends_at else None,
+        "current_period_start": subscription.current_period_start.isoformat() if subscription.current_period_start else None,
+        "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+        "external_subscription_id": subscription.external_subscription_id,
+        "external_customer_id": subscription.external_customer_id,
+        "payment_provider": subscription.payment_provider,
+        "metadata": subscription.metadata_,
+    }
+
+
+def _subscription_state_requires_remote_recreation(subscription_state: SubscriptionBeforeState | None) -> bool:
+    if not subscription_state:
+        return False
+
+    payment_provider = (subscription_state.get("payment_provider") or "").strip().lower()
+    return payment_provider == "stripe" or bool(
+        subscription_state.get("external_subscription_id") or subscription_state.get("external_customer_id")
+    )
+
+
+def _user_update_is_snapshot_restorable(before_state: UserBeforeState, *, plan_change_requested: bool) -> bool:
+    if not plan_change_requested:
+        return True
+    return not _subscription_state_requires_remote_recreation(before_state.get("subscription"))
+
+
+async def _get_effective_plan_ids(session: AsyncSession, user_ids: list[str]) -> dict[str, str]:
+    if not user_ids:
+        return {}
+
+    result = await session.execute(
+        select(Subscription.user_id, Subscription.plan_id)
+        .join(Plan, Plan.id == Subscription.plan_id)
+        .where(
+            Subscription.user_id.in_(user_ids),
+            Subscription.status.in_(tuple(ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES)),
+            Plan.is_active.is_(True),
+        )
+    )
+    return {str(user_id): str(plan_id) for user_id, plan_id in result.all()}
+
+
+async def _get_effective_plan_id(session: AsyncSession, user_id: str) -> str | None:
+    return (await _get_effective_plan_ids(session, [user_id])).get(user_id)
+
+
+async def _build_user_before_state(session: AsyncSession, user: User) -> UserBeforeState:
+    subscription = (
+        await session.execute(select(Subscription).where(Subscription.user_id == str(user.id)))
+    ).scalar_one_or_none()
     return {
         "is_active": user.is_active,
         "role": user.role,
         "is_superuser": user.is_superuser,
-        "plan_id": _plan_id_value(user.plan_id),
+        "plan_id": await _get_effective_plan_id(session, str(user.id)),
         "email": user.email,
+        "subscription": _serialize_subscription_before_state(subscription),
     }
 
 
-def _has_reversible_user_update(body: AdminUserUpdate, user: User) -> bool:
+async def _validate_plan_or_404(session: AsyncSession, plan_id: str) -> Plan:
+    plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    return plan
+
+
+async def _cancel_remote_authoritative_subscription(subscription: Subscription) -> None:
+    if not PaymentService.is_stripe_authoritative_subscription(subscription):
+        return
+    if not subscription.external_subscription_id:
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot safely override a Stripe-backed subscription without its external subscription ID",
+        )
+
+    billing_service = PaymentService()
+    try:
+        cancelled = await billing_service.cancel_external_subscription(subscription)
+    except (ImportError, OSError, RuntimeError, ValueError):
+        logger.exception(
+            "Failed to cancel remote Stripe subscription before applying admin override for user %s",
+            subscription.user_id,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to cancel remote Stripe subscription before applying admin override",
+        ) from None
+
+    if not cancelled:
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to cancel remote Stripe subscription before applying admin override",
+        )
+
+
+async def _sync_user_subscription_assignment(session: AsyncSession, user: User, plan_id: str | None) -> None:
+    requested_plan_id = _plan_id_value(plan_id)
+    if requested_plan_id is not None:
+        await _validate_plan_or_404(session, requested_plan_id)
+
+    sub = (await session.execute(select(Subscription).where(Subscription.user_id == str(user.id)))).scalar_one_or_none()
+    now = datetime.now(UTC)
+
+    if sub is not None and PaymentService.is_stripe_authoritative_subscription(sub):
+        await _cancel_remote_authoritative_subscription(sub)
+
+    if requested_plan_id:
+        if sub is None:
+            sub = Subscription(
+                user_id=str(user.id),
+                plan_id=requested_plan_id,
+                status="active",
+                payment_provider="manual",
+                current_period_start=now,
+            )
+            session.add(sub)
+        else:
+            sub.plan_id = requested_plan_id
+            sub.status = "active"
+            sub.current_period_start = now
+            sub.current_period_end = None
+            sub.trial_ends_at = None
+    elif sub is not None:
+        sub.status = "cancelled"
+        sub.current_period_end = now
+    else:
+        user.plan_id = None
+        return
+
+    sub.payment_provider = "manual"
+    sub.external_subscription_id = None
+    sub.external_customer_id = None
+    sub.metadata_ = None
+
+    await sync_user_plan_mirror(session, user=user)
+
+
+def _has_reversible_user_update(body: AdminUserUpdate, user: User, *, plan_change_requested: bool) -> bool:
     return any(
         [
             body.is_active is not None and body.is_active != user.is_active,
             body.role is not None and body.role != user.role,
-            body.plan_id is not None,
+            plan_change_requested,
         ]
     )
 
@@ -135,10 +301,12 @@ def _record_user_change(
         audit_events.append((event_type, details))
 
 
-def _build_user_update_audit_events(before_state: UserBeforeState, user: User) -> list[UserAuditEvent]:
+async def _build_user_update_audit_events(
+    session: AsyncSession, before_state: UserBeforeState, user: User
+) -> list[UserAuditEvent]:
     changed_fields: list[str] = []
     audit_events: list[UserAuditEvent] = []
-    current_plan_id = _plan_id_value(user.plan_id)
+    current_plan_id = await _get_effective_plan_id(session, str(user.id))
 
     _record_user_change(
         changed_fields=changed_fields,
@@ -272,7 +440,10 @@ async def list_users(
     stmt = stmt.order_by(User.created_at.desc()).offset(offset).limit(per_page)
     rows = (await session.execute(stmt)).scalars().all()
 
-    items = [_to_user_admin_response(user) for user in rows]
+    effective_plan_ids = await _get_effective_plan_ids(session, [str(user.id) for user in rows])
+    items = [
+        _to_user_admin_response(user, effective_plan_id=effective_plan_ids.get(str(user.id))) for user in rows
+    ]
     return PaginatedResponse(items=items, total=total, page=page, per_page=per_page)
 
 
@@ -282,7 +453,8 @@ async def get_user(
     _user: User = require_permission(Permission.MANAGE_USERS),
     session: AsyncSession = Depends(get_async_session),
 ) -> UserAdminResponse:
-    return _to_user_admin_response(await _get_user_or_404(session, user_id))
+    user = await _get_user_or_404(session, user_id)
+    return _to_user_admin_response(user, effective_plan_id=await _get_effective_plan_id(session, user_id))
 
 
 @router.post("/api/admin/users", status_code=status.HTTP_201_CREATED)
@@ -307,10 +479,11 @@ async def create_user(
         is_active=False,
         is_superuser=body.role == "admin",
         email_verified=False,
-        plan_id=body.plan_id,
+        plan_id=None,
     )
     session.add(user)
     await session.flush()
+    await _sync_user_subscription_assignment(session, user, body.plan_id)
     await session.refresh(user)
 
     await audit_log_event(
@@ -340,7 +513,8 @@ async def create_user(
 
         activation_url = build_email_verification_url(request, str(user.id))
 
-    return _to_admin_user_create_response(user, activation_url)
+    effective_plan_id = await _get_effective_plan_id(session, str(user.id))
+    return _to_admin_user_create_response(user, activation_url, effective_plan_id=effective_plan_id)
 
 
 @router.put("/api/admin/users/{user_id}")
@@ -352,6 +526,7 @@ async def update_user(
     session: AsyncSession = Depends(get_async_session),
 ) -> UserAdminResponse:
     row = await _get_user_or_404(session, user_id)
+    requested_plan_id = body.plan_id or None if "plan_id" in body.model_fields_set else None
 
     effective_is_superuser = body.role == "admin" if body.role is not None else row.is_superuser
     effective_is_active = body.is_active if body.is_active is not None else row.is_active
@@ -368,15 +543,34 @@ async def update_user(
     if body.is_active and not row.email_verified:
         raise HTTPException(status_code=400, detail="User must complete account activation before being activated")
 
-    before_state = _build_user_before_state(row)
-    if _has_reversible_user_update(body, row):
+    before_state = await _build_user_before_state(session, row)
+    plan_change_requested = (
+        "plan_id" in body.model_fields_set and _plan_id_value(requested_plan_id) != before_state["plan_id"]
+    )
+
+    if body.email is not None:
+        dup = (
+            await session.execute(select(User.id).where(User.email == body.email, User.id != user_id))
+        ).scalar_one_or_none()
+        if dup:
+            raise HTTPException(status_code=409, detail="Email already in use")
+
+    if _has_reversible_user_update(body, row, plan_change_requested=plan_change_requested) and _user_update_is_snapshot_restorable(
+        before_state,
+        plan_change_requested=plan_change_requested,
+    ):
         await create_snapshot(
             session,
             actor_user_id=str(admin.id),
             entity_type="user",
             entity_id=str(row.id),
             action=f"User updated: {row.username}",
-            before_state=before_state,
+            before_state=dict(before_state),
+        )
+    elif plan_change_requested and _subscription_state_requires_remote_recreation(before_state.get("subscription")):
+        logger.info(
+            "Skipping rollback snapshot for user %s because the admin override cancels a Stripe-backed subscription remotely",
+            row.id,
         )
 
     if body.role is not None:
@@ -384,14 +578,9 @@ async def update_user(
         row.is_superuser = body.role == "admin"
     if body.is_active is not None:
         row.is_active = body.is_active
-    if body.plan_id is not None:
-        row.plan_id = body.plan_id or None
+    if plan_change_requested:
+        await _sync_user_subscription_assignment(session, row, requested_plan_id)
     if body.email is not None:
-        dup = (
-            await session.execute(select(User.id).where(User.email == body.email, User.id != user_id))
-        ).scalar_one_or_none()
-        if dup:
-            raise HTTPException(status_code=409, detail="Email already in use")
         row.email = body.email
 
     if before_state["role"] != row.role or before_state["is_active"] != row.is_active:
@@ -400,7 +589,7 @@ async def update_user(
     await session.commit()
     await session.refresh(row)
 
-    for event_type, details in _build_user_update_audit_events(before_state, row):
+    for event_type, details in await _build_user_update_audit_events(session, before_state, row):
         await audit_log_event(
             session,
             event_type,
@@ -409,7 +598,7 @@ async def update_user(
             request=request,
         )
 
-    return _to_user_admin_response(row)
+    return _to_user_admin_response(row, effective_plan_id=await _get_effective_plan_id(session, user_id))
 
 
 @router.delete("/api/admin/users/{user_id}", status_code=status.HTTP_200_OK)

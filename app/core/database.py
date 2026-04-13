@@ -5,10 +5,12 @@ Provides async engine, session maker, and a dependency for FastAPI.
 """
 
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from sqlalchemy import event
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import (
+    AsyncConnection,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
@@ -100,3 +102,15 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+@asynccontextmanager
+async def advisory_lock_connection() -> AsyncGenerator[AsyncConnection, None]:
+    """Yield a dedicated autocommit connection for session-scoped advisory locks."""
+    async with engine.connect() as connection:
+        lock_connection = await connection.execution_options(isolation_level="AUTOCOMMIT")
+        try:
+            yield lock_connection
+        finally:
+            if lock_connection.in_transaction():
+                await lock_connection.rollback()

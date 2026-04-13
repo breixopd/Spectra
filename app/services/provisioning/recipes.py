@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
+DOCKER_APT_REPO_SIGNING_FINGERPRINT = "9DC858229FC7DD38854AE2D88D81803C0EBFCD88"
+
 
 @dataclass
 class ProvisionStep:
@@ -26,7 +28,11 @@ _DOCKER_INSTALL_STEPS = [
             "if command -v docker &>/dev/null; then echo 'Docker already installed'; "
             "else apt-get update && apt-get install -y ca-certificates curl gnupg && "
             "install -m 0755 -d /etc/apt/keyrings && "
-            "curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo ${ID})/gpg -o /etc/apt/keyrings/docker.asc && "
+            "docker_key_tmp=$(mktemp) && trap 'rm -f \"$docker_key_tmp\"' EXIT && "
+            "curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo ${ID})/gpg -o \"$docker_key_tmp\" && "
+            "docker_key_fingerprint=$(gpg --batch --show-keys --with-colons \"$docker_key_tmp\" | awk -F: '/^fpr:/ {print $10; exit}') && "
+            f"[ \"$docker_key_fingerprint\" = \"{DOCKER_APT_REPO_SIGNING_FINGERPRINT}\" ] && "
+            "gpg --dearmor --yes -o /etc/apt/keyrings/docker.asc \"$docker_key_tmp\" && "
             "chmod a+r /etc/apt/keyrings/docker.asc && "
             ". /etc/os-release && "
             "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-$UBUNTU_CODENAME} stable\" > /etc/apt/sources.list.d/docker.list && "

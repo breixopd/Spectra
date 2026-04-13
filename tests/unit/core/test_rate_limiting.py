@@ -125,18 +125,19 @@ async def test_check_rate_limit_no_subscription_returns_false():
     tracker = UsageTracker()
 
     mock_session = AsyncMock()
-    mock_sub_result = MagicMock()
-    mock_sub_result.scalar_one_or_none.return_value = None
-    mock_session.execute.return_value = mock_sub_result
     mock_session.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session):
+    with (
+        patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
+        patch("app.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=None)),
+    ):
         within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
     assert within is False
     assert current == 0
     assert maximum == 0
+    mock_session.execute.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -149,35 +150,24 @@ async def test_check_rate_limit_within_plan():
     mock_plan = MagicMock()
     mock_plan.max_api_requests_per_hour = 1000
 
-    mock_sub = MagicMock()
-    mock_sub.plan_id = "plan-1"
+    entitlement = MagicMock()
+    entitlement.plan = mock_plan
 
     mock_record = MagicMock()
     mock_record.api_requests = 50
 
     mock_session = AsyncMock()
-
-    call_count = 0
-
-    async def mock_execute(stmt):
-        nonlocal call_count
-        call_count += 1
-        result = MagicMock()
-        if call_count == 1:
-            # subscription query
-            result.scalar_one_or_none.return_value = mock_sub
-        else:
-            # usage record query
-            result.scalar_one_or_none.return_value = mock_record
-        return result
-
-    mock_session.execute = mock_execute
-    mock_session.get = AsyncMock(return_value=mock_plan)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_record
+    mock_session.execute = AsyncMock(return_value=mock_result)
     mock_session.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session):
-        with patch("app.services.billing.usage_tracker.telemetry"):
+    with (
+        patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
+        patch("app.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
+        patch("app.services.billing.usage_tracker.telemetry"),
+    ):
             within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
     assert within is True
@@ -195,33 +185,24 @@ async def test_check_rate_limit_over_plan():
     mock_plan = MagicMock()
     mock_plan.max_api_requests_per_hour = 100
 
-    mock_sub = MagicMock()
-    mock_sub.plan_id = "plan-1"
+    entitlement = MagicMock()
+    entitlement.plan = mock_plan
 
     mock_record = MagicMock()
     mock_record.api_requests = 100  # at limit
 
     mock_session = AsyncMock()
-
-    call_count = 0
-
-    async def mock_execute(stmt):
-        nonlocal call_count
-        call_count += 1
-        result = MagicMock()
-        if call_count == 1:
-            result.scalar_one_or_none.return_value = mock_sub
-        else:
-            result.scalar_one_or_none.return_value = mock_record
-        return result
-
-    mock_session.execute = mock_execute
-    mock_session.get = AsyncMock(return_value=mock_plan)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = mock_record
+    mock_session.execute = AsyncMock(return_value=mock_result)
     mock_session.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session):
-        with patch("app.services.billing.usage_tracker.telemetry"):
+    with (
+        patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
+        patch("app.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
+        patch("app.services.billing.usage_tracker.telemetry"),
+    ):
             within, current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
     assert within is False
@@ -239,33 +220,25 @@ async def test_check_rate_limit_no_plan_limit_always_allowed():
     mock_plan = MagicMock()
     mock_plan.max_api_requests_per_hour = None
 
-    mock_sub = MagicMock()
-    mock_sub.plan_id = "plan-1"
+    entitlement = MagicMock()
+    entitlement.plan = mock_plan
 
     mock_session = AsyncMock()
-
-    call_count = 0
-
-    async def mock_execute(stmt):
-        nonlocal call_count
-        call_count += 1
-        result = MagicMock()
-        if call_count == 1:
-            result.scalar_one_or_none.return_value = mock_sub
-        else:
-            result.scalar_one_or_none.return_value = None
-        return result
-
-    mock_session.execute = mock_execute
-    mock_session.get = AsyncMock(return_value=mock_plan)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_session.execute = AsyncMock(return_value=mock_result)
     mock_session.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session):
+    with (
+        patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
+        patch("app.services.billing.usage_tracker.get_user_entitlement", new=AsyncMock(return_value=entitlement)),
+    ):
         within, _current, maximum = await tracker.check_rate_limit("user-1", "api_requests")
 
     assert within is True
     assert maximum == 0
+    mock_session.execute.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

@@ -19,6 +19,7 @@ from app.core.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker, get_async_session
 from app.core.security import decode_token
 from app.models.user import User
+from app.services.billing.entitlements import get_user_entitlement_plan
 
 if TYPE_CHECKING:
     from app.repositories.exploit import ExploitRepository
@@ -263,12 +264,7 @@ def _is_admin_user(user: User) -> bool:
 
 async def _get_user_plan(user: User, session: AsyncSession):
     """Fetch the Plan for a user, or None."""
-    if not user.plan_id:
-        return None
-    from app.models.plan import Plan
-
-    result = await session.execute(select(Plan).where(Plan.id == user.plan_id))
-    return result.scalar_one_or_none()
+    return await get_user_entitlement_plan(session, str(user.id))
 
 
 async def check_mission_limit(user: User, session: AsyncSession) -> None:
@@ -276,7 +272,9 @@ async def check_mission_limit(user: User, session: AsyncSession) -> None:
     if _is_admin_user(user):
         return
     plan = await _get_user_plan(user, session)
-    if not plan or not plan.max_concurrent_missions:
+    if plan is None:
+        raise HTTPException(status_code=403, detail="No active subscription")
+    if not plan.max_concurrent_missions:
         return
     from app.models.mission import Mission
 
@@ -300,7 +298,9 @@ async def check_storage_limit(user: User, session: AsyncSession) -> None:
     if _is_admin_user(user):
         return
     plan = await _get_user_plan(user, session)
-    if not plan or not plan.max_storage_mb:
+    if plan is None:
+        raise HTTPException(status_code=403, detail="No active subscription")
+    if not plan.max_storage_mb:
         return
 
     from datetime import UTC
@@ -329,7 +329,9 @@ async def check_target_limit(user: User, session: AsyncSession) -> None:
     if _is_admin_user(user):
         return
     plan = await _get_user_plan(user, session)
-    if not plan or not plan.max_targets:
+    if plan is None:
+        raise HTTPException(status_code=403, detail="No active subscription")
+    if not plan.max_targets:
         return
     from app.models.target import Target
 
@@ -346,7 +348,9 @@ async def check_feature_allowed(user: User, session: AsyncSession, feature: str)
     if _is_admin_user(user):
         return
     plan = await _get_user_plan(user, session)
-    if not plan or not plan.features:
+    if plan is None:
+        raise HTTPException(status_code=403, detail="No active subscription")
+    if not plan.features:
         return
     if not plan.features.get(feature, True):
         raise HTTPException(

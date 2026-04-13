@@ -1,4 +1,4 @@
-"""Self-service billing — plan upgrade/downgrade via Stripe Checkout."""
+"""Self-service billing — provider-aware plan browsing and checkout."""
 
 import logging
 from datetime import UTC, datetime
@@ -8,21 +8,33 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.core.config import get_settings
 from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
-from app.models.plan import Plan, Subscription, UsageRecord
+from app.models.plan import Plan, UsageRecord
 from app.models.user import User
 from app.services.billing import PaymentService
+from app.services.billing.entitlements import get_manageable_billing_subscription, get_user_entitlement
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/billing", tags=["Billing"])
 
 
+def _plan_checkout_available(plan: Plan, *, payment_provider: str) -> bool:
+    provider_name = (payment_provider or "manual").strip().lower()
+    if provider_name == "stripe":
+        return bool(plan.stripe_price_id)
+    if provider_name == "crypto":
+        return True
+    return False
+
+
 @router.get("/plans")
 @limiter.limit(RateLimits.BILLING)
 async def list_available_plans(request: Request, session: AsyncSession = Depends(get_async_session)):
     """List all active plans available for subscription."""
+    payment_provider = (get_settings().PAYMENT_PROVIDER or "manual").strip().lower()
     plans = (
         (await session.execute(select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order))).scalars().all()
     )
@@ -38,6 +50,8 @@ async def list_available_plans(request: Request, session: AsyncSession = Depends
             "max_targets": p.max_targets,
             "max_storage_mb": p.max_storage_mb,
             "stripe_price_id": p.stripe_price_id,
+            "checkout_available": _plan_checkout_available(p, payment_provider=payment_provider),
+            "checkout_provider": payment_provider,
         }
         for p in plans
     ]
@@ -51,13 +65,8 @@ async def get_usage(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Return the authenticated user's current usage and plan limits."""
-    # Fetch plan
-    sub = (
-        await session.execute(
-            select(Subscription).where(Subscription.user_id == str(user.id), Subscription.status == "active")
-        )
-    ).scalar_one_or_none()
-    plan = await session.get(Plan, sub.plan_id) if sub else None
+    entitlement = await get_user_entitlement(session, str(user.id))
+    plan = entitlement.plan if entitlement is not None else None
 
     # Fetch cumulative storage record
     sentinel = datetime(2000, 1, 1, tzinfo=UTC)
@@ -89,10 +98,33 @@ async def create_checkout(
     user: User = Depends(get_current_active_user),
     session: AsyncSession = Depends(get_async_session),
 ):
-    """Create a Stripe Checkout session to subscribe to a plan."""
-    plan = (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
+    """Create a provider checkout session to subscribe to a plan."""
+    plan = (
+        await session.execute(
+            select(Plan).where(
+                Plan.id == plan_id,
+                Plan.is_active.is_(True),
+            )
+        )
+    ).scalar_one_or_none()
     if not plan:
         raise HTTPException(404, "Plan not found")
+
+    payment_provider = (get_settings().PAYMENT_PROVIDER or "manual").strip().lower()
+    if not _plan_checkout_available(plan, payment_provider=payment_provider):
+        raise HTTPException(400, "Plan is not available for self-service checkout")
+
+    if payment_provider == "stripe":
+        manageable_subscription = await get_manageable_billing_subscription(
+            session,
+            str(user.id),
+            provider="stripe",
+        )
+        if manageable_subscription is not None:
+            raise HTTPException(
+                409,
+                "You already have a Stripe-managed subscription. Use the billing portal to change or recover it.",
+            )
 
     svc = PaymentService()
     try:
@@ -144,18 +176,14 @@ async def stripe_webhook(request: Request):
     event_type = event.get("type", "")
     data = event.get("data", {})
 
-    if event_type == "checkout.session.completed":
-        user_id = data.get("client_reference_id") or data.get("metadata", {}).get("user_id")
-        plan_id = data.get("metadata", {}).get("plan_id")
-        customer_id = data.get("customer")
-        subscription_id = data.get("subscription")
-
-        if user_id and plan_id:
-            await svc.handle_checkout_completed(
-                user_id=user_id,
-                plan_id=plan_id,
-                customer_id=customer_id,
-                subscription_id=subscription_id,
-            )
+    if event_type in {
+        "checkout.session.completed",
+        "customer.subscription.created",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+        "invoice.payment_failed",
+        "invoice.payment_succeeded",
+    }:
+        await svc.reconcile_stripe_event(event_type, data)
 
     return {"received": True}
