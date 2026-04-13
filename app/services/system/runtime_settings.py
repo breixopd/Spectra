@@ -19,26 +19,17 @@ logger = logging.getLogger(__name__)
 
 BOOTSTRAP_ONLY_VARS: frozenset[str] = frozenset({
     "DATABASE_URL",
-    "DATABASE_ECHO",
-    "DATABASE_POOL_SIZE",
-    "DATABASE_MAX_OVERFLOW",
     "SERVICE_MODE",
-    "DATA_ROOT",
-    "DEBUG",
+    "LOG_LEVEL",
     "LOG_FORMAT",
+    "DEBUG",
     "RATE_LIMIT_STORAGE",
-    "OTEL_EXPORTER_ENDPOINT",
-    "OTEL_EXPORTER_PROTOCOL",
-    "OTEL_SERVICE_NAME",
-    "OTEL_EXPORT_INTERVAL_SECONDS",
-    "SANDBOX_IMAGE",
-    "SANDBOX_NETWORK",
-    "SANDBOX_PLUGINS_VOLUME",
-    "ENCRYPTION_KEY",
+    "DOCKER_REGISTRY",
     # Secrets managed separately by secret_bootstrap
     "JWT_SECRET_KEY",
     "SECRET_KEY",
     "SERVICE_AUTH_SECRET",
+    "ENCRYPTION_KEY",
 })
 
 
@@ -104,6 +95,19 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     "PLATFORM_DOMAIN": ("PLATFORM_DOMAIN", "str"),
     "PLATFORM_BASE_URL": ("PLATFORM_BASE_URL", "str"),
     "PLATFORM_EXPOSED": ("PLATFORM_EXPOSED", "bool"),
+    # OTEL (DB-managed)
+    "OTEL_EXPORTER_ENDPOINT": ("OTEL_EXPORTER_ENDPOINT", "str"),
+    "OTEL_EXPORTER_PROTOCOL": ("OTEL_EXPORTER_PROTOCOL", "str"),
+    "OTEL_SERVICE_NAME": ("OTEL_SERVICE_NAME", "str"),
+    "OTEL_EXPORT_INTERVAL_SECONDS": ("OTEL_EXPORT_INTERVAL_SECONDS", "int"),
+    # Database tuning (DB-managed)
+    "DATABASE_ECHO": ("DATABASE_ECHO", "bool"),
+    "DATABASE_POOL_SIZE": ("DATABASE_POOL_SIZE", "int"),
+    "DATABASE_MAX_OVERFLOW": ("DATABASE_MAX_OVERFLOW", "int"),
+    # Sandbox Docker-specific (DB-managed)
+    "SANDBOX_IMAGE": ("SANDBOX_IMAGE", "str"),
+    "SANDBOX_NETWORK": ("SANDBOX_NETWORK", "str"),
+    "SANDBOX_PLUGINS_VOLUME": ("SANDBOX_PLUGINS_VOLUME", "str"),
     "SANDBOX_MAX_CONTAINERS": ("SANDBOX_MAX_CONTAINERS", "int"),
     "SANDBOX_MEMORY_LIMIT": ("SANDBOX_MEMORY_LIMIT", "str"),
     "SANDBOX_CPU_SHARES": ("SANDBOX_CPU_SHARES", "int"),

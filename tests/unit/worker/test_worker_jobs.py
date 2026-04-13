@@ -391,10 +391,11 @@ async def test_vpn_connect_job_handles_supported_unknown_and_error_cases():
 
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(vpn_jobs, "_run_command", run_command)
-        wireguard = await vpn_jobs.vpn_connect_job("/tmp/test.conf", "wireguard")
-        openvpn = await vpn_jobs.vpn_connect_job("/tmp/test.ovpn", "openvpn")
-        unknown = await vpn_jobs.vpn_connect_job("/tmp/test.conf", "pptp")
-        errored = await vpn_jobs.vpn_connect_job("/tmp/test.conf", "wireguard")
+        # Use bare filenames — _resolve_config_path strips directories
+        wireguard = await vpn_jobs.vpn_connect_job("test.conf", "wireguard")
+        openvpn = await vpn_jobs.vpn_connect_job("test.ovpn", "openvpn")
+        unknown = await vpn_jobs.vpn_connect_job("test.conf", "pptp")
+        errored = await vpn_jobs.vpn_connect_job("test.conf", "wireguard")
 
     assert wireguard["success"] is True
     assert openvpn["type"] == "openvpn"

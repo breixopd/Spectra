@@ -13,15 +13,25 @@ from .helpers import _run_command
 
 logger = logging.getLogger(__name__)
 
-# Allowlist pattern: letters, digits, underscore, hyphen, forward slash, dot only.
-_SAFE_PATH_RE = re.compile(r"^[a-zA-Z0-9_\-/\.]+$")
-# Safe config name (no path separators)
+# Safe config filename: letters, digits, underscore, hyphen, dot only (no path separators).
+_SAFE_CONFIG_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
+# Safe bare name (no dots/slashes)
 _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-]+$")
+# Controlled base directory for VPN configs
+_VPN_CONFIG_DIR = Path("/tmp/vpn_configs")
 
 
-def _validate_config_path(path: str) -> bool:
-    """Return True if path contains only safe characters and has no path traversal."""
-    return bool(_SAFE_PATH_RE.match(path)) and ".." not in path
+def _resolve_config_path(config_path: str) -> str | None:
+    """Validate and resolve a VPN config path to the controlled config directory.
+
+    Strips any directory component, validates the basename against a strict
+    allowlist, and returns the full path under _VPN_CONFIG_DIR.
+    Returns None if the basename is invalid.
+    """
+    basename = Path(config_path).name
+    if not _SAFE_CONFIG_NAME_RE.match(basename) or ".." in basename:
+        return None
+    return str(_VPN_CONFIG_DIR / basename)
 
 
 def _validate_config_name(name: str) -> bool:
@@ -33,17 +43,18 @@ async def vpn_connect_job(config_path: str, vpn_type: str) -> dict[str, Any]:
     """Start a VPN connection inside the tools container."""
     logger.info("VPN connect: %s (%s)", config_path, vpn_type)
 
-    if not _validate_config_path(config_path):
+    safe_path = _resolve_config_path(config_path)
+    if not safe_path:
         logger.error("VPN connect rejected: invalid config_path %r", config_path)
         return {"success": False, "error": "Invalid config path"}
 
     try:
         if vpn_type == "wireguard":
-            cmd: list[str] = ["wg-quick", "up", config_path]
+            cmd: list[str] = ["wg-quick", "up", safe_path]
         elif vpn_type == "openvpn":
-            name = Path(config_path).stem
+            name = Path(safe_path).stem
             pid_file = f"/run/openvpn_{name}.pid"
-            cmd = ["openvpn", "--daemon", "--config", config_path, "--writepid", pid_file]
+            cmd = ["openvpn", "--daemon", "--config", safe_path, "--writepid", pid_file]
         else:
             return {"success": False, "error": f"Unknown VPN type: {vpn_type}"}
 
@@ -69,15 +80,19 @@ async def vpn_disconnect_job(config_name: str, vpn_type: str, config_path: str =
         logger.error("VPN disconnect rejected: invalid config_name %r", config_name)
         return {"success": False, "error": "Invalid config name"}
 
-    if config_path and not _validate_config_path(config_path):
-        logger.error("VPN disconnect rejected: invalid config_path %r", config_path)
-        return {"success": False, "error": "Invalid config path"}
+    if config_path:
+        safe_path = _resolve_config_path(config_path)
+        if not safe_path:
+            logger.error("VPN disconnect rejected: invalid config_path %r", config_path)
+            return {"success": False, "error": "Invalid config path"}
+    else:
+        safe_path = ""
 
     try:
         if vpn_type == "wireguard":
-            if not config_path:
-                config_path = f"/tmp/vpn_configs/{config_name}.conf"
-            cmd: list[str] = ["wg-quick", "down", config_path]
+            if not safe_path:
+                safe_path = str(_VPN_CONFIG_DIR / f"{config_name}.conf")
+            cmd: list[str] = ["wg-quick", "down", safe_path]
             returncode, stdout, stderr = await _run_command(cmd, 15)
         elif vpn_type == "openvpn":
             pid_file_path = Path(f"/run/openvpn_{config_name}.pid")

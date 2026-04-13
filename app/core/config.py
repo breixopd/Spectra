@@ -55,9 +55,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "text"  # "json" for structured logs in production, "text" for dev
-    DATA_ROOT: str = "/app/data"
 
-    # --- OpenTelemetry Export ---
+    # --- OpenTelemetry Export (DB-managed, defaults used before DB is available) ---
     OTEL_EXPORTER_ENDPOINT: str = ""  # e.g. "http://otel-collector:4318" — empty = disabled
     OTEL_EXPORTER_PROTOCOL: str = "http/protobuf"  # or "http/json"
     OTEL_SERVICE_NAME: str = "spectra"
@@ -251,6 +250,7 @@ class Settings(BaseSettings):
 
     # --- MCP Server ---
     MCP_API_KEY: str = ""  # API key for MCP server access (leave empty to disable)
+    MCP_USER_ID: str = ""  # User ID bound to the MCP API key (required for user-scoped operations)
 
     # --- External Service Gateways ---
     # URL to the AI microservice. Must be set for production.
@@ -451,7 +451,7 @@ def get_settings() -> Settings:
         # Persist to filesystem so the key survives container restarts
         env_explicit = os.environ.get("ENCRYPTION_KEY")
         if not env_explicit:
-            key_path = Path(settings_instance.DATA_ROOT) / ".encryption_key"
+            key_path = Path("/app/data") / ".encryption_key"
             if key_path.is_file():
                 settings_instance.ENCRYPTION_KEY = key_path.read_text().strip()
             else:

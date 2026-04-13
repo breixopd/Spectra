@@ -180,8 +180,11 @@ class TestEncryption:
 @pytest.fixture(autouse=True)
 def _clear_blacklist_state():
     """Clear in-memory token blacklist state between tests."""
+    from app.core.security import _blacklist_ready
+
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()
+    _blacklist_ready.set()
     yield
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()

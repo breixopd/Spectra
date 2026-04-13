@@ -97,7 +97,7 @@ async def test_mcp_tool_call_unknown_tool():
 
 
 async def test_mcp_tool_start_mission():
-    """MCP start_mission tool delegates to MissionManager."""
+    """MCP start_mission tool delegates to MissionManager with server-side user_id."""
     from app.api.mcp import MCPRequest, handle_mcp_request
 
     req = MCPRequest(
@@ -105,7 +105,7 @@ async def test_mcp_tool_start_mission():
         id=6,
         params={
             "name": "start_mission",
-            "arguments": {"target": "192.168.1.1", "directive": "Scan for open ports", "user_id": "test-user-1"},
+            "arguments": {"target": "192.168.1.1", "directive": "Scan for open ports", "user_id": "ignored-client-id"},
         },
     )
 
@@ -118,7 +118,10 @@ async def test_mcp_tool_start_mission():
     mock_session.get.return_value = mock_user
 
     with patch("app.services.mission.manager.mission_manager", mock_manager):
-        result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=mock_session)
+        with patch("app.api.mcp.settings") as mock_settings:
+            mock_settings.MCP_USER_ID = "server-bound-user"
+            mock_settings.MCP_API_KEY = "test-key"
+            result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=mock_session)
 
     assert result.error is None
     assert result.result["isError"] is False
@@ -127,6 +130,10 @@ async def test_mcp_tool_start_mission():
     content = json.loads(result.result["content"][0]["text"])
     assert content["mission_id"] == "test-mission-id-123"
     assert content["target"] == "192.168.1.1"
+    # Verify user_id was overridden to server-side value
+    mock_session.get.assert_called_once()
+    call_args = mock_session.get.call_args
+    assert call_args[0][1] == "server-bound-user"
 
 
 async def test_mcp_tool_start_mission_missing_fields():
@@ -138,7 +145,10 @@ async def test_mcp_tool_start_mission_missing_fields():
         id=7,
         params={"name": "start_mission", "arguments": {"target": "192.168.1.1"}},
     )
-    result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
+    with patch("app.api.mcp.settings") as mock_settings:
+        mock_settings.MCP_USER_ID = "server-user"
+        mock_settings.MCP_API_KEY = "test-key"
+        result = await handle_mcp_request(_mock_http_request(), body=req, api_key="test-key", session=AsyncMock())
 
     assert result.error is not None
     assert result.error["code"] == -32603

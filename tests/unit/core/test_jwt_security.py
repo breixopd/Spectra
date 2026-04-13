@@ -19,8 +19,11 @@ from app.core.security import (
 
 @pytest.fixture(autouse=True)
 def _clear_blacklist():
+    from app.core.security import _blacklist_ready
+
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()
+    _blacklist_ready.set()
     yield
     _blacklisted_tokens.clear()
     _user_token_blacklist.clear()

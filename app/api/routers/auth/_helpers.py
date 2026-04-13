@@ -35,7 +35,8 @@ AUTH_COOKIE_SAMESITE = "strict"
 REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
 DUMMY_PASSWORD_HASH = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiLXCJzFhWMu"
 _TOTP_REPLAY_WINDOW_SECONDS = 90
-# In-memory fallback when Redis is unavailable
+# In-memory fallback when Redis is unavailable (bounded to prevent memory exhaustion)
+_TOTP_MAX_ENTRIES = 10000
 _used_totp_codes: dict[str, float] = {}
 _used_totp_codes_lock = threading.Lock()
 
@@ -82,6 +83,11 @@ def _consume_totp_code(user_id: str, code: str) -> bool:
             _used_totp_codes.pop(key, None)
         if code_hash in _used_totp_codes:
             return False
+        # Evict oldest entries if at capacity
+        if len(_used_totp_codes) >= _TOTP_MAX_ENTRIES:
+            sorted_keys = sorted(_used_totp_codes, key=_used_totp_codes.get)
+            for k in sorted_keys[: len(_used_totp_codes) - _TOTP_MAX_ENTRIES + 1]:
+                _used_totp_codes.pop(k, None)
         _used_totp_codes[code_hash] = now + _TOTP_REPLAY_WINDOW_SECONDS
         return True
 

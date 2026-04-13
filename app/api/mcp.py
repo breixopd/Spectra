@@ -245,6 +245,14 @@ async def handle_mcp_request(
 
 async def _execute_mcp_tool(tool_name: str, arguments: dict, session: AsyncSession) -> dict:
     """Execute an MCP tool and return results."""
+    # Enforce server-side user scoping: override any user-supplied user_id
+    # with the configured MCP_USER_ID to prevent impersonation.
+    _USER_SCOPED_TOOLS = {"start_mission", "get_mission_status", "get_findings", "list_targets"}
+    if tool_name in _USER_SCOPED_TOOLS:
+        if not settings.MCP_USER_ID:
+            raise ValueError("MCP_USER_ID is not configured; user-scoped operations are unavailable")
+        arguments = {**arguments, "user_id": settings.MCP_USER_ID}
+
     if tool_name == "start_mission":
         return await _tool_start_mission(arguments, session)
 

@@ -92,7 +92,7 @@ async def test_is_installed_verification_command(installer):
     with patch("shutil.which") as mock_which:
         mock_which.return_value = "/bin/custom_tool"
 
-        with patch("asyncio.create_subprocess_shell") as mock_exec:
+        with patch("asyncio.create_subprocess_exec") as mock_exec:
             process = AsyncMock()
             process.communicate.return_value = (b"verify", b"")
             process.returncode = 0
@@ -111,7 +111,7 @@ async def test_is_installed_verification_failure(installer):
     with patch("shutil.which") as mock_which:
         mock_which.return_value = None  # Binary not found standard way
 
-        with patch("asyncio.create_subprocess_shell") as mock_exec:
+        with patch("asyncio.create_subprocess_exec") as mock_exec:
             process = AsyncMock()
             process.communicate.return_value = (b"", b"error")
             process.returncode = 1
