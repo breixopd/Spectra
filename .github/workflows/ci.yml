@@ -29,6 +29,8 @@ jobs:
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
+    env:
+      ENCRYPTION_KEY: test-encryption-key
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -97,6 +99,8 @@ jobs:
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest
+    env:
+      ENCRYPTION_KEY: test-encryption-key
     services:
       postgres:
         image: pgvector/pgvector:pg16
