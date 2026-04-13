@@ -16,12 +16,13 @@ from pydantic import SecretStr
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.advisory_locks import stable_lock_id
 from app.core.config import settings
 from app.models.config import SystemConfig
 
 logger = logging.getLogger(__name__)
 
-_ADVISORY_LOCK_ID = 0x5370656374726131  # "Spectra1" as int, truncated to bigint range
+_ADVISORY_LOCK_ID = stable_lock_id("spectra_secret_bootstrap")
 
 _MANAGED_SECRETS = {
     "JWT_SECRET_KEY": "JWT_SECRET_KEY",

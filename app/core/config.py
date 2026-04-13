@@ -387,7 +387,7 @@ class Settings(BaseSettings):
         return v
 
     # --- Billing / Stripe ---
-    PAYMENT_PROVIDER: str = Field(default="noop", description="Payment provider: noop, stripe, crypto, or manual")
+    PAYMENT_PROVIDER: str = Field(default="manual", description="Payment provider: manual, stripe, crypto, or noop")
     STRIPE_SECRET_KEY: SecretStr = Field(default=SecretStr(""), description="Stripe API secret key")
     STRIPE_WEBHOOK_SECRET: SecretStr = Field(default=SecretStr(""), description="Stripe webhook signing secret")
     STRIPE_PUBLISHABLE_KEY: str = Field(default="", description="Stripe publishable key for frontend")

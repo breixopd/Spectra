@@ -19,8 +19,8 @@ from app.services.storage import get_storage_service
 
 logger = logging.getLogger(__name__)
 
-# Strict name pattern: alphanumeric + hyphens, 1-64 chars
-_CONFIG_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9\-]{0,63}$")
+# Strict name pattern: start alphanumeric, then alphanumeric/underscore/hyphen, 1-160 chars
+_CONFIG_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,159}$")
 
 # Dangerous directives that allow arbitrary command execution
 _DANGEROUS_OPENVPN_DIRECTIVES = frozenset(
@@ -51,7 +51,10 @@ _VPN_EXTENSIONS = {"wireguard": ".conf", "openvpn": ".ovpn"}
 def _validate_config_name(name: str) -> str:
     """Validate and return a safe config name."""
     if not _CONFIG_NAME_RE.match(name):
-        raise ValueError("Config name must be 1-64 chars, alphanumeric and hyphens only, starting with alphanumeric")
+        raise ValueError(
+            "Config name must be 1-160 chars, start with an alphanumeric, "
+            "and contain only letters, numbers, underscores, or hyphens"
+        )
     return name
 
 

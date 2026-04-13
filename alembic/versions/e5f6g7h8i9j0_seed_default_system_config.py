@@ -122,7 +122,7 @@ _DEFAULTS = [
     ("DOCKER_CLEANUP_INTERVAL", "604800", False, "Docker pruning interval seconds"),
     ("IMAGE_AUTO_UPDATE", "true", False, "Auto-apply image updates"),
     ("IMAGE_CHECK_INTERVAL", "60", False, "Image update check interval seconds"),
-    ("PAYMENT_PROVIDER", "noop", False, "Payment provider: noop, stripe, crypto, manual"),
+    ("PAYMENT_PROVIDER", "manual", False, "Payment provider: manual, stripe, crypto, noop"),
     ("STRIPE_SECRET_KEY", "", True, "Stripe API secret key"),
     ("STRIPE_WEBHOOK_SECRET", "", True, "Stripe webhook signing secret"),
     ("STRIPE_PUBLISHABLE_KEY", "", False, "Stripe publishable key"),

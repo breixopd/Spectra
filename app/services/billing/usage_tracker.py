@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_maker
 from app.core.telemetry import telemetry
 from app.models.plan import Plan, Subscription, UsageRecord
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def _use_or_create_session(existing: AsyncSession | None = None):
+    """Yield an existing session or create a short-lived one."""
+    if existing is not None:
+        yield existing
+    else:
+        async with async_session_maker() as session:
+            yield session
 
 # Maps metric names to (UsageRecord column, Plan limit column, period_type)
 _METRIC_MAP: dict[str, tuple[str, str, str]] = {
@@ -29,6 +41,8 @@ def _period_start(period_type: str) -> datetime:
         return now.replace(minute=0, second=0, microsecond=0)
     if period_type == "daily":
         return now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if period_type == "weekly":
+        return (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
     # monthly
     return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
@@ -36,13 +50,80 @@ def _period_start(period_type: str) -> datetime:
 class UsageTracker:
     """Handles usage record creation and limit checking against user plans."""
 
+    async def _record_metric_period(
+        self,
+        session: AsyncSession,
+        *,
+        user_id: str,
+        column_name: str,
+        period_type: str,
+        amount: int,
+    ) -> None:
+        """Atomically increment a single metric for one period."""
+        period = _period_start(period_type)
+        stmt = (
+            pg_insert(UsageRecord)
+            .values(
+                user_id=user_id,
+                period_type=period_type,
+                period_start=period,
+                **{column_name: amount},
+            )
+            .on_conflict_do_update(
+                index_elements=["user_id", "period_type", "period_start"],
+                set_={column_name: getattr(UsageRecord, column_name) + amount},
+            )
+        )
+        await session.execute(stmt)
+
+    async def _record_metric_periods(
+        self,
+        user_id: str,
+        metric: str,
+        amount: int,
+        period_types: tuple[str, ...],
+        *,
+        session: AsyncSession | None = None,
+    ) -> None:
+        """Increment a metric across one or more time windows."""
+        mapping = _METRIC_MAP.get(metric)
+        if mapping is None:
+            raise ValueError(f"Unknown usage metric: {metric!r}")
+
+        column_name, _, _default_period = mapping
+
+        async with _use_or_create_session(session) as db:
+            for period_type in period_types:
+                await self._record_metric_period(
+                    db,
+                    user_id=user_id,
+                    column_name=column_name,
+                    period_type=period_type,
+                    amount=amount,
+                )
+            if session is None:
+                await db.commit()
+
+        for period_type in period_types:
+            telemetry.increment_counter(
+                f"billing.usage.{metric}",
+                amount,
+                {"user_id": user_id, "period": period_type},
+            )
+
     # ---- convenience shortcuts ----
 
-    async def record_api_request(self, user_id: str) -> None:
-        await self.record(user_id, "api_requests", 1)
+    async def record_api_request(self, user_id: str, *, session: AsyncSession | None = None) -> None:
+        await self._record_metric_periods(user_id, "api_requests", 1, ("hourly", "daily"), session=session)
 
-    async def record_mission_start(self, user_id: str) -> None:
-        await self.record(user_id, "missions_started", 1)
+    async def record_mission_start(self, user_id: str, *, session: AsyncSession | None = None) -> None:
+        await self._record_metric_periods(
+            user_id,
+            "missions_started",
+            1,
+            ("monthly", "daily", "weekly"),
+            session=session,
+        )
 
     async def record_sandbox_minutes(self, user_id: str, minutes: int) -> None:
         await self.record(user_id, "sandbox_minutes", minutes)
@@ -82,36 +163,13 @@ class UsageTracker:
 
     # ---- core ----
 
-    async def record(self, user_id: str, metric: str, amount: int) -> None:
+    async def record(self, user_id: str, metric: str, amount: int, *, session: AsyncSession | None = None) -> None:
         """Increment *metric* for *user_id* in the current period."""
         mapping = _METRIC_MAP.get(metric)
         if mapping is None:
             raise ValueError(f"Unknown usage metric: {metric!r}")
 
-        col_name, _, period_type = mapping
-        period = _period_start(period_type)
-
-        async with async_session_maker() as session:
-            # Use an atomic server-side increment to avoid read-modify-write races.
-            # INSERT ... ON CONFLICT DO UPDATE SET col = col + amount
-            stmt = (
-                pg_insert(UsageRecord)
-                .values(
-                    user_id=user_id,
-                    period_type=period_type,
-                    period_start=period,
-                    **{col_name: amount},
-                )
-                .on_conflict_do_update(
-                    index_elements=["user_id", "period_type", "period_start"],
-                    set_={col_name: getattr(UsageRecord, col_name) + amount},
-                )
-            )
-            await session.execute(stmt)
-            await session.commit()
-
-        # Record to telemetry
-        telemetry.increment_counter(f"billing.usage.{metric}", amount, {"user_id": user_id, "period": period_type})
+        await self._record_metric_periods(user_id, metric, amount, (mapping[2],), session=session)
 
     async def check_rate_limit(self, user_id: str, metric: str) -> tuple[bool, int, int]:
         """Return ``(within_limit, current_usage, max_allowed)``.

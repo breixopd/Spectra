@@ -24,6 +24,7 @@ except ImportError:
 
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.advisory_locks import stable_lock_id
 from app.core.cache import CacheService, set_cache
 from app.core.config import settings
 from app.core.database import async_session_maker, engine
@@ -125,6 +126,26 @@ def _validate_noop_payment() -> None:
             "Configure a real payment provider (stripe, crypto, or manual) "
             "or set PLATFORM_EXPOSED=false for internal deployments."
         )
+
+
+def _validate_stripe_webhook_secret() -> None:
+    """Require a webhook signing secret when Stripe is the active payment provider."""
+    if settings.PAYMENT_PROVIDER.strip().lower() != "stripe":
+        return
+
+    stripe_secret = settings.STRIPE_SECRET_KEY.get_secret_value().strip()
+    webhook_secret = settings.STRIPE_WEBHOOK_SECRET.get_secret_value().strip()
+    if not stripe_secret or webhook_secret:
+        return
+
+    logger.error(
+        "[SECURITY] PAYMENT_PROVIDER is 'stripe' and STRIPE_SECRET_KEY is configured, "
+        "but STRIPE_WEBHOOK_SECRET is empty. Refusing startup because webhook signatures "
+        "cannot be verified."
+    )
+    raise RuntimeError(
+        "STRIPE_WEBHOOK_SECRET must be set when PAYMENT_PROVIDER='stripe' and STRIPE_SECRET_KEY is configured"
+    )
 
 
 def _validate_rate_limit_storage() -> None:
@@ -242,7 +263,7 @@ async def _initialize_sandbox() -> None:
             async def warm_pool_maintain_loop():
                 from sqlalchemy import text
 
-                _warm_pool_lock_id = hash("spectra_warm_pool") & 0x7FFFFFFF
+                _warm_pool_lock_id = stable_lock_id("spectra_warm_pool")
                 while True:
                     try:
                         await asyncio.sleep(30)
@@ -602,6 +623,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("[STARTUP] Starting Spectra...")
 
     _validate_noop_payment()
+    _validate_stripe_webhook_secret()
 
     if settings.PAYMENT_PROVIDER and not settings.PLATFORM_BASE_URL:
         logger.warning(

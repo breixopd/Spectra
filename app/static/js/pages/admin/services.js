@@ -31,7 +31,7 @@ function loadBillingFields() {
     const pk = document.getElementById('billing-stripe-pk');
     const sk = document.getElementById('billing-stripe-sk');
     const whs = document.getElementById('billing-stripe-whs');
-    if (prov) prov.value = svcSettings.payment_provider || 'noop';
+    if (prov) prov.value = svcSettings.payment_provider || 'manual';
     if (pk) pk.value = svcSettings.stripe_publishable_key || '';
     // Secret fields show placeholder only
     if (sk) sk.value = '';

@@ -14,6 +14,7 @@ from app.api.dependencies import check_feature_allowed, get_current_active_user
 from app.core.config import settings
 from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
+from app.core.rbac import Permission, require_permission
 from app.models.user import User
 from app.services.tools.vpn import VPNManager
 
@@ -169,13 +170,11 @@ async def delete_vpn_config(
 async def connect_vpn(
     request: Request,
     name: str = Path(..., pattern=VPN_NAME_PATTERN),
-    _user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_async_session),
+    _user: User = require_permission(Permission.VIEW_MONITORING),
 ) -> VPNActionResponse:
-    """Connect to a VPN using the named configuration."""
+    """Connect the shared VPN runtime using the caller's saved configuration."""
     if not settings.VPN_ENABLED:
         raise HTTPException(status_code=400, detail="VPN feature is disabled")
-    await check_feature_allowed(_user, db, "vpn_support")
     mgr = _get_vpn_manager()
     try:
         result = await mgr.connect(_scoped_name(_user, name))
@@ -190,9 +189,9 @@ async def connect_vpn(
 async def disconnect_vpn(
     request: Request,
     name: str = Path(..., pattern=VPN_NAME_PATTERN),
-    _user: User = Depends(get_current_active_user),
+    _user: User = require_permission(Permission.VIEW_MONITORING),
 ) -> VPNActionResponse:
-    """Disconnect from a VPN."""
+    """Disconnect the shared VPN runtime from the caller's saved configuration."""
     mgr = _get_vpn_manager()
     try:
         result = await mgr.disconnect(_scoped_name(_user, name))
@@ -206,9 +205,9 @@ async def disconnect_vpn(
 @limiter.limit(RateLimits.VPN_READ)
 async def vpn_status(
     request: Request,
-    _user: User = Depends(get_current_active_user),
+    _user: User = require_permission(Permission.VIEW_MONITORING),
 ) -> VPNActionResponse:
-    """Get current VPN connection status."""
+    """Get shared VPN runtime status."""
     mgr = _get_vpn_manager()
     result = await mgr.status()
     return VPNActionResponse(**result)
@@ -218,9 +217,9 @@ async def vpn_status(
 @limiter.limit(RateLimits.VPN_WRITE)
 async def test_vpn_connection(
     request: Request,
-    _user: User = Depends(get_current_active_user),
+    _user: User = require_permission(Permission.VIEW_MONITORING),
 ) -> VPNActionResponse:
-    """Test VPN connectivity."""
+    """Test shared VPN runtime connectivity."""
     mgr = _get_vpn_manager()
     result = await mgr.test_connection()
     return VPNActionResponse(**result)

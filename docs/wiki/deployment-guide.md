@@ -61,12 +61,23 @@ Each mission gets one ephemeral sandbox container (Kali Linux) for tool executio
 ### 1. Prepare the Server
 
 ```bash
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-sudo mkdir -p /opt/spectra && sudo chown $USER:$USER /opt/spectra
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL "https://download.docker.com/linux/$(. /etc/os-release && echo "${ID}")/gpg" -o /tmp/docker.asc
+sudo mv /tmp/docker.asc /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+. /etc/os-release
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-$UBUNTU_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo usermod -aG docker "${USER}"
+sudo mkdir -p /opt/spectra && sudo chown "${USER}:${USER}" /opt/spectra
 cd /opt/spectra
 git clone <repo-url> .
 ```
+
+Open a new shell before running `docker` without `sudo` so the new group membership is applied.
 
 ### 2. Configure Environment
 

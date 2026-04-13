@@ -24,7 +24,13 @@ _DOCKER_INSTALL_STEPS = [
         name="Check/Install Docker",
         command=(
             "if command -v docker &>/dev/null; then echo 'Docker already installed'; "
-            "else curl -fsSL https://get.docker.com | sh; fi"
+            "else apt-get update && apt-get install -y ca-certificates curl gnupg && "
+            "install -m 0755 -d /etc/apt/keyrings && "
+            "curl -fsSL https://download.docker.com/linux/$(. /etc/os-release && echo ${ID})/gpg -o /etc/apt/keyrings/docker.asc && "
+            "chmod a+r /etc/apt/keyrings/docker.asc && "
+            ". /etc/os-release && "
+            "echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-$UBUNTU_CODENAME} stable\" > /etc/apt/sources.list.d/docker.list && "
+            "apt-get update && apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; fi"
         ),
         timeout=300,
     ),
@@ -56,7 +62,11 @@ PROVISIONING_RECIPES: dict[str, list[ProvisionStep]] = {
         *_DOCKER_INSTALL_STEPS,
         ProvisionStep(
             name="Pull Spectra tools image",
-            command="docker pull ghcr.io/spectra/spectra-tools:latest || docker build -t spectra-tools /tmp/spectra-tools/ || echo 'will_build_next'",
+            command=(
+                "docker pull {registry}/spectra-tools:{version} && "
+                "docker tag {registry}/spectra-tools:{version} spectra-tools:latest || "
+                "docker build -t spectra-tools /tmp/spectra-tools/ || echo 'will_build_next'"
+            ),
             timeout=600,
             required=False,
         ),

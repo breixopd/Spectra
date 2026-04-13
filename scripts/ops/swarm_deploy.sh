@@ -223,7 +223,24 @@ case "${ACTION}" in
 
     # Install Docker
     log "Installing Docker..."
-    ssh "${TARGET_HOST}" "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker \$(whoami)"
+    ssh "${TARGET_HOST}" 'bash -se' <<'REMOTE_DOCKER_INSTALL'
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+sudo apt-get update -qq
+sudo apt-get install -y -qq ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
+  curl -fsSL "https://download.docker.com/linux/$(. /etc/os-release && echo "${ID}")/gpg" | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+fi
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+. /etc/os-release
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-${UBUNTU_CODENAME:-}} stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+sudo apt-get update -qq
+sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable docker
+sudo systemctl start docker
+sudo usermod -aG docker "$(id -un)"
+REMOTE_DOCKER_INSTALL
 
     # Join swarm if token provided
     if [[ -n "${JOIN_TOKEN}" ]]; then

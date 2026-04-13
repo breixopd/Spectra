@@ -1,10 +1,21 @@
 """Tests for the server provisioner — env-var sanitisation and connection building."""
 
+import subprocess
+import sys
+from types import ModuleType
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-asyncssh = pytest.importorskip("asyncssh", reason="asyncssh not installed")
+try:
+    import asyncssh  # type: ignore
+except ModuleNotFoundError:
+    asyncssh = ModuleType("asyncssh")
+    asyncssh.connect = MagicMock()
+    asyncssh.import_private_key = MagicMock(side_effect=lambda key: key)
+    asyncssh.DisconnectError = type("DisconnectError", (Exception,), {})
+    sys.modules["asyncssh"] = asyncssh
+
 from app.services.provisioning.provisioner import ServerConfig, ServerProvisioner
 
 
@@ -68,7 +79,8 @@ class TestFormatEnvVars:
 class TestBuildConnKwargs:
     def test_with_password(self, provisioner: ServerProvisioner):
         config = ServerConfig(host="10.0.0.1", password="secret")
-        result = provisioner._build_conn_kwargs(config)
+        with patch.object(provisioner, "_ensure_known_host", return_value="/tmp/known_hosts"):
+            result = provisioner._build_conn_kwargs(config)
         assert result is not None
         assert result["host"] == "10.0.0.1"
         assert result["password"] == "secret"
@@ -77,7 +89,10 @@ class TestBuildConnKwargs:
 
     def test_with_private_key(self, provisioner: ServerProvisioner):
         # asyncssh.import_private_key requires a real key — mock it
-        with patch("app.services.provisioning.provisioner.asyncssh.import_private_key") as mock_import:
+        with (
+            patch.object(provisioner, "_ensure_known_host", return_value="/tmp/known_hosts"),
+            patch("app.services.provisioning.provisioner.asyncssh.import_private_key") as mock_import,
+        ):
             mock_import.return_value = "fake-key-obj"
             config = ServerConfig(host="10.0.0.1", private_key="-----BEGIN RSA...")
             result = provisioner._build_conn_kwargs(config)
@@ -91,11 +106,94 @@ class TestBuildConnKwargs:
         result = provisioner._build_conn_kwargs(config)
         assert result is None
 
-    def test_known_hosts_none(self, provisioner: ServerProvisioner):
+    def test_known_hosts_uses_tofu_file(self, provisioner: ServerProvisioner):
         config = ServerConfig(host="10.0.0.1", password="pw")
-        result = provisioner._build_conn_kwargs(config)
+        with patch.object(provisioner, "_ensure_known_host", return_value="/tmp/provisioner_known_hosts"):
+            result = provisioner._build_conn_kwargs(config)
         assert result is not None
-        assert result["known_hosts"] is None
+        assert result["known_hosts"] == "/tmp/provisioner_known_hosts"
+
+
+# ---------------------------------------------------------------------------
+# _ensure_known_host
+# ---------------------------------------------------------------------------
+
+
+class TestEnsureKnownHost:
+    def test_existing_entry_skips_keyscan(self, provisioner: ServerProvisioner, tmp_path):
+        known_hosts_path = tmp_path / "config" / "provisioner_known_hosts"
+        known_hosts_path.parent.mkdir(parents=True, exist_ok=True)
+        known_hosts_path.write_text("[example.com]:2222 ssh-ed25519 AAAAC3existing\n", encoding="utf-8")
+
+        with (
+            patch.object(provisioner, "_known_hosts_path", return_value=known_hosts_path),
+            patch("app.services.provisioning.provisioner.subprocess.run") as mock_run,
+        ):
+            result = provisioner._ensure_known_host(ServerConfig(host="example.com", port=2222, password="pw"))
+
+        assert result == known_hosts_path
+        mock_run.assert_not_called()
+
+    def test_pinned_entry_replaces_existing_host_and_skips_keyscan(self, provisioner: ServerProvisioner, tmp_path):
+        known_hosts_path = tmp_path / "config" / "provisioner_known_hosts"
+        known_hosts_path.parent.mkdir(parents=True, exist_ok=True)
+        known_hosts_path.write_text(
+            "[example.com]:2222 ssh-ed25519 AAAACold\nother.example ssh-ed25519 AAAAOTHER\n",
+            encoding="utf-8",
+        )
+        pinned_entry = "[example.com]:2222 ssh-ed25519 AAAAPINNED"
+
+        with (
+            patch.object(provisioner, "_known_hosts_path", return_value=known_hosts_path),
+            patch("app.services.provisioning.provisioner.subprocess.run") as mock_run,
+        ):
+            result = provisioner._ensure_known_host(
+                ServerConfig(host="example.com", port=2222, password="pw", ssh_known_host=pinned_entry)
+            )
+
+        assert result == known_hosts_path
+        assert known_hosts_path.read_text(encoding="utf-8") == (
+            "other.example ssh-ed25519 AAAAOTHER\n"
+            "[example.com]:2222 ssh-ed25519 AAAAPINNED\n"
+        )
+        mock_run.assert_not_called()
+
+    def test_keyscan_appends_new_host_and_logs(self, provisioner: ServerProvisioner, tmp_path, caplog):
+        known_hosts_path = tmp_path / "config" / "provisioner_known_hosts"
+        scan_result = MagicMock(stdout="[example.com]:2222 ssh-ed25519 AAAAC3new\n")
+
+        with (
+            patch.object(provisioner, "_known_hosts_path", return_value=known_hosts_path),
+            patch("app.services.provisioning.provisioner.subprocess.run", return_value=scan_result) as mock_run,
+            caplog.at_level("INFO"),
+        ):
+            result = provisioner._ensure_known_host(ServerConfig(host="example.com", port=2222, password="pw"))
+
+        assert result == known_hosts_path
+        assert known_hosts_path.read_text(encoding="utf-8") == "[example.com]:2222 ssh-ed25519 AAAAC3new\n"
+        mock_run.assert_called_once_with(
+            ["ssh-keyscan", "-p", "2222", "example.com"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+        )
+        assert "Trusted new SSH host key on first use" in caplog.text
+
+    def test_keyscan_failure_raises_runtime_error(self, provisioner: ServerProvisioner, tmp_path):
+        known_hosts_path = tmp_path / "config" / "provisioner_known_hosts"
+        error = subprocess.CalledProcessError(
+            1,
+            ["ssh-keyscan", "-p", "22", "bad.example"],
+            stderr="lookup bad.example: no address associated with name",
+        )
+
+        with (
+            patch.object(provisioner, "_known_hosts_path", return_value=known_hosts_path),
+            patch("app.services.provisioning.provisioner.subprocess.run", side_effect=error),
+        ):
+            with pytest.raises(RuntimeError, match="ssh-keyscan failed for bad.example:22"):
+                provisioner._ensure_known_host(ServerConfig(host="bad.example", password="pw"))
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +212,10 @@ class TestVerifyConnection:
         mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
         mock_conn.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("app.services.provisioning.provisioner.asyncssh.connect", return_value=mock_conn):
+        with (
+            patch.object(provisioner, "_ensure_known_host", return_value="/tmp/known_hosts"),
+            patch("app.services.provisioning.provisioner.asyncssh.connect", return_value=mock_conn),
+        ):
             config = ServerConfig(host="10.0.0.1", password="pw")
             result = await provisioner.verify_connection(config)
 
@@ -128,12 +229,64 @@ class TestVerifyConnection:
         assert "No auth" in result["error"]
 
     async def test_verify_connection_error(self, provisioner: ServerProvisioner):
-        with patch(
-            "app.services.provisioning.provisioner.asyncssh.connect",
-            side_effect=OSError("Connection refused"),
+        with (
+            patch.object(provisioner, "_ensure_known_host", return_value="/tmp/known_hosts"),
+            patch(
+                "app.services.provisioning.provisioner.asyncssh.connect",
+                side_effect=OSError("Connection refused"),
+            ),
         ):
             config = ServerConfig(host="10.0.0.1", password="pw")
             result = await provisioner.verify_connection(config)
 
         assert result["connected"] is False
         assert "Connection refused" in result["error"]
+
+    async def test_verify_returns_clear_error_when_keyscan_fails(self, provisioner: ServerProvisioner):
+        with patch.object(provisioner, "_ensure_known_host", side_effect=RuntimeError("ssh-keyscan failed")):
+            config = ServerConfig(host="10.0.0.1", password="pw")
+            result = await provisioner.verify_connection(config)
+
+        assert result == {"connected": False, "error": "ssh-keyscan failed"}
+
+    async def test_verify_returns_clear_error_when_asyncssh_missing(self, provisioner: ServerProvisioner):
+        with (
+            patch("app.services.provisioning.provisioner.ASYNCSSH_AVAILABLE", False),
+            patch.object(provisioner, "_ensure_known_host", return_value="/tmp/known_hosts"),
+        ):
+            config = ServerConfig(host="10.0.0.1", password="pw")
+            result = await provisioner.verify_connection(config)
+
+        assert result == {
+            "connected": False,
+            "error": "Missing optional dependency 'asyncssh'; install it to use remote provisioning operations",
+        }
+
+
+@pytest.mark.asyncio
+class TestMissingAsyncSSH:
+    async def test_provision_returns_clear_error_when_asyncssh_missing(self, provisioner: ServerProvisioner):
+        with (
+            patch("app.services.provisioning.provisioner.ASYNCSSH_AVAILABLE", False),
+            patch.object(provisioner, "_ensure_known_host", return_value="/tmp/known_hosts"),
+        ):
+            result = await provisioner.provision(
+                ServerConfig(host="10.0.0.1", password="pw", service_type="sandbox_worker")
+            )
+
+        assert result.success is False
+        assert result.error == (
+            "Unexpected error: Missing optional dependency 'asyncssh'; install it to use remote provisioning operations"
+        )
+
+    async def test_deprovision_returns_clear_error_when_asyncssh_missing(self, provisioner: ServerProvisioner):
+        with (
+            patch("app.services.provisioning.provisioner.ASYNCSSH_AVAILABLE", False),
+            patch.object(provisioner, "_ensure_known_host", return_value="/tmp/known_hosts"),
+        ):
+            result = await provisioner.deprovision(ServerConfig(host="10.0.0.1", password="pw"))
+
+        assert result.success is False
+        assert result.error == (
+            "Missing optional dependency 'asyncssh'; install it to use remote provisioning operations"
+        )

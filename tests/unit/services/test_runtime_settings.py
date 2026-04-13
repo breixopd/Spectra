@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
+from pydantic import SecretStr
 
 from app.services.system.runtime_settings import (
     BOOTSTRAP_ONLY_VARS,
@@ -180,6 +181,9 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         mock_settings.AI_SERVICE_URL = ""
         mock_settings.DEBUG = True
         mock_settings.SERVICE_MODE = "api"
+        mock_settings.PAYMENT_PROVIDER = "noop"
+        mock_settings.STRIPE_SECRET_KEY = SecretStr("")
+        mock_settings.STRIPE_WEBHOOK_SECRET = SecretStr("")
 
         from app.core.lifespan import lifespan
 
@@ -190,6 +194,35 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
             pass
 
     assert order[:2] == ["hydrate", "embedding-init"]
+
+
+def test_validate_stripe_webhook_secret_raises_when_required(caplog):
+    from app.core.lifespan import _validate_stripe_webhook_secret
+
+    with patch("app.core.lifespan.settings") as mock_settings:
+        mock_settings.PAYMENT_PROVIDER = "stripe"
+        mock_settings.STRIPE_SECRET_KEY = SecretStr("sk_test_123")
+        mock_settings.STRIPE_WEBHOOK_SECRET = SecretStr("")
+
+        with caplog.at_level("ERROR"):
+            with pytest.raises(RuntimeError, match="STRIPE_WEBHOOK_SECRET"):
+                _validate_stripe_webhook_secret()
+
+    assert "STRIPE_WEBHOOK_SECRET is empty" in caplog.text
+
+
+def test_validate_stripe_webhook_secret_skips_when_not_actively_using_stripe():
+    from app.core.lifespan import _validate_stripe_webhook_secret
+
+    with patch("app.core.lifespan.settings") as mock_settings:
+        mock_settings.PAYMENT_PROVIDER = "manual"
+        mock_settings.STRIPE_SECRET_KEY = SecretStr("sk_test_123")
+        mock_settings.STRIPE_WEBHOOK_SECRET = SecretStr("")
+        _validate_stripe_webhook_secret()
+
+        mock_settings.PAYMENT_PROVIDER = "stripe"
+        mock_settings.STRIPE_SECRET_KEY = SecretStr("")
+        _validate_stripe_webhook_secret()
 
 
 def test_sandbox_settings_in_general_runtime_field_map():

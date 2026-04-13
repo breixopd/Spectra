@@ -224,7 +224,7 @@ async function loadPlan() {
         if (meResult.error) return;
         const user = meResult.data;
         const siteSettings = !settingsResult.error ? settingsResult.data : {};
-        const paymentProvider = siteSettings.payment_provider || 'noop';
+        const paymentProvider = siteSettings.payment_provider || 'manual';
         const planName = user.plan_name || user.plan?.display_name || 'Default';
         const plan = user.plan || {};
         const currentPlanId = plan.id || user.plan_id || '';

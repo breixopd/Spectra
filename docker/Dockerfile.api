@@ -1,8 +1,10 @@
 # Spectra API — FastAPI web application
 # Purpose-built image for the main API service.
 
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+
 # ── Builder stage ──
-FROM python:3.11-slim AS builder
+FROM ${PYTHON_BASE_IMAGE} AS builder
 
 WORKDIR /build
 
@@ -22,9 +24,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r app.txt
 
 # ── Runtime stage ──
-FROM python:3.11-slim
+FROM ${PYTHON_BASE_IMAGE}
 
 ARG BUILD_VERSION=dev
+ARG GRYPE_VERSION=0.84.0
 LABEL org.opencontainers.image.title="Spectra API" \
       org.opencontainers.image.description="AI-Driven Security Assessment Platform — API" \
       org.opencontainers.image.source="https://github.com/breixopd14/spectra" \
@@ -43,7 +46,24 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     && rm -rf /var/lib/apt/lists/*
 
 # Grype (container image vulnerability scanning)
-RUN curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin v0.84.0 2>/dev/null || true
+RUN set -eu; \
+    arch="$(dpkg --print-architecture)"; \
+    case "${arch}" in \
+        amd64) grype_arch="linux_amd64" ;; \
+        arm64) grype_arch="linux_arm64" ;; \
+        *) echo "Skipping Grype install: unsupported architecture ${arch}"; exit 0 ;; \
+    esac; \
+    tmp_dir="$(mktemp -d)"; \
+    trap 'rm -rf "${tmp_dir}"' EXIT; \
+    grype_archive="grype_${GRYPE_VERSION}_${grype_arch}.tar.gz"; \
+    grype_checksums="grype_${GRYPE_VERSION}_checksums.txt"; \
+    base_url="https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}"; \
+    curl -fsSL "${base_url}/${grype_archive}" -o "${tmp_dir}/${grype_archive}"; \
+    curl -fsSL "${base_url}/${grype_checksums}" -o "${tmp_dir}/${grype_checksums}"; \
+    grep " ${grype_archive}$" "${tmp_dir}/${grype_checksums}" > "${tmp_dir}/${grype_archive}.sha256"; \
+    (cd "${tmp_dir}" && sha256sum -c "${grype_archive}.sha256"); \
+    tar -xzf "${tmp_dir}/${grype_archive}" -C "${tmp_dir}" grype; \
+    install -m 0755 "${tmp_dir}/grype" /usr/local/bin/grype
 
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"

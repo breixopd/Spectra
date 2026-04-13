@@ -27,7 +27,7 @@ async function loadVpnConfigs() {
 async function vpnConnect(name) {
     try {
         const { data, error } = await spectraApi.post(`/api/v1/vpn/connect/${encodeURIComponent(name)}`);
-        if (!error) _spectraToast('VPN connect job queued: ' + data.job_id, 'success');
+        if (!error) _spectraToast('Shared tools VPN connect job queued: ' + data.job_id, 'success');
         else _spectraToast('Error: ' + (error || 'Failed'), 'error');
     } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
 }
@@ -35,7 +35,7 @@ async function vpnConnect(name) {
 async function vpnDisconnect(name) {
     try {
         const { data, error } = await spectraApi.post(`/api/v1/vpn/disconnect/${encodeURIComponent(name)}`);
-        if (!error) _spectraToast('VPN disconnect job queued: ' + data.job_id, 'success');
+        if (!error) _spectraToast('Shared tools VPN disconnect job queued: ' + data.job_id, 'success');
         else _spectraToast('Error: ' + (error || 'Failed'), 'error');
     } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
 }
@@ -52,7 +52,7 @@ async function vpnDelete(name) {
 async function testVpnConnection() {
     try {
         const { data, error } = await spectraApi.post('/api/v1/vpn/test');
-        if (!error) _spectraToast('VPN test job queued: ' + data.job_id, 'success');
+        if (!error) _spectraToast('Shared tools VPN test job queued: ' + data.job_id, 'success');
         else _spectraToast('Error: ' + (error || 'Failed'), 'error');
     } catch (e) { _spectraToast('Error: ' + e.message, 'error'); }
 }
@@ -63,14 +63,14 @@ async function loadVpnStatus() {
     try {
         const { error } = await spectraApi.get('/api/v1/vpn/status');
         if (!error) {
-            text.textContent = 'Status check queued (runs in tools container)';
+            text.textContent = 'Status check queued (shared tools container state)';
             dot.className = 'w-3 h-3 rounded-full bg-slate-500';
         } else {
-            text.textContent = 'VPN status unavailable';
+            text.textContent = 'Shared tools VPN status unavailable';
             dot.className = 'w-3 h-3 rounded-full bg-rose-500';
         }
     } catch {
-        text.textContent = 'Could not reach API';
+        text.textContent = 'Could not reach shared VPN status API';
         dot.className = 'w-3 h-3 rounded-full bg-rose-500';
     }
 }

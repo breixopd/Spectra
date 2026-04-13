@@ -1,8 +1,10 @@
 # Spectra AI — LLM routing, embeddings, RAG service
 # Purpose-built image for the AI microservice.
 
+ARG PYTHON_BASE_IMAGE=python:3.11.13-slim-bookworm
+
 # ── Builder stage ──
-FROM python:3.11-slim AS builder
+FROM ${PYTHON_BASE_IMAGE} AS builder
 
 WORKDIR /build
 
@@ -21,7 +23,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r ai.txt
 
 # ── Runtime stage ──
-FROM python:3.11-slim
+FROM ${PYTHON_BASE_IMAGE}
 
 ARG BUILD_VERSION=dev
 LABEL org.opencontainers.image.title="Spectra AI" \

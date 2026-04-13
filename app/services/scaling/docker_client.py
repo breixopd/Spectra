@@ -494,10 +494,10 @@ async def _get_registry_digest_v2(image_ref: str) -> str | None:
 
     import httpx
 
-    for scheme in ("http", "https"):
+    for scheme in ("https", "http"):
         url = f"{scheme}://{registry}/v2/{repo}/manifests/{tag}"
         try:
-            async with httpx.AsyncClient(verify=False, timeout=10) as http_client:  # noqa: S501
+            async with httpx.AsyncClient(timeout=10) as http_client:
                 resp = await http_client.head(
                     url,
                     headers={
