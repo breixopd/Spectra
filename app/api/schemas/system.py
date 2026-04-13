@@ -1,6 +1,6 @@
 """System, admin, health, and configuration schemas."""
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.api.schemas.auth import UserCreate
 
@@ -135,6 +135,17 @@ class SettingsUpdate(BaseModel):
             if parsed.scheme not in ("http", "https"):
                 raise ValueError("Webhook URL must use http or https scheme")
         return value
+
+    @model_validator(mode="after")
+    def enforce_string_max_length(self) -> "SettingsUpdate":
+        """Reject string values exceeding 10 KB to prevent abuse."""
+        max_bytes = 10_240
+        for field_name, value in self.model_dump(exclude_unset=True).items():
+            if isinstance(value, str) and len(value.encode("utf-8")) > max_bytes:
+                raise ValueError(
+                    f"Field '{field_name}' exceeds maximum length of {max_bytes} bytes"
+                )
+        return self
 
 
 class AdminSettingsUpdate(SettingsUpdate):

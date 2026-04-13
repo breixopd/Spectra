@@ -91,7 +91,7 @@ def _parse_service(svc) -> ServiceInfo:
                 if node_id:
                     task_nodes.append(node_id)
     except Exception:
-        pass
+        logger.debug("Failed to enumerate tasks for service %s", svc.name, exc_info=True)
 
     return ServiceInfo(
         name=svc.name,

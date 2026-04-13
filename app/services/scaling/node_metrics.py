@@ -5,11 +5,14 @@ Uses psutil for system stats and optionally Docker for container stats.
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 from dataclasses import asdict, dataclass, field
 
 import psutil
+
+logger = logging.getLogger(__name__)
 
 # Prime the CPU percent sensor so the first real call returns a meaningful value.
 psutil.cpu_percent(interval=None)
@@ -126,11 +129,11 @@ def collect_node_metrics(service_mode: str = "unknown") -> NodeMetrics:
                     container_count = len(client.containers.list())
                     client.close()
                 except Exception:
-                    pass
+                    logger.debug("Failed to count Docker containers synchronously", exc_info=True)
             else:
                 container_count = asyncio.run(count_running_containers())
         except Exception:
-            pass
+            logger.debug("Failed to count Docker containers", exc_info=True)
 
     return NodeMetrics(
         hostname=hostname,

@@ -106,7 +106,7 @@ function populatePlanSelect(selectedId) {
     const sel = document.getElementById('user-form-plan');
     sel.innerHTML = '<option value="">None</option>';
     (Array.isArray(allPlans) ? allPlans : []).filter(p => p.is_active).forEach(p => {
-        sel.innerHTML += `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${escapeHtml(p.display_name)}</option>`;
+        sel.innerHTML += `<option value="${escapeHtml(String(p.id || ''))}" ${p.id === selectedId ? 'selected' : ''}>${escapeHtml(p.display_name)}</option>`;
     });
 }
 

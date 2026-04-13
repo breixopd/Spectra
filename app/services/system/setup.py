@@ -352,8 +352,8 @@ class SystemSetupService:
             import asyncio
 
             # Get list of running containers
-            proc = await asyncio.create_subprocess_shell(
-                "docker ps --format '{{.Names}}'",
+            proc = await asyncio.create_subprocess_exec(
+                "docker", "ps", "--format", "{{.Names}}",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )

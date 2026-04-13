@@ -6,7 +6,7 @@ import contextlib
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_maker
@@ -92,6 +92,12 @@ class QuotaEnforcer:
 
         async with _use_or_create_session(session) as db:
             from app.models.mission import Mission as MissionModel
+
+            # Advisory lock prevents TOCTOU between quota check and mission INSERT
+            await db.execute(
+                text("SELECT pg_advisory_xact_lock(:lock_id)"),
+                {"lock_id": hash(f"mission_quota_{user_id}") & 0x7FFFFFFF},
+            )
 
             locked_sub = await db.execute(
                 select(Subscription)

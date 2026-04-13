@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import logging
+import shlex
 import shutil
 from pathlib import Path
 
@@ -131,8 +132,8 @@ class ToolInstaller:
                 logger.debug("Verifying %s with: %s", tool.config.id, cmd)
 
                 # Run verification command with timeout
-                proc = await asyncio.create_subprocess_shell(
-                    cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                proc = await asyncio.create_subprocess_exec(
+                    *shlex.split(cmd), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
                 )
 
                 try:
