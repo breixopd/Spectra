@@ -86,7 +86,7 @@ class SchedulerService:
         logger.info("Scheduler running with %d tasks", len(self.tasks))
         task_names = list(self._named_tasks.keys())
         results = await asyncio.gather(*self.tasks, return_exceptions=True)
-        for task_name, result in zip(task_names, results or []):
+        for task_name, result in zip(task_names, results or [], strict=False):
             if isinstance(result, Exception):
                 logger.error("Scheduler task '%s' failed: %s", task_name, result, exc_info=result)
 
@@ -707,13 +707,12 @@ async def internal_node_metrics():
 @app.get("/internal/scaling/dashboard")
 async def internal_scaling_dashboard():
     """Comprehensive scaling dashboard data — cluster, services, nodes, autoscaler, alerts."""
+    from app.core.config import get_settings as _get_settings
     from app.services.scaling.auto_scaler import AutoScaler, get_scaling_history
     from app.services.scaling.backends import DockerSwarmBackend
     from app.services.scaling.config import AutoScalerConfig
     from app.services.scaling.metrics_collector import MetricsCollector
     from app.services.scaling.notifiers import LogNotifier
-
-    from app.core.config import get_settings as _get_settings
 
     settings = _get_settings()
     collector = MetricsCollector()
@@ -895,8 +894,6 @@ _INTERNAL_ALLOWED_SERVICES = frozenset({
 @app.post("/internal/scaling/action")
 async def internal_scaling_action(request_body: dict):
     """Execute a Docker scaling command on behalf of a non-manager app replica."""
-    import subprocess as sp
-
     action = request_body.get("action", "")
     service = request_body.get("service", "")
 
@@ -908,11 +905,6 @@ async def internal_scaling_action(request_body: dict):
         scale_service,
     )
 
-    action = request_body.get("action", "")
-    service = request_body.get("service", "")
-
-    if action not in ("scale_up", "scale_down", "restart"):
-        return {"success": False, "action": action, "service": service, "error": "Invalid action"}
     if service not in _INTERNAL_ALLOWED_SERVICES:
         return {"success": False, "action": action, "service": service, "error": "Service not allowed"}
 
@@ -929,7 +921,7 @@ async def internal_scaling_action(request_body: dict):
         else:
             success = False
 
-    except Exception as exc:
+    except Exception:
         logger.exception("Internal scaling action failed: %s %s", action, service)
         success = False
 
