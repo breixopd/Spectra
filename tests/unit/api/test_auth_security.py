@@ -85,6 +85,7 @@ class TestLogoutRevokesRefreshToken:
 
         _sec._blacklisted_tokens.clear()
         _sec._user_token_blacklist.clear()
+        _sec._blacklist_ready.set()
 
     @pytest.mark.asyncio
     async def test_logout_sets_invalidated_before_on_user(self):
@@ -186,6 +187,7 @@ class TestMfaCancelBlocklist:
 
         _sec._blacklisted_tokens.clear()
         _sec._user_token_blacklist.clear()
+        _sec._blacklist_ready.set()
 
     @pytest.mark.asyncio
     async def test_cancel_mfa_blacklists_pending_token(self):

@@ -141,7 +141,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 csrf_tok,
                 httponly=False,
                 secure=not settings.DEBUG,
-                samesite="strict",
+                samesite="lax",
                 max_age=86400,
             )
 

@@ -50,7 +50,7 @@ COPY keys/ ./keys/
 # Run as non-root for security
 RUN useradd --create-home --shell /bin/bash spectra && \
     mkdir -p /etc/sudoers.d && \
-    printf 'spectra ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/bin/apt, /usr/bin/dpkg, /usr/bin/nmap, /usr/sbin/openvpn, /usr/bin/wg-quick\nDefaults:spectra !requiretty\n' > /etc/sudoers.d/spectra-tools && \
+    printf 'spectra ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/sbin/service, /usr/bin/nmap, /usr/sbin/openvpn, /usr/bin/wg-quick\nDefaults:spectra !requiretty\n' > /etc/sudoers.d/spectra-tools && \
     chmod 0440 /etc/sudoers.d/spectra-tools && \
     chown -R spectra:spectra /app /opt/venv /opt/spectra_tools
 

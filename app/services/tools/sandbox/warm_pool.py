@@ -170,7 +170,7 @@ class WarmPoolManager:
                 "CONNECT_BACK_HOST": "spectra-app",
                 "PLUGIN_SAFE_MODE": str(settings.PLUGIN_SAFE_MODE).lower(),
                 "DATABASE_URL": _sandbox_database_url(settings.DATABASE_URL.get_secret_value()),
-                "DATA_ROOT": settings.DATA_ROOT,
+                "DATA_ROOT": "/app/data",
             }
 
             # Minimal volume mounts for warm containers

@@ -260,7 +260,7 @@ async def test_hydrate_env_override_takes_precedence_over_db():
     """When an env var is explicitly set, it overrides the DB value."""
     session = AsyncMock()
     rows = [
-        SimpleNamespace(key="LOG_LEVEL", value="DEBUG", is_secret=False),
+        SimpleNamespace(key="PLATFORM_DOMAIN", value="from-db.example.com", is_secret=False),
     ]
     result = MagicMock()
     result.scalars.return_value.all.return_value = rows
@@ -272,7 +272,7 @@ async def test_hydrate_env_override_takes_precedence_over_db():
             "app.services.system.runtime_settings.reset_runtime_ai_caches",
             new_callable=AsyncMock,
         ),
-        patch.dict(os.environ, {"LOG_LEVEL": "WARNING"}),
+        patch.dict(os.environ, {"PLATFORM_DOMAIN": "from-env.example.com"}),
     ):
         await hydrate_runtime_settings_from_db(
             session,
@@ -281,8 +281,8 @@ async def test_hydrate_env_override_takes_precedence_over_db():
             reset_caches=False,
         )
 
-    # Env var "WARNING" should override DB "DEBUG"
-    assert mock_settings.LOG_LEVEL == "WARNING"
+    # Env var should override DB value for non-bootstrap vars
+    assert mock_settings.PLATFORM_DOMAIN == "from-env.example.com"
 
 
 @pytest.mark.asyncio

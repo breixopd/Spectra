@@ -97,6 +97,7 @@ class CircuitBreaker:
         self._validate_exception_config()
         self._state = CircuitBreakerState()
         self._lock = asyncio.Lock()
+        self._state_loaded = False
 
     async def _get_persisted_state(self) -> CircuitBreakerState | None:
         from app.core.cache import get_cache
@@ -156,6 +157,11 @@ class CircuitBreaker:
 
     async def _check_state(self) -> None:
         """Check and potentially transition state."""
+        if not self._state_loaded:
+            persisted = await self._get_persisted_state()
+            if persisted:
+                self._state = persisted
+            self._state_loaded = True
         async with self._lock:
             if self._state.state == CircuitState.OPEN and self._state.opened_at:
                 elapsed = time.time() - self._state.opened_at

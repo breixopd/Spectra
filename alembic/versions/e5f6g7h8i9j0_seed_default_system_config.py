@@ -132,6 +132,19 @@ _DEFAULTS = [
     ("MAX_UPLOAD_SIZE", "52428800", False, "Max upload size bytes"),
     ("REQUEST_TIMEOUT_SECONDS", "60", False, "Request timeout seconds"),
     ("SANDBOX_WORKER_POLL_DELAY", "0.5", False, "Sandbox worker poll delay seconds"),
+    # OTEL (DB-managed)
+    ("OTEL_EXPORTER_ENDPOINT", "", False, "OpenTelemetry exporter endpoint"),
+    ("OTEL_EXPORTER_PROTOCOL", "http/protobuf", False, "OpenTelemetry exporter protocol"),
+    ("OTEL_SERVICE_NAME", "spectra", False, "OpenTelemetry service name"),
+    ("OTEL_EXPORT_INTERVAL_SECONDS", "30", False, "OpenTelemetry export interval seconds"),
+    # Database tuning (DB-managed)
+    ("DATABASE_ECHO", "false", False, "Enable SQL query logging"),
+    ("DATABASE_POOL_SIZE", "20", False, "Database connection pool size"),
+    ("DATABASE_MAX_OVERFLOW", "10", False, "Database pool max overflow connections"),
+    # Sandbox Docker-specific (DB-managed)
+    ("SANDBOX_IMAGE", "spectra-tools", False, "Sandbox Docker image name"),
+    ("SANDBOX_NETWORK", "spectra-network", False, "Sandbox Docker network name"),
+    ("SANDBOX_PLUGINS_VOLUME", "spectra_plugins", False, "Sandbox plugins Docker volume"),
 ]
 
 

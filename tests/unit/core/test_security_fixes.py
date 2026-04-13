@@ -122,7 +122,7 @@ class TestPersistentTokenBlacklist:
 
         sec._blacklisted_tokens.clear()
         sec._user_token_blacklist.clear()
-        sec._blacklist_loaded = True  # Skip file loading
+        sec._blacklist_ready.set()  # Skip DB loading
 
     @pytest.mark.asyncio
     async def test_invalidate_token_adds_with_expiry(self):
@@ -174,14 +174,20 @@ class TestPersistentTokenBlacklist:
         sec._persist_blacklist()
 
     @pytest.mark.asyncio
-    async def test_ensure_blacklist_loaded_sets_flag(self):
+    async def test_ensure_blacklist_loaded_awaits_load(self):
         import app.core.security as sec
 
-        sec._blacklist_loaded = False
-        with patch("app.core.tasks.create_safe_task") as mock_safe_task:
+        sec._blacklist_ready.clear()
+        sec._blacklist_load_started = False
+
+        async def fake_load():
+            sec._blacklist_ready.set()
+
+        with patch.object(sec, "_load_from_db", new_callable=AsyncMock, side_effect=fake_load) as mock_load:
             await sec._ensure_blacklist_loaded()
-        assert sec._blacklist_loaded is True
-        mock_safe_task.assert_called_once()
+        # Event is set after _load_from_db completes (not fire-and-forget)
+        assert sec._blacklist_ready.is_set()
+        mock_load.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_invalidate_all_user_tokens_persists(self):

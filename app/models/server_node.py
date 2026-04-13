@@ -86,7 +86,6 @@ class ServerNode(Base):
                 f"Cannot store API key: encryption is unavailable ({e}). "
                 "Ensure the cryptography package is installed and SECRET_KEY is set."
             ) from e
-            self.api_key = plaintext_key
 
     def get_api_key(self) -> str | None:
         """Decrypt and return the stored API key."""
@@ -97,8 +96,8 @@ class ServerNode(Base):
 
             return decrypt_field(self.api_key, _get_default_secret())
         except (OSError, RuntimeError, ImportError):
-            # Fallback: may be stored as plaintext from before encryption was added
-            return self.api_key
+            logger.warning("Failed to decrypt API key for ServerNode %s; returning None", self.id)
+            return None
 
     def __repr__(self) -> str:
         return f"<ServerNode id={self.id} name={self.name!r} type={self.service_type}>"

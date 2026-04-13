@@ -123,7 +123,6 @@ async def get_billing_portal(
 
 
 @router.post("/webhook")
-@limiter.limit(RateLimits.BILLING)
 async def stripe_webhook(request: Request):
     """Handle Stripe webhook events (checkout.session.completed, etc.)."""
     from app.core.config import get_settings

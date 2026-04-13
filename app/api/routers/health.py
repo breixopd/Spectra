@@ -36,7 +36,7 @@ async def get_version():
 
 
 def _data_dir() -> str:
-    return str(_get_settings().DATA_ROOT)
+    return "/app/data"
 
 
 @router.get(

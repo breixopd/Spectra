@@ -55,27 +55,27 @@ _logger = logging.getLogger(__name__)
 _blacklisted_tokens: dict[str, float] = {}  # token_hash -> expiry timestamp
 _user_token_blacklist: dict[str, float] = {}  # username -> invalidated_before timestamp
 _blacklist_lock = asyncio.Lock()
-_blacklist_loaded = False
+_blacklist_ready = asyncio.Event()
+_blacklist_load_started = False
 
 
 async def _ensure_blacklist_loaded() -> None:
-    """Schedule a one-time DB load; flag is only set inside the coroutine itself."""
-    global _blacklist_loaded
-    if _blacklist_loaded:
+    """Load blacklist from DB on first call; blocks until ready."""
+    global _blacklist_load_started
+    if _blacklist_ready.is_set():
         return
+    need_load = False
     async with _blacklist_lock:
-        if _blacklist_loaded:
-            return
-        # Mark loaded *before* scheduling so concurrent callers don't also
-        # schedule, but the coroutine will reset it on failure.
-        _blacklist_loaded = True
+        if not _blacklist_ready.is_set() and not _blacklist_load_started:
+            _blacklist_load_started = True
+            need_load = True
+    if need_load:
+        await _load_from_db()
+    elif not _blacklist_ready.is_set():
         try:
-            asyncio.get_running_loop()
-            from app.core.tasks import create_safe_task
-            create_safe_task(_load_from_db(), name="blacklist_load")
-        except RuntimeError:
-            # Not in an async context; will be retried on next request.
-            _blacklist_loaded = False
+            await asyncio.wait_for(_blacklist_ready.wait(), timeout=10.0)
+        except TimeoutError:
+            _logger.warning("Blacklist DB load timed out; proceeding with empty cache")
 
 
 def _persist_blacklist() -> None:
@@ -134,6 +134,7 @@ async def _persist_to_db() -> None:
 
 async def _load_from_db() -> None:
     """Load blacklist state from database, overlaying in-memory cache."""
+    global _blacklist_load_started
     try:
         from sqlalchemy import text
 
@@ -164,8 +165,10 @@ async def _load_from_db() -> None:
                     _user_token_blacklist[username] = data.get("invalidated_before", 0)
                     loaded_users += 1
 
+        _blacklist_ready.set()
         _logger.info("Loaded %d token + %d user blacklist entries from DB", loaded_tokens, loaded_users)
     except (OSError, RuntimeError) as e:
+        _blacklist_load_started = False  # allow retry on next call
         _logger.warning("Failed to load blacklist from DB: %s", e)
 
 

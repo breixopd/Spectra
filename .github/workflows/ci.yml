@@ -60,7 +60,6 @@ jobs:
         env:
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test"
           TENSORZERO_GATEWAY_URL: "http://localhost:3000"
-          DATA_ROOT: /tmp/spectra-data
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
       - name: Coverage summary
@@ -119,7 +118,6 @@ jobs:
         env:
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5432/spectra_test"
           TENSORZERO_GATEWAY_URL: "http://localhost:3000"
-          DATA_ROOT: /tmp/spectra-data
           JWT_SECRET_KEY: test-key
           PLUGIN_SAFE_MODE: "false"
 
