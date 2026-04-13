@@ -1,7 +1,7 @@
 """Unit tests for reactive auto-scaling engine."""
 
 import time
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -107,8 +107,14 @@ def notifier():
 
 
 @pytest.fixture
-def scaler(config, backend, notifier):
-    return AutoScaler(config, backend, notifier)
+def scaler(config, backend, notifier, monkeypatch):
+    scaler = AutoScaler(config, backend, notifier)
+
+    async def _policy_max(role):
+        return scaler.policies[role].max_replicas
+
+    monkeypatch.setattr(scaler, "calculate_max_replicas", AsyncMock(side_effect=_policy_max))
+    return scaler
 
 
 # --- Tests ---
