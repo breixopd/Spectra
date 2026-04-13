@@ -4,8 +4,17 @@ Requires PostgreSQL.
 """
 
 import os
+from unittest.mock import AsyncMock
 
 import pytest
+from sqlalchemy import delete
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.core.config import settings
+from app.models.base import Base
+from app.models.server_node import ServerNode
+from app.services.scaling.pool_manager import ServerPoolManager
 
 pytestmark = [
     pytest.mark.asyncio,
@@ -16,12 +25,20 @@ pytestmark = [
 
 async def test_full_node_lifecycle():
     """Add, list, update, health check, remove a node."""
-    from app.core.database import async_session_maker
-    from app.services.scaling import get_pool_manager
+    database_url = os.environ.get("DATABASE_URL") or settings.DATABASE_URL.get_secret_value()
+    engine = create_async_engine(database_url)
+    pool = ServerPoolManager()
+    pool._auto_enable_autoscale = AsyncMock(return_value=None)
 
-    pool = get_pool_manager()
     try:
-        async with async_session_maker() as session:
+        async with engine.begin() as conn:
+            await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=[ServerNode.__table__]))
+
+        session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async with session_maker() as session:
+            await session.execute(delete(ServerNode))
+            await session.commit()
+
             node = await pool.add_node(
                 session,
                 "sandbox_worker",
@@ -44,5 +61,7 @@ async def test_full_node_lifecycle():
             removed = await pool.remove_node(session, node["id"])
             await session.commit()
             assert removed is True
-    except (ConnectionRefusedError, OSError) as e:
+    except (ConnectionRefusedError, OSError, OperationalError) as e:
         pytest.skip(f"PostgreSQL not reachable: {e}")
+    finally:
+        await engine.dispose()

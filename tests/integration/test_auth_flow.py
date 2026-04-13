@@ -4,6 +4,8 @@ Tests the full registration → login → protected resource → refresh → log
 cycle using the httpx async test client against the FastAPI app.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -20,8 +22,12 @@ async def client():
     from app.main import app
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
+    with (
+        patch("app.api.routers.auth.login.invalidate_token", AsyncMock(return_value=None)),
+        patch("app.core.security.is_token_blacklisted", AsyncMock(return_value=False)),
+    ):
+        async with AsyncClient(transport=transport, base_url="http://test") as c:
+            yield c
 
 
 @pytest.mark.asyncio

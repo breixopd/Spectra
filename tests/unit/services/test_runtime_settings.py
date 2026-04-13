@@ -49,7 +49,7 @@ def test_apply_general_runtime_settings_handles_nullable_and_invalid_ints():
 
 
 @pytest.mark.asyncio
-async def test_hydrate_runtime_settings_applies_rows_and_resets_caches():
+async def test_hydrate_runtime_settings_applies_rows_and_resets_caches(monkeypatch):
     session = AsyncMock()
     rows = [
         SimpleNamespace(key="TENSORZERO_GATEWAY_URL", value="http://tensorzero:3000"),
@@ -59,6 +59,7 @@ async def test_hydrate_runtime_settings_applies_rows_and_resets_caches():
     result = MagicMock()
     result.scalars.return_value.all.return_value = rows
     session.execute.return_value = result
+    monkeypatch.delenv("TENSORZERO_GATEWAY_URL", raising=False)
 
     with (
         patch("app.services.system.runtime_settings.settings") as mock_settings,
