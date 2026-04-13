@@ -226,8 +226,9 @@ def test_server_deployer_keyscan_persists_scanned_host_keys(tmp_path):
 
     assert result == known_hosts_path
     assert known_hosts_path.read_text(encoding="utf-8") == "[example.com]:2222 ssh-ed25519 AAAASCAN\n"
+    expected_executable = deployer._ssh_keyscan_executable()
     mock_run.assert_called_once_with(
-        ["ssh-keyscan", "-p", "2222", "example.com"],
+        [expected_executable, "-p", "2222", "example.com"],
         capture_output=True,
         text=True,
         check=True,

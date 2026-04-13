@@ -291,7 +291,7 @@ async def _update_swarm_node_labels(
     try:
         success = await update_node_labels(node_name, add_labels, remove_labels=remove_labels or None)
         if not success:
-            return f"DB updated but Swarm label update failed"
+            return "DB updated but Swarm label update failed"
     except Exception as exc:
         logger.warning("Swarm label update failed for %s: %s", node_name, exc)
         return f"DB updated but Swarm label update failed: {exc}"
@@ -452,7 +452,8 @@ async def list_services(
     for svc in services:
         health_status = "unknown"
         if svc["port"]:
-            urls = [f"http://{alias}:{svc['port']}/api/health" for alias in [svc["name"]] + svc.get("aliases", [])]
+            aliases = [svc["name"], *svc.get("aliases", [])]
+            urls = [f"http://{alias}:{svc['port']}/api/health" for alias in aliases]
             urls.append(f"http://localhost:{svc['port']}/api/health")
             for url in urls:
                 try:

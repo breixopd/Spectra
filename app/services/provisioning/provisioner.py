@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
+import re
 import shlex
+import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -20,6 +23,10 @@ from app.core.paths import data_path
 from app.services.provisioning.recipes import CONTAINER_NAMES, PROVISIONING_RECIPES
 
 logger = logging.getLogger(__name__)
+
+_VALID_HOSTNAME_RE = re.compile(
+    r"^(?=.{1,253}\.?$)(?!-)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.(?!-)[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.?$"
+)
 
 _MISSING_ASYNCSSH_MESSAGE = (
     "Missing optional dependency 'asyncssh'; install it to use remote provisioning operations"
@@ -322,6 +329,31 @@ class ServerProvisioner:
                 lines.append(stripped)
         return lines
 
+    @staticmethod
+    def _validate_scan_target(hostname: str, port: int) -> str:
+        candidate = hostname.strip()
+        if candidate != hostname or not candidate:
+            raise ValueError("SSH hostname must be a non-empty host or IP address")
+        if not 1 <= port <= 65535:
+            raise ValueError(f"SSH port must be between 1 and 65535, got {port}")
+        if candidate.startswith("-"):
+            raise ValueError(f"Invalid SSH hostname: {hostname!r}")
+
+        try:
+            ipaddress.ip_address(candidate)
+        except ValueError:
+            if not _VALID_HOSTNAME_RE.fullmatch(candidate):
+                raise ValueError(f"Invalid SSH hostname: {hostname!r}") from None
+
+        return candidate
+
+    @staticmethod
+    def _ssh_keyscan_executable() -> str:
+        executable = shutil.which("ssh-keyscan")
+        if executable is None:
+            raise RuntimeError("ssh-keyscan executable not found in PATH")
+        return executable
+
     def _ensure_known_host(self, config: ServerConfig) -> Path:
         """Ensure the remote host has a persisted known_hosts entry before connecting."""
         known_hosts_path = self._known_hosts_path()
@@ -349,9 +381,13 @@ class ServerProvisioner:
             if self._line_matches_known_host(line, expected_host):
                 return known_hosts_path
 
+        scan_host = self._validate_scan_target(config.host, config.port)
+        ssh_keyscan = self._ssh_keyscan_executable()
+
         try:
-            scan_result = subprocess.run(
-                ["ssh-keyscan", "-p", str(config.port), config.host],
+            # The host and port are validated, and the executable path is fully resolved.
+            scan_result = subprocess.run(  # noqa: S603
+                [ssh_keyscan, "-p", str(config.port), scan_host],
                 capture_output=True,
                 text=True,
                 check=True,

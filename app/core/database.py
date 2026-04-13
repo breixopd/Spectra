@@ -7,7 +7,7 @@ Provides async engine, session maker, and a dependency for FastAPI.
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import event
-from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,

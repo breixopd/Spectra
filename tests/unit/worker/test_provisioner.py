@@ -171,8 +171,9 @@ class TestEnsureKnownHost:
 
         assert result == known_hosts_path
         assert known_hosts_path.read_text(encoding="utf-8") == "[example.com]:2222 ssh-ed25519 AAAAC3new\n"
+        expected_executable = provisioner._ssh_keyscan_executable()
         mock_run.assert_called_once_with(
-            ["ssh-keyscan", "-p", "2222", "example.com"],
+            [expected_executable, "-p", "2222", "example.com"],
             capture_output=True,
             text=True,
             check=True,
