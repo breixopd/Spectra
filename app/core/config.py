@@ -448,7 +448,26 @@ def get_settings() -> Settings:
 
     # Auto-generate ENCRYPTION_KEY if empty
     if not settings_instance.ENCRYPTION_KEY:
-        settings_instance.ENCRYPTION_KEY = _secrets.token_urlsafe(32)
+        # Persist to filesystem so the key survives container restarts
+        env_explicit = os.environ.get("ENCRYPTION_KEY")
+        if not env_explicit:
+            key_path = Path(settings_instance.DATA_ROOT) / ".encryption_key"
+            if key_path.is_file():
+                settings_instance.ENCRYPTION_KEY = key_path.read_text().strip()
+            else:
+                new_key = _secrets.token_urlsafe(32)
+                key_path.parent.mkdir(parents=True, exist_ok=True)
+                # Atomic write with restrictive permissions
+                tmp_path = key_path.with_suffix(".tmp")
+                fd = os.open(str(tmp_path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                try:
+                    os.write(fd, new_key.encode())
+                finally:
+                    os.close(fd)
+                os.replace(str(tmp_path), str(key_path))
+                settings_instance.ENCRYPTION_KEY = new_key
+        else:
+            settings_instance.ENCRYPTION_KEY = _secrets.token_urlsafe(32)
 
     return settings_instance
 
