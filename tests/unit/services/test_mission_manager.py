@@ -115,6 +115,7 @@ def mock_manager_context():
             "voting": mock_voting_instance,
             "repo": mock_repo_instance,
             "resolve_ip": mock_resolve_ip,
+            "session": mock_session,
         }
 
 
@@ -132,6 +133,21 @@ async def test_start_mission(mock_manager_context):
         assert mission_id in manager.active_missions
         repo.create.assert_called_once()
         mock_create_task.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_start_mission_records_usage_in_same_transaction(mock_manager_context):
+    manager = mock_manager_context["manager"]
+    session = mock_manager_context["session"]
+
+    with (
+        patch.object(manager.lifecycle.quota_enforcer, "check_mission_quota", new_callable=AsyncMock, return_value=(True, "")),
+        patch.object(manager.lifecycle.usage_tracker, "record_mission_start", new_callable=AsyncMock) as mock_record,
+        patch("app.services.mission.manager.asyncio.create_task", side_effect=_safe_create_task),
+    ):
+        await manager.start_mission("127.0.0.1", "test directive", user_id="user-123")
+
+    mock_record.assert_awaited_once_with("user-123", session=session)
 
 
 @pytest.mark.asyncio

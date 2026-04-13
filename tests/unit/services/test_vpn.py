@@ -25,22 +25,26 @@ class TestConfigNameValidation:
         assert _validate_config_name("a") == "a"
         assert _validate_config_name("test123") == "test123"
         assert _validate_config_name("A-B-C") == "A-B-C"
-        assert _validate_config_name("x" * 64) == "x" * 64
+        assert _validate_config_name("my_vpn") == "my_vpn"
+        assert _validate_config_name("u_123e4567-e89b-12d3-a456-426614174000_lab") == "u_123e4567-e89b-12d3-a456-426614174000_lab"
+        assert _validate_config_name("x" * 160) == "x" * 160
 
     def test_rejects_empty(self):
         with pytest.raises(ValueError, match="alphanumeric"):
             _validate_config_name("")
 
     def test_rejects_too_long(self):
-        with pytest.raises(ValueError, match="1-64 chars"):
-            _validate_config_name("x" * 65)
+        with pytest.raises(ValueError, match="1-160 chars"):
+            _validate_config_name("x" * 161)
 
     def test_rejects_path_traversal(self):
         with pytest.raises(ValueError):
             _validate_config_name("../etc/passwd")
+        with pytest.raises(ValueError):
+            _validate_config_name("..")
 
     def test_rejects_special_chars(self):
-        for bad in ["my vpn", "my_vpn", "my.vpn", "my/vpn", "my;vpn", "-start"]:
+        for bad in ["my vpn", "my.vpn", "my/vpn", "my;vpn", "-start"]:
             with pytest.raises(ValueError):
                 _validate_config_name(bad)
 

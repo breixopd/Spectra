@@ -12,9 +12,10 @@ from typing import TYPE_CHECKING, Annotated, Any
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError as JWTError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker, get_async_session
 from app.core.security import decode_token
 from app.models.user import User
@@ -369,17 +370,24 @@ async def enforce_api_rate_limit(
     from app.services.billing.usage_tracker import UsageTracker
 
     enforcer = QuotaEnforcer()
-    allowed, reason = await enforcer.check_api_quota(str(user.id))
-    if not allowed:
-        retry_after = await enforcer.seconds_until_api_reset()
-        raise HTTPException(
-            status_code=429,
-            detail=reason,
-            headers={"Retry-After": str(retry_after)},
-        )
-
     tracker = UsageTracker()
-    await tracker.record_api_request(str(user.id))
+
+    async with async_session_maker() as session, session.begin():
+        await session.execute(
+            text("SELECT pg_advisory_xact_lock(:lock_id)"),
+            {"lock_id": stable_lock_id(f"spectra_api_quota:{user.id}")},
+        )
+        allowed, reason = await enforcer.check_api_quota(str(user.id), session=session)
+        if not allowed:
+            retry_after = await enforcer.seconds_until_api_reset()
+            raise HTTPException(
+                status_code=429,
+                detail=reason,
+                headers={"Retry-After": str(retry_after)},
+            )
+
+        await tracker.record_api_request(str(user.id), session=session)
+
     return user
 
 

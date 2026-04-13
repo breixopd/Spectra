@@ -220,9 +220,24 @@ This automatically:
    ssh user@new-node "sudo /tmp/harden_server.sh --yes"
    ```
 
-2. **Install Docker:**
+2. **Install Docker from Docker's apt repository:**
    ```bash
-   ssh user@new-node "curl -fsSL https://get.docker.com | sudo sh"
+   ssh user@new-node 'bash -se' <<'REMOTE_DOCKER_INSTALL'
+   set -euo pipefail
+   export DEBIAN_FRONTEND=noninteractive
+   sudo apt-get update -qq
+   sudo apt-get install -y -qq ca-certificates curl gnupg
+   sudo install -m 0755 -d /etc/apt/keyrings
+   curl -fsSL "https://download.docker.com/linux/$(. /etc/os-release && echo "${ID}")/gpg" -o /tmp/docker.asc
+   sudo mv /tmp/docker.asc /etc/apt/keyrings/docker.asc
+   sudo chmod a+r /etc/apt/keyrings/docker.asc
+   . /etc/os-release
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-$UBUNTU_CODENAME} stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+   sudo apt-get update -qq
+   sudo apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   sudo systemctl enable docker
+   sudo systemctl start docker
+   REMOTE_DOCKER_INSTALL
    ```
 
 3. **Open Swarm ports on the new node:**

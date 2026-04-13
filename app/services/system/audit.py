@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.advisory_locks import stable_lock_id
 from app.models.audit_log import AuditEventType
 from app.repositories.audit_log import AuditLogRepository
 
@@ -44,7 +45,7 @@ async def log_event(
         # inserts from reading the same prev_hash (hash chain race).
         await session.execute(
             text("SELECT pg_advisory_xact_lock(:lock_id)"),
-            {"lock_id": hash("audit_hash_chain") & 0x7FFFFFFF},
+            {"lock_id": stable_lock_id("audit_hash_chain")},
         )
         try:
             prev_hash = await repo.get_latest_hash() or "genesis"

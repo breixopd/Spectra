@@ -28,6 +28,7 @@ class ServerConnectionRequest(BaseModel):
     username: str = "root"
     password: str | None = None
     private_key: str | None = None
+    ssh_known_host: str | None = None
 
 
 class ProvisionRequest(ServerConnectionRequest):
@@ -69,6 +70,7 @@ async def verify_server_connection(
         username=body.username,
         password=body.password,
         private_key=body.private_key,
+        ssh_known_host=body.ssh_known_host.strip() if body.ssh_known_host and body.ssh_known_host.strip() else None,
     )
 
     provisioner = ServerProvisioner()
@@ -99,6 +101,7 @@ async def provision_server(
         username=body.username,
         password=body.password,
         private_key=body.private_key,
+        ssh_known_host=body.ssh_known_host.strip() if body.ssh_known_host and body.ssh_known_host.strip() else None,
         service_type=body.service_type,
         service_port=body.service_port,
         extra_env=body.extra_env,
@@ -147,6 +150,7 @@ async def deprovision_server(
         username=body.username,
         password=body.password,
         private_key=body.private_key,
+        ssh_known_host=body.ssh_known_host.strip() if body.ssh_known_host and body.ssh_known_host.strip() else None,
         service_type=body.service_type,
     )
 
@@ -504,6 +508,11 @@ async def deploy_to_node(
     if not node:
         raise HTTPException(404, "Node not found")
 
+    node_metadata = node.metadata_ if isinstance(node.metadata_, dict) else {}
+    pinned_known_host = node_metadata.get("ssh_known_host")
+    if not isinstance(pinned_known_host, str) or not pinned_known_host.strip():
+        pinned_known_host = None
+
     deployer = ServerDeployer()
     result = await deployer.deploy_to_server(
         server_id=str(node.id),
@@ -511,6 +520,7 @@ async def deploy_to_node(
         ssh_user=node.ssh_user,
         ssh_port=node.ssh_port,
         ssh_key=node.ssh_key_path,
+        pinned_known_host=pinned_known_host,
         services=services,
         harden=harden,
     )

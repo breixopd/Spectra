@@ -9,7 +9,10 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker
+from app.models.plan import Plan, Subscription, UsageRecord
+from app.models.user import User
 
 
 @contextlib.asynccontextmanager
@@ -20,10 +23,10 @@ async def _use_or_create_session(existing: AsyncSession | None = None):
     else:
         async with async_session_maker() as session:
             yield session
-from app.models.plan import Plan, Subscription, UsageRecord
-from app.models.user import User
 
 logger = logging.getLogger(__name__)
+
+_MISSION_QUOTA_LOCK_NAME = "spectra_mission_quota"
 
 
 def _is_admin_user(user: User | None) -> bool:
@@ -55,14 +58,14 @@ def _period_start_weekly() -> datetime:
 class QuotaEnforcer:
     """Check plan quotas before allowing resource usage."""
 
-    async def _is_quota_exempt_user(self, user_id: str) -> bool:
-        async with async_session_maker() as session:
-            user = await session.get(User, user_id)
+    async def _is_quota_exempt_user(self, user_id: str, *, session: AsyncSession | None = None) -> bool:
+        async with _use_or_create_session(session) as db:
+            user = await db.get(User, user_id)
             return _is_admin_user(user)
 
-    async def _get_plan(self, user_id: str) -> Plan | None:
-        async with async_session_maker() as session:
-            result = await session.execute(
+    async def _get_plan(self, user_id: str, *, session: AsyncSession | None = None) -> Plan | None:
+        async with _use_or_create_session(session) as db:
+            result = await db.execute(
                 select(Subscription).where(
                     Subscription.user_id == user_id,
                     Subscription.status == "active",
@@ -71,7 +74,7 @@ class QuotaEnforcer:
             sub = result.scalar_one_or_none()
             if sub is None:
                 return None
-            plan = await session.get(Plan, sub.plan_id)
+            plan = await db.get(Plan, sub.plan_id)
             return plan
 
     async def check_mission_quota(
@@ -83,10 +86,10 @@ class QuotaEnforcer:
         transaction is reused so that an advisory lock held by the caller
         remains effective across the quota check and the subsequent write.
         """
-        if await self._is_quota_exempt_user(user_id):
+        if await self._is_quota_exempt_user(user_id, session=session):
             return True, ""
         if plan is None:
-            plan = await self._get_plan(user_id)
+            plan = await self._get_plan(user_id, session=session)
         if plan is None:
             return False, "No active subscription"
 
@@ -96,7 +99,7 @@ class QuotaEnforcer:
             # Advisory lock prevents TOCTOU between quota check and mission INSERT
             await db.execute(
                 text("SELECT pg_advisory_xact_lock(:lock_id)"),
-                {"lock_id": hash(f"mission_quota_{user_id}") & 0x7FFFFFFF},
+                {"lock_id": stable_lock_id(f"{_MISSION_QUOTA_LOCK_NAME}:{user_id}")},
             )
 
             locked_sub = await db.execute(
@@ -166,37 +169,60 @@ class QuotaEnforcer:
 
         return True, ""
 
-    async def check_api_quota(self, user_id: str, plan: Plan | None = None) -> tuple[bool, str]:
-        """Check if user has API calls remaining this hour.
+    async def check_api_quota(
+        self,
+        user_id: str,
+        plan: Plan | None = None,
+        *,
+        session: AsyncSession | None = None,
+    ) -> tuple[bool, str]:
+        """Check if user has API calls remaining in the active windows.
 
-        Returns (allowed, reason).
+        Returns (allowed, reason). When *session* is provided, the caller's
+        transaction is reused so the quota check can be paired atomically with
+        usage recording.
         """
-        if plan is not None and plan.max_api_requests_per_hour == 0:
-            return True, ""
-        if await self._is_quota_exempt_user(user_id):
+        if await self._is_quota_exempt_user(user_id, session=session):
             return True, ""
         if plan is None:
-            plan = await self._get_plan(user_id)
+            plan = await self._get_plan(user_id, session=session)
         if plan is None:
             return False, "No active subscription"
 
-        if not plan.max_api_requests_per_hour:
+        hourly_limit = getattr(plan, "max_api_requests_per_hour", 0)
+        daily_limit = getattr(plan, "max_api_requests_per_day", 0)
+
+        if not hourly_limit and not daily_limit:
             return True, ""
 
-        period = _period_start_hourly()
-        async with async_session_maker() as session:
-            rec_result = await session.execute(
-                select(UsageRecord).where(
-                    UsageRecord.user_id == user_id,
-                    UsageRecord.period_type == "hourly",
-                    UsageRecord.period_start == period,
+        async with _use_or_create_session(session) as db:
+            if hourly_limit:
+                hourly_result = await db.execute(
+                    select(UsageRecord).where(
+                        UsageRecord.user_id == user_id,
+                        UsageRecord.period_type == "hourly",
+                        UsageRecord.period_start == _period_start_hourly(),
+                    )
                 )
-            )
-            record = rec_result.scalar_one_or_none()
-            current = record.api_requests if record else 0
+                hourly_record = hourly_result.scalar_one_or_none()
+                current_hourly = hourly_record.api_requests if hourly_record else 0
 
-            if current >= plan.max_api_requests_per_hour:
-                return False, (f"Hourly API limit reached: {current}/{plan.max_api_requests_per_hour}")
+                if current_hourly >= hourly_limit:
+                    return False, f"Hourly API limit reached: {current_hourly}/{hourly_limit}"
+
+            if daily_limit:
+                daily_result = await db.execute(
+                    select(UsageRecord).where(
+                        UsageRecord.user_id == user_id,
+                        UsageRecord.period_type == "daily",
+                        UsageRecord.period_start == _period_start_daily(),
+                    )
+                )
+                daily_record = daily_result.scalar_one_or_none()
+                current_daily = daily_record.api_requests if daily_record else 0
+
+                if current_daily >= daily_limit:
+                    return False, f"Daily API limit reached: {current_daily}/{daily_limit}"
 
         return True, ""
 

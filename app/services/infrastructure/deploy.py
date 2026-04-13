@@ -13,8 +13,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import shlex
+import subprocess
 from dataclasses import dataclass, field
 from enum import StrEnum
+from pathlib import Path
+
+from app.core.paths import data_path
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +54,7 @@ class ServerDeployer:
         ssh_user: str,
         ssh_port: int = 22,
         ssh_key: str | None = None,
+        pinned_known_host: str | None = None,
         services: list[str] | None = None,
         harden: bool = True,
     ) -> DeployResult:
@@ -60,7 +65,8 @@ class ServerDeployer:
         try:
             # Phase 1: Connect and verify
             logs.append(f"Connecting to {hostname}:{ssh_port} as {ssh_user}...")
-            ssh_cmd_base = self._build_ssh_base(hostname, ssh_user, ssh_port, ssh_key)
+            known_hosts_path = self._ensure_known_host(hostname, ssh_port, pinned_known_host)
+            ssh_cmd_base = self._build_ssh_base(hostname, ssh_user, ssh_port, ssh_key, known_hosts_path)
 
             rc = await self._run_ssh(ssh_cmd_base, "echo 'Spectra deployment connected'", logs)
             if rc != 0:
@@ -82,11 +88,13 @@ class ServerDeployer:
             # Phase 4: Deploy services
             logs.append("Phase 4: Deploying Spectra services...")
             target_services = services or ["app", "ai-svc", "scheduler", "tools"]
-            await self._deploy_services(ssh_cmd_base, target_services, logs)
+            rc = await self._deploy_services(ssh_cmd_base, target_services, logs)
+            if rc != 0:
+                return DeployResult(DeploymentStatus.FAILED, "Service deployment failed", logs)
 
             # Phase 5: Verify
             logs.append("Phase 5: Verifying deployment...")
-            ok = await self._verify_deployment(ssh_cmd_base, logs)
+            ok = await self._verify_deployment(ssh_cmd_base, target_services, logs)
             if not ok:
                 return DeployResult(DeploymentStatus.FAILED, "Verification failed", logs)
 
@@ -97,12 +105,108 @@ class ServerDeployer:
             logs.append(f"FATAL: {e}")
             return DeployResult(DeploymentStatus.FAILED, str(e), logs)
 
-    def _build_ssh_base(self, hostname: str, user: str, port: int, key: str | None) -> list[str]:
+    def _known_hosts_path(self) -> Path:
+        """Return the local known_hosts file used for deploy-time SSH trust."""
+        return data_path("config", "deployer_known_hosts")
+
+    @staticmethod
+    def _known_hosts_target(hostname: str, port: int) -> str:
+        return hostname if port == 22 else f"[{hostname}]:{port}"
+
+    @staticmethod
+    def _line_matches_known_host(line: str, expected_host: str) -> bool:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            return False
+        host_field = stripped.split()[0]
+        host_tokens = {token.strip() for token in host_field.split(",")}
+        return expected_host in host_tokens
+
+    @staticmethod
+    def _normalize_known_host_lines(entry: str) -> list[str]:
+        lines: list[str] = []
+        for raw_line in entry.splitlines():
+            stripped = raw_line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped not in lines:
+                lines.append(stripped)
+        return lines
+
+    def _ensure_known_host(self, hostname: str, port: int, pinned_known_host: str | None = None) -> Path:
+        """Ensure deploy-time SSH trust is pinned locally before connecting."""
+        known_hosts_path = self._known_hosts_path()
+        known_hosts_path.parent.mkdir(parents=True, exist_ok=True)
+        known_hosts_path.touch(exist_ok=True)
+        known_hosts_path.chmod(0o600)
+
+        existing_lines = known_hosts_path.read_text(encoding="utf-8").splitlines()
+        expected_host = self._known_hosts_target(hostname, port)
+
+        if pinned_known_host is not None:
+            pinned_lines = self._normalize_known_host_lines(pinned_known_host)
+            if not pinned_lines:
+                raise ValueError(f"Pinned known-host entry for {hostname}:{port} is empty")
+
+            retained_lines = [
+                line for line in existing_lines if not self._line_matches_known_host(line, expected_host)
+            ]
+            merged_lines = list(dict.fromkeys([*retained_lines, *pinned_lines]))
+            known_hosts_path.write_text("\n".join(merged_lines) + "\n", encoding="utf-8")
+            logger.info("Persisted pinned SSH host key for %s:%s", hostname, port)
+            return known_hosts_path
+
+        for line in existing_lines:
+            if self._line_matches_known_host(line, expected_host):
+                return known_hosts_path
+
+        try:
+            scan_result = subprocess.run(
+                ["ssh-keyscan", "-p", str(port), hostname],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            detail = (getattr(exc, "stderr", "") or str(exc)).strip()
+            raise RuntimeError(
+                f"ssh-keyscan failed for {hostname}:{port}: {detail or 'no error output'}"
+            ) from exc
+
+        scanned_lines = self._normalize_known_host_lines(scan_result.stdout)
+        if not scanned_lines:
+            raise RuntimeError(f"ssh-keyscan returned no host keys for {hostname}:{port}")
+
+        with known_hosts_path.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(scanned_lines))
+            handle.write("\n")
+
+        logger.info(
+            "Trusted new deploy SSH host key on first use for %s:%s using %s",
+            hostname,
+            port,
+            known_hosts_path,
+        )
+        return known_hosts_path
+
+    def _build_ssh_base(
+        self,
+        hostname: str,
+        user: str,
+        port: int,
+        key: str | None,
+        known_hosts_path: Path,
+    ) -> list[str]:
         """Build SSH command prefix with security-hardened options."""
         cmd = [
             "ssh",
             "-o",
-            "StrictHostKeyChecking=accept-new",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            f"UserKnownHostsFile={known_hosts_path}",
+            "-o",
+            "GlobalKnownHostsFile=/dev/null",
             "-o",
             "ConnectTimeout=10",
             "-o",
@@ -198,13 +302,25 @@ echo "Server hardening complete"
 if command -v docker &>/dev/null; then
     echo "Docker already installed: $(docker --version)"
 else
-    curl -fsSL https://get.docker.com | sh
-    systemctl enable docker
-    systemctl start docker
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -y -qq ca-certificates curl gnupg
+    install -m 0755 -d /etc/apt/keyrings
+    if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
+        curl -fsSL "https://download.docker.com/linux/$(. /etc/os-release && echo "${ID}")/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    fi
+    chmod a+r /etc/apt/keyrings/docker.gpg
+    . /etc/os-release
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/${ID} ${VERSION_CODENAME:-$UBUNTU_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+    apt-get update -qq
+    apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
     echo "Docker installed: $(docker --version)"
 fi
-docker compose version 2>/dev/null || {
-    apt-get install -y docker-compose-plugin
+systemctl enable docker
+systemctl start docker
+docker compose version >/dev/null 2>&1 || {
+    apt-get update -qq
+    apt-get install -y -qq docker-compose-plugin
 }
 echo "Docker Compose: $(docker compose version)"
 """
@@ -222,18 +338,46 @@ if [ -f docker-compose.yml ]; then
     docker compose up -d --remove-orphans {svc_list}
     echo "Services deployed: {", ".join(services)}"
 else
-    echo "WARNING: No docker-compose.yml found at /opt/spectra. Upload config first."
+    echo "ERROR: No docker-compose.yml found at /opt/spectra. Upload config first." >&2
+    exit 1
 fi
 """
         return await self._run_ssh(ssh_base, f"bash -c {shlex.quote(deploy_script)}", logs)
 
-    async def _verify_deployment(self, ssh_base: list[str], logs: list[str]) -> bool:
+    async def _verify_deployment(self, ssh_base: list[str], services: list[str], logs: list[str]) -> bool:
         """Verify services are running on the remote server."""
-        rc = await self._run_ssh(
-            ssh_base,
-            "docker ps --format '{{.Names}} {{.Status}}'",
-            logs,
-        )
+        svc_list = " ".join(shlex.quote(service) for service in services)
+        verify_script = f"""set -e
+cd /opt/spectra
+
+if [ ! -f docker-compose.yml ]; then
+    echo "ERROR: Missing /opt/spectra/docker-compose.yml during verification." >&2
+    exit 1
+fi
+
+running_services="$(docker compose ps --services --status running)"
+if [ -n "$running_services" ]; then
+    echo "Running compose services:"
+    printf '%s\n' "$running_services"
+else
+    echo "Running compose services: none"
+fi
+
+missing_services=""
+for service in {svc_list}; do
+    if ! printf '%s\n' "$running_services" | grep -Fxq "$service"; then
+        missing_services="$missing_services $service"
+    fi
+done
+
+if [ -n "$missing_services" ]; then
+    echo "ERROR: Requested services not running:${{missing_services}}" >&2
+    exit 1
+fi
+
+echo "Verified running services: {", ".join(services)}"
+"""
+        rc = await self._run_ssh(ssh_base, f"bash -c {shlex.quote(verify_script)}", logs)
         return rc == 0
 
     def get_deployment_logs(self, server_id: str) -> list[str]:

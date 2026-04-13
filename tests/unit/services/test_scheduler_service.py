@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import Response
 
 from tests.helpers import make_module
 
@@ -25,6 +26,14 @@ class _AwaitableTask:
             return None
 
         return _inner().__await__()
+
+
+class _HealthTask:
+    def __init__(self, *, done: bool):
+        self._done = done
+
+    def done(self) -> bool:
+        return self._done
 
 
 @pytest.mark.asyncio
@@ -352,15 +361,111 @@ async def test_health_reports_scheduler_running_state():
     scheduler_service._scheduler_instance = SimpleNamespace(
         running=True, health=lambda: {"status": "healthy", "tasks": {}, "running": True}
     )
-    assert await scheduler_service.health() == {
+    response = Response()
+    assert await scheduler_service.health(response) == {
         "status": "healthy",
         "tasks": {},
         "running": True,
         "service": "scheduler",
     }
+    assert response.status_code == 200
 
     scheduler_service._scheduler_instance = None
-    assert await scheduler_service.health() == {"status": "starting", "service": "scheduler"}
+    response = Response()
+    assert await scheduler_service.health(response) == {"status": "starting", "service": "scheduler"}
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_health_route_returns_503_when_scheduler_is_degraded():
+    from app import scheduler_service
+
+    scheduler_service._scheduler_instance = SimpleNamespace(
+        running=True,
+        health=lambda: {"status": "degraded", "tasks": {"quota_reset": "dead"}, "running": True},
+    )
+
+    response = Response()
+
+    result = await scheduler_service.health(response)
+
+    assert response.status_code == 503
+    assert result == {
+        "status": "degraded",
+        "tasks": {"quota_reset": "dead"},
+        "running": True,
+        "service": "scheduler",
+    }
+
+
+@pytest.mark.asyncio
+async def test_health_route_keeps_standby_at_http_200():
+    from app import scheduler_service
+
+    scheduler_service._scheduler_instance = SimpleNamespace(
+        running=False,
+        health=lambda: {"status": "standby", "tasks": {}, "running": False},
+    )
+
+    response = Response()
+
+    result = await scheduler_service.health(response)
+
+    assert response.status_code == 200
+    assert result == {
+        "status": "standby",
+        "tasks": {},
+        "running": False,
+        "service": "scheduler",
+    }
+
+
+def test_service_health_reports_task_states_when_healthy():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    service._named_tasks = {
+        task_name: _HealthTask(done=False)
+        for task_name, _method_name in scheduler_service._SCHEDULER_TASK_SPECS
+    }
+
+    result = service.health()
+
+    assert result["status"] == "healthy"
+    assert result["running"] is True
+    assert set(result["tasks"].values()) == {"alive"}
+
+
+def test_service_health_degrades_when_any_task_is_dead_or_missing():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    service._named_tasks = {
+        task_name: _HealthTask(done=False)
+        for task_name, _method_name in scheduler_service._SCHEDULER_TASK_SPECS
+    }
+    service._named_tasks["quota_reset"] = _HealthTask(done=True)
+    service._named_tasks.pop("disk_monitor")
+
+    result = service.health()
+
+    assert result["status"] == "degraded"
+    assert result["tasks"]["quota_reset"] == "dead"
+    assert result["tasks"]["disk_monitor"] == "missing"
+
+
+def test_service_health_is_standby_when_not_running():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+
+    result = service.health()
+
+    assert result["status"] == "standby"
+    assert result["running"] is False
+    assert set(result["tasks"].values()) == {"missing"}
 
 
 @pytest.mark.asyncio

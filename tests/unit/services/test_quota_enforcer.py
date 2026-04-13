@@ -12,6 +12,7 @@ def _make_plan(**overrides):
     plan.max_missions_per_day = overrides.get("max_missions_per_day", 0)
     plan.max_missions_per_week = overrides.get("max_missions_per_week", 0)
     plan.max_api_requests_per_hour = overrides.get("max_api_requests_per_hour", 100)
+    plan.max_api_requests_per_day = overrides.get("max_api_requests_per_day", 0)
     plan.max_storage_mb = overrides.get("max_storage_mb", 500)
     return plan
 
@@ -190,12 +191,53 @@ class TestCheckApiQuota:
     async def test_zero_limit_means_unlimited(self):
         from app.services.billing.quota_enforcer import QuotaEnforcer
 
-        plan = _make_plan(max_api_requests_per_hour=0)
+        plan = _make_plan(max_api_requests_per_hour=0, max_api_requests_per_day=0)
 
-        enforcer = QuotaEnforcer()
-        allowed, _reason = await enforcer.check_api_quota("user-1", plan)
+        session = _mock_session()
+
+        with patch("app.services.billing.quota_enforcer.async_session_maker", return_value=session):
+            enforcer = QuotaEnforcer()
+            allowed, _reason = await enforcer.check_api_quota("user-1", plan)
 
         assert allowed is True
+
+    async def test_blocked_at_daily_limit_even_when_hourly_is_unlimited(self):
+        from app.services.billing.quota_enforcer import QuotaEnforcer
+
+        plan = _make_plan(max_api_requests_per_hour=0, max_api_requests_per_day=500)
+
+        session = _mock_session()
+        daily_record = MagicMock()
+        daily_record.api_requests = 500
+        daily_result = MagicMock()
+        daily_result.scalar_one_or_none.return_value = daily_record
+        session.execute = AsyncMock(return_value=daily_result)
+
+        with patch("app.services.billing.quota_enforcer.async_session_maker", return_value=session):
+            enforcer = QuotaEnforcer()
+            allowed, reason = await enforcer.check_api_quota("user-1", plan)
+
+        assert allowed is False
+        assert "Daily API limit" in reason
+
+    async def test_reuses_existing_session_for_api_quota_check(self):
+        from app.services.billing.quota_enforcer import QuotaEnforcer
+
+        plan = _make_plan(max_api_requests_per_hour=100)
+
+        session = _mock_session()
+        record = MagicMock()
+        record.api_requests = 1
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = record
+        session.execute = AsyncMock(return_value=result)
+
+        with patch("app.services.billing.quota_enforcer.async_session_maker", side_effect=AssertionError("unexpected new session")):
+            enforcer = QuotaEnforcer()
+            allowed, reason = await enforcer.check_api_quota("user-1", plan, session=session)
+
+        assert allowed is True
+        assert reason == ""
 
 
 @pytest.mark.asyncio

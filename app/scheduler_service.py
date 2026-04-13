@@ -13,9 +13,10 @@ import signal
 from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from sqlalchemy import text
 
+from app.core.advisory_locks import stable_lock_id
 from app.core.constants import SECONDS_PER_HOUR
 from app.core.database import async_session_maker
 from app.core.tasks import create_safe_task
@@ -23,21 +24,38 @@ from app.core.tasks import create_safe_task
 logger = logging.getLogger(__name__)
 
 # Stable advisory lock IDs for inter-replica coordination (PostgreSQL pg_advisory_lock)
-_BACKUP_LOCK_ID: int = hash("spectra_backup") & 0x7FFFFFFF
-_QUOTA_LOCK_ID: int = hash("spectra_quota_reset") & 0x7FFFFFFF
-_DB_MAINTENANCE_LOCK_ID: int = hash("spectra_db_maint") & 0x7FFFFFFF
-_EXPLOIT_REFRESH_LOCK_ID: int = hash("spectra_exploit_refresh") & 0x7FFFFFFF
-_STALE_JOB_LOCK_ID: int = hash("spectra_stale_jobs") & 0x7FFFFFFF
-_DOCKER_CLEANUP_LOCK_ID: int = hash("spectra_docker_cleanup") & 0x7FFFFFFF
-_IMAGE_UPDATE_LOCK_ID: int = hash("spectra_image_update") & 0x7FFFFFFF
-_SANDBOX_WATCHDOG_LOCK_ID: int = hash("spectra_sandbox_watchdog") & 0x7FFFFFFF
-_METRICS_COLLECTOR_LOCK_ID: int = hash("spectra_metrics_collector") & 0x7FFFFFFF
-_HEALTH_REPORTER_LOCK_ID: int = hash("spectra_health_reporter") & 0x7FFFFFFF
-_CACHE_CLEANUP_LOCK_ID: int = hash("spectra_cache_cleanup") & 0x7FFFFFFF
-_PERIODIC_CLEANUP_LOCK_ID: int = hash("spectra_periodic_cleanup") & 0x7FFFFFFF
-_CAPACITY_MONITOR_LOCK_ID: int = hash("spectra_capacity_monitor") & 0x7FFFFFFF
-_DISK_MONITOR_LOCK_ID: int = hash("spectra_disk_monitor") & 0x7FFFFFFF
-_SCHEDULER_LEADER_LOCK_ID: int = 8675309  # Global leader election for the scheduler
+_BACKUP_LOCK_ID: int = stable_lock_id("spectra_backup")
+_QUOTA_LOCK_ID: int = stable_lock_id("spectra_quota_reset")
+_DB_MAINTENANCE_LOCK_ID: int = stable_lock_id("spectra_db_maint")
+_EXPLOIT_REFRESH_LOCK_ID: int = stable_lock_id("spectra_exploit_refresh")
+_STALE_JOB_LOCK_ID: int = stable_lock_id("spectra_stale_jobs")
+_DOCKER_CLEANUP_LOCK_ID: int = stable_lock_id("spectra_docker_cleanup")
+_IMAGE_UPDATE_LOCK_ID: int = stable_lock_id("spectra_image_update")
+_SANDBOX_WATCHDOG_LOCK_ID: int = stable_lock_id("spectra_sandbox_watchdog")
+_METRICS_COLLECTOR_LOCK_ID: int = stable_lock_id("spectra_metrics_collector")
+_HEALTH_REPORTER_LOCK_ID: int = stable_lock_id("spectra_health_reporter")
+_CACHE_CLEANUP_LOCK_ID: int = stable_lock_id("spectra_cache_cleanup")
+_PERIODIC_CLEANUP_LOCK_ID: int = stable_lock_id("spectra_periodic_cleanup")
+_CAPACITY_MONITOR_LOCK_ID: int = stable_lock_id("spectra_capacity_monitor")
+_DISK_MONITOR_LOCK_ID: int = stable_lock_id("spectra_disk_monitor")
+_SCHEDULER_LEADER_LOCK_ID: int = stable_lock_id("spectra_scheduler_leader")
+
+_SCHEDULER_TASK_SPECS: tuple[tuple[str, str], ...] = (
+    ("sandbox_watchdog", "_sandbox_watchdog"),
+    ("quota_reset", "_quota_reset"),
+    ("metrics_collector", "_metrics_collector"),
+    ("health_reporter", "_health_reporter"),
+    ("backup_scheduler", "_backup_scheduler"),
+    ("cache_cleanup", "_cache_cleanup"),
+    ("periodic_cleanup", "_periodic_cleanup"),
+    ("db_maintenance", "_db_maintenance"),
+    ("stale_job_recovery", "_stale_job_recovery"),
+    ("exploit_db_refresh", "_exploit_db_refresh"),
+    ("capacity_monitor", "_capacity_monitor"),
+    ("docker_cleanup", "_docker_cleanup"),
+    ("disk_monitor", "_disk_monitor"),
+    ("image_update_check", "_image_update_check"),
+)
 
 
 async def _try_advisory_lock(session, lock_id: int) -> bool:
@@ -60,20 +78,8 @@ class SchedulerService:
 
         # Start scheduled loops
         self._named_tasks = {
-            "sandbox_watchdog": create_safe_task(self._sandbox_watchdog(), name="sandbox_watchdog"),
-            "quota_reset": create_safe_task(self._quota_reset(), name="quota_reset"),
-            "metrics_collector": create_safe_task(self._metrics_collector(), name="metrics_collector"),
-            "health_reporter": create_safe_task(self._health_reporter(), name="health_reporter"),
-            "backup_scheduler": create_safe_task(self._backup_scheduler(), name="backup_scheduler"),
-            "cache_cleanup": create_safe_task(self._cache_cleanup(), name="cache_cleanup"),
-            "periodic_cleanup": create_safe_task(self._periodic_cleanup(), name="periodic_cleanup"),
-            "db_maintenance": create_safe_task(self._db_maintenance(), name="db_maintenance"),
-            "stale_job_recovery": create_safe_task(self._stale_job_recovery(), name="stale_job_recovery"),
-            "exploit_db_refresh": create_safe_task(self._exploit_db_refresh(), name="exploit_db_refresh"),
-            "capacity_monitor": create_safe_task(self._capacity_monitor(), name="capacity_monitor"),
-            "docker_cleanup": create_safe_task(self._docker_cleanup(), name="docker_cleanup"),
-            "disk_monitor": create_safe_task(self._disk_monitor(), name="disk_monitor"),
-            "image_update_check": create_safe_task(self._image_update_check(), name="image_update_check"),
+            task_name: create_safe_task(getattr(self, method_name)(), name=task_name)
+            for task_name, method_name in _SCHEDULER_TASK_SPECS
         }
         self.tasks = list(self._named_tasks.values())
 
@@ -91,15 +97,22 @@ class SchedulerService:
         logger.info("Scheduler stopped")
 
     def health(self) -> dict:
-        task_status = {name: (not task.done()) for name, task in self._named_tasks.items()}
-        if not self.running and not task_status:
+        task_status = {}
+        for task_name, _method_name in _SCHEDULER_TASK_SPECS:
+            task = self._named_tasks.get(task_name)
+            if task is None:
+                task_status[task_name] = "missing"
+            elif task.done():
+                task_status[task_name] = "dead"
+            else:
+                task_status[task_name] = "alive"
+
+        if not self.running:
             status = "standby"
-        elif task_status and any(task_status.values()):
-            status = "healthy"
-        elif self.running and not task_status:
-            status = "standby"
-        else:
+        elif any(state != "alive" for state in task_status.values()):
             status = "degraded"
+        else:
+            status = "healthy"
         return {
             "status": status,
             "tasks": task_status,
@@ -672,11 +685,13 @@ if _secret:
 
 
 @app.get("/health")
-async def health():
+async def health(response: Response):
     if _scheduler_instance is None:
         return {"status": "starting", "service": "scheduler"}
     result = _scheduler_instance.health()
     result["service"] = "scheduler"
+    if result.get("status") == "degraded":
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return result
 
 

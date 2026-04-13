@@ -4,7 +4,8 @@
 
 # NOTE: kalilinux/kali-rolling only publishes latest + arch tags.
 # Rebuild periodically to pick up security updates.
-FROM kalilinux/kali-rolling:latest
+ARG KALI_BASE_IMAGE=kalilinux/kali-rolling:latest
+FROM ${KALI_BASE_IMAGE}
 
 ARG BUILD_VERSION=dev
 LABEL org.opencontainers.image.title="Spectra Worker" \

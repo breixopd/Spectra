@@ -5,14 +5,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker
 from app.core.events import events
 from app.repositories.mission import MissionRepository
 from app.services.ai.agents.base import AgentContext
 from app.services.ai.sanitizer import sanitize_for_prompt
 from app.services.billing.quota_enforcer import QuotaEnforcer
+from app.services.billing.usage_tracker import UsageTracker
 from app.services.mission.mission import Mission
 from app.services.mission.state_store import MissionStateStore
 from app.services.tools.output import cleanup_mission_workspace
@@ -32,6 +35,7 @@ class MissionLifecycleManager:
         self.active_missions = active_missions
         self.state_store = MissionStateStore()
         self.quota_enforcer = QuotaEnforcer()
+        self.usage_tracker = UsageTracker()
 
     async def start_mission(
         self,
@@ -58,9 +62,7 @@ class MissionLifecycleManager:
         try:
             async with async_session_maker() as session, session.begin():
                 if user_id:
-                    from sqlalchemy import text
-
-                    lock_id = hash(user_id) & 0x7FFFFFFF
+                    lock_id = stable_lock_id(f"spectra_mission_quota:{user_id}")
                     await session.execute(
                         text("SELECT pg_advisory_xact_lock(:lock_id)"),
                         {"lock_id": lock_id},
@@ -83,6 +85,8 @@ class MissionLifecycleManager:
                     user_id=user_id,
                     requires_approval=requires_approval,
                 )
+                if user_id:
+                    await self.usage_tracker.record_mission_start(user_id, session=session)
         except MissionQuotaExceeded:
             raise
         except SQLAlchemyError as e:

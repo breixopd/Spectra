@@ -5,15 +5,44 @@ from __future__ import annotations
 import asyncio
 import logging
 import shlex
+import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
-import asyncssh
+try:
+    import asyncssh as _asyncssh
+except ModuleNotFoundError:
+    _asyncssh = None
 
 from app.core.config import settings
+from app.core.paths import data_path
 from app.services.provisioning.recipes import CONTAINER_NAMES, PROVISIONING_RECIPES
 
 logger = logging.getLogger(__name__)
+
+_MISSING_ASYNCSSH_MESSAGE = (
+    "Missing optional dependency 'asyncssh'; install it to use remote provisioning operations"
+)
+
+
+class _AsyncSSHShim:
+    """Patchable fallback when asyncssh is unavailable."""
+
+    class DisconnectError(Exception):
+        """Fallback disconnect error type used by tests and exception handlers."""
+
+    @staticmethod
+    def connect(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError(_MISSING_ASYNCSSH_MESSAGE)
+
+    @staticmethod
+    def import_private_key(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError(_MISSING_ASYNCSSH_MESSAGE)
+
+
+asyncssh = _asyncssh if _asyncssh is not None else _AsyncSSHShim()
+ASYNCSSH_AVAILABLE = _asyncssh is not None
 
 
 @dataclass
@@ -25,6 +54,7 @@ class ServerConfig:
     username: str = "root"
     password: str | None = None
     private_key: str | None = None
+    ssh_known_host: str | None = None
     service_type: str = ""  # sandbox_worker
     service_port: int = 8080
     extra_env: dict[str, str] = field(default_factory=dict)
@@ -45,6 +75,11 @@ class ProvisioningResult:
 
 class ServerProvisioner:
     """Auto-provisions remote servers over SSH for Spectra services."""
+
+    @staticmethod
+    def _require_asyncssh() -> None:
+        if not ASYNCSSH_AVAILABLE:
+            raise RuntimeError(_MISSING_ASYNCSSH_MESSAGE)
 
     async def provision(self, config: ServerConfig) -> ProvisioningResult:
         """Provision a remote server with the specified service.
@@ -67,13 +102,20 @@ class ServerProvisioner:
             result.logs.append(f"ERROR: {result.error}")
             return result
 
-        conn_kwargs = self._build_conn_kwargs(config)
+        try:
+            conn_kwargs = self._build_conn_kwargs(config)
+        except (OSError, RuntimeError, ValueError) as e:
+            result.error = str(e)
+            result.logs.append(f"ERROR: {result.error}")
+            logger.error("Failed to prepare SSH trust for %s:%s: %s", config.host, config.port, e)
+            return result
         if conn_kwargs is None:
             result.error = "No authentication method provided (password or private key required)"
             result.logs.append(f"ERROR: {result.error}")
             return result
 
         try:
+            self._require_asyncssh()
             result.logs.append(f"Connecting to {config.host}:{config.port} as {config.username}...")
             async with asyncssh.connect(**conn_kwargs) as conn:
                 result.logs.append("Connected successfully")
@@ -171,11 +213,15 @@ class ServerProvisioner:
 
     async def verify_connection(self, config: ServerConfig) -> dict[str, Any]:
         """Test SSH connectivity without provisioning."""
-        conn_kwargs = self._build_conn_kwargs(config)
+        try:
+            conn_kwargs = self._build_conn_kwargs(config)
+        except (OSError, RuntimeError, ValueError) as e:
+            return {"connected": False, "error": str(e)}
         if conn_kwargs is None:
             return {"connected": False, "error": "No auth method"}
 
         try:
+            self._require_asyncssh()
             async with asyncssh.connect(**conn_kwargs) as conn:  # type: ignore[arg-type]
                 result = await conn.run(
                     "uname -a && docker --version 2>/dev/null || echo 'docker_not_installed'",
@@ -199,13 +245,19 @@ class ServerProvisioner:
             service_type=config.service_type,
         )
 
-        conn_kwargs = self._build_conn_kwargs(config)
+        try:
+            conn_kwargs = self._build_conn_kwargs(config)
+        except (OSError, RuntimeError, ValueError) as e:
+            result.error = str(e)
+            result.logs.append(f"ERROR: {result.error}")
+            return result
         if conn_kwargs is None:
             result.error = "No auth method"
             result.logs.append(f"ERROR: {result.error}")
             return result
 
         try:
+            self._require_asyncssh()
             async with asyncssh.connect(**conn_kwargs) as conn:  # type: ignore[arg-type]
                 result.logs.append("Connected, stopping Spectra services...")
                 container = CONTAINER_NAMES.get(config.service_type, "spectra-sandbox-worker")
@@ -226,23 +278,106 @@ class ServerProvisioner:
 
     def _build_conn_kwargs(self, config: ServerConfig) -> dict[str, Any] | None:
         """Build asyncssh connection kwargs. Returns None if no auth available."""
+        if not config.private_key and not config.password:
+            return None
+
+        known_hosts_path = self._ensure_known_host(config)
         conn_kwargs: dict[str, Any] = {
             "host": config.host,
             "port": config.port,
             "username": config.username,
-            # SECURITY: known_hosts=None disables host-key verification, allowing MITM.
-            # Acceptable for automated provisioning of ephemeral servers, but should
-            # be replaced with a pinned key or trust-on-first-use policy for
-            # long-lived infrastructure.
-            "known_hosts": None,
+            "known_hosts": str(known_hosts_path),
         }
         if config.private_key:
             conn_kwargs["client_keys"] = [asyncssh.import_private_key(config.private_key)]
         elif config.password:
             conn_kwargs["password"] = config.password
-        else:
-            return None
         return conn_kwargs
+
+    def _known_hosts_path(self) -> Path:
+        """Return the local known_hosts file used for TOFU SSH trust."""
+        return data_path("config", "provisioner_known_hosts")
+
+    @staticmethod
+    def _known_hosts_target(hostname: str, port: int) -> str:
+        return hostname if port == 22 else f"[{hostname}]:{port}"
+
+    @staticmethod
+    def _line_matches_known_host(line: str, expected_host: str) -> bool:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            return False
+        host_field = stripped.split()[0]
+        host_tokens = {token.strip() for token in host_field.split(",")}
+        return expected_host in host_tokens
+
+    @staticmethod
+    def _normalize_known_host_lines(entry: str) -> list[str]:
+        lines: list[str] = []
+        for raw_line in entry.splitlines():
+            stripped = raw_line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if stripped not in lines:
+                lines.append(stripped)
+        return lines
+
+    def _ensure_known_host(self, config: ServerConfig) -> Path:
+        """Ensure the remote host has a persisted known_hosts entry before connecting."""
+        known_hosts_path = self._known_hosts_path()
+        known_hosts_path.parent.mkdir(parents=True, exist_ok=True)
+        known_hosts_path.touch(exist_ok=True)
+        known_hosts_path.chmod(0o600)
+
+        existing_lines = known_hosts_path.read_text(encoding="utf-8").splitlines()
+        expected_host = self._known_hosts_target(config.host, config.port)
+
+        if config.ssh_known_host is not None:
+            pinned_lines = self._normalize_known_host_lines(config.ssh_known_host)
+            if not pinned_lines:
+                raise ValueError(f"Pinned known-host entry for {config.host}:{config.port} is empty")
+
+            retained_lines = [
+                line for line in existing_lines if not self._line_matches_known_host(line, expected_host)
+            ]
+            merged_lines = list(dict.fromkeys([*retained_lines, *pinned_lines]))
+            known_hosts_path.write_text("\n".join(merged_lines) + "\n", encoding="utf-8")
+            logger.info("Persisted pinned SSH host key for %s:%s", config.host, config.port)
+            return known_hosts_path
+
+        for line in existing_lines:
+            if self._line_matches_known_host(line, expected_host):
+                return known_hosts_path
+
+        try:
+            scan_result = subprocess.run(
+                ["ssh-keyscan", "-p", str(config.port), config.host],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=10,
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            detail = (getattr(exc, "stderr", "") or str(exc)).strip()
+            raise RuntimeError(
+                f"ssh-keyscan failed for {config.host}:{config.port}: {detail or 'no error output'}"
+            ) from exc
+
+        scanned_lines = self._normalize_known_host_lines(scan_result.stdout)
+        if not scanned_lines:
+            raise RuntimeError(f"ssh-keyscan returned no host keys for {config.host}:{config.port}")
+
+        with known_hosts_path.open("a", encoding="utf-8") as handle:
+            handle.write("\n".join(scanned_lines))
+            handle.write("\n")
+
+        logger.info(
+            "Trusted new SSH host key on first use for %s:%s using %s",
+            config.host,
+            config.port,
+            known_hosts_path,
+        )
+        return known_hosts_path
 
     def _build_env_vars(self, config: ServerConfig) -> dict[str, str]:
         """Build environment variables for the remote service."""

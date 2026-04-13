@@ -13,11 +13,12 @@ INJECTION_PATTERNS = [
         re.IGNORECASE,
     ),
     re.compile(r"you\s+are\s+now\s+(?:a|an|in)\s+", re.IGNORECASE),
-    re.compile(r"(?:pretend|roleplay|act)\s+(?:you\s+are|as\s+(?:a|an|if))", re.IGNORECASE),
+    re.compile(r"(?:pretend\s+you\s+are|roleplay\s+as|act\s+(?:you\s+are|as(?:\s+(?:a|an|if))?))", re.IGNORECASE),
     re.compile(r"system\s*:\s*", re.IGNORECASE),
     re.compile(r"\[SYSTEM\]\s*:", re.IGNORECASE),
     re.compile(r"<\|(?:im_start|im_end|system|user|assistant)\|>", re.IGNORECASE),
     re.compile(r"\[INST\]|\[/INST\]|<<SYS>>|<</SYS>>", re.IGNORECASE),
+    re.compile(r"^\s*(?:#{3,}|-{3,})\s*(?:system|instruction|override)\b.*$", re.IGNORECASE | re.MULTILINE),
     # Section-break delimiters used to inject fake context
     re.compile(r"^\s*#{3,}\s*$", re.MULTILINE),
     re.compile(r"^\s*-{5,}\s*$", re.MULTILINE),

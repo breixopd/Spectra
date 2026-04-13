@@ -313,7 +313,7 @@ _ADAPTERS: dict[str, type[PaymentAdapter]] = {
 }
 
 
-def get_payment_adapter(provider: str = "noop") -> PaymentAdapter:
+def get_payment_adapter(provider: str = "manual") -> PaymentAdapter:
     """Get payment adapter by provider name. Extensible for future providers."""
     cls = _ADAPTERS.get(provider)
     if cls is None:
@@ -336,7 +336,7 @@ class PaymentService:
             from app.core.config import get_settings
 
             provider = get_settings().PAYMENT_PROVIDER
-            adapter_cls = _ADAPTERS.get(provider, NoopPaymentAdapter)
+            adapter_cls = _ADAPTERS.get(provider, ManualPaymentAdapter)
             self._adapter = adapter_cls()
 
     async def subscribe_user(self, user_id: str, plan_id: str) -> Subscription:

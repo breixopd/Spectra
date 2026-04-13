@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.billing.payment_adapter import (
+    ManualPaymentAdapter,
     NoopPaymentAdapter,
     PaymentService,
     get_payment_adapter,
@@ -25,9 +26,9 @@ class TestGetPaymentAdapter:
         with pytest.raises(ValueError, match="Unknown payment provider"):
             get_payment_adapter("nonexistent_provider")
 
-    def test_default_is_noop(self):
+    def test_default_is_manual(self):
         adapter = get_payment_adapter()
-        assert isinstance(adapter, NoopPaymentAdapter)
+        assert isinstance(adapter, ManualPaymentAdapter)
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +162,41 @@ class TestUsageTrackerRecord:
         tracker = UsageTracker()
         with pytest.raises(ValueError, match="Unknown usage metric"):
             await tracker.record("u-1", "nonexistent", 1)
+
+    async def test_record_api_request_tracks_hourly_and_daily(self):
+        from app.services.billing.usage_tracker import UsageTracker
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock()
+        mock_session.commit = AsyncMock()
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("app.services.billing.usage_tracker.async_session_maker", return_value=mock_session),
+            patch("app.services.billing.usage_tracker.telemetry") as mock_telemetry,
+        ):
+            tracker = UsageTracker()
+            await tracker.record_api_request("u-1")
+
+        assert mock_session.execute.await_count == 2
+        mock_session.commit.assert_awaited_once()
+        assert mock_telemetry.increment_counter.call_count == 2
+
+    async def test_record_mission_start_tracks_month_day_week_in_existing_session(self):
+        from app.services.billing.usage_tracker import UsageTracker
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        with patch("app.services.billing.usage_tracker.telemetry") as mock_telemetry:
+            tracker = UsageTracker()
+            await tracker.record_mission_start("u-1", session=mock_session)
+
+        assert mock_session.execute.await_count == 3
+        mock_session.commit.assert_not_awaited()
+        assert mock_telemetry.increment_counter.call_count == 3
 
 
 # ---------------------------------------------------------------------------

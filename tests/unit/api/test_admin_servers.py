@@ -222,3 +222,182 @@ class TestHealthCheckAll:
 
         assert "sandbox_worker" in results
         assert len(results["sandbox_worker"]) == 1
+
+
+class TestDeployToNode:
+    """POST /api/admin/services/nodes/{node_id}/deploy."""
+
+    @pytest.mark.asyncio
+    async def test_forwards_pinned_known_host_from_node_metadata(self):
+        from app.api.routers.admin.servers import deploy_to_node
+        from app.services.infrastructure.deploy import DeployResult, DeploymentStatus
+
+        node = MagicMock()
+        node.id = 42
+        node.url = "ssh://deploy.example.com:2222"
+        node.name = "deploy-node"
+        node.ssh_user = "ubuntu"
+        node.ssh_port = 2222
+        node.ssh_key_path = "/keys/id_ed25519"
+        node.metadata_ = {"ssh_known_host": "[deploy.example.com]:2222 ssh-ed25519 AAAAPINNED"}
+        node.health_status = "unknown"
+        node.deployed_services = None
+
+        mock_exec_result = MagicMock()
+        mock_exec_result.scalar_one_or_none.return_value = node
+
+        session = AsyncMock()
+        session.execute.return_value = mock_exec_result
+        session.commit = AsyncMock()
+
+        current_user = MagicMock(id="user-1")
+        request = MagicMock()
+        deploy_result = DeployResult(DeploymentStatus.COMPLETE, "Deployment successful", ["ok"])
+
+        with (
+            patch("app.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
+            patch("app.services.infrastructure.deploy.ServerDeployer.deploy_to_server", new_callable=AsyncMock) as mock_deploy,
+        ):
+            mock_deploy.return_value = deploy_result
+            response = await deploy_to_node(
+                node_id=42,
+                request=request,
+                services=["app"],
+                harden=False,
+                current_user=current_user,
+                session=session,
+            )
+
+        assert response == {
+            "status": "complete",
+            "message": "Deployment successful",
+            "logs": ["ok"],
+        }
+        assert node.health_status == "healthy"
+        assert node.deployed_services == ["app"]
+        mock_deploy.assert_awaited_once_with(
+            server_id="42",
+            hostname="deploy.example.com",
+            ssh_user="ubuntu",
+            ssh_port=2222,
+            ssh_key="/keys/id_ed25519",
+            pinned_known_host="[deploy.example.com]:2222 ssh-ed25519 AAAAPINNED",
+            services=["app"],
+            harden=False,
+        )
+
+
+class TestProvisioningEndpointKnownHostForwarding:
+    """Pinned known-host entries should be forwarded to provisioning paths."""
+
+    @pytest.mark.asyncio
+    async def test_verify_forwards_pinned_known_host(self):
+        from app.api.routers.admin.servers import ServerConnectionRequest, verify_server_connection
+
+        provisioner = MagicMock()
+        provisioner.verify_connection = AsyncMock(return_value={"connected": True})
+        pinned_entry = "[verify.example.com]:2222 ssh-ed25519 AAAAPINNED"
+
+        with patch("app.services.provisioning.ServerProvisioner", return_value=provisioner):
+            response = await verify_server_connection(
+                body=ServerConnectionRequest(
+                    host="verify.example.com",
+                    port=2222,
+                    username="root",
+                    password="secret",
+                    ssh_known_host=pinned_entry,
+                ),
+                _perm=MagicMock(),
+            )
+
+        assert response == {"connected": True}
+        forwarded_config = provisioner.verify_connection.await_args.args[0]
+        assert forwarded_config.ssh_known_host == pinned_entry
+
+    @pytest.mark.asyncio
+    async def test_provision_forwards_pinned_known_host(self):
+        from app.api.routers.admin.servers import ProvisionRequest, provision_server
+        from app.services.provisioning.provisioner import ProvisioningResult
+
+        provisioner = MagicMock()
+        provisioner.provision = AsyncMock(
+            return_value=ProvisioningResult(
+                success=True,
+                server_host="provision.example.com",
+                service_type="sandbox_worker",
+                service_url="http://provision.example.com:8080",
+                health_check_passed=True,
+                logs=["ok"],
+            )
+        )
+        pinned_entry = "[provision.example.com]:2222 ssh-ed25519 AAAAPINNED"
+
+        with (
+            patch("app.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
+            patch("app.services.provisioning.ServerProvisioner", return_value=provisioner),
+        ):
+            response = await provision_server(
+                body=ProvisionRequest(
+                    host="provision.example.com",
+                    port=2222,
+                    username="root",
+                    password="secret",
+                    ssh_known_host=pinned_entry,
+                    service_type="sandbox_worker",
+                ),
+                request=MagicMock(),
+                current_user=MagicMock(id="user-1"),
+                session=AsyncMock(),
+            )
+
+        assert response == {
+            "success": True,
+            "service_url": "http://provision.example.com:8080",
+            "health_check_passed": True,
+            "logs": ["ok"],
+            "error": "",
+        }
+        forwarded_config = provisioner.provision.await_args.args[0]
+        assert forwarded_config.ssh_known_host == pinned_entry
+
+    @pytest.mark.asyncio
+    async def test_deprovision_forwards_pinned_known_host(self):
+        from app.api.routers.admin.servers import DeprovisionRequest, deprovision_server
+        from app.services.provisioning.provisioner import ProvisioningResult
+
+        provisioner = MagicMock()
+        provisioner.deprovision = AsyncMock(
+            return_value=ProvisioningResult(
+                success=True,
+                server_host="deprovision.example.com",
+                service_type="sandbox_worker",
+                logs=["removed"],
+            )
+        )
+        pinned_entry = "[deprovision.example.com]:2222 ssh-ed25519 AAAAPINNED"
+
+        with (
+            patch("app.api.routers.admin.servers.audit_log_event", new_callable=AsyncMock),
+            patch("app.services.provisioning.ServerProvisioner", return_value=provisioner),
+        ):
+            response = await deprovision_server(
+                body=DeprovisionRequest(
+                    host="deprovision.example.com",
+                    port=2222,
+                    username="root",
+                    password="secret",
+                    ssh_known_host=pinned_entry,
+                    service_type="sandbox_worker",
+                ),
+                request=MagicMock(),
+                current_user=MagicMock(id="user-1"),
+                session=AsyncMock(),
+            )
+
+        assert response == {
+            "success": True,
+            "logs": ["removed"],
+            "error": "",
+        }
+        forwarded_config = provisioner.deprovision.await_args.args[0]
+        assert forwarded_config.ssh_known_host == pinned_entry
