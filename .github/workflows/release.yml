@@ -112,17 +112,47 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push app-stack images
+      - name: Build & push API image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.app
+          file: docker/Dockerfile.api
           push: true
           tags: |
             ${{ env.APP_IMAGE }}:latest
             ${{ env.APP_IMAGE }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push AI image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.ai
+          push: true
+          tags: |
             ${{ env.AI_IMAGE }}:latest
             ${{ env.AI_IMAGE }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push scheduler image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.scheduler
+          push: true
+          tags: |
             ${{ env.SCHEDULER_IMAGE }}:latest
             ${{ env.SCHEDULER_IMAGE }}:${{ steps.version.outputs.version }}
           labels: |
@@ -137,7 +167,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.tools
+          file: docker/Dockerfile.worker
           push: true
           tags: |
             ${{ env.WORKER_IMAGE }}:latest
@@ -162,6 +192,8 @@ jobs:
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -212,16 +244,20 @@ jobs:
     name: Deploy to production
     needs: release
     runs-on: ubuntu-latest
-    environment:
-      name: production
+    environment: ${{ vars.RELEASE_ENVIRONMENT || 'production' }}
+    env:
+      DEPLOY_HOST_SECRET_NAME: DEPLOY_HOST
+      DEPLOY_USER_SECRET_NAME: DEPLOY_USER
+      DEPLOY_SSH_KEY_SECRET_NAME: DEPLOY_SSH_KEY
+      DEPLOY_WEBHOOK_SECRET_NAME: DEPLOY_WEBHOOK_URL
     steps:
       - uses: actions/checkout@v4
 
       - name: Validate deploy secrets
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
+          DEPLOY_USER: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
+          DEPLOY_SSH_KEY: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
         run: |
           test -n "$DEPLOY_HOST"
           test -n "$DEPLOY_USER"
@@ -230,9 +266,9 @@ jobs:
       - name: Pre-deploy database backup
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
+          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
+          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
           script: |
             set -e
             BACKUP_DIR=~/spectra/data/backups
@@ -248,9 +284,9 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
+          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
+          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
           script: |
             set -e
             cd ~/spectra
@@ -270,9 +306,9 @@ jobs:
       - name: Post-deploy health check
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
+          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
+          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
           script: |
             set -e
             HEALTH_PORT="${HEALTH_PORT:-80}"
@@ -293,9 +329,9 @@ jobs:
         if: failure()
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
+          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
+          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
           script: |
             set -e
             cd ~/spectra
@@ -326,7 +362,7 @@ jobs:
       - name: Deploy notification
         if: always()
         env:
-          DEPLOY_WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          DEPLOY_WEBHOOK_URL: ${{ secrets[env.DEPLOY_WEBHOOK_SECRET_NAME] }}
         run: |
           STATUS="${{ job.status }}"
           VERSION="${{ needs.release.outputs.version }}"
