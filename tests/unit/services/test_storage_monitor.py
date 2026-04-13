@@ -1,10 +1,26 @@
 """Tests for StorageMonitor."""
-import time
 from unittest.mock import AsyncMock
 
 import pytest
 
+import app.services.infrastructure.storage_monitor as storage_monitor_module
 from app.services.infrastructure.storage_monitor import StorageMonitor
+
+
+@pytest.fixture(autouse=True)
+def reset_alert_state(monkeypatch):
+    monkeypatch.setattr(StorageMonitor, "_alert_cooldown", {})
+
+
+@pytest.fixture
+def set_monotonic(monkeypatch):
+    current = {"value": 1000.0}
+
+    def _set(value: float):
+        current["value"] = value
+
+    monkeypatch.setattr(storage_monitor_module.time, "monotonic", lambda: current["value"])
+    return _set
 
 
 class TestCheckDiskUsage:
@@ -47,24 +63,27 @@ class TestCheckS3Health:
 
 
 class TestAlertDedup:
-    def setup_method(self):
-        StorageMonitor._alert_cooldown.clear()
-
-    def test_first_alert_allowed(self):
+    def test_first_alert_allowed(self, set_monotonic):
+        set_monotonic(1000.0)
         assert StorageMonitor.should_alert("test_key") is True
 
-    def test_repeat_alert_suppressed(self):
+    def test_repeat_alert_suppressed(self, set_monotonic):
+        set_monotonic(1000.0)
         StorageMonitor.should_alert("test_key")
+        set_monotonic(1001.0)
         assert StorageMonitor.should_alert("test_key") is False
 
-    def test_alert_after_cooldown(self):
+    def test_alert_after_cooldown(self, set_monotonic):
+        set_monotonic(1000.0)
         StorageMonitor.should_alert("test_key")
-        # Manually set the cooldown timestamp to the past
-        StorageMonitor._alert_cooldown["test_key"] = time.monotonic() - StorageMonitor.ALERT_COOLDOWN_SECS - 1
+        StorageMonitor._alert_cooldown["test_key"] = 1000.0 - StorageMonitor.ALERT_COOLDOWN_SECS - 1
+        set_monotonic(1000.0)
         assert StorageMonitor.should_alert("test_key") is True
 
-    def test_different_keys_independent(self):
+    def test_different_keys_independent(self, set_monotonic):
+        set_monotonic(1000.0)
         StorageMonitor.should_alert("key_a")
+        set_monotonic(1001.0)
         assert StorageMonitor.should_alert("key_b") is True
 
 
