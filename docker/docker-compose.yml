@@ -116,7 +116,7 @@ services:
 
   # Caddy reverse proxy
   caddy:
-    image: ${REGISTRY:-}spectra-caddy:${VERSION:-latest}
+    image: ${REGISTRY:-}spectra-caddy:${VERSION:-dev}
     build:
       context: ..
       dockerfile: docker/Dockerfile.caddy
@@ -155,7 +155,7 @@ services:
 
   # API
   app:
-    image: ${REGISTRY:-}spectra-app:${VERSION:-latest}
+    image: ${REGISTRY:-}spectra-app:${VERSION:-dev}
     build:
       context: ..
       dockerfile: docker/Dockerfile.api
@@ -220,7 +220,7 @@ services:
 
   # AI service
   ai-svc:
-    image: ${REGISTRY:-}spectra-ai-svc:${VERSION:-latest}
+    image: ${REGISTRY:-}spectra-ai-svc:${VERSION:-dev}
     build:
       context: ..
       dockerfile: docker/Dockerfile.ai
@@ -331,7 +331,7 @@ services:
 
   # Scheduler
   scheduler:
-    image: ${REGISTRY:-}spectra-scheduler:${VERSION:-latest}
+    image: ${REGISTRY:-}spectra-scheduler:${VERSION:-dev}
     build:
       context: ..
       dockerfile: docker/Dockerfile.scheduler
@@ -376,7 +376,7 @@ services:
 
   # Worker
   worker:
-    image: ${REGISTRY:-}spectra-worker:${VERSION:-latest}
+    image: ${REGISTRY:-}spectra-worker:${VERSION:-dev}
     build:
       context: ..
       dockerfile: docker/Dockerfile.worker

@@ -74,6 +74,19 @@ class TestPlanRepository:
             mock.assert_awaited_once_with(is_default=True)
         assert result == "default"
 
+    @pytest.mark.asyncio
+    async def test_get_self_service_registration_plan(self):
+        session = _mock_session()
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = "self-service-plan"
+        session.execute.return_value = result_mock
+
+        repo = PlanRepository(session)
+        result = await repo.get_self_service_registration_plan()
+
+        assert result == "self-service-plan"
+        session.execute.assert_awaited_once()
+
 
 # ---------------------------------------------------------------------------
 # SubscriptionRepository
@@ -94,10 +107,14 @@ class TestSubscriptionRepository:
     async def test_get_active_by_user(self):
         session = _mock_session()
         repo = SubscriptionRepository(session)
-        with patch.object(repo, "find_one_by", new_callable=AsyncMock, return_value=None) as mock:
-            result = await repo.get_active_by_user("user-2")
-            mock.assert_awaited_once_with(user_id="user-2", status="active")
+        result_mock = MagicMock()
+        result_mock.scalar_one_or_none.return_value = None
+        session.execute.return_value = result_mock
+
+        result = await repo.get_active_by_user("user-2")
+
         assert result is None
+        session.execute.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------

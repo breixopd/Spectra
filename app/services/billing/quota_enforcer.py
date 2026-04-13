@@ -13,6 +13,7 @@ from app.core.advisory_locks import stable_lock_id
 from app.core.database import async_session_maker
 from app.models.plan import Plan, Subscription, UsageRecord
 from app.models.user import User
+from app.services.billing.entitlements import ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES, get_user_entitlement_plan
 
 
 @contextlib.asynccontextmanager
@@ -65,17 +66,7 @@ class QuotaEnforcer:
 
     async def _get_plan(self, user_id: str, *, session: AsyncSession | None = None) -> Plan | None:
         async with _use_or_create_session(session) as db:
-            result = await db.execute(
-                select(Subscription).where(
-                    Subscription.user_id == user_id,
-                    Subscription.status == "active",
-                )
-            )
-            sub = result.scalar_one_or_none()
-            if sub is None:
-                return None
-            plan = await db.get(Plan, sub.plan_id)
-            return plan
+            return await get_user_entitlement_plan(db, user_id)
 
     async def check_mission_quota(
         self, user_id: str, plan: Plan | None = None, *, session: AsyncSession | None = None,
@@ -104,7 +95,10 @@ class QuotaEnforcer:
 
             locked_sub = await db.execute(
                 select(Subscription)
-                .where(Subscription.user_id == user_id, Subscription.status == "active")
+                .where(
+                    Subscription.user_id == user_id,
+                    Subscription.status.in_(tuple(ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES)),
+                )
                 .with_for_update()
             )
             locked_sub.scalar_one_or_none()  # acquire lock; discard result

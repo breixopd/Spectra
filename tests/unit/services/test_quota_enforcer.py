@@ -106,9 +106,11 @@ class TestCheckMissionQuota:
         from app.services.billing.quota_enforcer import QuotaEnforcer
 
         session = _mock_session()
-        session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None)))
 
-        with patch("app.services.billing.quota_enforcer.async_session_maker", return_value=session):
+        with (
+            patch("app.services.billing.quota_enforcer.async_session_maker", return_value=session),
+            patch("app.services.billing.quota_enforcer.get_user_entitlement_plan", new=AsyncMock(return_value=None)),
+        ):
             enforcer = QuotaEnforcer()
             allowed, reason = await enforcer.check_mission_quota("user-1")
 

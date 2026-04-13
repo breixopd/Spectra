@@ -17,7 +17,9 @@ from app.core.database import get_async_session
 from app.core.rate_limit import RateLimits, limiter
 from app.core.security import verify_password
 from app.models.audit_log import AuditEventType
+from app.models.plan import Plan, Subscription
 from app.models.user import User
+from app.services.billing.entitlements import get_user_entitlement, subscription_allows_billing_portal
 from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
@@ -33,12 +35,16 @@ async def get_current_profile(
     session: AsyncSession = Depends(get_async_session),
 ):
     """Return current user's profile and plan details."""
-    plan = None
-    if user.plan_id:
-        from app.models.plan import Plan
-
-        result = await session.execute(select(Plan).where(Plan.id == user.plan_id))
-        plan = result.scalar_one_or_none()
+    entitlement = await get_user_entitlement(session, str(user.id))
+    plan = entitlement.plan if entitlement is not None else None
+    subscription_result = await session.execute(
+        select(Subscription, Plan.display_name)
+        .outerjoin(Plan, Plan.id == Subscription.plan_id)
+        .where(Subscription.user_id == str(user.id))
+    )
+    subscription_row = subscription_result.first()
+    subscription = subscription_row[0] if subscription_row is not None else None
+    subscription_plan_name = subscription_row[1] if subscription_row is not None else None
 
     # Check if user has preferences configured
     from app.models.user_preferences import UserPreferences
@@ -56,6 +62,19 @@ async def get_current_profile(
         "processing_restricted": user.processing_restricted,
         "has_preferences": has_preferences,
         "preferences_url": "/api/v1/user/settings",
+        "subscription": {
+            "status": subscription.status,
+            "payment_provider": subscription.payment_provider,
+            "plan_id": str(subscription.plan_id) if subscription.plan_id else None,
+            "plan_display_name": subscription_plan_name,
+            "can_manage_billing": bool(
+                subscription.payment_provider == "stripe"
+                and subscription.external_customer_id
+                and subscription_allows_billing_portal(subscription.status)
+            ),
+        }
+        if subscription
+        else None,
         "plan": {
             "id": plan.id,
             "name": plan.name,

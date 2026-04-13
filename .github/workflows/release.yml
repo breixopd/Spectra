@@ -3,16 +3,13 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      patch:
-        description: "Same-day patch number (leave empty for first release of the day)"
-        required: false
-        default: ""
-  push:
-    tags: ["v*"]
+      version:
+        description: "Release version in YYYY.MM.DD or YYYY.MM.DD.N format"
+        required: true
+        type: string
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 env:
   REGISTRY: ghcr.io
@@ -24,8 +21,13 @@ env:
 
 jobs:
   release:
-    name: Build, Push & Release
+    name: Build & Push Release Images
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      ENCRYPTION_KEY: test-encryption-key
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -45,51 +47,71 @@ jobs:
       cancel-in-progress: false
     outputs:
       version: ${{ steps.version.outputs.version }}
+      release_sha: ${{ steps.release_ref.outputs.sha }}
 
     steps:
+      - name: Enforce trusted release ref
+        run: |
+          if [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "::error::Release workflow must be dispatched from the main branch."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
+        with:
+          ref: refs/heads/main
+          fetch-depth: 0
+
+      - name: Capture trusted release commit
+        id: release_ref
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
-      # ── Determine version ─────────────────────────────────────
+      # ── Determine release version from manual input ───────────
       - name: Set version
         id: version
         run: |
-          TODAY=$(date -u +"%Y.%m.%d")
-          PATCH="${{ github.event.inputs.patch }}"
-          if [ -n "$PATCH" ] && [ "$PATCH" != "0" ]; then
-            VERSION="${TODAY}.${PATCH}"
-          else
-            VERSION="${TODAY}"
+          VERSION="${{ inputs.version }}"
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$'; then
+            echo "::error::Version must match YYYY.MM.DD or YYYY.MM.DD.N"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then
+            echo "::error::Tag v${VERSION} already exists locally"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::Tag v${VERSION} already exists on origin"
+            exit 1
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Release version: ${VERSION}"
 
-      # ── Update version file ───────────────────────────────────
-      - name: Update app/version.py
-        run: |
-          cat > app/version.py << 'PYEOF'
-          """Spectra version — updated automatically by CI on release."""
-
-          __version__ = "${{ steps.version.outputs.version }}"
-          PYEOF
-          # Remove leading whitespace from heredoc
-          sed -i 's/^          //' app/version.py
-          echo "Updated version.py:"
-          cat app/version.py
-
       # ── Run tests before release ──────────────────────────────
       - name: Install dependencies
-        run: pip install -r requirements/base.txt numpy
+        run: |
+          filtered_requirements=requirements/dev-ci-filtered.txt
+          trap 'rm -f "$filtered_requirements"' EXIT
+          grep -v '^pytest-asyncio==' requirements/dev.txt > "$filtered_requirements"
+          pip install -r "$filtered_requirements" numpy docker psutil botocore
+          pip install --no-deps pytest-asyncio==0.24.0
+
+      - name: Validate TensorZero config
+        run: |
+          python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"
 
       - name: Run unit tests with coverage
         run: |
+          # Match the validated CI unit-test floor as closely as possible.
           python3 -m pytest tests/unit/ -q \
             --cov=app \
             --cov-report=term-missing \
-            --cov-fail-under=60
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=67.4
         env:
           DATABASE_URL: "postgresql+asyncpg://spectra:spectra_test@localhost:5433/spectra_test"
           TENSORZERO_GATEWAY_URL: "http://localhost:3000"
@@ -123,6 +145,7 @@ jobs:
             ${{ env.APP_IMAGE }}:${{ steps.version.outputs.version }}
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.release_ref.outputs.sha }}
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
           build-args: |
             BUILD_VERSION=${{ steps.version.outputs.version }}
@@ -140,6 +163,7 @@ jobs:
             ${{ env.AI_IMAGE }}:${{ steps.version.outputs.version }}
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.release_ref.outputs.sha }}
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
           build-args: |
             BUILD_VERSION=${{ steps.version.outputs.version }}
@@ -157,6 +181,7 @@ jobs:
             ${{ env.SCHEDULER_IMAGE }}:${{ steps.version.outputs.version }}
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.release_ref.outputs.sha }}
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
           build-args: |
             BUILD_VERSION=${{ steps.version.outputs.version }}
@@ -174,6 +199,7 @@ jobs:
             ${{ env.WORKER_IMAGE }}:${{ steps.version.outputs.version }}
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.release_ref.outputs.sha }}
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
           build-args: |
             BUILD_VERSION=${{ steps.version.outputs.version }}
@@ -191,53 +217,12 @@ jobs:
             ${{ env.CADDY_IMAGE }}:${{ steps.version.outputs.version }}
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ steps.release_ref.outputs.sha }}
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
           build-args: |
             BUILD_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      # ── Commit version bump ───────────────────────────────────
-      - name: Commit version update
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add app/version.py
-          git diff --cached --quiet && exit 0
-          git commit -m "release: ${{ steps.version.outputs.version }}"
-          git push origin HEAD:main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # ── Tag & GitHub Release ──────────────────────────────────
-      - name: Tag release
-        run: |
-          git tag -a "v${{ steps.version.outputs.version }}" -m "Release ${{ steps.version.outputs.version }}"
-          git push origin "v${{ steps.version.outputs.version }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate changelog
-        id: changelog
-        run: |
-          chmod +x .github/scripts/generate_changelog.sh
-          CHANGELOG=$(.github/scripts/generate_changelog.sh "${{ steps.version.outputs.version }}")
-          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        continue-on-error: true
-        with:
-          tag_name: "v${{ steps.version.outputs.version }}"
-          name: "v${{ steps.version.outputs.version }}"
-          body: |
-            ${{ steps.changelog.outputs.changelog }}
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ── Deploy (separate job, gated by 'production' environment) ──
   deploy:
@@ -245,63 +230,245 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     environment: ${{ vars.RELEASE_ENVIRONMENT || 'production' }}
+    permissions: {}
     env:
       DEPLOY_HOST_SECRET_NAME: DEPLOY_HOST
       DEPLOY_USER_SECRET_NAME: DEPLOY_USER
       DEPLOY_SSH_KEY_SECRET_NAME: DEPLOY_SSH_KEY
+      DEPLOY_SSH_FINGERPRINT_SECRET_NAME: DEPLOY_SSH_HOST_FINGERPRINT
+      DEPLOY_GHCR_USERNAME_SECRET_NAME: DEPLOY_GHCR_USERNAME
+      DEPLOY_GHCR_TOKEN_SECRET_NAME: DEPLOY_GHCR_TOKEN
       DEPLOY_WEBHOOK_SECRET_NAME: DEPLOY_WEBHOOK_URL
+      DEPLOY_REGISTRY: ghcr.io
+      DEPLOY_IMAGE_PREFIX: ghcr.io/breixopd14/
     steps:
-      - uses: actions/checkout@v4
-
       - name: Validate deploy secrets
         env:
           DEPLOY_HOST: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
           DEPLOY_USER: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
           DEPLOY_SSH_KEY: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
+          DEPLOY_SSH_FINGERPRINT: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          DEPLOY_GHCR_USERNAME: ${{ secrets[env.DEPLOY_GHCR_USERNAME_SECRET_NAME] }}
+          DEPLOY_GHCR_TOKEN: ${{ secrets[env.DEPLOY_GHCR_TOKEN_SECRET_NAME] }}
         run: |
           test -n "$DEPLOY_HOST"
           test -n "$DEPLOY_USER"
           test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_SSH_FINGERPRINT"
+          test -n "$DEPLOY_GHCR_USERNAME"
+          test -n "$DEPLOY_GHCR_TOKEN"
 
-      - name: Pre-deploy database backup
+      - name: Resolve deploy rollback preconditions
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
           username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
           key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
+          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          envs: VERSION
           script: |
-            set -e
-            BACKUP_DIR=~/spectra/data/backups
-            mkdir -p "$BACKUP_DIR"
-            BACKUP_FILE="$BACKUP_DIR/spectra_pre_deploy_$(date -u '+%Y%m%d_%H%M%S').sql.gz"
-            if docker ps -q -f "name=spectra-db" | grep -q .; then
-              docker exec spectra-db pg_dump -U spectra -d spectra | gzip > "$BACKUP_FILE"
-              echo "Backup saved: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
-            else
-              echo "WARN: DB container not running — skipping backup"
-            fi
-
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
-          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
-          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
-          script: |
-            set -e
+            bash -seuo pipefail <<'REMOTE'
             cd ~/spectra
 
+            : "${VERSION:?Release version is required for production deploys}"
+
+            STATE_DIR="$PWD/.deploy/release"
+            CURRENT_VERSION_FILE="$STATE_DIR/current-version"
+            PREVIOUS_VERSION_FILE="$STATE_DIR/previous-version"
+            TARGET_VERSION_FILE="$STATE_DIR/target-version"
+            BACKUP_FILE_MARKER="$STATE_DIR/pending-backup-file"
+            BACKUP_DIR="$PWD/data/backups"
+            COMPOSE_FILE="docker/docker-compose.yml"
+
+            require_file_value() {
+              local file_path="$1"
+              local label="$2"
+              local value=""
+
+              [[ -s "$file_path" ]] || {
+                echo "Missing ${label}: ${file_path}" >&2
+                return 1
+              }
+
+              value="$(tr -d '\n' < "$file_path")"
+              [[ -n "$value" ]] || {
+                echo "Empty ${label}: ${file_path}" >&2
+                return 1
+              }
+
+              printf '%s\n' "$value"
+            }
+
+            resolve_live_version() {
+              local service=""
+              local container_id=""
+              local image_ref=""
+              local image_ref_without_digest=""
+              local image_name_with_tag=""
+              local tag=""
+              local resolved_version=""
+
+              for service in app caddy ai-svc scheduler worker; do
+                container_id="$(docker compose -f "$COMPOSE_FILE" ps -q "$service")"
+                [[ -n "$container_id" ]] || {
+                  echo "Cannot resolve deployed version: missing running container for service ${service}" >&2
+                  return 1
+                }
+
+                image_ref="$(docker inspect --format '{{.Config.Image}}' "$container_id")"
+                image_ref_without_digest="${image_ref%@*}"
+                if [[ "$image_ref" != *"@"* ]]; then
+                  image_ref_without_digest="$image_ref"
+                fi
+                image_name_with_tag="${image_ref_without_digest##*/}"
+                if [[ "$image_name_with_tag" != *:* ]]; then
+                  echo "Cannot extract an authoritative image tag for service ${service} from ${image_ref}" >&2
+                  return 1
+                fi
+                tag="${image_name_with_tag##*:}"
+
+                [[ -n "$tag" ]] || {
+                  echo "Cannot extract an image tag for service ${service} from ${image_ref}" >&2
+                  return 1
+                }
+                [[ "$tag" != "latest" && "$tag" != "dev" ]] || {
+                  echo "Service ${service} is running non-authoritative tag ${tag}; refusing deploy" >&2
+                  return 1
+                }
+
+                if [[ -z "$resolved_version" ]]; then
+                  resolved_version="$tag"
+                elif [[ "$resolved_version" != "$tag" ]]; then
+                  echo "Inconsistent deployed image tags detected: ${resolved_version} vs ${tag}" >&2
+                  return 1
+                fi
+              done
+
+              printf '%s\n' "$resolved_version"
+            }
+
+            mkdir -p "$STATE_DIR" "$BACKUP_DIR"
+
+            PREVIOUS_VERSION="$(resolve_live_version)"
+            [[ -n "$PREVIOUS_VERSION" ]] || {
+              echo "Failed to resolve the currently deployed version" >&2
+              exit 1
+            }
+
+            if [[ -s "$CURRENT_VERSION_FILE" ]]; then
+              MARKED_VERSION="$(require_file_value "$CURRENT_VERSION_FILE" "current deployed version marker")"
+              [[ "$MARKED_VERSION" == "$PREVIOUS_VERSION" ]] || {
+                echo "Current version marker ${MARKED_VERSION} does not match live deployment ${PREVIOUS_VERSION}" >&2
+                exit 1
+              }
+            fi
+
+            DB_CONTAINER_ID="$(docker compose -f "$COMPOSE_FILE" ps -q db)"
+            [[ -n "$DB_CONTAINER_ID" ]] || {
+              echo "Cannot locate the production database container; refusing deploy without a verified backup" >&2
+              exit 1
+            }
+
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              if docker exec "$DB_CONTAINER_ID" pg_isready -U spectra -d spectra >/dev/null 2>&1; then
+                break
+              fi
+              if [[ "$attempt" -eq 10 ]]; then
+                echo "Database did not become ready for backup" >&2
+                exit 1
+              fi
+              sleep 3
+            done
+
+            BACKUP_FILE="$BACKUP_DIR/spectra_pre_deploy_$(date -u '+%Y%m%d_%H%M%S').sql.gz"
+            docker exec "$DB_CONTAINER_ID" pg_dump -U spectra -d spectra | gzip -9 > "$BACKUP_FILE"
+            [[ -s "$BACKUP_FILE" ]] || {
+              rm -f "$BACKUP_FILE"
+              echo "Pre-deploy database backup did not produce a non-empty archive" >&2
+              exit 1
+            }
+
+            printf '%s\n' "$PREVIOUS_VERSION" > "$PREVIOUS_VERSION_FILE"
+            printf '%s\n' "$VERSION" > "$TARGET_VERSION_FILE"
+            printf '%s\n' "$BACKUP_FILE" > "$BACKUP_FILE_MARKER"
+
+            echo "Resolved previous deployed version: $PREVIOUS_VERSION"
+            echo "Pre-deploy backup saved: $BACKUP_FILE ($(du -h "$BACKUP_FILE" | cut -f1))"
+            REMOTE
+
+      - name: Deploy via SSH
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+          DEPLOY_GHCR_USERNAME: ${{ secrets[env.DEPLOY_GHCR_USERNAME_SECRET_NAME] }}
+          DEPLOY_GHCR_TOKEN: ${{ secrets[env.DEPLOY_GHCR_TOKEN_SECRET_NAME] }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
+          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
+          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
+          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          envs: VERSION,DEPLOY_GHCR_USERNAME,DEPLOY_GHCR_TOKEN
+          script: |
+            bash -seuo pipefail <<'REMOTE'
+            cd ~/spectra
+
+            : "${VERSION:?Release version is required for production deploys}"
+            : "${DEPLOY_GHCR_USERNAME:?Missing deploy GHCR username}"
+            : "${DEPLOY_GHCR_TOKEN:?Missing deploy GHCR token}"
+
+            STATE_DIR="$PWD/.deploy/release"
+            PREVIOUS_VERSION_FILE="$STATE_DIR/previous-version"
+            TARGET_VERSION_FILE="$STATE_DIR/target-version"
+            BACKUP_FILE_MARKER="$STATE_DIR/pending-backup-file"
+
+            require_file_value() {
+              local file_path="$1"
+              local label="$2"
+              local value=""
+
+              [[ -s "$file_path" ]] || {
+                echo "Missing ${label}: ${file_path}" >&2
+                return 1
+              }
+
+              value="$(tr -d '\n' < "$file_path")"
+              [[ -n "$value" ]] || {
+                echo "Empty ${label}: ${file_path}" >&2
+                return 1
+              }
+
+              printf '%s\n' "$value"
+            }
+
+            PREVIOUS_VERSION="$(require_file_value "$PREVIOUS_VERSION_FILE" "previous deployed version")"
+            TARGET_VERSION="$(require_file_value "$TARGET_VERSION_FILE" "target deploy version")"
+            BACKUP_FILE="$(require_file_value "$BACKUP_FILE_MARKER" "pre-deploy backup marker")"
+
+            [[ "$TARGET_VERSION" == "$VERSION" ]] || {
+              echo "Target version marker mismatch: expected ${VERSION}, found ${TARGET_VERSION}" >&2
+              exit 1
+            }
+            [[ -n "$PREVIOUS_VERSION" ]] || {
+              echo "Previous deployed version is empty; refusing deploy" >&2
+              exit 1
+            }
+            [[ -f "$BACKUP_FILE" ]] || {
+              echo "Recorded pre-deploy backup is missing: ${BACKUP_FILE}" >&2
+              exit 1
+            }
+
             export REGISTRY=ghcr.io/breixopd14/
-            export VERSION=${{ needs.release.outputs.version }}
+            export VERSION="${VERSION}"
 
-            # Login to GHCR for the pull
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+            printf '%s\n' "${DEPLOY_GHCR_TOKEN}" | docker login ghcr.io --username "${DEPLOY_GHCR_USERNAME}" --password-stdin
 
-            # Pull latest images
+            docker compose -f docker/docker-compose.yml config >/dev/null
             docker compose -f docker/docker-compose.yml pull
-
-            # Deploy
             docker compose -f docker/docker-compose.yml up -d --remove-orphans
+            REMOTE
 
       - name: Post-deploy health check
         uses: appleboy/ssh-action@v1
@@ -309,55 +476,146 @@ jobs:
           host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
           username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
           key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
+          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
           script: |
             set -e
             HEALTH_PORT="${HEALTH_PORT:-80}"
             WAIT=2
             for i in 1 2 3 4 5; do
-              if curl -sf --max-time 10 "http://localhost:${HEALTH_PORT}/api/health" > /dev/null 2>&1; then
-                echo "Health check passed (attempt $i)"
+              if curl -fsS --max-time 15 "http://localhost:${HEALTH_PORT}/api/health/ready" > /dev/null; then
+                echo "Readiness check passed (attempt $i)"
                 exit 0
               fi
-              echo "Health check failed (attempt $i/5), retrying in ${WAIT}s..."
+              echo "Readiness check failed (attempt $i/5), retrying in ${WAIT}s..."
               sleep "$WAIT"
               WAIT=$((WAIT * 2))
             done
-            echo "Health check FAILED after 5 attempts"
+            echo "Readiness check FAILED after 5 attempts"
             exit 1
 
-      - name: Rollback on failure
-        if: failure()
+      - name: Persist deployed version marker
+        if: success()
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
           username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
           key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
+          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          envs: VERSION
           script: |
-            set -e
+            bash -seuo pipefail <<'REMOTE'
+            cd ~/spectra
+            STATE_DIR="$PWD/.deploy/release"
+            CURRENT_VERSION_FILE="$STATE_DIR/current-version"
+            TARGET_VERSION_FILE="$STATE_DIR/target-version"
+            BACKUP_FILE_MARKER="$STATE_DIR/pending-backup-file"
+            mkdir -p "$STATE_DIR"
+            TARGET_VERSION="$(tr -d '\n' < "$TARGET_VERSION_FILE" 2>/dev/null || true)"
+            if [ "$TARGET_VERSION" != "$VERSION" ]; then
+              echo "Target version marker mismatch; refusing to persist deploy version" >&2
+              exit 1
+            fi
+            printf '%s\n' "$VERSION" > "$CURRENT_VERSION_FILE"
+            rm -f "$TARGET_VERSION_FILE" "$BACKUP_FILE_MARKER"
+            REMOTE
+
+      - name: Rollback on failure
+        if: failure()
+        env:
+          DEPLOY_GHCR_USERNAME: ${{ secrets[env.DEPLOY_GHCR_USERNAME_SECRET_NAME] }}
+          DEPLOY_GHCR_TOKEN: ${{ secrets[env.DEPLOY_GHCR_TOKEN_SECRET_NAME] }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets[env.DEPLOY_HOST_SECRET_NAME] }}
+          username: ${{ secrets[env.DEPLOY_USER_SECRET_NAME] }}
+          key: ${{ secrets[env.DEPLOY_SSH_KEY_SECRET_NAME] }}
+          fingerprint: ${{ secrets[env.DEPLOY_SSH_FINGERPRINT_SECRET_NAME] }}
+          envs: DEPLOY_GHCR_USERNAME,DEPLOY_GHCR_TOKEN
+          script: |
+            bash -seuo pipefail <<'REMOTE'
             cd ~/spectra
             echo "Deploy failed — rolling back..."
 
-            BACKUP_FILE=$(find ~/spectra/data/backups -name "spectra_pre_deploy_*.sql.gz" -type f | sort | tail -n 1)
+            STATE_DIR="$PWD/.deploy/release"
+            CURRENT_VERSION_FILE="$STATE_DIR/current-version"
+            PREVIOUS_VERSION_FILE="$STATE_DIR/previous-version"
+            TARGET_VERSION_FILE="$STATE_DIR/target-version"
+            BACKUP_FILE_MARKER="$STATE_DIR/pending-backup-file"
 
-            # Restart previous containers
-            docker compose -f docker/docker-compose.yml down --timeout 30 || true
-            docker compose -f docker/docker-compose.yml up -d
+            require_file_value() {
+              local file_path="$1"
+              local label="$2"
+              local value=""
 
-            # Restore DB if backup exists
-            if [ -n "$BACKUP_FILE" ] && [ -f "$BACKUP_FILE" ]; then
-              sleep 15  # Wait for DB to be ready
-              gunzip -c "$BACKUP_FILE" | docker exec -i spectra-db psql -U spectra -d spectra || true
-              echo "Database restored from $BACKUP_FILE"
-            fi
+              [[ -s "$file_path" ]] || {
+                echo "Missing ${label}: ${file_path}" >&2
+                return 1
+              }
 
-            # Verify rollback
-            sleep 10
-            if curl -sf "http://localhost:${HEALTH_PORT:-80}/api/health" > /dev/null 2>&1; then
-              echo "Rollback successful"
-            else
-              echo "CRITICAL: Rollback health check failed — manual intervention required"
+              value="$(tr -d '\n' < "$file_path")"
+              [[ -n "$value" ]] || {
+                echo "Empty ${label}: ${file_path}" >&2
+                return 1
+              }
+
+              printf '%s\n' "$value"
+            }
+
+            PREVIOUS_VERSION="$(require_file_value "$PREVIOUS_VERSION_FILE" "previous deployed version")"
+            TARGET_VERSION="$(require_file_value "$TARGET_VERSION_FILE" "failed target version")"
+            BACKUP_FILE="$(require_file_value "$BACKUP_FILE_MARKER" "pre-deploy backup marker")"
+
+            [[ -f "$BACKUP_FILE" ]] || {
+              echo "Recorded pre-deploy backup is missing: ${BACKUP_FILE}" >&2
               exit 1
-            fi
+            }
+
+            export REGISTRY=ghcr.io/breixopd14/
+            export VERSION="$PREVIOUS_VERSION"
+
+            trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+            printf '%s\n' "${DEPLOY_GHCR_TOKEN}" | docker login ghcr.io --username "${DEPLOY_GHCR_USERNAME}" --password-stdin
+            docker compose -f docker/docker-compose.yml config >/dev/null
+            docker compose -f docker/docker-compose.yml pull
+            docker compose -f docker/docker-compose.yml down --timeout 30
+            docker compose -f docker/docker-compose.yml up -d db
+
+            echo "Waiting for rollback database container to become ready..."
+            for i in 1 2 3 4 5 6 7 8 9 10; do
+              if docker exec spectra-db pg_isready -U spectra -d spectra >/dev/null 2>&1; then
+                echo "Rollback database ready (attempt $i)"
+                break
+              fi
+              if [ "$i" -eq 10 ]; then
+                echo "Rollback database did not become ready in time" >&2
+                exit 1
+              fi
+              sleep 3
+            done
+
+            gunzip -c "$BACKUP_FILE" | docker exec -i spectra-db psql -v ON_ERROR_STOP=1 -U spectra -d spectra
+            echo "Database restored from $BACKUP_FILE before rolling back ${TARGET_VERSION}"
+
+            docker compose -f docker/docker-compose.yml up -d --remove-orphans
+
+            HEALTH_PORT="${HEALTH_PORT:-80}"
+            WAIT=2
+            for i in 1 2 3 4 5; do
+              if curl -fsS --max-time 15 "http://localhost:${HEALTH_PORT}/api/health/ready" > /dev/null; then
+                echo "Rollback successful"
+                printf '%s\n' "$PREVIOUS_VERSION" > "$CURRENT_VERSION_FILE"
+                rm -f "$TARGET_VERSION_FILE" "$BACKUP_FILE_MARKER"
+                exit 0
+              fi
+              echo "Rollback readiness check failed (attempt $i/5), retrying in ${WAIT}s..."
+              sleep "$WAIT"
+              WAIT=$((WAIT * 2))
+            done
+            echo "CRITICAL: Rollback readiness check failed — manual intervention required"
+            exit 1
+            REMOTE
 
       - name: Deploy notification
         if: always()
@@ -381,3 +639,46 @@ jobs:
 
           curl -sf --max-time 10 -X POST -H 'Content-Type: application/json' \
             -d "{\"text\":\"$MSG\"}" "$WEBHOOK_URL" || true
+
+  publish:
+    name: Publish Tag & GitHub Release
+    needs: [release, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.release_sha }}
+          fetch-depth: 0
+
+      - name: Tag release
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          git tag -a "v${VERSION}" -m "Release ${VERSION}" "${{ needs.release.outputs.release_sha }}"
+          git push origin "refs/tags/v${VERSION}:refs/tags/v${VERSION}"
+
+      - name: Generate changelog
+        id: changelog
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          chmod +x .github/scripts/generate_changelog.sh
+          CHANGELOG=$(.github/scripts/generate_changelog.sh "${VERSION}")
+          echo "changelog<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$CHANGELOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ needs.release.outputs.version }}"
+          name: "v${{ needs.release.outputs.version }}"
+          target_commitish: ${{ needs.release.outputs.release_sha }}
+          body: |
+            ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

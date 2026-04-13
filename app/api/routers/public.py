@@ -29,9 +29,11 @@ from app.models.finding import Finding
 from app.models.mission import Mission
 from app.models.plan import Plan, Subscription
 from app.models.user import User
+from app.repositories.plan import PlanRepository
 from app.services.auth.email_verification import (
     send_registration_verification_email as _send_registration_verification_email,
 )
+from app.services.billing.entitlements import sync_user_plan_mirror
 from app.utils.html_sanitization import sanitize_legal_html
 from app.version import __version__
 
@@ -351,6 +353,7 @@ async def list_public_plans():
             "max_targets": p.max_targets,
             "features": p.features,
             "is_default": p.is_default,
+            "allow_self_service_registration": p.allow_self_service_registration,
         }
         for p in plans
     ]
@@ -437,20 +440,8 @@ async def _ensure_registration_is_unique(session: AsyncSession, username: str, e
 
 
 async def _get_default_registration_plan(session: AsyncSession) -> Plan | None:
-    result = await session.execute(
-        select(Plan)
-        .where(Plan.is_active.is_(True), Plan.is_default.is_(True))
-        .order_by(Plan.sort_order.asc(), Plan.created_at.asc())
-        .limit(1)
-    )
-    plan = result.scalar_one_or_none()
-    if plan is not None:
-        return plan
-
-    fallback = await session.execute(
-        select(Plan).where(Plan.is_active.is_(True)).order_by(Plan.sort_order.asc(), Plan.created_at.asc()).limit(1)
-    )
-    return fallback.scalar_one_or_none()
+    repo = PlanRepository(session)
+    return await repo.get_self_service_registration_plan()
 
 
 async def _create_registered_user(session: AsyncSession, body: RegisterRequest, plan: Plan | None) -> User:
@@ -471,8 +462,10 @@ async def _create_registered_user(session: AsyncSession, body: RegisterRequest, 
                 user_id=str(user.id),
                 plan_id=str(plan.id),
                 status="active",
+                payment_provider="manual",
             )
         )
+        await sync_user_plan_mirror(session, user=user)
 
     return user
 
@@ -491,7 +484,7 @@ def _verify_email_template_response(request: Request, *, success: bool, message:
 @router.post("/api/public/register", tags=["Public"], status_code=201)
 @limiter.limit(RateLimits.PUBLIC_REGISTER)
 async def register_user(request: Request, body: RegisterRequest, response: Response):
-    """Self-register a new user account with the default plan."""
+    """Self-register a new user account and auto-assign only an enabled self-service default plan."""
     _ = response
     email_verification_required = _registration_requires_email_verification()
 

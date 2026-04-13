@@ -257,20 +257,22 @@ This automatically:
 5. **Label the node (on manager):**
    ```bash
    docker node ls  # Find the new node ID
-   docker node update --label-add spectra.role=worker <node-id>
+   docker node update --label-add spectra.worker=true <node-id>
    ```
 
 6. **Redeploy to spread services:**
    ```bash
-   ./scripts/ops/swarm_deploy.sh deploy
+   ./scripts/ops/swarm_deploy.sh --deploy
    ```
 
 7. **Verify:**
    ```bash
-   ./scripts/ops/swarm_deploy.sh status
+   ./scripts/ops/swarm_deploy.sh --status
    docker service ls
    docker node ps <node-id>
    ```
+
+For existing Swarm updates, `--deploy` now refuses to mutate the stack unless it can capture both a pre-deploy PostgreSQL backup in `data/backups/` and the currently deployed image tag for rollback. `--rollback` now consumes the recorded previous-version marker plus the deploy-specific backup marker in `.deploy/swarm/` instead of guessing from whichever backup archive happens to be newest.
 
 ### Removing a Node
 
@@ -306,14 +308,13 @@ Triggered on every push/PR to `main` or `develop`.
 
 ### `release.yml` — Build, Push & Deploy
 
-Triggered by **manual dispatch** or pushing a tag matching `v*`.
+Triggered by **manual dispatch from `main` only**.
 
-1. Determine version (CalVer from current date)
+1. Validate the operator-supplied CalVer release version
 2. Run tests + security scan
 3. Build & push Docker images to GHCR with `latest` + version tags
-4. Commit version bump to `main`
-5. Create git tag + GitHub Release with auto-generated changelog
-6. SSH deploy with health check
+4. SSH deploy only after the host resolves the currently deployed version and captures a pre-deploy PostgreSQL backup; the post-deploy gate now waits for the unauthenticated `/api/health/ready` probe to confirm database, AI service, TensorZero, scheduler, worker, LLM, and embeddings readiness
+5. Publish the git tag and GitHub Release with the generated changelog only after deploy succeeds
 
 ### Required GitHub Secrets
 
@@ -365,7 +366,7 @@ To migrate Spectra to a new server:
 |---|---|---|
 | `GET /api/health` | None | Liveness probe — checks DB, Redis, S3 |
 | `GET /api/health?verbose=true` | Required | Detailed status of all components |
-| `GET /api/health/ready` | None | Readiness probe — checks DB, LLM, embeddings |
+| `GET /api/health/ready` | None | Readiness probe — checks DB, AI service, TensorZero, scheduler, worker, LLM, and embeddings |
 | `GET /api/health/services` | Required | Aggregate health of all backend microservices |
 
 For monitoring, use the basic endpoint:

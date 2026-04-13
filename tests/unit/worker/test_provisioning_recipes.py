@@ -25,6 +25,8 @@ def test_docker_install_recipe_uses_official_apt_repository():
     assert "command -v docker" in command
     assert "curl -fsSL https://get.docker.com | sh" not in command
     assert "apt-get install -y ca-certificates curl gnupg" in command
+    assert "gpg --batch --show-keys --with-colons" in command
+    assert recipes.DOCKER_APT_REPO_SIGNING_FINGERPRINT in command
     assert "/etc/apt/keyrings/docker.asc" in command
     assert "/etc/apt/sources.list.d/docker.list" in command
     assert "https://download.docker.com/linux/${ID}" in command
@@ -43,7 +45,7 @@ def test_sandbox_worker_recipe_uses_versioned_tools_image_with_local_tag_fallbac
 
 @pytest.mark.asyncio
 async def test_server_deployer_installs_docker_from_official_apt_repository():
-    from app.services.infrastructure.deploy import ServerDeployer
+    from app.services.infrastructure.deploy import DOCKER_APT_REPO_SIGNING_FINGERPRINT, ServerDeployer
 
     deployer = ServerDeployer()
 
@@ -53,6 +55,8 @@ async def test_server_deployer_installs_docker_from_official_apt_repository():
     assert result == 0
     command = mock_run.await_args.args[1]
     assert "curl -fsSL https://get.docker.com | sh" not in command
+    assert "gpg --batch --show-keys --with-colons" in command
+    assert DOCKER_APT_REPO_SIGNING_FINGERPRINT in command
     assert "/etc/apt/keyrings/docker.gpg" in command
     assert "docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin" in command
     assert "docker compose version >/dev/null 2>&1" in command

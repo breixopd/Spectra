@@ -84,6 +84,7 @@ function openCreateUserModal() {
     document.getElementById('user-form-password').required = true;
     document.getElementById('user-form-status-group').classList.add('hidden');
     populatePlanSelect();
+    document.getElementById('user-form-plan').dataset.initialValue = '';
     showModal('user-modal');
 }
 
@@ -99,6 +100,7 @@ function openEditUserModal(u) {
     document.getElementById('user-form-status-group').classList.remove('hidden');
     document.getElementById('user-form-status').value = String(u.is_active);
     populatePlanSelect(u.plan_id);
+    document.getElementById('user-form-plan').dataset.initialValue = u.plan_id || '';
     showModal('user-modal');
 }
 
@@ -115,16 +117,21 @@ document.getElementById('user-form').addEventListener('submit', async function(e
     const id = document.getElementById('user-form-id').value;
     const isEdit = !!id;
     const body = {};
+    const planField = document.getElementById('user-form-plan');
+    const selectedPlanId = planField.value || null;
 
     if (!isEdit) {
         body.username = document.getElementById('user-form-username').value;
         body.password = document.getElementById('user-form-password').value;
+        body.plan_id = selectedPlanId;
     }
     body.email = document.getElementById('user-form-email').value;
     body.role = document.getElementById('user-form-role').value;
-    body.plan_id = document.getElementById('user-form-plan').value || null;
     if (isEdit) {
         body.is_active = document.getElementById('user-form-status').value === 'true';
+        if ((planField.dataset.initialValue || '') !== (selectedPlanId || '')) {
+            body.plan_id = selectedPlanId;
+        }
     }
 
     try {

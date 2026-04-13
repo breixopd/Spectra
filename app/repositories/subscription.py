@@ -1,9 +1,12 @@
 """Subscription Repository for managing user subscriptions."""
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.plan import Subscription
 from app.repositories.base import BaseRepository
+
+ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES = ("active", "trialing")
 
 
 class SubscriptionRepository(BaseRepository[Subscription]):
@@ -17,5 +20,14 @@ class SubscriptionRepository(BaseRepository[Subscription]):
         return await self.find_one_by(user_id=user_id)
 
     async def get_active_by_user(self, user_id: str) -> Subscription | None:
-        """Get the active subscription for a user."""
-        return await self.find_one_by(user_id=user_id, status="active")
+        """Get the entitlement-active subscription for a user."""
+        stmt = (
+            select(self.model)
+            .where(
+                self.model.user_id == user_id,
+                self.model.status.in_(ENTITLEMENT_ACTIVE_SUBSCRIPTION_STATUSES),
+            )
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()

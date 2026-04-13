@@ -6,15 +6,125 @@ import json
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit_log import AuditEventType
+from app.models.plan import Subscription
 from app.models.rollback_snapshot import RollbackSnapshot
 from app.models.user import User
+from app.services.billing.entitlements import sync_user_plan_mirror
 from app.services.system.audit import log_event as audit_log_event
 
 logger = logging.getLogger(__name__)
+
+
+def _subscription_before_state_requires_remote_recreation(subscription_state: object) -> bool:
+    if not isinstance(subscription_state, dict):
+        return False
+
+    payment_provider = str(subscription_state.get("payment_provider") or "").strip().lower()
+    return payment_provider == "stripe" or bool(
+        subscription_state.get("external_subscription_id") or subscription_state.get("external_customer_id")
+    )
+
+
+def get_snapshot_restore_blocker(before_state: dict) -> str | None:
+    if _subscription_before_state_requires_remote_recreation(before_state.get("subscription")):
+        return "Rollback cannot recreate a remotely cancelled Stripe subscription; this snapshot is informational only"
+    return None
+
+
+def describe_snapshot_restorability(snapshot: RollbackSnapshot) -> tuple[bool, str | None]:
+    try:
+        before_state = json.loads(snapshot.before_state)
+    except json.JSONDecodeError:
+        return False, "Rollback snapshot payload is invalid"
+
+    if not isinstance(before_state, dict):
+        return False, "Rollback snapshot payload is invalid"
+
+    blocker = get_snapshot_restore_blocker(before_state)
+    return blocker is None, blocker
+
+
+def _parse_snapshot_datetime(value: object) -> datetime | None:
+    if not value or not isinstance(value, str):
+        return None
+    return datetime.fromisoformat(value)
+
+
+async def _restore_user_subscription_state(session: AsyncSession, user: User, before_state: dict) -> None:
+    current_subscription = (
+        await session.execute(select(Subscription).where(Subscription.user_id == str(user.id)))
+    ).scalar_one_or_none()
+
+    if "subscription" in before_state:
+        snapshot_subscription = before_state["subscription"]
+        if snapshot_subscription is None:
+            if current_subscription is not None:
+                await session.execute(delete(Subscription).where(Subscription.user_id == str(user.id)))
+            return
+
+        if not isinstance(snapshot_subscription, dict):
+            raise ValueError("Invalid rollback snapshot subscription state")
+
+        if current_subscription is None:
+            current_subscription = Subscription(
+                user_id=str(user.id),
+                plan_id=str(snapshot_subscription["plan_id"]),
+                status=str(snapshot_subscription["status"]),
+                trial_ends_at=_parse_snapshot_datetime(snapshot_subscription.get("trial_ends_at")),
+                current_period_start=_parse_snapshot_datetime(snapshot_subscription.get("current_period_start"))
+                or datetime.now(UTC),
+                current_period_end=_parse_snapshot_datetime(snapshot_subscription.get("current_period_end")),
+                external_subscription_id=snapshot_subscription.get("external_subscription_id"),
+                external_customer_id=snapshot_subscription.get("external_customer_id"),
+                payment_provider=snapshot_subscription.get("payment_provider"),
+                metadata_=snapshot_subscription.get("metadata"),
+            )
+            session.add(current_subscription)
+            return
+
+        current_subscription.plan_id = str(snapshot_subscription["plan_id"])
+        current_subscription.status = str(snapshot_subscription["status"])
+        current_subscription.trial_ends_at = _parse_snapshot_datetime(snapshot_subscription.get("trial_ends_at"))
+        current_subscription.current_period_start = (
+            _parse_snapshot_datetime(snapshot_subscription.get("current_period_start"))
+            or current_subscription.current_period_start
+        )
+        current_subscription.current_period_end = _parse_snapshot_datetime(snapshot_subscription.get("current_period_end"))
+        current_subscription.external_subscription_id = snapshot_subscription.get("external_subscription_id")
+        current_subscription.external_customer_id = snapshot_subscription.get("external_customer_id")
+        current_subscription.payment_provider = snapshot_subscription.get("payment_provider")
+        current_subscription.metadata_ = snapshot_subscription.get("metadata")
+        return
+
+    legacy_plan_id = before_state.get("plan_id")
+    if legacy_plan_id:
+        if current_subscription is None:
+            session.add(
+                Subscription(
+                    user_id=str(user.id),
+                    plan_id=str(legacy_plan_id),
+                    status="active",
+                    payment_provider="manual",
+                    current_period_start=datetime.now(UTC),
+                )
+            )
+            return
+
+        current_subscription.plan_id = str(legacy_plan_id)
+        current_subscription.status = "active"
+        current_subscription.current_period_start = datetime.now(UTC)
+        current_subscription.current_period_end = None
+        if not current_subscription.payment_provider:
+            current_subscription.payment_provider = "manual"
+        return
+
+    if current_subscription is not None:
+        current_subscription.status = "cancelled"
+        current_subscription.current_period_end = datetime.now(UTC)
 
 
 async def create_snapshot(
@@ -83,6 +193,12 @@ async def rollback_snapshot(
         raise ValueError(f"Snapshot {snapshot_id} has already been rolled back")
 
     before_state = json.loads(snapshot.before_state)
+    if not isinstance(before_state, dict):
+        raise ValueError("Rollback snapshot payload is invalid")
+
+    restore_blocker = get_snapshot_restore_blocker(before_state)
+    if restore_blocker is not None:
+        raise ValueError(restore_blocker)
 
     # Apply rollback based on entity type
     if snapshot.target_entity_type == "user":
@@ -120,10 +236,13 @@ async def _rollback_user(session: AsyncSession, user_id: str, before_state: dict
     if not user:
         raise ValueError(f"User {user_id} not found for rollback")
 
+    if "email" in before_state:
+        user.email = before_state["email"]
     if "is_active" in before_state:
         user.is_active = before_state["is_active"]
     if "role" in before_state:
         user.role = before_state["role"]
         user.is_superuser = before_state.get("is_superuser", before_state["role"] == "admin")
-    if "plan_id" in before_state:
-        user.plan_id = before_state["plan_id"]
+    if "plan_id" in before_state or "subscription" in before_state:
+        await _restore_user_subscription_state(session, user, before_state)
+        await sync_user_plan_mirror(session, user=user)

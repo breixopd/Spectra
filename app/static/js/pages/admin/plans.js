@@ -29,6 +29,7 @@ function renderPlans() {
                 <div class="flex items-center gap-1 flex-wrap justify-end">
                     ${tierBadge}
                     ${p.is_default ? '<span class="badge bg-violet-500/20 text-violet-300">Default</span>' : ''}
+                    ${p.allow_self_service_registration ? '<span class="badge bg-emerald-500/20 text-emerald-300">Self-service signup</span>' : ''}
                     <span class="badge ${p.is_active ? 'badge-active' : 'badge-inactive'}">${p.is_active ? 'Active' : 'Inactive'}</span>
                 </div>
             </div>
@@ -76,6 +77,7 @@ function openEditPlanModal(p) {
     document.getElementById('plan-form-storage').value = p.max_storage_mb;
     document.getElementById('plan-form-sort').value = p.sort_order;
     document.getElementById('plan-form-default').checked = p.is_default;
+    document.getElementById('plan-form-self-service').checked = !!p.allow_self_service_registration;
     document.getElementById('plan-form-active').checked = p.is_active;
     document.getElementById('plan-form-resource-tier').value = p.sandbox_resource_tier || 'medium';
     document.getElementById('plan-form-features').value = p.features ? JSON.stringify(p.features, null, 2) : '';
@@ -103,6 +105,7 @@ document.getElementById('plan-form').addEventListener('submit', async function(e
         max_storage_mb: parseInt(document.getElementById('plan-form-storage').value) || 500,
         sort_order: parseInt(document.getElementById('plan-form-sort').value) || 0,
         is_default: document.getElementById('plan-form-default').checked,
+        allow_self_service_registration: document.getElementById('plan-form-self-service').checked,
         sandbox_resource_tier: document.getElementById('plan-form-resource-tier').value,
     };
     if (isEdit) body.is_active = document.getElementById('plan-form-active').checked;

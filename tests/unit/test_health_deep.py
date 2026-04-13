@@ -1,7 +1,7 @@
 """Deep tests for the health check router (/api/health)."""
 
 from contextlib import contextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 
@@ -283,11 +283,34 @@ async def test_readiness_all_ready():
     mock_gw.check_llm_status.return_value = {"available": True, "provider": "openai", "status": "configured: openai"}
     mock_gw.check_embeddings_status.return_value = {"functional": True, "status": "healthy"}
 
-    with patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw):
+    probe_health = AsyncMock(return_value=True)
+
+    with (
+        patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
+        patch("app.api.routers.health._get_settings", return_value=MagicMock(
+            AI_SERVICE_URL="http://ai-svc:5010",
+            TENSORZERO_GATEWAY_URL="http://tensorzero:3000",
+            SCHEDULER_SERVICE_URL="http://scheduler:5011",
+            WORKER_SERVICE_URL="http://worker:5012",
+        )),
+        patch("app.api.routers.health._probe_http_health", new=probe_health),
+    ):
         result = await readiness_check(response=response, db=db)
 
     assert result["ready"] is True
     assert result["checks"]["database"] is True
+    assert result["checks"]["ai_service"] is True
+    assert result["checks"]["tensorzero"] is True
+    assert result["checks"]["scheduler"] is True
+    assert result["checks"]["worker"] is True
+    probe_health.assert_has_awaits(
+        [
+            call("http://ai-svc:5010", path="/health"),
+            call("http://tensorzero:3000", path="/health"),
+            call("http://scheduler:5011", path="/health"),
+            call("http://worker:5012", path="/health"),
+        ]
+    )
 
 
 @pytest.mark.asyncio
@@ -300,7 +323,16 @@ async def test_readiness_db_down():
     mock_gw.check_llm_status.return_value = {"available": True, "provider": "openai", "status": "configured: openai"}
     mock_gw.check_embeddings_status.return_value = {"functional": True, "status": "healthy"}
 
-    with patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw):
+    with (
+        patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
+        patch("app.api.routers.health._get_settings", return_value=MagicMock(
+            AI_SERVICE_URL="http://ai-svc:5010",
+            TENSORZERO_GATEWAY_URL="http://tensorzero:3000",
+            SCHEDULER_SERVICE_URL="http://scheduler:5011",
+            WORKER_SERVICE_URL="http://worker:5012",
+        )),
+        patch("app.api.routers.health._probe_http_health", new=AsyncMock(return_value=True)),
+    ):
         result = await readiness_check(response=response, db=db)
 
     assert result["ready"] is False
@@ -318,8 +350,47 @@ async def test_readiness_llm_unavailable():
     mock_gw.check_llm_status.return_value = {"available": False, "provider": "unknown", "status": "unavailable"}
     mock_gw.check_embeddings_status.return_value = {"functional": False, "status": "unavailable"}
 
-    with patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw):
+    with (
+        patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
+        patch("app.api.routers.health._get_settings", return_value=MagicMock(
+            AI_SERVICE_URL="http://ai-svc:5010",
+            TENSORZERO_GATEWAY_URL="http://tensorzero:3000",
+            SCHEDULER_SERVICE_URL="http://scheduler:5011",
+            WORKER_SERVICE_URL="http://worker:5012",
+        )),
+        patch("app.api.routers.health._probe_http_health", new=AsyncMock(return_value=True)),
+    ):
         result = await readiness_check(response=response, db=db)
 
     assert result["ready"] is False
     assert result["checks"]["llm"] is False
+
+
+@pytest.mark.asyncio
+async def test_readiness_service_dependency_failure_marks_probe_unready():
+    db = AsyncMock()
+    db.execute = AsyncMock()
+    response = _mock_response()
+
+    mock_gw = AsyncMock()
+    mock_gw.check_llm_status.return_value = {"available": True, "provider": "openai", "status": "configured: openai"}
+    mock_gw.check_embeddings_status.return_value = {"functional": True, "status": "healthy"}
+
+    with (
+        patch("app.services.gateway.ai_gateway.get_ai_gateway", return_value=mock_gw),
+        patch("app.api.routers.health._get_settings", return_value=MagicMock(
+            AI_SERVICE_URL="http://ai-svc:5010",
+            TENSORZERO_GATEWAY_URL="http://tensorzero:3000",
+            SCHEDULER_SERVICE_URL="http://scheduler:5011",
+            WORKER_SERVICE_URL="http://worker:5012",
+        )),
+        patch(
+            "app.api.routers.health._probe_http_health",
+            new=AsyncMock(side_effect=[True, True, False, True]),
+        ),
+    ):
+        result = await readiness_check(response=response, db=db)
+
+    assert result["ready"] is False
+    assert result["checks"]["scheduler"] is False
+    assert response.status_code == 503

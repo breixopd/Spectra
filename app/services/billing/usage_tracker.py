@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import async_session_maker
 from app.core.telemetry import telemetry
-from app.models.plan import Plan, Subscription, UsageRecord
+from app.models.plan import Plan, UsageRecord
+from app.services.billing.entitlements import get_user_entitlement
 
 logger = logging.getLogger(__name__)
 
@@ -185,15 +186,10 @@ class UsageTracker:
         period = _period_start(period_type)
 
         async with async_session_maker() as session:
-            # Fetch subscription + plan
-            sub_result = await session.execute(select(Subscription).where(Subscription.user_id == user_id))
-            sub = sub_result.scalar_one_or_none()
-            if sub is None:
+            entitlement = await get_user_entitlement(session, user_id)
+            if entitlement is None:
                 return (False, 0, 0)
-
-            plan = await session.get(Plan, sub.plan_id)
-            if plan is None:
-                return (False, 0, 0)
+            plan = entitlement.plan
 
             max_allowed: int | None = getattr(plan, limit_col, None)
 

@@ -20,6 +20,12 @@ class Plan(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    allow_self_service_registration: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        server_default="false",
+    )
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Limits

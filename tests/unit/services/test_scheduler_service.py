@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -123,6 +124,34 @@ async def test_sandbox_watchdog_loop_handles_errors_and_continues():
         await service._sandbox_watchdog()
 
     watchdog.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_sandbox_watchdog_skips_work_when_lock_not_acquired():
+    from app import scheduler_service
+
+    service = scheduler_service.SchedulerService()
+    service.running = True
+    watchdog = AsyncMock()
+
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        yield None
+
+    async def stop_after_sleep(seconds):
+        service.running = False
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setitem(
+            sys.modules,
+            "app.core.background_tasks",
+            make_module("app.core.background_tasks", sandbox_watchdog_loop=watchdog),
+        )
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
+        mp.setattr(scheduler_service.asyncio, "sleep", AsyncMock(side_effect=stop_after_sleep))
+        await service._sandbox_watchdog()
+
+    watchdog.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -503,3 +532,30 @@ async def test_main_registers_signal_handlers_and_starts_scheduler():
 
     assert loop.add_signal_handler.call_count == 2
     service.start.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_leader_election_runs_scheduler_inside_lock_context():
+    from app import scheduler_service
+
+    events: list[str] = []
+
+    async def start():
+        events.append("start")
+
+    scheduler = SimpleNamespace(start=AsyncMock(side_effect=start))
+
+    @asynccontextmanager
+    async def fake_lock_owner(lock_id, *, connection_factory):
+        events.append("enter")
+        try:
+            yield object()
+        finally:
+            events.append("exit")
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(scheduler_service, "advisory_lock_owner", fake_lock_owner)
+        await scheduler_service._leader_election_loop(scheduler)
+
+    scheduler.start.assert_awaited_once()
+    assert events == ["enter", "start", "exit"]

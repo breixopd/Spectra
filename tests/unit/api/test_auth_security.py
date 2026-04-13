@@ -346,12 +346,7 @@ class TestPreSetupRegistrationBlocked:
         superuser_result.scalar_one_or_none.return_value = "admin-id"
         uniqueness_result = MagicMock()
         uniqueness_result.scalar_one_or_none.return_value = None  # no duplicate
-        plan_result = MagicMock()
-        plan_result.scalar_one_or_none.return_value = None  # no default plan
-
-        fallback_plan_result = MagicMock()
-        fallback_plan_result.scalar_one_or_none.return_value = None
-        maker = _mock_session_ctx([superuser_result, uniqueness_result, plan_result, fallback_plan_result])
+        maker = _mock_session_ctx([superuser_result, uniqueness_result])
         body = RegisterRequest(username="newuser", email="n@n.com", password="StrongP4ss!")
         scope = {
             "type": "http",
@@ -364,11 +359,139 @@ class TestPreSetupRegistrationBlocked:
 
         with (
             patch("app.api.routers.public.async_session_maker", maker),
+            patch("app.api.routers.public.PlanRepository.get_self_service_registration_plan", new=AsyncMock(return_value=None)),
             patch("app.services.system.audit.log_event", AsyncMock()),
         ):
             result = await register_user.__wrapped__(request, body, Response())
 
         assert "created" in result["detail"].lower()
+
+
+class TestProfileEntitlementSource:
+    @pytest.mark.asyncio
+    async def test_current_profile_uses_active_subscription_plan_not_user_plan_id(self):
+        from app.api.routers.auth.session import get_current_profile
+
+        user = MagicMock()
+        user.id = "user-1"
+        user.username = "alice"
+        user.email = "alice@example.com"
+        user.role = "user"
+        user.is_superuser = False
+        user.mfa_enabled = False
+        user.processing_restricted = False
+        user.created_at = datetime.now(UTC)
+        user.plan_id = "legacy-plan-id"
+
+        plan = MagicMock()
+        plan.id = "subscription-plan-id"
+        plan.name = "starter"
+        plan.display_name = "Starter"
+        plan.features = {"manual_mode": True}
+        plan.max_concurrent_missions = 2
+        plan.max_missions_per_month = 20
+        plan.max_targets = 10
+        plan.max_storage_mb = 500
+        plan.max_api_requests_per_hour = 100
+
+        entitlement = MagicMock()
+        entitlement.plan = plan
+
+        subscription = MagicMock()
+        subscription.plan_id = "subscription-plan-id"
+        subscription.status = "active"
+        subscription.payment_provider = "stripe"
+        subscription.external_customer_id = "cus_123"
+
+        subscription_result = MagicMock()
+        subscription_result.first.return_value = (subscription, "Starter")
+        prefs_result = MagicMock()
+        prefs_result.scalar_one_or_none.return_value = None
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[subscription_result, prefs_result])
+
+        with patch("app.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=entitlement)):
+            profile = await get_current_profile.__wrapped__(
+                request=_make_request(path="/api/v1/auth/me"),
+                user=user,
+                session=session,
+            )
+
+        assert profile["plan"]["id"] == "subscription-plan-id"
+        assert profile["plan"]["name"] == "starter"
+        assert profile["subscription"]["can_manage_billing"] is True
+
+    @pytest.mark.asyncio
+    async def test_current_profile_returns_plan_none_without_entitlement(self):
+        from app.api.routers.auth.session import get_current_profile
+
+        user = MagicMock()
+        user.id = "user-2"
+        user.username = "bob"
+        user.email = "bob@example.com"
+        user.role = "user"
+        user.is_superuser = False
+        user.mfa_enabled = False
+        user.processing_restricted = False
+        user.created_at = datetime.now(UTC)
+        user.plan_id = None
+
+        subscription_result = MagicMock()
+        subscription_result.first.return_value = None
+        prefs_result = MagicMock()
+        prefs_result.scalar_one_or_none.return_value = None
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[subscription_result, prefs_result])
+
+        with patch("app.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=None)):
+            profile = await get_current_profile.__wrapped__(
+                request=_make_request(path="/api/v1/auth/me"),
+                user=user,
+                session=session,
+            )
+
+        assert profile["plan"] is None
+        assert profile["subscription"] is None
+
+    @pytest.mark.asyncio
+    async def test_current_profile_exposes_past_due_billing_recovery_without_entitlement(self):
+        from app.api.routers.auth.session import get_current_profile
+
+        user = MagicMock()
+        user.id = "user-3"
+        user.username = "carol"
+        user.email = "carol@example.com"
+        user.role = "user"
+        user.is_superuser = False
+        user.mfa_enabled = False
+        user.processing_restricted = False
+        user.created_at = datetime.now(UTC)
+        user.plan_id = None
+
+        subscription = MagicMock()
+        subscription.plan_id = "plan-past-due"
+        subscription.status = "past_due"
+        subscription.payment_provider = "stripe"
+        subscription.external_customer_id = "cus_past_due"
+
+        subscription_result = MagicMock()
+        subscription_result.first.return_value = (subscription, "Starter")
+        prefs_result = MagicMock()
+        prefs_result.scalar_one_or_none.return_value = None
+        session = AsyncMock()
+        session.execute = AsyncMock(side_effect=[subscription_result, prefs_result])
+
+        with patch("app.api.routers.auth.session.get_user_entitlement", new=AsyncMock(return_value=None)):
+            profile = await get_current_profile.__wrapped__(
+                request=_make_request(path="/api/v1/auth/me"),
+                user=user,
+                session=session,
+            )
+
+        assert profile["plan"] is None
+        assert profile["subscription"]["status"] == "past_due"
+        assert profile["subscription"]["plan_display_name"] == "Starter"
+        assert profile["subscription"]["can_manage_billing"] is True
 
 
 # ---------------------------------------------------------------------------
