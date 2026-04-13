@@ -1,8 +1,10 @@
+import importlib.util
 import os
 
 import pytest
 import pytest_asyncio
 
+from app.core.config import settings
 from app.services.ai.rag import Document, RAGService
 
 pytestmark = [
@@ -14,9 +16,16 @@ pytestmark = [
 ]
 
 
+def _requires_local_fastembed() -> bool:
+    return settings.EMBEDDING_MODEL.lower().startswith("local/") or not settings.EMBEDDING_API_KEY.get_secret_value()
+
+
 @pytest_asyncio.fixture
 async def rag_service():
     """Get an initialized RAG service (PostgreSQL-backed)."""
+    if _requires_local_fastembed() and importlib.util.find_spec("fastembed") is None:
+        pytest.skip("RAG local embeddings require optional dependency 'fastembed'")
+
     service = RAGService()
     result = await service.initialize()
     if not result:

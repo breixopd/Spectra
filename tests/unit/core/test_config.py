@@ -22,9 +22,10 @@ class TestSettingsValidators:
         with pytest.raises(ValidationError, match="LOG_LEVEL"):
             Settings(LOG_LEVEL="TRACE", _env_file=None)
 
-    def test_tensorzero_gateway_url_default(self):
+    def test_tensorzero_gateway_url_default(self, monkeypatch):
         from app.core.config import Settings
 
+        monkeypatch.delenv("TENSORZERO_GATEWAY_URL", raising=False)
         s = Settings(_env_file=None)
         assert s.TENSORZERO_GATEWAY_URL == "http://tensorzero:3000"
 

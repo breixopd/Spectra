@@ -154,7 +154,12 @@ class TestRegisterEndpoint:
         default_plan.scalar_one_or_none.return_value = None
         fallback_plan = MagicMock()
         fallback_plan.scalar_one_or_none.return_value = None
-        maker, _ = _mock_session_ctx([superuser_result, uniq, default_plan, fallback_plan])
+        advisory_lock_result = MagicMock()
+        latest_hash_result = MagicMock()
+        latest_hash_result.scalar_one_or_none.return_value = None
+        maker, _ = _mock_session_ctx(
+            [superuser_result, uniq, default_plan, fallback_plan, advisory_lock_result, latest_hash_result]
+        )
 
         body = RegisterRequest(username="newuser", email="new@example.com", password="StrongP4ss!")
         with patch("app.api.routers.public.async_session_maker", maker):

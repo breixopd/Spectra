@@ -140,14 +140,16 @@ async def test_delete_account_superuser_with_others_succeeds(mock_user, mock_ses
     request.client.host = "127.0.0.1"
 
     # First call: count query returns 2 (another superuser exists)
-    # Second call: get_latest_hash in audit log_event
-    # Third call: UPDATE audit_logs
+    # Second call: advisory lock for audit hash chaining
+    # Third call: get_latest_hash in audit log_event
+    # Fourth call: UPDATE audit_logs
     count_result = MagicMock()
     count_result.scalar_one.return_value = 2
+    advisory_lock_result = MagicMock()
     hash_result = MagicMock()
     hash_result.scalar_one_or_none.return_value = None
     update_result = MagicMock()
-    mock_session.execute.side_effect = [count_result, hash_result, update_result]
+    mock_session.execute.side_effect = [count_result, advisory_lock_result, hash_result, update_result]
 
     with patch("app.api.routers.auth.session.verify_password", return_value=True):
         result = await delete_account(
