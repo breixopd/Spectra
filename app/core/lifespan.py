@@ -150,14 +150,48 @@ def _validate_rate_limit_storage() -> None:
 
 
 async def _initialize_database(app: FastAPI) -> None:
-    """Verify database connectivity, hydrate settings, and store session maker."""
-    from app.services.storage import get_storage_service
+    """Verify database connectivity, bootstrap secrets, hydrate settings, and init storage.
 
+    Startup order:
+    1. Cache service (in-memory, no DB needed)
+    2. Database connectivity check
+    3. Secret bootstrap (persist auto-generated secrets to DB)
+    4. Runtime settings hydration from DB (DB is authoritative)
+    5. Storage service init (S3 credentials may come from DB)
+    6. Rate limit validation
+    7. Startup checks
+    """
+    cache = CacheService()
+    set_cache(cache)
+    logger.info("[OK] Cache service initialized")
+
+    await set_system_status("initializing", "Connecting services...")
+
+    telemetry.update_service_status("database", healthy=True)
+    logger.info("[OK] Database ready (migrations handled by start script)")
+
+    # Bootstrap persistent secrets (first boot generates + persists to DB)
+    try:
+        from app.services.system.secret_bootstrap import ensure_persistent_secrets
+        async with async_session_maker() as session:
+            await ensure_persistent_secrets(session)
+        logger.info("[OK] Persistent secrets bootstrapped")
+    except Exception as exc:
+        logger.error("[FAIL] Secret bootstrap failed: %s", exc)
+        raise
+
+    app.state.db_session_maker = async_session_maker
+
+    await hydrate_runtime_settings_from_db(persist_normalized=True, commit=True)
+    logger.info("[OK] Runtime settings hydrated from DB")
+
+    # Storage init AFTER hydration (S3 credentials may come from DB)
+    from app.services.storage import get_storage_service
     storage = get_storage_service()
     await storage.start()
     logger.info("[OK] Storage service initialized (mode: s3)")
 
-    # Verify S3 connectivity at startup
+    # Verify S3 connectivity
     try:
         storage_health = await storage.health_check()
     except Exception as e:
@@ -170,23 +204,9 @@ async def _initialize_database(app: FastAPI) -> None:
     else:
         logger.info("[OK] S3 storage healthy (endpoint=%s)", storage_health.get("endpoint"))
 
-    cache = CacheService()
-    set_cache(cache)
-    logger.info("[OK] Cache service initialized")
-
-    await set_system_status("initializing", "Connecting services...")
-
-    telemetry.update_service_status("database", healthy=True)
-    logger.info("[OK] Database ready (migrations handled by start script)")
-
     _validate_rate_limit_storage()
 
     await run_startup_checks()
-
-    app.state.db_session_maker = async_session_maker
-
-    await hydrate_runtime_settings_from_db(persist_normalized=True, commit=True)
-    logger.info("[OK] Runtime settings hydrated from DB")
 
 
 async def _seed_default_data() -> None:

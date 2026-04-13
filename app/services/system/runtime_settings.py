@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import os
 
 from pydantic import SecretStr
 from sqlalchemy import select
@@ -15,6 +16,35 @@ from app.core.database import async_session_maker
 from app.models.config import SystemConfig
 
 logger = logging.getLogger(__name__)
+
+BOOTSTRAP_ONLY_VARS: frozenset[str] = frozenset({
+    "DATABASE_URL",
+    "DATABASE_ECHO",
+    "DATABASE_POOL_SIZE",
+    "DATABASE_MAX_OVERFLOW",
+    "SERVICE_MODE",
+    "DATA_ROOT",
+    "DEBUG",
+    "LOG_FORMAT",
+    "RATE_LIMIT_STORAGE",
+    "OTEL_EXPORTER_ENDPOINT",
+    "OTEL_EXPORTER_PROTOCOL",
+    "OTEL_SERVICE_NAME",
+    "OTEL_EXPORT_INTERVAL_SECONDS",
+    "SANDBOX_IMAGE",
+    "SANDBOX_NETWORK",
+    "SANDBOX_PLUGINS_VOLUME",
+    "ENCRYPTION_KEY",
+    # Secrets managed separately by secret_bootstrap
+    "JWT_SECRET_KEY",
+    "SECRET_KEY",
+    "SERVICE_AUTH_SECRET",
+})
+
+
+def _is_explicitly_set_env(key: str) -> bool:
+    """Return True only if key exists in the actual OS environment."""
+    return key in os.environ
 
 _FERNET_TOKEN_PREFIX = "gAAAAA"
 
@@ -150,6 +180,51 @@ GENERAL_RUNTIME_FIELD_MAP: dict[str, tuple[str, str]] = {
     # Request handling
     "REQUEST_TIMEOUT_SECONDS": ("REQUEST_TIMEOUT_SECONDS", "int"),
     "SANDBOX_WORKER_POLL_DELAY": ("SANDBOX_WORKER_POLL_DELAY", "str"),
+    # Application
+    "APP_NAME": ("APP_NAME", "str"),
+    "JWT_ALGORITHM": ("JWT_ALGORITHM", "str"),
+    "CORS_ORIGINS": ("CORS_ORIGINS", "csv_list"),
+    "DOCKER_REGISTRY": ("DOCKER_REGISTRY", "str"),
+    "MAX_REQUEST_BODY_SIZE": ("MAX_REQUEST_BODY_SIZE", "int"),
+    "MAX_UPLOAD_SIZE": ("MAX_UPLOAD_SIZE", "int"),
+    # VPN
+    "VPN_ENABLED": ("VPN_ENABLED", "bool"),
+    "VPN_CONFIG_DIR": ("VPN_CONFIG_DIR", "str"),
+    "VPN_AUTO_CONNECT": ("VPN_AUTO_CONNECT", "str"),
+    # MCP
+    "MCP_API_KEY": ("MCP_API_KEY", "secret"),
+    # Service URLs
+    "AI_SERVICE_URL": ("AI_SERVICE_URL", "str"),
+    "SCHEDULER_SERVICE_URL": ("SCHEDULER_SERVICE_URL", "str"),
+    "WORKER_SERVICE_URL": ("WORKER_SERVICE_URL", "str"),
+    # Garage
+    "GARAGE_ADMIN_TOKEN": ("GARAGE_ADMIN_TOKEN", "secret"),
+    "GARAGE_ADMIN_URL": ("GARAGE_ADMIN_URL", "str"),
+    # S3 Buckets
+    "S3_BUCKET_MISSIONS": ("S3_BUCKET_MISSIONS", "str"),
+    "S3_BUCKET_SESSIONS": ("S3_BUCKET_SESSIONS", "str"),
+    "S3_BUCKET_KNOWLEDGE": ("S3_BUCKET_KNOWLEDGE", "str"),
+    "S3_BUCKET_VPN": ("S3_BUCKET_VPN", "str"),
+    # Sandbox Orchestrator
+    "SANDBOX_ORCHESTRATOR_API_KEY": ("SANDBOX_ORCHESTRATOR_API_KEY", "secret"),
+    # Shell
+    "SHELL_PROXY_NODES": ("SHELL_PROXY_NODES", "csv_list"),
+    # Auto-healing
+    "AUTO_HEAL_ENABLED": ("AUTO_HEAL_ENABLED", "bool"),
+    "AUTO_HEAL_MAX_RETRIES": ("AUTO_HEAL_MAX_RETRIES", "int"),
+    "AUTO_HEAL_COOLDOWN_SECS": ("AUTO_HEAL_COOLDOWN_SECS", "int"),
+    # System thresholds
+    "SYSTEM_MEMORY_ALERT_THRESHOLD": ("SYSTEM_MEMORY_ALERT_THRESHOLD", "int"),
+    "SYSTEM_DISK_ALERT_THRESHOLD": ("SYSTEM_DISK_ALERT_THRESHOLD", "int"),
+    "SYSTEM_LOAD_ALERT_MULTIPLIER": ("SYSTEM_LOAD_ALERT_MULTIPLIER", "float"),
+    # Image
+    "IMAGE_AUTO_UPDATE": ("IMAGE_AUTO_UPDATE", "bool"),
+    "IMAGE_CHECK_INTERVAL": ("IMAGE_CHECK_INTERVAL", "int"),
+    # Swarm service names
+    "SWARM_WORKER_SERVICE": ("SWARM_WORKER_SERVICE", "str"),
+    "SWARM_API_SERVICE": ("SWARM_API_SERVICE", "str"),
+    "SWARM_AI_SERVICE": ("SWARM_AI_SERVICE", "str"),
+    "SWARM_SCHEDULER_SERVICE": ("SWARM_SCHEDULER_SERVICE", "str"),
 }
 
 
@@ -206,24 +281,39 @@ async def get_runtime_setting_bool(key: str, default: bool = False) -> bool:
     return default
 
 
+def _coerce_field_value(kind: str, value: str, key: str):
+    """Coerce a raw string value to the appropriate Python type."""
+    if kind == "bool":
+        return _as_bool(value)
+    if kind == "int":
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            logger.debug("Failed to parse int setting %s", key, exc_info=True)
+            return None
+    if kind == "float":
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            logger.debug("Failed to parse float setting %s", key, exc_info=True)
+            return None
+    if kind == "nullable_str":
+        return value or None
+    if kind == "secret":
+        return SecretStr(value or "")
+    if kind == "csv_list":
+        return [i.strip() for i in value.split(",") if i.strip()] if value else []
+    # default: str
+    return value
+
+
 def _apply_general_runtime_settings(rows: dict[str, str]) -> None:
     for key, (attr_name, kind) in GENERAL_RUNTIME_FIELD_MAP.items():
         if key not in rows:
             continue
-        value = rows[key]
-        if kind == "bool":
-            setattr(settings, attr_name, _as_bool(value))
-        elif kind == "int":
-            try:
-                setattr(settings, attr_name, int(value))
-            except (ValueError, TypeError):
-                logger.debug("Failed to parse int setting %s", key, exc_info=True)
-        elif kind == "nullable_str":
-            setattr(settings, attr_name, value or None)
-        elif kind == "secret":
-            setattr(settings, attr_name, SecretStr(value or ""))
-        else:
-            setattr(settings, attr_name, value)
+        coerced = _coerce_field_value(kind, rows[key], key)
+        if coerced is not None or kind == "nullable_str":
+            setattr(settings, attr_name, coerced)
 
 
 async def upsert_system_config_values(
@@ -290,10 +380,25 @@ async def hydrate_runtime_settings_from_db(
 
     _apply_general_runtime_settings(row_map)
 
+    # Env-var overrides: explicit env vars take precedence over DB values
+    env_override_count = 0
+    for key, (attr_name, kind) in GENERAL_RUNTIME_FIELD_MAP.items():
+        if key in BOOTSTRAP_ONLY_VARS:
+            continue
+        if _is_explicitly_set_env(key):
+            coerced = _coerce_field_value(kind, os.environ[key], key)
+            if coerced is not None or kind == "nullable_str":
+                setattr(settings, attr_name, coerced)
+                env_override_count += 1
+
     if commit:
         await session.commit()
 
     if reset_caches:
         await reset_runtime_ai_caches()
 
-    logger.info("Runtime settings hydrated from DB (%d keys)", len(row_map))
+    logger.info(
+        "Runtime settings hydrated from DB (%d keys, %d env overrides)",
+        len(row_map),
+        env_override_count,
+    )

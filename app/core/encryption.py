@@ -125,7 +125,7 @@ def _get_default_secret() -> str:
     """Return the app SECRET_KEY for file encryption."""
     from app.core.config import get_settings
 
-    return get_settings().SECRET_KEY
+    return get_settings().SECRET_KEY.get_secret_value()
 
 
 def encrypt_file(file_path: Path, key: str | None = None) -> None:

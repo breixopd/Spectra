@@ -1,3 +1,4 @@
+import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -5,8 +6,10 @@ import pytest
 from fastapi import FastAPI
 
 from app.services.system.runtime_settings import (
+    BOOTSTRAP_ONLY_VARS,
     GENERAL_RUNTIME_FIELD_MAP,
     _apply_general_runtime_settings,
+    _is_explicitly_set_env,
     hydrate_runtime_settings_from_db,
 )
 
@@ -144,6 +147,9 @@ async def test_lifespan_hydrates_runtime_before_embedding_init():
         stack.enter_context(patch("app.core.lifespan._validate_rate_limit_storage"))
         stack.enter_context(patch("app.core.lifespan.seed_default_plans", new_callable=AsyncMock))
         stack.enter_context(
+            patch("app.services.system.secret_bootstrap.ensure_persistent_secrets", new_callable=AsyncMock)
+        )
+        stack.enter_context(
             patch("app.core.metrics_store.get_metrics_store", return_value=MagicMock(start=AsyncMock()))
         )
         stack.enter_context(
@@ -232,3 +238,79 @@ class TestGeneralRuntimeFieldMapIncludes:
         for key, expected_type in type_checks.items():
             _, actual_type = GENERAL_RUNTIME_FIELD_MAP[key]
             assert actual_type == expected_type, f"{key}: expected {expected_type}, got {actual_type}"
+
+
+class TestIsExplicitlySetEnv:
+    def test_returns_true_when_env_var_set(self):
+        with patch.dict(os.environ, {"MY_TEST_VAR": "hello"}):
+            assert _is_explicitly_set_env("MY_TEST_VAR") is True
+
+    def test_returns_false_when_env_var_missing(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("MY_TEST_VAR_ABSENT", None)
+            assert _is_explicitly_set_env("MY_TEST_VAR_ABSENT") is False
+
+    def test_returns_true_for_empty_string_value(self):
+        with patch.dict(os.environ, {"MY_TEST_VAR_EMPTY": ""}):
+            assert _is_explicitly_set_env("MY_TEST_VAR_EMPTY") is True
+
+
+@pytest.mark.asyncio
+async def test_hydrate_env_override_takes_precedence_over_db():
+    """When an env var is explicitly set, it overrides the DB value."""
+    session = AsyncMock()
+    rows = [
+        SimpleNamespace(key="LOG_LEVEL", value="DEBUG", is_secret=False),
+    ]
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = rows
+    session.execute.return_value = result
+
+    with (
+        patch("app.services.system.runtime_settings.settings") as mock_settings,
+        patch(
+            "app.services.system.runtime_settings.reset_runtime_ai_caches",
+            new_callable=AsyncMock,
+        ),
+        patch.dict(os.environ, {"LOG_LEVEL": "WARNING"}),
+    ):
+        await hydrate_runtime_settings_from_db(
+            session,
+            persist_normalized=False,
+            commit=False,
+            reset_caches=False,
+        )
+
+    # Env var "WARNING" should override DB "DEBUG"
+    assert mock_settings.LOG_LEVEL == "WARNING"
+
+
+@pytest.mark.asyncio
+async def test_hydrate_bootstrap_only_vars_skip_env_override():
+    """BOOTSTRAP_ONLY_VARS should NOT be overridden from env during hydration."""
+    session = AsyncMock()
+    rows = [
+        SimpleNamespace(key="DATABASE_URL", value="from-db", is_secret=False),
+    ]
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = rows
+    session.execute.return_value = result
+
+    with (
+        patch("app.services.system.runtime_settings.settings") as mock_settings,
+        patch(
+            "app.services.system.runtime_settings.reset_runtime_ai_caches",
+            new_callable=AsyncMock,
+        ),
+        patch.dict(os.environ, {"DATABASE_URL": "from-env"}),
+    ):
+        await hydrate_runtime_settings_from_db(
+            session,
+            persist_normalized=False,
+            commit=False,
+            reset_caches=False,
+        )
+
+    # DATABASE_URL is in BOOTSTRAP_ONLY_VARS so should NOT appear in the field map
+    assert "DATABASE_URL" in BOOTSTRAP_ONLY_VARS
+    assert "DATABASE_URL" not in GENERAL_RUNTIME_FIELD_MAP
