@@ -49,7 +49,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements/dev.txt numpy
+      - name: Install test dependencies
+        run: |
+          grep -v '^pytest-asyncio==' requirements/dev.txt > /tmp/dev-filtered.txt
+          pip install -r /tmp/dev-filtered.txt numpy
+          pip install --no-deps pytest-asyncio==0.24.0
       - name: Validate TensorZero config
         run: |
           python3 -c "import tomllib; tomllib.load(open('config/tensorzero.toml', 'rb')); print('tensorzero.toml: valid')"
@@ -111,7 +115,11 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -r requirements/dev.txt numpy
+      - name: Install test dependencies
+        run: |
+          grep -v '^pytest-asyncio==' requirements/dev.txt > /tmp/dev-filtered.txt
+          pip install -r /tmp/dev-filtered.txt numpy
+          pip install --no-deps pytest-asyncio==0.24.0
       - name: Run integration tests
         run: |
           python3 -m pytest tests/integration/ -v --tb=short \
