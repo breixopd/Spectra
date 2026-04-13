@@ -149,13 +149,25 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.app
+          file: docker/Dockerfile.api
           push: false
           load: false
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: docker/Dockerfile.tools
+          file: docker/Dockerfile.ai
+          push: false
+          load: false
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.scheduler
+          push: false
+          load: false
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.worker
           push: false
           load: false
       - uses: docker/build-push-action@v6
