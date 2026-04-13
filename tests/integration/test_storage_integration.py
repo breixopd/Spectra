@@ -10,10 +10,15 @@ import os
 
 import pytest
 
+REQUIRED_S3_ENV_VARS = ("S3_ENDPOINT_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY")
+
 pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.integration,
-    pytest.mark.skipif(not os.environ.get("S3_ENDPOINT_URL"), reason="S3/Garage not configured"),
+    pytest.mark.skipif(
+        not all(os.environ.get(var) for var in REQUIRED_S3_ENV_VARS),
+        reason="S3/Garage not fully configured",
+    ),
 ]
 
 
